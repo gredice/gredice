@@ -625,7 +625,7 @@ test('rotates a white fence center picket with its resolved corner', () => {
     assert.equal(centerPicket?.halfDepth, 0.1075);
 });
 
-test('connects white fence rails to the brown fence', () => {
+test('uses the brown fence for the full span to a white pole', () => {
     const world = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
         stacks: [
@@ -642,13 +642,16 @@ test('connects white fence rails to the brown fence', () => {
         ],
     });
 
-    assert.equal(world.surfaces.length, 6);
-    assert.equal(
-        world.surfaces.filter(
-            (surface) =>
-                surface.halfWidth === 0.19625 && surface.halfDepth === 0.02,
-        ).length,
-        1,
+    assert.equal(world.surfaces.length, 4);
+    assert.deepEqual(
+        world.surfaces
+            .filter(
+                (surface) =>
+                    surface.y === 0.55 && (surface.halfWidth ?? 0) > 0.1,
+            )
+            .map((surface) => surface.halfWidth ?? 0)
+            .sort(),
+        [0.2125, 0.25],
     );
 });
 
@@ -727,10 +730,19 @@ test('connects rough and polished stone fence walls together', () => {
     assert.equal(world.surfaces.length, 4);
     assert.deepEqual(
         world.surfaces
-            .filter((surface) => surface.halfWidth === 0.18)
-            .map((surface) => surface.halfDepth)
-            .sort(),
-        [0.08, 0.14],
+            .filter((surface) => surface.y === 0.48)
+            .map(
+                (surface) =>
+                    [surface.halfWidth ?? 0, surface.halfDepth ?? 0] satisfies [
+                        number,
+                        number,
+                    ],
+            )
+            .sort(([left], [right]) => left - right),
+        [
+            [0.18, 0.08],
+            [0.25, 0.08],
+        ],
     );
 });
 

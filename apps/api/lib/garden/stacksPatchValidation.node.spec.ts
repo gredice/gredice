@@ -42,6 +42,18 @@ const blockDataByName = new Map([
     ['HazelLightArch', { attributes: { stackable: false, height: 1.65 } }],
     ['StoneWalkway', { attributes: { stackable: false, height: 0.1 } }],
     ['WoodenWalkway', { attributes: { stackable: false, height: 0.1 } }],
+    ['MulchWood', { attributes: { stackable: false, height: 0.01 } }],
+    [
+        'IceCreamCart',
+        {
+            attributes: {
+                stackable: false,
+                height: 1.9,
+                spanDepth: 2,
+                spanWidth: 3,
+            },
+        },
+    ],
 ]);
 
 describe('validateStackPlacement', () => {
@@ -86,6 +98,21 @@ describe('validateStackPlacement', () => {
 
         assert.deepEqual(validation, { valid: true });
     });
+
+    for (const surfaceName of ['MulchWood', 'WoodenWalkway']) {
+        it(`allows a decoration directly above ${surfaceName}`, () => {
+            const validation = validateStackPlacement({
+                blockIds: ['surface-a', 'cart-a'],
+                blockNameById: new Map([
+                    ['surface-a', surfaceName],
+                    ['cart-a', 'IceCreamCart'],
+                ]),
+                blockDataByName,
+            });
+
+            assert.deepEqual(validation, { valid: true });
+        });
+    }
 
     for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
         it(`allows HazelLightArch directly above ${walkwayName}`, () => {
@@ -171,6 +198,39 @@ describe('validateSpanningBlockMove', () => {
                     index: index === '-' ? undefined : Number(index),
                 };
             },
+        });
+
+        assert.deepEqual(validation, { valid: true });
+    });
+
+    it('allows every cell of a multi-cell decoration on even mulch supports', () => {
+        const mulchStacks = Array.from({ length: 3 }, (_, x) =>
+            Array.from({ length: 2 }, (_, y) => ({
+                positionX: x + 4,
+                positionY: y,
+                blocks: [`mulch-${x}-${y}`],
+            })),
+        ).flat();
+        const blockNameById = new Map([
+            ['cart-a', 'IceCreamCart'],
+            ...mulchStacks.map(
+                (stack) => [stack.blocks[0] ?? '', 'MulchWood'] as const,
+            ),
+        ]);
+        const validation = validateSpanningBlockMove({
+            stacks: [
+                { positionX: 0, positionY: 0, blocks: ['cart-a'] },
+                ...mulchStacks,
+            ],
+            fromPath: 'source',
+            toPath: 'destination',
+            movedBlockId: 'cart-a',
+            blockNameById,
+            blockDataByName,
+            parsePath: (path) =>
+                path === 'source'
+                    ? { x: 0, y: 0, index: 0 }
+                    : { x: 4, y: 0, index: 1 },
         });
 
         assert.deepEqual(validation, { valid: true });

@@ -9,11 +9,13 @@ function createBlockData({
     height = 1,
     name,
     spanDepth,
+    spanWidth,
     stackable = true,
 }: {
     height?: number;
     name: string;
     spanDepth?: number;
+    spanWidth?: number;
     stackable?: boolean;
 }): BlockData {
     return {
@@ -32,7 +34,8 @@ function createBlockData({
         },
         attributes: {
             height,
-            spanDepth,
+            ...(spanDepth === undefined ? {} : { spanDepth }),
+            ...(spanWidth === undefined ? {} : { spanWidth }),
             stackable,
             type: 'decoration',
             nightOnlyPurchase: false,
@@ -67,6 +70,13 @@ const blockData = [
     createBlockData({ name: 'StoneLarge', stackable: false }),
     createBlockData({ name: 'Block_Grass', height: 0.2 }),
     createBlockData({ name: 'Raised_Bed', spanDepth: 2, stackable: false }),
+    createBlockData({ name: 'MulchWood', height: 0.01, stackable: false }),
+    createBlockData({
+        name: 'IceCreamCart',
+        spanDepth: 2,
+        spanWidth: 3,
+        stackable: false,
+    }),
 ];
 
 describe('resolveHudPlacementPreview', () => {
@@ -133,5 +143,23 @@ describe('resolveHudPlacementPreview', () => {
 
         assert.equal(preview?.isBlocked, false);
         assert.deepEqual(preview?.position, { x: 2, z: 3 });
+    });
+
+    it('allows a multi-cell decoration across an even mulch surface', () => {
+        const mulchStacks = Array.from({ length: 3 }, (_, x) =>
+            Array.from({ length: 2 }, (_, z) => createStack(x, z, 'MulchWood')),
+        ).flat();
+        const preview = resolveHudPlacementPreview({
+            blockData,
+            blockName: 'IceCreamCart',
+            garden: { stacks: mulchStacks },
+            position: { x: 0, z: 0 },
+        });
+
+        assert.equal(preview?.isBlocked, false);
+        assert.equal(preview?.error, null);
+        assert.equal(preview?.hoverHeight, 0.01);
+        assert.equal(preview?.blockData?.attributes.spanWidth, 3);
+        assert.equal(preview?.blockData?.attributes.spanDepth, 2);
     });
 });

@@ -6,9 +6,9 @@ Run with Blender, not the system Python:
     /Applications/Blender.app/Contents/MacOS/Blender --background \
       --factory-startup --python assets/scripts/generate-white-fence.py
 
-The six exported objects mirror the connected Fence topology while using rows
-of broad pointed planks, two narrow rails, and matte warm-white paint. The
-smallest visible run contains three pickets; every connected arm adds two more.
+The connected variants mirror the Fence topology while using rows of broad
+pointed planks, two narrow rails, and matte warm-white paint. A separate pole
+and post-free extension support clean connections to other fence materials.
 """
 
 from __future__ import annotations
@@ -190,21 +190,25 @@ def add_rail_run(
     name: str,
     direction: tuple[int, int],
     material: bpy.types.Material,
+    start: float = 0,
+    end: float = RAIL_LENGTH,
 ) -> None:
     direction_x, direction_y = direction
     along_x = direction_x != 0
+    length = end - start
+    center = (start + end) / 2
     for rail_index, rail_height in enumerate(RAIL_HEIGHTS):
         parts.append(
             box(
                 f"{name}_Rail_{rail_index}",
                 (
-                    RAIL_LENGTH if along_x else RAIL_DEPTH,
-                    RAIL_DEPTH if along_x else RAIL_LENGTH,
+                    length if along_x else RAIL_DEPTH,
+                    RAIL_DEPTH if along_x else length,
                     RAIL_HEIGHT,
                 ),
                 (
-                    direction_x * RAIL_LENGTH / 2,
-                    direction_y * RAIL_LENGTH / 2,
+                    direction_x * center,
+                    direction_y * center,
                     -1 + rail_height,
                 ),
                 material,
@@ -267,6 +271,21 @@ def create_variant(
     return join_objects(parts, name, material)
 
 
+def create_pole(material: bpy.types.Material) -> bpy.types.Object:
+    name = "WhiteFence_Pole"
+    parts: list[bpy.types.Object] = []
+    add_picket(parts, name, (0, 0), True, material)
+    return join_objects(parts, name, material)
+
+
+def create_extension(material: bpy.types.Material) -> bpy.types.Object:
+    name = "WhiteFence_Extension"
+    parts: list[bpy.types.Object] = []
+    add_picket(parts, f"{name}_Picket", (0, 0.75), False, material)
+    add_rail_run(parts, name, (0, 1), material, start=0.5, end=1)
+    return join_objects(parts, name, material)
+
+
 def main() -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -286,8 +305,12 @@ def main() -> None:
     for name, directions in variants.items():
         create_variant(name, directions, material)
 
+    create_pole(material)
+    create_extension(material)
+
     actual_names = {obj.name for obj in bpy.context.scene.objects}
-    if actual_names != set(variants):
+    expected_names = {*variants, "WhiteFence_Pole", "WhiteFence_Extension"}
+    if actual_names != expected_names:
         raise RuntimeError(f"Unexpected WhiteFence objects: {sorted(actual_names)}")
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)

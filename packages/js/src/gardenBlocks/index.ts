@@ -62,8 +62,13 @@ export const WATER_BLOCK_NAMES = [
     WATER_BLOCK_NAME,
     'Block_Swamp_Water',
 ] as const;
-const HAZEL_LIGHT_ARCH_BLOCK_NAME = 'HazelLightArch';
-const WALKWAY_BLOCK_NAMES = new Set(['StoneWalkway', 'WoodenWalkway']);
+const GARDEN_SURFACE_COVER_BLOCK_NAMES = new Set([
+    'MulchCoconut',
+    'MulchHey',
+    'MulchWood',
+    'StoneWalkway',
+    'WoodenWalkway',
+]);
 const TERRAIN_STAIR_BLOCK_NAMES = new Set([
     'Block_Stone_Stairs',
     'Block_Polished_Stone_Stairs',
@@ -362,13 +367,9 @@ export function canStackBlockOnBlock({
     belowBlockName: string;
 }) {
     if (
-        aboveBlockName === HAZEL_LIGHT_ARCH_BLOCK_NAME &&
-        WALKWAY_BLOCK_NAMES.has(belowBlockName)
+        !belowBlockData?.attributes?.stackable &&
+        !GARDEN_SURFACE_COVER_BLOCK_NAMES.has(belowBlockName)
     ) {
-        return true;
-    }
-
-    if (!belowBlockData?.attributes?.stackable) {
         return false;
     }
 

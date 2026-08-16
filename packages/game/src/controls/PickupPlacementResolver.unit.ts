@@ -178,6 +178,19 @@ const blockData = [
         id: 15,
         name: 'Block_Grass_Angle',
     }),
+    createBlockData({
+        height: 0.01,
+        id: 16,
+        name: 'MulchWood',
+        stackable: false,
+    }),
+    createBlockData({
+        id: 17,
+        name: 'IceCreamCart',
+        spanDepth: 2,
+        spanWidth: 3,
+        stackable: false,
+    }),
 ];
 
 describe('resolvePickupPlacementPreviewForRelative', () => {
@@ -446,6 +459,37 @@ describe('resolvePickupPlacementPreviewForRelative', () => {
 
         assert.equal(preview?.nextIsBlocked, true);
     });
+
+    for (const [surfaceName, surfaceHeight] of [
+        ['MulchWood', 0.01],
+        ['WoodenWalkway', 0.1],
+    ] as const) {
+        it(`allows moving a multi-cell decoration across even ${surfaceName} supports`, () => {
+            const cart = createBlock('IceCreamCart', 'ice-cream-cart');
+            const sourceStack = createStack(0, 0, [cart]);
+            const surfaceStacks = Array.from({ length: 3 }, (_, x) =>
+                Array.from({ length: 2 }, (_, z) =>
+                    createStack(x + 4, z, [
+                        createBlock(surfaceName, `surface-${x}-${z}`),
+                    ]),
+                ),
+            ).flat();
+
+            const preview = resolvePickupPlacementPreviewForRelative({
+                blockData,
+                gardenIsSandbox: false,
+                localSandboxStorageKey: null,
+                movingSegments: [
+                    createMovingSegment({ block: cart, sourceStack }),
+                ],
+                relative: new Vector3(4, 0, 0),
+                stacks: [sourceStack, ...surfaceStacks],
+            });
+
+            assert.equal(preview?.nextIsBlocked, false);
+            assert.equal(preview?.previewHoverHeight, surfaceHeight);
+        });
+    }
 
     it('blocks drops onto water when the moving block is not placeable on water', () => {
         const tree = createBlock('Tree', 'tree');

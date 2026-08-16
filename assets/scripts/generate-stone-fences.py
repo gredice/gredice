@@ -7,7 +7,8 @@ Run with Blender, not the system Python:
       --factory-startup --python assets/scripts/generate-stone-fences.py
 
 Both assets use the existing fence connection topology. An isolated tile is a
-single pillar; cardinal arms appear only for matching neighboring fence tiles.
+single pillar; cardinal arms appear only for owned neighboring spans. Separate
+post-free extensions continue mixed-material spans to the adjacent pillar.
 """
 
 from __future__ import annotations
@@ -261,16 +262,19 @@ def add_rough_arm(
     name: str,
     direction: tuple[int, int],
     materials: tuple[bpy.types.Material, ...],
+    start: float = ARM_START,
+    end: float = ARM_END,
 ) -> None:
     direction_x, direction_y = direction
     along_x = direction_x != 0
     course_height = 0.14
+    arm_length = end - start
 
     for course in range(3):
         split = 0.48 if course % 2 == 0 else 0.56
-        first_length = ARM_LENGTH * split
-        lengths = (first_length, ARM_LENGTH - first_length)
-        cursor = ARM_START
+        first_length = arm_length * split
+        lengths = (first_length, arm_length - first_length)
+        cursor = start
         for stone_index, length in enumerate(lengths):
             center_distance = cursor + length / 2
             cursor += length
@@ -297,8 +301,8 @@ def add_rough_arm(
 
     cap_height = WALL_HEIGHT - 3 * course_height
     for cap_index in range(2):
-        length = ARM_LENGTH / 2
-        center_distance = ARM_START + length * (cap_index + 0.5)
+        length = arm_length / 2
+        center_distance = start + length * (cap_index + 0.5)
         size = (
             (length, ROUGH_WALL_THICKNESS + 0.02, cap_height)
             if along_x
@@ -330,6 +334,24 @@ def create_rough_variant(
     add_rough_pillar(parts, name, materials)
     for index, direction in enumerate(directions):
         add_rough_arm(parts, f"{name}_Arm_{index}", direction, materials)
+    result = join_objects(parts, name)
+    color_disconnected_stones(result, len(materials))
+    return result
+
+
+def create_rough_extension(
+    name: str,
+    materials: tuple[bpy.types.Material, ...],
+) -> bpy.types.Object:
+    parts: list[bpy.types.Object] = []
+    add_rough_arm(
+        parts,
+        name,
+        (0, 1),
+        materials,
+        start=ARM_END,
+        end=1,
+    )
     result = join_objects(parts, name)
     color_disconnected_stones(result, len(materials))
     return result
@@ -373,6 +395,25 @@ def create_polished_variant(
     return join_objects(parts, name)
 
 
+def create_polished_extension(
+    name: str,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    return join_objects(
+        [
+            box(
+                f"{name}_Wall",
+                (POLISHED_WALL_THICKNESS, 0.5, WALL_HEIGHT),
+                (0, 0.75, -1 + WALL_HEIGHT / 2),
+                material,
+                0.012,
+                "PolishedStoneFence",
+            )
+        ],
+        name,
+    )
+
+
 def reset_scene(asset_name: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -386,6 +427,7 @@ def save_asset(asset_name: str) -> None:
     expected_names = {
         f"{asset_name}_{shape}" for shape in VARIANT_DIRECTIONS
     }
+    expected_names.add(f"{asset_name}_Extension")
     actual_names = {obj.name for obj in bpy.context.scene.objects}
     if actual_names != expected_names:
         raise RuntimeError(
@@ -408,6 +450,7 @@ def generate_stone_fence() -> None:
             directions,
             materials,
         )
+    create_rough_extension(f"{asset_name}_Extension", materials)
     save_asset(asset_name)
 
 
@@ -425,6 +468,7 @@ def generate_polished_stone_fence() -> None:
             directions,
             material,
         )
+    create_polished_extension(f"{asset_name}_Extension", material)
     save_asset(asset_name)
 
 

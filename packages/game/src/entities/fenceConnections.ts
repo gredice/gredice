@@ -16,9 +16,35 @@ export const fenceBlockNames = [
 export type FenceBlockName = (typeof fenceBlockNames)[number];
 
 const fenceBlockNameSet: ReadonlySet<string> = new Set(fenceBlockNames);
+const fenceSpanPriority = new Map(
+    fenceBlockNames.map((name, index) => [name, index]),
+);
 
 export function isFenceBlockName(name: string): name is FenceBlockName {
     return fenceBlockNameSet.has(name);
+}
+
+export function doesFenceOwnSpan(sourceName: string, neighborName: string) {
+    if (!isFenceBlockName(sourceName) || !isFenceBlockName(neighborName)) {
+        return false;
+    }
+    if (sourceName === neighborName) {
+        return true;
+    }
+    return (
+        (fenceSpanPriority.get(sourceName) ?? Number.POSITIVE_INFINITY) <
+        (fenceSpanPriority.get(neighborName) ?? Number.POSITIVE_INFINITY)
+    );
+}
+
+export function doesFenceOwnMixedSpan(
+    sourceName: string,
+    neighborName: string,
+) {
+    return (
+        sourceName !== neighborName &&
+        doesFenceOwnSpan(sourceName, neighborName)
+    );
 }
 
 export const fenceConnectionShapes = [
@@ -30,13 +56,22 @@ export const fenceConnectionShapes = [
     'Cross',
 ] satisfies readonly FenceConnectionShape[];
 
-type CardinalNeighbors = {
+export type CardinalNeighbors = {
     e: boolean;
     n: boolean;
     s: boolean;
     total: number;
     w: boolean;
 };
+
+export function getFenceExtensionRotations(neighbors: CardinalNeighbors) {
+    const rotations: number[] = [];
+    if (neighbors.e) rotations.push(0);
+    if (neighbors.s) rotations.push(1);
+    if (neighbors.w) rotations.push(2);
+    if (neighbors.n) rotations.push(3);
+    return rotations;
+}
 
 export function resolveFenceConnection(
     neighbors: CardinalNeighbors,
