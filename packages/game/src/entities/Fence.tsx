@@ -6,6 +6,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     type FenceConnectionShape,
+    isFenceBlockName,
     resolveFenceConnection,
 } from './fenceConnections';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -27,7 +28,7 @@ export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('Fence');
     const currentStackHeight = useStackHeight(stack, block);
 
-    const neighbors = useEntityNeighbors(stack, block);
+    const neighbors = useEntityNeighbors(stack, block, isFenceBlockName);
     const connection = resolveFenceConnection(neighbors, rotation);
     const variant = fenceVariantNames[connection.shape];
     const [animatedRotation] = useAnimatedEntityRotation(connection.rotation);

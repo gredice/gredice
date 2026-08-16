@@ -40,6 +40,7 @@ import {
 import { fenceVariantNames } from './Fence';
 import {
     type FenceConnectionShape,
+    isFenceBlockName,
     resolveFenceConnection,
 } from './fenceConnections';
 import { GardenFlowerModel } from './helpers/GardenFlowerModel';
@@ -1444,6 +1445,7 @@ function resolveConnectedFenceVariant<Key extends string>(
         stacks,
         instance.stack,
         instance.block,
+        isFenceBlockName,
     );
     const connection = resolveFenceConnection(neighbors, instance.rotation);
 
@@ -1590,6 +1592,7 @@ function LoadedStoneFenceInstances({
             stacks,
             instance.stack,
             instance.block,
+            isFenceBlockName,
         );
         const connection = resolveFenceConnection(neighbors, instance.rotation);
         return {

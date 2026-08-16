@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { resolveFenceConnection } from './fenceConnections';
+import {
+    fenceBlockNames,
+    isFenceBlockName,
+    resolveFenceConnection,
+} from './fenceConnections';
 
 function neighbors(...directions: Array<'e' | 'n' | 's' | 'w'>) {
     return {
@@ -13,6 +17,17 @@ function neighbors(...directions: Array<'e' | 'n' | 's' | 'w'>) {
 }
 
 describe('fence connections', () => {
+    it('recognizes every connectable fence material', () => {
+        assert.deepEqual(fenceBlockNames, [
+            'Fence',
+            'WhiteFence',
+            'StoneFence',
+            'PolishedStoneFence',
+        ]);
+        assert.ok(fenceBlockNames.every(isFenceBlockName));
+        assert.equal(isFenceBlockName('RaisedBed'), false);
+    });
+
     it('keeps the placed rotation for an isolated picket', () => {
         assert.deepEqual(resolveFenceConnection(neighbors(), 3), {
             rotation: 3,
