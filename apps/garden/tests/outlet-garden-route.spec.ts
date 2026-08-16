@@ -745,9 +745,24 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
     await expect(canvas).toBeVisible();
 
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('guest Outlet list selects an offer without replacing the WebGL layout @outlet-slow @outlet-layout', async ({
+    page,
+}) => {
+    test.setTimeout(180_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const outletApi = await mockOutletGardenApi(page);
+    outletApi.setOffers([...outletOffers, soldOutOutletOffer]);
+
     await page.goto('/outlet');
     await expect(page.locator('[data-outlet-garden]')).toBeVisible();
+    const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(3);
+    const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
 
     await page
