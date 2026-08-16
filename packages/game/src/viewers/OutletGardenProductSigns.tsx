@@ -75,11 +75,6 @@ export type OutletGardenProductSignProduct = {
 
 type OutletGardenProductSignFaceSide = 'back' | 'front';
 
-const outletProductSignFaceSides = [
-    'front',
-    'back',
-] satisfies OutletGardenProductSignFaceSide[];
-
 function firstNonEmptyImageUrl(urls: readonly (string | null)[]) {
     return urls.find((url): url is string => Boolean(url?.trim())) ?? null;
 }
@@ -190,9 +185,7 @@ function OutletGardenProductSignFace({
         <div
             aria-hidden="true"
             className="pointer-events-none flex h-[116px] w-[264px] items-center gap-[8px] overflow-visible bg-transparent p-[2px] text-[#352519]"
-            data-outlet-garden-product-sign={
-                isFront ? product.plantSortId : undefined
-            }
+            data-outlet-garden-product-sign={product.plantSortId}
             data-outlet-garden-product-sign-back={
                 isFront ? undefined : product.plantSortId
             }
@@ -343,8 +336,8 @@ function OutletGardenProductSignFaces({
     product: OutletGardenProductSignProduct;
 }) {
     const groupRef = useRef<Group>(null);
-    const frontFaceRef = useRef<HTMLDivElement>(null);
-    const backFaceRef = useRef<HTMLDivElement>(null);
+    const [visibleFace, setVisibleFace] =
+        useState<OutletGardenProductSignFaceSide>('front');
     const lastVisibleFaceRef = useRef<OutletGardenProductSignFaceSide | null>(
         null,
     );
@@ -356,9 +349,7 @@ function OutletGardenProductSignFaces({
 
     useFrame(({ camera }) => {
         const group = groupRef.current;
-        const frontFace = frontFaceRef.current;
-        const backFace = backFaceRef.current;
-        if (!group || !frontFace || !backFace) {
+        if (!group) {
             return;
         }
 
@@ -379,54 +370,40 @@ function OutletGardenProductSignFaces({
             return;
         }
 
-        frontFace.style.visibility =
-            visibleFace === 'front' ? 'visible' : 'hidden';
-        backFace.style.visibility =
-            visibleFace === 'back' ? 'visible' : 'hidden';
         lastVisibleFaceRef.current = visibleFace;
+        setVisibleFace(visibleFace);
     });
+
+    const isFront = visibleFace === 'front';
 
     return (
         <group ref={groupRef}>
-            {outletProductSignFaceSides.map((face) => {
-                const isFront = face === 'front';
-                return (
-                    <Html
-                        key={face}
-                        transform
-                        distanceFactor={outletProductSignFaceDistanceFactor}
-                        occlude={occlude}
-                        pointerEvents="none"
-                        position={[
-                            0,
-                            0.93 + outletProductSignOcclusionProbeOffsetY,
-                            isFront
-                                ? outletProductSignFaceDepth
-                                : -outletProductSignFaceDepth,
-                        ]}
-                        rotation={[0, isFront ? 0 : Math.PI, 0]}
-                        style={{
-                            backfaceVisibility: 'hidden',
-                            pointerEvents: 'none',
-                            transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
-                            WebkitBackfaceVisibility: 'hidden',
-                        }}
-                        zIndexRange={[2, 0]}
-                    >
-                        <div
-                            ref={isFront ? frontFaceRef : backFaceRef}
-                            style={{
-                                visibility: isFront ? 'visible' : 'hidden',
-                            }}
-                        >
-                            <OutletGardenProductSignFace
-                                face={face}
-                                product={product}
-                            />
-                        </div>
-                    </Html>
-                );
-            })}
+            <Html
+                transform
+                distanceFactor={outletProductSignFaceDistanceFactor}
+                occlude={occlude}
+                pointerEvents="none"
+                position={[
+                    0,
+                    0.93 + outletProductSignOcclusionProbeOffsetY,
+                    isFront
+                        ? outletProductSignFaceDepth
+                        : -outletProductSignFaceDepth,
+                ]}
+                rotation={[0, isFront ? 0 : Math.PI, 0]}
+                style={{
+                    backfaceVisibility: 'hidden',
+                    pointerEvents: 'none',
+                    transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
+                    WebkitBackfaceVisibility: 'hidden',
+                }}
+                zIndexRange={[2, 0]}
+            >
+                <OutletGardenProductSignFace
+                    face={visibleFace}
+                    product={product}
+                />
+            </Html>
         </group>
     );
 }

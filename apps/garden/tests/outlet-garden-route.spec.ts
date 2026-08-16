@@ -547,6 +547,17 @@ async function expectOutletCanvasToFillScene(page: Page) {
         .toBe(true);
 }
 
+async function waitForOutletCameraFrames(page: Page) {
+    await page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => resolve());
+                });
+            }),
+    );
+}
+
 test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout', async ({
     page,
 }) => {
@@ -573,15 +584,19 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expectOutletCanvasToFillScene(page);
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(3);
+    const frontProductSigns = page.locator(
+        '[data-outlet-garden-product-sign][data-outlet-garden-product-sign-face="front"]',
+    );
+    await expect(frontProductSigns).toHaveCount(1);
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-scale',
         '0.9',
     );
-    await expect(productSigns.first()).toHaveAttribute(
+    await expect(frontProductSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
         '0.0225',
     );
-    await expect(productSigns.first()).toHaveAttribute(
+    await expect(frontProductSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-face',
         'front',
     );
@@ -620,7 +635,7 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     const productSignBacks = page.locator(
         '[data-outlet-garden-product-sign-back]',
     );
-    await expect(productSignBacks).toHaveCount(3);
+    await expect(productSignBacks).toHaveCount(2);
     await expect(productSignBacks.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
         '-0.0225',
@@ -648,22 +663,34 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'data-outlet-garden-product-sign-price',
         'Rasprodano',
     );
-    const pepperSign = productSigns.filter({
+    const pepperSign = frontProductSigns.filter({
         hasText: 'Paprika Zlata Snack',
     });
     const pepperSignBack = productSignBacks.filter({
         hasText: 'Paprika Zlata Snack',
     });
     await page.keyboard.press('KeyQ');
+    await waitForOutletCameraFrames(page);
     await page.keyboard.press('KeyQ');
+    await waitForOutletCameraFrames(page);
     await expect(pepperSign).toBeHidden();
     await expect(pepperSignBack).toBeVisible();
+    await expect(pepperSignBack).toHaveAttribute(
+        'data-outlet-garden-product-sign-depth',
+        '-0.0225',
+    );
+    await expect(pepperSignBack).toHaveAttribute(
+        'data-outlet-garden-product-sign-face',
+        'back',
+    );
     await expect(pepperSignBack.locator('img')).toHaveAttribute(
         'src',
         pepperSortImageUrl,
     );
     await page.keyboard.press('KeyW');
+    await waitForOutletCameraFrames(page);
     await page.keyboard.press('KeyW');
+    await waitForOutletCameraFrames(page);
     await expect(pepperSign).toBeVisible();
     await expect(pepperSignBack).toBeHidden();
     await expect(
@@ -718,9 +745,24 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expect(canvas).toHaveAttribute('data-test-wheel-events', /[1-9]/u);
     await expect(canvas).toBeVisible();
 
+    expect(outletApi.mutationRequests).toEqual([]);
+    expect(runtimeErrors).toEqual([]);
+});
+
+test('guest Outlet list selects an offer without replacing the WebGL layout @outlet-slow @outlet-layout', async ({
+    page,
+}) => {
+    test.setTimeout(180_000);
+    const runtimeErrors: string[] = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    const outletApi = await mockOutletGardenApi(page);
+    outletApi.setOffers([...outletOffers, soldOutOutletOffer]);
+
     await page.goto('/outlet');
     await expect(page.locator('[data-outlet-garden]')).toBeVisible();
+    const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(3);
+    const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
 
     await page
