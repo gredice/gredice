@@ -797,7 +797,7 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
         /.+/u,
     );
 
-    await paprikaOffer.click();
+    await paprikaOffer.press('Enter');
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
     const detailsDialog = page.getByRole('dialog', {
         name: 'Paprika Zlata Snack',
