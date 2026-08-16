@@ -398,10 +398,15 @@ export const liveEventCatalog: Record<string, LiveEventDefinition> = {
         'Automatska provjera poslala je signal.',
         'Jedan dio koda traži još malo pažnje.',
     ),
-    'github.deployment': code(
+    'github.deployment.success': code(
         'Isporuka',
-        'Nova verzija krenula je prema aplikacijama.',
-        'Kod se iz repozitorija približava stvarnom sustavu.',
+        'Nova verzija stigla je do aplikacija.',
+        'Kod iz repozitorija upravo je postao dio stvarnog sustava.',
+    ),
+    'github.deployment.failure': code(
+        'Isporuka',
+        'Jedna isporuka poslala je jači signal.',
+        'Nova verzija zastala je prije dolaska do aplikacija.',
     ),
     'github.release': code(
         'Izdanje',

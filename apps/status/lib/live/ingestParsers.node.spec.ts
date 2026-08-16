@@ -118,6 +118,36 @@ describe('live system activity ingestion', () => {
             )[0]?.type,
             'github.workflow.failure',
         );
+        assert.equal(
+            parseGithubWebhook(
+                'deployment_status',
+                JSON.stringify({
+                    deployment_status: { state: 'success' },
+                }),
+                receivedAt,
+            )[0]?.type,
+            'github.deployment.success',
+        );
+        assert.equal(
+            parseGithubWebhook(
+                'deployment_status',
+                JSON.stringify({
+                    deployment_status: { state: 'failure' },
+                }),
+                receivedAt,
+            )[0]?.type,
+            'github.deployment.failure',
+        );
+        assert.deepEqual(
+            parseGithubWebhook(
+                'deployment_status',
+                JSON.stringify({
+                    deployment_status: { state: 'pending' },
+                }),
+                receivedAt,
+            ),
+            [],
+        );
         assert.deepEqual(parseGithubWebhook('ping', '{}', receivedAt), []);
     });
 

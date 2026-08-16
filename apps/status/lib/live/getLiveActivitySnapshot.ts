@@ -196,6 +196,20 @@ function isSystemSource(source: string): source is 'vercel' | 'github' {
     return source === 'vercel' || source === 'github';
 }
 
+function configuredSystemSources(): Array<'vercel' | 'github'> {
+    const sources: Array<'vercel' | 'github'> = [];
+
+    if (process.env.GREDICE_LIVE_VERCEL_DRAIN_SECRET?.trim()) {
+        sources.push('vercel');
+    }
+
+    if (process.env.GREDICE_LIVE_GITHUB_WEBHOOK_SECRET?.trim()) {
+        sources.push('github');
+    }
+
+    return sources;
+}
+
 async function querySystemEvents(database: pg.Pool): Promise<LiveEventRow[]> {
     const result = await database.query<SystemEventRow>(
         `
@@ -255,7 +269,7 @@ async function queryLiveActivitySnapshot(): Promise<LiveActivitySnapshot> {
     }
 
     if (systemResult.status === 'fulfilled') {
-        connectedSources.push('vercel', 'github');
+        connectedSources.push(...configuredSystemSources());
         rows.push(...systemResult.value);
     } else {
         reportSourceFailure('vercel', systemResult.reason);

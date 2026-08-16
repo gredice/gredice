@@ -172,8 +172,12 @@ function githubActivityType(
         const state = deploymentStatus
             ? stringValue(deploymentStatus, 'state')
             : null;
-        if (state === 'success' || state === 'failure' || state === 'error') {
-            return 'github.deployment';
+        if (state === 'success') {
+            return 'github.deployment.success';
+        }
+
+        if (state === 'failure' || state === 'error') {
+            return 'github.deployment.failure';
         }
     }
 
