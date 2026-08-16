@@ -42,6 +42,8 @@ const groundBlockNames = new Set([
     'Block_Ground_Reverse_Corner',
     'Block_Dry_Ground',
     'Block_Dry_Ground_Angle',
+    'Block_Dry_Ground_Corner',
+    'Block_Dry_Ground_Reverse_Corner',
     'Block_Grass',
     'Block_Grass_Angle',
     'Block_Grass_Corner',

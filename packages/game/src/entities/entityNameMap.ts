@@ -20,12 +20,14 @@ import { BlockSnowFalling } from './BlockSnowFalling';
 import { BlockSwampGround } from './BlockSwampGround';
 import { BlockSwampGroundAngle } from './BlockSwampGroundAngle';
 import {
+    BlockDryGroundCorner,
     BlockGrassCorner,
     BlockGroundCorner,
     BlockSandCorner,
     BlockSnowCorner,
 } from './BlockTerrainCorner';
 import {
+    BlockDryGroundReverseCorner,
     BlockGrassReverseCorner,
     BlockGroundReverseCorner,
     BlockSandReverseCorner,
@@ -105,6 +107,8 @@ export const entityNameMap = {
     Block_Swamp_Water: BlockWater,
     Block_Dry_Ground: BlockDryGround,
     Block_Dry_Ground_Angle: BlockDryGroundAngle,
+    Block_Dry_Ground_Corner: BlockDryGroundCorner,
+    Block_Dry_Ground_Reverse_Corner: BlockDryGroundReverseCorner,
     Block_Swamp_Ground: BlockSwampGround,
     Block_Swamp_Ground_Angle: BlockSwampGroundAngle,
     Block_Stone: BlockTerrainVariationAsset,

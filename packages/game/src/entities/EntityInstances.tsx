@@ -79,6 +79,8 @@ const instancedSnowOverlayCounts = {
     Block_Grass_Reverse_Corner: 1,
     Block_Dry_Ground: 1,
     Block_Dry_Ground_Angle: 1,
+    Block_Dry_Ground_Corner: 1,
+    Block_Dry_Ground_Reverse_Corner: 1,
     Block_Swamp_Ground: 1,
     Block_Swamp_Ground_Angle: 1,
     Block_Stone: 3,

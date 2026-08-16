@@ -171,6 +171,8 @@ const terrainItems: HudItemPicker[] = [
         items: [
             { type: 'entity', name: 'Block_Dry_Ground' },
             { type: 'entity', name: 'Block_Dry_Ground_Angle' },
+            { type: 'entity', name: 'Block_Dry_Ground_Corner' },
+            { type: 'entity', name: 'Block_Dry_Ground_Reverse_Corner' },
         ],
     },
     {

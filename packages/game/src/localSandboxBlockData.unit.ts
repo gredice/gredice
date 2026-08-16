@@ -19,12 +19,15 @@ test('local sandbox shaped terrain uses the rendered surface height', () => {
     const blockNames = [
         'Block_Grass_Angle',
         'Block_Ground_Angle',
+        'Block_Dry_Ground_Angle',
         'Block_Sand_Angle',
         'Block_Grass_Corner',
         'Block_Ground_Corner',
+        'Block_Dry_Ground_Corner',
         'Block_Sand_Corner',
         'Block_Grass_Reverse_Corner',
         'Block_Ground_Reverse_Corner',
+        'Block_Dry_Ground_Reverse_Corner',
         'Block_Sand_Reverse_Corner',
     ];
 
@@ -47,6 +50,8 @@ test('local sandbox exposes every terrain variation with offer dimensions', () =
         'Block_Gravel_Angle',
         'Block_Dry_Ground',
         'Block_Dry_Ground_Angle',
+        'Block_Dry_Ground_Corner',
+        'Block_Dry_Ground_Reverse_Corner',
         'Block_Swamp_Ground',
         'Block_Swamp_Ground_Angle',
         'Block_Swamp_Water',

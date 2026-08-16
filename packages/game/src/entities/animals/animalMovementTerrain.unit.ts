@@ -38,6 +38,8 @@ describe('animal movement terrain', () => {
         for (const name of [
             'Block_Dry_Ground',
             'Block_Dry_Ground_Angle',
+            'Block_Dry_Ground_Corner',
+            'Block_Dry_Ground_Reverse_Corner',
             'Block_Swamp_Ground',
             'Block_Swamp_Ground_Angle',
             'Block_Stone',

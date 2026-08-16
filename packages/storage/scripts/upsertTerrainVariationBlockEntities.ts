@@ -111,17 +111,33 @@ const blockSpecs = [
         name: 'Block_Dry_Ground',
         label: 'Suha zemlja',
         shortDescription:
-            'Svijetla suha zemlja bez raslinja za osunčane i ogoljene dijelove vrta.',
+            'Topla smeđa suha zemlja, tek nešto svjetlija od obične zemlje, za osunčane i ogoljene dijelove vrta.',
         fullDescription:
-            'Suha zemlja je svjetlija varijanta zemljanog bloka s toplim, prašnjavim tonovima i bez raslinja. Prikladna je za osunčane površine, suhe prijelaze i dijelove vrta kojima treba ogoljen, ljetni izgled.',
+            'Suha zemlja je topla smeđa varijanta zemljanog bloka, tek nešto svjetlija od obične zemlje i bez raslinja. Prikladna je za osunčane površine, suhe prijelaze i dijelove vrta kojima treba ogoljen, ljetni izgled.',
     }),
     terrainBlockSpec({
         name: 'Block_Dry_Ground_Angle',
         label: 'Suha zemlja rub',
         shortDescription:
-            'Kosi rub svijetle suhe zemlje za blage prijelaze između terenskih razina.',
+            'Kosi rub tople smeđe suhe zemlje za blage prijelaze između terenskih razina.',
         fullDescription:
-            'Suha zemlja rub oblikuje blagi prijelaz sa svijetle, prašnjave površine prema nižem terenu. Bez raslinja zadržava ogoljen i suh izgled uz rubove osunčanih vrtnih zona.',
+            'Suha zemlja rub oblikuje blagi prijelaz s tople smeđe površine prema nižem terenu. Tek nešto svjetlija od obične zemlje i bez raslinja, zadržava ogoljen i suh izgled uz rubove osunčanih vrtnih zona.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Dry_Ground_Corner',
+        label: 'Suha zemlja kut',
+        shortDescription:
+            'Kutni nagib tople smeđe suhe zemlje za vanjske zavoje terena.',
+        fullDescription:
+            'Suha zemlja kut spaja dva kosa ruba u vanjskom zavoju. Topla smeđa površina, tek nešto svjetlija od obične zemlje, omogućuje uredne suhe nasipe i prijelaze bez svijetlog pješčanog dojma.',
+    }),
+    terrainBlockSpec({
+        name: 'Block_Dry_Ground_Reverse_Corner',
+        label: 'Suha zemlja obrnuti kut',
+        shortDescription:
+            'Obrnuti kutni nagib tople smeđe suhe zemlje za unutarnje zavoje terena.',
+        fullDescription:
+            'Suha zemlja obrnuti kut zatvara unutarnji zavoj između dva kosa ruba. Topla smeđa površina ostaje prepoznatljiva kao zemlja i oblikuje povezane suhe udubine, nasipe i prijelaze.',
     }),
     terrainBlockSpec({
         name: 'Block_Swamp_Ground',

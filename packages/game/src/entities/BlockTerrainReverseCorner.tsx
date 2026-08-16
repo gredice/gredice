@@ -1,14 +1,53 @@
 import { animated } from '@react-spring/three';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { dryGroundBaseColor } from './dryGroundPalette';
 import {
     useGroundPatchMaterial,
     useGroundPatchStandardMaterial,
 } from './helpers/groundPatchMaterial';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+
+export function BlockDryGroundReverseCorner({
+    stack,
+    block,
+    rotation,
+}: EntityInstanceProps) {
+    const { nodes } = useGameGLTF('BlockTerrainReverseCorner');
+    const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const currentStackHeight = useStackHeight(stack, block);
+    const material = useGroundPatchStandardMaterial({
+        color: dryGroundBaseColor,
+        metalness: 0,
+        roughness: 1,
+        surface: 'dryDirt',
+    });
+
+    return (
+        <animated.group
+            position={stack.position.clone().setY(currentStackHeight + 0.2)}
+            rotation={animatedRotation as unknown as [number, number, number]}
+        >
+            <mesh
+                castShadow
+                receiveShadow
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
+                material={material}
+            />
+            <RainWetOverlay
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
+            />
+            <SnowOverlay
+                geometry={nodes.Block_Sand_Reverse_Corner_1.geometry}
+                {...snowPresets.sandReverseCorner}
+            />
+        </animated.group>
+    );
+}
 
 export function BlockGroundReverseCorner({
     stack,

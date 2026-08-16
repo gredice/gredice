@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Color, type Material, MeshStandardMaterial, Vector2 } from 'three';
+import { dryGroundDarkColor, dryGroundLightColor } from '../dryGroundPalette';
 
 export type GroundPatchSurface =
     | 'dirt'
@@ -53,10 +54,10 @@ const groundPatchPresets = {
         mode: 2,
     },
     dryDirt: {
-        darkColor: '#705037',
-        darkStrength: 0.24,
-        lightColor: '#d9b47f',
-        lightStrength: 0.32,
+        darkColor: dryGroundDarkColor,
+        darkStrength: 0.12,
+        lightColor: dryGroundLightColor,
+        lightStrength: 0.18,
         mode: 2,
     },
     raisedBedSoil: {
