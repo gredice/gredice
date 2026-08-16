@@ -1618,7 +1618,7 @@
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
-            "version": "a23f2ed5242a",
+            "version": "dbd149ee3e7b",
             "preload": "lazy",
             "objects": [
                 "Fence Corner",
@@ -1626,14 +1626,15 @@
                 "Fence Middle",
                 "Fence Single",
                 "Fence Solo",
-                "Fence T"
+                "Fence T",
+                "Fence Extension"
             ]
         },
         {
             "name": "WhiteFence",
             "source": "WhiteFence.blend",
             "output": "WhiteFence.glb",
-            "version": "7c459aebfee5",
+            "version": "6da3db488a19",
             "preload": "lazy",
             "objects": [
                 "WhiteFence_Solo",
@@ -1641,14 +1642,16 @@
                 "WhiteFence_Middle",
                 "WhiteFence_Corner",
                 "WhiteFence_T",
-                "WhiteFence_Cross"
+                "WhiteFence_Cross",
+                "WhiteFence_Pole",
+                "WhiteFence_Extension"
             ]
         },
         {
             "name": "StoneFence",
             "source": "StoneFence.blend",
             "output": "StoneFence.glb",
-            "version": "b9c98ea04ac5",
+            "version": "e8bb66423669",
             "preload": "lazy",
             "objects": [
                 "StoneFence_Solo",
@@ -1656,14 +1659,15 @@
                 "StoneFence_Middle",
                 "StoneFence_Corner",
                 "StoneFence_T",
-                "StoneFence_Cross"
+                "StoneFence_Cross",
+                "StoneFence_Extension"
             ]
         },
         {
             "name": "PolishedStoneFence",
             "source": "PolishedStoneFence.blend",
             "output": "PolishedStoneFence.glb",
-            "version": "49b27abc186e",
+            "version": "2c5f40e1afc5",
             "preload": "lazy",
             "objects": [
                 "PolishedStoneFence_Solo",
@@ -1671,7 +1675,8 @@
                 "PolishedStoneFence_Middle",
                 "PolishedStoneFence_Corner",
                 "PolishedStoneFence_T",
-                "PolishedStoneFence_Cross"
+                "PolishedStoneFence_Cross",
+                "PolishedStoneFence_Extension"
             ]
         },
         {

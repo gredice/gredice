@@ -12,6 +12,7 @@ import {
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
 import {
+    doesFenceOwnSpan,
     type FenceBlockName,
     isFenceBlockName,
     resolveFenceConnection,
@@ -403,11 +404,6 @@ const fenceCollisionProfiles: Record<FenceBlockName, FenceCollisionProfile> = {
     },
 };
 
-function getFenceCollisionProfile(blockName: string) {
-    return isFenceBlockName(blockName)
-        ? fenceCollisionProfiles[blockName]
-        : undefined;
-}
 const hazelLightArchName = 'HazelLightArch';
 const hazelLightArchPostOffset = 0.443;
 const hazelLightArchPostHalfSize = 0.052;
@@ -483,10 +479,10 @@ function createFenceCollisionSurfaces({
     rotation,
     stack,
 }: {
-    blockName: string;
+    blockName: FenceBlockName;
     blockIndex: number;
     bottomY: number;
-    fenceLayers: Set<string>;
+    fenceLayers: ReadonlyMap<string, FenceBlockName>;
     profile: FenceCollisionProfile;
     rotation: number;
     stack: Stack;
@@ -511,15 +507,21 @@ function createFenceCollisionSurfaces({
         { x: 0, z: 1 },
         { x: 0, z: -1 },
     ];
-    const connectedDirections = directions.filter((direction) => {
+    const adjacentDirections = directions.flatMap((direction) => {
         const neighbor = {
             position: {
                 x: stack.position.x + direction.x,
                 z: stack.position.z + direction.z,
             },
         };
-        return fenceLayers.has(fenceLayerKey(neighbor, blockIndex));
+        const neighborName = fenceLayers.get(
+            fenceLayerKey(neighbor, blockIndex),
+        );
+        return neighborName ? [{ ...direction, neighborName }] : [];
     });
+    const connectedDirections = adjacentDirections.filter(({ neighborName }) =>
+        doesFenceOwnSpan(blockName, neighborName),
+    );
     const fallbackAlongX = rotation % 2 === 0;
     const connection = resolveFenceConnection(
         {
@@ -565,17 +567,27 @@ function createFenceCollisionSurfaces({
 
     for (const direction of connectedDirections) {
         const alongX = direction.x !== 0;
-        surfaces.push({
-            ...shared,
-            halfDepth: alongX ? profile.railThickness / 2 : railHalfLength,
-            halfWidth: alongX ? railHalfLength : profile.railThickness / 2,
-            roamBlockedCells: [],
-            x: stack.position.x + direction.x * railCenterOffset,
-            y: bottomY + (profile.railHeight ?? profile.height),
-            z: stack.position.z + direction.z * railCenterOffset,
-        });
+        const addRail = (centerDistance: number, halfLength: number) => {
+            surfaces.push({
+                ...shared,
+                halfDepth: alongX ? profile.railThickness / 2 : halfLength,
+                halfWidth: alongX ? halfLength : profile.railThickness / 2,
+                roamBlockedCells: [],
+                x: stack.position.x + direction.x * centerDistance,
+                y: bottomY + (profile.railHeight ?? profile.height),
+                z: stack.position.z + direction.z * centerDistance,
+            });
+        };
+        const ownsMixedSpan = direction.neighborName !== blockName;
+        addRail(railCenterOffset, railHalfLength);
+        if (ownsMixedSpan) {
+            addRail(0.75, 0.25);
+        }
         if (profile.picketSpacing) {
-            for (const distance of [profile.picketSpacing, 0.5]) {
+            const distances = ownsMixedSpan
+                ? [profile.picketSpacing, 0.5, 0.75]
+                : [profile.picketSpacing, 0.5];
+            for (const distance of distances) {
                 addPicket(
                     stack.position.x + direction.x * distance,
                     stack.position.z + direction.z * distance,
@@ -585,7 +597,11 @@ function createFenceCollisionSurfaces({
         }
     }
 
-    if (connectedDirections.length === 0 && profile.picketSpacing) {
+    if (
+        adjacentDirections.length === 0 &&
+        connectedDirections.length === 0 &&
+        profile.picketSpacing
+    ) {
         for (const side of [-1, 1]) {
             addPicket(
                 stack.position.x +
@@ -681,14 +697,14 @@ export function createGardenAvatarCollisionWorld({
         blockData?.map((block) => [block.information.name, block]) ?? [],
     );
     const surfaces: GardenAvatarMovementSurface[] = [];
-    const fenceLayers = new Set(
-        (stacks ?? []).flatMap((stack) =>
-            stack.blocks.flatMap((block, blockIndex) => {
-                const profile = getFenceCollisionProfile(block.name);
-                return profile ? [fenceLayerKey(stack, blockIndex)] : [];
-            }),
-        ),
-    );
+    const fenceLayers = new Map<string, FenceBlockName>();
+    for (const stack of stacks ?? []) {
+        for (const [blockIndex, block] of stack.blocks.entries()) {
+            if (isFenceBlockName(block.name)) {
+                fenceLayers.set(fenceLayerKey(stack, blockIndex), block.name);
+            }
+        }
+    }
 
     for (const stack of stacks ?? []) {
         let stackHeight = 0;
@@ -727,8 +743,8 @@ export function createGardenAvatarCollisionWorld({
             }
 
             waterSupportY = null;
-            const fenceProfile = getFenceCollisionProfile(block.name);
-            if (fenceProfile) {
+            if (isFenceBlockName(block.name)) {
+                const fenceProfile = fenceCollisionProfiles[block.name];
                 surfaces.push(
                     ...createFenceCollisionSurfaces({
                         blockName: block.name,

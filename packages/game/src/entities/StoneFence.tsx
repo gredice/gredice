@@ -4,13 +4,9 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
-import {
-    type FenceConnectionShape,
-    isFenceBlockName,
-    resolveFenceConnection,
-} from './fenceConnections';
+import type { FenceConnectionShape } from './fenceConnections';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { useEntityNeighbors } from './helpers/useEntityNeighbors';
+import { useFenceConnectionState } from './helpers/useFenceConnectionState';
 
 export const stoneFenceVariantNames = {
     Solo: [
@@ -43,40 +39,81 @@ export const stoneFenceVariantNames = {
     FenceConnectionShape,
     readonly (keyof ReturnType<typeof useGameGLTF>['nodes'])[]
 >;
+export const stoneFenceExtensionNames = [
+    'StoneFence_Extension_Mesh',
+    'StoneFence_Extension_Mesh_1',
+    'StoneFence_Extension_Mesh_2',
+] satisfies readonly (keyof ReturnType<typeof useGameGLTF>['nodes'])[];
 
 export function StoneFence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes } = useGameGLTF('StoneFence');
     const currentStackHeight = useStackHeight(stack, block);
-    const neighbors = useEntityNeighbors(stack, block, isFenceBlockName);
-    const connection = resolveFenceConnection(neighbors, rotation);
+    const { connection, extensionRotations } = useFenceConnectionState(
+        stack,
+        block,
+        rotation,
+    );
     const variantNodeNames = stoneFenceVariantNames[connection.shape];
     const [animatedRotation] = useAnimatedEntityRotation(connection.rotation);
 
     return (
-        <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}
-        >
-            {variantNodeNames.map((nodeName) => {
-                const node = nodes[nodeName];
-                return (
-                    <mesh
-                        key={nodeName}
-                        castShadow
-                        receiveShadow
-                        geometry={node.geometry}
-                        material={node.material}
-                    >
-                        <SnowOverlay
+        <>
+            <animated.group
+                position={stack.position.clone().setY(currentStackHeight + 1)}
+                rotation={
+                    animatedRotation as unknown as [number, number, number]
+                }
+            >
+                {variantNodeNames.map((nodeName) => {
+                    const node = nodes[nodeName];
+                    return (
+                        <mesh
+                            key={nodeName}
+                            castShadow
+                            receiveShadow
                             geometry={node.geometry}
-                            maxThickness={0.05}
-                            slopeExponent={2.9}
-                            noiseScale={3.3}
-                        />
-                        <RainWetOverlay geometry={node.geometry} />
-                    </mesh>
-                );
-            })}
-        </animated.group>
+                            material={node.material}
+                        >
+                            <SnowOverlay
+                                geometry={node.geometry}
+                                maxThickness={0.05}
+                                slopeExponent={2.9}
+                                noiseScale={3.3}
+                            />
+                            <RainWetOverlay geometry={node.geometry} />
+                        </mesh>
+                    );
+                })}
+            </animated.group>
+            {extensionRotations.flatMap((extensionRotation) =>
+                stoneFenceExtensionNames.map((nodeName) => {
+                    const node = nodes[nodeName];
+                    return (
+                        <group
+                            key={`${extensionRotation}-${nodeName}`}
+                            position={stack.position
+                                .clone()
+                                .setY(currentStackHeight + 1)}
+                            rotation={[0, extensionRotation * (Math.PI / 2), 0]}
+                        >
+                            <mesh
+                                castShadow
+                                receiveShadow
+                                geometry={node.geometry}
+                                material={node.material}
+                            >
+                                <SnowOverlay
+                                    geometry={node.geometry}
+                                    maxThickness={0.05}
+                                    slopeExponent={2.9}
+                                    noiseScale={3.3}
+                                />
+                                <RainWetOverlay geometry={node.geometry} />
+                            </mesh>
+                        </group>
+                    );
+                }),
+            )}
+        </>
     );
 }

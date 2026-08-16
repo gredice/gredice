@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    doesFenceOwnMixedSpan,
+    doesFenceOwnSpan,
     fenceBlockNames,
+    getFenceExtensionRotations,
     isFenceBlockName,
     resolveFenceConnection,
 } from './fenceConnections';
@@ -26,6 +29,32 @@ describe('fence connections', () => {
         ]);
         assert.ok(fenceBlockNames.every(isFenceBlockName));
         assert.equal(isFenceBlockName('RaisedBed'), false);
+    });
+
+    it('assigns every mixed span to exactly one material', () => {
+        for (const [sourceIndex, sourceName] of fenceBlockNames.entries()) {
+            for (const neighborName of fenceBlockNames.slice(sourceIndex + 1)) {
+                assert.equal(doesFenceOwnSpan(sourceName, neighborName), true);
+                assert.equal(doesFenceOwnSpan(neighborName, sourceName), false);
+                assert.equal(
+                    doesFenceOwnMixedSpan(sourceName, neighborName),
+                    true,
+                );
+            }
+        }
+
+        assert.equal(
+            doesFenceOwnMixedSpan('Fence', 'PolishedStoneFence'),
+            true,
+        );
+        assert.equal(doesFenceOwnMixedSpan('Fence', 'Fence'), false);
+    });
+
+    it('maps owned extensions to their cardinal rotations', () => {
+        assert.deepEqual(
+            getFenceExtensionRotations(neighbors('e', 'n', 'w')),
+            [0, 2, 3],
+        );
     });
 
     it('keeps the placed rotation for an isolated picket', () => {

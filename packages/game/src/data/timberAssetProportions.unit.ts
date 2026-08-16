@@ -133,7 +133,7 @@ describe('timber asset proportions', () => {
         const expectedWoodVertexCounts = {
             Bucket: 381,
             Composter: 388,
-            Fence: 834,
+            Fence: 1026,
             GardenBox: 984,
             RaisedBed: 425,
             Shade: 2467,
