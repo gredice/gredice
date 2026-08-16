@@ -20,6 +20,7 @@ export function OrbitView({ activeEvent, events }: OrbitViewProps) {
                 <span
                     className={styles.dataOrbit}
                     data-category={event.category}
+                    data-source={event.source}
                     key={event.id}
                     style={{
                         animationDelay: `${-(index % 9) * 1.7}s`,
@@ -56,11 +57,26 @@ export function OrbitView({ activeEvent, events }: OrbitViewProps) {
                 <span className={styles.nodePulse} />
                 <span className={styles.nodeLabel}>ljudi</span>
             </span>
+            <span
+                className={`${styles.node} ${styles.nodePlatform}`}
+                data-category="platform"
+            >
+                <span className={styles.nodePulse} />
+                <span className={styles.nodeLabel}>vercel</span>
+            </span>
+            <span
+                className={`${styles.node} ${styles.nodeCode}`}
+                data-category="code"
+            >
+                <span className={styles.nodePulse} />
+                <span className={styles.nodeLabel}>github</span>
+            </span>
 
             <span className={styles.coreHalo} />
             <span
                 className={styles.core}
                 data-category={activeEvent?.category ?? 'garden'}
+                data-source={activeEvent?.source ?? 'gredice'}
             >
                 <span className={styles.coreLight} />
             </span>

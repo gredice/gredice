@@ -15,6 +15,8 @@ const labels = {
     journey: 'put',
     community: 'ljudi',
     exchange: 'razmjena',
+    platform: 'vercel',
+    code: 'github',
 };
 
 export function SoilView({ activeEvent, events }: SoilViewProps) {
@@ -42,6 +44,7 @@ export function SoilView({ activeEvent, events }: SoilViewProps) {
                             {categoryEvents.map((event, index) => (
                                 <span
                                     className={styles.soilPulse}
+                                    data-source={event.source}
                                     key={event.id}
                                     style={{
                                         animationDelay: `${-(index + categoryIndex) * 0.83}s`,

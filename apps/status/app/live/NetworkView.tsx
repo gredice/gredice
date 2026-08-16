@@ -21,6 +21,8 @@ const nodes: Array<{
     { category: 'journey', label: 'put', left: '86%', top: '68%' },
     { category: 'community', label: 'ljudi', left: '18%', top: '73%' },
     { category: 'exchange', label: 'razmjena', left: '52%', top: '88%' },
+    { category: 'platform', label: 'vercel', left: '48%', top: '8%' },
+    { category: 'code', label: 'github', left: '7%', top: '47%' },
 ];
 
 const paths: Record<LiveActivityCategory, string> = {
@@ -29,6 +31,8 @@ const paths: Record<LiveActivityCategory, string> = {
     journey: 'M 50 49 Q 78 47 86 68',
     community: 'M 50 49 Q 27 55 18 73',
     exchange: 'M 50 49 Q 58 69 52 88',
+    platform: 'M 50 49 Q 49 25 48 8',
+    code: 'M 50 49 Q 28 42 7 47',
 };
 
 export function NetworkView({ activeEvent, events }: NetworkViewProps) {
@@ -56,6 +60,7 @@ export function NetworkView({ activeEvent, events }: NetworkViewProps) {
                         className={styles.networkSignal}
                         d={paths[event.category]}
                         data-category={event.category}
+                        data-source={event.source}
                         key={event.id}
                         pathLength="1"
                         style={{
@@ -84,6 +89,7 @@ export function NetworkView({ activeEvent, events }: NetworkViewProps) {
             <span
                 className={styles.networkCore}
                 data-category={activeEvent?.category ?? 'garden'}
+                data-source={activeEvent?.source ?? 'gredice'}
             />
         </div>
     );

@@ -18,9 +18,12 @@ export function ActivityCaption({ event }: ActivityCaptionProps) {
                     <span>Između događaja</span>
                     <span className={styles.activityTrail} aria-hidden="true" />
                 </div>
-                <p className={styles.activityTitle}>Vrt je trenutačno tih.</p>
+                <p className={styles.activityTitle}>
+                    Sustav je trenutačno tih.
+                </p>
                 <p className={styles.activityDetail}>
-                    Čekamo sljedeći stvarni trag.
+                    Čekamo sljedeći stvarni trag iz Gredica, Vercela ili
+                    GitHuba.
                 </p>
             </div>
         );
@@ -32,11 +35,15 @@ export function ActivityCaption({ event }: ActivityCaptionProps) {
             aria-live="off"
             className={styles.activityCard}
             data-category={event.category}
+            data-source={event.source}
             key={event.id}
         >
             <div className={styles.activityMeta}>
                 <span className={styles.activitySpark} aria-hidden="true" />
-                <span>{event.label}</span>
+                <span>
+                    {event.source === 'gredice' ? 'Gredice' : event.source} ·{' '}
+                    {event.label}
+                </span>
                 <span className={styles.activityTrail} aria-hidden="true" />
             </div>
             <p className={styles.activityTitle}>{event.title}</p>

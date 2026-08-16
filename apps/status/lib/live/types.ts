@@ -4,12 +4,19 @@ export const liveActivityCategories = [
     'journey',
     'community',
     'exchange',
+    'platform',
+    'code',
 ] as const;
 
 export type LiveActivityCategory = (typeof liveActivityCategories)[number];
 
+export const liveActivitySources = ['gredice', 'vercel', 'github'] as const;
+
+export type LiveActivitySource = (typeof liveActivitySources)[number];
+
 export type LiveActivityEvent = {
     id: string;
+    source: LiveActivitySource;
     category: LiveActivityCategory;
     label: string;
     title: string;
@@ -23,7 +30,9 @@ export type LiveActivitySnapshot = {
     capturedAt: string;
     windowStart: string | null;
     windowEnd: string | null;
-    source: 'domain-events' | 'unavailable';
+    source: 'combined-events' | 'domain-events' | 'unavailable';
     events: LiveActivityEvent[];
     categoryTotals: Record<LiveActivityCategory, number>;
+    sourceTotals: Record<LiveActivitySource, number>;
+    connectedSources: LiveActivitySource[];
 };

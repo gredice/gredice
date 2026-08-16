@@ -10,7 +10,8 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run build"
+        "test": "pnpm run test:node",
+        "test:node": "node --import tsx --test ./lib/**/*.node.spec.ts"
     },
     "dependencies": {
         "next": "16.3.0",
@@ -29,6 +30,7 @@
         "@types/react-dom": "19.2.4",
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
+        "tsx": "4.23.0",
         "typescript": "7.0.2"
     }
 }

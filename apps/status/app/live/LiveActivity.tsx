@@ -5,6 +5,7 @@ import type {
     LiveActivityCategory,
     LiveActivityEvent,
     LiveActivitySnapshot,
+    LiveActivitySource,
 } from '../../lib/live/types';
 import { ActivityCaption } from './ActivityCaption';
 import styles from './live.module.css';
@@ -12,6 +13,8 @@ import { NetworkView } from './NetworkView';
 import { OrbitView } from './OrbitView';
 import { RainView } from './RainView';
 import { SoilView } from './SoilView';
+import { SourceSignals } from './SourceSignals';
+import { selectPlaybackEvents } from './selectVisualEvents';
 import { ViewControls } from './ViewControls';
 import {
     type VisualizationMode,
@@ -39,14 +42,21 @@ function isCategory(value: unknown): value is LiveActivityCategory {
         value === 'care' ||
         value === 'journey' ||
         value === 'community' ||
-        value === 'exchange'
+        value === 'exchange' ||
+        value === 'platform' ||
+        value === 'code'
     );
+}
+
+function isSource(value: unknown): value is LiveActivitySource {
+    return value === 'gredice' || value === 'vercel' || value === 'github';
 }
 
 function isLiveEvent(value: unknown): value is LiveActivityEvent {
     return (
         isRecord(value) &&
         typeof value.id === 'string' &&
+        isSource(value.source) &&
         isCategory(value.category) &&
         typeof value.label === 'string' &&
         typeof value.title === 'string' &&
@@ -63,10 +73,15 @@ function isSnapshot(value: unknown): value is LiveActivitySnapshot {
         typeof value.capturedAt === 'string' &&
         (value.windowStart === null || typeof value.windowStart === 'string') &&
         (value.windowEnd === null || typeof value.windowEnd === 'string') &&
-        (value.source === 'domain-events' || value.source === 'unavailable') &&
+        (value.source === 'combined-events' ||
+            value.source === 'domain-events' ||
+            value.source === 'unavailable') &&
         Array.isArray(value.events) &&
         value.events.every(isLiveEvent) &&
-        isRecord(value.categoryTotals)
+        isRecord(value.categoryTotals) &&
+        isRecord(value.sourceTotals) &&
+        Array.isArray(value.connectedSources) &&
+        value.connectedSources.every(isSource)
     );
 }
 
@@ -77,7 +92,7 @@ function isView(value: string | null): value is VisualizationView {
 export function LiveActivity({ initialSnapshot }: LiveActivityProps) {
     const [snapshot, setSnapshot] = useState(initialSnapshot);
     const [playbackEvents, setPlaybackEvents] = useState(() =>
-        initialSnapshot.events.slice(-MAX_PLAYBACK_EVENTS).reverse(),
+        selectPlaybackEvents(initialSnapshot.events, MAX_PLAYBACK_EVENTS),
     );
     const [autoViewIndex, setAutoViewIndex] = useState(0);
     const [mode, setMode] = useState<VisualizationMode>('auto');
@@ -159,8 +174,8 @@ export function LiveActivity({ initialSnapshot }: LiveActivityProps) {
                         -MAX_PLAYBACK_EVENTS,
                     );
                     setPlaybackEvents((current) =>
-                        [...newestIncomingEvents, ...current].slice(
-                            0,
+                        selectPlaybackEvents(
+                            [...newestIncomingEvents, ...current],
                             MAX_PLAYBACK_EVENTS,
                         ),
                     );
@@ -197,9 +212,10 @@ export function LiveActivity({ initialSnapshot }: LiveActivityProps) {
 
     return (
         <section
-            aria-label="Vizualni prikaz stvarnih aktivnosti u vrtovima"
+            aria-label="Vizualni prikaz stvarnih aktivnosti u Gredicama, na Vercelu i GitHubu"
             className={styles.visualization}
             data-active-category={activeEvent?.category ?? 'garden'}
+            data-active-source={activeEvent?.source ?? 'gredice'}
             data-activity-state={activeEvent ? 'active' : 'quiet'}
             data-view={activeView}
         >
@@ -239,12 +255,17 @@ export function LiveActivity({ initialSnapshot }: LiveActivityProps) {
             <div className={styles.sourceNote}>
                 <span aria-hidden="true" className={styles.sourceLine} />
                 <span>
-                    {snapshot.source === 'domain-events'
+                    {snapshot.source !== 'unavailable'
                         ? 'stvarni tragovi'
                         : 'izvor se obnavlja'}
                     <small>zadnja 3 sata</small>
                 </span>
             </div>
+
+            <SourceSignals
+                connectedSources={snapshot.connectedSources}
+                sourceTotals={snapshot.sourceTotals}
+            />
 
             <ActivityCaption event={activeEvent} />
             <ViewControls
