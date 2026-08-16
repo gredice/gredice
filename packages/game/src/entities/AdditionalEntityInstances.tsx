@@ -55,6 +55,7 @@ import {
 import { RaisedBedFields } from './raisedBed/RaisedBedFields';
 import { RaisedBedFieldVisualBatches } from './raisedBed/RaisedBedFieldVisualBatches';
 import { RaisedBedHarvestBaskets } from './raisedBed/RaisedBedHarvestBasket';
+import { RaisedBedInsectProtectionMeshes } from './raisedBed/RaisedBedInsectProtectionMeshes';
 import {
     getRaisedBedSoilWetPatches,
     resolveRaisedBedWateringVisualRewards,
@@ -1105,6 +1106,27 @@ function RaisedBedInstances({
 
         return context;
     }, [currentGarden]);
+    const raisedBedInsectProtectionMeshBlocks = useMemo(
+        () =>
+            instances?.flatMap((instance) => {
+                const context = raisedBedContextByBlockId.get(
+                    instance.block.id,
+                );
+                if (!context) {
+                    return [];
+                }
+
+                return [
+                    {
+                        blockIndex: instance.blockIndex,
+                        blockOffset: instance.blockOffset,
+                        position: instance.position,
+                        raisedBedId: context.raisedBed.id,
+                    },
+                ];
+            }) ?? [],
+        [instances, raisedBedContextByBlockId],
+    );
     const wateringRewardsByRaisedBedId = useMemo(() => {
         const rewards = new Map<
             number,
@@ -1241,6 +1263,9 @@ function RaisedBedInstances({
                 </group>
             ))}
             <RaisedBedFieldVisualBatches blocks={raisedBedFieldVisualBlocks} />
+            <RaisedBedInsectProtectionMeshes
+                blocks={raisedBedInsectProtectionMeshBlocks}
+            />
             <RaisedBedHarvestBaskets />
             <RaisedBedHoverOutlines instances={instances} nodes={nodes} />
         </>

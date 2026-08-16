@@ -143,7 +143,7 @@ export const operationVisualRewardDebugScenarios = [
         after: {
             label: 'After',
             raisedBedId: 118,
-            state: 'Covered protected bed',
+            state: 'Plants visible under arched mesh',
         },
     },
     {
@@ -153,7 +153,7 @@ export const operationVisualRewardDebugScenarios = [
         before: {
             label: 'Before',
             raisedBedId: 119,
-            state: 'Covered bed',
+            state: 'Plants visible under arched mesh',
         },
         after: {
             label: 'After',
