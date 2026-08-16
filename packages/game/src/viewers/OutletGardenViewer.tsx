@@ -5,6 +5,7 @@ import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import {
+    type CSSProperties,
     Suspense,
     useCallback,
     useEffect,
@@ -113,6 +114,11 @@ export function OutletGardenViewer({
     const [hoveredOfferId, setHoveredOfferId] = useState<number | null>(null);
     const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
     const [offerListOpen, setOfferListOpen] = useState(false);
+    const offerModalStyle: CSSProperties & {
+        '--outlet-garden-offer-max-width': string;
+    } = {
+        '--outlet-garden-offer-max-width': offerListOpen ? '48rem' : '27rem',
+    };
     const [avatarView, setAvatarView] = useState<GardenAvatarView>('overview');
     const avatarViewRef = useRef<GardenAvatarView>('overview');
     const { track } = useGameAnalytics();
@@ -659,7 +665,7 @@ export function OutletGardenViewer({
             </main>
 
             <GameModal
-                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 data-[outlet-garden-offer-view=details]:md:!max-w-[27rem] data-[outlet-garden-offer-view=list]:md:!max-w-3xl [&>div:last-child]:p-0 md:!p-0"
+                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 transition-none [&>div:last-child]:p-0 md:!max-w-[var(--outlet-garden-offer-max-width)] md:!p-0"
                 data-outlet-garden-offer-view={
                     offerListOpen ? 'list' : 'details'
                 }
@@ -675,6 +681,7 @@ export function OutletGardenViewer({
                     offerListOpen,
                     selectedOfferId,
                 })}
+                style={offerModalStyle}
                 title={
                     offerListOpen
                         ? 'Dostupne sadnice'

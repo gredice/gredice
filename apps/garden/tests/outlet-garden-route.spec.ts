@@ -559,7 +559,6 @@ async function waitForOutletCameraFrames(page: Page) {
 }
 
 async function runOutletGardenLayoutTest({ page }: { page: Page }) {
-    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const outletApi = await mockOutletGardenApi(page);
@@ -748,7 +747,6 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
 }
 
 async function runOutletGardenListTest({ page }: { page: Page }) {
-    test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const outletApi = await mockOutletGardenApi(page);
@@ -799,7 +797,7 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
         /.+/u,
     );
 
-    await paprikaOffer.click();
+    await paprikaOffer.press('Enter');
     await expect(page).toHaveURL(/\/outlet\?ponuda=302$/u);
     const detailsDialog = page.getByRole('dialog', {
         name: 'Paprika Zlata Snack',
@@ -839,15 +837,17 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
     expect(runtimeErrors).toEqual([]);
 }
 
-test(
-    'guest Outlet list selects an offer without replacing the WebGL layout @outlet-slow @outlet-layout',
-    runOutletGardenListTest,
-);
+test('guest Outlet garden renders its layout and supports the list flow @outlet-slow @outlet-layout', async ({
+    context,
+    page,
+}) => {
+    test.setTimeout(360_000);
+    await runOutletGardenListTest({ page });
+    await page.close();
 
-test(
-    'guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout',
-    runOutletGardenLayoutTest,
-);
+    const layoutPage = await context.newPage();
+    await runOutletGardenLayoutTest({ page: layoutPage });
+});
 
 test('guest Outlet garden reconciles live offers without replacing its canvas @outlet-slow @outlet-reconcile', async ({
     page,
