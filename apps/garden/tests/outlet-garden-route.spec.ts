@@ -811,6 +811,10 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
     await expect(
         detailsDialog.locator('#outlet-garden-selected-title'),
     ).toBeVisible();
+    await expect(detailsDialog).toHaveAttribute(
+        'data-outlet-garden-offer-view',
+        'details',
+    );
     const cover = selectedDetails.locator(
         '[data-outlet-garden-offer-cover="true"]',
     );

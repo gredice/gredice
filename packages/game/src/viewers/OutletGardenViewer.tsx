@@ -659,7 +659,10 @@ export function OutletGardenViewer({
             </main>
 
             <GameModal
-                className={`max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 [&>div:last-child]:p-0 md:!p-0 ${offerListOpen ? 'md:!max-w-3xl' : 'md:!max-w-[27rem]'}`}
+                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 data-[outlet-garden-offer-view=details]:md:!max-w-[27rem] data-[outlet-garden-offer-view=list]:md:!max-w-3xl [&>div:last-child]:p-0 md:!p-0"
+                data-outlet-garden-offer-view={
+                    offerListOpen ? 'list' : 'details'
+                }
                 hideClose
                 hudLayer
                 onOpenChange={(open) => {
