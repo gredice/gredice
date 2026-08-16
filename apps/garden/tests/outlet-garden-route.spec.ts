@@ -573,15 +573,19 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await expectOutletCanvasToFillScene(page);
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(3);
+    const frontProductSigns = page.locator(
+        '[data-outlet-garden-product-sign][data-outlet-garden-product-sign-face="front"]',
+    );
+    await expect(frontProductSigns).toHaveCount(1);
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-scale',
         '0.9',
     );
-    await expect(productSigns.first()).toHaveAttribute(
+    await expect(frontProductSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
         '0.0225',
     );
-    await expect(productSigns.first()).toHaveAttribute(
+    await expect(frontProductSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-face',
         'front',
     );
@@ -620,7 +624,7 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     const productSignBacks = page.locator(
         '[data-outlet-garden-product-sign-back]',
     );
-    await expect(productSignBacks).toHaveCount(3);
+    await expect(productSignBacks).toHaveCount(2);
     await expect(productSignBacks.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-depth',
         '-0.0225',
@@ -648,7 +652,7 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
         'data-outlet-garden-product-sign-price',
         'Rasprodano',
     );
-    const pepperSign = productSigns.filter({
+    const pepperSign = frontProductSigns.filter({
         hasText: 'Paprika Zlata Snack',
     });
     const pepperSignBack = productSignBacks.filter({
@@ -658,6 +662,14 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
     await page.keyboard.press('KeyQ');
     await expect(pepperSign).toBeHidden();
     await expect(pepperSignBack).toBeVisible();
+    await expect(pepperSignBack).toHaveAttribute(
+        'data-outlet-garden-product-sign-depth',
+        '-0.0225',
+    );
+    await expect(pepperSignBack).toHaveAttribute(
+        'data-outlet-garden-product-sign-face',
+        'back',
+    );
     await expect(pepperSignBack.locator('img')).toHaveAttribute(
         'src',
         pepperSortImageUrl,
