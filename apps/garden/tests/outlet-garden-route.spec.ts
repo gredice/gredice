@@ -558,9 +558,7 @@ async function waitForOutletCameraFrames(page: Page) {
     );
 }
 
-test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout', async ({
-    page,
-}) => {
+async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
@@ -747,11 +745,9 @@ test('guest Outlet garden renders its WebGL layout and selects an offer @outlet-
 
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
-});
+}
 
-test('guest Outlet list selects an offer without replacing the WebGL layout @outlet-slow @outlet-layout', async ({
-    page,
-}) => {
+async function runOutletGardenListTest({ page }: { page: Page }) {
     test.setTimeout(180_000);
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
@@ -837,7 +833,17 @@ test('guest Outlet list selects an offer without replacing the WebGL layout @out
 
     expect(outletApi.mutationRequests).toEqual([]);
     expect(runtimeErrors).toEqual([]);
-});
+}
+
+test(
+    'guest Outlet list selects an offer without replacing the WebGL layout @outlet-slow @outlet-layout',
+    runOutletGardenListTest,
+);
+
+test(
+    'guest Outlet garden renders its WebGL layout and selects an offer @outlet-slow @outlet-layout',
+    runOutletGardenLayoutTest,
+);
 
 test('guest Outlet garden reconciles live offers without replacing its canvas @outlet-slow @outlet-reconcile', async ({
     page,
