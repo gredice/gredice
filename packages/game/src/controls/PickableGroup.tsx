@@ -1,7 +1,7 @@
 'use client';
 
 import { animated, useSpring } from '@react-spring/three';
-import { Billboard, Shadow, useTexture } from '@react-three/drei';
+import { Billboard, useTexture } from '@react-three/drei';
 import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
@@ -61,6 +61,7 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
+import { PlacementFootprintIndicator } from './PlacementFootprintIndicator';
 import { resolvePickupHudDropAction } from './pickupRemovalDropAction';
 import {
     createPickupSelectionMoveRequests,
@@ -1280,6 +1281,7 @@ export function PickableGroup({
         },
     });
     const showPickupOutline = pickupOutlineVisible || isPreviewTarget;
+    const blockEntity = getBlockDataByName(blocksData, block.name);
     const indicatorPosition: [number, number, number] = [
         stack.position.x,
         currentStackHeight,
@@ -1312,7 +1314,12 @@ export function PickableGroup({
             scale={blockedScaleSprings.scale}
             position={indicatorPosition}
         >
-            <Shadow color={0xff0000} opacity={1} colorStop={0.5} scale={2} />
+            <PlacementFootprintIndicator
+                blockData={blockEntity}
+                color={0xff0000}
+                opacity={1}
+                rotation={block.rotation}
+            />
         </animated.group>
     ) : null;
     const recycleIndicator = isOverRecycler ? (
