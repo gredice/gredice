@@ -665,7 +665,7 @@ export function OutletGardenViewer({
             </main>
 
             <GameModal
-                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 [&>div:last-child]:p-0 md:!max-w-[var(--outlet-garden-offer-max-width)] md:!p-0"
+                className="max-h-[calc(100dvh-2rem)] gap-0 overflow-hidden p-0 transition-none [&>div:last-child]:p-0 md:!max-w-[var(--outlet-garden-offer-max-width)] md:!p-0"
                 data-outlet-garden-offer-view={
                     offerListOpen ? 'list' : 'details'
                 }
