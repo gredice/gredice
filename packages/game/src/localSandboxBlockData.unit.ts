@@ -192,12 +192,49 @@ test('local sandbox stool metadata matches the reduced model', () => {
 
 test('local sandbox exposes animal home blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
-    const blockNames = new Set(
-        blockData.map((block) => block.information.name),
-    );
+    const expectedHomes = [
+        {
+            name: 'CatPillow',
+        },
+        {
+            name: 'ChickenCoop',
+            label: 'Kokošinjac',
+            height: 0.86,
+            hitboxDepth: 0.97,
+            hitboxHeight: 0.86,
+            hitboxWidth: 0.76,
+        },
+        {
+            name: 'DogHouse',
+        },
+        {
+            name: 'PigletPen',
+            label: 'Obor za praščića',
+            height: 0.78,
+            hitboxDepth: 0.89,
+            hitboxHeight: 0.78,
+            hitboxWidth: 0.94,
+        },
+    ];
 
-    assert.equal(blockNames.has('CatPillow'), true);
-    assert.equal(blockNames.has('DogHouse'), true);
+    for (const expected of expectedHomes) {
+        const home = blockData.find(
+            (block) => block.information.name === expected.name,
+        );
+        assert.ok(home, `Missing animal home ${expected.name}`);
+
+        if ('label' in expected) {
+            assert.equal(home.information.label, expected.label);
+            assert.equal(home.attributes.height, expected.height);
+            assert.equal(home.attributes.hitboxDepth, expected.hitboxDepth);
+            assert.equal(home.attributes.hitboxHeight, expected.hitboxHeight);
+            assert.equal(home.attributes.hitboxWidth, expected.hitboxWidth);
+            assert.equal(home.attributes.placeableOnWater, false);
+            assert.equal(home.attributes.spanDepth, 1);
+            assert.equal(home.attributes.spanWidth, 1);
+            assert.equal(home.attributes.stackable, false);
+        }
+    }
 });
 
 test('local sandbox exposes the connected white fence with model bounds', () => {

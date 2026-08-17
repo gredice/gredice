@@ -8,7 +8,10 @@ import {
     resolveBlockInteractionLayerTarget,
 } from '../../controls/BlockInteractionResolver';
 import type { Stack } from '../../types/Stack';
-import type { AnimalPresenceEntry } from '../../useGameState';
+import type {
+    AnimalPresenceEntry,
+    PettableAnimalSpecies,
+} from '../../useGameState';
 import { getBlockHitboxSize } from '../../utils/blockHitbox';
 import { getBlockDataByName, getStackHeight } from '../../utils/getStackHeight';
 import {
@@ -21,6 +24,27 @@ import {
 export const gardenAvatarInteractionRange = 3.2;
 export const gardenAvatarAnimalPetRange = 2.4;
 export const gardenAvatarBeachBallKickDistance = 0.66;
+
+export const gardenAvatarAnimalAimProfiles = {
+    Cat: { centerHeight: 0.3, hitRadius: 0.42 },
+    Chicken: { centerHeight: 0.22, hitRadius: 0.32 },
+    Dog: { centerHeight: 0.42, hitRadius: 0.42 },
+    Piglet: { centerHeight: 0.32, hitRadius: 0.4 },
+} satisfies Record<
+    PettableAnimalSpecies,
+    { centerHeight: number; hitRadius: number }
+>;
+
+export function isPettableAnimalSpecies(
+    species: string,
+): species is PettableAnimalSpecies {
+    return (
+        species === 'Cat' ||
+        species === 'Chicken' ||
+        species === 'Dog' ||
+        species === 'Piglet'
+    );
+}
 
 const gardenAvatarWorldInteractionBlockNames = new Set([
     'BeachBall',
@@ -142,20 +166,23 @@ export function resolveAimedGardenAvatarAnimal({
     ray: Ray;
 }) {
     const candidate = entries
-        .filter(
-            (entry) =>
-                (entry.species === 'Cat' || entry.species === 'Dog') &&
-                now - entry.updatedAt <= 3.5 &&
+        .flatMap((entry) => {
+            if (
+                !isPettableAnimalSpecies(entry.species) ||
+                now - entry.updatedAt > 3.5 ||
                 Math.hypot(
                     entry.position.x - actorPosition.x,
                     entry.position.y - actorPosition.y,
                     entry.position.z - actorPosition.z,
-                ) <= gardenAvatarAnimalPetRange,
-        )
-        .map((entry) => {
+                ) > gardenAvatarAnimalPetRange
+            ) {
+                return [];
+            }
+
+            const profile = gardenAvatarAnimalAimProfiles[entry.species];
             const center = {
                 x: entry.position.x,
-                y: entry.position.y + (entry.species === 'Dog' ? 0.42 : 0.3),
+                y: entry.position.y + profile.centerHeight,
                 z: entry.position.z,
             };
             const alongRay =
@@ -174,11 +201,13 @@ export function resolveAimedGardenAvatarAnimal({
                     closest.z - center.z,
                 ),
                 entry,
+                hitRadius: profile.hitRadius,
             };
         })
         .filter(
             (candidate) =>
-                candidate.alongRay >= 0 && candidate.distanceToRay <= 0.42,
+                candidate.alongRay >= 0 &&
+                candidate.distanceToRay <= candidate.hitRadius,
         )
         .sort((left, right) => left.alongRay - right.alongRay)[0];
     if (!candidate) {
@@ -188,7 +217,12 @@ export function resolveAimedGardenAvatarAnimal({
     const hitDistance = Math.max(
         0,
         candidate.alongRay -
-            Math.sqrt(Math.max(0, 0.42 ** 2 - candidate.distanceToRay ** 2)),
+            Math.sqrt(
+                Math.max(
+                    0,
+                    candidate.hitRadius ** 2 - candidate.distanceToRay ** 2,
+                ),
+            ),
     );
 
     return {

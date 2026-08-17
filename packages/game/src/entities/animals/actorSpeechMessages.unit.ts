@@ -5,8 +5,10 @@ import {
     beeSpeechMessages,
     birdSpeechMessages,
     catSpeechMessages,
+    chickenSpeechMessages,
     dogSpeechMessages,
     pickActorSpeechMessage,
+    pigletSpeechMessages,
     playerSpeechMessages,
 } from './actorSpeechMessages';
 
@@ -16,7 +18,9 @@ test('keeps actor speech visible for five seconds by default', () => {
 
 test('provides speech for every interactive animal and the player', () => {
     assert.ok(catSpeechMessages.length > 1);
+    assert.ok(chickenSpeechMessages.length > 1);
     assert.ok(dogSpeechMessages.length > 1);
+    assert.ok(pigletSpeechMessages.length > 1);
     assert.ok(birdSpeechMessages.length > 1);
     assert.ok(beeSpeechMessages.length > 1);
     assert.ok(playerSpeechMessages.length > 1);

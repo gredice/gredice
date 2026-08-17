@@ -6,11 +6,13 @@ import type { Stack } from '../../types/Stack';
 import {
     findGardenAvatarCactusContact,
     findGardenAvatarSeatExit,
+    gardenAvatarAnimalAimProfiles,
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
     getGardenAvatarForwardDirection,
     getGardenAvatarSeatPose,
     isGardenAvatarInteractionOccluded,
+    isPettableAnimalSpecies,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -163,31 +165,104 @@ describe('garden avatar world interactions', () => {
         );
     });
 
-    it('selects only a fresh, close cat or dog on the center ray', () => {
+    it('selects every fresh, nearby pettable animal on the center ray', () => {
         const ray = new Ray(new Vector3(0, 0.3, 0), new Vector3(0, 0, -1));
-        const aimed = resolveAimedGardenAvatarAnimal({
-            actorPosition: new Vector3(0, 0, 0),
-            entries: [
-                {
-                    behavior: 'roam',
-                    id: 'cat-a',
-                    position: { x: 0, y: 0, z: -1.5 },
-                    species: 'Cat',
-                    updatedAt: 10,
-                },
-                {
-                    behavior: 'roam',
-                    id: 'dog-stale',
-                    position: { x: 0, y: 0, z: -1 },
-                    species: 'Dog',
-                    updatedAt: 4,
-                },
-            ],
-            now: 10.2,
-            ray,
-        });
+        for (const species of ['Cat', 'Chicken', 'Dog', 'Piglet'] as const) {
+            assert.equal(isPettableAnimalSpecies(species), true);
+            const aimed = resolveAimedGardenAvatarAnimal({
+                actorPosition: new Vector3(0, 0, 0),
+                entries: [
+                    {
+                        behavior: 'roam',
+                        id: `${species.toLowerCase()}-a`,
+                        position: { x: 0, y: 0, z: -1.5 },
+                        species,
+                        updatedAt: 10,
+                    },
+                ],
+                now: 10.2,
+                ray,
+            });
 
-        assert.equal(aimed?.entry.id, 'cat-a');
+            assert.equal(aimed?.entry.species, species);
+        }
+    });
+
+    it('uses species-sized aim profiles and rejects ineligible animals', () => {
+        const ray = new Ray(new Vector3(0, 0.3, 0), new Vector3(0, 0, -1));
+        const actorPosition = new Vector3(0, 0, 0);
+        const position = { x: 0.34, y: 0, z: -1.5 };
+
+        assert.ok(
+            gardenAvatarAnimalAimProfiles.Chicken.hitRadius <
+                gardenAvatarAnimalAimProfiles.Piglet.hitRadius,
+        );
+        assert.equal(
+            resolveAimedGardenAvatarAnimal({
+                actorPosition,
+                entries: [
+                    {
+                        behavior: 'forage',
+                        id: 'chicken-offset',
+                        position,
+                        species: 'Chicken',
+                        updatedAt: 10,
+                    },
+                ],
+                now: 10.2,
+                ray,
+            }),
+            null,
+        );
+        assert.equal(
+            resolveAimedGardenAvatarAnimal({
+                actorPosition,
+                entries: [
+                    {
+                        behavior: 'wallow',
+                        id: 'piglet-offset',
+                        position,
+                        species: 'Piglet',
+                        updatedAt: 10,
+                    },
+                ],
+                now: 10.2,
+                ray,
+            })?.entry.id,
+            'piglet-offset',
+        );
+        assert.equal(isPettableAnimalSpecies('Bird'), false);
+        assert.equal(
+            resolveAimedGardenAvatarAnimal({
+                actorPosition,
+                entries: [
+                    {
+                        behavior: 'ground-peck',
+                        id: 'bird-a',
+                        position: { x: 0, y: 0, z: -1 },
+                        species: 'Bird',
+                        updatedAt: 10,
+                    },
+                    {
+                        behavior: 'roam',
+                        id: 'dog-stale',
+                        position: { x: 0, y: 0, z: -1 },
+                        species: 'Dog',
+                        updatedAt: 4,
+                    },
+                    {
+                        behavior: 'roam',
+                        id: 'cat-far',
+                        position: { x: 0, y: 0, z: -3 },
+                        species: 'Cat',
+                        updatedAt: 10,
+                    },
+                ],
+                now: 10.2,
+                ray,
+            }),
+            null,
+        );
     });
 
     it('detects cactus contact and bounces away from its spikes', () => {

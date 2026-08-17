@@ -70,6 +70,20 @@ function placeBlock(
     });
 }
 
+function replaceGround(
+    stacks: Map<string, StoredSandboxStack>,
+    x: number,
+    z: number,
+    name: 'Block_Dry_Ground' | 'Block_Sand',
+) {
+    const stack = stacks.get(stackKey(x, z));
+    const ground = stack?.blocks[0];
+    if (!ground) {
+        return;
+    }
+    ground.name = name;
+}
+
 function serializeStacks(stacks: Map<string, StoredSandboxStack>) {
     return Array.from(stacks.values()).sort((left, right) => {
         if (left.position.x !== right.position.x) {
@@ -114,6 +128,46 @@ function createDogPathfindingStacks() {
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 2, 2, 'Bucket');
     placeBlock(stacks, -4, 3, 'StoneMedium');
+
+    for (let z = -4; z <= 2; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createChickenPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, 0, 'ChickenCoop');
+    placeBlock(stacks, 4, 0, 'Tree');
+    replaceGround(stacks, 3, 2, 'Block_Dry_Ground');
+    replaceGround(stacks, -2, -2, 'Block_Sand');
+
+    for (let z = -4; z <= 2; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createPigletPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, 0, 'PigletPen');
+    placeBlock(stacks, 4, 0, 'Tree');
+    placeBlock(stacks, 3, -2, 'Bucket');
+    placeBlock(stacks, -3, 3, 'StoneMedium');
 
     for (let z = -4; z <= 2; z += 1) {
         placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
@@ -167,6 +221,8 @@ function createAllAnimalStacks() {
 
     placeBlock(stacks, -5, 0, 'CatPillow');
     placeBlock(stacks, -5, 2, 'DogHouse');
+    placeBlock(stacks, -5, -2, 'ChickenCoop');
+    placeBlock(stacks, -3, 3, 'PigletPen');
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -183,6 +239,7 @@ function createAllAnimalStacks() {
     placeBlock(stacks, 5, -3, 'Tulip');
     placeBlock(stacks, -3, 2, 'CactusPricklyPear');
     placeBlock(stacks, 2, -1, 'CactusBarrel');
+    replaceGround(stacks, 4, -1, 'Block_Dry_Ground');
 
     return serializeStacks(stacks);
 }
@@ -244,6 +301,34 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Dog path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createChickenPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Chicken path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createPigletPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Piglet path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

@@ -32,6 +32,7 @@ const cell = (height: number): HitboxSize => ({
 const blockHitboxes = {
     BaleHey: { width: 0.44, height: 0.36, depth: 0.82 },
     BirdHouse: { width: 0.72, height: 1.3, depth: 0.72 },
+    ChickenCoop: { width: 0.76, height: 0.86, depth: 0.97 },
     Block_Grass: cell(0.4),
     Block_Grass_Angle: cell(0.4),
     Block_Grass_Corner: cell(0.4),
@@ -84,6 +85,7 @@ const blockHitboxes = {
     MulchWood: { width: 0.96, height: 0.08, depth: 0.96 },
     Pine: { width: 1.12, height: 2.77, depth: 1.12 },
     PineAdvent: { width: 1.12, height: 2.77, depth: 1.12 },
+    PigletPen: { width: 0.94, height: 0.78, depth: 0.89 },
     PotBulbousNeck: { width: 0.56, height: 0.47, depth: 0.56 },
     PotHourglass: { width: 0.52, height: 0.43, depth: 0.5 },
     PotLowBowl: { width: 0.58, height: 0.22, depth: 0.58 },
@@ -121,6 +123,8 @@ const blockVisualHeights = {
     Block_Sand_Angle: 0.4,
     Block_Sand_Corner: 0.4,
     Block_Sand_Reverse_Corner: 0.4,
+    ChickenCoop: 0.86,
+    PigletPen: 0.78,
     Stool: 0.39,
 } satisfies Record<string, number>;
 

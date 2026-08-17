@@ -343,6 +343,22 @@ const blockFixtures: Record<
         height: 1,
         stackable: false,
     },
+    ChickenCoop: {
+        label: 'Kokošinjac',
+        shortDescription:
+            'Topao drveni kokošinjac koji u vrt dovodi znatiželjnu kokoš.',
+        sunflowers: 500,
+        height: 0.86,
+        stackable: false,
+    },
+    PigletPen: {
+        label: 'Obor za praščića',
+        shortDescription:
+            'Mali obor s kaljužom koji u vrt dovodi razigranog praščića.',
+        sunflowers: 500,
+        height: 0.78,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -463,7 +479,9 @@ const blockNames = [
     'WoodenHandLantern',
     'MoonRainBarrel',
     'CatPillow',
+    'ChickenCoop',
     'DogHouse',
+    'PigletPen',
     'Bush',
     'Tree',
     'Pine',

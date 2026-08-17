@@ -4,6 +4,18 @@ export const catSpeechMessages = ['Mijau!', 'Prrr...', 'Mjau-mjau!'] as const;
 
 export const dogSpeechMessages = ['Vau!', 'Av-av!', 'Hov-hov!'] as const;
 
+export const chickenSpeechMessages = [
+    'Kokoda!',
+    'Ko-ko-ko!',
+    'Kluk-kluk!',
+] as const;
+
+export const pigletSpeechMessages = [
+    'Grok-grok!',
+    'Kvik-kvik!',
+    'Njušk-njušk!',
+] as const;
+
 export const birdSpeechMessages = [
     'Cvrk-cvrk!',
     'Ćiju-ći!',
