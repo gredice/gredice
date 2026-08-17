@@ -366,7 +366,10 @@ function OutletGardenProductSignFaces({
                 ]}
                 rotation={[0, isFront ? 0 : Math.PI, -0.02]}
                 style={{
+                    backfaceVisibility: 'hidden',
                     pointerEvents: 'none',
+                    transform: `translateY(${outletProductSignFaceCssOffsetY.toString()}px)`,
+                    WebkitBackfaceVisibility: 'hidden',
                 }}
                 zIndexRange={[4, 1]}
             >
@@ -384,9 +387,10 @@ function OutletGardenProductSignFaces({
                         Array.isArray(occlude) ? 'visual-targets' : 'raycast'
                     }
                     style={{
+                        backfaceVisibility: 'hidden',
                         fontSize: `${priceFontSize.toString()}px`,
                         textShadow: '0 2px 2px rgb(55 24 14 / 70%)',
-                        transform: `translate(-50%, calc(-50% + ${outletProductSignFaceCssOffsetY.toString()}px))`,
+                        WebkitBackfaceVisibility: 'hidden',
                     }}
                 >
                     {product.priceLabel}
