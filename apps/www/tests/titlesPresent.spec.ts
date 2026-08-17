@@ -196,6 +196,27 @@ test.describe('public SEO metadata', () => {
         expect(openGraphImageBody.readUInt32BE(20)).toBe(630);
     });
 
+    test('framework static assets opt out of search indexing', async ({
+        page,
+    }) => {
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+        const assetUrl = await page
+            .locator('script[src^="/_next/static/"]')
+            .first()
+            .getAttribute('src');
+
+        expect(assetUrl).toBeTruthy();
+        if (!assetUrl) {
+            return;
+        }
+
+        const assetResponse = await page.request.get(assetUrl);
+
+        expect(assetResponse.ok()).toBe(true);
+        expect(assetResponse.headers()['x-robots-tag']).toBe('noindex');
+    });
+
     for (const url of pages) {
         test(`page ${url} has valid SEO metadata`, async ({ page }) => {
             test.slow();
