@@ -2,7 +2,7 @@
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, GamepadDirectional } from '@gredice/ui/icons';
-import { cx } from '@gredice/ui/utils';
+import { Popper } from '@gredice/ui/Popper';
 import { useEffect, useState } from 'react';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
@@ -65,11 +65,9 @@ function prefersReducedMotion() {
 export function ControlsTooltipHud({
     mode = 'edit',
     offsetForItemsHud = true,
-    panelPosition = 'inline',
 }: {
     mode?: 'edit' | 'view';
     offsetForItemsHud?: boolean;
-    panelPosition?: 'above' | 'inline';
 } = {}) {
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
@@ -110,48 +108,51 @@ export function ControlsTooltipHud({
         writeStorage(map);
     };
 
+    const handleOpenChange = (nextOpen: boolean) => {
+        if (nextOpen) {
+            setOpen(true);
+            return;
+        }
+
+        dismiss();
+    };
+
     return (
-        <>
-            {open ? (
-                <div
-                    id="game-controls-tooltip"
-                    data-controls-tooltip-hud="open"
-                    className={cx(
-                        'pointer-events-auto p-2 sm:p-3',
-                        panelPosition === 'above'
-                            ? 'absolute bottom-[calc(100%+0.5rem)] left-0'
-                            : 'relative',
-                        offsetForItemsHud && 'md:mb-24',
-                    )}
-                >
-                    <ControlsVisualization
-                        deviceType={deviceType}
-                        mode={mode}
-                        phase={phase}
-                    />
-                    <ButtonGreen
-                        title="Zatvori"
-                        variant="soft"
-                        size="sm"
-                        onClick={dismiss}
-                        className="absolute top-4 right-4 z-10 shrink-0 size-7 min-h-0 p-0 rounded-full"
-                    >
-                        <Check className="size-4 shrink-0" />
-                    </ButtonGreen>
-                </div>
-            ) : null}
-            <div className="pointer-events-auto">
+        <Popper
+            align="start"
+            className="relative w-auto border-0 bg-transparent p-2 shadow-none sm:p-3"
+            data-controls-tooltip-hud="open"
+            id="game-controls-tooltip"
+            onOpenChange={handleOpenChange}
+            open={open}
+            side="top"
+            sideOffset={offsetForItemsHud && deviceType !== 'mobile' ? 104 : 8}
+            trigger={
                 <IconButton
                     title={open ? 'Sakrij kontrole' : 'Prikaži kontrole'}
                     aria-controls="game-controls-tooltip"
                     aria-expanded={open}
                     variant="plain"
-                    onClick={open ? dismiss : () => setOpen(true)}
-                    className="hover:bg-muted"
+                    className="pointer-events-auto hover:bg-muted"
                 >
                     <GamepadDirectional className="size-5" />
                 </IconButton>
-            </div>
-        </>
+            }
+        >
+            <ControlsVisualization
+                deviceType={deviceType}
+                mode={mode}
+                phase={phase}
+            />
+            <ButtonGreen
+                title="Zatvori"
+                variant="soft"
+                size="sm"
+                onClick={dismiss}
+                className="absolute top-4 right-4 z-10 shrink-0 size-7 min-h-0 p-0 rounded-full"
+            >
+                <Check className="size-4 shrink-0" />
+            </ButtonGreen>
+        </Popper>
     );
 }

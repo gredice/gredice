@@ -103,7 +103,7 @@ export function ControlsVisualization({
                 {getAccessibleDescription(deviceType, mode)}
             </p>
             <div
-                className={`grid grid-cols-2 overflow-hidden rounded-md border border-b-4 border-tertiary bg-card ${showEditingControls ? 'sm:grid-cols-5' : 'sm:grid-cols-3'}`}
+                className={`grid overflow-hidden rounded-md border border-b-4 border-tertiary bg-card ${showEditingControls ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-3'}`}
                 aria-hidden="true"
             >
                 <VisualizationSection

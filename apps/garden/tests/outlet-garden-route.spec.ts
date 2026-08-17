@@ -563,6 +563,9 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
     const outletApi = await mockOutletGardenApi(page);
     outletApi.setOffers([...outletOffers, soldOutOutletOffer]);
+    await page.addInitScript(() => {
+        window.localStorage.removeItem('game-controls-tooltip-v1');
+    });
 
     await page.goto('/outlet');
 
@@ -714,7 +717,27 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     ).toBeVisible();
     await expect(
         page.locator('[data-outlet-garden-hud-card="scene-controls"]'),
-    ).toBeVisible();
+    ).toHaveCount(0);
+    const sceneControls = page.locator('[data-outlet-garden-scene-controls]');
+    await expect(sceneControls).toBeVisible();
+    const sceneControlsSurface = await sceneControls.evaluate((node) => {
+        const style = window.getComputedStyle(node);
+        return {
+            backgroundColor: style.backgroundColor,
+            borderWidths: [
+                style.borderTopWidth,
+                style.borderRightWidth,
+                style.borderBottomWidth,
+                style.borderLeftWidth,
+            ],
+            boxShadow: style.boxShadow,
+        };
+    });
+    expect(sceneControlsSurface).toEqual({
+        backgroundColor: 'rgba(0, 0, 0, 0)',
+        borderWidths: ['0px', '0px', '0px', '0px'],
+        boxShadow: 'none',
+    });
     await expect(
         page.getByRole('button', { name: 'Okreni lijevo' }),
     ).toBeVisible();
@@ -725,6 +748,75 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     await expect(
         page.getByRole('button', { name: 'Što je novo' }),
     ).toBeVisible();
+    const controlsGuide = page.locator('[data-controls-tooltip-hud="open"]');
+    const controlsToggle = page.getByTitle('Sakrij kontrole');
+    const [openControlsBox, guideBox, toggleBox] = await Promise.all([
+        sceneControls.boundingBox(),
+        controlsGuide.boundingBox(),
+        controlsToggle.boundingBox(),
+    ]);
+    expect(openControlsBox).not.toBeNull();
+    expect(guideBox).not.toBeNull();
+    expect(toggleBox).not.toBeNull();
+    expect(
+        (toggleBox?.y ?? 0) - ((guideBox?.y ?? 0) + (guideBox?.height ?? 0)),
+    ).toBeGreaterThanOrEqual(7);
+    expect(guideBox?.x ?? 0).toBeLessThanOrEqual(toggleBox?.x ?? 0);
+    expect((guideBox?.x ?? 0) + (guideBox?.width ?? 0)).toBeGreaterThanOrEqual(
+        (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
+    );
+    await controlsToggle.click();
+    await expect(controlsGuide).toHaveCount(0);
+    const closedControlsBox = await sceneControls.boundingBox();
+    expect(closedControlsBox).not.toBeNull();
+    expect(
+        Math.abs(
+            (closedControlsBox?.width ?? 0) - (openControlsBox?.width ?? 0),
+        ),
+    ).toBeLessThanOrEqual(1);
+    expect(
+        Math.abs(
+            (closedControlsBox?.height ?? 0) - (openControlsBox?.height ?? 0),
+        ),
+    ).toBeLessThanOrEqual(1);
+
+    const screenshotViewport = { height: 288, width: 376 };
+    await page.setViewportSize(screenshotViewport);
+    await expect(controlsGuide).toBeVisible();
+    const [mobileOpenControlsBox, mobileGuideBox, mobileToggleBox] =
+        await Promise.all([
+            sceneControls.boundingBox(),
+            controlsGuide.boundingBox(),
+            page.getByTitle('Sakrij kontrole').boundingBox(),
+        ]);
+    expect(mobileOpenControlsBox).not.toBeNull();
+    expect(mobileGuideBox).not.toBeNull();
+    expect(mobileToggleBox).not.toBeNull();
+    expect(mobileGuideBox?.x ?? -1).toBeGreaterThanOrEqual(0);
+    expect(
+        (mobileGuideBox?.x ?? 0) + (mobileGuideBox?.width ?? 0),
+    ).toBeLessThanOrEqual(screenshotViewport.width);
+    expect(mobileGuideBox?.y ?? -1).toBeGreaterThanOrEqual(0);
+    expect(
+        (mobileToggleBox?.y ?? 0) -
+            ((mobileGuideBox?.y ?? 0) + (mobileGuideBox?.height ?? 0)),
+    ).toBeGreaterThanOrEqual(7);
+    await page.getByTitle('Sakrij kontrole').click();
+    await expect(controlsGuide).toHaveCount(0);
+    const mobileClosedControlsBox = await sceneControls.boundingBox();
+    expect(mobileClosedControlsBox).not.toBeNull();
+    expect(
+        Math.abs(
+            (mobileClosedControlsBox?.width ?? 0) -
+                (mobileOpenControlsBox?.width ?? 0),
+        ),
+    ).toBeLessThanOrEqual(1);
+    expect(
+        Math.abs(
+            (mobileClosedControlsBox?.height ?? 0) -
+                (mobileOpenControlsBox?.height ?? 0),
+        ),
+    ).toBeLessThanOrEqual(1);
     await expect(
         page.getByText('Pokupi / spusti', { exact: true }),
     ).toHaveCount(0);

@@ -248,6 +248,13 @@ test('controls instructions clear the item picker on tablet layouts', async ({
         (pickerBox?.y ?? 0) - 8,
     );
 
+    const toggleBox = await toggle.boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(guideBox?.x ?? 0).toBeLessThanOrEqual(toggleBox?.x ?? 0);
+    expect((guideBox?.x ?? 0) + (guideBox?.width ?? 0)).toBeGreaterThanOrEqual(
+        (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
+    );
+
     await toggle.click();
     await expect(guide).toHaveCount(0);
     await expect(page.getByTitle('Prikaži kontrole')).toHaveAttribute(
