@@ -1,5 +1,6 @@
 'use server';
 
+import { notifyDetailedRaisedBedInspectionVerified } from '@gredice/notifications';
 import {
     blockSelectedRaisedBedPlantingTask,
     completeSelectedRaisedBedPlantingTask,
@@ -7,6 +8,7 @@ import {
     getEntitiesFormatted,
     getFarmUserPrintableHarvestTraceLinkIds,
     markHarvestTraceLinksPrinted,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     resolveOperationTaskCompletionSubmission,
     ScheduleTaskSubmissionError,
     submitOperationTaskBlock,
@@ -112,6 +114,28 @@ function actionResult<State extends ScheduleTaskSubmissionState>(
         state,
         success: true,
     };
+}
+
+async function notifyAdminVerifiedDetailedInspection({
+    actorRole,
+    expectedEntityId,
+    operationId,
+    status,
+}: {
+    actorRole: 'admin' | 'farmer';
+    expectedEntityId: number;
+    operationId: number;
+    status: string;
+}) {
+    if (
+        actorRole !== 'admin' ||
+        expectedEntityId !== RAISED_BED_DETAILED_INSPECTION_OPERATION_ID ||
+        status !== 'completed'
+    ) {
+        return;
+    }
+
+    await notifyDetailedRaisedBedInspectionVerified(operationId);
 }
 
 function submissionFailure(
@@ -519,6 +543,12 @@ export async function completeFarmOperation(
                 submissionId: validSubmissionId,
             });
             if (replay) {
+                await notifyAdminVerifiedDetailedInspection({
+                    actorRole: actor.role,
+                    expectedEntityId: validExpectedEntityId,
+                    operationId: validOperationId,
+                    status: replay.status,
+                });
                 return actionResult(
                     completionState(replay.status),
                     replay.occurredAt,
@@ -639,6 +669,13 @@ export async function completeFarmOperation(
         }
         throw error;
     }
+
+    await notifyAdminVerifiedDetailedInspection({
+        actorRole: actor.role,
+        expectedEntityId: validExpectedEntityId,
+        operationId: validOperationId,
+        status: result.status,
+    });
 
     return actionResult(completionState(result.status), result.occurredAt);
 }
