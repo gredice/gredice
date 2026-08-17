@@ -1,7 +1,14 @@
 'use client';
 
 import { useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
 import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     type GeneratedPackedPlantRenderTask,
@@ -28,6 +35,12 @@ import {
 import type { PlantLodLevel } from '../../generators/plant/lib/plantLod';
 import { buildApproximatePlantLodSummary } from '../../generators/plant/lib/plantLodSummary';
 import { getPlantBillboardPrimitiveTriangleCount } from '../../generators/plant/lib/plantMidBillboardMaterial';
+import {
+    getGeneratedPlantShaderPrewarmLifecycleStatus,
+    getGeneratedPlantShaderProgramDiagnostics,
+    shouldRenderGeneratedPlantDetailAfterPrewarm,
+    subscribeToGeneratedPlantShaderPrewarmLifecycle,
+} from '../../generators/plant/lib/plantShaderPrewarm';
 import { Flowers } from '../../generators/plant/parts/flowers';
 import { Leaves } from '../../generators/plant/parts/leaves';
 import { PlantBillboardBatch } from '../../generators/plant/parts/PlantBillboard';
@@ -66,6 +79,7 @@ interface RaisedBedGeneratedPlantBatchProps {
     lodLevel?: PlantLodLevel;
     showFlowers?: boolean;
     showProduce?: boolean;
+    shaderPrewarmVariantKey?: string;
     taskPriority?: GeneratedPlantTaskPriority;
 }
 
@@ -116,15 +130,26 @@ function RaisedBedDetailedPlantBatch({
             getGeneratedPlantProfileSnapshot()?.pipeline.shaderPrewarm;
         const prewarmProgramCount = shaderPrewarm?.programCountAfter ?? null;
         const prewarmReady = shaderPrewarm?.status === 'ready';
+        const programs = getGeneratedPlantShaderProgramDiagnostics(
+            gl.info.programs,
+        );
+        const prewarmProgramIds = new Set(
+            shaderPrewarm?.programsAfter?.map((program) => program.id) ?? [],
+        );
+        const postSwapPrograms =
+            programs?.filter((program) => !prewarmProgramIds.has(program.id)) ??
+            null;
         recordGeneratedPlantProfilePostSwapCompilation({
             compilationCount:
                 !prewarmReady ||
                 programCount === null ||
-                prewarmProgramCount === null
+                prewarmProgramCount === null ||
+                postSwapPrograms === null
                     ? null
-                    : Math.max(0, programCount - prewarmProgramCount),
+                    : postSwapPrograms.length,
             prewarmReady,
             programCount,
+            programs: postSwapPrograms,
             sessionId,
         });
     }, [gl]);
@@ -188,9 +213,41 @@ export function RaisedBedGeneratedPlantBatch({
     lodLevel = 'near',
     showFlowers = true,
     showProduce = true,
+    shaderPrewarmVariantKey = 'shadows',
     taskPriority = 'normal',
 }: RaisedBedGeneratedPlantBatchProps) {
+    const gl = useThree((state) => state.gl);
     const renderDetailedGeometry = lodLevel === 'near';
+    const prewarmRequired =
+        renderDetailedGeometry && taskPriority === 'focused';
+    const subscribeToPrewarm = useCallback(
+        (listener: () => void) =>
+            subscribeToGeneratedPlantShaderPrewarmLifecycle({
+                listener,
+                renderer: gl,
+                variantKey: shaderPrewarmVariantKey,
+            }),
+        [gl, shaderPrewarmVariantKey],
+    );
+    const getPrewarmSnapshot = useCallback(
+        () =>
+            getGeneratedPlantShaderPrewarmLifecycleStatus({
+                renderer: gl,
+                variantKey: shaderPrewarmVariantKey,
+            }),
+        [gl, shaderPrewarmVariantKey],
+    );
+    const prewarmStatus = useSyncExternalStore(
+        subscribeToPrewarm,
+        getPrewarmSnapshot,
+        getPrewarmSnapshot,
+    );
+    const canRenderDetailedGeometry =
+        renderDetailedGeometry &&
+        shouldRenderGeneratedPlantDetailAfterPrewarm({
+            required: prewarmRequired,
+            status: prewarmStatus,
+        });
     const batchSeed = useMemo(() => {
         if (!renderDetailedGeometry) {
             return definition.name;
@@ -331,6 +388,9 @@ export function RaisedBedGeneratedPlantBatch({
         priority: taskPriority,
     });
     const resolvedInstanceIndexes = useMemo(() => {
+        if (!canRenderDetailedGeometry) {
+            return new Set<number>();
+        }
         if (settledBatch?.signature === renderChunkSignature) {
             return new Set(instances.map((_instance, index) => index));
         }
@@ -347,6 +407,7 @@ export function RaisedBedGeneratedPlantBatch({
         });
         return resolved;
     }, [
+        canRenderDetailedGeometry,
         instances,
         packedChunks,
         renderChunks,
@@ -590,11 +651,13 @@ export function RaisedBedGeneratedPlantBatch({
     const profileBatchId = `${batchSeed}:${lodLevel}`;
     const detailedLeafTriangleCount = useMemo(
         () =>
-            Array.from(batchBuild.partsByField.values()).reduce(
-                (total, parts) => total + parts.leafTriangles,
-                0,
-            ),
-        [batchBuild.partsByField],
+            canRenderDetailedGeometry
+                ? Array.from(batchBuild.partsByField.values()).reduce(
+                      (total, parts) => total + parts.leafTriangles,
+                      0,
+                  )
+                : 0,
+        [batchBuild.partsByField, canRenderDetailedGeometry],
     );
     const clusterPrimitiveTriangleCount = useMemo(
         () =>
@@ -609,7 +672,7 @@ export function RaisedBedGeneratedPlantBatch({
             registerGeneratedPlantRenderBatch(profileBatchId, {
                 clusterInstanceCount: pendingBillboards.length,
                 clusterPrimitiveTriangleCount,
-                detailedInstanceCount: renderDetailedGeometry
+                detailedInstanceCount: canRenderDetailedGeometry
                     ? batchBuild.resolvedInstanceCount
                     : 0,
                 detailedLeafTriangleCount,
@@ -619,12 +682,16 @@ export function RaisedBedGeneratedPlantBatch({
                 pendingDetailInstanceCount: renderDetailedGeometry
                     ? Math.max(
                           0,
-                          instances.length - batchBuild.resolvedInstanceCount,
+                          instances.length -
+                              (canRenderDetailedGeometry
+                                  ? batchBuild.resolvedInstanceCount
+                                  : 0),
                       )
                     : 0,
             }),
         [
             batchBuild.resolvedInstanceCount,
+            canRenderDetailedGeometry,
             clusterPrimitiveTriangleCount,
             detailedLeafTriangleCount,
             instances.length,
@@ -642,7 +709,9 @@ export function RaisedBedGeneratedPlantBatch({
         const status =
             lodLevel !== 'near'
                 ? 'billboard'
-                : batchedData && pendingBillboards.length === 0
+                : canRenderDetailedGeometry &&
+                    batchedData &&
+                    pendingBillboards.length === 0
                   ? 'detailed'
                   : 'pending-near';
         recordGeneratedPlantProfileBatch(
@@ -652,7 +721,9 @@ export function RaisedBedGeneratedPlantBatch({
                 failedArchetypeCount: failedTaskKeys.length,
                 fields: profileFields.map((field) => ({
                     ...field,
-                    parts: batchBuild.partsByField.get(field.fieldKey),
+                    parts: canRenderDetailedGeometry
+                        ? batchBuild.partsByField.get(field.fieldKey)
+                        : undefined,
                 })),
                 status,
             },
@@ -674,6 +745,7 @@ export function RaisedBedGeneratedPlantBatch({
         batchBuild.partsByField,
         batchBuild.resolvedInstanceCount,
         batchedData,
+        canRenderDetailedGeometry,
         failedTaskKeys.length,
         lodLevel,
         profileBatchId,
@@ -689,6 +761,24 @@ export function RaisedBedGeneratedPlantBatch({
                 debugName={`RaisedBedPlantBillboards:${definition.name}`}
                 level={lodLevel}
             />
+        );
+    }
+
+    if (!canRenderDetailedGeometry) {
+        return (
+            <group
+                name={`RaisedBedPlantBatch:${definition.name}:prewarming-near`}
+            >
+                <PlantBillboardBatch
+                    billboards={billboards}
+                    debugName={`RaisedBedPlantBillboards:${definition.name}:prewarming-near`}
+                    level="mid"
+                />
+                <RaisedBedPlantShadowProxy
+                    key="plant-shadow-proxy"
+                    plants={shadowPlants}
+                />
+            </group>
         );
     }
 

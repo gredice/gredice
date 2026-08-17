@@ -503,6 +503,13 @@ test('generated plant profile carries shader prewarm evidence into a guarded ses
         durationMs: 18,
         programCountAfter: 12,
         programCountBefore: 7,
+        programsAfter: [
+            {
+                cacheKeyHash: 'abc12345',
+                id: 1,
+                name: 'prewarmed',
+            },
+        ],
         status: 'ready',
     });
     const sessionId = startGeneratedPlantProfile({
@@ -514,6 +521,13 @@ test('generated plant profile carries shader prewarm evidence into a guarded ses
         compilationCount: 2,
         prewarmReady: true,
         programCount: 14,
+        programs: [
+            {
+                cacheKeyHash: 'def67890',
+                id: 2,
+                name: 'post-swap',
+            },
+        ],
         sessionId,
     });
     recordGeneratedPlantProfilePostSwapCompilation({
@@ -532,5 +546,19 @@ test('generated plant profile carries shader prewarm evidence into a guarded ses
     assert.equal(shaderPrewarm?.programCountAfter, 12);
     assert.equal(shaderPrewarm?.postSwapCompilationCount, 2);
     assert.equal(shaderPrewarm?.postSwapProgramCount, 14);
+    assert.deepEqual(shaderPrewarm?.programsAfter, [
+        {
+            cacheKeyHash: 'abc12345',
+            id: 1,
+            name: 'prewarmed',
+        },
+    ]);
+    assert.deepEqual(shaderPrewarm?.postSwapPrograms, [
+        {
+            cacheKeyHash: 'def67890',
+            id: 2,
+            name: 'post-swap',
+        },
+    ]);
     assert.equal(shaderPrewarm?.readyAtFirstDetailSwap, true);
 });

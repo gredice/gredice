@@ -43,6 +43,12 @@ export type GeneratedPlantShaderPrewarmStatus =
     | 'scheduled'
     | 'timed-out';
 
+export type GeneratedPlantShaderProgramDiagnostic = {
+    cacheKeyHash: string;
+    id: number;
+    name: string;
+};
+
 export type GeneratedPlantProfilePipelineCounts = {
     packedWorker: {
         buildCount: number;
@@ -90,8 +96,10 @@ export type GeneratedPlantProfilePipelineCounts = {
         observed: boolean;
         postSwapCompilationCount: number | null;
         postSwapProgramCount: number | null;
+        postSwapPrograms: GeneratedPlantShaderProgramDiagnostic[] | null;
         programCountAfter: number | null;
         programCountBefore: number | null;
+        programsAfter: GeneratedPlantShaderProgramDiagnostic[] | null;
         readyAtFirstDetailSwap: boolean | null;
         status: GeneratedPlantShaderPrewarmStatus;
     };

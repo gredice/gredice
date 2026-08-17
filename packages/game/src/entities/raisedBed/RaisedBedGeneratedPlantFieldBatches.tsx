@@ -1367,6 +1367,9 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     fruitGrowth={batch.visualStage.fruitGrowth}
                     showFlowers={batch.visualStage.showFlowers}
                     showProduce={batch.visualStage.showProduce}
+                    shaderPrewarmVariantKey={
+                        quality.shadows ? 'shadows' : 'without-shadows'
+                    }
                     taskPriority={batch.taskPriority}
                 />
             ))}

@@ -113,8 +113,10 @@ const emptyShaderPrewarm =
         observed: false,
         postSwapCompilationCount: null,
         postSwapProgramCount: null,
+        postSwapPrograms: null,
         programCountAfter: null,
         programCountBefore: null,
+        programsAfter: null,
         readyAtFirstDetailSwap: null,
         status: 'idle',
     });
@@ -938,6 +940,7 @@ export function recordGeneratedPlantProfileShaderPrewarm({
     durationMs,
     programCountAfter,
     programCountBefore,
+    programsAfter,
     sessionId,
     status,
 }: {
@@ -945,6 +948,7 @@ export function recordGeneratedPlantProfileShaderPrewarm({
     durationMs?: number | null;
     programCountAfter?: number | null;
     programCountBefore?: number | null;
+    programsAfter?: GeneratedPlantProfilePipelineCounts['shaderPrewarm']['programsAfter'];
     sessionId?: number;
     status: GeneratedPlantShaderPrewarmStatus;
 }) {
@@ -957,7 +961,15 @@ export function recordGeneratedPlantProfileShaderPrewarm({
             (!Number.isFinite(programCountBefore) || programCountBefore < 0)) ||
         (programCountAfter !== undefined &&
             programCountAfter !== null &&
-            (!Number.isFinite(programCountAfter) || programCountAfter < 0))
+            (!Number.isFinite(programCountAfter) || programCountAfter < 0)) ||
+        (programsAfter?.some(
+            (program) =>
+                !Number.isFinite(program.id) ||
+                program.id < 0 ||
+                typeof program.cacheKeyHash !== 'string' ||
+                typeof program.name !== 'string',
+        ) ??
+            false)
     ) {
         return;
     }
@@ -989,12 +1001,17 @@ export function recordGeneratedPlantProfileShaderPrewarm({
             programCountBefore === undefined
                 ? previous.programCountBefore
                 : programCountBefore,
+        programsAfter:
+            programsAfter === undefined
+                ? previous.programsAfter
+                : programsAfter,
         status,
     };
     latestShaderPrewarm = {
         ...next,
         postSwapCompilationCount: null,
         postSwapProgramCount: null,
+        postSwapPrograms: null,
         readyAtFirstDetailSwap: null,
     };
     if (!state.active) {
@@ -1009,11 +1026,13 @@ export function recordGeneratedPlantProfilePostSwapCompilation({
     compilationCount,
     prewarmReady,
     programCount,
+    programs,
     sessionId,
 }: {
     compilationCount: number | null;
     prewarmReady: boolean;
     programCount?: number | null;
+    programs?: GeneratedPlantProfilePipelineCounts['shaderPrewarm']['postSwapPrograms'];
     sessionId?: number;
 }) {
     if (
@@ -1022,7 +1041,15 @@ export function recordGeneratedPlantProfilePostSwapCompilation({
             (!Number.isFinite(compilationCount) || compilationCount < 0)) ||
         (programCount !== undefined &&
             programCount !== null &&
-            (!Number.isFinite(programCount) || programCount < 0))
+            (!Number.isFinite(programCount) || programCount < 0)) ||
+        (programs?.some(
+            (program) =>
+                !Number.isFinite(program.id) ||
+                program.id < 0 ||
+                typeof program.cacheKeyHash !== 'string' ||
+                typeof program.name !== 'string',
+        ) ??
+            false)
     ) {
         return;
     }
@@ -1035,6 +1062,9 @@ export function recordGeneratedPlantProfilePostSwapCompilation({
     shaderPrewarm.postSwapCompilationCount = compilationCount;
     if (programCount !== undefined) {
         shaderPrewarm.postSwapProgramCount = programCount;
+    }
+    if (programs !== undefined) {
+        shaderPrewarm.postSwapPrograms = programs;
     }
     shaderPrewarm.readyAtFirstDetailSwap = prewarmReady;
     publish();
