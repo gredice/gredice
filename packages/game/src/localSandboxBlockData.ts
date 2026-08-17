@@ -50,6 +50,10 @@ export const localSandboxBlockNames = [
     'WhiteFence',
     'StoneFence',
     'PolishedStoneFence',
+    'FenceGate',
+    'WhiteFenceGate',
+    'StoneFenceGate',
+    'PolishedStoneFenceGate',
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',
@@ -258,6 +262,26 @@ const localSandboxBlockMetadata: Partial<
         shortDescription:
             'Jednostavna glatka ograda koja se povezuje sa susjednim dijelovima od poliranog kamena.',
     },
+    FenceGate: {
+        label: 'Vrata za drvenu ogradu',
+        shortDescription:
+            'Drvena vrtna vrata koja se otvaraju dodirom i propuštaju posjetitelje i životinje.',
+    },
+    WhiteFenceGate: {
+        label: 'Vrata za bijelu ogradu',
+        shortDescription:
+            'Bijela vrtna vrata koja se otvaraju dodirom i uklapaju u bijelu ogradu.',
+    },
+    StoneFenceGate: {
+        label: 'Vrata za kamenu ogradu',
+        shortDescription:
+            'Metalna vrtna vrata između stupova od nepravilnog kamena.',
+    },
+    PolishedStoneFenceGate: {
+        label: 'Vrata za ogradu od poliranog kamena',
+        shortDescription:
+            'Metalna vrtna vrata između glatkih stupova od poliranog kamena.',
+    },
     StoneWalkway: {
         label: 'Kamena staza',
         shortDescription:
@@ -378,6 +402,10 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WhiteFence: 0.72,
         StoneFence: 0.68,
         PolishedStoneFence: 0.68,
+        FenceGate: 0.72,
+        WhiteFenceGate: 0.72,
+        StoneFenceGate: 0.68,
+        PolishedStoneFenceGate: 0.68,
         PalmTree: 1.5,
         BeachBall: 0.32,
         SandcastleSmallA: 0.35,
@@ -543,6 +571,26 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxWidth: 1,
     },
     PolishedStoneFence: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.68,
+        hitboxWidth: 1,
+    },
+    FenceGate: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.72,
+        hitboxWidth: 1,
+    },
+    WhiteFenceGate: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.72,
+        hitboxWidth: 1,
+    },
+    StoneFenceGate: {
+        hitboxDepth: 1,
+        hitboxHeight: 0.68,
+        hitboxWidth: 1,
+    },
+    PolishedStoneFenceGate: {
         hitboxDepth: 1,
         hitboxHeight: 0.68,
         hitboxWidth: 1,

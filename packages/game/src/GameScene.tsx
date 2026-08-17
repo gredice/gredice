@@ -28,6 +28,8 @@ import {
     instancedBlockNames,
 } from './entities/EntityInstances';
 import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
+import { isFenceGateBlockName } from './entities/fenceConnections';
+import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
@@ -48,6 +50,7 @@ import {
 } from './gameCamera';
 import { detailedInspectionFarmerMessage } from './hooks/detailedRaisedBedInspectionReports';
 import { useBlockData } from './hooks/useBlockData';
+import { useBlockVariant } from './hooks/useBlockVariant';
 import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { type CurrentGarden, useCurrentGarden } from './hooks/useCurrentGarden';
 import { useDeferredSceneDetails } from './hooks/useDeferredSceneDetails';
@@ -404,7 +407,20 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     const { data: blockData } = useBlockData();
     const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
+        useBlockVariant();
     const garden = useSceneCurrentGarden(gardenData);
+    const fenceGateBlockIds = useMemo(
+        () =>
+            new Set(
+                (garden?.stacks ?? []).flatMap((stack) =>
+                    stack.blocks.flatMap((block) =>
+                        isFenceGateBlockName(block.name) ? [block.id] : [],
+                    ),
+                ),
+            ),
+        [garden?.stacks],
+    );
     const detailedInspectionReports =
         detailedInspectionReportsQuery.data?.reports;
     const detailedInspectionMessage = useMemo(
@@ -477,6 +493,15 @@ export function GameScene({
     const isLoading = gardenLoading;
     const interactWithAvatarBlock = useCallback(
         (block: Block) => {
+            if (isFenceGateBlockName(block.name)) {
+                if (!isBlockVariantPending) {
+                    updateBlockVariant({
+                        blockId: block.id,
+                        variant: getToggledFenceGateVariant(block),
+                    });
+                }
+                return true;
+            }
             if (block.name === 'GardenBox' && !isLocalSandbox) {
                 setOpenGardenBoxBlockId(block.id);
                 return true;
@@ -487,7 +512,13 @@ export function GameScene({
             }
             return false;
         },
-        [isLocalSandbox, setOpenGardenBoxBlockId, setWoodenSignParam],
+        [
+            isLocalSandbox,
+            isBlockVariantPending,
+            setOpenGardenBoxBlockId,
+            setWoodenSignParam,
+            updateBlockVariant,
+        ],
     );
 
     const loadingContext = useGameLoading();
@@ -688,6 +719,9 @@ export function GameScene({
                                     zoom !== 'far' && (
                                         <Suspense fallback={null}>
                                             <GardenAvatar
+                                                interactiveBlockIds={
+                                                    fenceGateBlockIds
+                                                }
                                                 onInteractBlock={
                                                     interactWithAvatarBlock
                                                 }

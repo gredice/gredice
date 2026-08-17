@@ -5,7 +5,7 @@ import {
     doesFenceOwnMixedSpan,
     doesFenceOwnSpan,
     getFenceExtensionRotations,
-    isFenceBlockName,
+    isFenceTopologyBlockName,
     resolveFenceConnection,
 } from '../fenceConnections';
 import { resolveEntityNeighbors } from './useEntityNeighbors';
@@ -20,7 +20,7 @@ export function resolveFenceConnectionState(
         stacks,
         stack,
         block,
-        isFenceBlockName,
+        isFenceTopologyBlockName,
     );
     const ownedNeighbors = resolveEntityNeighbors(
         stacks,

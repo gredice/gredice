@@ -66,4 +66,31 @@ describe('fence connection state', () => {
         assert.deepEqual(state.connection, { rotation: 0, shape: 'Single' });
         assert.deepEqual(state.extensionRotations, []);
     });
+
+    it('ends a normal fence at the edge of an adjacent gate tile', () => {
+        const fenceBlock = block('fence', 'Fence');
+        const gateBlock = block('gate', 'StoneFenceGate');
+        const fenceStack = {
+            blocks: [fenceBlock],
+            position: { x: 0, y: 0, z: 0 },
+        };
+        const gateStack = {
+            blocks: [gateBlock],
+            position: { x: 1, y: 0, z: 0 },
+        };
+
+        assert.deepEqual(
+            resolveFenceConnectionState(
+                [fenceStack, gateStack],
+                fenceStack,
+                fenceBlock,
+                0,
+            ),
+            {
+                connection: { rotation: 3, shape: 'Single' },
+                extensionRotations: [],
+                hasAdjacentFence: true,
+            },
+        );
+    });
 });

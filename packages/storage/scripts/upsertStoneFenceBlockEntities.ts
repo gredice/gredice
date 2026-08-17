@@ -22,23 +22,27 @@ const actor = {
 
 const entityTypeName = 'block';
 
-function stoneFenceSpec({
+function fenceSpec({
     fullDescription,
+    height = '0.68',
     label,
     name,
+    price = '5',
     shortDescription,
 }: {
     fullDescription: string;
+    height?: string;
     label: string;
     name: string;
+    price?: string;
     shortDescription: string;
 }) {
     return {
         name,
         attributes: {
-            'attributes.height': '0.68',
+            'attributes.height': height,
             'attributes.hitboxDepth': '1',
-            'attributes.hitboxHeight': '0.68',
+            'attributes.hitboxHeight': height,
             'attributes.hitboxWidth': '1',
             'attributes.nightOnlyPurchase': 'false',
             'attributes.placeableOnWater': 'false',
@@ -55,13 +59,13 @@ function stoneFenceSpec({
             'information.label': label,
             'information.name': name,
             'information.shortDescription': shortDescription,
-            'prices.sunflowers': '5',
+            'prices.sunflowers': price,
         },
     };
 }
 
 const blockSpecs = [
-    stoneFenceSpec({
+    fenceSpec({
         name: 'StoneFence',
         label: 'Kamena ograda',
         shortDescription:
@@ -69,13 +73,53 @@ const blockSpecs = [
         fullDescription:
             'Kamena ograda počinje kao čvrst kameni stup. Kada uz nju postaviš isti dio ograde, između stupova nastaje niz nepravilno složenog kamena pa možeš graditi ravne dijelove, kutove i zatvorene ograde.',
     }),
-    stoneFenceSpec({
+    fenceSpec({
         name: 'PolishedStoneFence',
         label: 'Ograda od poliranog kamena',
         shortDescription:
             'Jednostavna glatka ograda koja se povezuje sa susjednim dijelovima od poliranog kamena.',
         fullDescription:
             'Ograda od poliranog kamena počinje kao jednostavan stup bez ukrasne kape. Susjedni isti dijelovi spajaju se punim glatkim zidom jednake debljine kao stup, za čiste ravne linije, kutove i zatvorene ograde.',
+    }),
+    fenceSpec({
+        name: 'FenceGate',
+        label: 'Vrata za drvenu ogradu',
+        height: '0.72',
+        price: '8',
+        shortDescription:
+            'Drvena vrtna vrata koja se otvaraju dodirom i propuštaju posjetitelje i životinje.',
+        fullDescription:
+            'Postavi ova drvena vrata između dijelova ograde. Dodirni ih ili im priđi avatarom kako bi se otvorila, a zatvori ih kada ponovno želiš zaustaviti prolaz kroz ogradu.',
+    }),
+    fenceSpec({
+        name: 'WhiteFenceGate',
+        label: 'Vrata za bijelu ogradu',
+        height: '0.72',
+        price: '8',
+        shortDescription:
+            'Bijela vrtna vrata koja se otvaraju dodirom i uklapaju u bijelu ogradu.',
+        fullDescription:
+            'Bijela šiljasta vrata povezuju se s tankom bijelom ogradom. Otvori ih dodirom ili avatarom kako bi ljudi i životinje mogli proći, a zatvori ih za ponovno ograđen prolaz.',
+    }),
+    fenceSpec({
+        name: 'StoneFenceGate',
+        label: 'Vrata za kamenu ogradu',
+        height: '0.68',
+        price: '8',
+        shortDescription:
+            'Metalna vrtna vrata između stupova od nepravilnog kamena.',
+        fullDescription:
+            'Čvrsti kameni stupovi nose jednostavna metalna vrata za prolaz kroz kamenu ogradu. Otvorena propuštaju avatare i životinje, a zatvorena ponovno zaustavljaju prolaz.',
+    }),
+    fenceSpec({
+        name: 'PolishedStoneFenceGate',
+        label: 'Vrata za ogradu od poliranog kamena',
+        height: '0.68',
+        price: '8',
+        shortDescription:
+            'Metalna vrtna vrata između glatkih stupova od poliranog kamena.',
+        fullDescription:
+            'Glatki kameni stupovi i jednostavno metalno krilo stvaraju uredan prolaz kroz ogradu od poliranog kamena. Vrata se otvaraju dodirom ili avatarom te u otvorenom položaju propuštaju životinje.',
     }),
 ] satisfies Array<{
     name: string;
@@ -85,6 +129,7 @@ const blockSpecs = [
 function parseOptions(argv: string[]) {
     let apply = false;
     let blockName: string | null = null;
+    let gatesOnly = false;
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
         if (argument === '--') {
@@ -92,6 +137,10 @@ function parseOptions(argv: string[]) {
         }
         if (argument === '--apply') {
             apply = true;
+            continue;
+        }
+        if (argument === '--gates-only') {
+            gatesOnly = true;
             continue;
         }
         if (argument === '--name') {
@@ -105,7 +154,7 @@ function parseOptions(argv: string[]) {
         }
         throw new Error(`Unknown argument: ${argument}`);
     }
-    return { apply, blockName };
+    return { apply, blockName, gatesOnly };
 }
 
 function attributePath(definition: SelectAttributeDefinition) {
@@ -166,12 +215,20 @@ async function getExistingAttributeValue({
 }
 
 async function main() {
-    const { apply, blockName } = parseOptions(process.argv.slice(2));
+    const { apply, blockName, gatesOnly } = parseOptions(process.argv.slice(2));
+    const gateNames = new Set([
+        'FenceGate',
+        'WhiteFenceGate',
+        'StoneFenceGate',
+        'PolishedStoneFenceGate',
+    ]);
     const selectedBlockSpecs = blockName
         ? blockSpecs.filter((spec) => spec.name === blockName)
-        : blockSpecs;
+        : blockSpecs.filter((spec) =>
+              gatesOnly ? gateNames.has(spec.name) : !gateNames.has(spec.name),
+          );
     if (selectedBlockSpecs.length === 0) {
-        throw new Error(`Unknown stone fence block: ${blockName}`);
+        throw new Error(`Unknown fence block: ${blockName}`);
     }
 
     const definitions = await getAttributeDefinitions(entityTypeName);

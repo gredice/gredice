@@ -15,7 +15,18 @@ export const fenceBlockNames = [
 
 export type FenceBlockName = (typeof fenceBlockNames)[number];
 
+export const fenceGateBlockNames = [
+    'FenceGate',
+    'WhiteFenceGate',
+    'StoneFenceGate',
+    'PolishedStoneFenceGate',
+] as const;
+
+export type FenceGateBlockName = (typeof fenceGateBlockNames)[number];
+export type FenceTopologyBlockName = FenceBlockName | FenceGateBlockName;
+
 const fenceBlockNameSet: ReadonlySet<string> = new Set(fenceBlockNames);
+const fenceGateBlockNameSet: ReadonlySet<string> = new Set(fenceGateBlockNames);
 const fenceSpanPriority = new Map(
     fenceBlockNames.map((name, index) => [name, index]),
 );
@@ -24,9 +35,25 @@ export function isFenceBlockName(name: string): name is FenceBlockName {
     return fenceBlockNameSet.has(name);
 }
 
+export function isFenceGateBlockName(name: string): name is FenceGateBlockName {
+    return fenceGateBlockNameSet.has(name);
+}
+
+export function isFenceTopologyBlockName(
+    name: string,
+): name is FenceTopologyBlockName {
+    return isFenceBlockName(name) || isFenceGateBlockName(name);
+}
+
 export function doesFenceOwnSpan(sourceName: string, neighborName: string) {
-    if (!isFenceBlockName(sourceName) || !isFenceBlockName(neighborName)) {
+    if (
+        !isFenceBlockName(sourceName) ||
+        !isFenceTopologyBlockName(neighborName)
+    ) {
         return false;
+    }
+    if (isFenceGateBlockName(neighborName)) {
+        return true;
     }
     if (sourceName === neighborName) {
         return true;
@@ -42,6 +69,7 @@ export function doesFenceOwnMixedSpan(
     neighborName: string,
 ) {
     return (
+        !isFenceGateBlockName(neighborName) &&
         sourceName !== neighborName &&
         doesFenceOwnSpan(sourceName, neighborName)
     );

@@ -23,6 +23,14 @@ const newBlockCatalogItems = [
     { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
     { label: 'Kamena ograda', price: 5, picker: 'Ograde' },
     { label: 'Ograda od poliranog kamena', price: 5, picker: 'Ograde' },
+    { label: 'Vrata za drvenu ogradu', price: 8, picker: 'Ograde' },
+    { label: 'Vrata za bijelu ogradu', price: 8, picker: 'Ograde' },
+    { label: 'Vrata za kamenu ogradu', price: 8, picker: 'Ograde' },
+    {
+        label: 'Vrata za ogradu od poliranog kamena',
+        price: 8,
+        picker: 'Ograde',
+    },
     { label: 'Kamena staza', price: 50, picker: 'Dekoracija' },
     { label: 'Ribarska barka', price: 150, picker: 'Dekoracija' },
     { label: 'Emajlirana vrtna lampa', price: 80, picker: 'Rasvjeta' },
@@ -688,6 +696,14 @@ test('connected fences are grouped under Ograde', async ({ mount, page }) => {
     await expect(
         page.getByRole('button', { name: 'Ograda od poliranog kamena' }),
     ).toBeVisible();
+    for (const label of [
+        'Vrata za drvenu ogradu',
+        'Vrata za bijelu ogradu',
+        'Vrata za kamenu ogradu',
+        'Vrata za ogradu od poliranog kamena',
+    ]) {
+        await expect(page.getByRole('button', { name: label })).toBeVisible();
+    }
 });
 
 for (const item of newBlockCatalogItems) {

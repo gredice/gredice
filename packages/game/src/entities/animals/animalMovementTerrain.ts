@@ -2,6 +2,8 @@ import type { BlockData } from '@gredice/client';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getStackBlockHeight } from '../../utils/stackHeightCore';
+import { isFenceGateBlockName } from '../fenceConnections';
+import { isFenceGateOpen } from '../fenceGateState';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import { isTerrainStairBlockName } from '../terrainStairs';
 import {
@@ -236,7 +238,8 @@ export function createAnimalBlockedCells(stacks: Stack[] | undefined) {
             !topBlock ||
             isAnimalGroundBlockName(topBlock.name) ||
             isAnimalWaterBlockName(topBlock.name) ||
-            passThroughDecorationNames.has(topBlock.name)
+            passThroughDecorationNames.has(topBlock.name) ||
+            (isFenceGateBlockName(topBlock.name) && isFenceGateOpen(topBlock))
         ) {
             continue;
         }

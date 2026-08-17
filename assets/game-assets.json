@@ -1791,6 +1791,41 @@
             ]
         },
         {
+            "name": "FenceGate",
+            "source": "FenceGate.blend",
+            "output": "FenceGate.glb",
+            "version": "4cd560a828f5",
+            "preload": "lazy",
+            "objects": ["FenceGate_Posts", "FenceGate_Leaf"]
+        },
+        {
+            "name": "WhiteFenceGate",
+            "source": "WhiteFenceGate.blend",
+            "output": "WhiteFenceGate.glb",
+            "version": "46b5f10aa42f",
+            "preload": "lazy",
+            "objects": ["WhiteFenceGate_Posts", "WhiteFenceGate_Leaf"]
+        },
+        {
+            "name": "StoneFenceGate",
+            "source": "StoneFenceGate.blend",
+            "output": "StoneFenceGate.glb",
+            "version": "0e85c6a29a07",
+            "preload": "lazy",
+            "objects": ["StoneFenceGate_Posts", "StoneFenceGate_Leaf"]
+        },
+        {
+            "name": "PolishedStoneFenceGate",
+            "source": "PolishedStoneFenceGate.blend",
+            "output": "PolishedStoneFenceGate.glb",
+            "version": "14aadf3628dc",
+            "preload": "lazy",
+            "objects": [
+                "PolishedStoneFenceGate_Posts",
+                "PolishedStoneFenceGate_Leaf"
+            ]
+        },
+        {
             "name": "Greenhouse",
             "source": "Greenhouse.blend",
             "output": "Greenhouse.glb",
