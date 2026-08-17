@@ -161,6 +161,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     onLocalVisitorViewChange?: (view: GardenAvatarView) => void;
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
+    noSound?: boolean;
     noWeather?: boolean;
     overlayChildren?: ReactNode;
     renderDetails?: boolean;
@@ -455,6 +456,7 @@ function PublicGardenScene({
     loadPlantSorts,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noSound,
     noWeather,
     normalizedStacks,
     onAvatarInteractBlock,
@@ -479,6 +481,7 @@ function PublicGardenScene({
     loadPlantSorts: boolean;
     localVisitorActivationRequest?: number;
     localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
+    noSound: boolean;
     noWeather: boolean;
     normalizedStacks: Stack[];
     onAvatarInteractBlock?: (blockId: string) => void;
@@ -538,6 +541,7 @@ function PublicGardenScene({
             data-public-garden-capture-plants-ready={
                 capture ? plantSortsLoaded : undefined
             }
+            data-public-garden-sound={noSound ? 'disabled' : 'enabled'}
         >
             {blockDataLoaded && gardenCacheReady ? (
                 <Scene
@@ -574,7 +578,7 @@ function PublicGardenScene({
                                         : undefined
                                 }
                                 noBackground={Boolean(capture?.transparent)}
-                                noSound
+                                noSound={noSound}
                                 noWeather={Boolean(capture) || noWeather}
                                 quality={qualityProfile}
                                 weather={undefined}
@@ -896,6 +900,7 @@ export function PublicGardenViewer({
     interactiveBlockIds,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noSound = true,
     noWeather = false,
     overlayChildren,
     onLocalVisitorViewChange,
@@ -1167,6 +1172,7 @@ export function PublicGardenViewer({
                                     localVisitorSpawnPoint={
                                         localVisitorSpawnPoint
                                     }
+                                    noSound={Boolean(capture) || noSound}
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
                                     onAvatarInteractBlock={onSelectBlock}

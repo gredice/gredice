@@ -575,6 +575,10 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     await expectOutletCanvasToFillScene(page);
     const productSigns = page.locator('[data-outlet-garden-product-sign]');
     await expect(productSigns).toHaveCount(3);
+    await expect(page.locator('[data-public-garden-sound]')).toHaveAttribute(
+        'data-public-garden-sound',
+        'enabled',
+    );
     const frontProductSigns = page.locator(
         '[data-outlet-garden-product-sign][data-outlet-garden-product-sign-face="front"]',
     );
@@ -599,6 +603,10 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         '[data-outlet-garden-product-sign-price-label]',
     );
     await expect(productSignPriceLabels).toHaveCount(3);
+    await expect(productSignPriceLabels.first()).toHaveAttribute(
+        'data-outlet-garden-product-sign-price-occlusion',
+        'visual-targets',
+    );
     await expect(
         productSignPriceLabels.filter({ hasText: '2,49 €' }),
     ).toBeVisible();

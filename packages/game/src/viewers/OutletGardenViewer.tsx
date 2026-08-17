@@ -570,6 +570,7 @@ export function OutletGardenViewer({
                         initialView={sceneInitialView}
                         interactiveBlockIds={interactiveBlockIds}
                         localVisitorSpawnPoint={outletGardenVisitorSpawnPoint}
+                        noSound={false}
                         noWeather
                         onLocalVisitorViewChange={handleLocalVisitorViewChange}
                         onSelectBlock={selectBlock}

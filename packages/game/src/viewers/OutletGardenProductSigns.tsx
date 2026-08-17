@@ -355,6 +355,7 @@ function OutletGardenProductSignFaces({
             <Html
                 transform
                 distanceFactor={outletProductSignFaceDistanceFactor}
+                occlude={occlude}
                 pointerEvents="none"
                 position={[
                     0.29,
@@ -378,6 +379,9 @@ function OutletGardenProductSignFaces({
                     data-outlet-garden-product-sign-price-face={visibleFace}
                     data-outlet-garden-product-sign-price-label={
                         product.plantSortId
+                    }
+                    data-outlet-garden-product-sign-price-occlusion={
+                        Array.isArray(occlude) ? 'visual-targets' : 'raycast'
                     }
                     style={{
                         fontSize: `${priceFontSize.toString()}px`,
