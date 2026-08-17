@@ -42,13 +42,9 @@ export type RaisedBedInsectProtectionMeshVisual = {
 
 const meshInset = 0.018;
 const meshBaseLift = 0.026;
-const archSegmentCount = 6;
+const archSegmentCount = 8;
 const fieldMeshSize = 0.25;
 const wholeBedMeshPadding = 0.02;
-
-function clamp(value: number, minimum: number, maximum: number) {
-    return Math.min(Math.max(value, minimum), maximum);
-}
 
 export function createRaisedBedWholeInsectProtectionMeshLayout({
     blocks,
@@ -142,18 +138,26 @@ export function createRaisedBedInsectProtectionMeshVisual(
         (lengthRunsAlongX ? layout.depth : layout.width) - meshInset * 2,
         0.18,
     );
-    const archHeight = clamp(span * 0.72, 0.18, 0.48);
+    const archRadius = span / 2;
     const archPoints = Array.from(
         { length: archSegmentCount + 1 },
         (_, index) => {
             const progress = index / archSegmentCount;
+            const lateral = -archRadius + archRadius * 2 * progress;
             return {
-                lateral: -span / 2 + span * progress,
-                y: meshBaseLift + Math.sin(progress * Math.PI) * archHeight,
+                lateral,
+                y:
+                    meshBaseLift +
+                    Math.sqrt(
+                        Math.max(
+                            archRadius * archRadius - lateral * lateral,
+                            0,
+                        ),
+                    ),
             };
         },
     );
-    const hoopCount = clamp(Math.round(length / 0.32) + 1, 3, 6);
+    const hoopCount = length > fieldMeshSize ? 4 : 2;
     const hoopPositions = Array.from(
         { length: hoopCount },
         (_, index) =>
@@ -183,19 +187,6 @@ export function createRaisedBedInsectProtectionMeshVisual(
                     : [0, 0, -Math.atan2(deltaLateral, deltaY)],
             });
         }
-    }
-
-    for (const [index, point] of archPoints.entries()) {
-        frameRods.push({
-            key: `longitudinal-${index.toString()}`,
-            length,
-            position: lengthRunsAlongX
-                ? [0, point.y, point.lateral]
-                : [point.lateral, point.y, 0],
-            rotation: lengthRunsAlongX
-                ? [0, 0, -Math.PI / 2]
-                : [Math.PI / 2, 0, 0],
-        });
     }
 
     for (let index = 0; index < archSegmentCount; index += 1) {
