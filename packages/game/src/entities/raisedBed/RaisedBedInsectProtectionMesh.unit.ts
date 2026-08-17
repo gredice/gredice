@@ -76,6 +76,26 @@ test('builds four circular arches and one continuous cover without longitudinal 
         ) < 0.000_001,
     );
 
+    const coverProfile = Array.from(
+        { length: visual.cover.positions.length / 6 },
+        (_, index) => ({
+            lateral: visual.cover.positions[index * 6 + 2],
+            y: visual.cover.positions[index * 6 + 1],
+        }),
+    );
+    const chordLengths = coverProfile.slice(1).map((point, index) => {
+        const previous = coverProfile[index];
+        return Math.hypot(
+            point.lateral - previous.lateral,
+            point.y - previous.y,
+        );
+    });
+    assert.ok(
+        chordLengths.every(
+            (length) => Math.abs(length - chordLengths[0]) < 0.000_001,
+        ),
+    );
+
     const profilePoints = visual.endShape.getPoints();
     const baseY = Math.min(...profilePoints.map((point) => point.y));
     const radius = Math.max(...profilePoints.map((point) => Math.abs(point.x)));

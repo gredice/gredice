@@ -146,17 +146,10 @@ export function createRaisedBedInsectProtectionMeshVisual(
         { length: archSegmentCount + 1 },
         (_, index) => {
             const progress = index / archSegmentCount;
-            const lateral = -archRadius + archRadius * 2 * progress;
+            const angle = progress * Math.PI;
             return {
-                lateral,
-                y:
-                    meshBaseLift +
-                    Math.sqrt(
-                        Math.max(
-                            archRadius * archRadius - lateral * lateral,
-                            0,
-                        ),
-                    ),
+                lateral: -Math.cos(angle) * archRadius,
+                y: meshBaseLift + Math.sin(angle) * archRadius,
             };
         },
     );
