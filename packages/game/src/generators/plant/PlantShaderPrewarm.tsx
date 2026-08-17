@@ -8,19 +8,15 @@ import {
 } from '../../scene/generatedPlantProfileMetrics';
 import {
     GENERATED_PLANT_SHADER_PREWARM_COMPILE_TIMEOUT_MS,
-    type GeneratedPlantShaderPrewarmCompletionStatus,
+    type GeneratedPlantShaderPrewarmLifecycleStatus,
     type GeneratedPlantShaderPrewarmResult,
+    getGeneratedPlantShaderProgramDiagnostics,
+    publishGeneratedPlantShaderPrewarmLifecycleStatus,
     requestGeneratedPlantShaderPrewarm,
     subscribeToGeneratedPlantShaderPrewarmContextRecovery,
 } from './lib/plantShaderPrewarm';
 
-const PLANT_SHADER_PREWARM_IDLE_TIMEOUT_MS = 150;
-const PLANT_SHADER_PREWARM_FALLBACK_DELAY_MS = 50;
-
-export type GeneratedPlantShaderPrewarmLifecycleStatus =
-    | GeneratedPlantShaderPrewarmCompletionStatus
-    | 'compiling'
-    | 'scheduled';
+export type { GeneratedPlantShaderPrewarmLifecycleStatus } from './lib/plantShaderPrewarm';
 
 export interface PlantShaderPrewarmProps {
     compileTimeoutMs?: number;
@@ -48,21 +44,21 @@ export function PlantShaderPrewarm({
         let activeAttemptController: AbortController | null = null;
         let attemptId = 0;
         let completed = false;
-        let idleCallbackId: number | null = null;
-        let fallbackTimeoutId: number | null = null;
         const profileSessionId = enabled
             ? getGeneratedPlantProfileSessionId()
             : null;
         let programCountBefore = gl.info.programs?.length ?? null;
 
-        const cancelScheduledCompile = () => {
-            if (idleCallbackId !== null) {
-                window.cancelIdleCallback(idleCallbackId);
-                idleCallbackId = null;
-            }
-            if (fallbackTimeoutId !== null) {
-                window.clearTimeout(fallbackTimeoutId);
-                fallbackTimeoutId = null;
+        const publishStatus = (
+            status: GeneratedPlantShaderPrewarmLifecycleStatus | null,
+        ) => {
+            publishGeneratedPlantShaderPrewarmLifecycleStatus({
+                renderer: gl,
+                status,
+                variantKey,
+            });
+            if (status !== null) {
+                onStatusChange?.(status);
             }
         };
 
@@ -74,8 +70,6 @@ export function PlantShaderPrewarm({
         };
 
         const compile = () => {
-            idleCallbackId = null;
-            fallbackTimeoutId = null;
             if (!active) {
                 return;
             }
@@ -85,7 +79,7 @@ export function PlantShaderPrewarm({
             const controller = new AbortController();
             activeAttemptController = controller;
             programCountBefore = gl.info.programs?.length ?? null;
-            onStatusChange?.('compiling');
+            publishStatus('compiling');
             const request = requestGeneratedPlantShaderPrewarm({
                 camera,
                 compiler: {
@@ -120,11 +114,15 @@ export function PlantShaderPrewarm({
                         durationMs: result.durationMs,
                         programCountAfter: gl.info.programs?.length ?? null,
                         programCountBefore,
+                        programsAfter:
+                            getGeneratedPlantShaderProgramDiagnostics(
+                                gl.info.programs,
+                            ),
                         sessionId: profileSessionId,
                         status: result.status,
                     });
                 }
-                onStatusChange?.(result.status);
+                publishStatus(result.status);
                 onComplete?.(result);
             });
         };
@@ -134,7 +132,6 @@ export function PlantShaderPrewarm({
                 return;
             }
 
-            cancelScheduledCompile();
             completed = false;
             programCountBefore = gl.info.programs?.length ?? null;
             if (profileSessionId !== null) {
@@ -144,26 +141,16 @@ export function PlantShaderPrewarm({
                     status: 'scheduled',
                 });
             }
-            onStatusChange?.('scheduled');
-
-            if (typeof window.requestIdleCallback === 'function') {
-                idleCallbackId = window.requestIdleCallback(compile, {
-                    timeout: PLANT_SHADER_PREWARM_IDLE_TIMEOUT_MS,
-                });
-            } else {
-                fallbackTimeoutId = window.setTimeout(
-                    compile,
-                    PLANT_SHADER_PREWARM_FALLBACK_DELAY_MS,
-                );
-            }
+            publishStatus('scheduled');
+            compile();
         };
 
         const unsubscribeContextRecovery =
             subscribeToGeneratedPlantShaderPrewarmContextRecovery({
                 eventTarget: gl.domElement,
                 onContextLost: () => {
-                    cancelScheduledCompile();
                     cancelActiveAttempt();
+                    publishStatus(null);
                 },
                 onContextRestored: () => {
                     if (enabled) {
@@ -187,8 +174,8 @@ export function PlantShaderPrewarm({
             }
             active = false;
             unsubscribeContextRecovery();
-            cancelScheduledCompile();
             cancelActiveAttempt();
+            publishStatus(null);
         };
     }, [
         camera,
