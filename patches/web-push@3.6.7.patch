@@ -1,0 +1,15 @@
+diff --git a/src/web-push-lib.js b/src/web-push-lib.js
+index a47df05..d365f49 100644
+--- a/src/web-push-lib.js
++++ b/src/web-push-lib.js
+@@ -3 +2,0 @@
+-const url = require('url');
+@@ -274 +273 @@ WebPushLib.prototype.generateRequestDetails = function(subscription, payload, op
+-      const parsedUrl = url.parse(subscription.endpoint);
++      const parsedUrl = new URL(subscription.endpoint);
+@@ -348 +347 @@ WebPushLib.prototype.sendNotification = function(subscription, payload, options)
+-      const urlParts = url.parse(requestDetails.endpoint);
++      const urlParts = new URL(requestDetails.endpoint);
+@@ -351 +350 @@ WebPushLib.prototype.sendNotification = function(subscription, payload, options)
+-      httpsOptions.path = urlParts.path;
++      httpsOptions.path = urlParts.pathname + urlParts.search;
