@@ -2901,7 +2901,13 @@ async function assertRaisedBedAllowsCheckoutItem(
     }
 
     const raisedBed = await dependencies.getRaisedBed(raisedBedId);
-    if (raisedBed && dependencies.isRaisedBedAbandoned(raisedBed.status)) {
+    if (!raisedBed) {
+        console.warn('Checkout raised bed is no longer available.', {
+            raisedBedId,
+        });
+        return false;
+    }
+    if (dependencies.isRaisedBedAbandoned(raisedBed.status)) {
         console.warn(
             `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
             { raisedBedId },

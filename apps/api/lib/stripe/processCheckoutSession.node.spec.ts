@@ -292,7 +292,7 @@ function makeDependencies(
         },
         getRaisedBed: async (...args: unknown[]) => {
             record(calls, 'getRaisedBed', args);
-            return null;
+            return { status: 'active' };
         },
         getRaisedBedPlantingByEventAggregateId: async (...args: unknown[]) => {
             record(calls, 'getRaisedBedPlantingByEventAggregateId', args);
@@ -1975,6 +1975,38 @@ describe('processCheckoutSession', () => {
         );
         assert.strictEqual(callsNamed(calls, 'setCartItemPaid').length, 1);
         assert.strictEqual(callsNamed(calls, 'createTransaction').length, 1);
+    });
+
+    it('keeps a Stripe-paid operation open when its raised bed was deleted', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getStripeCheckoutSession: async (...args: unknown[]) => {
+                record(calls, 'getStripeCheckoutSession', args);
+                return makeSession();
+            },
+            getShoppingCart: async (...args: unknown[]) => {
+                record(calls, 'getShoppingCart', args);
+                return makeCart();
+            },
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return null;
+            },
+        });
+
+        await assert.rejects(
+            processCheckoutSession('cs_paid', dependencies),
+            /raised_bed_unavailable/,
+        );
+
+        assert.equal(callsNamed(calls, 'getRaisedBed').length, 1);
+        assert.equal(callsNamed(calls, 'upsertRaisedBedField').length, 0);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            0,
+        );
+        assert.equal(callsNamed(calls, 'setCartItemPaid').length, 0);
+        assert.equal(callsNamed(calls, 'createTransaction').length, 0);
     });
 
     it('finishes a mapped Stripe operation after its raised bed is abandoned', async () => {
@@ -4436,6 +4468,47 @@ describe('processItem', () => {
             'getRaisedBed',
             'isRaisedBedAbandoned',
         ]);
+        assert.equal(
+            callsNamed(calls, 'getOrCreateCheckoutOperation').length,
+            0,
+        );
+    });
+
+    it('does not recreate an operation field below a deleted raised bed', async () => {
+        const calls: RecordedCall[] = [];
+        const dependencies = makeDependencies(calls, {
+            getRaisedBed: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBed', args);
+                return null;
+            },
+        });
+
+        const result = await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 2500,
+                additionalData: null,
+                cartId: 100,
+                cartItemId: 1,
+                currency: 'eur',
+                entityId: '42',
+                entityTypeName: 'operation',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(result, {
+            status: 'not_fulfilled',
+            reason: 'raised_bed_unavailable',
+        });
+        assert.deepStrictEqual(callNames(calls), [
+            'getCheckoutOperationMapping',
+            'getRaisedBed',
+        ]);
+        assert.equal(callsNamed(calls, 'upsertRaisedBedField').length, 0);
         assert.equal(
             callsNamed(calls, 'getOrCreateCheckoutOperation').length,
             0,
