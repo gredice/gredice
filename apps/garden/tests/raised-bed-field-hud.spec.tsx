@@ -210,6 +210,29 @@ function emptyScenario(): RaisedBedScenario {
     return { fields: [] };
 }
 
+function emptyFieldOperationsScenario(): RaisedBedScenario {
+    return {
+        fields: [],
+        operations: [
+            buildOperation({
+                appliesToAllTargets: true,
+                id: 191,
+                name: 'mock-empty-field-preparation',
+                label: 'Priprema praznog polja',
+                stageName: 'soilPreparation',
+                stageLabel: 'Priprema tla',
+            }),
+            buildOperation({
+                id: 192,
+                name: 'mock-plant-specific-care',
+                label: 'Njega određene biljke',
+                stageName: 'maintenance',
+                stageLabel: 'Održavanje',
+            }),
+        ],
+    };
+}
+
 function abandonedScenario(): RaisedBedScenario {
     return {
         fields: [],
@@ -880,19 +903,38 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toHaveAttribute('aria-selected', 'true');
     });
 
-    test('empty field shows sowing seed icon and no indicator stack', async ({
+    test('empty field keeps sowing as the primary action and exposes field operations', async ({
         mount,
         page,
     }) => {
         await mount(
             <RaisedBedFieldHudStory
-                scenario={emptyScenario()}
+                scenario={emptyFieldOperationsScenario()}
                 positionIndex={0}
             />,
         );
 
-        await expect(page.getByRole('button').first()).toBeVisible();
-        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: 'Posij biljku na polju 1' }),
+        ).toBeVisible();
+        const operationsTrigger = page.getByRole('button', {
+            name: 'Otvori radnje za polje 1',
+        });
+        await expect(operationsTrigger).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(1);
+
+        await operationsTrigger.click();
+
+        const dialog = page.getByRole('dialog', {
+            name: 'Radnje za polje 1',
+        });
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Priprema praznog polja 0.10€',
+            }),
+        ).toBeVisible();
+        await expect(dialog.getByText('Njega određene biljke')).toHaveCount(0);
     });
 
     test('cart item shows cart indicator and scheduled date badge', async ({
@@ -926,7 +968,10 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(
             page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
         ).toBeVisible();
-        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(1);
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(18);
+        await expect(
+            page.getByRole('button', { name: /Otvori radnje za polje/ }),
+        ).toHaveCount(18);
         await expect(
             page.locator('[data-scheduled-sowing-badge]'),
         ).toContainText('20');

@@ -1,10 +1,7 @@
 import type { OperationData } from '@gredice/client';
 import { useCallback } from 'react';
+import { isFieldOperationAvailable } from './fieldOperationAvailability';
 import { OperationsList } from './shared/OperationsList';
-
-function filterPlantOperations(operation: OperationData) {
-    return operation.attributes.application === 'plant';
-}
 
 export function RaisedBedFieldOperationsTab({
     gardenId,
@@ -17,7 +14,14 @@ export function RaisedBedFieldOperationsTab({
     positionIndex: number;
     plantSortId?: number;
 }) {
-    const filterFunc = useCallback(filterPlantOperations, []);
+    const filterFunc = useCallback(
+        (operation: OperationData) =>
+            isFieldOperationAvailable(
+                operation,
+                typeof plantSortId === 'number',
+            ),
+        [plantSortId],
+    );
 
     return (
         <OperationsList

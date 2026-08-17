@@ -9,6 +9,7 @@ import { readAdvancedSowingCartItemSelectionSummary } from './advancedSowingSubm
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
+import { RaisedBedFieldOperationsModal } from './RaisedBedFieldOperationsModal';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 import { PlantPicker } from './RaisedBedPlantPicker';
 import { ScheduledSowingDateBadge } from './ScheduledSowingDateBadge';
@@ -67,6 +68,7 @@ export function RaisedBedFieldItemEmpty({
     raisedBedId,
     positionIndex,
     isDragging,
+    showOperations = true,
 }: {
     raisedBedId: number;
     gardenId: number;
@@ -75,6 +77,7 @@ export function RaisedBedFieldItemEmpty({
     plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     positionIndex: number;
     isDragging?: boolean;
+    showOperations?: boolean;
 }) {
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -160,6 +163,13 @@ export function RaisedBedFieldItemEmpty({
                 {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
+                {showOperations && (
+                    <RaisedBedFieldOperationsModal
+                        gardenId={gardenId}
+                        positionIndex={positionIndex}
+                        raisedBedId={raisedBedId}
+                    />
+                )}
                 {shouldShowAllPlantHistory && (
                     <RaisedBedFieldPlantHistoryModal
                         entries={plantHistory}
