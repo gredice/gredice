@@ -32,7 +32,7 @@ export function buildDetailedRaisedBedInspectionNotification({
     } as const;
 }
 
-export async function notifyDetailedRaisedBedInspectionCompleted(
+export async function notifyDetailedRaisedBedInspectionVerified(
     operationId: number,
 ) {
     const operation = await getOperationById(operationId);
@@ -41,14 +41,17 @@ export async function notifyDetailedRaisedBedInspectionCompleted(
     }
 
     if (
+        operation.status !== 'completed' ||
         !operation.accountId ||
         !operation.gardenId ||
         !operation.raisedBedId ||
         !operation.completionEventId ||
-        !operation.completedAt
+        !operation.completedAt ||
+        !operation.verificationEventId ||
+        !operation.verifiedAt
     ) {
         throw new Error(
-            'Completed detailed raised bed inspection is missing its account, garden, raised bed, or completion event.',
+            'Detailed raised bed inspection is not verified or is missing its account, garden, raised bed, completion, or verification event.',
         );
     }
 
@@ -62,7 +65,7 @@ export async function notifyDetailedRaisedBedInspectionCompleted(
     await createNotification(
         {
             accountId: operation.accountId,
-            timestamp: operation.completedAt,
+            timestamp: operation.verifiedAt,
             ...buildDetailedRaisedBedInspectionNotification({
                 gardenId: operation.gardenId,
                 operationId: operation.id,

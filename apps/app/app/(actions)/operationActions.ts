@@ -11,7 +11,7 @@ import {
     validateHostedImageUrl,
 } from '@gredice/js/urls';
 import {
-    notifyDetailedRaisedBedInspectionCompleted,
+    notifyDetailedRaisedBedInspectionVerified,
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
 } from '@gredice/notifications';
@@ -867,7 +867,7 @@ async function notifyVerifiedOperationCompletion(
 
     const detailedInspectionHandled =
         operation.entityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
-            ? await notifyDetailedRaisedBedInspectionCompleted(operation.id)
+            ? await notifyDetailedRaisedBedInspectionVerified(operation.id)
             : false;
     const completionNotification = detailedInspectionHandled
         ? null
@@ -974,10 +974,6 @@ async function completeOperationForActor(
         await notifyVerifiedOperationCompletion(verifiedOperation, {
             notifySlack: result.created,
         });
-    } else if (
-        expectedEntityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
-    ) {
-        await notifyDetailedRaisedBedInspectionCompleted(operationId);
     }
 
     await revalidateOperationPaths(operation);
