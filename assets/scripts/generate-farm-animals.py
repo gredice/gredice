@@ -335,7 +335,7 @@ def create_chicken(output_dir: Path) -> None:
         0,
         0.26,
         orange,
-        rotation=(math.pi / 2, 0, 0),
+        rotation=(-math.pi / 2, 0, 0),
         vertices=6,
     )
     wattle = add_ico_sphere(
@@ -672,8 +672,8 @@ def create_chicken_coop(output_dir: Path) -> None:
     )
     dark = material("Material.ChickenCoop.Dark", (0.07, 0.045, 0.028, 1))
     straw = material("Material.ChickenCoop.Straw", (0.88, 0.61, 0.15, 1))
-    metal = material(
-        "Material.ChickenCoop.Enamel", (0.18, 0.43, 0.5, 1), roughness=0.55, metallic=0.12
+    water = material(
+        "Material.ChickenCoop.Water", (0.18, 0.43, 0.5, 1), roughness=0.28
     )
 
     wood_parts: list[bpy.types.Object] = []
@@ -682,7 +682,8 @@ def create_chicken_coop(output_dir: Path) -> None:
     trim_parts: list[bpy.types.Object] = []
     dark_parts: list[bpy.types.Object] = []
     straw_parts: list[bpy.types.Object] = []
-    metal_parts: list[bpy.types.Object] = []
+    bowl_parts: list[bpy.types.Object] = []
+    water_parts: list[bpy.types.Object] = []
 
     wood_parts.append(add_cube("Coop_Base", (0, -0.03, 0.2), (0.76, 0.68, 0.1), wood))
     for x in (-0.31, 0.31):
@@ -716,9 +717,27 @@ def create_chicken_coop(output_dir: Path) -> None:
             add_cylinder("Coop_Ridge", (0, -0.03, 1.09), 0.055, 0.84, terracotta, rotation=(math.pi / 2, 0, 0), vertices=8),
         ]
     )
-    light_parts.append(add_cube("Coop_Ramp", (0, 0.54, 0.22), (0.34, 0.58, 0.055), wood_light, rotation=(math.radians(18), 0, 0), bevel_width=0.012))
+    light_parts.append(
+        add_cube(
+            "Coop_Ramp",
+            (0, 0.54, 0.22),
+            (0.34, 0.58, 0.055),
+            wood_light,
+            rotation=(math.radians(-18), 0, 0),
+            bevel_width=0.012,
+        )
+    )
     for index in range(4):
-        wood_parts.append(add_cube("Coop_RampCleat", (0, 0.36 + index * 0.12, 0.29 - index * 0.037), (0.38, 0.035, 0.035), wood, rotation=(math.radians(18), 0, 0), bevel_width=0.007))
+        wood_parts.append(
+            add_cube(
+                "Coop_RampCleat",
+                (0, 0.36 + index * 0.12, 0.29 - index * 0.037),
+                (0.38, 0.035, 0.035),
+                wood,
+                rotation=(math.radians(-18), 0, 0),
+                bevel_width=0.007,
+            )
+        )
 
     # A small hazel-wattle side enclosure gives the silhouette a local garden character.
     for x in (-0.46, 0.46):
@@ -730,11 +749,37 @@ def create_chicken_coop(output_dir: Path) -> None:
 
     for index in range(7):
         straw_parts.append(add_cylinder("Coop_Straw", (-0.22 + index * 0.072, -0.03 + (index % 2) * 0.05, 0.3), 0.014, 0.42, straw, rotation=(math.radians(82), math.radians(index * 11), 0), vertices=6, bevel_width=0.003))
-    metal_parts.extend(
+    bowl_parts.extend(
         [
-            add_cylinder("Coop_Bowl", (-0.31, 0.67, 0.095), 0.12, 0.07, metal, vertices=12),
-            add_torus("Coop_BowlRim", (-0.31, 0.67, 0.135), 0.11, 0.018, metal, major_segments=12, minor_segments=5),
+            add_cylinder(
+                "Coop_Bowl",
+                (-0.31, 0.67, 0.095),
+                0.12,
+                0.07,
+                wood,
+                vertices=12,
+            ),
+            add_torus(
+                "Coop_BowlRim",
+                (-0.31, 0.67, 0.135),
+                0.11,
+                0.018,
+                wood,
+                major_segments=12,
+                minor_segments=5,
+            ),
         ]
+    )
+    water_parts.append(
+        add_cylinder(
+            "Coop_Water",
+            (-0.31, 0.67, 0.137),
+            0.09,
+            0.008,
+            water,
+            vertices=12,
+            bevel_width=0,
+        )
     )
 
     roles = [
@@ -744,7 +789,8 @@ def create_chicken_coop(output_dir: Path) -> None:
         join_objects(trim_parts, "ChickenCoop_Trim"),
         join_objects(dark_parts, "ChickenCoop_Entrance"),
         join_objects(straw_parts, "ChickenCoop_Straw"),
-        join_objects(metal_parts, "ChickenCoop_Bowl"),
+        join_objects(bowl_parts, "ChickenCoop_Bowl"),
+        join_objects(water_parts, "ChickenCoop_Water"),
     ]
     save_asset("ChickenCoop.blend", [obj.name for obj in roles], output_dir)
 
