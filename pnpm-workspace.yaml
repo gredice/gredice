@@ -45,3 +45,5 @@ patchedDependencies:
   openapi-typescript@7.13.0: patches/openapi-typescript@7.13.0.patch
   react-docgen-typescript@2.4.0: patches/react-docgen-typescript@2.4.0.patch
   tsconfck@3.1.6: patches/tsconfck@3.1.6.patch
+  # Backport https://github.com/web-push-libs/web-push/pull/948 until a release includes it.
+  'web-push@3.6.7': patches/web-push@3.6.7.patch
