@@ -4,6 +4,7 @@ import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
+import { WaterSurfaceMaterial } from './helpers/WaterSurfaceMaterial';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 
 type ChickenCoopNodeName = Extract<
@@ -75,6 +76,14 @@ export function ChickenCoop({ stack, block, rotation }: EntityInstanceProps) {
                     }}
                 />
             ))}
+            <mesh
+                geometry={nodes.ChickenCoop_Water.geometry}
+                position={nodes.ChickenCoop_Water.position}
+                rotation={nodes.ChickenCoop_Water.rotation}
+                scale={nodes.ChickenCoop_Water.scale}
+            >
+                <WaterSurfaceMaterial />
+            </mesh>
         </animated.group>
     );
 }

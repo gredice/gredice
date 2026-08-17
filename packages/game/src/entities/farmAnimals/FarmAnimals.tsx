@@ -980,14 +980,14 @@ function updateChickenPose({
             behavior === 'roam' && !moving ? Math.sin(now * 1.7) * 0.16 : 0,
     });
     poseRigNode(rig.wings[0], delta, {
-        rotationZ: swimming
-            ? -0.3 - Math.sin(now * 8.5) * 0.22
-            : dust * (-0.38 - Math.sin(now * 10) * 0.3),
-    });
-    poseRigNode(rig.wings[1], delta, {
-        rotationZ: swimming
+        rotationY: swimming
             ? 0.3 + Math.sin(now * 8.5) * 0.22
             : dust * (0.38 + Math.sin(now * 10) * 0.3),
+    });
+    poseRigNode(rig.wings[1], delta, {
+        rotationY: swimming
+            ? -0.3 - Math.sin(now * 8.5) * 0.22
+            : dust * (-0.38 - Math.sin(now * 10) * 0.3),
     });
     poseRigNode(rig.tail, delta, {
         rotationX: moving ? Math.sin(rig.walkPhase) * 0.08 : 0,

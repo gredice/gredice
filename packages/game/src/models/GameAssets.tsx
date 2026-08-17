@@ -950,6 +950,7 @@ export type GLTFResult = GLTF & {
         ChickenCoop_Entrance: THREE.Mesh;
         ChickenCoop_Straw: THREE.Mesh;
         ChickenCoop_Bowl: THREE.Mesh;
+        ChickenCoop_Water: THREE.Mesh;
         PigletPen_Wood: THREE.Mesh;
         PigletPen_Wattle: THREE.Mesh;
         PigletPen_Limewash: THREE.Mesh;
@@ -1338,12 +1339,12 @@ export type GLTFResult = GLTF & {
         'Material.Chicken.Orange': THREE.MeshStandardMaterial;
         'Material.Chicken.Red': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.Dark': THREE.MeshStandardMaterial;
-        'Material.ChickenCoop.Enamel': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.Limewash': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.Oak': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.OakLight': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.Straw': THREE.MeshStandardMaterial;
         'Material.ChickenCoop.Terracotta': THREE.MeshStandardMaterial;
+        'Material.ChickenCoop.Water': THREE.MeshStandardMaterial;
         'Material.ColorPaletteMain': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark': THREE.MeshStandardMaterial;
         'Material.DeadTree.Bark.001': THREE.MeshStandardMaterial;
