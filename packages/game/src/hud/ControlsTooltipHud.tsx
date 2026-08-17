@@ -2,6 +2,7 @@
 
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, GamepadDirectional } from '@gredice/ui/icons';
+import { cx } from '@gredice/ui/utils';
 import { useEffect, useState } from 'react';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
@@ -64,9 +65,11 @@ function prefersReducedMotion() {
 export function ControlsTooltipHud({
     mode = 'edit',
     offsetForItemsHud = true,
+    panelPosition = 'inline',
 }: {
     mode?: 'edit' | 'view';
     offsetForItemsHud?: boolean;
+    panelPosition?: 'above' | 'inline';
 } = {}) {
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
@@ -113,7 +116,13 @@ export function ControlsTooltipHud({
                 <div
                     id="game-controls-tooltip"
                     data-controls-tooltip-hud="open"
-                    className={`pointer-events-auto relative p-2 sm:p-3 ${offsetForItemsHud ? 'md:mb-24' : ''}`}
+                    className={cx(
+                        'pointer-events-auto p-2 sm:p-3',
+                        panelPosition === 'above'
+                            ? 'absolute bottom-[calc(100%+0.5rem)] left-0'
+                            : 'relative',
+                        offsetForItemsHud && 'md:mb-24',
+                    )}
                 >
                     <ControlsVisualization
                         deviceType={deviceType}

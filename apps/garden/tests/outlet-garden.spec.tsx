@@ -16,21 +16,19 @@ test('selects a live offer and exposes truthful read-only details', async ({
 
     const offerList = page.locator('[data-outlet-garden-offer-list]');
     await expect(offerList.getByRole('button')).toHaveCount(4);
-    const tomatoGroup = offerList.locator(
-        '[data-outlet-garden-plant-group="1"]',
-    );
     await expect(
-        tomatoGroup.getByRole('heading', { name: 'Rajčica', exact: true }),
-    ).toBeVisible();
+        offerList.getByRole('heading', { name: 'Rajčica', exact: true }),
+    ).toHaveCount(0);
     await expect(
-        tomatoGroup.locator('[data-outlet-garden-sort-group]'),
-    ).toHaveCount(2);
-    await expect(tomatoGroup.getByRole('button')).toHaveCount(3);
+        offerList.getByRole('heading', { name: 'Paprika', exact: true }),
+    ).toHaveCount(0);
     await expect(
-        offerList
-            .locator('[data-outlet-garden-plant-group="2"]')
-            .getByRole('heading', { name: 'Paprika', exact: true }),
-    ).toBeVisible();
+        offerList.locator('[data-outlet-garden-plant-group]'),
+    ).toHaveCount(0);
+    await expect(
+        offerList.locator('[data-outlet-garden-sort-group]'),
+    ).toHaveCount(0);
+    await expect(offerList).not.toContainText('Dostupne ponude');
 
     const paprika = offerList.getByRole('button', {
         name: /Paprika Zlata Snack/u,
@@ -135,15 +133,12 @@ test('shows plant sort imagery and names in every offer card', async ({
     await mount(<OutletGardenOfferBrowserStory />);
 
     const offerList = page.locator('[data-outlet-garden-offer-list]');
-    const tomatoGroup = offerList.locator(
-        '[data-outlet-garden-plant-group="1"]',
-    );
     await expect(
-        tomatoGroup.locator(
+        offerList.locator(
             '[data-outlet-garden-plant-image], [data-outlet-garden-plant-image-fallback]',
         ),
     ).toHaveCount(0);
-    await expect(tomatoGroup).not.toContainText('2 sorte · 3 ponude');
+    await expect(offerList).not.toContainText('2 sorte · 3 ponude');
 
     const discountedOffer = offerList.locator(
         '[data-outlet-garden-offer-id="301"]',

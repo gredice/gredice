@@ -1,7 +1,7 @@
 'use client';
 
 import { Sprout } from '@gredice/ui/icons';
-import { Center, Html, Text3D } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import {
     type ComponentProps,
@@ -41,8 +41,6 @@ const outletProductSignCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
 });
 const outletProductSignScale = 0.9;
 const outletProductSignFaceDistanceFactor = 1;
-const outletProductSignTypefaceUrl =
-    '/assets/fonts/outlet-sign-bold.typeface.json';
 // The inset board faces are at +/-0.0215. Keep each content face just above its
 // board while remaining clearly behind the surrounding frame at +/-0.05.
 const outletProductSignFaceDepth = 0.0225;
@@ -55,8 +53,6 @@ const outletProductSignFaceCssOffsetY =
     400;
 const outletProductSignPriceTagColor = '#bf4b2f';
 const outletProductSignPriceTagEdgeColor = '#74301f';
-const outletProductSignPriceTextColor = '#fff4ce';
-const outletProductSignPriceTextDepth = 0.004;
 const outletProductSignPriceTextSurfaceDepth = 0.056;
 const outletProductSignFrontNormal = new Vector3(0, 0, 1);
 const woodenSignNodeNames = [
@@ -179,7 +175,6 @@ function OutletGardenProductSignFace({
     product: OutletGardenProductSignProduct;
 }) {
     const isFront = face === 'front';
-    const priceFontSize = outletProductSignPriceFontSize(product.priceLabel);
 
     return (
         <div
@@ -202,11 +197,7 @@ function OutletGardenProductSignFace({
                 outletProductSignOcclusionProbeOffsetY
             }
             data-outlet-garden-product-sign-price={product.priceLabel}
-            data-outlet-garden-product-sign-price-depth={
-                outletProductSignPriceTextDepth
-            }
-            data-outlet-garden-product-sign-price-font-size={priceFontSize}
-            data-outlet-garden-product-sign-price-renderer="flat-text3d"
+            data-outlet-garden-product-sign-price-renderer="dom-overlay"
             style={{
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
@@ -233,50 +224,12 @@ function OutletGardenProductSignFace({
 
 function outletProductSignPriceFontSize(priceLabel: string) {
     if (priceLabel.length >= 10) {
-        return 0.056;
+        return 22;
     }
     if (priceLabel.length >= 8) {
-        return 0.066;
+        return 25;
     }
-    return 0.082;
-}
-
-function OutletGardenProductSignPriceText({
-    back = false,
-    priceLabel,
-}: {
-    back?: boolean;
-    priceLabel: string;
-}) {
-    return (
-        <group
-            position={[
-                0,
-                -0.005,
-                back
-                    ? -outletProductSignPriceTextSurfaceDepth
-                    : outletProductSignPriceTextSurfaceDepth,
-            ]}
-            rotation={[0, back ? Math.PI : 0, 0]}
-        >
-            <Center cacheKey={priceLabel} disableZ>
-                <Text3D
-                    curveSegments={5}
-                    font={outletProductSignTypefaceUrl}
-                    height={outletProductSignPriceTextDepth}
-                    raycast={() => null}
-                    size={outletProductSignPriceFontSize(priceLabel)}
-                >
-                    {priceLabel}
-                    <meshStandardMaterial
-                        color={outletProductSignPriceTextColor}
-                        metalness={0.01}
-                        roughness={0.72}
-                    />
-                </Text3D>
-            </Center>
-        </group>
-    );
+    return 30;
 }
 
 function OutletGardenProductSignPriceTag({
@@ -319,11 +272,6 @@ function OutletGardenProductSignPriceTag({
                     roughness={0.7}
                 />
             </mesh>
-            <OutletGardenProductSignPriceText priceLabel={product.priceLabel} />
-            <OutletGardenProductSignPriceText
-                back
-                priceLabel={product.priceLabel}
-            />
         </group>
     );
 }
@@ -375,7 +323,7 @@ function OutletGardenProductSignFaces({
     });
 
     const isFront = visibleFace === 'front';
-
+    const priceFontSize = outletProductSignPriceFontSize(product.priceLabel);
     return (
         <group ref={groupRef}>
             <Html
@@ -403,6 +351,46 @@ function OutletGardenProductSignFaces({
                     face={visibleFace}
                     product={product}
                 />
+            </Html>
+            <Html
+                transform
+                distanceFactor={outletProductSignFaceDistanceFactor}
+                occlude={occlude}
+                pointerEvents="none"
+                position={[
+                    0.29,
+                    1.24 + outletProductSignOcclusionProbeOffsetY,
+                    isFront
+                        ? outletProductSignPriceTextSurfaceDepth
+                        : -outletProductSignPriceTextSurfaceDepth,
+                ]}
+                rotation={[0, isFront ? 0 : Math.PI, -0.02]}
+                style={{
+                    pointerEvents: 'none',
+                }}
+                zIndexRange={[4, 1]}
+            >
+                <span
+                    aria-hidden="true"
+                    className="flex h-[68px] w-[172px] items-center justify-center font-black leading-none whitespace-nowrap text-[#fff4ce]"
+                    data-outlet-garden-product-sign-price-font-size={
+                        priceFontSize
+                    }
+                    data-outlet-garden-product-sign-price-face={visibleFace}
+                    data-outlet-garden-product-sign-price-label={
+                        product.plantSortId
+                    }
+                    data-outlet-garden-product-sign-price-occlusion={
+                        Array.isArray(occlude) ? 'visual-targets' : 'raycast'
+                    }
+                    style={{
+                        fontSize: `${priceFontSize.toString()}px`,
+                        textShadow: '0 2px 2px rgb(55 24 14 / 70%)',
+                        transform: `translate(-50%, calc(-50% + ${outletProductSignFaceCssOffsetY.toString()}px))`,
+                    }}
+                >
+                    {product.priceLabel}
+                </span>
             </Html>
         </group>
     );

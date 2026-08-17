@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, LayoutList, Sprout } from '@gredice/ui/icons';
+import { Sprout } from '@gredice/ui/icons';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
@@ -16,13 +16,13 @@ import {
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { useOutletOffers } from '../hooks/useOutletOffers';
-import { ControlsTooltipHud } from '../hud/ControlsTooltipHud';
-import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import { GameModal } from '../shared-ui/game-modal';
 import type { GardenAvatarView } from '../useGameState';
 import type { OutletGardenCommerceController } from './OutletGardenCommerce';
+import { OutletGardenNavigationHud } from './OutletGardenNavigationHud';
 import { OutletGardenOfferBrowser } from './OutletGardenOfferBrowser';
 import { OutletGardenProductSigns } from './OutletGardenProductSigns';
+import { OutletGardenSceneControlsHud } from './OutletGardenSceneControlsHud';
 import { OutletGardenSeedlingMarkers } from './OutletGardenSeedlingMarkers';
 import { shouldOpenOutletGardenOfferModal } from './outletGardenAvatarInteractions';
 import {
@@ -570,11 +570,17 @@ export function OutletGardenViewer({
                         initialView={sceneInitialView}
                         interactiveBlockIds={interactiveBlockIds}
                         localVisitorSpawnPoint={outletGardenVisitorSpawnPoint}
+                        noSound={false}
                         noWeather
                         onLocalVisitorViewChange={handleLocalVisitorViewChange}
                         onSelectBlock={selectBlock}
                         onSceneContextLost={reportSceneContextLost}
                         onSceneReady={trackSceneReady}
+                        overlayChildren={
+                            !avatarWalking ? (
+                                <OutletGardenSceneControlsHud />
+                            ) : null
+                        }
                         renderDetails={false}
                         renderGroundDecorations
                         sceneChildren={
@@ -613,49 +619,15 @@ export function OutletGardenViewer({
                 )}
 
                 {!avatarWalking ? (
-                    <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 bg-linear-to-b from-black/25 to-transparent p-3 pb-10 sm:p-4">
-                        <ButtonGreen
-                            className="pointer-events-auto border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
-                            href="/"
-                            onClick={(event) => {
-                                event.preventDefault();
-                                requestExit('garden', '/');
-                            }}
-                            size="lg"
-                            startDecorator={<ArrowLeft className="size-4" />}
-                        >
-                            Moj vrt
-                        </ButtonGreen>
-                        <div className="pointer-events-auto flex items-start gap-2">
-                            <ButtonGreen
-                                className="border border-lime-200/80 shadow-lg backdrop-blur dark:border-lime-800/80"
-                                aria-controls="outlet-garden-browser"
-                                aria-expanded={offerListOpen}
-                                aria-label="Prikaži popis dostupnih sadnica"
-                                data-outlet-garden-list-trigger
-                                onClick={openOfferList}
-                                size="lg"
-                                startDecorator={
-                                    <LayoutList className="size-4" />
-                                }
-                            >
-                                Popis ponuda
-                            </ButtonGreen>
-                        </div>
-                    </div>
-                ) : null}
-
-                {!avatarWalking ? (
-                    <div className="pointer-events-none absolute bottom-[var(--game-safe-area-bottom,0px)] left-[var(--game-safe-area-left,0px)] z-10 flex items-end p-2">
-                        <ControlsTooltipHud
-                            mode="view"
-                            offsetForItemsHud={false}
-                        />
-                    </div>
+                    <OutletGardenNavigationHud
+                        offerListOpen={offerListOpen}
+                        onOpenOfferList={openOfferList}
+                        onRequestExit={requestExit}
+                    />
                 ) : null}
 
                 {selectedOffer && !avatarWalking ? (
-                    <div className="pointer-events-none absolute bottom-3 left-3 z-10 hidden sm:block">
+                    <div className="pointer-events-none absolute bottom-16 left-3 z-10 hidden sm:block">
                         <div className="flex items-center gap-2 rounded-full bg-white/85 px-3 py-2 text-xs font-medium shadow-lg backdrop-blur">
                             <Sprout className="size-4 text-lime-800" />
                             Odabrano: {selectedOffer.plantSort.name}
