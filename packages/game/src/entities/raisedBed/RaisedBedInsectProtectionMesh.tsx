@@ -1,4 +1,10 @@
-import { DoubleSide, Shape } from 'three';
+import { useEffect, useMemo } from 'react';
+import {
+    BufferGeometry,
+    DoubleSide,
+    Float32BufferAttribute,
+    Shape,
+} from 'three';
 import { blockInteractionPassthroughUserDataKey } from '../../controls/BlockInteractionResolver';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { getRaisedBedFieldSurfacePosition } from './raisedBedSoilWetPatches';
@@ -23,21 +29,18 @@ type InsectMeshRod = {
     rotation: [number, number, number];
 };
 
-type InsectMeshPanel = {
-    depth: number;
-    key: string;
-    position: [number, number, number];
-    rotation: [number, number, number];
-    width: number;
+type InsectMeshCover = {
+    indices: number[];
+    positions: number[];
 };
 
 export type RaisedBedInsectProtectionMeshVisual = {
     anchors: [number, number, number][];
+    cover: InsectMeshCover;
     endPositions: [number, number, number][];
     endRotation: [number, number, number];
     endShape: Shape;
     frameRods: InsectMeshRod[];
-    panels: InsectMeshPanel[];
 };
 
 const meshInset = 0.018;
@@ -164,7 +167,6 @@ export function createRaisedBedInsectProtectionMeshVisual(
             -length / 2 + (length * index) / Math.max(hoopCount - 1, 1),
     );
     const frameRods: InsectMeshRod[] = [];
-    const panels: InsectMeshPanel[] = [];
 
     for (const [hoopIndex, longitudinal] of hoopPositions.entries()) {
         for (let index = 0; index < archSegmentCount; index += 1) {
@@ -189,27 +191,25 @@ export function createRaisedBedInsectProtectionMeshVisual(
         }
     }
 
-    for (let index = 0; index < archSegmentCount; index += 1) {
-        const start = archPoints[index];
-        const end = archPoints[index + 1];
-        const deltaLateral = end.lateral - start.lateral;
-        const deltaY = end.y - start.y;
-        const panelWidth = Math.hypot(deltaLateral, deltaY);
-        const midpointLateral = (start.lateral + end.lateral) / 2;
-        const midpointY = (start.y + end.y) / 2;
-
-        panels.push({
-            depth: length,
-            key: `panel-${index.toString()}`,
-            position: lengthRunsAlongX
-                ? [0, midpointY, midpointLateral]
-                : [midpointLateral, midpointY, 0],
-            rotation: lengthRunsAlongX
-                ? [-Math.atan2(deltaY, deltaLateral), 0, 0]
-                : [0, 0, Math.atan2(deltaY, deltaLateral)],
-            width: panelWidth,
-        });
-    }
+    const coverPositions = archPoints.flatMap(({ lateral, y }) =>
+        lengthRunsAlongX
+            ? [-length / 2, y, lateral, length / 2, y, lateral]
+            : [lateral, y, -length / 2, lateral, y, length / 2],
+    );
+    const coverIndices = Array.from(
+        { length: archSegmentCount },
+        (_, index) => {
+            const start = index * 2;
+            return [
+                start,
+                start + 1,
+                start + 2,
+                start + 1,
+                start + 3,
+                start + 2,
+            ];
+        },
+    ).flat();
 
     const endShape = new Shape();
     endShape.moveTo(archPoints[0].lateral, meshBaseLift);
@@ -237,6 +237,10 @@ export function createRaisedBedInsectProtectionMeshVisual(
 
     return {
         anchors,
+        cover: {
+            indices: coverIndices,
+            positions: coverPositions,
+        },
         endPositions: lengthRunsAlongX
             ? [
                   [-length / 2, 0, 0],
@@ -249,7 +253,6 @@ export function createRaisedBedInsectProtectionMeshVisual(
         endRotation: lengthRunsAlongX ? [0, Math.PI / 2, 0] : [0, 0, 0],
         endShape,
         frameRods,
-        panels,
     };
 }
 
@@ -258,8 +261,22 @@ export function RaisedBedInsectProtectionMesh({
 }: {
     layout: RaisedBedInsectProtectionMeshLayout;
 }) {
-    const visual = createRaisedBedInsectProtectionMeshVisual(layout);
-    const lengthRunsAlongX = layout.width >= layout.depth;
+    const visual = useMemo(
+        () => createRaisedBedInsectProtectionMeshVisual(layout),
+        [layout],
+    );
+    const coverGeometry = useMemo(() => {
+        const geometry = new BufferGeometry();
+        geometry.setAttribute(
+            'position',
+            new Float32BufferAttribute(visual.cover.positions, 3),
+        );
+        geometry.setIndex(visual.cover.indices);
+        geometry.computeVertexNormals();
+        return geometry;
+    }, [visual.cover]);
+
+    useEffect(() => () => coverGeometry.dispose(), [coverGeometry]);
 
     return (
         <group
@@ -267,85 +284,16 @@ export function RaisedBedInsectProtectionMesh({
             position={layout.position}
             userData={{ [blockInteractionPassthroughUserDataKey]: true }}
         >
-            {visual.panels.map((panel) => {
-                const lengthSegments = Math.max(
-                    4,
-                    Math.round(panel.depth / 0.09),
-                );
-
-                return (
-                    <group
-                        key={panel.key}
-                        position={panel.position}
-                        rotation={panel.rotation}
-                    >
-                        <mesh renderOrder={10}>
-                            {lengthRunsAlongX ? (
-                                <boxGeometry
-                                    args={[
-                                        panel.depth,
-                                        0.004,
-                                        panel.width,
-                                        lengthSegments,
-                                        1,
-                                        1,
-                                    ]}
-                                />
-                            ) : (
-                                <boxGeometry
-                                    args={[
-                                        panel.width,
-                                        0.004,
-                                        panel.depth,
-                                        1,
-                                        1,
-                                        lengthSegments,
-                                    ]}
-                                />
-                            )}
-                            <meshStandardMaterial
-                                color="#eef2df"
-                                depthWrite={false}
-                                opacity={0.13}
-                                roughness={1}
-                                transparent
-                            />
-                        </mesh>
-                        <mesh renderOrder={11} scale={[1.002, 1.25, 1.002]}>
-                            {lengthRunsAlongX ? (
-                                <boxGeometry
-                                    args={[
-                                        panel.depth,
-                                        0.004,
-                                        panel.width,
-                                        lengthSegments,
-                                        1,
-                                        1,
-                                    ]}
-                                />
-                            ) : (
-                                <boxGeometry
-                                    args={[
-                                        panel.width,
-                                        0.004,
-                                        panel.depth,
-                                        1,
-                                        1,
-                                        lengthSegments,
-                                    ]}
-                                />
-                            )}
-                            <meshBasicMaterial
-                                color="#cbd4bc"
-                                depthWrite={false}
-                                opacity={0.24}
-                                transparent
-                                wireframe
-                            />
-                        </mesh>
-                    </group>
-                );
-            })}
+            <mesh geometry={coverGeometry} renderOrder={10}>
+                <meshStandardMaterial
+                    color="#eef2df"
+                    depthWrite={false}
+                    opacity={0.2}
+                    roughness={1}
+                    side={DoubleSide}
+                    transparent
+                />
+            </mesh>
             {visual.endPositions.map((position, index) => (
                 <mesh
                     key={`end-${index.toString()}`}

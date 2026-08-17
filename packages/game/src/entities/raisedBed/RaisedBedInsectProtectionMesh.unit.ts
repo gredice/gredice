@@ -47,7 +47,7 @@ test('places a field mesh at the matching world-space field position', () => {
     assert.ok(layout.position[0] > connectedBedBlocks[0].position[0]);
 });
 
-test('builds four circular cross-bed arches without longitudinal rods', () => {
+test('builds four circular arches and one continuous cover without longitudinal rods', () => {
     const visual = createRaisedBedInsectProtectionMeshVisual({
         depth: 0.75,
         position: [0, -0.704, 0],
@@ -55,7 +55,9 @@ test('builds four circular cross-bed arches without longitudinal rods', () => {
     });
 
     assert.equal(visual.endPositions.length, 2);
-    assert.equal(visual.panels.length, 8);
+    assert.equal(visual.cover.positions.length / 3, 18);
+    assert.equal(visual.cover.indices.length / 3, 16);
+    assert.equal(Math.max(...visual.cover.indices), 17);
     assert.equal(visual.anchors.length, 4);
     assert.equal(visual.frameRods.length, 32);
     assert.ok(visual.frameRods.every((rod) => rod.key.startsWith('hoop-')));
