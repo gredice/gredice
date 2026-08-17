@@ -558,6 +558,100 @@ async function waitForOutletCameraFrames(page: Page) {
     );
 }
 
+async function expectOutletProductSignPriceAligned(
+    page: Page,
+    plantSortId: number,
+) {
+    const productSign = page.locator(
+        `[data-outlet-garden-product-sign="${plantSortId.toString()}"]`,
+    );
+    const priceLabel = page.locator(
+        `[data-outlet-garden-product-sign-price-label="${plantSortId.toString()}"]`,
+    );
+    await expect(productSign).toBeVisible();
+    await expect(priceLabel).toBeVisible();
+
+    const face = await productSign.getAttribute(
+        'data-outlet-garden-product-sign-face',
+    );
+    if (face !== 'front' && face !== 'back') {
+        throw new Error('Expected the product sign to expose its visible face');
+    }
+    await expect(priceLabel).toHaveAttribute(
+        'data-outlet-garden-product-sign-price-face',
+        face,
+    );
+
+    const alignment = await priceLabel.evaluate((priceNode, sortId) => {
+        const signNode = document.querySelector(
+            `[data-outlet-garden-product-sign="${sortId.toString()}"]`,
+        );
+        if (!(priceNode instanceof HTMLElement)) {
+            throw new Error('Expected an HTML price label');
+        }
+        if (!(signNode instanceof HTMLElement)) {
+            throw new Error('Expected an HTML product sign');
+        }
+
+        const priceContent = priceNode.parentElement;
+        const signContent = signNode.parentElement;
+        const priceTransform = priceContent?.parentElement;
+        const signTransform = signContent?.parentElement;
+        if (
+            !(priceContent instanceof HTMLElement) ||
+            !(signContent instanceof HTMLElement) ||
+            !(priceTransform instanceof HTMLElement) ||
+            !(signTransform instanceof HTMLElement)
+        ) {
+            throw new Error('Expected transformed HTML sign wrappers');
+        }
+
+        const orientationDeterminant = (node: HTMLElement) => {
+            const matrix = new DOMMatrixReadOnly(
+                window.getComputedStyle(node).transform,
+            );
+            return (
+                matrix.m11 *
+                    (matrix.m22 * matrix.m33 - matrix.m23 * matrix.m32) -
+                matrix.m12 *
+                    (matrix.m21 * matrix.m33 - matrix.m23 * matrix.m31) +
+                matrix.m13 * (matrix.m21 * matrix.m32 - matrix.m22 * matrix.m31)
+            );
+        };
+        const priceStyle = window.getComputedStyle(priceNode);
+
+        return {
+            alignItems: priceStyle.alignItems,
+            priceBackfaceVisibility: priceStyle.backfaceVisibility,
+            priceContentBackfaceVisibility:
+                window.getComputedStyle(priceContent).backfaceVisibility,
+            priceContentTransform:
+                window.getComputedStyle(priceContent).transform,
+            priceOrientationSign: Math.sign(
+                orientationDeterminant(priceTransform),
+            ),
+            justifyContent: priceStyle.justifyContent,
+            signContentTransform:
+                window.getComputedStyle(signContent).transform,
+            signOrientationSign: Math.sign(
+                orientationDeterminant(signTransform),
+            ),
+        };
+    }, plantSortId);
+
+    expect(alignment.priceContentTransform).toBe(
+        alignment.signContentTransform,
+    );
+    expect(alignment.priceBackfaceVisibility).toBe('hidden');
+    expect(alignment.priceContentBackfaceVisibility).toBe('hidden');
+    expect(alignment.priceOrientationSign).not.toBe(0);
+    expect(alignment.priceOrientationSign).toBe(alignment.signOrientationSign);
+    expect(alignment.alignItems).toBe('center');
+    expect(alignment.justifyContent).toBe('center');
+
+    return face;
+}
+
 async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     const runtimeErrors: string[] = [];
     page.on('pageerror', (error) => runtimeErrors.push(error.message));
@@ -674,28 +768,22 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     const pepperSignBack = productSignBacks.filter({
         hasText: 'Paprika Zlata Snack',
     });
-    await page.keyboard.press('KeyQ');
-    await waitForOutletCameraFrames(page);
-    await page.keyboard.press('KeyQ');
-    await waitForOutletCameraFrames(page);
-    await expect(pepperSign).toBeHidden();
-    await expect(pepperSignBack).toBeVisible();
-    await expect(pepperSignBack).toHaveAttribute(
-        'data-outlet-garden-product-sign-depth',
-        '-0.0225',
-    );
-    await expect(pepperSignBack).toHaveAttribute(
-        'data-outlet-garden-product-sign-face',
-        'back',
-    );
-    await expect(pepperSignBack.locator('img')).toHaveAttribute(
-        'src',
-        pepperSortImageUrl,
-    );
-    await page.keyboard.press('KeyW');
-    await waitForOutletCameraFrames(page);
-    await page.keyboard.press('KeyW');
-    await waitForOutletCameraFrames(page);
+    const visibleFaces = new Set([
+        await expectOutletProductSignPriceAligned(page, 102),
+    ]);
+    for (let quarterTurn = 0; quarterTurn < 4; quarterTurn += 1) {
+        await page.keyboard.press('KeyQ');
+        await waitForOutletCameraFrames(page);
+        visibleFaces.add(await expectOutletProductSignPriceAligned(page, 102));
+        const visiblePepperSign = page.locator(
+            '[data-outlet-garden-product-sign="102"]',
+        );
+        await expect(visiblePepperSign.locator('img')).toHaveAttribute(
+            'src',
+            pepperSortImageUrl,
+        );
+    }
+    expect(visibleFaces).toEqual(new Set(['front', 'back']));
     await expect(pepperSign).toBeVisible();
     await expect(pepperSignBack).toBeHidden();
     await expect(
