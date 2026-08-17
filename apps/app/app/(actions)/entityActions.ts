@@ -8,6 +8,7 @@ import {
     deleteAttributeValue,
     deleteEntity,
     getAttributeDefinition,
+    getEntitiesRaw,
     getEntityIncomingLinks,
     getEntityRaw,
     type IncomingEntityLinkGroup,
@@ -21,6 +22,7 @@ import {
     createEntity as storageCreateEntity,
     duplicateEntity as storageDuplicateEntity,
     updateEntity as storageUpdateEntity,
+    sunflowerPackageEntityTypeName,
     type UpdateEntity,
     upsertAttributeValue,
     upsertEntityType,
@@ -29,6 +31,11 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '../../lib/auth/auth';
 import { revalidatePublicDirectoryPagesForEntityType } from '../../lib/revalidation/publicDirectoryPages';
+import {
+    normalizeSunflowerPackageAttributeValue,
+    sunflowerPackageActivePricingError,
+    sunflowerPackageAttributeValueError,
+} from '../../src/entities/sunflowerPackageAdmin';
 import { KnownPages } from '../../src/KnownPages';
 
 const imageContentTypeExtensions: Record<string, string> = {
@@ -453,8 +460,82 @@ export async function handleValueSave(
 ) {
     await auth(['admin']);
 
+    const normalizedValue = normalizeSunflowerPackageAttributeValue(
+        attributeDefinition,
+        newValue,
+    );
     const newAttributeValueValue =
-        (newValue?.length ?? 0) <= 0 ? null : newValue;
+        normalizedValue && normalizedValue.length > 0 ? normalizedValue : null;
+    const packageValidationError = sunflowerPackageAttributeValueError(
+        attributeDefinition,
+        newAttributeValueValue,
+    );
+    if (packageValidationError) {
+        return { success: false, message: packageValidationError } as const;
+    }
+
+    if (attributeDefinition.entityTypeName === sunflowerPackageEntityTypeName) {
+        const entity = await getEntityRaw(entityId);
+        if (entity) {
+            const activePricingError = sunflowerPackageActivePricingError(
+                attributeDefinition,
+                newAttributeValueValue,
+                entity,
+            );
+            if (activePricingError) {
+                return {
+                    success: false,
+                    message: activePricingError,
+                } as const;
+            }
+        }
+
+        if (
+            attributeDefinition.category === 'presentation' &&
+            attributeDefinition.name === 'code' &&
+            newAttributeValueValue
+        ) {
+            const packageEntities = await getEntitiesRaw(
+                sunflowerPackageEntityTypeName,
+            );
+            const currentCode = entity?.attributes
+                .find(
+                    (attribute) =>
+                        attribute.attributeDefinitionId ===
+                        attributeDefinition.id,
+                )
+                ?.value?.trim();
+            if (
+                entity?.state === 'published' &&
+                currentCode &&
+                currentCode !== newAttributeValueValue
+            ) {
+                return {
+                    success: false,
+                    message:
+                        'Kod objavljenog paketa je stabilan jer povezuje checkout i evidenciju kupnje. Za promjenu koda prvo izradite novi paket.',
+                } as const;
+            }
+
+            const duplicateCode = packageEntities.some(
+                (packageEntity) =>
+                    packageEntity.id !== entityId &&
+                    packageEntity.attributes.some(
+                        (attribute) =>
+                            attribute.attributeDefinitionId ===
+                                attributeDefinition.id &&
+                            attribute.value?.trim() === newAttributeValueValue,
+                    ),
+            );
+            if (duplicateCode) {
+                return {
+                    success: false,
+                    message: `Kod paketa „${newAttributeValueValue}” već postoji.`,
+                } as const;
+            }
+        }
+    }
+
     const authData = await auth(['admin']);
     await assertPlantRelationshipValueCanSave({
         attributeDefinition,
@@ -487,6 +568,7 @@ export async function handleValueSave(
         entityTypeName,
         'entity.attribute.update',
     );
+    return { success: true, message: null } as const;
 }
 
 export async function handleValueDelete(attributeValue: SelectAttributeValue) {

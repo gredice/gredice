@@ -12,8 +12,9 @@ import {
     updateInventoryItem,
 } from '@gredice/storage';
 import { getEntityCompleteness } from '@gredice/storage/entityCompleteness';
+import { Alert } from '@gredice/ui/Alert';
 import { ImageViewer } from '@gredice/ui/ImageViewer';
-import { Calendar, Code, ExternalLink } from '@gredice/ui/icons';
+import { Calendar, Code, ExternalLink, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -457,6 +458,18 @@ export default async function EntityDetailsPage(props: {
                     heading={entityDisplayName(entity)}
                 />
                 <EntityDetailsPropertiesLayout properties={propertiesPanel}>
+                    {params.entityType === 'sunflowerPackage' &&
+                    entity.state === 'published' ? (
+                        <Alert
+                            color="warning"
+                            className="mb-4"
+                            startDecorator={<Warning className="size-4" />}
+                        >
+                            Promjene objavljenog paketa odmah utječu na javni
+                            cjenik i nove naplate. Prije spremanja provjerite
+                            cijenu, broj suncokreta i dostupnost.
+                        </Alert>
+                    ) : null}
                     <Tabs defaultValue={attributeCategories.at(0)?.name}>
                         <EntityDetailsStickyHeader
                             tabs={

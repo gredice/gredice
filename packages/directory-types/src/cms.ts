@@ -20,6 +20,7 @@ export interface DirectoryEntityDataMap {
     plantSort: components['schemas']['entity-plantSort'];
     plantStage: components['schemas']['entity-plantStage'];
     seed: components['schemas']['entity-seed'];
+    sunflowerPackage: components['schemas']['entity-sunflowerPackage'];
 }
 
 export type DirectoryEntityTypeName = keyof DirectoryEntityDataMap;
@@ -45,3 +46,4 @@ export type PlantPestData = DirectoryEntityDataMap['plantPest'];
 export type PlantSortData = DirectoryEntityDataMap['plantSort'];
 export type PlantStageData = DirectoryEntityDataMap['plantStage'];
 export type SeedData = DirectoryEntityDataMap['seed'];
+export type SunflowerPackageData = DirectoryEntityDataMap['sunflowerPackage'];

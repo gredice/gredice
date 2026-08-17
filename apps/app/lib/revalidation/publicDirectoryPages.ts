@@ -8,7 +8,8 @@ type PublicDirectoryEntityType =
     | 'plantPest'
     | 'plantSort'
     | 'operation'
-    | 'seed';
+    | 'seed'
+    | 'sunflowerPackage';
 
 const publicWwwRevalidationPath = '/api/revalidate/directories';
 
@@ -24,6 +25,7 @@ function publicDirectoryEntityType(
         case 'plantSort':
         case 'operation':
         case 'seed':
+        case 'sunflowerPackage':
             return entityTypeName;
         default:
             return null;

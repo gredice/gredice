@@ -8,7 +8,7 @@ const tomatoPlant = {
     id: 1,
     entityType: { id: 1, name: 'plant', label: 'Biljka' },
     slug: 'mock-tomato',
-    calendar: { harvest: [] },
+    calendar: { sowing: [], harvest: [] },
     information: {
         name: 'Rajčica',
         latinName: 'Solanum lycopersicum',
@@ -41,6 +41,7 @@ const tomatoPlant = {
         growthWindowMax: 90,
         yieldType: 'perField',
         cleanHarvest: true,
+        maxHarvestDaysBeforeDelivery: 0,
     },
     image: { cover: { url: '' } },
     prices: { perPlant: 1.5 },

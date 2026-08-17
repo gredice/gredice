@@ -27,6 +27,7 @@ const tomatoPlant = {
     },
     slug: 'mock-tomato',
     calendar: {
+        sowing: [],
         harvest: [],
     },
     information: {
@@ -62,6 +63,7 @@ const tomatoPlant = {
         growthWindowMax: 90,
         yieldType: 'perField',
         cleanHarvest: true,
+        maxHarvestDaysBeforeDelivery: 0,
     },
     image: {
         cover: {

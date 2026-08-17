@@ -11,6 +11,13 @@ test('seed changes revalidate plant-sort pages that render seed cards', () => {
     );
 });
 
+test('sunflower package changes revalidate package offer pages', () => {
+    const paths = collectRevalidationPaths(['sunflowerPackage']);
+
+    assert.ok(paths.some(({ path }) => path === '/suncokreti'));
+    assert.ok(paths.some(({ path }) => path === '/cjenik'));
+});
+
 test('combined entity changes keep shared revalidation paths unique', () => {
     const paths = collectRevalidationPaths(['plantSort', 'seed']);
     const pathKeys = paths.map(({ path, type }) => `${type ?? 'path'}:${path}`);
