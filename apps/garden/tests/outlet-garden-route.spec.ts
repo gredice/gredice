@@ -566,12 +566,6 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
 
     await page.goto('/outlet');
 
-    const outletSignFontResponse = await page.request.get(
-        '/assets/fonts/outlet-sign-bold.typeface.json',
-    );
-    expect(outletSignFontResponse.ok()).toBe(true);
-    expect(await outletSignFontResponse.text()).toContain('"r":{');
-
     await expect(page.locator('[data-outlet-garden]')).toBeVisible();
     await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
         'data-outlet-garden-display-count',
@@ -599,15 +593,21 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-price-renderer',
-        'flat-text3d',
+        'dom-overlay',
     );
-    await expect(productSigns.first()).toHaveAttribute(
-        'data-outlet-garden-product-sign-price-depth',
-        '0.004',
+    const productSignPriceLabels = page.locator(
+        '[data-outlet-garden-product-sign-price-label]',
     );
-    await expect(productSigns.first()).toHaveAttribute(
-        'data-outlet-garden-product-sign-price-font-size',
-        '0.082',
+    await expect(productSignPriceLabels).toHaveCount(3);
+    await expect(
+        productSignPriceLabels.filter({ hasText: '2,49 €' }),
+    ).toBeVisible();
+    await expect(
+        productSignPriceLabels.filter({ hasText: '1,99 €' }),
+    ).toBeVisible();
+    await expect(productSignPriceLabels.first()).toHaveCSS(
+        'font-weight',
+        '900',
     );
     await expect(productSigns.first()).toHaveAttribute(
         'data-outlet-garden-product-sign-occlusion',
@@ -697,6 +697,25 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     await expect(page.getByText('Zumiranje', { exact: true })).toBeVisible();
     await expect(
         page.getByText('Rotacija vrta', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-outlet-garden-hud-card="garden-link"]'),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-outlet-garden-hud-card="offer-list"]'),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-outlet-garden-hud-card="scene-controls"]'),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Okreni lijevo' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Okreni desno' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /zvuk/iu })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Što je novo' }),
     ).toBeVisible();
     await expect(
         page.getByText('Pokupi / spusti', { exact: true }),

@@ -30,19 +30,6 @@ const shortDateFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'short',
 });
 
-type OutletGardenSortGroup = {
-    id: number;
-    name: string;
-    offers: OutletOfferData[];
-};
-
-type OutletGardenPlantGroup = {
-    id: number | null;
-    key: string;
-    name: string;
-    sorts: OutletGardenSortGroup[];
-};
-
 function compareOutletGardenOffers(
     left: OutletOfferData,
     right: OutletOfferData,
@@ -59,38 +46,6 @@ function compareOutletGardenOffers(
     );
 }
 
-function groupOutletGardenOffers(offers: readonly OutletOfferData[]) {
-    const plantGroups = new Map<string, OutletGardenPlantGroup>();
-
-    for (const offer of [...offers].sort(compareOutletGardenOffers)) {
-        const plant = offer.plantSort.plant;
-        const plantKey = plant
-            ? `plant:${plant.id.toString()}`
-            : 'plant:unknown';
-        const plantGroup = plantGroups.get(plantKey) ?? {
-            id: plant?.id ?? null,
-            key: plantKey,
-            name: plant?.name ?? 'Ostale sadnice',
-            sorts: [],
-        };
-        let sortGroup = plantGroup.sorts.find(
-            (candidate) => candidate.id === offer.plantSort.id,
-        );
-        if (!sortGroup) {
-            sortGroup = {
-                id: offer.plantSort.id,
-                name: offer.plantSort.name,
-                offers: [],
-            };
-            plantGroup.sorts.push(sortGroup);
-        }
-        sortGroup.offers.push(offer);
-        plantGroups.set(plantKey, plantGroup);
-    }
-
-    return Array.from(plantGroups.values());
-}
-
 function offerImageUrl(offer: OutletOfferData) {
     return offer.imageUrls[0] ?? offer.plantSort.imageUrl;
 }
@@ -101,21 +56,33 @@ function outletPlantStatusShortLabel(status: string) {
         : plantFieldStatusLabel(status).shortLabel;
 }
 
-function sortGroupImageUrl(sortGroup: OutletGardenSortGroup) {
-    for (const offer of sortGroup.offers) {
-        if (offer.plantSort.imageUrl) {
-            return offer.plantSort.imageUrl;
+function listOutletGardenOffers(offers: readonly OutletOfferData[]) {
+    const sortedOffers = offers.toSorted(compareOutletGardenOffers);
+    const imageUrlByPlantSortId = new Map<number, string>();
+
+    for (const offer of sortedOffers) {
+        if (
+            offer.plantSort.imageUrl &&
+            !imageUrlByPlantSortId.has(offer.plantSort.id)
+        ) {
+            imageUrlByPlantSortId.set(
+                offer.plantSort.id,
+                offer.plantSort.imageUrl,
+            );
         }
     }
 
-    for (const offer of sortGroup.offers) {
+    for (const offer of sortedOffers) {
         const imageUrl = offerImageUrl(offer);
-        if (imageUrl) {
-            return imageUrl;
+        if (imageUrl && !imageUrlByPlantSortId.has(offer.plantSort.id)) {
+            imageUrlByPlantSortId.set(offer.plantSort.id, imageUrl);
         }
     }
 
-    return null;
+    return sortedOffers.map((offer) => ({
+        imageUrl: imageUrlByPlantSortId.get(offer.plantSort.id) ?? null,
+        offer,
+    }));
 }
 
 export type OutletGardenOfferBrowserProps = {
@@ -155,7 +122,7 @@ export function OutletGardenOfferBrowser({
     surface = 'panel',
     view = 'combined',
 }: OutletGardenOfferBrowserProps) {
-    const plantGroups = groupOutletGardenOffers(offers);
+    const offerListItems = listOutletGardenOffers(offers);
     const selectedOffer =
         offers.find((offer) => offer.id === selectedOfferId) ??
         (commerce?.receipt?.offer.id === selectedOfferId
@@ -350,222 +317,109 @@ export function OutletGardenOfferBrowser({
                 </div>
 
                 {offers.length > 0 && showOfferList ? (
-                    <section aria-labelledby="outlet-garden-list-title">
-                        <h2
-                            className="mb-2 text-sm font-semibold"
-                            id="outlet-garden-list-title"
-                        >
-                            Dostupne ponude ({offers.length})
-                        </h2>
-                        <div
-                            className="space-y-4"
-                            data-outlet-garden-offer-list
-                        >
-                            {plantGroups.map((plantGroup) => {
-                                const plantHeadingId = `outlet-garden-${plantGroup.key}-title`;
+                    <div
+                        className="grid grid-cols-1 gap-2"
+                        data-outlet-garden-offer-list
+                    >
+                        {offerListItems.map(({ imageUrl, offer }) => {
+                            const selected = offer.id === selectedOffer?.id;
+                            const status = outletPlantStatusShortLabel(
+                                offer.initialPlantStatus,
+                            );
+                            const comparePriceLabel =
+                                offer.comparePrice !== null
+                                    ? `, redovna cijena ${currencyFormatter.format(offer.comparePrice)}`
+                                    : '';
+                            const plantName =
+                                offer.plantSort.plant?.name ?? 'Sadnica';
 
-                                return (
-                                    <section
-                                        aria-labelledby={plantHeadingId}
-                                        className="rounded-xl border bg-muted/30 p-3"
-                                        data-outlet-garden-plant-group={
-                                            plantGroup.id ?? 'unknown'
+                            return (
+                                <button
+                                    aria-label={`${plantName}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, outlet cijena ${currencyFormatter.format(offer.outletPrice)}${comparePriceLabel}, preostalo ${offer.remainingQuantity}, ponuda vrijedi do ${dateFormatter.format(new Date(offer.endAt))}`}
+                                    aria-pressed={selected}
+                                    className={cx(
+                                        'min-h-11 rounded-xl border bg-card p-3 text-left transition-[border-color,background-color,transform] hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 active:scale-[0.99] motion-reduce:transition-none',
+                                        selected
+                                            ? 'border-lime-600 bg-lime-50/70 dark:bg-lime-950/30'
+                                            : 'border-border',
+                                    )}
+                                    data-outlet-garden-offer-id={offer.id}
+                                    key={offer.id}
+                                    onBlur={() => onHoverOffer?.(null)}
+                                    onClick={() => onSelectOffer(offer.id)}
+                                    onFocus={() => onHoverOffer?.(offer.id)}
+                                    onPointerEnter={(event) => {
+                                        if (event.pointerType !== 'touch') {
+                                            onHoverOffer?.(offer.id);
                                         }
-                                        key={plantGroup.key}
-                                    >
-                                        <div className="mb-3">
-                                            <h3
-                                                className="text-sm font-bold"
-                                                id={plantHeadingId}
-                                            >
-                                                {plantGroup.name}
-                                            </h3>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            {plantGroup.sorts.map(
-                                                (sortGroup) => {
-                                                    const sortHeadingId = `outlet-garden-sort-${sortGroup.id.toString()}-title`;
-                                                    const sortImageUrl =
-                                                        sortGroupImageUrl(
-                                                            sortGroup,
-                                                        );
-                                                    return (
-                                                        <section
-                                                            aria-labelledby={
-                                                                sortHeadingId
-                                                            }
-                                                            data-outlet-garden-sort-group={
-                                                                sortGroup.id
-                                                            }
-                                                            key={sortGroup.id}
-                                                        >
-                                                            <h4
-                                                                className="sr-only"
-                                                                id={
-                                                                    sortHeadingId
-                                                                }
-                                                            >
-                                                                {sortGroup.name}
-                                                            </h4>
-                                                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                                                                {sortGroup.offers.map(
-                                                                    (offer) => {
-                                                                        const selected =
-                                                                            offer.id ===
-                                                                            selectedOffer?.id;
-                                                                        const status =
-                                                                            outletPlantStatusShortLabel(
-                                                                                offer.initialPlantStatus,
-                                                                            );
-                                                                        const comparePriceLabel =
-                                                                            offer.comparePrice !==
-                                                                            null
-                                                                                ? `, redovna cijena ${currencyFormatter.format(offer.comparePrice)}`
-                                                                                : '';
-                                                                        return (
-                                                                            <button
-                                                                                aria-label={`${plantGroup.name}, ${offer.plantSort.name}, sjetva ${shortDateFormatter.format(new Date(offer.sowingDate))}, ${status}, outlet cijena ${currencyFormatter.format(offer.outletPrice)}${comparePriceLabel}, preostalo ${offer.remainingQuantity}, ponuda vrijedi do ${dateFormatter.format(new Date(offer.endAt))}`}
-                                                                                aria-pressed={
-                                                                                    selected
-                                                                                }
-                                                                                className={cx(
-                                                                                    'min-h-11 rounded-xl border bg-card p-3 text-left transition-[border-color,background-color,transform] hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 active:scale-[0.99] motion-reduce:transition-none',
-                                                                                    selected
-                                                                                        ? 'border-lime-600 bg-lime-50/70 dark:bg-lime-950/30'
-                                                                                        : 'border-border',
-                                                                                )}
-                                                                                data-outlet-garden-offer-id={
-                                                                                    offer.id
-                                                                                }
-                                                                                key={
-                                                                                    offer.id
-                                                                                }
-                                                                                onClick={() =>
-                                                                                    onSelectOffer(
-                                                                                        offer.id,
-                                                                                    )
-                                                                                }
-                                                                                onBlur={() =>
-                                                                                    onHoverOffer?.(
-                                                                                        null,
-                                                                                    )
-                                                                                }
-                                                                                onFocus={() =>
-                                                                                    onHoverOffer?.(
-                                                                                        offer.id,
-                                                                                    )
-                                                                                }
-                                                                                onPointerEnter={(
-                                                                                    event,
-                                                                                ) => {
-                                                                                    if (
-                                                                                        event.pointerType !==
-                                                                                        'touch'
-                                                                                    ) {
-                                                                                        onHoverOffer?.(
-                                                                                            offer.id,
-                                                                                        );
-                                                                                    }
-                                                                                }}
-                                                                                onPointerLeave={(
-                                                                                    event,
-                                                                                ) => {
-                                                                                    if (
-                                                                                        event.pointerType !==
-                                                                                        'touch'
-                                                                                    ) {
-                                                                                        onHoverOffer?.(
-                                                                                            null,
-                                                                                        );
-                                                                                    }
-                                                                                }}
-                                                                                type="button"
-                                                                            >
-                                                                                <span className="flex gap-3">
-                                                                                    <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
-                                                                                        {sortImageUrl ? (
-                                                                                            // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
-                                                                                            <img
-                                                                                                alt=""
-                                                                                                className="size-full object-cover"
-                                                                                                data-outlet-garden-offer-image
-                                                                                                decoding="async"
-                                                                                                loading="lazy"
-                                                                                                src={
-                                                                                                    sortImageUrl
-                                                                                                }
-                                                                                            />
-                                                                                        ) : (
-                                                                                            <span
-                                                                                                aria-hidden="true"
-                                                                                                className="grid size-full place-items-center"
-                                                                                                data-outlet-garden-offer-image-fallback
-                                                                                            >
-                                                                                                <Sprout className="size-5" />
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </span>
-                                                                                    <span className="min-w-0 flex-1">
-                                                                                        <span className="block truncate text-sm font-semibold">
-                                                                                            {
-                                                                                                offer
-                                                                                                    .plantSort
-                                                                                                    .name
-                                                                                            }
-                                                                                        </span>
-                                                                                        <span className="mt-1 block truncate text-xs font-medium">
-                                                                                            Sjetva{' '}
-                                                                                            {shortDateFormatter.format(
-                                                                                                new Date(
-                                                                                                    offer.sowingDate,
-                                                                                                ),
-                                                                                            )}{' '}
-                                                                                            ·{' '}
-                                                                                            {
-                                                                                                status
-                                                                                            }
-                                                                                        </span>
-                                                                                        <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 text-xs text-muted-foreground">
-                                                                                            <span>
-                                                                                                preostalo{' '}
-                                                                                                {
-                                                                                                    offer.remainingQuantity
-                                                                                                }
-                                                                                            </span>
-                                                                                            <span className="shrink-0 text-right">
-                                                                                                <strong className="block text-base leading-tight text-lime-800 dark:text-lime-300">
-                                                                                                    {currencyFormatter.format(
-                                                                                                        offer.outletPrice,
-                                                                                                    )}
-                                                                                                </strong>
-                                                                                                {offer.comparePrice !==
-                                                                                                null ? (
-                                                                                                    <del className="block text-[11px] leading-tight text-muted-foreground">
-                                                                                                        {currencyFormatter.format(
-                                                                                                            offer.comparePrice,
-                                                                                                        )}
-                                                                                                    </del>
-                                                                                                ) : null}
-                                                                                            </span>
-                                                                                        </span>
-                                                                                    </span>
-                                                                                </span>
-                                                                            </button>
-                                                                        );
-                                                                    },
-                                                                )}
-                                                            </div>
-                                                        </section>
-                                                    );
-                                                },
+                                    }}
+                                    onPointerLeave={(event) => {
+                                        if (event.pointerType !== 'touch') {
+                                            onHoverOffer?.(null);
+                                        }
+                                    }}
+                                    type="button"
+                                >
+                                    <span className="flex gap-3">
+                                        <span className="relative size-11 shrink-0 overflow-hidden rounded-lg bg-background text-lime-800 shadow-xs ring-1 ring-border dark:text-lime-300">
+                                            {imageUrl ? (
+                                                // biome-ignore lint/performance/noImgElement: Outlet offer images may use administrator-provided external origins.
+                                                <img
+                                                    alt=""
+                                                    className="size-full object-cover"
+                                                    data-outlet-garden-offer-image
+                                                    decoding="async"
+                                                    loading="lazy"
+                                                    src={imageUrl}
+                                                />
+                                            ) : (
+                                                <span
+                                                    aria-hidden="true"
+                                                    className="grid size-full place-items-center"
+                                                    data-outlet-garden-offer-image-fallback
+                                                >
+                                                    <Sprout className="size-5" />
+                                                </span>
                                             )}
-                                        </div>
-                                    </section>
-                                );
-                            })}
-                        </div>
-                    </section>
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-semibold">
+                                                {offer.plantSort.name}
+                                            </span>
+                                            <span className="mt-1 block truncate text-xs font-medium">
+                                                Sjetva{' '}
+                                                {shortDateFormatter.format(
+                                                    new Date(offer.sowingDate),
+                                                )}{' '}
+                                                · {status}
+                                            </span>
+                                            <span className="mt-2 flex flex-wrap items-end justify-between gap-x-2 text-xs text-muted-foreground">
+                                                <span>
+                                                    preostalo{' '}
+                                                    {offer.remainingQuantity}
+                                                </span>
+                                                <span className="shrink-0 text-right">
+                                                    <strong className="block text-base leading-tight text-lime-800 dark:text-lime-300">
+                                                        {currencyFormatter.format(
+                                                            offer.outletPrice,
+                                                        )}
+                                                    </strong>
+                                                    {offer.comparePrice !==
+                                                    null ? (
+                                                        <del className="block text-[11px] leading-tight text-muted-foreground">
+                                                            {currencyFormatter.format(
+                                                                offer.comparePrice,
+                                                            )}
+                                                        </del>
+                                                    ) : null}
+                                                </span>
+                                            </span>
+                                        </span>
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 ) : null}
 
                 {selectedOffer && showSelectedOffer ? (

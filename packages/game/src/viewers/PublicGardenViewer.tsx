@@ -162,6 +162,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
     noWeather?: boolean;
+    overlayChildren?: ReactNode;
     renderDetails?: boolean;
     renderGroundDecorations?: boolean;
     sceneChildren?: ReactNode;
@@ -896,6 +897,7 @@ export function PublicGardenViewer({
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
     noWeather = false,
+    overlayChildren,
     onLocalVisitorViewChange,
     onSelectBlock,
     onSceneContextLost,
@@ -1198,6 +1200,7 @@ export function PublicGardenViewer({
                                         onChange={onLocalVisitorViewChange}
                                     />
                                 ) : null}
+                                {overlayChildren}
                             </div>
                         )}
                     </SeedPublicGardenQueryCache>
