@@ -1,5 +1,12 @@
 export type BlockSnapshotCameraView = 'default' | 'orthographic';
 
+const reversedStandardSnapshotEntities = new Set([
+    'BirdHouse',
+    'ChickenCoop',
+    'DogHouse',
+    'PigletPen',
+]);
+
 type GridSpan = {
     depth: number;
     width: number;
@@ -34,6 +41,10 @@ export function parseBlockSnapshotCameraView(
     throw new Error(
         'BLOCK_SNAPSHOT_CAMERA_VIEW must be unset or "orthographic".',
     );
+}
+
+export function getStandardBlockSnapshotBaseRotation(entityName: string) {
+    return reversedStandardSnapshotEntities.has(entityName) ? 2 : 0;
 }
 
 function getOrthographicViewLabel(
