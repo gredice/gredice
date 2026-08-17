@@ -7,9 +7,13 @@ index a47df05..d365f49 100644
 @@ -274 +273 @@ WebPushLib.prototype.generateRequestDetails = function(subscription, payload, op
 -      const parsedUrl = url.parse(subscription.endpoint);
 +      const parsedUrl = new URL(subscription.endpoint);
-@@ -348 +347 @@ WebPushLib.prototype.sendNotification = function(subscription, payload, options)
+@@ -348,4 +347,6 @@ WebPushLib.prototype.sendNotification = function(subscription, payload, options)
 -      const urlParts = url.parse(requestDetails.endpoint);
+-      httpsOptions.hostname = urlParts.hostname;
 +      const urlParts = new URL(requestDetails.endpoint);
-@@ -351 +350 @@ WebPushLib.prototype.sendNotification = function(subscription, payload, options)
++      httpsOptions.hostname = urlParts.hostname.startsWith('[')
++        ? urlParts.hostname.slice(1, -1)
++        : urlParts.hostname;
+       httpsOptions.port = urlParts.port;
 -      httpsOptions.path = urlParts.path;
 +      httpsOptions.path = urlParts.pathname + urlParts.search;
