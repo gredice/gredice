@@ -47,7 +47,7 @@ test('places a field mesh at the matching world-space field position', () => {
     assert.ok(layout.position[0] > connectedBedBlocks[0].position[0]);
 });
 
-test('builds a closed arched mesh along the longest raised-bed axis', () => {
+test('builds four circular arches and one continuous cover without longitudinal rods', () => {
     const visual = createRaisedBedInsectProtectionMeshVisual({
         depth: 0.75,
         position: [0, -0.704, 0],
@@ -55,9 +55,59 @@ test('builds a closed arched mesh along the longest raised-bed axis', () => {
     });
 
     assert.equal(visual.endPositions.length, 2);
-    assert.equal(visual.panels.length, 6);
+    assert.equal(visual.cover.positions.length / 3, 18);
+    assert.equal(visual.cover.indices.length / 3, 16);
+    assert.equal(Math.max(...visual.cover.indices), 17);
     assert.equal(visual.anchors.length, 4);
-    assert.ok(visual.frameRods.length > visual.panels.length);
+    assert.equal(visual.frameRods.length, 32);
+    assert.ok(visual.frameRods.every((rod) => rod.key.startsWith('hoop-')));
+
+    const archPositions = visual.frameRods
+        .filter((rod) => rod.key.endsWith('-0'))
+        .map((rod) => rod.position[0]);
+    assert.equal(archPositions.length, 4);
+    assert.ok(Math.abs(archPositions[0] + archPositions[3]) < 0.000_001);
+    assert.ok(Math.abs(archPositions[1] + archPositions[2]) < 0.000_001);
+    assert.ok(
+        Math.abs(
+            archPositions[1] -
+                archPositions[0] -
+                (archPositions[2] - archPositions[1]),
+        ) < 0.000_001,
+    );
+
+    const coverProfile = Array.from(
+        { length: visual.cover.positions.length / 6 },
+        (_, index) => ({
+            lateral: visual.cover.positions[index * 6 + 2],
+            y: visual.cover.positions[index * 6 + 1],
+        }),
+    );
+    const chordLengths = coverProfile.slice(1).map((point, index) => {
+        const previous = coverProfile[index];
+        return Math.hypot(
+            point.lateral - previous.lateral,
+            point.y - previous.y,
+        );
+    });
+    assert.ok(
+        chordLengths.every(
+            (length) => Math.abs(length - chordLengths[0]) < 0.000_001,
+        ),
+    );
+
+    const profilePoints = visual.endShape.getPoints();
+    const baseY = Math.min(...profilePoints.map((point) => point.y));
+    const radius = Math.max(...profilePoints.map((point) => Math.abs(point.x)));
+    for (const point of profilePoints.filter((point) => point.y > baseY)) {
+        assert.ok(
+            Math.abs(
+                point.x * point.x +
+                    (point.y - baseY) * (point.y - baseY) -
+                    radius * radius,
+            ) < 0.000_001,
+        );
+    }
     assert.deepStrictEqual(visual.endRotation, [0, Math.PI / 2, 0]);
     assert.ok(visual.endPositions[0][0] < 0);
     assert.ok(visual.endPositions[1][0] > 0);
@@ -73,9 +123,6 @@ test('rotates the tunnel for a raised bed that runs along z', () => {
     assert.deepStrictEqual(visual.endRotation, [0, 0, 0]);
     assert.ok(visual.endPositions[0][2] < 0);
     assert.ok(visual.endPositions[1][2] > 0);
-    assert.equal(
-        visual.frameRods.filter((rod) => rod.key.startsWith('longitudinal-'))
-            .length,
-        7,
-    );
+    assert.equal(visual.frameRods.length, 32);
+    assert.ok(visual.frameRods.every((rod) => rod.key.startsWith('hoop-')));
 });
