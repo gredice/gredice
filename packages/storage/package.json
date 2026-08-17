@@ -49,6 +49,7 @@
         "blocks:signage:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertSignageBlockEntities.ts",
         "blocks:garden-lighting:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertGardenLightingBlockEntities.ts",
         "blocks:stone-fences:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertStoneFenceBlockEntities.ts",
+        "blocks:farm-animal-homes:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts",
         "blocks:terrain-variations:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertTerrainVariationBlockEntities.ts",
         "blocks:fishing-boat:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFishingBoatBlockEntity.ts",
         "blocks:raised-bed:update": "tsx --conditions=react-server --env-file=.env ./scripts/updateRaisedBedBlockEntity.ts",

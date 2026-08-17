@@ -39,6 +39,7 @@ import { Bucket } from './Bucket';
 import { Bush } from './Bush';
 import { Cactus } from './Cactus';
 import { CatPillow } from './CatPillow';
+import { ChickenCoop } from './ChickenCoop';
 import { Composter } from './Composter';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
@@ -64,6 +65,7 @@ import { MoonRainBarrel } from './MoonRainBarrel';
 import { OutletDisplayTable } from './OutletDisplayTable';
 import { PaintRoller } from './PaintRoller';
 import { PalmTree } from './PalmTree';
+import { PigletPen } from './PigletPen';
 import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { PolishedStoneFence } from './PolishedStoneFence';
@@ -194,7 +196,9 @@ export const entityNameMap = {
     WoodenSign: WoodenSign,
     CatPillow: CatPillow,
     Cat_Pillow: CatPillow,
+    ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
+    PigletPen: PigletPen,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,

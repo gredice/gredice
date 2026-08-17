@@ -70,6 +70,7 @@ import {
     getGardenAvatarForwardDirection,
     getGardenAvatarSeatPose,
     isGardenAvatarInteractionOccluded,
+    isPettableAnimalSpecies,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -859,7 +860,7 @@ export function GardenAvatar({
             animalResolution && !isOccluded(animalResolution.hitPoint)
                 ? animalResolution.entry
                 : null;
-        if (animal?.species === 'Cat' || animal?.species === 'Dog') {
+        if (animal && isPettableAnimalSpecies(animal.species)) {
             petAnimal({
                 species: animal.species,
                 targetId: animal.id,

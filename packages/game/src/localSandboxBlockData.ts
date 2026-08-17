@@ -74,7 +74,9 @@ export const localSandboxBlockNames = [
     'WoodenHandLantern',
     'MoonRainBarrel',
     'CatPillow',
+    'ChickenCoop',
     'DogHouse',
+    'PigletPen',
     'Bush',
     'Tree',
     'Pine',
@@ -128,8 +130,29 @@ export const localSandboxBlockNames = [
 export type LocalSandboxBlockName = (typeof localSandboxBlockNames)[number];
 
 const localSandboxBlockMetadata: Partial<
-    Record<LocalSandboxBlockName, { label: string; shortDescription: string }>
+    Record<
+        LocalSandboxBlockName,
+        {
+            label: string;
+            shortDescription: string;
+            fullDescription?: string;
+        }
+    >
 > = {
+    ChickenCoop: {
+        label: 'Kokošinjac',
+        shortDescription:
+            'Topao drveni kokošinjac koji u vrt dovodi znatiželjnu kokoš.',
+        fullDescription:
+            'Smjesti drveni kokošinjac uz gredice i u vrt će stići znatiželjna kokoš. Danju će kljucati i istraživati okolicu, a pred noć se vraćati svojem sigurnom skloništu.',
+    },
+    PigletPen: {
+        label: 'Obor za praščića',
+        shortDescription:
+            'Mali obor s kaljužom koji u vrt dovodi razigranog praščića.',
+        fullDescription:
+            'Postavi niski obor od pruća s koritom i kaljužom pa će u vrt stići razigrani praščić. Njuškat će po zemlji, valjati se u blatu i vraćati se u svoj zaklon.',
+    },
     Block_Stone: {
         label: 'Kamen',
         shortDescription:
@@ -369,6 +392,8 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WickerGardenLantern: 0.7,
         WoodenHandLantern: 0.66,
         MoonRainBarrel: 1,
+        ChickenCoop: 0.86,
+        PigletPen: 0.78,
         FishingBoat: 0.62,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
@@ -522,6 +547,16 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.68,
         hitboxWidth: 1,
     },
+    ChickenCoop: {
+        hitboxDepth: 0.97,
+        hitboxHeight: 0.86,
+        hitboxWidth: 0.76,
+    },
+    PigletPen: {
+        hitboxDepth: 0.89,
+        hitboxHeight: 0.78,
+        hitboxWidth: 0.94,
+    },
 };
 
 type LocalSandboxPlacementAttributes = Partial<
@@ -583,6 +618,16 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
         spanDepth: 1,
         spanWidth: 1,
     },
+    ChickenCoop: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    PigletPen: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
 };
 
 function getLocalSandboxStackHeight(name: LocalSandboxBlockName) {
@@ -618,6 +663,7 @@ function createLocalSandboxBlockData(
                     ? 'Čvrst drveni stol za izlaganje tegli, biljaka i vrtnih ukrasa.'
                     : ''),
             fullDescription:
+                metadata?.fullDescription ??
                 metadata?.shortDescription ??
                 (isOutletDisplayTable
                     ? 'Izložbeni stol izrađen od toplih drvenih dasaka. Postavi ga uz gredice ili vrtnu stazu, a na njegovu plohu složi tegle i druge ukrase.'

@@ -34,6 +34,30 @@ describe('actor grounding-shadow projection', () => {
         assert.equal(resolved.z, groundedState.z);
     });
 
+    it('uses compact species footprints for chicken and piglet', () => {
+        const chicken = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'chicken',
+            state: groundedState,
+        });
+        const piglet = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'piglet',
+            state: groundedState,
+        });
+
+        assert.equal(
+            chicken.halfLength,
+            actorGroundingShadowProfiles.chicken.baseHalfLength,
+        );
+        assert.equal(
+            piglet.halfLength,
+            actorGroundingShadowProfiles.piglet.baseHalfLength,
+        );
+        assert.ok(piglet.halfLength > chicken.halfLength);
+        assert.ok(piglet.halfWidth > chicken.halfWidth);
+    });
+
     it('grows and quadratically fades a flying actor footprint', () => {
         const profile = actorGroundingShadowProfiles.bird;
         const resolved = resolveActorGroundingShadow({

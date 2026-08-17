@@ -27,6 +27,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
+import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
@@ -659,6 +660,22 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Dogs
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Chickens
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Piglets
                                             farmId={garden?.farmId}
                                             stacks={garden?.stacks}
                                             weather={weather}
