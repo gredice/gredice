@@ -9,6 +9,7 @@ import { allGameAssetNames } from '../../../packages/game/src/data/models';
 import { gameQualityProfiles } from '../../../packages/game/src/scene/gameQuality';
 import {
     getOrthographicSnapshotCamera,
+    getStandardBlockSnapshotBaseRotation,
     parseBlockSnapshotCameraView,
 } from './blockSnapshotCamera';
 // Load EntityViewer through a lazy wrapper (not the @gredice/game barrel) so the
@@ -364,8 +365,14 @@ test.describe('block screenshots', async () => {
                     ),
                 );
 
-                // Save base version (unsuffixed) for the first rotation to maintain backward compatibility
-                if (rotation === 0) {
+                // The base card may use an authored front while suffixed files
+                // preserve their directional rotation contract.
+                if (
+                    rotation ===
+                    getStandardBlockSnapshotBaseRotation(
+                        entity.information.name,
+                    )
+                ) {
                     await saveWebp(
                         buffer,
                         join(
