@@ -761,7 +761,7 @@ export function FarmOperationsScheduleSection({
                                     onSubmit={(formData) => {
                                         const scheduledDate =
                                             formData.get('scheduledDate');
-                                        runOptimisticAction({
+                                        return runOptimisticAction({
                                             operationPatches: [
                                                 {
                                                     id: operation.id,

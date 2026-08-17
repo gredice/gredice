@@ -115,7 +115,7 @@ type OptimisticScheduleActionsContextValue = {
     getOperationPatch: (
         operationId: number,
     ) => OperationOptimisticPatch | undefined;
-    runOptimisticAction: (action: OptimisticScheduleAction) => void;
+    runOptimisticAction: (action: OptimisticScheduleAction) => Promise<unknown>;
 };
 
 const OptimisticScheduleActionsContext =
@@ -148,13 +148,13 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
                 addPatchEntries(currentEntriesById, fieldPatches, token),
             );
 
-            void Promise.resolve()
+            return Promise.resolve()
                 .then(action)
                 .then((result) => {
                     const actionFailureMessage =
                         getOperationScheduleActionFailureMessage(result);
                     if (!actionFailureMessage) {
-                        return;
+                        return result;
                     }
 
                     setOperationEntriesById((currentEntriesById) =>
@@ -163,7 +163,7 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
                     setFieldEntriesById((currentEntriesById) =>
                         removePatchToken(currentEntriesById, token),
                     );
-                    alert(actionFailureMessage);
+                    return result;
                 })
                 .catch((error: unknown) => {
                     console.error(errorLogMessage, error);
