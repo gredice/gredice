@@ -31,6 +31,14 @@ const assetCacheHeaders = [
     },
 ];
 
+const nonIndexableFrameworkAssetHeaders = [
+    {
+        // Crawlers may fetch these files to render pages, but should not index them.
+        key: 'X-Robots-Tag',
+        value: 'noindex',
+    },
+];
+
 const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
@@ -40,6 +48,10 @@ const nextConfig: NextConfig = {
     },
     async headers() {
         return [
+            {
+                source: '/_next/static/:path*',
+                headers: nonIndexableFrameworkAssetHeaders,
+            },
             {
                 source: '/assets/models/:path*',
                 headers: assetCacheHeaders,
