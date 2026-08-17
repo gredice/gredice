@@ -1,4 +1,6 @@
 import { animated, useSpring } from '@react-spring/three';
+import { useThree } from '@react-three/fiber';
+import { useCallback } from 'react';
 import { useDeferredSingleClick } from '../controls/useDeferredSingleClick';
 import type { GameAssetName } from '../data/models';
 import { useBlockVariant } from '../hooks/useBlockVariant';
@@ -81,6 +83,8 @@ function getFenceGateConfig(name: string) {
 export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
     const config = getFenceGateConfig(block.name);
     const { nodes } = useGameGLTF(config.assetName);
+    const gl = useThree((state) => state.gl);
+    const invalidate = useThree((state) => state.invalidate);
     const { data: garden } = useCurrentGarden();
     const { isPending, mutate: updateVariant } = useBlockVariant();
     const hasActiveDragPreview = useGameState((state) =>
@@ -89,12 +93,21 @@ export function FenceGate({ stack, block, rotation }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
     const open = isFenceGateOpen(block);
+    const requestAnimatedShadowRefresh = useCallback(() => {
+        if (!gl.shadowMap.enabled) {
+            return;
+        }
+        gl.shadowMap.needsUpdate = true;
+        invalidate();
+    }, [gl, invalidate]);
     const { rotation: leafRotation } = useSpring({
         config: {
             friction: 22,
             mass: 0.34,
             tension: 210,
         },
+        onChange: requestAnimatedShadowRefresh,
+        onRest: requestAnimatedShadowRefresh,
         rotation: [0, open ? -Math.PI / 2 : 0, 0],
     });
     const canToggle = Boolean(garden) && !hasActiveDragPreview;
