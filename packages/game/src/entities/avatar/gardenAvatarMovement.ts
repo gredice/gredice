@@ -12,11 +12,17 @@ import {
 } from '../animals/animalMovementTerrain';
 import { findCatPath } from '../cats/catPathfinding';
 import {
+    doesFenceOwnMixedSpan,
     doesFenceOwnSpan,
     type FenceBlockName,
+    type FenceGateBlockName,
+    type FenceTopologyBlockName,
     isFenceBlockName,
+    isFenceGateBlockName,
+    isFenceTopologyBlockName,
     resolveFenceConnection,
 } from '../fenceConnections';
+import { isFenceGateOpen } from '../fenceGateState';
 import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import {
     getStackedOnWalkwayPlacementYOffset,
@@ -404,6 +410,43 @@ const fenceCollisionProfiles: Record<FenceBlockName, FenceCollisionProfile> = {
     },
 };
 
+type FenceGateCollisionProfile = {
+    height: number;
+    leafThickness: number;
+    postDepth: number;
+    postWidth: number;
+};
+
+const fenceGateCollisionProfiles: Record<
+    FenceGateBlockName,
+    FenceGateCollisionProfile
+> = {
+    FenceGate: {
+        height: 0.72,
+        leafThickness: 0.09,
+        postDepth: 0.16,
+        postWidth: 0.16,
+    },
+    WhiteFenceGate: {
+        height: 0.72,
+        leafThickness: 0.055,
+        postDepth: 0.08,
+        postWidth: 0.14,
+    },
+    StoneFenceGate: {
+        height: 0.68,
+        leafThickness: 0.055,
+        postDepth: 0.28,
+        postWidth: 0.28,
+    },
+    PolishedStoneFenceGate: {
+        height: 0.68,
+        leafThickness: 0.055,
+        postDepth: 0.28,
+        postWidth: 0.28,
+    },
+};
+
 const hazelLightArchName = 'HazelLightArch';
 const hazelLightArchPostOffset = 0.443;
 const hazelLightArchPostHalfSize = 0.052;
@@ -482,7 +525,7 @@ function createFenceCollisionSurfaces({
     blockName: FenceBlockName;
     blockIndex: number;
     bottomY: number;
-    fenceLayers: ReadonlyMap<string, FenceBlockName>;
+    fenceLayers: ReadonlyMap<string, FenceTopologyBlockName>;
     profile: FenceCollisionProfile;
     rotation: number;
     stack: Stack;
@@ -578,7 +621,10 @@ function createFenceCollisionSurfaces({
                 z: stack.position.z + direction.z * centerDistance,
             });
         };
-        const ownsMixedSpan = direction.neighborName !== blockName;
+        const ownsMixedSpan = doesFenceOwnMixedSpan(
+            blockName,
+            direction.neighborName,
+        );
         addRail(railCenterOffset, railHalfLength);
         if (ownsMixedSpan) {
             addRail(0.75, 0.25);
@@ -620,6 +666,73 @@ function createFenceCollisionSurfaces({
             z: stack.position.z,
         });
     }
+
+    return surfaces;
+}
+
+function createFenceGateCollisionSurfaces({
+    block,
+    bottomY,
+    profile,
+    stack,
+}: {
+    block: Stack['blocks'][number] & { name: FenceGateBlockName };
+    bottomY: number;
+    profile: FenceGateCollisionProfile;
+    stack: Stack;
+}) {
+    const gateHalfWidth = 0.43;
+    const leafHalfLength = gateHalfWidth;
+    const alongX = block.rotation % 2 === 0;
+    const open = isFenceGateOpen(block);
+    const shared: Pick<
+        GardenAvatarMovementSurface,
+        'bottomY' | 'debugLabel' | 'kind' | 'roamable' | 'rotation' | 'y'
+    > = {
+        bottomY,
+        debugLabel: block.name,
+        kind: 'ground',
+        roamable: false,
+        rotation: 0,
+        y: bottomY + profile.height,
+    };
+    const surfaces: GardenAvatarMovementSurface[] = [-1, 1].map((side) => ({
+        ...shared,
+        halfDepth: profile.postDepth / 2,
+        halfWidth: profile.postWidth / 2,
+        roamBlockedCells: [],
+        x: stack.position.x + (alongX ? side * gateHalfWidth : 0),
+        z: stack.position.z + (alongX ? 0 : side * gateHalfWidth),
+    }));
+
+    if (!open) {
+        surfaces.push({
+            ...shared,
+            halfDepth: alongX ? profile.leafThickness / 2 : leafHalfLength,
+            halfWidth: alongX ? leafHalfLength : profile.leafThickness / 2,
+            roamBlockedCells: [{ x: stack.position.x, z: stack.position.z }],
+            x: stack.position.x,
+            z: stack.position.z,
+        });
+        return surfaces;
+    }
+
+    const rotation = block.rotation * (Math.PI / 2);
+    const localLeafCenter = { x: -gateHalfWidth, z: leafHalfLength };
+    surfaces.push({
+        ...shared,
+        halfDepth: alongX ? leafHalfLength : profile.leafThickness / 2,
+        halfWidth: alongX ? profile.leafThickness / 2 : leafHalfLength,
+        roamBlockedCells: [],
+        x:
+            stack.position.x +
+            localLeafCenter.x * Math.cos(rotation) +
+            localLeafCenter.z * Math.sin(rotation),
+        z:
+            stack.position.z -
+            localLeafCenter.x * Math.sin(rotation) +
+            localLeafCenter.z * Math.cos(rotation),
+    });
 
     return surfaces;
 }
@@ -697,10 +810,10 @@ export function createGardenAvatarCollisionWorld({
         blockData?.map((block) => [block.information.name, block]) ?? [],
     );
     const surfaces: GardenAvatarMovementSurface[] = [];
-    const fenceLayers = new Map<string, FenceBlockName>();
+    const fenceLayers = new Map<string, FenceTopologyBlockName>();
     for (const stack of stacks ?? []) {
         for (const [blockIndex, block] of stack.blocks.entries()) {
-            if (isFenceBlockName(block.name)) {
+            if (isFenceTopologyBlockName(block.name)) {
                 fenceLayers.set(fenceLayerKey(stack, blockIndex), block.name);
             }
         }
@@ -753,6 +866,17 @@ export function createGardenAvatarCollisionWorld({
                         fenceLayers,
                         profile: fenceProfile,
                         rotation: block.rotation,
+                        stack,
+                    }),
+                );
+                continue;
+            }
+            if (isFenceGateBlockName(block.name)) {
+                surfaces.push(
+                    ...createFenceGateCollisionSurfaces({
+                        block: { ...block, name: block.name },
+                        bottomY,
+                        profile: fenceGateCollisionProfiles[block.name],
                         stack,
                     }),
                 );

@@ -263,6 +263,38 @@ const blockFixtures: Record<
         height: 0.68,
         stackable: false,
     },
+    FenceGate: {
+        label: 'Vrata za drvenu ogradu',
+        shortDescription:
+            'Drvena vrtna vrata koja se otvaraju dodirom i propuštaju posjetitelje i životinje.',
+        sunflowers: 8,
+        height: 0.72,
+        stackable: false,
+    },
+    WhiteFenceGate: {
+        label: 'Vrata za bijelu ogradu',
+        shortDescription:
+            'Bijela vrtna vrata koja se otvaraju dodirom i uklapaju u bijelu ogradu.',
+        sunflowers: 8,
+        height: 0.72,
+        stackable: false,
+    },
+    StoneFenceGate: {
+        label: 'Vrata za kamenu ogradu',
+        shortDescription:
+            'Metalna vrtna vrata između stupova od nepravilnog kamena.',
+        sunflowers: 8,
+        height: 0.68,
+        stackable: false,
+    },
+    PolishedStoneFenceGate: {
+        label: 'Vrata za ogradu od poliranog kamena',
+        shortDescription:
+            'Metalna vrtna vrata između glatkih stupova od poliranog kamena.',
+        sunflowers: 8,
+        height: 0.68,
+        stackable: false,
+    },
     StoneWalkway: {
         label: 'Kamena staza',
         shortDescription:
@@ -446,6 +478,10 @@ const blockNames = [
     'WhiteFence',
     'StoneFence',
     'PolishedStoneFence',
+    'FenceGate',
+    'WhiteFenceGate',
+    'StoneFenceGate',
+    'PolishedStoneFenceGate',
     'SmallWoodenBridge',
     'WoodenWalkway',
     'StoneWalkway',

@@ -4,8 +4,11 @@ import {
     doesFenceOwnMixedSpan,
     doesFenceOwnSpan,
     fenceBlockNames,
+    fenceGateBlockNames,
     getFenceExtensionRotations,
     isFenceBlockName,
+    isFenceGateBlockName,
+    isFenceTopologyBlockName,
     resolveFenceConnection,
 } from './fenceConnections';
 
@@ -31,6 +34,18 @@ describe('fence connections', () => {
         assert.equal(isFenceBlockName('RaisedBed'), false);
     });
 
+    it('recognizes every gate as part of the fence topology family', () => {
+        assert.deepEqual(fenceGateBlockNames, [
+            'FenceGate',
+            'WhiteFenceGate',
+            'StoneFenceGate',
+            'PolishedStoneFenceGate',
+        ]);
+        assert.ok(fenceGateBlockNames.every(isFenceGateBlockName));
+        assert.ok(fenceGateBlockNames.every(isFenceTopologyBlockName));
+        assert.equal(isFenceGateBlockName('Fence'), false);
+    });
+
     it('assigns every mixed span to exactly one material', () => {
         for (const [sourceIndex, sourceName] of fenceBlockNames.entries()) {
             for (const neighborName of fenceBlockNames.slice(sourceIndex + 1)) {
@@ -48,6 +63,14 @@ describe('fence connections', () => {
             true,
         );
         assert.equal(doesFenceOwnMixedSpan('Fence', 'Fence'), false);
+    });
+
+    it('connects a fence half-span to a gate without extending through it', () => {
+        for (const gateName of fenceGateBlockNames) {
+            assert.equal(doesFenceOwnSpan('Fence', gateName), true);
+            assert.equal(doesFenceOwnMixedSpan('Fence', gateName), false);
+            assert.equal(doesFenceOwnSpan(gateName, 'Fence'), false);
+        }
     });
 
     it('maps owned extensions to their cardinal rotations', () => {

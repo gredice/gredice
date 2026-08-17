@@ -114,6 +114,10 @@ const fenceItems: HudItemEntity[] = [
     { type: 'entity', name: 'WhiteFence' },
     { type: 'entity', name: 'StoneFence' },
     { type: 'entity', name: 'PolishedStoneFence' },
+    { type: 'entity', name: 'FenceGate' },
+    { type: 'entity', name: 'WhiteFenceGate' },
+    { type: 'entity', name: 'StoneFenceGate' },
+    { type: 'entity', name: 'PolishedStoneFenceGate' },
 ];
 
 const summerItems: HudItemEntity[] = [
