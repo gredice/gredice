@@ -33,6 +33,7 @@ import { auth } from '../../lib/auth/auth';
 import { revalidatePublicDirectoryPagesForEntityType } from '../../lib/revalidation/publicDirectoryPages';
 import {
     normalizeSunflowerPackageAttributeValue,
+    sunflowerPackageActivePricingError,
     sunflowerPackageAttributeValueError,
 } from '../../src/entities/sunflowerPackageAdmin';
 import { KnownPages } from '../../src/KnownPages';
@@ -473,49 +474,65 @@ export async function handleValueSave(
         return { success: false, message: packageValidationError } as const;
     }
 
-    if (
-        attributeDefinition.entityTypeName === sunflowerPackageEntityTypeName &&
-        attributeDefinition.category === 'presentation' &&
-        attributeDefinition.name === 'code' &&
-        newAttributeValueValue
-    ) {
-        const [entity, packageEntities] = await Promise.all([
-            getEntityRaw(entityId),
-            getEntitiesRaw(sunflowerPackageEntityTypeName),
-        ]);
-        const currentCode = entity?.attributes
-            .find(
-                (attribute) =>
-                    attribute.attributeDefinitionId === attributeDefinition.id,
-            )
-            ?.value?.trim();
-        if (
-            entity?.state === 'published' &&
-            currentCode &&
-            currentCode !== newAttributeValueValue
-        ) {
-            return {
-                success: false,
-                message:
-                    'Kod objavljenog paketa je stabilan jer povezuje checkout i evidenciju kupnje. Za promjenu koda prvo izradite novi paket.',
-            } as const;
+    if (attributeDefinition.entityTypeName === sunflowerPackageEntityTypeName) {
+        const entity = await getEntityRaw(entityId);
+        if (entity) {
+            const activePricingError = sunflowerPackageActivePricingError(
+                attributeDefinition,
+                newAttributeValueValue,
+                entity,
+            );
+            if (activePricingError) {
+                return {
+                    success: false,
+                    message: activePricingError,
+                } as const;
+            }
         }
 
-        const duplicateCode = packageEntities.some(
-            (packageEntity) =>
-                packageEntity.id !== entityId &&
-                packageEntity.attributes.some(
+        if (
+            attributeDefinition.category === 'presentation' &&
+            attributeDefinition.name === 'code' &&
+            newAttributeValueValue
+        ) {
+            const packageEntities = await getEntitiesRaw(
+                sunflowerPackageEntityTypeName,
+            );
+            const currentCode = entity?.attributes
+                .find(
                     (attribute) =>
                         attribute.attributeDefinitionId ===
-                            attributeDefinition.id &&
-                        attribute.value?.trim() === newAttributeValueValue,
-                ),
-        );
-        if (duplicateCode) {
-            return {
-                success: false,
-                message: `Kod paketa „${newAttributeValueValue}” već postoji.`,
-            } as const;
+                        attributeDefinition.id,
+                )
+                ?.value?.trim();
+            if (
+                entity?.state === 'published' &&
+                currentCode &&
+                currentCode !== newAttributeValueValue
+            ) {
+                return {
+                    success: false,
+                    message:
+                        'Kod objavljenog paketa je stabilan jer povezuje checkout i evidenciju kupnje. Za promjenu koda prvo izradite novi paket.',
+                } as const;
+            }
+
+            const duplicateCode = packageEntities.some(
+                (packageEntity) =>
+                    packageEntity.id !== entityId &&
+                    packageEntity.attributes.some(
+                        (attribute) =>
+                            attribute.attributeDefinitionId ===
+                                attributeDefinition.id &&
+                            attribute.value?.trim() === newAttributeValueValue,
+                    ),
+            );
+            if (duplicateCode) {
+                return {
+                    success: false,
+                    message: `Kod paketa „${newAttributeValueValue}” već postoji.`,
+                } as const;
+            }
         }
     }
 

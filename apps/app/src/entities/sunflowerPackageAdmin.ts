@@ -170,6 +170,61 @@ export function sunflowerPackageAttributeValueError(
     }
 }
 
+export function sunflowerPackageActivePricingError(
+    definition: SunflowerPackageAttributeDefinition,
+    value: string | null,
+    entity: SunflowerPackageCatalogEntity,
+) {
+    if (definition.entityTypeName !== sunflowerPackageEntityTypeName) {
+        return null;
+    }
+
+    const path = attributePath(definition);
+    const isPricingUpdate = [
+        'pricing.sunflowers',
+        'pricing.baseSunflowers',
+        'pricing.bonusSunflowers',
+    ].includes(path);
+    const isActivation = path === 'availability.isActive' && value === 'true';
+    if (!isPricingUpdate && !isActivation) {
+        return null;
+    }
+
+    const currentValue = (category: string, name: string) =>
+        catalogAttributeValue(entity, category, name) ?? null;
+    const prospectiveValue = (category: string, name: string) =>
+        path === `${category}.${name}` ? value : currentValue(category, name);
+    const isActive = isActivation
+        ? true
+        : currentValue('availability', 'isActive') === 'true';
+    if (!isActive) {
+        return null;
+    }
+
+    const sunflowers = Number(prospectiveValue('pricing', 'sunflowers'));
+    const baseSunflowers = Number(
+        prospectiveValue('pricing', 'baseSunflowers'),
+    );
+    const bonusSunflowers = Number(
+        prospectiveValue('pricing', 'bonusSunflowers'),
+    );
+    const hasValidPricing =
+        Number.isSafeInteger(sunflowers) &&
+        sunflowers > 0 &&
+        Number.isSafeInteger(baseSunflowers) &&
+        baseSunflowers > 0 &&
+        Number.isSafeInteger(bonusSunflowers) &&
+        bonusSunflowers >= 0 &&
+        sunflowers === baseSunflowers + bonusSunflowers;
+    if (hasValidPricing) {
+        return null;
+    }
+
+    return isActivation
+        ? 'Paket se ne može uključiti dok ukupan broj suncokreta nije jednak zbroju osnovnog i bonus iznosa.'
+        : 'Aktivni paket mora zadržati usklađen ukupan, osnovni i bonus broj suncokreta. Isključite paket, uskladite iznose pa ga ponovno uključite.';
+}
+
 function catalogAttributeValue(
     entity: SunflowerPackageCatalogEntity,
     category: string,

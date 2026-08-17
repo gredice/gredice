@@ -150,26 +150,33 @@ export function AttributeInput({
 
     if (canDelete && isReferenceInput) {
         return (
-            <div className="grid w-full max-w-xl grid-cols-[minmax(0,1fr),auto] items-center gap-1">
-                <AttributeInputComponent
-                    attributeDefinition={attributeDefinition}
-                    blockedValues={blockedValues}
-                    entityId={entityId}
-                    value={attributeValue?.value}
-                    onChange={handleChange}
-                    schema={schema}
-                    presentation={presentation}
-                />
-                <IconButton
-                    className="shrink-0"
-                    onClick={handleDelete}
-                    variant="plain"
-                    title="Ukloni"
-                    type="button"
-                    size="xs"
-                >
-                    <Remove className="size-3.5" />
-                </IconButton>
+            <div className="w-full max-w-xl">
+                <div className="grid grid-cols-[minmax(0,1fr),auto] items-center gap-1">
+                    <AttributeInputComponent
+                        attributeDefinition={attributeDefinition}
+                        blockedValues={blockedValues}
+                        entityId={entityId}
+                        value={attributeValue?.value}
+                        onChange={handleChange}
+                        schema={schema}
+                        presentation={presentation}
+                    />
+                    <IconButton
+                        className="shrink-0"
+                        onClick={handleDelete}
+                        variant="plain"
+                        title="Ukloni"
+                        type="button"
+                        size="xs"
+                    >
+                        <Remove className="size-3.5" />
+                    </IconButton>
+                </div>
+                {errorMessage ? (
+                    <p className="mt-1 text-sm text-red-600" role="alert">
+                        {errorMessage}
+                    </p>
+                ) : null}
             </div>
         );
     }
