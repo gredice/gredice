@@ -2912,6 +2912,56 @@ async function assertRaisedBedAllowsCheckoutItem(
     return true;
 }
 
+async function resolveCheckoutOperationFieldId({
+    claimControl,
+    dependencies,
+    fulfillmentTransaction,
+    positionIndex,
+    raisedBedId,
+}: {
+    claimControl?: StripePaymentProcessingClaimControl;
+    dependencies: ProcessCheckoutSessionDependencies;
+    fulfillmentTransaction?: ScheduleTaskTransaction;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+}) {
+    if (
+        typeof raisedBedId !== 'number' ||
+        typeof positionIndex !== 'number' ||
+        !Number.isSafeInteger(positionIndex) ||
+        positionIndex < 0 ||
+        positionIndex >= ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT
+    ) {
+        return undefined;
+    }
+
+    return dependencies.withPlantingScheduleTaskTransaction(
+        raisedBedId,
+        positionIndex,
+        async (transaction) => {
+            await claimControl?.assertOwned(transaction);
+            await dependencies.upsertRaisedBedField(
+                { raisedBedId, positionIndex },
+                transaction,
+            );
+            const fields = await dependencies.getRaisedBedFieldsWithEvents(
+                raisedBedId,
+                transaction,
+            );
+            const targetField = fields.find(
+                (field) => field.positionIndex === positionIndex,
+            );
+            if (!targetField) {
+                throw new Error(
+                    'Checkout operation target field was not created.',
+                );
+            }
+            return targetField.id;
+        },
+        fulfillmentTransaction,
+    );
+}
+
 async function recordCheckoutPlantingRaisedBedUnavailable({
     accountId,
     cartItemId,
@@ -3341,25 +3391,20 @@ export async function processItem(
             };
         }
 
-        // New operations target the currently active field. Retries must keep
-        // the field captured in the durable mapping, even if the active field
-        // at this position has changed since the first attempt.
+        // New operations target the stable field position, including before a
+        // plant is placed. Retries keep the field captured in the durable
+        // mapping even if the plant at this position changes later.
         let fieldId: number | undefined;
         if (checkoutOperationMapping) {
             fieldId = checkoutOperationMapping.raisedBedFieldId ?? undefined;
-        } else if (
-            typeof itemData.positionIndex === 'number' &&
-            itemData.raisedBedId
-        ) {
-            const raisedBedFields =
-                await dependencies.getRaisedBedFieldsWithEvents(
-                    itemData.raisedBedId,
-                );
-            fieldId = raisedBedFields.find(
-                (field) =>
-                    field.positionIndex === itemData.positionIndex &&
-                    field.active,
-            )?.id;
+        } else {
+            fieldId = await resolveCheckoutOperationFieldId({
+                claimControl,
+                dependencies,
+                fulfillmentTransaction: itemData.fulfillmentTransaction,
+                positionIndex: itemData.positionIndex,
+                raisedBedId: itemData.raisedBedId,
+            });
         }
 
         let additionalData = itemData.additionalData;

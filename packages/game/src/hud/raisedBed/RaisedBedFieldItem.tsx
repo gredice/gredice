@@ -116,6 +116,7 @@ export function RaisedBedFieldItem({
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 isDragging={isDragging}
+                showOperations={false}
             />
         );
     }

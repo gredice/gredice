@@ -93,6 +93,17 @@ function makeDependencies(
         purchaseNotificationEmailMessageId: number;
     } | null = null;
     const paidCartIds = new Set<number>();
+    const checkoutFieldsByPosition = new Map([
+        [
+            2,
+            {
+                id: 88,
+                positionIndex: 2,
+                active: false,
+                plantCycles: [],
+            },
+        ],
+    ]);
     const readShoppingCart = async (...args: unknown[]) => {
         const override = overrides.getShoppingCart;
         if (typeof override === 'function') {
@@ -289,14 +300,7 @@ function makeDependencies(
         },
         getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
             record(calls, 'getRaisedBedFieldsWithEvents', args);
-            return [
-                {
-                    id: 88,
-                    positionIndex: 2,
-                    active: false,
-                    plantCycles: [],
-                },
-            ];
+            return [...checkoutFieldsByPosition.values()];
         },
         getStripeCheckoutAttempt: async (...args: unknown[]) => {
             record(calls, 'getStripeCheckoutAttempt', args);
@@ -418,6 +422,19 @@ function makeDependencies(
         },
         upsertRaisedBedField: async (...args: unknown[]) => {
             record(calls, 'upsertRaisedBedField', args);
+            const field = args[0];
+            if (
+                isRecord(field) &&
+                typeof field.positionIndex === 'number' &&
+                !checkoutFieldsByPosition.has(field.positionIndex)
+            ) {
+                checkoutFieldsByPosition.set(field.positionIndex, {
+                    id: 88 + field.positionIndex,
+                    positionIndex: field.positionIndex,
+                    active: false,
+                    plantCycles: [],
+                });
+            }
         },
         withPlantingScheduleTaskTransaction: async (...args: unknown[]) => {
             record(
@@ -1752,7 +1769,7 @@ describe('processCheckoutSession', () => {
                 callback({
                     assertOwned: async () => {
                         ownershipChecks += 1;
-                        if (ownershipChecks === 6) {
+                        if (ownershipChecks === 7) {
                             throw new StripePaymentProcessingClaimLostError(
                                 'cs_paid',
                             );
@@ -1767,7 +1784,7 @@ describe('processCheckoutSession', () => {
             processCheckoutSession('cs_paid', dependencies),
             StripePaymentProcessingClaimLostError,
         );
-        assert.strictEqual(ownershipChecks, 6);
+        assert.strictEqual(ownershipChecks, 7);
         assert.strictEqual(
             callsNamed(calls, 'getOrCreateCheckoutOperation').length,
             1,
@@ -3944,6 +3961,18 @@ describe('processCheckoutSession', () => {
                 record(calls, 'getRaisedBedFieldsWithEvents', args);
                 return [
                     {
+                        id: 87,
+                        positionIndex: 2,
+                        active: false,
+                        plantCycles: [],
+                    },
+                    {
+                        id: 88,
+                        positionIndex: 3,
+                        active: false,
+                        plantCycles: [],
+                    },
+                    {
                         id: 89,
                         positionIndex: 4,
                         active: true,
@@ -4483,6 +4512,69 @@ describe('processItem', () => {
             callsNamed(calls, 'getOrCreateCheckoutOperation').length,
             1,
         );
+        const operationInput = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        )[0]?.args[1];
+        assert.ok(isRecord(operationInput));
+        assert.equal(operationInput.raisedBedFieldId, 88);
+        assert.deepStrictEqual(
+            callsNamed(calls, 'upsertRaisedBedField')[0]?.args[0],
+            { positionIndex: 2, raisedBedId: 300 },
+        );
+    });
+
+    it('creates an operation target for a field that has never held a plant', async () => {
+        const calls: RecordedCall[] = [];
+        let fieldCreated = false;
+        const dependencies = makeDependencies(calls, {
+            getRaisedBedFieldsWithEvents: async (...args: unknown[]) => {
+                record(calls, 'getRaisedBedFieldsWithEvents', args);
+                return fieldCreated
+                    ? [
+                          {
+                              id: 89,
+                              positionIndex: 2,
+                              active: false,
+                              plantCycles: [],
+                          },
+                      ]
+                    : [];
+            },
+            upsertRaisedBedField: async (...args: unknown[]) => {
+                record(calls, 'upsertRaisedBedField', args);
+                fieldCreated = true;
+            },
+        });
+
+        await processItem(
+            {
+                accountId: 'account-1',
+                amount_total: 5000,
+                additionalData: { scheduledDate: '2026-07-01' },
+                cartId: 100,
+                cartItemId: 2,
+                checkoutOperationMapping: null,
+                currency: 'sunflower',
+                entityId: '42',
+                entityTypeName: 'operation',
+                gardenId: 200,
+                positionIndex: 2,
+                raisedBedId: 300,
+            },
+            dependencies,
+        );
+
+        assert.deepStrictEqual(
+            callsNamed(calls, 'upsertRaisedBedField')[0]?.args[0],
+            { positionIndex: 2, raisedBedId: 300 },
+        );
+        const operationInput = callsNamed(
+            calls,
+            'getOrCreateCheckoutOperation',
+        )[0]?.args[1];
+        assert.ok(isRecord(operationInput));
+        assert.equal(operationInput.raisedBedFieldId, 89);
     });
 
     it('keeps an operation retryable until its payment reward is durably earned', async () => {
