@@ -1,6 +1,5 @@
 'use server';
 
-import { notifyDetailedRaisedBedInspectionCompleted } from '@gredice/notifications';
 import {
     blockSelectedRaisedBedPlantingTask,
     completeSelectedRaisedBedPlantingTask,
@@ -8,7 +7,6 @@ import {
     getEntitiesFormatted,
     getFarmUserPrintableHarvestTraceLinkIds,
     markHarvestTraceLinksPrinted,
-    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     resolveOperationTaskCompletionSubmission,
     ScheduleTaskSubmissionError,
     submitOperationTaskBlock,
@@ -521,14 +519,6 @@ export async function completeFarmOperation(
                 submissionId: validSubmissionId,
             });
             if (replay) {
-                if (
-                    validExpectedEntityId ===
-                    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
-                ) {
-                    await notifyDetailedRaisedBedInspectionCompleted(
-                        validOperationId,
-                    );
-                }
                 return actionResult(
                     completionState(replay.status),
                     replay.occurredAt,
@@ -648,10 +638,6 @@ export async function completeFarmOperation(
             return failure;
         }
         throw error;
-    }
-
-    if (validExpectedEntityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID) {
-        await notifyDetailedRaisedBedInspectionCompleted(validOperationId);
     }
 
     return actionResult(completionState(result.status), result.occurredAt);

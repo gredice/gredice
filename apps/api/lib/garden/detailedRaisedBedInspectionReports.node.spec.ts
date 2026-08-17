@@ -38,7 +38,8 @@ test('hydrates unread inspection notifications from current operation notes', ()
                 gardenId: 8,
                 id: 42,
                 raisedBedId: 17,
-                status: 'pendingVerification',
+                status: 'completed',
+                verifiedAt: new Date('2026-08-10T09:00:00.000Z'),
             },
         ],
         raisedBeds: [
@@ -74,6 +75,35 @@ test('hydrates unread inspection notifications from current operation notes', ()
     ]);
 });
 
+test('does not expose inspection notes before admin verification', () => {
+    const reports = buildDetailedRaisedBedInspectionReports({
+        accountId: 'account-1',
+        gardenId: 8,
+        notifications: [
+            {
+                id: 'notification-1',
+                metadata: { operationId: 42 },
+                timestamp: new Date('2026-08-10T08:31:00.000Z'),
+            },
+        ],
+        operations: [
+            {
+                accountId: 'account-1',
+                completedAt: new Date('2026-08-10T08:30:00.000Z'),
+                completionNotes: 'Bilješke još čekaju potvrdu.',
+                entityId: RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+                gardenId: 8,
+                id: 42,
+                raisedBedId: 17,
+                status: 'pendingVerification',
+            },
+        ],
+        raisedBeds: [{ id: 17, name: 'Gredica Sjever' }],
+    });
+
+    assert.deepEqual(reports, []);
+});
+
 test('rejects reports outside the authenticated account and garden', () => {
     const reports = buildDetailedRaisedBedInspectionReports({
         accountId: 'account-1',
@@ -93,6 +123,7 @@ test('rejects reports outside the authenticated account and garden', () => {
                 id: 42,
                 raisedBedId: 17,
                 status: 'completed',
+                verifiedAt: new Date('2026-08-10T09:00:00.000Z'),
             },
         ],
         raisedBeds: [{ id: 17, name: 'Tuđa gredica' }],
@@ -125,6 +156,7 @@ test('falls back to the assigned username and omits unavailable raised bed media
                 id: 42,
                 raisedBedId: 17,
                 status: 'completed',
+                verifiedAt: new Date('2026-08-10T09:00:00.000Z'),
             },
         ],
         raisedBeds: [{ id: 17, name: 'Gredica Jug' }],

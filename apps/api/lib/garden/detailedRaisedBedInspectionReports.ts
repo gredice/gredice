@@ -15,6 +15,7 @@ type DetailedInspectionOperation = {
     id: number;
     raisedBedId?: number | null;
     status: string;
+    verifiedAt?: Date | null;
     assignedUser?: {
         avatarUrl: string | null;
         displayName: string | null;
@@ -74,8 +75,8 @@ export function buildDetailedRaisedBedInspectionReports({
             operation.gardenId !== gardenId ||
             operation.entityId !==
                 RAISED_BED_DETAILED_INSPECTION_OPERATION_ID ||
-            (operation.status !== 'pendingVerification' &&
-                operation.status !== 'completed') ||
+            operation.status !== 'completed' ||
+            !operation.verifiedAt ||
             !operation.raisedBedId
         ) {
             return [];
