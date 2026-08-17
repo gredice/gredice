@@ -14,6 +14,7 @@ export type PopperProps = HTMLAttributes<HTMLDivElement> & {
     align?: 'start' | 'center' | 'end';
     alignOffset?: number;
     onOpenChange?: (open: boolean) => void;
+    onOpenAutoFocus?: PopoverPrimitive.PopoverContentProps['onOpenAutoFocus'];
     container?: HTMLElement;
 };
 

@@ -205,7 +205,9 @@ export function GameHud({
                 >
                     <CameraHud />
                     {viewMode === '3d' ? <AudioHud /> : null}
-                    {viewMode === '3d' ? <ControlsTooltipHud /> : null}
+                    {viewMode === '3d' ? (
+                        <ControlsTooltipHud isCloseup={isCloseup} />
+                    ) : null}
                     {whatsNewHudEnabled && (
                         <IconButton
                             title="Što je novo"

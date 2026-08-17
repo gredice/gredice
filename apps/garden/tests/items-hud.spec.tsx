@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import {
     ActiveItemsHudDropTargetStory,
     CloseupBottomHudStory,
+    ControlsTooltipCloseupStory,
     ItemsHudAlignmentStory,
     ItemsHudCameraTargetStory,
     ItemsHudControlsTooltipStory,
@@ -256,6 +257,62 @@ test('controls instructions clear the item picker on tablet layouts', async ({
     );
 
     await toggle.click();
+    await expect(guide).toHaveCount(0);
+    await expect(page.getByTitle('Prikaži kontrole')).toHaveAttribute(
+        'aria-expanded',
+        'false',
+    );
+});
+
+test('automatically opening controls instructions preserve focus', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await page.evaluate(() => {
+        window.localStorage.setItem(
+            'game-controls-tooltip-v1',
+            JSON.stringify({
+                tablet: { dismissedAt: Date.now(), seenVersion: 3 },
+            }),
+        );
+    });
+    await mount(<ItemsHudControlsTooltipStory />);
+
+    const toggle = page.locator(
+        'button[aria-controls="game-controls-tooltip"]',
+    );
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('title', 'Prikaži kontrole');
+    await toggle.focus();
+    await expect(toggle).toBeFocused();
+
+    await page.evaluate(() => {
+        window.localStorage.removeItem('game-controls-tooltip-v1');
+        window.dispatchEvent(new Event('resize'));
+    });
+
+    await expect(
+        page.locator('[data-controls-tooltip-hud="open"]'),
+    ).toBeVisible();
+    await expect(toggle).toBeFocused();
+});
+
+test('controls instructions close when entering closeup view', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(TABLET_VIEWPORT);
+    await page.evaluate(() => {
+        window.localStorage.removeItem('game-controls-tooltip-v1');
+    });
+    await mount(<ControlsTooltipCloseupStory />);
+
+    const guide = page.locator('[data-controls-tooltip-hud="open"]');
+    await expect(guide).toBeVisible();
+
+    await page.getByRole('button', { name: 'Uđi u gredicu' }).click();
+
     await expect(guide).toHaveCount(0);
     await expect(page.getByTitle('Prikaži kontrole')).toHaveAttribute(
         'aria-expanded',

@@ -63,9 +63,11 @@ function prefersReducedMotion() {
 }
 
 export function ControlsTooltipHud({
+    isCloseup = false,
     mode = 'edit',
     offsetForItemsHud = true,
 }: {
+    isCloseup?: boolean;
     mode?: 'edit' | 'view';
     offsetForItemsHud?: boolean;
 } = {}) {
@@ -77,6 +79,10 @@ export function ControlsTooltipHud({
         const syncDeviceType = () => {
             const nextType = getDeviceType();
             setDeviceType(nextType);
+            if (isCloseup) {
+                setOpen(false);
+                return;
+            }
             const record = readStorage()[tooltipStorageKey(mode, nextType)];
             if (shouldShowTooltip(record)) {
                 setOpen(true);
@@ -86,7 +92,7 @@ export function ControlsTooltipHud({
         syncDeviceType();
         window.addEventListener('resize', syncDeviceType);
         return () => window.removeEventListener('resize', syncDeviceType);
-    }, [mode]);
+    }, [isCloseup, mode]);
 
     useEffect(() => {
         if (!open || prefersReducedMotion()) return;
@@ -123,6 +129,7 @@ export function ControlsTooltipHud({
             className="relative w-auto border-0 bg-transparent p-2 shadow-none sm:p-3"
             data-controls-tooltip-hud="open"
             id="game-controls-tooltip"
+            onOpenAutoFocus={(event) => event.preventDefault()}
             onOpenChange={handleOpenChange}
             open={open}
             side="top"
