@@ -868,8 +868,62 @@ Both viewport suites passed every L-system-specific acceptance gate:
 | #4282 exact instance-buffer ownership | Thirteen active meshes held exactly `10,176/10,176` live/capacity instances and `803,708 bytes`, with zero empty meshes and zero orphaned resources. |
 | #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms`. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
 
-The top-level headless budget remains red: the corrected software-WebGL profile
-reported steady median p95 values of `221.1-224.2 ms` desktop and
+### 2026-08-17 close-up closure audit
+
+The close-up matrix was repeated from production commit
+`1e87ebf6c4a72c1ec168b618e3979f542cf31126` after the acceptance report exposed
+a remaining race between close-up intent, packed render-data readiness, and
+idle-scheduled shader prewarming. Focused near detail now stays on its
+billboard and raised-bed shadow proxy until the renderer/quality-specific
+prewarm reaches a terminal state. Prewarming begins with close-up intent and
+covers both the initial and React-updated custom-material program keys,
+including instanced and non-instanced mid billboards. Failure, timeout, or
+context-loss recovery still fails visibly safe by allowing detail rather than
+leaving the selected bed permanently on its fallback.
+
+Command:
+
+```bash
+GITHUB_SHA=1e87ebf6c4a72c1ec168b618e3979f542cf31126 \
+GAME_PROFILE_SCENARIO_SET=plant-closeup \
+GAME_PROFILE_CLOSEUP_REPEAT=5 \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/issue-4277-4283-final-5x \
+pnpm --dir apps/garden run profile:game:start
+```
+
+The managed production server and headless Chrome 149 used ANGLE Metal on an
+Apple M4 Pro. The raw ignored report is at
+`apps/garden/test-results/game-profile/issue-4277-4283-final-5x/latest.md`.
+Its overall budget and both optimization acceptance rows passed:
+
+| Evidence | Desktop medium | Constrained mobile |
+| --- | ---: | ---: |
+| Cold/warm phases ready | `10/10` | `10/10` |
+| Selected fields total/near/detailed | `18/18/18` in `10/10` | `18/18/18` in `10/10` |
+| Group rejection / projection avoided | `79.2% / 81.2%` | `90.2% / 92.2%` |
+| First exact / full detail, cold | `123.1 / 231.0 ms` | `96.2 / 134.1 ms` |
+| First exact / full detail, warm | `35.3 / 91.6 ms` | `33.9 / 61.9 ms` |
+| Shader-ready with no swap compilation | `10/10` | `10/10` |
+| Cold / warm prewarm | `73.2 / 8.4 ms` | `61.9 / 7.6 ms` |
+| Post-swap programs | `0` in every phase | `0` in every phase |
+| Worker/fallback clean | `10/10` | `10/10` |
+
+All 40 requested normal, pending-near, cold-detailed, and warm-detailed
+screenshots were captured. The pending view retains billboard plants while the
+detailed view shows the same selected bed and layout at full geometry. The
+mobile cold-transition aggregate retained one `392.4 ms` maximum frame, while
+its median p95 remained `27.2 ms`, steady maximum remained `27.3 ms`, no long
+tasks were recorded, and the configured regression budget passed.
+
+This closure audit is deterministic desktop/mobile browser evidence for
+`#4277` and `#4283`; it is not physical-device thermal clearance. Ten-minute
+High-quality iPhone and Android thermal soaks, including throttling and battery
+state, remain independently tracked by `#4344`.
+
+In the earlier corrected software-WebGL report, the top-level headless budget
+remained red: it reported steady median p95 values of `221.1-224.2 ms` desktop and
 `187.4-187.5 ms` mobile, plus repeated `ReadPixels` stalls. Draw-call, triangle,
 and heap budgets passed. This does not invalidate the L-system-specific gates,
 but it also is not thermal clearance.
