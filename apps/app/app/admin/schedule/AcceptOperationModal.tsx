@@ -33,11 +33,10 @@ export function AcceptOperationModal({
 
     const handleConfirm = async () => {
         if (onConfirm) {
-            await onConfirm();
-            return;
+            return onConfirm();
         }
 
-        await acceptOperationAction(
+        return acceptOperationAction(
             operationId,
             expectedEntityId,
             expectedTaskVersionEventId,
