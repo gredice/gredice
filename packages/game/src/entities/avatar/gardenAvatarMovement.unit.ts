@@ -746,6 +746,117 @@ test('connects rough and polished stone fence walls together', () => {
     );
 });
 
+test('closed gates block the avatar and open gates leave a center passage', () => {
+    for (const name of [
+        'FenceGate',
+        'WhiteFenceGate',
+        'StoneFenceGate',
+        'PolishedStoneFenceGate',
+    ]) {
+        const createWorld = (variant: number) =>
+            createGardenAvatarCollisionWorld({
+                blockData: getLocalSandboxBlockData(),
+                stacks: [
+                    {
+                        blocks: [
+                            {
+                                id: `${name}-ground`,
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                            {
+                                id: `${name}-gate`,
+                                name,
+                                rotation: 0,
+                                variant,
+                            },
+                        ],
+                        position: new Vector3(0, 0, 0),
+                    },
+                ],
+            });
+        const closedWorld = createWorld(0);
+        const openWorld = createWorld(1);
+        const moveThrough = (world: ReturnType<typeof createWorld>) =>
+            resolveGardenAvatarHorizontalMovement({
+                deltaX: 0,
+                deltaZ: 1.6,
+                position: { x: 0, y: 0.4, z: -0.8 },
+                world,
+            });
+
+        assert.equal(moveThrough(closedWorld).collided, true, name);
+        assert.equal(moveThrough(openWorld).collided, false, name);
+        assert.deepEqual(getGardenAvatarRoamBlockedCells(closedWorld), [
+            { x: 0, z: 0 },
+        ]);
+        assert.deepEqual(getGardenAvatarRoamBlockedCells(openWorld), []);
+    }
+});
+
+test('open gate leaf collision follows the rendered hinge through every rotation', () => {
+    const expectedCenters = [
+        { x: -0.43, z: 0.43 },
+        { x: 0.43, z: 0.43 },
+        { x: 0.43, z: -0.43 },
+        { x: -0.43, z: -0.43 },
+    ];
+
+    for (const [rotation, expected] of expectedCenters.entries()) {
+        const world = createGardenAvatarCollisionWorld({
+            blockData: [],
+            stacks: [
+                {
+                    blocks: [
+                        {
+                            id: 'gate',
+                            name: 'FenceGate',
+                            rotation,
+                            variant: 1,
+                        },
+                    ],
+                    position: new Vector3(0, 0, 0),
+                },
+            ],
+        });
+        const leaf = world.surfaces.find(
+            (surface) =>
+                surface.debugLabel === 'FenceGate' &&
+                Math.abs(surface.x) > 0.2 &&
+                Math.abs(surface.z) > 0.2,
+        );
+
+        assert.ok(leaf, `Missing open leaf for rotation ${rotation}`);
+        assert.ok(Math.abs(leaf.x - expected.x) < 0.000_01);
+        assert.ok(Math.abs(leaf.z - expected.z) < 0.000_01);
+    }
+});
+
+test('normal fences connect to gate posts without filling the gate tile', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [{ id: 'fence', name: 'Fence', rotation: 0 }],
+                position: new Vector3(-1, 0, 0),
+            },
+            {
+                blocks: [{ id: 'gate', name: 'WhiteFenceGate', rotation: 0 }],
+                position: new Vector3(0, 0, 0),
+            },
+        ],
+    });
+    const woodenRails = world.surfaces.filter(
+        (surface) =>
+            surface.debugLabel === 'Fence' &&
+            surface.halfWidth === 0.2125 &&
+            surface.halfDepth === 0.075,
+    );
+
+    assert.equal(woodenRails.length, 1);
+    assert.equal(woodenRails[0]?.x, -0.7125);
+});
+
 test('centers multi-cell collisions and blocks their complete roaming footprint', () => {
     const decorationWorld = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),
