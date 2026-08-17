@@ -65,6 +65,7 @@ export type {
     PlantStageData,
     paths,
     SeedData,
+    SunflowerPackageData,
 } from '@gredice/directory-types';
 
 export function directoriesClient() {

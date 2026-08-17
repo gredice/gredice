@@ -9,6 +9,7 @@ function plantWithGreenhouseCalendar(
         calendar: {
             harvest: [],
             propagating,
+            sowing: [],
         },
     };
 }

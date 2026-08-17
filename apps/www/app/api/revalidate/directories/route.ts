@@ -17,6 +17,7 @@ function publicDirectoryEntityType(
         case 'plantSort':
         case 'operation':
         case 'seed':
+        case 'sunflowerPackage':
             return value;
         default:
             return null;

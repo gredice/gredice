@@ -6,7 +6,8 @@ export type PublicDirectoryEntityType =
     | 'plantPest'
     | 'plantSort'
     | 'operation'
-    | 'seed';
+    | 'seed'
+    | 'sunflowerPackage';
 
 export type RevalidationPath = {
     path: string;
@@ -71,6 +72,7 @@ const revalidationPathsByEntityType: Record<
         { path: '/sjeme/brend/[slug]', type: 'page' },
         { path: '/biljke/[alias]/sorte/[sortAlias]', type: 'page' },
     ],
+    sunflowerPackage: [{ path: '/suncokreti' }, { path: '/cjenik' }],
 };
 
 export function collectRevalidationPaths(
