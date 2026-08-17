@@ -884,6 +884,45 @@ export function getFarmAnimalLocomotion({
         : ('walking' as const);
 }
 
+export function getChickenHeadPitch({
+    behavior,
+    moving,
+    now,
+    swimming,
+}: {
+    behavior: FarmAnimalBehavior;
+    moving: boolean;
+    now: number;
+    swimming: boolean;
+}) {
+    const peck =
+        behavior === 'forage' && !moving
+            ? Math.max(0, Math.sin(now * 5.8)) ** 2
+            : 0;
+    const dust = behavior === 'dust-bathe' && !moving ? 1 : 0;
+    return -peck * 0.78 - dust * 0.28 + (swimming ? -0.12 : 0);
+}
+
+export function getPigletHeadPitch({
+    behavior,
+    moving,
+    now,
+    swimming,
+}: {
+    behavior: FarmAnimalBehavior;
+    moving: boolean;
+    now: number;
+    swimming: boolean;
+}) {
+    const rooting = behavior === 'root' && !moving ? 1 : 0;
+    const wallowing = behavior === 'wallow' && !moving ? 1 : 0;
+    return (
+        -rooting * (0.32 + Math.max(0, Math.sin(now * 4.6)) * 0.24) -
+        wallowing * 0.12 +
+        (swimming ? -0.1 : 0)
+    );
+}
+
 function updateChickenPose({
     behavior,
     delta,
@@ -920,10 +959,6 @@ function updateChickenPose({
         rotationX: (swimming ? -0.42 - step * 0.3 : -step * 0.52) * walkAmount,
     });
 
-    const peck =
-        behavior === 'forage' && !moving
-            ? Math.max(0, Math.sin(now * 5.8)) ** 2
-            : 0;
     const dust = behavior === 'dust-bathe' && !moving ? 1 : 0;
     poseRigNode(rig.body, delta, {
         positionY: swimming
@@ -935,7 +970,12 @@ function updateChickenPose({
         rotationZ: dust * Math.sin(now * 3.2) * 0.16,
     });
     poseRigNode(rig.head, delta, {
-        rotationX: peck * 0.78 + dust * 0.28 + (swimming ? -0.12 : 0),
+        rotationX: getChickenHeadPitch({
+            behavior,
+            moving,
+            now,
+            swimming,
+        }),
         rotationZ:
             behavior === 'roam' && !moving ? Math.sin(now * 1.7) * 0.16 : 0,
     });
@@ -991,7 +1031,6 @@ function updatePigletPose({
                 (index === 0 || index === 3 ? diagonal : -diagonal),
         });
     });
-    const rooting = behavior === 'root' && !moving ? 1 : 0;
     const wallowing = behavior === 'wallow' && !moving ? 1 : 0;
     poseRigNode(rig.body, delta, {
         positionY: swimming
@@ -1003,10 +1042,12 @@ function updatePigletPose({
         rotationZ: wallowing * Math.sin(now * 2.1) * 0.2,
     });
     poseRigNode(rig.head, delta, {
-        rotationX:
-            rooting * (0.32 + Math.max(0, Math.sin(now * 4.6)) * 0.24) +
-            wallowing * 0.12 +
-            (swimming ? -0.1 : 0),
+        rotationX: getPigletHeadPitch({
+            behavior,
+            moving,
+            now,
+            swimming,
+        }),
         rotationZ:
             !moving && behavior === 'roam' ? Math.sin(now * 1.5) * 0.1 : 0,
     });

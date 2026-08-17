@@ -5,8 +5,10 @@ import type { Stack } from '../../types/Stack';
 import {
     chooseNextFarmAnimalTarget,
     createFarmAnimalHabitatsForSpecies,
+    getChickenHeadPitch,
     getFarmAnimalBehaviorAvailability,
     getFarmAnimalLocomotion,
+    getPigletHeadPitch,
     resolveFarmAnimalRuntimeForTarget,
 } from './FarmAnimals';
 
@@ -206,5 +208,72 @@ test('distinguishes swimming from walking while an animal is moving', () => {
             position: new Vector3(1, 0, 0),
         }),
         'settled',
+    );
+});
+
+test('aims chicken pecking and dust-bathing down instead of backward', () => {
+    assert.ok(
+        getChickenHeadPitch({
+            behavior: 'forage',
+            moving: false,
+            now: Math.PI / (2 * 5.8),
+            swimming: false,
+        }) < 0,
+    );
+    assert.equal(
+        getChickenHeadPitch({
+            behavior: 'dust-bathe',
+            moving: false,
+            now: 0,
+            swimming: false,
+        }),
+        -0.28,
+    );
+    assert.equal(
+        getChickenHeadPitch({
+            behavior: 'forage',
+            moving: true,
+            now: Math.PI / (2 * 5.8),
+            swimming: false,
+        }),
+        0,
+    );
+    assert.equal(
+        getChickenHeadPitch({
+            behavior: 'roam',
+            moving: true,
+            now: 0,
+            swimming: true,
+        }),
+        -0.12,
+    );
+});
+
+test('aims piglet rooting and wallowing down while preserving the swim pose', () => {
+    assert.ok(
+        getPigletHeadPitch({
+            behavior: 'root',
+            moving: false,
+            now: Math.PI / (2 * 4.6),
+            swimming: false,
+        }) < -0.5,
+    );
+    assert.equal(
+        getPigletHeadPitch({
+            behavior: 'wallow',
+            moving: false,
+            now: 0,
+            swimming: false,
+        }),
+        -0.12,
+    );
+    assert.equal(
+        getPigletHeadPitch({
+            behavior: 'roam',
+            moving: true,
+            now: 0,
+            swimming: true,
+        }),
+        -0.1,
     );
 });

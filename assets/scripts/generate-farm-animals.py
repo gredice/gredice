@@ -49,6 +49,24 @@ def reset_scene(asset_name: str) -> None:
     scene["asset_name"] = asset_name
 
 
+def srgb_channel_to_linear(value: float) -> float:
+    if value <= 0.04045:
+        return value / 12.92
+    return ((value + 0.055) / 1.055) ** 2.4
+
+
+def linear_rgba(
+    color: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    red, green, blue, alpha = color
+    return (
+        srgb_channel_to_linear(red),
+        srgb_channel_to_linear(green),
+        srgb_channel_to_linear(blue),
+        alpha,
+    )
+
+
 def material(
     name: str,
     color: tuple[float, float, float, float],
@@ -56,12 +74,13 @@ def material(
     roughness: float = 0.86,
     metallic: float = 0,
 ) -> bpy.types.Material:
+    linear_color = linear_rgba(color)
     value = bpy.data.materials.new(name)
-    value.diffuse_color = color
+    value.diffuse_color = linear_color
     value.use_nodes = True
     shader = value.node_tree.nodes.get("Principled BSDF")
     if shader:
-        shader.inputs["Base Color"].default_value = color
+        shader.inputs["Base Color"].default_value = linear_color
         shader.inputs["Roughness"].default_value = roughness
         shader.inputs["Metallic"].default_value = metallic
     return value
@@ -414,6 +433,11 @@ def create_chicken(output_dir: Path) -> None:
     parent_keep_transform(wing_right, wing_right_pivot)
     parent_keep_transform(tail, tail_pivot)
 
+    # Blender +Y exports as runtime -Z, while the shared animal movement
+    # convention treats runtime +Z as forward. Rotate the complete rig so its
+    # beak, feet, and procedural poses face the direction of travel.
+    root.rotation_euler.z = math.pi
+
     expected_names = [
         "Chicken_Root",
         "Chicken_BodyPivot",
@@ -589,6 +613,11 @@ def create_piglet(output_dir: Path) -> None:
     parent_keep_transform(ear_right, ear_right_pivot)
     parent_keep_transform(tail, tail_pivot)
     parent_keep_transform(tail_tip, tail_pivot)
+
+    # Blender +Y exports as runtime -Z, while the shared animal movement
+    # convention treats runtime +Z as forward. Rotate the complete rig so its
+    # snout, legs, and procedural poses face the direction of travel.
+    root.rotation_euler.z = math.pi
 
     expected_names = [
         "Piglet_Root",

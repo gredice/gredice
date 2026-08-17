@@ -458,6 +458,7 @@
             "name": "Chicken",
             "source": "Chicken.blend",
             "output": "Chicken.glb",
+            "version": "227ef1ef6fda",
             "preload": "lazy",
             "objects": [
                 "Chicken_Root",
@@ -491,6 +492,7 @@
             "name": "Piglet",
             "source": "Piglet.blend",
             "output": "Piglet.glb",
+            "version": "58f584a6fa21",
             "preload": "lazy",
             "objects": [
                 "Piglet_Root",
@@ -1539,6 +1541,7 @@
             "name": "ChickenCoop",
             "source": "ChickenCoop.blend",
             "output": "ChickenCoop.glb",
+            "version": "be4d924a3f5a",
             "preload": "lazy",
             "objects": [
                 "ChickenCoop_WoodDark",
@@ -1554,6 +1557,7 @@
             "name": "PigletPen",
             "source": "PigletPen.blend",
             "output": "PigletPen.glb",
+            "version": "6391ab49beb5",
             "preload": "lazy",
             "objects": [
                 "PigletPen_Wood",
