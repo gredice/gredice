@@ -112,6 +112,7 @@ const nextConfig: NextConfig = {
                 // Block thumbnails carry a content hash so optimized images can
                 // be cached without serving a stale asset after a replacement.
                 pathname: '/assets/blocks/**',
+                search: `?v=${blockImageAssetVersion}`,
             },
         ],
         remotePatterns: [
