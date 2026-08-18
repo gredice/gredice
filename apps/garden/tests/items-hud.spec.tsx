@@ -153,6 +153,30 @@ test('item picker stays centered on tablet layouts', async ({
     );
 });
 
+test('warms item thumbnails one menu level ahead while idle', async ({
+    mount,
+    page,
+}) => {
+    const imageRequests: string[] = [];
+    page.on('request', (request) => {
+        if (request.resourceType() === 'image') {
+            imageRequests.push(request.url());
+        }
+    });
+
+    await mount(<ItemsHudAlignmentStory />);
+
+    await expect
+        .poll(() => imageRequests.join('\n'))
+        .toContain('WoodenBench.webp');
+
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+
+    await expect
+        .poll(() => imageRequests.join('\n'))
+        .toContain('LemonadeStand.webp');
+});
+
 test('item picker floats above the bottom edge without a border', async ({
     mount,
     page,

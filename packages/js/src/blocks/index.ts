@@ -8,7 +8,7 @@ const defaultBlockImageBaseUrl = 'https://www.gredice.com/assets/blocks';
 
 export function getBlockImageUrl(
     blockName: string | null | undefined,
-    options?: { baseUrl?: string },
+    options?: { baseUrl?: string; version?: string | null },
 ) {
     const normalizedBlockName = blockName?.trim();
     if (!normalizedBlockName) {
@@ -19,7 +19,13 @@ export function getBlockImageUrl(
         /\/+$/u,
         '',
     );
-    return `${baseUrl}/${encodeURIComponent(normalizedBlockName)}.webp`;
+    const version = (
+        options?.version === undefined
+            ? process.env.NEXT_PUBLIC_BLOCK_IMAGE_VERSION
+            : options.version
+    )?.trim();
+    const versionQuery = version ? `?v=${encodeURIComponent(version)}` : '';
+    return `${baseUrl}/${encodeURIComponent(normalizedBlockName)}.webp${versionQuery}`;
 }
 
 export function isNightOnlyBlockPurchase(

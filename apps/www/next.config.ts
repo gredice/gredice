@@ -6,10 +6,14 @@ import {
     getAppDevPort,
     localAppHostnameUrl,
 } from '../../scripts/app-registry.ts';
+import { getBlockImageAssetVersion } from '../../scripts/block-image-version.ts';
 
 const app = getAppByName('www');
 const apiApp = getAppByName('api');
 const newsApp = getAppByName('news');
+const blockImageAssetVersion = getBlockImageAssetVersion([
+    new URL('./public/assets/blocks/', import.meta.url),
+]);
 // Use the Vercel deployment ID (or git commit SHA) as a cache-busting tag.
 // Assets are not truly immutable – they change when game models or sprites are updated.
 // CDN (s-maxage) is purged automatically by Vercel on each deployment.
@@ -43,6 +47,9 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     typedRoutes: true,
     reactCompiler: true,
+    env: {
+        NEXT_PUBLIC_BLOCK_IMAGE_VERSION: blockImageAssetVersion,
+    },
     logging: {
         browserToTerminal: true,
     },
@@ -66,6 +73,10 @@ const nextConfig: NextConfig = {
             },
             {
                 source: '/assets/textures/:path*',
+                headers: assetCacheHeaders,
+            },
+            {
+                source: '/assets/blocks/:path*',
                 headers: assetCacheHeaders,
             },
         ];
@@ -126,6 +137,17 @@ const nextConfig: NextConfig = {
     // 12-hour catalogue revalidation interval.
     expireTime: 54000,
     images: {
+        localPatterns: [
+            {
+                pathname: '**',
+                search: '',
+            },
+            {
+                // Block thumbnails carry a content hash so optimized images can
+                // be cached without serving a stale asset after a replacement.
+                pathname: '/assets/blocks/**',
+            },
+        ],
         remotePatterns: [
             {
                 protocol: 'https',
