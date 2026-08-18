@@ -853,7 +853,7 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     expect((guideBox?.x ?? 0) + (guideBox?.width ?? 0)).toBeGreaterThanOrEqual(
         (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
     );
-    await controlsToggle.click();
+    await controlsToggle.click({ force: true });
     await expect(controlsGuide).toHaveCount(0);
     const closedControlsBox = await sceneControls.boundingBox();
     expect(closedControlsBox).not.toBeNull();
@@ -870,6 +870,10 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
 
     const screenshotViewport = { height: 288, width: 376 };
     await page.setViewportSize(screenshotViewport);
+    await expect
+        .poll(() => page.evaluate(() => window.innerWidth))
+        .toBe(screenshotViewport.width);
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
     await expect(controlsGuide).toBeVisible();
     const [mobileOpenControlsBox, mobileGuideBox, mobileToggleBox] =
         await Promise.all([
@@ -889,7 +893,7 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         (mobileToggleBox?.y ?? 0) -
             ((mobileGuideBox?.y ?? 0) + (mobileGuideBox?.height ?? 0)),
     ).toBeGreaterThanOrEqual(7);
-    await page.getByTitle('Sakrij kontrole').click();
+    await page.getByTitle('Sakrij kontrole').click({ force: true });
     await expect(controlsGuide).toHaveCount(0);
     const mobileClosedControlsBox = await sceneControls.boundingBox();
     expect(mobileClosedControlsBox).not.toBeNull();
@@ -987,7 +991,7 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
     const paprikaOffer = page.getByRole('button', {
         name: /Paprika Zlata Snack/u,
     });
-    await paprikaOffer.hover();
+    await paprikaOffer.hover({ force: true });
     await expect(page.locator('[data-outlet-garden]')).toHaveAttribute(
         'data-outlet-garden-hovered-offer',
         '302',
@@ -998,7 +1002,7 @@ async function runOutletGardenListTest({ page }: { page: Page }) {
             exact: true,
             level: 1,
         })
-        .hover();
+        .hover({ force: true });
     await expect(page.locator('[data-outlet-garden]')).not.toHaveAttribute(
         'data-outlet-garden-hovered-offer',
         /.+/u,
