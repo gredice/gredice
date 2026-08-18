@@ -1,17 +1,26 @@
 import { Container } from '@gredice/ui/Container';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
 import type { Metadata, Route } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
 import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
 import { NewsCard } from '../components/NewsCard';
-import { getBlogPosts, uniqueNewsValues } from '../lib/news';
+import { WeeklyChangelogCard } from '../components/WeeklyChangelogCard';
+import {
+    formatNewsDate,
+    getBlogPosts,
+    getChangelogEntries,
+    uniqueNewsValues,
+} from '../lib/news';
 import { newsArchiveMetadata } from '../lib/newsArchiveMetadata';
 import {
     isKnownNewsFilter,
     normalizeNewsFilterValue,
 } from '../lib/newsFilters';
+import { buildNewsTimeline } from '../lib/newsTimeline';
 import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
+import { buildChangelogWeeks } from '../lib/weeklyChangelog';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = newsArchiveMetadata;
@@ -47,7 +56,10 @@ export default async function NewsHomePage({
 
     const activeCategory = category?.trim() || undefined;
     const normalizedCategory = normalizeNewsFilterValue(activeCategory);
-    const allPosts = await getBlogPosts();
+    const [allPosts, changelogEntries] = await Promise.all([
+        getBlogPosts(),
+        getChangelogEntries(),
+    ]);
     const currentFilters = { category: activeCategory };
     const categories = uniqueNewsValues(allPosts, (item) => item.category);
     if (!isKnownNewsFilter(categories, activeCategory)) {
@@ -64,6 +76,15 @@ export default async function NewsHomePage({
 
         return true;
     });
+    const changelogWeeks = activeCategory
+        ? []
+        : buildChangelogWeeks(changelogEntries);
+    const timelineGroups = buildNewsTimeline(visiblePosts, changelogWeeks);
+    const totalItems = timelineGroups.reduce(
+        (total, group) => total + group.items.length,
+        0,
+    );
+    let itemIndex = 0;
 
     return (
         <Container className="grid gap-8 py-10">
@@ -75,8 +96,8 @@ export default async function NewsHomePage({
                     Novosti iz Gredica
                 </h1>
                 <p className="max-w-2xl text-lg text-muted-foreground">
-                    Blog objave i promjene proizvoda koje pomažu pratiti što se
-                    događa u Gredicama.
+                    Blog objave i tjedni pregledi novih mogućnosti, poboljšanja i
+                    promjena u Gredicama.
                 </p>
             </section>
             <NewsArchiveNavigation active="news" />
@@ -85,29 +106,63 @@ export default async function NewsHomePage({
                     <FilterPills
                         active={activeCategory}
                         currentFilters={currentFilters}
-                        label="Kategorije"
+                        label="Blog kategorije"
                         param="category"
                         values={categories}
                     />
                 </aside>
             ) : null}
-            {visiblePosts.length > 0 ? (
-                <section className="grid items-start gap-4 md:grid-cols-2">
-                    {visiblePosts.map((entry) => (
-                        <NewsCard
-                            key={entry.id}
-                            entry={entry}
-                            href={`/${entry.slug}` as Route}
-                            kind="blog"
-                            viewTransitionName={getNewsArticleViewTransitionName(
-                                'blog',
-                                entry.slug,
-                            )}
-                        />
+            {totalItems > 0 ? (
+                <Timeline>
+                    {timelineGroups.map((group, groupIndex) => (
+                        <TimelineGroup
+                            hasItems={group.items.length > 0}
+                            isFirst={groupIndex === 0}
+                            key={group.monthKey}
+                            label={group.monthLabel}
+                        >
+                            {group.items.map((item) => {
+                                const currentItemIndex = itemIndex;
+                                itemIndex += 1;
+
+                                return (
+                                    <TimelineEntry
+                                        index={currentItemIndex}
+                                        isLast={
+                                            currentItemIndex === totalItems - 1
+                                        }
+                                        key={item.key}
+                                        label={
+                                            item.kind === 'blog'
+                                                ? (formatNewsDate(
+                                                      item.blog.publishedAt,
+                                                  ) ?? 'Bez datuma')
+                                                : item.week.rangeLabel
+                                        }
+                                    >
+                                        {item.kind === 'blog' ? (
+                                            <NewsCard
+                                                entry={item.blog}
+                                                href={`/${item.blog.slug}` as Route}
+                                                kind="blog"
+                                                viewTransitionName={getNewsArticleViewTransitionName(
+                                                    'blog',
+                                                    item.blog.slug,
+                                                )}
+                                            />
+                                        ) : (
+                                            <WeeklyChangelogCard
+                                                week={item.week}
+                                            />
+                                        )}
+                                    </TimelineEntry>
+                                );
+                            })}
+                        </TimelineGroup>
                     ))}
-                </section>
+                </Timeline>
             ) : (
-                <EmptyNewsState title="Još nema objava">
+                <EmptyNewsState title="Još nema novosti">
                     Trenutačno nema objavljenih novosti.
                 </EmptyNewsState>
             )}

@@ -1,5 +1,11 @@
 const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'long',
+    timeZone: 'Europe/Zagreb',
+    year: 'numeric',
+});
+const monthKeyFormatter = new Intl.DateTimeFormat('en-CA', {
+    month: '2-digit',
+    timeZone: 'Europe/Zagreb',
     year: 'numeric',
 });
 
@@ -50,11 +56,14 @@ function monthDetails(value: string) {
         return { monthKey: 'unknown', monthLabel: 'Bez datuma' };
     }
 
+    const parts = new Map(
+        monthKeyFormatter
+            .formatToParts(date)
+            .map((part) => [part.type, part.value]),
+    );
+
     return {
-        monthKey: [
-            date.getFullYear(),
-            (date.getMonth() + 1).toString().padStart(2, '0'),
-        ].join('-'),
+        monthKey: [parts.get('year'), parts.get('month')].join('-'),
         monthLabel: monthFormatter.format(date),
     };
 }

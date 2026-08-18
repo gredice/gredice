@@ -57,4 +57,14 @@ describe('buildNewsTimeline', () => {
         assert.equal(groups.at(-1)?.monthKey, 'unknown');
         assert.equal(groups.at(-1)?.monthLabel, 'Bez datuma');
     });
+
+    it('groups month boundaries in the Croatian time zone', () => {
+        const groups = buildNewsTimeline(
+            [{ id: 1, publishedAt: '2026-07-31T22:30:00.000Z' }],
+            [],
+        );
+
+        assert.equal(groups[0]?.monthKey, '2026-08');
+        assert.equal(groups[0]?.monthLabel, 'kolovoz 2026.');
+    });
 });
