@@ -8,7 +8,9 @@ Run with Blender, not the system Python:
 
 Each gate is one tile wide along the local X axis. ``*_Posts`` stays fixed,
 while ``*_Leaf`` is authored relative to its left hinge so the runtime can
-swing it open without rebuilding geometry.
+swing it open without rebuilding geometry. The wooden, white, and rough-stone
+gates deliberately repeat the silhouette and material language of their fence
+families. The polished-stone gate keeps its masonry posts with a white leaf.
 """
 
 from __future__ import annotations
@@ -25,6 +27,23 @@ OUTPUT_DIR = ROOT / "assets/game-assets"
 
 GATE_HALF_WIDTH = 0.43
 LEAF_LENGTH = GATE_HALF_WIDTH * 2
+
+WOOD_POST_SIZE = 0.15
+WOOD_POST_HEIGHT = 0.55
+WOOD_RAIL_DEPTH = 0.1
+WOOD_RAIL_HEIGHT = 0.1
+WOOD_RAIL_HEIGHTS = (0.21, 0.39)
+
+WHITE_PICKET_WIDTH = 0.215
+WHITE_PICKET_DEPTH = 0.045
+WHITE_PICKET_BODY_HEIGHT = 0.58
+WHITE_PICKET_CAP_HEIGHT = 0.14
+WHITE_RAIL_DEPTH = 0.04
+WHITE_RAIL_HEIGHT = 0.055
+WHITE_RAIL_HEIGHTS = (0.25, 0.45)
+
+ROUGH_WALL_THICKNESS = 0.16
+ROUGH_WALL_HEIGHT = 0.48
 
 
 def srgb_channel_to_linear(value: float) -> float:
@@ -153,6 +172,27 @@ def create_material(
     return material
 
 
+def create_linear_material(
+    name: str,
+    color: tuple[float, float, float, float],
+    roughness: float,
+    metallic: float = 0,
+) -> bpy.types.Material:
+    """Create a material from the exact linear factors used by a fence GLB."""
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    material.diffuse_color = color
+    material.metallic = metallic
+    material.roughness = roughness
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if principled is not None:
+        principled.inputs["Base Color"].default_value = color
+        principled.inputs["Metallic"].default_value = metallic
+        principled.inputs["Roughness"].default_value = roughness
+        principled.inputs["IOR"].default_value = 1.45
+    return material
+
+
 def join_objects(objects: Iterable[bpy.types.Object], name: str) -> bpy.types.Object:
     items = list(objects)
     if not items:
@@ -196,112 +236,156 @@ def add_hardware(
     )
 
 
+def white_picket(
+    name: str,
+    x: float,
+    material: bpy.types.Material,
+) -> bpy.types.Object:
+    shoulder_z = WHITE_PICKET_BODY_HEIGHT
+    top_z = shoulder_z + WHITE_PICKET_CAP_HEIGHT
+    half_width = WHITE_PICKET_WIDTH / 2
+    half_depth = WHITE_PICKET_DEPTH / 2
+    profile = [
+        (-half_width, 0),
+        (half_width, 0),
+        (half_width, shoulder_z),
+        (0, top_z),
+        (-half_width, shoulder_z),
+    ]
+    vertices = [
+        (x + along, depth, z)
+        for depth in (-half_depth, half_depth)
+        for along, z in profile
+    ]
+    faces = [tuple(range(5)), tuple(range(9, 4, -1))]
+    for index in range(5):
+        next_index = (index + 1) % 5
+        faces.append((index, next_index, next_index + 5, index + 5))
+
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, material)
+    return obj
+
+
 def create_wooden_gate() -> None:
     asset_name = "FenceGate"
-    wood = create_material("Material.FenceGate.Wood", "#8A5A37", 0.82)
+    wood = create_linear_material(
+        "Material.Planks",
+        (0.205, 0.058, 0.016, 1),
+        0.78,
+    )
     metal = create_material("Material.FenceGate.Hardware", "#3F4547", 0.62, 0.45)
     posts = []
     for side in (-1, 1):
         posts.append(
             box(
                 f"{asset_name}_Post_{side}",
-                (0.16, 0.16, 0.62),
-                (side * GATE_HALF_WIDTH, 0, 0.31),
-                wood,
-            )
-        )
-        posts.append(
-            cap(
-                f"{asset_name}_PostCap_{side}",
-                (side * GATE_HALF_WIDTH, 0, 0.67),
-                0.13,
-                0.12,
+                (WOOD_POST_SIZE, WOOD_POST_SIZE, WOOD_POST_HEIGHT),
+                (side * GATE_HALF_WIDTH, 0, WOOD_POST_HEIGHT / 2),
                 wood,
             )
         )
 
     leaf = []
-    leaf_height = 0.55
-    for index, height in enumerate((0.18, 0.46)):
+    for index, height in enumerate(WOOD_RAIL_HEIGHTS):
         leaf.append(
             box(
                 f"{asset_name}_Leaf_Rail_{index}",
-                (LEAF_LENGTH, 0.09, 0.08),
+                (LEAF_LENGTH, WOOD_RAIL_DEPTH, WOOD_RAIL_HEIGHT),
                 (LEAF_LENGTH / 2, 0, height),
                 wood,
             )
         )
-    leaf.append(
-        box(
-            f"{asset_name}_Leaf_Brace",
-            (0.92, 0.07, 0.065),
-            (LEAF_LENGTH / 2, 0, 0.32),
-            wood,
-            rotation_y=-0.42,
-        )
-    )
-    add_hardware(leaf, asset_name, metal, leaf_height)
+    add_hardware(leaf, asset_name, metal, WOOD_POST_HEIGHT)
     join_objects(posts, f"{asset_name}_Posts")
     join_objects(leaf, f"{asset_name}_Leaf")
 
 
 def create_white_gate() -> None:
     asset_name = "WhiteFenceGate"
-    paint = create_material("Material.WhiteFenceGate.Paint", "#F4F2EA", 0.82)
+    paint = create_material("Material.WhitePaint", "#F4F2EA", 0.82)
     metal = create_material("Material.WhiteFenceGate.Hardware", "#6F7473", 0.64, 0.32)
-    posts = []
-    for side in (-1, 1):
-        posts.append(
-            box(
-                f"{asset_name}_Post_{side}",
-                (0.14, 0.08, 0.6),
-                (side * GATE_HALF_WIDTH, 0, 0.3),
-                paint,
-            )
-        )
-        posts.append(
-            cap(
-                f"{asset_name}_PostCap_{side}",
-                (side * GATE_HALF_WIDTH, 0, 0.66),
-                0.105,
-                0.14,
-                paint,
-            )
-        )
+    posts = [
+        white_picket(f"{asset_name}_Post_{side}", side * GATE_HALF_WIDTH, paint)
+        for side in (-1, 1)
+    ]
 
     leaf = []
-    leaf_height = 0.58
-    for index, x in enumerate((0.08, 0.25, 0.43, 0.61, 0.78)):
-        height = leaf_height - (0.03 if index in (0, 4) else 0)
+    for index, x in enumerate((0.18, 0.43, 0.68)):
         leaf.append(
-            box(
+            white_picket(
                 f"{asset_name}_Leaf_Picket_{index}",
-                (0.11, 0.045, height),
-                (x, 0, height / 2),
+                x,
                 paint,
             )
         )
-        leaf.append(
-            cap(
-                f"{asset_name}_Leaf_PicketCap_{index}",
-                (x, 0, height + 0.055),
-                0.078,
-                0.11,
-                paint,
-            )
-        )
-    for index, height in enumerate((0.21, 0.43)):
+    for index, height in enumerate(WHITE_RAIL_HEIGHTS):
         leaf.append(
             box(
                 f"{asset_name}_Leaf_Rail_{index}",
-                (LEAF_LENGTH, 0.055, 0.055),
-                (LEAF_LENGTH / 2, 0.015, height),
+                (LEAF_LENGTH, WHITE_RAIL_DEPTH, WHITE_RAIL_HEIGHT),
+                (LEAF_LENGTH / 2, WHITE_PICKET_DEPTH / 2, height),
                 paint,
             )
         )
-    add_hardware(leaf, asset_name, metal, leaf_height)
+    add_hardware(
+        leaf,
+        asset_name,
+        metal,
+        WHITE_PICKET_BODY_HEIGHT + WHITE_PICKET_CAP_HEIGHT,
+    )
     join_objects(posts, f"{asset_name}_Posts")
     join_objects(leaf, f"{asset_name}_Leaf")
+
+
+def create_rough_stone_leaf(
+    asset_name: str,
+    materials: tuple[bpy.types.Material, ...],
+) -> list[bpy.types.Object]:
+    leaf = []
+    course_height = 0.14
+    course_lengths = (
+        (0.2, 0.24, 0.18, 0.24),
+        (0.24, 0.18, 0.24, 0.2),
+        (0.18, 0.24, 0.2, 0.24),
+    )
+    for course, lengths in enumerate(course_lengths):
+        cursor = 0.0
+        for stone_index, length in enumerate(lengths):
+            leaf.append(
+                box(
+                    f"{asset_name}_Leaf_Course_{course}_Stone_{stone_index}",
+                    (length, ROUGH_WALL_THICKNESS, course_height),
+                    (
+                        cursor + length / 2,
+                        0,
+                        course * course_height + course_height / 2,
+                    ),
+                    materials[(course + stone_index + 1) % len(materials)],
+                )
+            )
+            cursor += length
+
+    cap_height = ROUGH_WALL_HEIGHT - 3 * course_height
+    for cap_index in range(2):
+        cap_length = LEAF_LENGTH / 2
+        leaf.append(
+            box(
+                f"{asset_name}_Leaf_Cap_{cap_index}",
+                (cap_length, ROUGH_WALL_THICKNESS + 0.02, cap_height),
+                (
+                    cap_length * (cap_index + 0.5),
+                    0,
+                    ROUGH_WALL_HEIGHT - cap_height / 2,
+                ),
+                materials[0],
+            )
+        )
+    return leaf
 
 
 def create_stone_posts(
@@ -401,27 +485,25 @@ def create_stone_gate(*, polished: bool) -> None:
     if polished:
         stone_materials = (
             create_material(
-                "Material.PolishedStoneFenceGate.Surface", "#918B7F", 0.58
+                "Material.PolishedStoneFence.Surface", "#918B7F", 0.58
             ),
         )
     else:
         stone_materials = (
-            create_material("Material.StoneFenceGate.Large", "#6D7273", 0.88),
-            create_material("Material.StoneFenceGate.Mid", "#5C6264", 0.91),
-            create_material("Material.StoneFenceGate.Dark", "#4C5355", 0.94),
+            create_material("Material.StoneFence.Large", "#6D7273", 0.88),
+            create_material("Material.StoneFence.Mid", "#5C6264", 0.91),
+            create_material("Material.StoneFence.Dark", "#4C5355", 0.94),
         )
-    metal = create_material(
-        f"Material.{asset_name}.Metal", "#344747", 0.54, 0.55
-    )
-    hardware = create_material(
-        f"Material.{asset_name}.Hardware", "#B98A3A", 0.46, 0.62
-    )
     posts = create_stone_posts(
         asset_name,
         stone_materials,
         polished=polished,
     )
-    leaf = create_metal_leaf(asset_name, metal, hardware)
+    if polished:
+        white_paint = create_material("Material.WhitePaint", "#F4F2EA", 0.82)
+        leaf = create_metal_leaf(asset_name, white_paint, white_paint)
+    else:
+        leaf = create_rough_stone_leaf(asset_name, stone_materials)
     join_objects(posts, f"{asset_name}_Posts")
     join_objects(leaf, f"{asset_name}_Leaf")
 

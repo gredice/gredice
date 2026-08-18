@@ -832,6 +832,46 @@ test('open gate leaf collision follows the rendered hinge through every rotation
     }
 });
 
+test('stone gate collision encloses the masonry leaf when closed and open', () => {
+    for (const rotation of [0, 1, 2, 3]) {
+        for (const variant of [0, 1]) {
+            const world = createGardenAvatarCollisionWorld({
+                blockData: [],
+                stacks: [
+                    {
+                        blocks: [
+                            {
+                                id: 'stone-gate',
+                                name: 'StoneFenceGate',
+                                rotation,
+                                variant,
+                            },
+                        ],
+                        position: new Vector3(0, 0, 0),
+                    },
+                ],
+            });
+            const leaf = world.surfaces.find((surface) => {
+                if (surface.debugLabel !== 'StoneFenceGate') return false;
+                return variant === 0
+                    ? surface.x === 0 && surface.z === 0
+                    : Math.abs(surface.x) > 0.2 && Math.abs(surface.z) > 0.2;
+            });
+
+            assert.ok(
+                leaf,
+                `Missing stone leaf for rotation ${rotation}, variant ${variant}`,
+            );
+            assert.deepEqual(
+                [leaf.halfWidth, leaf.halfDepth].sort(
+                    (left, right) => (left ?? 0) - (right ?? 0),
+                ),
+                [0.09, 0.43],
+            );
+        }
+    }
+});
+
 test('normal fences connect to gate posts without filling the gate tile', () => {
     const world = createGardenAvatarCollisionWorld({
         blockData: getLocalSandboxBlockData(),

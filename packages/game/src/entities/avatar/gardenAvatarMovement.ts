@@ -435,7 +435,7 @@ const fenceGateCollisionProfiles: Record<
     },
     StoneFenceGate: {
         height: 0.68,
-        leafThickness: 0.055,
+        leafThickness: 0.18,
         postDepth: 0.28,
         postWidth: 0.28,
     },

@@ -275,12 +275,12 @@ const localSandboxBlockMetadata: Partial<
     StoneFenceGate: {
         label: 'Vrata za kamenu ogradu',
         shortDescription:
-            'Metalna vrtna vrata između stupova od nepravilnog kamena.',
+            'Kamena vrtna vrata koja nastavljaju izgled ograde od nepravilnog kamena.',
     },
     PolishedStoneFenceGate: {
         label: 'Vrata za ogradu od poliranog kamena',
         shortDescription:
-            'Metalna vrtna vrata između glatkih stupova od poliranog kamena.',
+            'Bijela vrtna vrata između glatkih stupova od poliranog kamena.',
     },
     StoneWalkway: {
         label: 'Kamena staza',
