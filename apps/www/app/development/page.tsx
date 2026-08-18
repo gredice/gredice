@@ -13,6 +13,10 @@ export const metadata: Metadata = {
     title: 'Razvojni centar',
     description:
         'Središnje mjesto za razvojne alate, dijagnostiku, API i timsku suradnju u Gredicama.',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
 
 type DevelopmentResourceIcon =

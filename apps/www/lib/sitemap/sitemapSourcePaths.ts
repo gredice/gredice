@@ -1,5 +1,16 @@
 const sourceCmsPagePaths = ['/biljni-susjedi', '/kvaliteta-i-sigurnost-uroda'];
 const staticNewsPaths = ['/novosti', '/novosti/sto-je-novo'];
+const dynamicPublicPagePaths = ['/', '/dostava/termini', '/outlet'];
+
+export const excludedSitemapRoutes = [
+    '/apple-icon.png',
+    '/development',
+    '/opengraph-image',
+    '/prijava/*/povratak',
+    '/trag/*',
+    '/vrtovi',
+    '/vrtovi/*',
+];
 
 type CmsSitemapPage = {
     slug: string;
@@ -27,7 +38,11 @@ export function collectSitemapSourcePaths({
     seeds: ReadonlyArray<SluggedSitemapSource>;
     brands: ReadonlyArray<SluggedSitemapSource>;
 }) {
-    const paths = new Set([...sourceCmsPagePaths, ...staticNewsPaths]);
+    const paths = new Set([
+        ...dynamicPublicPagePaths,
+        ...sourceCmsPagePaths,
+        ...staticNewsPaths,
+    ]);
 
     for (const page of cmsPages) {
         if (page.state === 'published' && page.publishedAt && !page.noIndex) {

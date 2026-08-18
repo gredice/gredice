@@ -60,6 +60,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Dostava povrća u Zagrebu',
+                            href: publicChromeHref(
+                                PublicPagePaths.DeliveryZagreb,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Cjenik',
                             href: publicChromeHref(
                                 PublicPagePaths.Pricing,

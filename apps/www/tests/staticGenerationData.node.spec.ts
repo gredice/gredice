@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { collectSitemapSourcePaths } from '../lib/sitemap/sitemapSourcePaths.ts';
+import {
+    collectSitemapSourcePaths,
+    excludedSitemapRoutes,
+} from '../lib/sitemap/sitemapSourcePaths.ts';
 import { canonicalLegacyNewsPathname } from '../src/newsPaths.ts';
 
 const staticDataLoaders = [
@@ -119,6 +122,9 @@ test('sitemap source paths keep only public CMS and catalogue records', () => {
     });
 
     assert.ok(paths.includes('/objavljeno'));
+    assert.ok(paths.includes('/'));
+    assert.ok(paths.includes('/dostava/termini'));
+    assert.ok(paths.includes('/outlet'));
     assert.ok(paths.includes('/vrtovi/42'));
     assert.ok(paths.includes('/sjeme/sjeme-1'));
     assert.ok(paths.includes('/sjeme/brend/brend-1'));
@@ -126,6 +132,54 @@ test('sitemap source paths keep only public CMS and catalogue records', () => {
     assert.ok(paths.includes('/novosti'));
     assert.equal(paths.includes('/bez-indeksa'), false);
     assert.equal(paths.includes('/bez-datuma'), false);
+});
+
+test('sitemap policy excludes non-content routes and explicitly allows search crawlers', () => {
+    assert.deepEqual(excludedSitemapRoutes, [
+        '/apple-icon.png',
+        '/development',
+        '/opengraph-image',
+        '/prijava/*/povratak',
+        '/trag/*',
+        '/vrtovi',
+        '/vrtovi/*',
+    ]);
+
+    const configSource = readFileSync(
+        new URL('../next-sitemap.config.ts', import.meta.url),
+        'utf8',
+    );
+    assert.match(configSource, /userAgent: 'Googlebot'/u);
+    assert.match(configSource, /userAgent: 'OAI-SearchBot'/u);
+    assert.match(configSource, /exclude: excludedSitemapRoutes/u);
+});
+
+test('private utility routes declare no-index metadata', () => {
+    const routePaths = [
+        '../app/development/page.tsx',
+        '../app/prijava/facebook-prijava/povratak/page.tsx',
+        '../app/prijava/google-prijava/povratak/page.tsx',
+    ];
+
+    for (const routePath of routePaths) {
+        const source = readFileSync(
+            new URL(routePath, import.meta.url),
+            'utf8',
+        );
+        assert.match(source, /index: false/u, routePath);
+        assert.match(source, /follow: false/u, routePath);
+    }
+});
+
+test('well-known llms discovery path redirects to the canonical file', () => {
+    const nextConfig = readFileSync(
+        new URL('../next.config.ts', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(nextConfig, /source: '\/\.well-known\/llms\.txt'/u);
+    assert.match(nextConfig, /destination: '\/llms\.txt'/u);
+    assert.match(nextConfig, /permanent: true/u);
 });
 
 test('legacy changelog paths redirect below the canonical news base path', () => {

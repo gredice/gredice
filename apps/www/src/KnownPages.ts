@@ -10,6 +10,7 @@ export const KnownPages = {
     Landing: '/',
 
     Delivery: '/dostava',
+    DeliveryZagreb: '/dostava-povrca-zagreb',
     DeliverySlots: '/dostava/termini',
     Seeds: PublicDirectoryPaths.Seeds as Route,
     Seed: (alias: string) => PublicDirectoryPaths.Seed(alias) as Route,

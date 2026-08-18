@@ -4,6 +4,7 @@ export const PublicPagePaths = {
     Landing: '/',
 
     Delivery: '/dostava',
+    DeliveryZagreb: '/dostava-povrca-zagreb',
     DeliverySlots: '/dostava/termini',
     Seeds: '/sjeme',
     SeedBrands: '/sjeme/brendovi',

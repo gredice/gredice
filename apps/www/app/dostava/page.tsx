@@ -51,6 +51,14 @@ export default function DeliveryPage() {
                         možeš saznati kako funkcionira dostava, koje su opcije
                         dostupne i koji su uvjeti.
                     </p>
+                    <p>
+                        Ako tek upoznaješ Gredice, pročitaj kako funkcionira{' '}
+                        <a href={KnownPages.DeliveryZagreb}>
+                            dostava svježeg povrća u Zagrebu iz tvoje vlastite
+                            gredice
+                        </a>
+                        .
+                    </p>
                     <Typography
                         level="body2"
                         className="text-foreground/85 italic"

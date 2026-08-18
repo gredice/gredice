@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NewsDetail } from '../../components/NewsDetail';
 import { getBlogPost, getBlogPosts } from '../../lib/news';
+import { createNewsArticleMetadata } from '../../lib/newsArticleMetadata';
 import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
 export const revalidate = 3600;
@@ -40,22 +41,5 @@ export async function generateMetadata({
     if (!entry) {
         notFound();
     }
-    const openGraphImage = entry.seoImageUrl || `${entry.path}/opengraph-image`;
-
-    return {
-        title: entry.metaTitle || entry.title,
-        description: entry.metaDescription || entry.excerpt || undefined,
-        alternates: {
-            canonical: entry.canonicalPath || entry.path,
-        },
-        robots: {
-            index: !entry.noIndex,
-        },
-        openGraph: {
-            title: entry.metaTitle || entry.title,
-            description: entry.metaDescription || entry.excerpt || undefined,
-            images: [openGraphImage],
-            url: entry.canonicalPath || entry.path,
-        },
-    };
+    return createNewsArticleMetadata(entry);
 }

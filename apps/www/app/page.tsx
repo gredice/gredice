@@ -234,9 +234,9 @@ function StepsSection() {
                             <NavigatingButton
                                 variant="link"
                                 className="w-fit"
-                                href={KnownPages.Delivery}
+                                href={KnownPages.DeliveryZagreb}
                             >
-                                Više o dostavi
+                                Dostava povrća u Zagrebu
                             </NavigatingButton>
                         </Stack>
                     </CardContent>
