@@ -63,6 +63,21 @@ test('the changelog archive and weekly summaries use daily ISR', () => {
     assert.doesNotMatch(weeklyImageSource, /force-dynamic/u);
 });
 
+test('the changelog archive eagerly loads only its first weekly cover', () => {
+    const cardSource = readFileSync(
+        new URL('../components/WeeklyChangelogCard.tsx', import.meta.url),
+        'utf8',
+    );
+    assert.match(cardSource, /eager\?: boolean/u);
+    assert.match(cardSource, /loading=\{eager \? 'eager' : 'lazy'\}/u);
+
+    const timelineSource = readFileSync(
+        new URL('../components/WeeklyChangelogTimeline.tsx', import.meta.url),
+        'utf8',
+    );
+    assert.match(timelineSource, /eager=\{currentWeekIndex === 0\}/u);
+});
+
 test('article Open Graph images are eligible for static generation', () => {
     const routes = [
         '../app/[slug]/opengraph-image.tsx',

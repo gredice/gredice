@@ -11,7 +11,13 @@ function changeCountLabel(count: number) {
           : `${count.toString()} promjena`;
 }
 
-export function WeeklyChangelogCard({ week }: { week: ChangelogWeek }) {
+export function WeeklyChangelogCard({
+    eager = false,
+    week,
+}: {
+    eager?: boolean;
+    week: ChangelogWeek;
+}) {
     const visibleTags = week.tags.slice(0, 3);
 
     return (
@@ -25,6 +31,7 @@ export function WeeklyChangelogCard({ week }: { week: ChangelogWeek }) {
                         alt={week.imageAlt}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
                         height={630}
+                        loading={eager ? 'eager' : 'lazy'}
                         sizes="(max-width: 639px) calc(100vw - 4rem), 42vw"
                         src={week.imagePath}
                         unoptimized

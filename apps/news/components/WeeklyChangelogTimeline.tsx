@@ -68,7 +68,10 @@ export function WeeklyChangelogTimeline({
                                 key={week.weekKey}
                                 label={week.rangeLabel}
                             >
-                                <WeeklyChangelogCard week={week} />
+                                <WeeklyChangelogCard
+                                    eager={currentWeekIndex === 0}
+                                    week={week}
+                                />
                             </TimelineEntry>
                         );
                     })}
