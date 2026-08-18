@@ -47,6 +47,7 @@ const fenceGateConfigs = {
         leafNodeNames: [
             'StoneFenceGate_Leaf_Mesh',
             'StoneFenceGate_Leaf_Mesh_1',
+            'StoneFenceGate_Leaf_Mesh_2',
         ],
         postsNodeNames: [
             'StoneFenceGate_Posts_Mesh',
@@ -57,10 +58,7 @@ const fenceGateConfigs = {
     },
     PolishedStoneFenceGate: {
         assetName: 'PolishedStoneFenceGate',
-        leafNodeNames: [
-            'PolishedStoneFenceGate_Leaf_Mesh',
-            'PolishedStoneFenceGate_Leaf_Mesh_1',
-        ],
+        leafNodeNames: ['PolishedStoneFenceGate_Leaf'],
         postsNodeNames: ['PolishedStoneFenceGate_Posts'],
         snowThickness: 0.04,
     },

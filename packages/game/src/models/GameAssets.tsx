@@ -1068,9 +1068,9 @@ export type GLTFResult = GLTF & {
         StoneFenceGate_Posts_Mesh_2: THREE.Mesh;
         StoneFenceGate_Leaf_Mesh: THREE.Mesh;
         StoneFenceGate_Leaf_Mesh_1: THREE.Mesh;
+        StoneFenceGate_Leaf_Mesh_2: THREE.Mesh;
         PolishedStoneFenceGate_Posts: THREE.Mesh;
-        PolishedStoneFenceGate_Leaf_Mesh: THREE.Mesh;
-        PolishedStoneFenceGate_Leaf_Mesh_1: THREE.Mesh;
+        PolishedStoneFenceGate_Leaf: THREE.Mesh;
         Tunnel_Half: THREE.Mesh;
         Greenhouse_Tunnel_Stick: THREE.Mesh;
         Greenhouse_Tunnel_Stick_Middle: THREE.Mesh;
@@ -1416,7 +1416,6 @@ export type GLTFResult = GLTF & {
         'Material.FarmSupplyKit.Wood': THREE.MeshStandardMaterial;
         'Material.FarmSupplyKit.WoodLight': THREE.MeshStandardMaterial;
         'Material.FenceGate.Hardware': THREE.MeshStandardMaterial;
-        'Material.FenceGate.Wood': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Board': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.CheckGreen': THREE.MeshStandardMaterial;
         'Material.FieldworkClipboard.Eraser': THREE.MeshStandardMaterial;
@@ -1547,9 +1546,6 @@ export type GLTFResult = GLTF & {
         'Material.PlantTieLoop.Twine': THREE.MeshStandardMaterial;
         'Material.PlantTieLoop.TwineLight': THREE.MeshStandardMaterial;
         'Material.PolishedStoneFence.Surface': THREE.MeshStandardMaterial;
-        'Material.PolishedStoneFenceGate.Hardware': THREE.MeshStandardMaterial;
-        'Material.PolishedStoneFenceGate.Metal': THREE.MeshStandardMaterial;
-        'Material.PolishedStoneFenceGate.Surface': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Glow': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Limestone': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Terracotta': THREE.MeshStandardMaterial;
@@ -1567,11 +1563,6 @@ export type GLTFResult = GLTF & {
         'Material.StoneFence.Dark': THREE.MeshStandardMaterial;
         'Material.StoneFence.Large': THREE.MeshStandardMaterial;
         'Material.StoneFence.Mid': THREE.MeshStandardMaterial;
-        'Material.StoneFenceGate.Dark': THREE.MeshStandardMaterial;
-        'Material.StoneFenceGate.Hardware': THREE.MeshStandardMaterial;
-        'Material.StoneFenceGate.Large': THREE.MeshStandardMaterial;
-        'Material.StoneFenceGate.Metal': THREE.MeshStandardMaterial;
-        'Material.StoneFenceGate.Mid': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.LightStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.MidStone': THREE.MeshStandardMaterial;
         'Material.StoneWalkway.WarmStone': THREE.MeshStandardMaterial;
@@ -1594,7 +1585,6 @@ export type GLTFResult = GLTF & {
         'Material.WaterSprayKit.Water': THREE.MeshStandardMaterial;
         'Material.WaterWell.Rope': THREE.MeshStandardMaterial;
         'Material.WhiteFenceGate.Hardware': THREE.MeshStandardMaterial;
-        'Material.WhiteFenceGate.Paint': THREE.MeshStandardMaterial;
         'Material.WhitePaint': THREE.MeshStandardMaterial;
         'Material.WickerGardenLantern.Glow': THREE.MeshStandardMaterial;
         'Material.WickerGardenLantern.Limestone': THREE.MeshStandardMaterial;

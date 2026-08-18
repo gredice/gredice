@@ -15,6 +15,61 @@ const gateNames = [
     'StoneFenceGate',
     'PolishedStoneFenceGate',
 ] as const;
+const gateFamilyMaterials = {
+    FenceGate: [
+        {
+            gate: 'Material.Planks',
+            referenceAsset: 'Fence',
+            reference: 'Material.Planks',
+        },
+    ],
+    WhiteFenceGate: [
+        {
+            gate: 'Material.WhitePaint',
+            referenceAsset: 'WhiteFence',
+            reference: 'Material.WhitePaint',
+        },
+    ],
+    StoneFenceGate: [
+        {
+            gate: 'Material.StoneFence.Large',
+            referenceAsset: 'StoneFence',
+            reference: 'Material.StoneFence.Large',
+        },
+        {
+            gate: 'Material.StoneFence.Mid',
+            referenceAsset: 'StoneFence',
+            reference: 'Material.StoneFence.Mid',
+        },
+        {
+            gate: 'Material.StoneFence.Dark',
+            referenceAsset: 'StoneFence',
+            reference: 'Material.StoneFence.Dark',
+        },
+    ],
+    PolishedStoneFenceGate: [
+        {
+            gate: 'Material.PolishedStoneFence.Surface',
+            referenceAsset: 'PolishedStoneFence',
+            reference: 'Material.PolishedStoneFence.Surface',
+        },
+        {
+            gate: 'Material.WhitePaint',
+            referenceAsset: 'WhiteFence',
+            reference: 'Material.WhitePaint',
+        },
+    ],
+} as const;
+const gateLeafFamilyMaterials = {
+    FenceGate: ['Material.Planks'],
+    WhiteFenceGate: ['Material.WhitePaint'],
+    StoneFenceGate: [
+        'Material.StoneFence.Large',
+        'Material.StoneFence.Mid',
+        'Material.StoneFence.Dark',
+    ],
+    PolishedStoneFenceGate: ['Material.WhitePaint'],
+} as const;
 
 function isRecord(value: unknown): value is JsonRecord {
     return typeof value === 'object' && value !== null;
@@ -28,7 +83,7 @@ function records(value: unknown, label: string) {
     });
 }
 
-function readAsset(name: (typeof gateNames)[number]) {
+function readAsset(name: string) {
     const model = readFileSync(
         fileURLToPath(
             new URL(
@@ -43,6 +98,12 @@ function readAsset(name: (typeof gateNames)[number]) {
     );
     assert.ok(isRecord(document));
     return { document, model };
+}
+
+function findNamedRecord(value: unknown, label: string, name: string) {
+    const record = records(value, label).find((item) => item.name === name);
+    assert.ok(record, `${label} must include ${name}`);
+    return record;
 }
 
 describe('fence gate assets', () => {
@@ -76,6 +137,56 @@ describe('fence gate assets', () => {
                 manifestAsset.version,
                 createHash('sha256').update(model).digest('hex').slice(0, 12),
             );
+        });
+
+        it(`${name} matches its fence family materials`, () => {
+            const { document } = readAsset(name);
+            const gateMaterials = records(document.materials, 'materials');
+
+            for (const materialContract of gateFamilyMaterials[name]) {
+                const gateMaterial = findNamedRecord(
+                    gateMaterials,
+                    'materials',
+                    materialContract.gate,
+                );
+                const { document: referenceDocument } = readAsset(
+                    materialContract.referenceAsset,
+                );
+                const referenceMaterial = findNamedRecord(
+                    referenceDocument.materials,
+                    'reference materials',
+                    materialContract.reference,
+                );
+                assert.deepEqual(
+                    gateMaterial.pbrMetallicRoughness,
+                    referenceMaterial.pbrMetallicRoughness,
+                );
+            }
+
+            const materialNames = gateMaterials.map(
+                (material) => material.name,
+            );
+            const leafMesh = findNamedRecord(
+                document.meshes,
+                'meshes',
+                `${name}_Leaf_Mesh`,
+            );
+            const leafMaterialNames = records(
+                leafMesh.primitives,
+                'leaf primitives',
+            ).map((primitive) => {
+                const materialIndex = primitive.material;
+                if (typeof materialIndex !== 'number') {
+                    assert.fail('leaf primitive material must be a number');
+                }
+                return materialNames[materialIndex];
+            });
+            for (const materialName of gateLeafFamilyMaterials[name]) {
+                assert.ok(
+                    leafMaterialNames.includes(materialName),
+                    `${name} leaf must use ${materialName}`,
+                );
+            }
         });
     }
 });
