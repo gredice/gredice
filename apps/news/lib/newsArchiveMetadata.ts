@@ -66,9 +66,9 @@ export const blogArchiveSeo = {
 export const changelogArchiveSeo = {
     canonicalUrl: 'https://www.gredice.com/novosti/sto-je-novo',
     description:
-        'Kronološki pregled nadogradnji, poboljšanja i novih značajki u Gredicama.',
+        'Tjedni sažeci nadogradnji, poboljšanja i novih značajki u Gredicama, s poveznicama na svaku promjenu.',
     documentTitle: 'Što je novo | Gredice',
-    imageAlt: 'Što je novo u Gredicama – promjene i nove mogućnosti',
+    imageAlt: 'Što je novo u Gredicama – tjedni sažeci promjena',
     imageUrl: 'https://www.gredice.com/novosti/sto-je-novo/opengraph-image',
     title: 'Što je novo u Gredicama',
 } satisfies NewsArchiveSeo;
