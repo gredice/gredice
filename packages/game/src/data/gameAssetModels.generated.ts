@@ -151,11 +151,11 @@ export const gameAssetModels = {
     PolishedStoneFence: {
         url: '/assets/models/PolishedStoneFence.glb?v=2c5f40e1afc5',
     },
-    FenceGate: { url: '/assets/models/FenceGate.glb?v=4cd560a828f5' },
-    WhiteFenceGate: { url: '/assets/models/WhiteFenceGate.glb?v=46b5f10aa42f' },
-    StoneFenceGate: { url: '/assets/models/StoneFenceGate.glb?v=0e85c6a29a07' },
+    FenceGate: { url: '/assets/models/FenceGate.glb?v=ce707c4e9253' },
+    WhiteFenceGate: { url: '/assets/models/WhiteFenceGate.glb?v=7b2247eff49b' },
+    StoneFenceGate: { url: '/assets/models/StoneFenceGate.glb?v=1e715ef5972d' },
     PolishedStoneFenceGate: {
-        url: '/assets/models/PolishedStoneFenceGate.glb?v=14aadf3628dc',
+        url: '/assets/models/PolishedStoneFenceGate.glb?v=6a06de6cfa10',
     },
     Greenhouse: { url: '/assets/models/Greenhouse.glb' },
     GroundEnvironment: { url: '/assets/models/GroundEnvironment.glb' },

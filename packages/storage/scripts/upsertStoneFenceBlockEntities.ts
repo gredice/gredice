@@ -107,9 +107,9 @@ const blockSpecs = [
         height: '0.68',
         price: '8',
         shortDescription:
-            'Metalna vrtna vrata između stupova od nepravilnog kamena.',
+            'Kamena vrtna vrata koja nastavljaju izgled ograde od nepravilnog kamena.',
         fullDescription:
-            'Čvrsti kameni stupovi nose jednostavna metalna vrata za prolaz kroz kamenu ogradu. Otvorena propuštaju avatare i životinje, a zatvorena ponovno zaustavljaju prolaz.',
+            'Stupovi i krilo od nepravilnog kamena stvaraju usklađen prolaz kroz kamenu ogradu. Otvorena vrata propuštaju avatare i životinje, a zatvorena ponovno zaustavljaju prolaz.',
     }),
     fenceSpec({
         name: 'PolishedStoneFenceGate',
@@ -117,9 +117,9 @@ const blockSpecs = [
         height: '0.68',
         price: '8',
         shortDescription:
-            'Metalna vrtna vrata između glatkih stupova od poliranog kamena.',
+            'Bijela vrtna vrata između glatkih stupova od poliranog kamena.',
         fullDescription:
-            'Glatki kameni stupovi i jednostavno metalno krilo stvaraju uredan prolaz kroz ogradu od poliranog kamena. Vrata se otvaraju dodirom ili avatarom te u otvorenom položaju propuštaju životinje.',
+            'Glatki kameni stupovi i jednostavno bijelo krilo stvaraju uredan prolaz kroz ogradu od poliranog kamena. Vrata se otvaraju dodirom ili avatarom te u otvorenom položaju propuštaju životinje.',
     }),
 ] satisfies Array<{
     name: string;
