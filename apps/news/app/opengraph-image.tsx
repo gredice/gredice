@@ -4,15 +4,19 @@ import {
     cmsOgImageSize,
 } from '@gredice/ui/cms';
 import { ImageResponse } from 'next/og';
-import { blogArchiveSeo } from '../lib/newsArchiveMetadata';
+import { newsArchiveSeo } from '../lib/newsArchiveMetadata';
 
-export const alt = blogArchiveSeo.imageAlt;
+export const alt = newsArchiveSeo.imageAlt;
 export const size = cmsOgImageSize;
 export const contentType = cmsOgImageContentType;
 
-export default function BlogArchiveOpenGraphImage() {
+export default function NewsArchiveOpenGraphImage() {
     return new ImageResponse(
-        <CmsOgImage kind="blog" tags={['Blog']} title={blogArchiveSeo.title} />,
+        <CmsOgImage
+            kind="blog"
+            tags={['Blog', 'Što je novo']}
+            title={newsArchiveSeo.title}
+        />,
         {
             ...size,
         },

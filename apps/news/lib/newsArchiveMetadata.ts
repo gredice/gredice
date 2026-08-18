@@ -53,12 +53,12 @@ function createNewsArchiveMetadata(seo: NewsArchiveSeo): Metadata {
     };
 }
 
-export const blogArchiveSeo = {
+export const newsArchiveSeo = {
     canonicalUrl: 'https://www.gredice.com/novosti',
     description:
-        'Blog objave iz Gredica koje pomažu pratiti što se događa u vrtu i oko njega.',
+        'Blog objave i tjedni pregled novih mogućnosti, poboljšanja i promjena u Gredicama.',
     documentTitle: 'Novosti | Gredice',
-    imageAlt: 'Novosti iz Gredica – blog objave iz vrta',
+    imageAlt: 'Novosti iz Gredica – blog objave i nove mogućnosti',
     imageUrl: 'https://www.gredice.com/novosti/opengraph-image',
     title: 'Novosti iz Gredica',
 } satisfies NewsArchiveSeo;
@@ -73,7 +73,7 @@ export const changelogArchiveSeo = {
     title: 'Što je novo u Gredicama',
 } satisfies NewsArchiveSeo;
 
-export const blogArchiveMetadata = createNewsArchiveMetadata(blogArchiveSeo);
+export const newsArchiveMetadata = createNewsArchiveMetadata(newsArchiveSeo);
 
 export const changelogArchiveMetadata =
     createNewsArchiveMetadata(changelogArchiveSeo);

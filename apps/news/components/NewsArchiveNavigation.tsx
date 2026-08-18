@@ -1,10 +1,10 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 
-type NewsArchive = 'blog' | 'changelog';
+type NewsArchive = 'changelog' | 'news';
 
 const newsArchives = [
-    { href: '/', label: 'Blog', value: 'blog' },
+    { href: '/', label: 'Sve novosti', value: 'news' },
     {
         href: '/sto-je-novo',
         label: 'Što je novo',

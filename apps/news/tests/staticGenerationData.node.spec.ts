@@ -19,6 +19,20 @@ test('news pages read CMS data from storage without API fallbacks', () => {
     assert.doesNotMatch(source, /return \[\];/u);
 });
 
+test('the default news archive composes blog posts and weekly changes', () => {
+    const source = readFileSync(
+        new URL('../app/page.tsx', import.meta.url),
+        'utf8',
+    );
+
+    assert.match(source, /getBlogPosts\(\)/u);
+    assert.match(source, /getChangelogEntries\(\)/u);
+    assert.match(source, /buildChangelogWeeks\(changelogEntries\)/u);
+    assert.match(source, /buildNewsTimeline\(visiblePosts, changelogWeeks\)/u);
+    assert.match(source, /const eagerChangelogWeekKey = changelogWeeks\[0\]/u);
+    assert.match(source, /eager=\{/u);
+});
+
 test('blog and changelog detail routes generate published slugs statically', () => {
     const routes = [
         '../app/[slug]/page.tsx',
