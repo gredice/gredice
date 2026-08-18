@@ -46,7 +46,9 @@ export function createNewsArticleMetadata(
     const canonicalPath = entry.canonicalPath || entry.path;
     const imageUrl = entry.seoImageUrl || `${entry.path}/opengraph-image`;
     const imageAlt = `${title} – Gredice`;
-    const imageType = imageContentType(imageUrl);
+    const imageType = entry.seoImageUrl
+        ? imageContentType(entry.seoImageUrl)
+        : 'image/png';
 
     return {
         title,

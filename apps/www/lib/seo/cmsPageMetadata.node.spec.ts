@@ -103,3 +103,15 @@ test('CMS metadata preserves supported image types and omits unknown types', () 
     assert.ok(image && typeof image === 'object' && !(image instanceof URL));
     assert.equal('type' in image, false);
 });
+
+test('CMS metadata declares the known PNG type of its generated fallback', () => {
+    const metadata = createCmsPageMetadata({
+        slug: 'primjer',
+        title: 'Primjer',
+    });
+    const images = metadata.openGraph?.images;
+    assert.ok(Array.isArray(images));
+    const image = images[0];
+    assert.ok(image && typeof image === 'object' && !(image instanceof URL));
+    assert.equal(image.type, 'image/png');
+});

@@ -37,7 +37,9 @@ export function createCmsPageMetadata(page: CmsPageMetadataInput): Metadata {
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
     const imageUrl = page.seoImageUrl || `/api/og/cms/${page.slug}`;
     const imageAlt = `${title} – Gredice`;
-    const imageType = imageContentType(imageUrl);
+    const imageType = page.seoImageUrl
+        ? imageContentType(page.seoImageUrl)
+        : 'image/png';
 
     return {
         title,
