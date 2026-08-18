@@ -306,10 +306,10 @@ test.describe('public SEO metadata', () => {
 
             if (requiresPublicOgCoverage(url)) {
                 const expectedPathname = new URL(page.url()).pathname;
-                const expectedCanonicalUrl = new URL(
-                    expectedPathname,
-                    publicSiteOrigin,
-                ).href;
+                const expectedCanonicalUrl =
+                    expectedPathname === '/'
+                        ? publicSiteOrigin
+                        : new URL(expectedPathname, publicSiteOrigin).href;
                 const canonical = page.locator('link[rel="canonical"]');
                 const openGraphTitle = page.locator(
                     'meta[property="og:title"]',
