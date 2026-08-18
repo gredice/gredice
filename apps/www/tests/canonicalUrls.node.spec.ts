@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
-    blogArchiveMetadata,
     changelogArchiveMetadata,
+    newsArchiveMetadata,
 } from '../../news/lib/newsArchiveMetadata.ts';
 import {
     hasNewsFilterResults,
@@ -232,7 +232,7 @@ test('news filters reject stale and test-only values', () => {
 
 test('news archives declare stable public canonicals', () => {
     assert.equal(
-        blogArchiveMetadata.alternates?.canonical,
+        newsArchiveMetadata.alternates?.canonical,
         'https://www.gredice.com/novosti',
     );
     assert.equal(
@@ -254,7 +254,7 @@ test('query-driven public archives declare stable canonicals', () => {
         ],
         [
             '../../news/app/page.tsx',
-            /metadata:\s*Metadata\s*=\s*blogArchiveMetadata/u,
+            /metadata:\s*Metadata\s*=\s*newsArchiveMetadata/u,
         ],
         [
             '../../news/app/sto-je-novo/page.tsx',

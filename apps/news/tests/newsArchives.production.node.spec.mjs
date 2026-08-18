@@ -19,8 +19,8 @@ const nextCli = join(
 const archives = [
     {
         description:
-            'Blog objave iz Gredica koje pomažu pratiti što se događa u vrtu i oko njega.',
-        imageAlt: 'Novosti iz Gredica – blog objave iz vrta',
+            'Blog objave i tjedni pregled novih mogućnosti, poboljšanja i promjena u Gredicama.',
+        imageAlt: 'Novosti iz Gredica – blog objave i nove mogućnosti',
         imagePath: '/novosti/opengraph-image',
         path: '/novosti',
         publicUrl: 'https://www.gredice.com/novosti',

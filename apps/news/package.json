@@ -13,7 +13,7 @@
         "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run test:static-data && pnpm run typecheck && pnpm run test:unit && pnpm run test:production-metadata",
         "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts",
-        "test:unit": "node --experimental-strip-types --test lib/newsArchiveMetadata.node.spec.ts lib/newsArticleMetadata.node.spec.ts lib/weeklyChangelog.node.spec.ts",
+        "test:unit": "node --test lib/*.node.spec.ts",
         "test:production-metadata": "pnpm run build && node --test tests/newsArchives.production.node.spec.mjs"
     },
     "dependencies": {

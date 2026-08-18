@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Metadata } from 'next';
 import {
-    blogArchiveMetadata,
-    blogArchiveSeo,
     changelogArchiveMetadata,
     changelogArchiveSeo,
+    newsArchiveMetadata,
+    newsArchiveSeo,
 } from './newsArchiveMetadata.ts';
 
 type ExpectedArchiveMetadata = {
@@ -58,8 +58,8 @@ function assertArchiveMetadata(
 }
 
 describe('news archive metadata', () => {
-    it('publishes a complete blog archive social preview contract', () => {
-        assertArchiveMetadata(blogArchiveMetadata, blogArchiveSeo);
+    it('publishes a complete combined archive social preview contract', () => {
+        assertArchiveMetadata(newsArchiveMetadata, newsArchiveSeo);
     });
 
     it('publishes a complete changelog archive social preview contract', () => {
@@ -68,10 +68,10 @@ describe('news archive metadata', () => {
 
     it('keeps the two archive previews distinct', () => {
         assert.notEqual(
-            blogArchiveSeo.canonicalUrl,
+            newsArchiveSeo.canonicalUrl,
             changelogArchiveSeo.canonicalUrl,
         );
-        assert.notEqual(blogArchiveSeo.title, changelogArchiveSeo.title);
-        assert.notEqual(blogArchiveSeo.imageUrl, changelogArchiveSeo.imageUrl);
+        assert.notEqual(newsArchiveSeo.title, changelogArchiveSeo.title);
+        assert.notEqual(newsArchiveSeo.imageUrl, changelogArchiveSeo.imageUrl);
     });
 });
