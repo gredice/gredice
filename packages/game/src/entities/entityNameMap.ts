@@ -47,6 +47,7 @@ import { DogHouse } from './DogHouse';
 import { DoubleGardenLightPole } from './DoubleGardenLightPole';
 import { EnamelGardenLamp } from './EnamelGardenLamp';
 import { Fence } from './Fence';
+import { FenceGate } from './FenceGate';
 import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
 import { GardenBox } from './GardenBox';
@@ -146,6 +147,10 @@ export const entityNameMap = {
     WhiteFence: WhiteFence,
     StoneFence: StoneFence,
     PolishedStoneFence: PolishedStoneFence,
+    FenceGate: FenceGate,
+    WhiteFenceGate: FenceGate,
+    StoneFenceGate: FenceGate,
+    PolishedStoneFenceGate: FenceGate,
     GardenBox: GardenBox,
     Stool: Stool,
     Bucket: Bucket,

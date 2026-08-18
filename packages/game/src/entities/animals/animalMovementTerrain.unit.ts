@@ -124,6 +124,29 @@ describe('animal movement terrain', () => {
         assert.equal(surfaces[0]?.z, 4);
     });
 
+    it('blocks closed gates and lets animals path through open gates', () => {
+        for (const name of [
+            'FenceGate',
+            'WhiteFenceGate',
+            'StoneFenceGate',
+            'PolishedStoneFenceGate',
+        ]) {
+            const closedGate = stack(3, 4, [
+                block(`${name}-ground`, 'Block_Grass'),
+                block(`${name}-closed`, name),
+            ]);
+            const openGate = stack(3, 4, [
+                block(`${name}-ground-open`, 'Block_Grass'),
+                { ...block(`${name}-open`, name), variant: 1 },
+            ]);
+
+            assert.deepEqual(createAnimalBlockedCells([closedGate]), [
+                { x: 3, z: 4 },
+            ]);
+            assert.deepEqual(createAnimalBlockedCells([openGate]), []);
+        }
+    });
+
     for (const supportName of [
         'Block_Grass',
         'Block_Water',

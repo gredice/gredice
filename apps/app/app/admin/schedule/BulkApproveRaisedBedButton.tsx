@@ -53,12 +53,11 @@ export function BulkApproveRaisedBedButton({
         }
 
         if (onConfirm) {
-            await onConfirm();
-            return;
+            return onConfirm();
         }
 
         setIsSubmitting(true);
-        void Promise.all([
+        return Promise.all([
             ...fields.map((field) =>
                 acceptRaisedBedFieldAction(
                     field.raisedBedId,
@@ -75,12 +74,7 @@ export function BulkApproveRaisedBedButton({
                     operation.taskVersionEventId,
                 ),
             ),
-        ])
-            .catch((error: unknown) => {
-                console.error('Failed to approve all raised bed items:', error);
-                alert('Skupna potvrda zadataka nije uspjela.');
-            })
-            .finally(() => setIsSubmitting(false));
+        ]).finally(() => setIsSubmitting(false));
     };
 
     return (

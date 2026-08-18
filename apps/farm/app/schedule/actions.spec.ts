@@ -6,25 +6,32 @@ const actionsSource = readFileSync(
     'utf8',
 );
 
-test('retries the idempotent detailed-inspection notification before returning a keyed replay', () => {
-    const replayStart = actionsSource.indexOf('if (replay) {');
-    const replayEnd = actionsSource.indexOf(
-        '        } catch (error) {',
-        replayStart,
+test('publishes detailed inspections only for verified admin completions', () => {
+    const notificationBoundaryStart = actionsSource.indexOf(
+        'async function notifyAdminVerifiedDetailedInspection',
     );
-    const replayBlock = actionsSource.slice(replayStart, replayEnd);
-
-    expect(replayStart).toBeGreaterThan(-1);
-    expect(replayEnd).toBeGreaterThan(replayStart);
-    expect(replayBlock).toContain(
-        'RAISED_BED_DETAILED_INSPECTION_OPERATION_ID',
+    const notificationBoundaryEnd = actionsSource.indexOf(
+        '\nfunction submissionFailure',
+        notificationBoundaryStart,
+    );
+    const notificationBoundary = actionsSource.slice(
+        notificationBoundaryStart,
+        notificationBoundaryEnd,
     );
 
-    const notificationCall = replayBlock.indexOf(
-        'await notifyDetailedRaisedBedInspectionCompleted(',
+    expect(notificationBoundaryStart).toBeGreaterThan(-1);
+    expect(notificationBoundary).toContain("actorRole !== 'admin'");
+    expect(notificationBoundary).toContain("status !== 'completed'");
+    expect(notificationBoundary).toMatch(
+        /expectedEntityId !==\s+RAISED_BED_DETAILED_INSPECTION_OPERATION_ID/,
     );
-    const replayReturn = replayBlock.indexOf('return actionResult(');
-
-    expect(notificationCall).toBeGreaterThan(-1);
-    expect(replayReturn).toBeGreaterThan(notificationCall);
+    expect(notificationBoundary).toContain(
+        'await notifyDetailedRaisedBedInspectionVerified(operationId)',
+    );
+    expect(
+        actionsSource.match(/await notifyAdminVerifiedDetailedInspection\(\{/g),
+    ).toHaveLength(2);
+    expect(actionsSource).not.toContain(
+        'notifyDetailedRaisedBedInspectionCompleted',
+    );
 });

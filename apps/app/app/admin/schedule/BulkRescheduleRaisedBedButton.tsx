@@ -11,6 +11,7 @@ import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { rescheduleOperationAction } from '../../(actions)/operationActions';
 import { rescheduleRaisedBedFieldAction } from '../../(actions)/raisedBedFieldsActions';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 
 type FieldRescheduleTarget = {
     id?: number;
@@ -51,6 +52,7 @@ export function BulkRescheduleRaisedBedButton({
 }: BulkRescheduleRaisedBedButtonProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
@@ -82,14 +84,20 @@ export function BulkRescheduleRaisedBedButton({
             return;
         }
 
+        setErrorMessage(undefined);
         if (onSubmit) {
-            await onSubmit(scheduledDate);
+            const result = await onSubmit(scheduledDate);
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
             return;
         }
 
         setIsSubmitting(true);
-        setOpen(false);
         void Promise.all([
             ...fields.map((field) => {
                 const targetFormData = new FormData();
@@ -128,6 +136,15 @@ export function BulkRescheduleRaisedBedButton({
                 return rescheduleOperationAction(targetFormData);
             }),
         ])
+            .then((result) => {
+                const actionFailureMessage =
+                    getOperationScheduleActionFailureMessage(result);
+                if (actionFailureMessage) {
+                    setErrorMessage(actionFailureMessage);
+                    return;
+                }
+                setOpen(false);
+            })
             .catch((error: unknown) => {
                 console.error(
                     'Failed to reschedule all raised bed items:',
@@ -138,11 +155,18 @@ export function BulkRescheduleRaisedBedButton({
             .finally(() => setIsSubmitting(false));
     }
 
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
+        }
+    }
+
     return (
         <Modal
             title="Skupno zakazivanje zadataka"
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
                 <IconButton
                     variant="plain"
@@ -163,6 +187,11 @@ export function BulkRescheduleRaisedBedButton({
                         Odaberite datum za sve nepotvrđene zadatke ({totalItems}
                         ) {targetText}.
                     </Typography>
+                    {errorMessage ? (
+                        <Typography level="body2" className="text-red-600">
+                            {errorMessage}
+                        </Typography>
+                    ) : null}
 
                     <Input
                         type="date"

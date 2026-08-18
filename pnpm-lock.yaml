@@ -27,6 +27,7 @@ patchedDependencies:
   openapi-typescript@7.13.0: fab737196e4bf943943c70c0e6955e385055ef06f3d8ad61ffb53c4b41c6d419
   react-docgen-typescript@2.4.0: c6a1bb9c2e242a146914bb8e4de55736df0f5fbcd6edcc210eb92b44a18db846
   tsconfck@3.1.6: 8e77e2162331e3bd628516d51ccbf2a0ce9c5a31d9bad8e22cc42458370bec37
+  web-push@3.6.7: 4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172
 
 importers:
 
@@ -143,7 +144,7 @@ importers:
         version: 1.4.2(typescript@7.0.2)
       web-push:
         specifier: 3.6.7
-        version: 3.6.7(supports-color@8.1.1)
+        version: 3.6.7(patch_hash=4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172)(supports-color@8.1.1)
       xml2js:
         specifier: 0.6.2
         version: 0.6.2
@@ -20842,7 +20843,7 @@ snapshots:
 
   web-namespaces@2.0.1: {}
 
-  web-push@3.6.7(supports-color@8.1.1):
+  web-push@3.6.7(patch_hash=4554572bbbd76721b65fb3004602f11f77b665c8e48f33a4e318a2c47b34a172)(supports-color@8.1.1):
     dependencies:
       asn1.js: 5.4.1
       http_ece: 1.2.0

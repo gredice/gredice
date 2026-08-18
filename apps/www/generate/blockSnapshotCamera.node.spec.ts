@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     getOrthographicSnapshotCamera,
+    getStandardBlockSnapshotBaseRotation,
     parseBlockSnapshotCameraView,
 } from './blockSnapshotCamera.ts';
 
@@ -16,6 +17,19 @@ test('parseBlockSnapshotCameraView accepts only the opt-in mode', () => {
         () => parseBlockSnapshotCameraView(''),
         /must be unset or "orthographic"/,
     );
+});
+
+test('standard snapshots show animal houses from their authored front', () => {
+    for (const entityName of [
+        'BirdHouse',
+        'ChickenCoop',
+        'DogHouse',
+        'PigletPen',
+    ]) {
+        assert.equal(getStandardBlockSnapshotBaseRotation(entityName), 2);
+    }
+
+    assert.equal(getStandardBlockSnapshotBaseRotation('RaisedBed'), 0);
 });
 
 test('orthographic camera stays fixed while rotations expose four cardinal faces', () => {

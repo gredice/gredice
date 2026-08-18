@@ -11,7 +11,7 @@ import {
     validateHostedImageUrl,
 } from '@gredice/js/urls';
 import {
-    notifyDetailedRaisedBedInspectionCompleted,
+    notifyDetailedRaisedBedInspectionVerified,
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
 } from '@gredice/notifications';
@@ -44,6 +44,10 @@ import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
+import {
+    OperationScheduleConflictError,
+    runOperationScheduleAction,
+} from '../admin/schedule/operationScheduleActionResult';
 import {
     canAcceptOperationTask,
     canRescheduleOperationTask,
@@ -517,9 +521,7 @@ export async function switchOperationEntityAction(
                         expectedTaskVersionEventId ||
                     operation.entityTypeName !== 'operation'
                 ) {
-                    throw new Error(
-                        'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-                    );
+                    throw new OperationScheduleConflictError();
                 }
                 if (!canSwitchOperationTaskEntity(operation.status)) {
                     throw new Error(
@@ -572,7 +574,7 @@ export async function switchOperationEntityAction(
     }
 }
 
-export async function rescheduleOperationAction(formData: FormData) {
+async function rescheduleOperation(formData: FormData) {
     await auth(['admin']);
     const operationId = formData.get('operationId')
         ? Number(formData.get('operationId'))
@@ -603,9 +605,7 @@ export async function rescheduleOperationAction(formData: FormData) {
                 transaction,
             );
             if (currentOperation.status !== expectedOperation.status) {
-                throw new Error(
-                    'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-                );
+                throw new OperationScheduleConflictError();
             }
             if (
                 currentOperation.entityId !== expectedEntityId ||
@@ -613,9 +613,7 @@ export async function rescheduleOperationAction(formData: FormData) {
                 currentOperation.taskVersionEventId !==
                     expectedTaskVersionEventId
             ) {
-                throw new Error(
-                    'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-                );
+                throw new OperationScheduleConflictError();
             }
             if (!canRescheduleOperationTask(currentOperation.status)) {
                 throw new Error(
@@ -638,10 +636,13 @@ export async function rescheduleOperationAction(formData: FormData) {
     });
 
     await revalidateOperationPaths(operation);
-    return { success: true };
 }
 
-export async function acceptOperationAction(
+export async function rescheduleOperationAction(formData: FormData) {
+    return runOperationScheduleAction(() => rescheduleOperation(formData));
+}
+
+async function acceptOperationMutation(
     operationId: number,
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
@@ -667,9 +668,7 @@ export async function acceptOperationAction(
                 currentOperation.assignedUserId !==
                     expectedOperation.assignedUserId
             ) {
-                throw new Error(
-                    'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-                );
+                throw new OperationScheduleConflictError();
             }
             if (!currentOperation.assignedUserId) {
                 throw new Error(
@@ -689,7 +688,21 @@ export async function acceptOperationAction(
     await revalidateOperationPaths(operation);
 }
 
-export async function unacceptOperationAction(
+export async function acceptOperationAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
+    return runOperationScheduleAction(() =>
+        acceptOperationMutation(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+        ),
+    );
+}
+
+async function unacceptOperationMutation(
     operationId: number,
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
@@ -709,9 +722,7 @@ export async function unacceptOperationAction(
                 operation.entityId !== expectedOperation.entityId ||
                 operation.taskVersionEventId !== validExpectedTaskVersionEventId
             ) {
-                throw new Error(
-                    'Radnja se u međuvremenu promijenila. Osvježi stranicu i pokušaj ponovno.',
-                );
+                throw new OperationScheduleConflictError();
             }
             if (!operation.isAccepted) {
                 return { changed: false, operation };
@@ -727,13 +738,25 @@ export async function unacceptOperationAction(
         },
     );
     if (!mutation.changed) {
-        return { success: true };
+        return;
     }
 
     const { operation } = mutation;
     await revalidateOperationPaths(operation);
+}
 
-    return { success: true };
+export async function unacceptOperationAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
+    return runOperationScheduleAction(() =>
+        unacceptOperationMutation(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+        ),
+    );
 }
 
 export async function assignOperationUserAction(
@@ -844,7 +867,7 @@ async function notifyVerifiedOperationCompletion(
 
     const detailedInspectionHandled =
         operation.entityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
-            ? await notifyDetailedRaisedBedInspectionCompleted(operation.id)
+            ? await notifyDetailedRaisedBedInspectionVerified(operation.id)
             : false;
     const completionNotification = detailedInspectionHandled
         ? null
@@ -951,10 +974,6 @@ async function completeOperationForActor(
         await notifyVerifiedOperationCompletion(verifiedOperation, {
             notifySlack: result.created,
         });
-    } else if (
-        expectedEntityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
-    ) {
-        await notifyDetailedRaisedBedInspectionCompleted(operationId);
     }
 
     await revalidateOperationPaths(operation);

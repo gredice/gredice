@@ -276,6 +276,40 @@ test('local sandbox exposes both connected stone fences with model bounds', () =
     }
 });
 
+test('local sandbox exposes a matching interactive gate for every fence', () => {
+    const blockData = getLocalSandboxBlockData();
+    const gates = [
+        { height: 0.72, label: 'Vrata za drvenu ogradu', name: 'FenceGate' },
+        {
+            height: 0.72,
+            label: 'Vrata za bijelu ogradu',
+            name: 'WhiteFenceGate',
+        },
+        {
+            height: 0.68,
+            label: 'Vrata za kamenu ogradu',
+            name: 'StoneFenceGate',
+        },
+        {
+            height: 0.68,
+            label: 'Vrata za ogradu od poliranog kamena',
+            name: 'PolishedStoneFenceGate',
+        },
+    ];
+
+    for (const { height, label, name } of gates) {
+        const gate = blockData.find((block) => block.information.name === name);
+
+        assert.ok(gate, `Missing local sandbox gate ${name}`);
+        assert.equal(gate.information.label, label);
+        assert.equal(gate.attributes.height, height);
+        assert.equal(gate.attributes.hitboxDepth, 1);
+        assert.equal(gate.attributes.hitboxHeight, height);
+        assert.equal(gate.attributes.hitboxWidth, 1);
+        assert.equal(gate.attributes.stackable, false);
+    }
+});
+
 test('local sandbox exposes the small wooden bridge with its model bounds', () => {
     const bridge = getLocalSandboxBlockData().find(
         (block) => block.information.name === 'SmallWoodenBridge',
