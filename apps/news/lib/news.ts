@@ -168,24 +168,32 @@ function isPublishedNewsPage(
     return page.contentKind === contentKind && page.publishedAt !== null;
 }
 
+async function readPublishedNewsSourceEntries() {
+    const pages = await getCmsPages({ state: 'published' });
+    return pages
+        .filter(
+            (page) =>
+                isPublishedNewsPage(page, 'blog') ||
+                isPublishedNewsPage(page, 'changelog'),
+        )
+        .sort(
+            (left, right) =>
+                publishedTime(right) - publishedTime(left) ||
+                right.id - left.id,
+        )
+        .map(newsPageSourceEntry);
+}
+
 const getPublishedNewsSourceEntries = unstable_cache(
-    async () => {
-        const pages = await getCmsPages({ state: 'published' });
-        return pages
-            .filter(
-                (page) =>
-                    isPublishedNewsPage(page, 'blog') ||
-                    isPublishedNewsPage(page, 'changelog'),
-            )
-            .sort(
-                (left, right) =>
-                    publishedTime(right) - publishedTime(left) ||
-                    right.id - left.id,
-            )
-            .map(newsPageSourceEntry);
-    },
+    readPublishedNewsSourceEntries,
     ['news-published-source-pages-v2'],
     { revalidate: 3600 },
+);
+
+const getDailyPublishedNewsSourceEntries = unstable_cache(
+    readPublishedNewsSourceEntries,
+    ['news-published-source-pages-daily-v1'],
+    { revalidate: 86_400 },
 );
 
 function sourceEntryPublishedTime(entry: NewsPageSourceEntry) {
@@ -195,13 +203,14 @@ function sourceEntryPublishedTime(entry: NewsPageSourceEntry) {
 async function getNewsEntries(
     contentKind: CmsNewsContentKind,
     query: NewsListQuery = {},
+    getSourceEntries = getPublishedNewsSourceEntries,
 ) {
     const category = normalizedTaxonomyValue(query.category);
     const tag = normalizedTaxonomyValue(query.tag);
     const since = query.since ? new Date(query.since) : null;
     const publishedAfter =
         since && !Number.isNaN(since.getTime()) ? since.getTime() : null;
-    const entries = await getPublishedNewsSourceEntries();
+    const entries = await getSourceEntries();
     const items = entries.filter((entry) => {
         if (entry.summary.contentKind !== contentKind) {
             return false;
@@ -257,6 +266,16 @@ export function getChangelogEntries(
     query: Omit<NewsListQuery, 'category'> = {},
 ) {
     return getNewsEntries('changelog', query);
+}
+
+export function getDailyChangelogEntries(
+    query: Omit<NewsListQuery, 'category'> = {},
+) {
+    return getNewsEntries(
+        'changelog',
+        query,
+        getDailyPublishedNewsSourceEntries,
+    );
 }
 
 export function getChangelogEntry(slug: string) {

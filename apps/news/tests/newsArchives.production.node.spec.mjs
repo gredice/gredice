@@ -28,8 +28,8 @@ const archives = [
     },
     {
         description:
-            'Kronološki pregled nadogradnji, poboljšanja i novih značajki u Gredicama.',
-        imageAlt: 'Što je novo u Gredicama – promjene i nove mogućnosti',
+            'Tjedni sažeci nadogradnji, poboljšanja i novih značajki u Gredicama, s poveznicama na svaku promjenu.',
+        imageAlt: 'Što je novo u Gredicama – tjedni sažeci promjena',
         imagePath: '/novosti/sto-je-novo/opengraph-image',
         path: '/novosti/sto-je-novo',
         publicUrl: 'https://www.gredice.com/novosti/sto-je-novo',
