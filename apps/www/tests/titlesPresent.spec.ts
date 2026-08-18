@@ -16,6 +16,7 @@ const publicOgExactPaths = new Set([
     '/cesta-pitanja',
     '/cjenik',
     '/dostava',
+    '/dostava-povrca-zagreb',
     '/dostava/termini',
     '/kontakt',
     '/mcp',
@@ -122,6 +123,73 @@ test.describe('public SEO metadata', () => {
         readFileSync('./tests/sitemap-pages.json', 'utf8'),
     ) as string[];
     const representativeCoverPaths = representativeDynamicCoverPaths(pages);
+
+    test('delivery schedule renders meaningful dates without placeholders in initial HTML', async ({
+        page,
+    }) => {
+        const response = await page.request.get('/dostava/termini');
+        const html = await response.text();
+
+        expect(response.ok()).toBe(true);
+        expect(html).toContain('Termini dostave');
+        expect(html).toContain('sljedećih mjesec dana');
+        expect(html).toMatch(/dateTime/u);
+        expect(html).toMatch(/\d{2}:\d{2}/u);
+        expect(html).not.toMatch(/>\.\.\.<\/span>/u);
+
+        await page.goto('/dostava/termini', {
+            waitUntil: 'domcontentloaded',
+        });
+        await expect(page.locator('time').first()).toBeAttached();
+    });
+
+    test('Zagreb delivery landing is discoverable and links to its supporting cluster', async ({
+        page,
+    }) => {
+        const landingPath = '/dostava-povrca-zagreb';
+        const contextualSources = [
+            '/',
+            '/dostava',
+            '/podignuta-gredica',
+            '/biljke',
+        ];
+
+        for (const source of contextualSources) {
+            await page.goto(source, { waitUntil: 'domcontentloaded' });
+            await expect(
+                page.locator(`main a[href="${landingPath}"]`).first(),
+                `${source} contextual link`,
+            ).toBeAttached();
+        }
+
+        await page.goto('/', { waitUntil: 'domcontentloaded' });
+        await expect(
+            page.locator(`footer a[href="${landingPath}"]`).first(),
+            'footer discovery link',
+        ).toBeAttached();
+
+        await page.goto(landingPath, { waitUntil: 'domcontentloaded' });
+        await expect(
+            page.getByRole('heading', {
+                level: 1,
+                name: 'Dostava svježeg povrća u Zagrebu',
+            }),
+        ).toHaveCount(1);
+        await expect(
+            page.locator('main a[href="/dostava"]').first(),
+        ).toBeAttached();
+
+        for (const articlePath of [
+            '/novosti/dostava-povrca-u-zagrebu-kako-funkcioniraju-gredice',
+            '/novosti/povrtna-kosarica-ili-vlastita-gredica',
+            '/novosti/koliko-kosta-dostava-povrca-u-zagrebu',
+        ]) {
+            await expect(
+                page.locator(`main a[href="${articlePath}"]`).first(),
+                `${articlePath} reciprocal link`,
+            ).toBeAttached();
+        }
+    });
 
     test('legacy corner-stairs path redirects to canonical metadata', async ({
         page,

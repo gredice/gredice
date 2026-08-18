@@ -319,7 +319,11 @@ export default function RaisedBedPage() {
                         plodova kroz Gredice prema dostupnim terminima.
                     </p>
                     <p>
-                        Više o pravilima, zonama i terminima pronađi na stranici{' '}
+                        Saznaj kako funkcionira{' '}
+                        <a href={KnownPages.DeliveryZagreb}>
+                            dostava povrća u Zagrebu
+                        </a>
+                        , a pravila, zone i termine provjeri na stranici{' '}
                         <a href={KnownPages.Delivery}>dostava</a>. Ako imaš
                         dodatna pitanja, tu su{' '}
                         <a href={KnownPages.FAQ}>najčešća pitanja</a> i{' '}

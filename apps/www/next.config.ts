@@ -84,6 +84,11 @@ const nextConfig: NextConfig = {
     async redirects() {
         return [
             {
+                source: '/.well-known/llms.txt',
+                destination: '/llms.txt',
+                permanent: true,
+            },
+            {
                 source: '/blokovi/kamene-polustube',
                 destination: '/blokovi/kutne-kamene-stube',
                 permanent: true,

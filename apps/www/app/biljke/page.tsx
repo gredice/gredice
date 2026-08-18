@@ -161,6 +161,16 @@ export default async function PlantsPage({
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Typography level="body1" className="mt-8">
+                Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
+                <Link
+                    className="font-medium text-primary underline"
+                    href={KnownPages.DeliveryZagreb}
+                >
+                    dostava povrća u Zagrebu iz tvoje gredice
+                </Link>
+                .
+            </Typography>
             <Row spacing={4} className="mt-12">
                 <Typography level="body1">
                     Sviđa ti se odabir ili nema biljke koja te zanima?

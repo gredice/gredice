@@ -14,7 +14,8 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 - [Operations](https://www.gredice.com/radnje): Gardening operations and activity guidance.
 - [News](https://www.gredice.com/novosti): Blog posts and changelog updates.
 - [What's new](https://www.gredice.com/novosti/sto-je-novo): Timeline of published product updates.
-- [Delivery](https://www.gredice.com/dostava): Delivery options and service information.
+- [Zagreb vegetable delivery](https://www.gredice.com/dostava-povrca-zagreb): How Gredice garden harvest and delivery work for Zagreb customers.
+- [Delivery terms](https://www.gredice.com/dostava): Delivery options, zones, pricing, pickup, and scheduling information.
 - [Pricing](https://www.gredice.com/cjenik): Current public pricing and plan information.
 - [Harvest quality and safety](https://www.gredice.com/kvaliteta-i-sigurnost-uroda): Public overview of harvest hygiene, traceability, and handling boundaries.
 - [MCP for AI assistants](https://www.gredice.com/mcp): Connect compatible AI assistants to Gredice public knowledge and authorized garden tools.

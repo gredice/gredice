@@ -52,7 +52,7 @@ export function NewsDetail({
                     <div className="inline-flex max-w-full overflow-hidden rounded-md border bg-muted/20">
                         {/* biome-ignore lint/performance/noImgElement: CMS images are remote author content. */}
                         <img
-                            alt=""
+                            alt={entry.title}
                             className="h-auto max-h-[520px] max-w-full object-contain"
                             src={entry.metaImageUrl}
                             style={{

@@ -1,5 +1,6 @@
 import type { IConfig } from 'next-sitemap';
 import { getSitemapSourcePaths } from './lib/sitemap/getSitemapSourcePaths';
+import { excludedSitemapRoutes } from './lib/sitemap/sitemapSourcePaths';
 
 function decodeUriComponentSafe(value: string) {
     try {
@@ -26,9 +27,19 @@ function normalizeSitemapPath(path: string) {
 const config: IConfig = {
     siteUrl: process.env.SITE_URL || 'https://www.gredice.com',
     generateRobotsTxt: true,
-    exclude: ['/trag/*', '/vrtovi', '/vrtovi/*'],
+    exclude: excludedSitemapRoutes,
     robotsTxtOptions: {
         policies: [
+            {
+                userAgent: 'Googlebot',
+                allow: '/',
+                disallow: ['/trag/'],
+            },
+            {
+                userAgent: 'OAI-SearchBot',
+                allow: '/',
+                disallow: ['/trag/'],
+            },
             {
                 userAgent: '*',
                 allow: '/',
