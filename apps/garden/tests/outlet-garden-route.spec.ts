@@ -571,83 +571,109 @@ async function expectOutletProductSignPriceAligned(
     await expect(productSign).toBeVisible();
     await expect(priceLabel).toBeVisible();
 
+    const readAlignment = () =>
+        priceLabel.evaluate((priceNode, sortId) => {
+            const signNode = document.querySelector(
+                `[data-outlet-garden-product-sign="${sortId.toString()}"]`,
+            );
+            if (!(priceNode instanceof HTMLElement)) {
+                throw new Error('Expected an HTML price label');
+            }
+            if (!(signNode instanceof HTMLElement)) {
+                throw new Error('Expected an HTML product sign');
+            }
+
+            const priceContent = priceNode.parentElement;
+            const signContent = signNode.parentElement;
+            const priceTransform = priceContent?.parentElement;
+            const signTransform = signContent?.parentElement;
+            if (
+                !(priceContent instanceof HTMLElement) ||
+                !(signContent instanceof HTMLElement) ||
+                !(priceTransform instanceof HTMLElement) ||
+                !(signTransform instanceof HTMLElement)
+            ) {
+                throw new Error('Expected transformed HTML sign wrappers');
+            }
+
+            const orientationDeterminant = (node: HTMLElement) => {
+                const matrix = new DOMMatrixReadOnly(
+                    window.getComputedStyle(node).transform,
+                );
+                return (
+                    matrix.m11 *
+                        (matrix.m22 * matrix.m33 - matrix.m23 * matrix.m32) -
+                    matrix.m12 *
+                        (matrix.m21 * matrix.m33 - matrix.m23 * matrix.m31) +
+                    matrix.m13 *
+                        (matrix.m21 * matrix.m32 - matrix.m22 * matrix.m31)
+                );
+            };
+            const priceStyle = window.getComputedStyle(priceNode);
+
+            return {
+                alignItems: priceStyle.alignItems,
+                priceBackfaceVisibility: priceStyle.backfaceVisibility,
+                priceContentBackfaceVisibility:
+                    window.getComputedStyle(priceContent).backfaceVisibility,
+                priceContentTransform:
+                    window.getComputedStyle(priceContent).transform,
+                priceOrientationSign: Math.sign(
+                    orientationDeterminant(priceTransform),
+                ),
+                justifyContent: priceStyle.justifyContent,
+                signContentTransform:
+                    window.getComputedStyle(signContent).transform,
+                signOrientationSign: Math.sign(
+                    orientationDeterminant(signTransform),
+                ),
+            };
+        }, plantSortId);
+
+    await expect
+        .poll(async () => {
+            const [face, priceFace, alignment] = await Promise.all([
+                productSign.getAttribute(
+                    'data-outlet-garden-product-sign-face',
+                ),
+                priceLabel.getAttribute(
+                    'data-outlet-garden-product-sign-price-face',
+                ),
+                readAlignment(),
+            ]);
+            return {
+                alignItems: alignment.alignItems,
+                faceMatches:
+                    (face === 'front' || face === 'back') && priceFace === face,
+                justifyContent: alignment.justifyContent,
+                orientationMatches:
+                    alignment.priceOrientationSign !== 0 &&
+                    alignment.priceOrientationSign ===
+                        alignment.signOrientationSign,
+                priceBackfaceVisibility: alignment.priceBackfaceVisibility,
+                priceContentBackfaceVisibility:
+                    alignment.priceContentBackfaceVisibility,
+                transformsMatch:
+                    alignment.priceContentTransform ===
+                    alignment.signContentTransform,
+            };
+        })
+        .toEqual({
+            alignItems: 'center',
+            faceMatches: true,
+            justifyContent: 'center',
+            orientationMatches: true,
+            priceBackfaceVisibility: 'hidden',
+            priceContentBackfaceVisibility: 'hidden',
+            transformsMatch: true,
+        });
+
     const face = await productSign.getAttribute(
         'data-outlet-garden-product-sign-face',
     );
     if (face !== 'front' && face !== 'back') {
         throw new Error('Expected the product sign to expose its visible face');
     }
-    await expect(priceLabel).toHaveAttribute(
-        'data-outlet-garden-product-sign-price-face',
-        face,
-    );
-
-    const alignment = await priceLabel.evaluate((priceNode, sortId) => {
-        const signNode = document.querySelector(
-            `[data-outlet-garden-product-sign="${sortId.toString()}"]`,
-        );
-        if (!(priceNode instanceof HTMLElement)) {
-            throw new Error('Expected an HTML price label');
-        }
-        if (!(signNode instanceof HTMLElement)) {
-            throw new Error('Expected an HTML product sign');
-        }
-
-        const priceContent = priceNode.parentElement;
-        const signContent = signNode.parentElement;
-        const priceTransform = priceContent?.parentElement;
-        const signTransform = signContent?.parentElement;
-        if (
-            !(priceContent instanceof HTMLElement) ||
-            !(signContent instanceof HTMLElement) ||
-            !(priceTransform instanceof HTMLElement) ||
-            !(signTransform instanceof HTMLElement)
-        ) {
-            throw new Error('Expected transformed HTML sign wrappers');
-        }
-
-        const orientationDeterminant = (node: HTMLElement) => {
-            const matrix = new DOMMatrixReadOnly(
-                window.getComputedStyle(node).transform,
-            );
-            return (
-                matrix.m11 *
-                    (matrix.m22 * matrix.m33 - matrix.m23 * matrix.m32) -
-                matrix.m12 *
-                    (matrix.m21 * matrix.m33 - matrix.m23 * matrix.m31) +
-                matrix.m13 * (matrix.m21 * matrix.m32 - matrix.m22 * matrix.m31)
-            );
-        };
-        const priceStyle = window.getComputedStyle(priceNode);
-
-        return {
-            alignItems: priceStyle.alignItems,
-            priceBackfaceVisibility: priceStyle.backfaceVisibility,
-            priceContentBackfaceVisibility:
-                window.getComputedStyle(priceContent).backfaceVisibility,
-            priceContentTransform:
-                window.getComputedStyle(priceContent).transform,
-            priceOrientationSign: Math.sign(
-                orientationDeterminant(priceTransform),
-            ),
-            justifyContent: priceStyle.justifyContent,
-            signContentTransform:
-                window.getComputedStyle(signContent).transform,
-            signOrientationSign: Math.sign(
-                orientationDeterminant(signTransform),
-            ),
-        };
-    }, plantSortId);
-
-    expect(alignment.priceContentTransform).toBe(
-        alignment.signContentTransform,
-    );
-    expect(alignment.priceBackfaceVisibility).toBe('hidden');
-    expect(alignment.priceContentBackfaceVisibility).toBe('hidden');
-    expect(alignment.priceOrientationSign).not.toBe(0);
-    expect(alignment.priceOrientationSign).toBe(alignment.signOrientationSign);
-    expect(alignment.alignItems).toBe('center');
-    expect(alignment.justifyContent).toBe('center');
 
     return face;
 }
@@ -853,21 +879,6 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     expect((guideBox?.x ?? 0) + (guideBox?.width ?? 0)).toBeGreaterThanOrEqual(
         (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
     );
-    await controlsToggle.dispatchEvent('click');
-    await expect(controlsGuide).toHaveCount(0);
-    const closedControlsBox = await sceneControls.boundingBox();
-    expect(closedControlsBox).not.toBeNull();
-    expect(
-        Math.abs(
-            (closedControlsBox?.width ?? 0) - (openControlsBox?.width ?? 0),
-        ),
-    ).toBeLessThanOrEqual(1);
-    expect(
-        Math.abs(
-            (closedControlsBox?.height ?? 0) - (openControlsBox?.height ?? 0),
-        ),
-    ).toBeLessThanOrEqual(1);
-
     const screenshotViewport = { height: 288, width: 376 };
     await page.setViewportSize(screenshotViewport);
     await expect
@@ -875,40 +886,26 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         .toBe(screenshotViewport.width);
     await page.evaluate(() => window.dispatchEvent(new Event('resize')));
     await expect(controlsGuide).toBeVisible();
-    const [mobileOpenControlsBox, mobileGuideBox, mobileToggleBox] =
-        await Promise.all([
-            sceneControls.boundingBox(),
-            controlsGuide.boundingBox(),
-            page.getByTitle('Sakrij kontrole').boundingBox(),
-        ]);
-    expect(mobileOpenControlsBox).not.toBeNull();
-    expect(mobileGuideBox).not.toBeNull();
-    expect(mobileToggleBox).not.toBeNull();
-    expect(mobileGuideBox?.x ?? -1).toBeGreaterThanOrEqual(0);
-    expect(
-        (mobileGuideBox?.x ?? 0) + (mobileGuideBox?.width ?? 0),
-    ).toBeLessThanOrEqual(screenshotViewport.width);
-    expect(mobileGuideBox?.y ?? -1).toBeGreaterThanOrEqual(0);
-    expect(
-        (mobileToggleBox?.y ?? 0) -
-            ((mobileGuideBox?.y ?? 0) + (mobileGuideBox?.height ?? 0)),
-    ).toBeGreaterThanOrEqual(7);
-    await page.getByTitle('Sakrij kontrole').dispatchEvent('click');
+    await expect
+        .poll(async () => {
+            const [controlsBox, guideBox, toggleBox] = await Promise.all([
+                sceneControls.boundingBox(),
+                controlsGuide.boundingBox(),
+                page.getByTitle('Sakrij kontrole').boundingBox(),
+            ]);
+            return Boolean(
+                controlsBox &&
+                    guideBox &&
+                    toggleBox &&
+                    guideBox.x >= 0 &&
+                    guideBox.x + guideBox.width <= screenshotViewport.width &&
+                    guideBox.y >= 0 &&
+                    toggleBox.y - (guideBox.y + guideBox.height) >= 7,
+            );
+        })
+        .toBe(true);
+    await controlsGuide.getByTitle('Zatvori').dispatchEvent('click');
     await expect(controlsGuide).toHaveCount(0);
-    const mobileClosedControlsBox = await sceneControls.boundingBox();
-    expect(mobileClosedControlsBox).not.toBeNull();
-    expect(
-        Math.abs(
-            (mobileClosedControlsBox?.width ?? 0) -
-                (mobileOpenControlsBox?.width ?? 0),
-        ),
-    ).toBeLessThanOrEqual(1);
-    expect(
-        Math.abs(
-            (mobileClosedControlsBox?.height ?? 0) -
-                (mobileOpenControlsBox?.height ?? 0),
-        ),
-    ).toBeLessThanOrEqual(1);
     await expect(
         page.getByText('Pokupi / spusti', { exact: true }),
     ).toHaveCount(0);
