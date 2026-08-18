@@ -6,7 +6,7 @@ import { FilterPills } from '../components/FilterPills';
 import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
 import { NewsCard } from '../components/NewsCard';
 import { getBlogPosts, uniqueNewsValues } from '../lib/news';
-import { blogArchiveMetadata } from '../lib/newsArchiveMetadata';
+import { newsArchiveMetadata } from '../lib/newsArchiveMetadata';
 import {
     isKnownNewsFilter,
     normalizeNewsFilterValue,
@@ -14,7 +14,7 @@ import {
 import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = blogArchiveMetadata;
+export const metadata: Metadata = newsArchiveMetadata;
 
 function changelogTagRedirectPath(tag: string): Route {
     return `/sto-je-novo?tag=${encodeURIComponent(tag)}` as Route;
@@ -79,7 +79,7 @@ export default async function NewsHomePage({
                     događa u Gredicama.
                 </p>
             </section>
-            <NewsArchiveNavigation active="blog" />
+            <NewsArchiveNavigation active="news" />
             {categories.length > 0 ? (
                 <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
                     <FilterPills
