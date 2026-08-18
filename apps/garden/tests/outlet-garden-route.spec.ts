@@ -853,7 +853,7 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
     expect((guideBox?.x ?? 0) + (guideBox?.width ?? 0)).toBeGreaterThanOrEqual(
         (toggleBox?.x ?? 0) + (toggleBox?.width ?? 0),
     );
-    await controlsToggle.click({ force: true });
+    await controlsToggle.dispatchEvent('click');
     await expect(controlsGuide).toHaveCount(0);
     const closedControlsBox = await sceneControls.boundingBox();
     expect(closedControlsBox).not.toBeNull();
@@ -893,7 +893,7 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         (mobileToggleBox?.y ?? 0) -
             ((mobileGuideBox?.y ?? 0) + (mobileGuideBox?.height ?? 0)),
     ).toBeGreaterThanOrEqual(7);
-    await page.getByTitle('Sakrij kontrole').click({ force: true });
+    await page.getByTitle('Sakrij kontrole').dispatchEvent('click');
     await expect(controlsGuide).toHaveCount(0);
     const mobileClosedControlsBox = await sceneControls.boundingBox();
     expect(mobileClosedControlsBox).not.toBeNull();
