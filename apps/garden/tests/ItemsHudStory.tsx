@@ -22,6 +22,7 @@ import {
     createGameState,
     GameStateContext,
     useGameState,
+    useGameStateStore,
 } from '../../../packages/game/src/useGameState';
 
 const now = '2026-05-13T00:00:00.000Z';
@@ -823,6 +824,43 @@ export function ItemsHudControlsTooltipStory() {
                     </div>
                     <ItemsHudTestFrame />
                 </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+function ControlsTooltipCloseupFrame() {
+    const isCloseup = useGameState((state) => state.view === 'closeup');
+    const gameStateStore = useGameStateStore();
+
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => gameStateStore.setState({ view: 'closeup' })}
+            >
+                Uđi u gredicu
+            </button>
+            <div
+                data-testid="bottom-controls"
+                aria-hidden={isCloseup}
+                inert={isCloseup ? true : undefined}
+                className={cx(
+                    gameHudBottomControlsClassName,
+                    getGameHudBottomCloseupClassName(isCloseup),
+                )}
+            >
+                <ControlsTooltipHud isCloseup={isCloseup} />
+            </div>
+        </>
+    );
+}
+
+export function ControlsTooltipCloseupStory() {
+    return (
+        <ItemsHudTestProviders>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <ControlsTooltipCloseupFrame />
             </div>
         </ItemsHudTestProviders>
     );
