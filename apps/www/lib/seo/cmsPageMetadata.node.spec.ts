@@ -67,3 +67,39 @@ test('no-index CMS pages also disable following', () => {
     assert.equal(metadata.robots.index, false);
     assert.equal(metadata.robots.follow, false);
 });
+
+test('CMS metadata preserves supported image types and omits unknown types', () => {
+    const imageCases = [
+        ['cover.avif?download=1', 'image/avif'],
+        ['cover.GIF#preview', 'image/gif'],
+        ['cover.jpeg', 'image/jpeg'],
+        ['cover.png', 'image/png'],
+        ['cover.webp', 'image/webp'],
+    ] as const;
+
+    for (const [fileName, expectedType] of imageCases) {
+        const metadata = createCmsPageMetadata({
+            slug: 'primjer',
+            title: 'Primjer',
+            seoImageUrl: `https://cdn.gredice.com/${fileName}`,
+        });
+        const images = metadata.openGraph?.images;
+        assert.ok(Array.isArray(images));
+        const image = images[0];
+        assert.ok(
+            image && typeof image === 'object' && !(image instanceof URL),
+        );
+        assert.equal(image.type, expectedType);
+    }
+
+    const metadata = createCmsPageMetadata({
+        slug: 'primjer',
+        title: 'Primjer',
+        seoImageUrl: 'https://cdn.gredice.com/cover.bin',
+    });
+    const images = metadata.openGraph?.images;
+    assert.ok(Array.isArray(images));
+    const image = images[0];
+    assert.ok(image && typeof image === 'object' && !(image instanceof URL));
+    assert.equal('type' in image, false);
+});

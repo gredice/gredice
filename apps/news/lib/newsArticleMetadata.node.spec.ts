@@ -54,3 +54,43 @@ test('news article metadata keeps canonical, Open Graph and Twitter aligned', ()
     assert.equal(openGraphImage.height, 630);
     assert.equal(openGraphImage.type, 'image/webp');
 });
+
+test('news metadata preserves supported image types and omits unknown types', () => {
+    const imageCases = [
+        ['cover.avif?download=1', 'image/avif'],
+        ['cover.GIF#preview', 'image/gif'],
+        ['cover.jpg', 'image/jpeg'],
+        ['cover.png', 'image/png'],
+        ['cover.webp', 'image/webp'],
+    ] as const;
+
+    for (const [fileName, expectedType] of imageCases) {
+        const metadata = createNewsArticleMetadata({
+            title: 'Primjer',
+            path: '/novosti/primjer',
+            publishedAt: '2026-08-18T08:00:00.000Z',
+            tags: [],
+            seoImageUrl: `https://cdn.gredice.com/${fileName}`,
+        });
+        const images = metadata.openGraph?.images;
+        assert.ok(Array.isArray(images));
+        const image = images[0];
+        assert.ok(
+            image && typeof image === 'object' && !(image instanceof URL),
+        );
+        assert.equal(image.type, expectedType);
+    }
+
+    const metadata = createNewsArticleMetadata({
+        title: 'Primjer',
+        path: '/novosti/primjer',
+        publishedAt: '2026-08-18T08:00:00.000Z',
+        tags: [],
+        seoImageUrl: 'https://cdn.gredice.com/cover.bin',
+    });
+    const images = metadata.openGraph?.images;
+    assert.ok(Array.isArray(images));
+    const image = images[0];
+    assert.ok(image && typeof image === 'object' && !(image instanceof URL));
+    assert.equal('type' in image, false);
+});

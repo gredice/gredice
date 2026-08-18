@@ -12,13 +12,23 @@ export type CmsPageMetadataInput = {
 };
 
 function imageContentType(imageUrl: string) {
-    if (/\.jpe?g(?:\?|$)/iu.test(imageUrl)) {
-        return 'image/jpeg';
+    const pathname = imageUrl.split(/[?#]/u, 1)[0]?.toLowerCase();
+
+    switch (pathname?.match(/\.([^./]+)$/u)?.[1]) {
+        case 'avif':
+            return 'image/avif';
+        case 'gif':
+            return 'image/gif';
+        case 'jpg':
+        case 'jpeg':
+            return 'image/jpeg';
+        case 'png':
+            return 'image/png';
+        case 'webp':
+            return 'image/webp';
+        default:
+            return undefined;
     }
-    if (/\.webp(?:\?|$)/iu.test(imageUrl)) {
-        return 'image/webp';
-    }
-    return 'image/png';
 }
 
 export function createCmsPageMetadata(page: CmsPageMetadataInput): Metadata {
@@ -27,6 +37,7 @@ export function createCmsPageMetadata(page: CmsPageMetadataInput): Metadata {
     const canonicalPath = page.canonicalPath || `/${page.slug}`;
     const imageUrl = page.seoImageUrl || `/api/og/cms/${page.slug}`;
     const imageAlt = `${title} – Gredice`;
+    const imageType = imageContentType(imageUrl);
 
     return {
         title,
@@ -51,7 +62,7 @@ export function createCmsPageMetadata(page: CmsPageMetadataInput): Metadata {
                     width: PUBLIC_OG_IMAGE_SIZE.width,
                     height: PUBLIC_OG_IMAGE_SIZE.height,
                     alt: imageAlt,
-                    type: imageContentType(imageUrl),
+                    ...(imageType ? { type: imageType } : {}),
                 },
             ],
         },
