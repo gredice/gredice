@@ -29,6 +29,8 @@ test('the default news archive composes blog posts and weekly changes', () => {
     assert.match(source, /getChangelogEntries\(\)/u);
     assert.match(source, /buildChangelogWeeks\(changelogEntries\)/u);
     assert.match(source, /buildNewsTimeline\(visiblePosts, changelogWeeks\)/u);
+    assert.match(source, /const eagerChangelogWeekKey = changelogWeeks\[0\]/u);
+    assert.match(source, /eager=\{/u);
 });
 
 test('blog and changelog detail routes generate published slugs statically', () => {

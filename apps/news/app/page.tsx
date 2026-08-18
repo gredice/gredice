@@ -79,6 +79,7 @@ export default async function NewsHomePage({
     const changelogWeeks = activeCategory
         ? []
         : buildChangelogWeeks(changelogEntries);
+    const eagerChangelogWeekKey = changelogWeeks[0]?.weekKey;
     const timelineGroups = buildNewsTimeline(visiblePosts, changelogWeeks);
     const totalItems = timelineGroups.reduce(
         (total, group) => total + group.items.length,
@@ -96,8 +97,8 @@ export default async function NewsHomePage({
                     Novosti iz Gredica
                 </h1>
                 <p className="max-w-2xl text-lg text-muted-foreground">
-                    Blog objave i tjedni pregledi novih mogućnosti, poboljšanja i
-                    promjena u Gredicama.
+                    Blog objave i tjedni pregledi novih mogućnosti, poboljšanja
+                    i promjena u Gredicama.
                 </p>
             </section>
             <NewsArchiveNavigation active="news" />
@@ -143,7 +144,9 @@ export default async function NewsHomePage({
                                         {item.kind === 'blog' ? (
                                             <NewsCard
                                                 entry={item.blog}
-                                                href={`/${item.blog.slug}` as Route}
+                                                href={
+                                                    `/${item.blog.slug}` as Route
+                                                }
                                                 kind="blog"
                                                 viewTransitionName={getNewsArticleViewTransitionName(
                                                     'blog',
@@ -152,6 +155,10 @@ export default async function NewsHomePage({
                                             />
                                         ) : (
                                             <WeeklyChangelogCard
+                                                eager={
+                                                    item.week.weekKey ===
+                                                    eagerChangelogWeekKey
+                                                }
                                                 week={item.week}
                                             />
                                         )}
