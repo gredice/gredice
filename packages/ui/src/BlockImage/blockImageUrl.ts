@@ -18,9 +18,11 @@ export function getBlockImageUrl(
     options?: { rotationSuffix?: number | string },
 ) {
     const suffix = options?.rotationSuffix ? `_${options.rotationSuffix}` : '';
-    const path = `/assets/blocks/${blockName}${suffix}.webp`;
-
-    return localBlockImageNames.has(blockName)
-        ? path
-        : (getSharedBlockImageUrl(`${blockName}${suffix}`) ?? '');
+    return (
+        getSharedBlockImageUrl(`${blockName}${suffix}`, {
+            baseUrl: localBlockImageNames.has(blockName)
+                ? '/assets/blocks'
+                : undefined,
+        }) ?? ''
+    );
 }

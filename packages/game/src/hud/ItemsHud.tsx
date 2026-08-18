@@ -1,5 +1,5 @@
 import type { BlockData } from '@gredice/client';
-import { BlockImage } from '@gredice/ui/BlockImage';
+import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { IconButton } from '@gredice/ui/IconButton';
@@ -35,6 +35,11 @@ import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
 import {
+    type HudImagePreload,
+    preloadHudImages,
+    scheduleHudImagePreload,
+} from './hudImagePreload';
+import {
     getHudEntityPlacementAvailability,
     type HudEntityPlacementAvailability,
 } from './itemPlacementAvailability';
@@ -53,6 +58,41 @@ type HudItemPicker = {
 };
 
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
+
+const pickerThumbnailSize = 40;
+const entityThumbnailSize = 64;
+
+function getHudImagePreloads(hudItems: HudItem[]) {
+    return hudItems.flatMap<HudImagePreload>((item) => {
+        if (item.type === 'entity') {
+            return [
+                {
+                    src: getBlockImageUrl(item.name),
+                    width: entityThumbnailSize,
+                    height: entityThumbnailSize,
+                },
+            ];
+        }
+
+        if (item.type === 'picker') {
+            return [
+                {
+                    src: item.imageSrc,
+                    width: pickerThumbnailSize,
+                    height: pickerThumbnailSize,
+                },
+            ];
+        }
+
+        return [];
+    });
+}
+
+function getNextLevelHudImagePreloads(hudItems: HudItem[]) {
+    return hudItems.flatMap((item) =>
+        item.type === 'picker' ? getHudImagePreloads(item.items) : [],
+    );
+}
 
 const potItems: HudItemEntity[] = [
     { type: 'entity', name: 'PotLowBowl' },
@@ -151,7 +191,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Trava',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Grass.webp',
+        imageSrc: getBlockImageUrl('Block_Grass'),
         items: [
             { type: 'entity', name: 'Block_Grass' },
             { type: 'entity', name: 'Block_Grass_Angle' },
@@ -162,7 +202,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Zemlja',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Ground.webp',
+        imageSrc: getBlockImageUrl('Block_Ground'),
         items: [
             { type: 'entity', name: 'Block_Ground' },
             { type: 'entity', name: 'Block_Ground_Angle' },
@@ -173,7 +213,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Suha zemlja',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Dry_Ground.webp',
+        imageSrc: getBlockImageUrl('Block_Dry_Ground'),
         items: [
             { type: 'entity', name: 'Block_Dry_Ground' },
             { type: 'entity', name: 'Block_Dry_Ground_Angle' },
@@ -184,8 +224,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Močvara',
-        imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Swamp_Ground.webp',
+        imageSrc: getBlockImageUrl('Block_Swamp_Ground'),
         items: [
             { type: 'entity', name: 'Block_Swamp_Ground' },
             { type: 'entity', name: 'Block_Swamp_Ground_Angle' },
@@ -195,7 +234,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Kamen',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Stone.webp',
+        imageSrc: getBlockImageUrl('Block_Stone'),
         items: [
             { type: 'entity', name: 'Block_Stone' },
             { type: 'entity', name: 'Block_Stone_Angle' },
@@ -206,8 +245,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Polirani kamen',
-        imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Polished_Stone.webp',
+        imageSrc: getBlockImageUrl('Block_Polished_Stone'),
         items: [
             { type: 'entity', name: 'Block_Polished_Stone' },
             { type: 'entity', name: 'Block_Polished_Stone_Angle' },
@@ -221,7 +259,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Šljunak',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Gravel.webp',
+        imageSrc: getBlockImageUrl('Block_Gravel'),
         items: [
             { type: 'entity', name: 'Block_Gravel' },
             { type: 'entity', name: 'Block_Gravel_Angle' },
@@ -230,7 +268,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Pijesak',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Sand.webp',
+        imageSrc: getBlockImageUrl('Block_Sand'),
         items: [
             { type: 'entity', name: 'Block_Sand' },
             { type: 'entity', name: 'Block_Sand_Angle' },
@@ -241,7 +279,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Snijeg',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Snow.webp',
+        imageSrc: getBlockImageUrl('Block_Snow'),
         items: [
             { type: 'entity', name: 'Block_Snow' },
             { type: 'entity', name: 'Block_Snow_Angle' },
@@ -252,7 +290,7 @@ const terrainItems: HudItemPicker[] = [
     {
         type: 'picker',
         label: 'Voda',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Block_Water.webp',
+        imageSrc: getBlockImageUrl('Block_Water'),
         items: [{ type: 'entity', name: 'Block_Water' }],
     },
 ];
@@ -263,16 +301,15 @@ const treeGroupEntityNames = new Set([
 ]);
 
 const treePickerLabel = 'Drveće';
-const treePickerImageSrc = 'https://www.gredice.com/assets/blocks/Tree.webp';
+const treePickerImageSrc = getBlockImageUrl('Tree');
 const giftBoxPickerLabel = 'Poklon kutije';
-const giftBoxPickerImageSrc =
-    'https://www.gredice.com/assets/blocks/GiftBox_RedWhite.webp';
+const giftBoxPickerImageSrc = getBlockImageUrl('GiftBox_RedWhite');
 
 const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Gredica 1 × 2',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.webp',
+        imageSrc: getBlockImageUrl('Raised_Bed'),
         items: [
             {
                 type: 'entity',
@@ -285,7 +322,7 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Alat',
-        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.webp',
+        imageSrc: getBlockImageUrl('GardenBox'),
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'WateringCan' },
@@ -298,27 +335,24 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Dekoracija',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.webp',
+        imageSrc: getBlockImageUrl('Tree'),
         items: [
             {
                 type: 'picker',
                 label: 'Posude',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.webp',
+                imageSrc: getBlockImageUrl('PotRoundedBowl'),
                 items: potItems,
             },
             {
                 type: 'picker',
                 label: 'Kamenje',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/StoneMedium.webp',
+                imageSrc: getBlockImageUrl('StoneMedium'),
                 items: rockItems,
             },
             {
                 type: 'picker',
                 label: 'Malč',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/MulchWood.webp',
+                imageSrc: getBlockImageUrl('MulchWood'),
                 items: mulchItems,
             },
             {
@@ -330,41 +364,37 @@ const items: HudItem[] = [
             {
                 type: 'picker',
                 label: 'Znakovi',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/ArrowSignWhiteRight.webp',
+                imageSrc: getBlockImageUrl('ArrowSignWhiteRight'),
                 items: signItems,
             },
             {
                 type: 'picker',
                 label: 'Rasvjeta',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/FireflyJar.webp',
+                imageSrc: getBlockImageUrl('FireflyJar'),
                 items: lightingItems,
             },
             {
                 type: 'picker',
                 label: 'Ljeto',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/BeachUmbrella.webp',
+                imageSrc: getBlockImageUrl('BeachUmbrella'),
                 items: summerItems,
             },
             {
                 type: 'picker',
                 label: 'Namještaj',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/WoodenBench.webp',
+                imageSrc: getBlockImageUrl('WoodenBench'),
                 items: furnitureItems,
             },
             {
                 type: 'picker',
                 label: 'Ljubimci',
-                imageSrc: 'https://www.gredice.com/assets/blocks/DogHouse.webp',
+                imageSrc: getBlockImageUrl('DogHouse'),
                 items: petItems,
             },
             {
                 type: 'picker',
                 label: 'Ograde',
-                imageSrc: 'https://www.gredice.com/assets/blocks/Fence.webp',
+                imageSrc: getBlockImageUrl('Fence'),
                 items: fenceItems,
             },
             { type: 'entity', name: 'SmallWoodenBridge' },
@@ -383,15 +413,14 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Blokovi',
-        imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.webp',
+        imageSrc: getBlockImageUrl('Block_Icon_GroundOverGrass'),
         items: terrainItems,
     },
 ];
 
 const sandboxHiddenEntityNames = new Set(['GardenBox']);
 const sandboxPickerImageSrcByLabel = new Map([
-    ['Alat', 'https://www.gredice.com/assets/blocks/WateringCan.webp'],
+    ['Alat', getBlockImageUrl('WateringCan')],
 ]);
 const mouseHudDragStartDistance = 6;
 const touchHudDragStartDistance = 12;
@@ -1046,6 +1075,15 @@ function SubPickerButton({
     picker: HudItemPicker;
     onOpen: () => void;
 }) {
+    const imagePreloads = useMemo(
+        () => getHudImagePreloads(picker.items),
+        [picker.items],
+    );
+    const preloadPickerImages = useCallback(
+        () => preloadHudImages(imagePreloads),
+        [imagePreloads],
+    );
+
     return (
         <Stack spacing={2} alignItems="center">
             <IconButton
@@ -1054,6 +1092,9 @@ function SubPickerButton({
                 className="size-16"
                 variant="plain"
                 onClick={onOpen}
+                onFocus={preloadPickerImages}
+                onPointerEnter={preloadPickerImages}
+                onTouchStart={preloadPickerImages}
             >
                 <Image
                     src={picker.imageSrc}
@@ -1086,6 +1127,18 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
     const subPickerResetTimeoutRef = useRef<number | null>(null);
     const currentLabel = activeSubPicker?.label ?? label;
     const currentItems = activeSubPicker?.items ?? items;
+    const currentImagePreloads = useMemo(
+        () => getHudImagePreloads(items),
+        [items],
+    );
+    const nextLevelImagePreloads = useMemo(
+        () => getNextLevelHudImagePreloads(currentItems),
+        [currentItems],
+    );
+    const preloadCurrentImages = useCallback(
+        () => preloadHudImages(currentImagePreloads),
+        [currentImagePreloads],
+    );
 
     const clearHudDragRestoreTimeout = useCallback(() => {
         if (hudDragRestoreTimeoutRef.current === null) {
@@ -1172,6 +1225,14 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
         [clearHudDragRestoreTimeout, clearSubPickerResetTimeout],
     );
 
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        return scheduleHudImagePreload(nextLevelImagePreloads);
+    }, [nextLevelImagePreloads, open]);
+
     return (
         <Popper
             open={open}
@@ -1191,6 +1252,9 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                     size="lg"
                     className="size-16"
                     variant="plain"
+                    onFocus={preloadCurrentImages}
+                    onPointerEnter={preloadCurrentImages}
+                    onTouchStart={preloadCurrentImages}
                 >
                     <Image
                         src={imageSrc}
@@ -1265,8 +1329,17 @@ export function ItemsHud() {
         () => getHudItems({ blockData, isSandbox }),
         [blockData, isSandbox],
     );
+    const initialImagePreloads = useMemo(
+        () => getNextLevelHudImagePreloads(hudItems),
+        [hudItems],
+    );
     const dropTargetVisible = Boolean(pickupBlock);
     const dropTargetLabel = isSandbox ? 'Obriši' : 'Recikliranje';
+
+    useEffect(
+        () => scheduleHudImagePreload(initialImagePreloads),
+        [initialImagePreloads],
+    );
 
     return (
         <HudCard
