@@ -118,7 +118,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                     ],
                 },
                 {
-                    header: 'Aplikacija',
+                    header: 'Stranice',
                     ctas: [
                         {
                             label: 'Podignuta gredica',
