@@ -10,9 +10,11 @@ import {
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
     getGardenAvatarForwardDirection,
+    getGardenAvatarPointerLockIntent,
     getGardenAvatarSeatPose,
     isGardenAvatarInteractionOccluded,
     isPettableAnimalSpecies,
+    normalizeGardenAvatarInteractionResult,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -94,12 +96,42 @@ describe('garden avatar world interactions', () => {
             : null;
         assert.ok(chairPose);
         assert.ok(benchPose);
-        assert.equal(chairPose.yaw, Math.PI / 2);
+        assert.equal(chairPose.yaw, (3 * Math.PI) / 2);
         assert.equal(chairPose.y, 0.3);
         assert.ok(Math.hypot(chairPose.exitX - 3, chairPose.exitZ - 4) > 0.4);
-        assert.equal(benchPose.yaw, Math.PI);
+        assert.equal(benchPose.yaw, 0);
         assert.equal(benchPose.y, 0.29);
         assert.ok(Math.hypot(benchPose.exitX + 2, benchPose.exitZ - 1) > 0.4);
+    });
+
+    it('seats the avatar looking out of the seat instead of into its back', () => {
+        const targets = getGardenAvatarBlockInteractionTargets({
+            blockData: getLocalSandboxBlockData(),
+            stacks: [
+                stack(0, 0, 'BeachChair', 'chair-north'),
+                stack(4, 0, 'BeachChair', 'chair-east', 1),
+            ],
+        });
+
+        // Seat models put the backrest at -Z, so an unrotated chair seats the
+        // avatar looking towards +Z and stepping out on the same side.
+        const northPose = targets[0]
+            ? getGardenAvatarSeatPose(targets[0])
+            : null;
+        assert.ok(northPose);
+        const northFacing = getGardenAvatarForwardDirection(northPose.yaw);
+        assert.ok(Math.abs(northFacing.x) < 0.000_001);
+        assert.ok(Math.abs(northFacing.z - 1) < 0.000_001);
+        assert.ok(northPose.exitZ > 0.4);
+
+        const eastPose = targets[1]
+            ? getGardenAvatarSeatPose(targets[1])
+            : null;
+        assert.ok(eastPose);
+        const eastFacing = getGardenAvatarForwardDirection(eastPose.yaw);
+        assert.ok(Math.abs(eastFacing.x - 1) < 0.000_001);
+        assert.ok(Math.abs(eastFacing.z) < 0.000_001);
+        assert.ok(eastPose.exitX > 4.4);
     });
 
     it('uses an alternate seat exit and stays seated when every exit is blocked', () => {
@@ -282,6 +314,47 @@ describe('garden avatar world interactions', () => {
                 position: { x: 0.55, z: 0 },
             }),
             { x: 1, z: 0 },
+        );
+    });
+
+    it('reads legacy boolean interaction results', () => {
+        assert.equal(normalizeGardenAvatarInteractionResult(true), 'handled');
+        assert.equal(normalizeGardenAvatarInteractionResult(false), 'ignored');
+        assert.equal(
+            normalizeGardenAvatarInteractionResult(undefined),
+            'ignored',
+        );
+        assert.equal(
+            normalizeGardenAvatarInteractionResult('opened-ui'),
+            'opened-ui',
+        );
+    });
+
+    it('keeps pointer lock through world interactions and releases it for modals', () => {
+        for (const result of ['handled', 'ignored'] as const) {
+            assert.equal(
+                getGardenAvatarPointerLockIntent({ locked: true, result }),
+                'keep',
+            );
+            assert.equal(
+                getGardenAvatarPointerLockIntent({ locked: false, result }),
+                'lock',
+            );
+        }
+
+        assert.equal(
+            getGardenAvatarPointerLockIntent({
+                locked: true,
+                result: 'opened-ui',
+            }),
+            'unlock',
+        );
+        assert.equal(
+            getGardenAvatarPointerLockIntent({
+                locked: false,
+                result: 'opened-ui',
+            }),
+            'keep',
         );
     });
 

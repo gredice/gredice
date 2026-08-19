@@ -9,6 +9,7 @@ import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
+    resolveGameProfileGardenAvatar,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
@@ -295,8 +296,12 @@ export default async function GameProfilePage({
     const operationVisuals =
         mockGardenProfile === 'high-target' &&
         resolveGameProfileOperationVisuals(firstValue(params.operationVisuals));
+    const gardenAvatar = resolveGameProfileGardenAvatar(
+        firstValue(params.avatar),
+    );
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
+        firstValue(params.avatar),
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
         firstValue(params.staticSceneCache),
@@ -330,6 +335,7 @@ export default async function GameProfilePage({
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
+            data-game-profile-avatar={gardenAvatar ? '1' : '0'}
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }

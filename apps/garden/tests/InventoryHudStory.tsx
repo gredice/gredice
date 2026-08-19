@@ -120,3 +120,14 @@ export function InventoryHudGardenBoxesOpenStory() {
         </InventoryHudTestProviders>
     );
 }
+
+/** Mirrors the avatar walk-through, where the modal opens without a HUD shell. */
+export function InventoryHudTriggerlessStory() {
+    return (
+        <InventoryHudTestProviders searchParams="ruksak=true&ruksak-kartica=gardenBoxes">
+            <div className="relative h-screen w-screen p-8">
+                <InventoryHud hideTrigger />
+            </div>
+        </InventoryHudTestProviders>
+    );
+}

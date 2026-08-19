@@ -18,6 +18,7 @@ import { HudPlacementDragPreview } from './controls/HudPlacementDragPreview';
 import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFarmer';
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
+import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvatarInteractions';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -492,7 +493,7 @@ export function GameScene({
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
     const isLoading = gardenLoading;
     const interactWithAvatarBlock = useCallback(
-        (block: Block) => {
+        (block: Block): GardenAvatarInteractionResult => {
             if (isFenceGateBlockName(block.name)) {
                 if (!isBlockVariantPending) {
                     updateBlockVariant({
@@ -500,17 +501,17 @@ export function GameScene({
                         variant: getToggledFenceGateVariant(block),
                     });
                 }
-                return true;
+                return 'handled';
             }
             if (block.name === 'GardenBox' && !isLocalSandbox) {
                 setOpenGardenBoxBlockId(block.id);
-                return true;
+                return 'opened-ui';
             }
             if (block.name === 'WoodenSign') {
                 setWoodenSignParam(block.id);
-                return true;
+                return 'opened-ui';
             }
-            return false;
+            return 'ignored';
         },
         [
             isLocalSandbox,

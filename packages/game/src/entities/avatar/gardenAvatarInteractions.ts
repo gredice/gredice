@@ -62,6 +62,39 @@ const cactusBlockNames = new Set([
 
 export type GardenAvatarBlockInteractionTarget = BlockInteractionLayerTarget;
 
+/**
+ * `opened-ui` marks interactions that put a modal or HUD panel on screen, which
+ * needs the mouse cursor back. Every other interaction happens in the world and
+ * keeps pointer lock so aiming is not interrupted.
+ */
+export type GardenAvatarInteractionResult = 'handled' | 'ignored' | 'opened-ui';
+
+export function normalizeGardenAvatarInteractionResult(
+    result: boolean | GardenAvatarInteractionResult | undefined,
+): GardenAvatarInteractionResult {
+    if (result === true) {
+        return 'handled';
+    }
+    if (result === false || result === undefined) {
+        return 'ignored';
+    }
+    return result;
+}
+
+export function getGardenAvatarPointerLockIntent({
+    locked,
+    result,
+}: {
+    locked: boolean;
+    result: GardenAvatarInteractionResult;
+}) {
+    if (result === 'opened-ui') {
+        return locked ? 'unlock' : 'keep';
+    }
+
+    return locked ? 'keep' : 'lock';
+}
+
 export type GardenAvatarSeatPose = {
     blockId: string;
     exitCandidates: Pick<GardenAvatarPoint, 'x' | 'z'>[];
@@ -238,6 +271,12 @@ export function getGardenAvatarForwardDirection(yaw: number) {
     };
 }
 
+export function getGardenAvatarSeatFacingYaw(blockRotation: number) {
+    // Seats are modelled facing +Z (backrest at -Z) while the avatar model
+    // faces -Z, so the occupant is turned half a circle from the block yaw.
+    return ((((blockRotation + 2) % 4) + 4) % 4) * (Math.PI / 2);
+}
+
 export function getGardenAvatarSeatPose(
     target: GardenAvatarBlockInteractionTarget,
 ): GardenAvatarSeatPose | null {
@@ -245,11 +284,13 @@ export function getGardenAvatarSeatPose(
         return null;
     }
 
-    const yaw = target.block.rotation * (Math.PI / 2);
+    const yaw = getGardenAvatarSeatFacingYaw(target.block.rotation);
+    // `forward` points where the seated avatar looks, which is also the open
+    // side of the seat, so it doubles as the preferred standing-up direction.
     const forward = getGardenAvatarForwardDirection(yaw);
     const config =
         target.block.name === 'BeachChair'
-            ? { offset: -0.04, seatHeight: 0.3 }
+            ? { offset: 0.04, seatHeight: 0.3 }
             : { offset: 0, seatHeight: 0.29 };
     const exitDistance = target.hitbox.depth / 2 + gardenAvatarRadius + 0.1;
     const sideExitDistance = target.hitbox.width / 2 + gardenAvatarRadius + 0.1;

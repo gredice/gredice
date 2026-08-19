@@ -1,13 +1,19 @@
 import { animated } from '@react-spring/three';
-import { useLayoutEffect, useRef } from 'react';
-import { type Group, Vector3 } from 'three';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import { type Group, type Material, Vector3 } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
+import { RainWetOverlay } from '../rain/RainWetOverlay';
+import { SnowOverlay } from '../snow/SnowOverlay';
 import { snowPresets } from '../snow/snowPresets';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import { useFishingBoatRegistry } from './fishingBoat/FishingBoatRegistry';
 import { getFishingBoatPlacementCenter } from './fishingBoat/fishingBoatNavigation';
+import {
+    type FishingBoatOarPart,
+    splitFishingBoatOarGeometries,
+} from './fishingBoat/fishingBoatOars';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
 import { WeatheredEntityPart } from './helpers/WeatheredEntityPart';
 import { getWaterSurfacePlacementYOffset } from './waterSurfacePlacement';
@@ -67,12 +73,46 @@ const woodRain = {
     topSurfaceBias: 2.2,
 };
 
+const oarSnow = { ...snowPresets.tool, maxThickness: 0.035 };
+
+function FishingBoatOar({
+    material,
+    oar,
+    oarRef,
+}: {
+    material?: Material | Material[];
+    oar: FishingBoatOarPart;
+    oarRef: (group: Group | null) => void;
+}) {
+    return (
+        <group
+            name={`Animation:FishingBoatOar:${oar.side}`}
+            position={oar.pivot}
+            ref={oarRef}
+        >
+            <mesh
+                castShadow
+                geometry={oar.geometry}
+                material={material}
+                receiveShadow
+            >
+                <SnowOverlay geometry={oar.geometry} {...oarSnow} />
+                <RainWetOverlay geometry={oar.geometry} {...woodRain} />
+            </mesh>
+        </group>
+    );
+}
+
 export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
     const { materials, nodes } = useGameGLTF('FishingBoat');
     const registry = useFishingBoatRegistry();
     const groupRef = useRef<Group>(null);
-    const oarsRef = useRef<Group>(null);
+    const oarGroupsRef = useRef(new Map<FishingBoatOarPart['side'], Group>());
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
+    const oars = useMemo(
+        () => splitFishingBoatOarGeometries(nodes.FishingBoat_Oars.geometry),
+        [nodes.FishingBoat_Oars],
+    );
     const currentStackHeight = useStackHeight(stack, block);
     const placementYOffset = getWaterSurfacePlacementYOffset(stack, block);
     const placementCenter = getFishingBoatPlacementCenter({
@@ -88,12 +128,19 @@ export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
 
     useLayoutEffect(() => {
         const object = groupRef.current;
-        const oars = oarsRef.current;
-        if (!registry || !object || !oars) {
+        const oarControllers = oars.flatMap((oar) => {
+            const group = oarGroupsRef.current.get(oar.side);
+            return group ? [{ group, pivot: oar.pivot, side: oar.side }] : [];
+        });
+        if (!registry || !object || oarControllers.length !== oars.length) {
             return;
         }
-        return registry.register({ blockId: block.id, oars, object });
-    }, [block.id, registry]);
+        return registry.register({
+            blockId: block.id,
+            oars: oarControllers,
+            object,
+        });
+    }, [block.id, oars, registry]);
 
     return (
         <animated.group
@@ -111,26 +158,20 @@ export function FishingBoat({ stack, block, rotation }: EntityInstanceProps) {
                     snow={{ ...snowPresets.tool, maxThickness: 0.035 }}
                 />
             ))}
-            <group
-                ref={oarsRef}
-                name={`Animation:FishingBoatOars:${block.id}`}
-                position={nodes.FishingBoat_Oars.position}
-            >
-                <group
-                    position={[
-                        -nodes.FishingBoat_Oars.position.x,
-                        -nodes.FishingBoat_Oars.position.y,
-                        -nodes.FishingBoat_Oars.position.z,
-                    ]}
-                >
-                    <WeatheredEntityPart
-                        material={materials['Material.FishingBoat.WarmWood']}
-                        node={nodes.FishingBoat_Oars}
-                        rain={woodRain}
-                        snow={{ ...snowPresets.tool, maxThickness: 0.035 }}
-                    />
-                </group>
-            </group>
+            {oars.map((oar) => (
+                <FishingBoatOar
+                    key={oar.side}
+                    material={materials['Material.FishingBoat.WarmWood']}
+                    oar={oar}
+                    oarRef={(group) => {
+                        if (group) {
+                            oarGroupsRef.current.set(oar.side, group);
+                        } else {
+                            oarGroupsRef.current.delete(oar.side);
+                        }
+                    }}
+                />
+            ))}
             {gearParts.map(({ materialName, nodeName }) => (
                 <WeatheredEntityPart
                     key={nodeName}

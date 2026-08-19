@@ -42,6 +42,7 @@ import {
 import { playerSpeechMessages } from '../animals/actorSpeechMessages';
 import {
     type FishingBoatController,
+    type FishingBoatOarController,
     useFishingBoatRegistry,
 } from '../fishingBoat/FishingBoatRegistry';
 import {
@@ -49,7 +50,10 @@ import {
     isFishingBoatNavigablePose,
     resolveFishingBoatNavigation,
 } from '../fishingBoat/fishingBoatNavigation';
-import { getFishingBoatOarRotation } from '../fishingBoat/fishingBoatRowing';
+import {
+    fishingBoatOarRotationOrder,
+    getFishingBoatOarPose,
+} from '../fishingBoat/fishingBoatRowing';
 import { GardenAvatarCollisionDebug } from './GardenAvatarCollisionDebug';
 import {
     getGardenAvatarPerspectiveEntryPosition,
@@ -63,14 +67,17 @@ import {
 import {
     findGardenAvatarCactusContact,
     findGardenAvatarSeatExit,
+    type GardenAvatarInteractionResult,
     type GardenAvatarSeatPose,
     gardenAvatarBeachBallKickDistance,
     getGardenAvatarBlockInteractionTargets,
     getGardenAvatarCactusBounceDirection,
     getGardenAvatarForwardDirection,
+    getGardenAvatarPointerLockIntent,
     getGardenAvatarSeatPose,
     isGardenAvatarInteractionOccluded,
     isPettableAnimalSpecies,
+    normalizeGardenAvatarInteractionResult,
     resolveAimedGardenAvatarAnimal,
     resolveAimedGardenAvatarBlock,
 } from './gardenAvatarInteractions';
@@ -129,6 +136,45 @@ const fishingBoatDeceleration = 5.2;
 const fishingBoatTurnSpeed = 1.45;
 const fishingBoatSeatHeight = 0.27;
 const fishingBoatSeatOffset = 0.27;
+const fishingBoatOarStrokeDamping = 12;
+
+function applyFishingBoatOarPose({
+    delta,
+    distance,
+    mounted,
+    oars,
+    rowingAmount,
+}: {
+    delta?: number;
+    distance: number;
+    mounted: boolean;
+    oars: FishingBoatOarController[];
+    rowingAmount: number;
+}) {
+    for (const oar of oars) {
+        const pose = getFishingBoatOarPose({
+            distance,
+            mounted,
+            rowingAmount,
+            side: oar.side,
+        });
+        const [, pivotY] = oar.pivot;
+        oar.group.position.y = pivotY + pose.lift;
+        oar.group.rotation.set(
+            0,
+            delta === undefined
+                ? pose.yaw
+                : MathUtils.damp(
+                      oar.group.rotation.y,
+                      pose.yaw,
+                      fishingBoatOarStrokeDamping,
+                      delta,
+                  ),
+            pose.tilt,
+            fishingBoatOarRotationOrder,
+        );
+    }
+}
 
 type AvatarRig = {
     armLeft: Object3D | undefined;
@@ -176,15 +222,18 @@ function hashAvatarSeed(value: string) {
     return hash >>> 0;
 }
 
-function isEditableTarget(target: EventTarget | null) {
+function isGardenAvatarInputBlocked(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) {
         return false;
     }
+    // Avatar interactions can open a modal on top of the scene, and keys typed
+    // into it must not steer the avatar hidden behind it.
     return (
         target.isContentEditable ||
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT'
+        target.tagName === 'SELECT' ||
+        target.closest('[role="dialog"]') !== null
     );
 }
 
@@ -621,7 +670,7 @@ export function GardenAvatar({
     activationRequest?: number;
     initialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     interactiveBlockIds?: ReadonlySet<string>;
-    onInteractBlock?: (block: Block) => boolean;
+    onInteractBlock?: (block: Block) => boolean | GardenAvatarInteractionResult;
     onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
     roamSeed?: string;
     showActivationPrompt?: boolean;
@@ -794,7 +843,14 @@ export function GardenAvatar({
         boatSpeedRef.current = 0;
         boatRowDistanceRef.current = 0;
         boatYawRef.current = controller.object.rotation.y;
-        controller.oars.rotation.x = 0;
+        // Swing the oars straight out instead of animating the deploy, which
+        // would sweep them through the hull on the way.
+        applyFishingBoatOarPose({
+            distance: 0,
+            mounted: true,
+            oars: controller.oars,
+            rowingAmount: 0,
+        });
         velocityRef.current.set(0, 0, 0);
         verticalVelocityRef.current = 0;
         groundedRef.current = true;
@@ -807,11 +863,11 @@ export function GardenAvatar({
     const interactWithAimedTarget = useCallback(() => {
         const actor = actorRef.current;
         if (!actor || mountedBoatRef.current) {
-            return false;
+            return 'ignored';
         }
 
         if (boardAimedFishingBoat()) {
-            return true;
+            return 'handled';
         }
 
         const raycaster = interactionRaycasterRef.current;
@@ -837,16 +893,18 @@ export function GardenAvatar({
                     ),
                     targetId: blockTarget.block.id,
                 });
-                return true;
+                return 'handled';
             }
 
             if (getGardenAvatarSeatPose(blockTarget)) {
                 setSeatId(blockTarget.block.id);
-                return true;
+                return 'handled';
             }
 
             if (onInteractBlock) {
-                return onInteractBlock(blockTarget.block);
+                return normalizeGardenAvatarInteractionResult(
+                    onInteractBlock(blockTarget.block),
+                );
             }
         }
 
@@ -865,10 +923,10 @@ export function GardenAvatar({
                 species: animal.species,
                 targetId: animal.id,
             });
-            return true;
+            return 'handled';
         }
 
-        return false;
+        return 'ignored';
     }, [
         boardAimedFishingBoat,
         camera,
@@ -914,7 +972,12 @@ export function GardenAvatar({
                 groundYRef.current = shore.y;
                 actor.rotation.y = boatYawRef.current;
             }
-            mountedBoat.oars.rotation.x = 0;
+            applyFishingBoatOarPose({
+                distance: 0,
+                mounted: false,
+                oars: mountedBoat.oars,
+                rowingAmount: 0,
+            });
         }
 
         mountedBoatRef.current = null;
@@ -1121,7 +1184,7 @@ export function GardenAvatar({
             );
         };
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (isEditableTarget(event.target)) {
+            if (isGardenAvatarInputBlocked(event.target)) {
                 return;
             }
             if (event.code === 'Space' || event.code.startsWith('Arrow')) {
@@ -1199,25 +1262,20 @@ export function GardenAvatar({
                     mouseZoomingRef.current = true;
                     return;
                 }
-                if (
-                    event.button === 0 &&
-                    document.pointerLockElement !== gl.domElement
-                ) {
-                    if (interactWithAimedTarget()) {
-                        return;
-                    }
-                    void gl.domElement.requestPointerLock();
-                } else if (event.button === 0) {
-                    if (interactWithAimedTarget()) {
-                        if (document.pointerLockElement === gl.domElement) {
-                            document.exitPointerLock();
-                        }
-                        return;
+                if (event.button === 0) {
+                    const intent = getGardenAvatarPointerLockIntent({
+                        locked: document.pointerLockElement === gl.domElement,
+                        result: interactWithAimedTarget(),
+                    });
+                    if (intent === 'lock') {
+                        void gl.domElement.requestPointerLock();
+                    } else if (intent === 'unlock') {
+                        document.exitPointerLock();
                     }
                 }
                 return;
             }
-            if (interactWithAimedTarget()) {
+            if (interactWithAimedTarget() !== 'ignored') {
                 return;
             }
             activeTouchPointers.set(
@@ -1637,19 +1695,17 @@ export function GardenAvatar({
             jumpsUsedRef.current = 0;
             crouchingRef.current = true;
             movingSpeed = Math.abs(boatSpeedRef.current);
-            controller.oars.rotation.x = MathUtils.damp(
-                controller.oars.rotation.x,
-                getFishingBoatOarRotation({
-                    distance: boatRowDistanceRef.current,
-                    rowingAmount: MathUtils.clamp(
-                        movingSpeed / fishingBoatForwardSpeed,
-                        0,
-                        1,
-                    ),
-                }),
-                12,
+            applyFishingBoatOarPose({
                 delta,
-            );
+                distance: boatRowDistanceRef.current,
+                mounted: true,
+                oars: controller.oars,
+                rowingAmount: MathUtils.clamp(
+                    movingSpeed / fishingBoatForwardSpeed,
+                    0,
+                    1,
+                ),
+            });
         } else {
             const keys = keyboardRef.current;
             const crouchRequested =
