@@ -182,6 +182,12 @@ to the raised bed, operation entity, and weekday occurrence date; existing
 non-canceled/non-failed operations for the same day are counted as existing
 skips.
 
+The same Tuesday/Friday cadence is mirrored in the AI context by
+`RAISED_BED_PHOTOGRAPHY_WEEKDAYS` in
+`apps/api/lib/ai/raisedBedPhotographySchedule.ts`, so the raised-bed image
+analysis and the Suncokret chat can tell customers when the next photos arrive.
+Change both when the photo schedule changes.
+
 The managed raised-bed detailed inspection automation is seeded as draft under
 `default.raised-bed-detailed-inspection`. When enabled, it uses the weekly
 schedule on Mondays and `action.createRaisedBedOperations` with draft operation

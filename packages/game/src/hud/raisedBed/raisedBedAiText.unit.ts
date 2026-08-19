@@ -38,3 +38,26 @@ test('sanitizeRaisedBedAiMarkdown rewrites bare operation URLs and field labels'
     assert.doesNotMatch(sanitized, /positionIndex/i);
     assert.doesNotMatch(sanitized, /positionLabel/i);
 });
+
+test('sanitizeRaisedBedAiMarkdown rewrites schedule, delivery and gardener note keys', () => {
+    const sanitized = sanitizeRaisedBedAiMarkdown(
+        [
+            'Prema `photographySchedule` i `upcomingPhotographyDates` sljedeća provjera stiže u utorak.',
+            'Za berbu odaberi termin iz `deliverySlots` prije `orderDeadline`.',
+            'U `completionNotes` piše da je gredica suha, a `blockReasonLabel` i `blockNote` objašnjavaju zastoj.',
+        ].join('\n'),
+    );
+
+    assert.match(sanitized, /raspored fotografiranja/);
+    assert.match(sanitized, /sljedeći datumi fotografiranja/);
+    assert.match(sanitized, /termini dostave/);
+    assert.match(sanitized, /rok za narudžbu/);
+    assert.match(sanitized, /bilješka vrtlara/);
+    assert.match(sanitized, /razlog blokade/);
+    assert.match(sanitized, /bilješka o blokadi/);
+    assert.doesNotMatch(sanitized, /photographySchedule/i);
+    assert.doesNotMatch(sanitized, /deliverySlots/i);
+    assert.doesNotMatch(sanitized, /completionNotes/i);
+    assert.doesNotMatch(sanitized, /blockReasonLabel/i);
+    assert.doesNotMatch(sanitized, /blockNote/i);
+});

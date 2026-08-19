@@ -9,12 +9,31 @@ import {
     useMemo,
     useState,
 } from 'react';
+import type { SuncokretContextSuggestion } from './suncokretChatContext';
+
+export type SuncokretChatSeedMessage = {
+    role: 'assistant' | 'user';
+    text: string;
+};
+
+/**
+ * Starts a new conversation that already carries context produced elsewhere,
+ * for example a finished AI raised bed analysis. Every seed needs its own `id`
+ * so reopening the chat with the same seed does not restart the thread.
+ */
+export type SuncokretChatSeed = {
+    id: string;
+    messages: SuncokretChatSeedMessage[];
+    suggestions?: SuncokretContextSuggestion[];
+    title?: string;
+};
 
 export type SuncokretChatTarget = {
     conversationLabel: string;
     gardenId: number | null;
     positionIndex: number | null;
     raisedBedId: number | null;
+    seed?: SuncokretChatSeed;
     uiContext: SuncokretUiContext;
 };
 

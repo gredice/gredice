@@ -187,7 +187,8 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
     },
     {
         name: 'gardens/list-operations',
-        description: 'List scheduled and completed operations for a garden.',
+        description:
+            'List scheduled and completed operations for a garden, including gardener notes left on completed or blocked operations.',
         domain: 'gardens',
         exposure: 'auth-read',
         inputSchema: {
