@@ -996,7 +996,44 @@ test('outlet selection param opens the selected outlet offer', async ({
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
-test('owned inventory sorts remain available when the store offer is withdrawn', async ({
+test('owned inventory sorts remain hidden when no current offer exists', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '103',
+                    entityTypeName: 'plantSort',
+                    amount: 2,
+                },
+            ]}
+            unavailableSortIds={[103]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+
+    const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
+    const unavailableInventorySort = page.locator(
+        '[data-plant-picker-sort-id="103"]',
+    );
+    await expect(unavailableInventorySort).toHaveCount(0);
+    await expect(saintPierreSort).toBeVisible();
+    await expect(
+        saintPierreSort.getByRole('button', { name: /ruksaka/ }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
+});
+
+test('a withdrawn store sort can be sown only through an active outlet offer', async ({
     mount,
     page,
 }) => {
@@ -1008,10 +1045,10 @@ test('owned inventory sorts remain available when the store offer is withdrawn',
                 {
                     entityId: '101',
                     entityTypeName: 'plantSort',
-                    amount: 2,
+                    amount: 1,
                 },
             ]}
-            unavailableSortIds={[101, 103]}
+            unavailableSortIds={[101]}
         />,
     );
 
@@ -1019,37 +1056,28 @@ test('owned inventory sorts remain available when the store offer is withdrawn',
     await page.getByRole('button', { name: /Rajčica/ }).click();
 
     const cherrySort = page.locator('[data-plant-picker-sort-id="101"]');
-    const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
-    const unavailableSortWithoutInventory = page.locator(
-        '[data-plant-picker-sort-id="103"]',
-    );
-    const backpackButton = cherrySort.getByRole('button', {
-        name: 'Koristi iz ruksaka (2)',
-    });
-    await expect(backpackButton).toBeVisible();
-    await expect(unavailableSortWithoutInventory).toHaveCount(0);
-    await expect(
-        saintPierreSort.getByRole('button', { name: /ruksaka/ }),
-    ).toHaveCount(0);
-    await expect(page.getByText(/^U ruksaku/u)).toHaveCount(0);
-
+    await expect(cherrySort).toBeVisible();
     await page.getByRole('button', { name: /Cherry rajčica/ }).click();
-    await expect(
-        cherrySort.getByRole('button', { name: 'Ne koristi iz ruksaka' }),
-    ).toHaveAttribute('aria-pressed', 'true');
+
+    const addToCart = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(addToCart).toBeDisabled();
+    await expect(addToCart).toHaveAttribute(
+        'title',
+        'Odabrana sorta trenutačno nije dostupna za sijanje',
+    );
 
     await cherrySort
-        .getByRole('button', { name: 'Ne koristi iz ruksaka' })
+        .getByRole('button', { name: 'Koristi iz ruksaka (1)' })
         .click();
-    await expect(
-        page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toBeDisabled();
-    await expect(
-        page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toHaveAttribute('title', 'Odabrana sorta dostupna je samo iz ruksaka');
+    await expect(addToCart).toBeDisabled();
+    expect(posts).toHaveLength(0);
 
-    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
-    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await expect(addToCart).toBeEnabled();
+    await addToCart.click();
 
     await expect.poll(() => posts.length).toBe(1);
     const post = posts[0];
@@ -1057,11 +1085,11 @@ test('owned inventory sorts remain available when the store offer is withdrawn',
     if (!isRecord(post)) {
         return;
     }
-    expect(post.entityId).toBe('101');
-    expect(post.currency).toBe('inventory');
+    expect(post.outletOfferId).toBe(302);
+    expect(post.currency).not.toBe('inventory');
 });
 
-test('a sole inventory-only sort is auto-selected with inventory payment', async ({
+test('a sole inventory-only sort is not auto-selected', async ({
     mount,
     page,
 }) => {
@@ -1076,29 +1104,24 @@ test('a sole inventory-only sort is auto-selected with inventory payment', async
                     amount: 1,
                 },
             ]}
+            outletOffers={[]}
             unavailableSortIds={[101, 102, 103, 104, 105]}
         />,
     );
 
     await page.getByRole('button', { name: 'Sijanje' }).click();
     await page.getByRole('button', { name: /Rajčica/ }).click();
+    await expect(page.getByText('Nema rezultata')).toBeVisible();
+    await expect(page.locator('[data-plant-picker-sort-id="101"]')).toHaveCount(
+        0,
+    );
     await expect(
-        page.getByRole('button', { name: 'Ne koristi iz ruksaka' }),
-    ).toHaveAttribute('aria-pressed', 'true');
-
-    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
-
-    await expect.poll(() => posts.length).toBe(1);
-    const post = posts[0];
-    expect(isRecord(post)).toBe(true);
-    if (!isRecord(post)) {
-        return;
-    }
-    expect(post.entityId).toBe('101');
-    expect(post.currency).toBe('inventory');
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
 });
 
-test('an inventory-only sort cannot be confirmed after inventory is depleted', async ({
+test('a preselected withdrawn sort cannot be confirmed from inventory', async ({
     mount,
     page,
 }) => {
@@ -1113,26 +1136,26 @@ test('an inventory-only sort cannot be confirmed after inventory is depleted', a
                     amount: 1,
                 },
             ]}
-            showInventoryDepletionControl
-            unavailableSortIds={[101, 103]}
+            outletOffers={[]}
+            preselectedPlantId={1}
+            preselectedSortId={101}
+            unavailableSortIds={[101]}
         />,
     );
 
     await page.getByRole('button', { name: 'Sijanje' }).click();
-    await page.getByRole('button', { name: /Rajčica/ }).click();
-    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
-    await expect(
-        page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toBeEnabled();
-
-    await page.evaluate(() => window.__grediceDepleteInventory?.());
-
+    await expect(page.locator('[data-plant-picker-sort-id="101"]')).toHaveCount(
+        0,
+    );
     await expect(
         page.getByRole('button', { name: 'Dodaj u košaru' }),
     ).toBeDisabled();
     await expect(
         page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toHaveAttribute('title', 'Odabrana sorta više nije dostupna u ruksaku');
+    ).toHaveAttribute(
+        'title',
+        'Odabrana sorta trenutačno nije dostupna za sijanje',
+    );
     expect(posts).toHaveLength(0);
 });
 

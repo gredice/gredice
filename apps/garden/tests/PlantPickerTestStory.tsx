@@ -240,6 +240,7 @@ function createPlantPickerQueryClient({
     favorites = [],
     fieldPositionIndices = Array.from({ length: 18 }, (_, index) => index),
     inventoryItems = [],
+    outletOffers = tomatoOutletOffers,
     plantings = [],
     propagatingRanges,
     unavailableSortIds = [],
@@ -249,6 +250,7 @@ function createPlantPickerQueryClient({
     favorites?: FavoriteItem[];
     fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
+    outletOffers?: OutletOfferData[];
     plantings?: unknown[];
     propagatingRanges?: PlantData['calendar']['propagating'];
     unavailableSortIds?: number[];
@@ -317,7 +319,7 @@ function createPlantPickerQueryClient({
     queryClient.setQueryData(['inventory'], {
         items: inventoryItems,
     });
-    queryClient.setQueryData(['outlet-offers'], tomatoOutletOffers);
+    queryClient.setQueryData(['outlet-offers'], outletOffers);
     queryClient.setQueryData(favoritesQueryKey, favorites);
     const calendarTomatoPlant =
         propagatingRanges === undefined
@@ -366,6 +368,7 @@ function PlantPickerTestProviders({
     favorites = [],
     fieldPositionIndices,
     inventoryItems = [],
+    outletOffers,
     plantings = [],
     propagatingRanges,
     searchParams,
@@ -376,6 +379,7 @@ function PlantPickerTestProviders({
     favorites?: FavoriteItem[];
     fieldPositionIndices?: number[];
     inventoryItems?: TestInventoryItem[];
+    outletOffers?: OutletOfferData[];
     plantings?: unknown[];
     propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
@@ -389,6 +393,7 @@ function PlantPickerTestProviders({
                 favorites,
                 fieldPositionIndices,
                 inventoryItems,
+                outletOffers,
                 plantings,
                 propagatingRanges,
                 unavailableSortIds,
@@ -399,6 +404,7 @@ function PlantPickerTestProviders({
             favorites,
             fieldPositionIndices,
             inventoryItems,
+            outletOffers,
             plantings,
             propagatingRanges,
             unavailableSortIds,
@@ -468,6 +474,7 @@ export function PlantPickerTestStory({
     fieldPositionIndices,
     inShoppingCart = false,
     inventoryItems,
+    outletOffers,
     plantings,
     preselectedPlantId,
     preselectedSortId,
@@ -485,6 +492,7 @@ export function PlantPickerTestStory({
     fieldPositionIndices?: number[];
     inShoppingCart?: boolean;
     inventoryItems?: TestInventoryItem[];
+    outletOffers?: OutletOfferData[];
     plantings?: unknown[];
     preselectedPlantId?: number;
     preselectedSortId?: number;
@@ -503,6 +511,7 @@ export function PlantPickerTestStory({
             favorites={favorites}
             fieldPositionIndices={fieldPositionIndices}
             inventoryItems={inventoryItems}
+            outletOffers={outletOffers}
             plantings={plantings}
             propagatingRanges={propagatingRanges}
             searchParams={searchParams}
