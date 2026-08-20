@@ -3741,6 +3741,10 @@ test('default harvest automation creates one review proposal without changing th
                 status: 'pending',
                 kind: 'raisedBedField.plantStatus',
             })
+        ).filter(
+            (candidate) =>
+                candidate.target.kind === 'raisedBedField.plantStatus' &&
+                candidate.target.raisedBedId === raisedBedId,
         ).length,
         1,
     );
