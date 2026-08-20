@@ -18,6 +18,36 @@ test('operation schedule conflicts return a recoverable action result', async ()
     });
 });
 
+test('storage task conflicts return a recoverable action result', async () => {
+    const conflict = new Error(
+        'Radnja se u međuvremenu promijenila. Osvježi zadatke i pokušaj ponovno.',
+    );
+    conflict.name = 'ScheduleTaskSubmissionError';
+    Object.assign(conflict, { code: 'task_changed' });
+
+    const result = await runOperationScheduleAction(async () => {
+        throw conflict;
+    });
+
+    assert.deepEqual(result, {
+        success: false,
+        message: OPERATION_SCHEDULE_CONFLICT_MESSAGE,
+    });
+});
+
+test('non-conflict storage errors still escape the action', async () => {
+    const invalidStatus = new Error('Radnja nije u očekivanom stanju.');
+    invalidStatus.name = 'ScheduleTaskSubmissionError';
+    Object.assign(invalidStatus, { code: 'invalid_status' });
+
+    await assert.rejects(
+        runOperationScheduleAction(async () => {
+            throw invalidStatus;
+        }),
+        (error) => error === invalidStatus,
+    );
+});
+
 test('unexpected operation schedule errors still escape the action', async () => {
     const unexpectedError = new Error(OPERATION_SCHEDULE_CONFLICT_MESSAGE);
 
