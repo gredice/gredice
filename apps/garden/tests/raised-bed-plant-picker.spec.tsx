@@ -1033,9 +1033,57 @@ test('owned inventory sorts remain available when the store offer is withdrawn',
     ).toHaveCount(0);
     await expect(page.getByText(/^U ruksaku/u)).toHaveCount(0);
 
-    await backpackButton.click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
     await expect(
         cherrySort.getByRole('button', { name: 'Ne koristi iz ruksaka' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+
+    await cherrySort
+        .getByRole('button', { name: 'Ne koristi iz ruksaka' })
+        .click();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toHaveAttribute('title', 'Odabrana sorta dostupna je samo iz ruksaka');
+
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+    await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.entityId).toBe('101');
+    expect(post.currency).toBe('inventory');
+});
+
+test('a sole inventory-only sort is auto-selected with inventory payment', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '101',
+                    entityTypeName: 'plantSort',
+                    amount: 1,
+                },
+            ]}
+            unavailableSortIds={[101, 102, 103, 104, 105]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await expect(
+        page.getByRole('button', { name: 'Ne koristi iz ruksaka' }),
     ).toHaveAttribute('aria-pressed', 'true');
 
     await page.getByRole('button', { name: 'Dodaj u košaru' }).click();
