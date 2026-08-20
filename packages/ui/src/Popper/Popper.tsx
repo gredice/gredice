@@ -2,7 +2,13 @@
 
 import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { isValidElement, useCallback, useState } from 'react';
+import {
+    isValidElement,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
+} from 'react';
 import type {
     UiAlign,
     UiCollisionPadding,
@@ -10,6 +16,8 @@ import type {
     UiVirtualElementRef,
 } from '../lib/primitiveTypes';
 import { cx } from '../utils';
+
+const radixDialogPopperStack: symbol[] = [];
 
 function getCollisionBoundary(
     boundary: Element | null | Array<Element | null> | undefined,
@@ -49,6 +57,7 @@ export type PopperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> & {
     onOpenChange?: (open: boolean) => void;
     onOpenAutoFocus?(event: Event): void;
     onCloseAutoFocus?(event: Event): void;
+    onEscapeKeyDown?(event: Event): void;
     container?: HTMLElement;
     arrowPadding?: number;
     avoidCollisions?: boolean;
@@ -75,6 +84,7 @@ export function Popper({
     hideWhenDetached,
     modal,
     onCloseAutoFocus,
+    onEscapeKeyDown,
     onOpenAutoFocus,
     onOpenChange,
     open,
@@ -84,6 +94,7 @@ export function Popper({
     trigger,
     updatePositionStrategy,
     virtualRef,
+    onKeyDown,
     ...props
 }: PopperProps) {
     const resolvedSideOffset = sideOffset ?? 4;
@@ -92,6 +103,11 @@ export function Popper({
     const triggerRender = isValidElement(trigger) ? trigger : undefined;
     const [modalPortalContainer, setModalPortalContainer] =
         useState<HTMLElement>();
+    const [uncontrolledOpen, setUncontrolledOpen] = useState(
+        defaultOpen ?? false,
+    );
+    const actionsRef = useRef<PopoverPrimitive.Root.Actions>(null);
+    const escapeBoundaryId = useRef(Symbol('popper-escape-boundary'));
     const registerTriggerElement = useCallback(
         (element: HTMLElement | null) => {
             setModalPortalContainer(
@@ -102,12 +118,61 @@ export function Popper({
         },
         [],
     );
+    const handleOpenChange = useCallback(
+        (nextOpen: boolean) => {
+            setUncontrolledOpen(nextOpen);
+            onOpenChange?.(nextOpen);
+        },
+        [onOpenChange],
+    );
+    const currentOpen = open ?? uncontrolledOpen;
+
+    useEffect(() => {
+        if (!currentOpen || !modalPortalContainer) {
+            return;
+        }
+
+        const boundaryId = escapeBoundaryId.current;
+        radixDialogPopperStack.push(boundaryId);
+
+        function handleEscape(event: KeyboardEvent) {
+            if (
+                event.key !== 'Escape' ||
+                radixDialogPopperStack.at(-1) !== boundaryId
+            ) {
+                return;
+            }
+
+            onEscapeKeyDown?.(event);
+
+            // Radix dialogs listen during document capture and do not
+            // participate in Base UI's floating tree. Intercept Escape at the
+            // window boundary so a nested popover closes before its owner.
+            event.stopPropagation();
+            if (!event.defaultPrevented) {
+                event.preventDefault();
+                actionsRef.current?.close();
+            }
+        }
+
+        window.addEventListener('keydown', handleEscape, { capture: true });
+        return () => {
+            window.removeEventListener('keydown', handleEscape, {
+                capture: true,
+            });
+            const stackIndex = radixDialogPopperStack.lastIndexOf(boundaryId);
+            if (stackIndex >= 0) {
+                radixDialogPopperStack.splice(stackIndex, 1);
+            }
+        };
+    }, [currentOpen, modalPortalContainer, onEscapeKeyDown]);
 
     return (
         <PopoverPrimitive.Root
+            actionsRef={actionsRef}
             defaultOpen={defaultOpen}
             modal={modal}
-            onOpenChange={onOpenChange}
+            onOpenChange={handleOpenChange}
             open={open}
         >
             {trigger ? (
@@ -159,6 +224,7 @@ export function Popper({
                         )}
                         finalFocus={getFocusBehavior(onCloseAutoFocus)}
                         initialFocus={getFocusBehavior(onOpenAutoFocus)}
+                        onKeyDown={onKeyDown}
                         {...props}
                     >
                         {modal ? (
