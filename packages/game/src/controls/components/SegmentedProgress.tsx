@@ -1,7 +1,7 @@
 import { Check, Close } from '@gredice/ui/icons';
+import { Progress } from '@gredice/ui/Progress';
 import { cx } from '@gredice/ui/utils';
 import { Fragment, type HTMLAttributes, type ReactNode } from 'react';
-import { Progress } from './Progress';
 
 export type SegmentedProgressProps = {
     segments: {
@@ -41,6 +41,11 @@ export function SegmentedProgress({
                                 index === 0 && 'rounded-r-none',
                                 index === segments.length - 1 &&
                                     'rounded-l-none',
+                            )}
+                            trackClassName={cx(
+                                'bg-green-500',
+                                segment.indeterminate &&
+                                    'origin-left animate-progress bg-green-300',
                             )}
                         />
                         <CircleComponent

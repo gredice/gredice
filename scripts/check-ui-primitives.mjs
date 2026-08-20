@@ -3,16 +3,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TEMPORARY_UI_PRIMITIVE_ALLOWLIST = new Set([
-    'packages/game/src/controls/components/Progress.tsx',
-    'packages/game/src/modals/components/Slider.tsx',
-    'packages/ui/src/Checkbox/Checkbox.tsx',
     'packages/ui/src/Menu/Menu.tsx',
     'packages/ui/src/Modal/Modal.tsx',
     'packages/ui/src/ModalConfirm/ModalConfirm.tsx',
     'packages/ui/src/Popper/Popper.tsx',
     'packages/ui/src/SelectItems/SelectItems.tsx',
-    'packages/ui/src/Slider/Slider.tsx',
-    'packages/ui/src/Tabs/Tabs.tsx',
     'packages/ui/src/Tooltip/Tooltip.tsx',
 ]);
 
