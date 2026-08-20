@@ -676,7 +676,7 @@ test('notification settings does not add a nested scroll region', async ({
     await expect(page.getByText('Vrste obavijesti')).toBeVisible();
 
     const nestedScrollRegions = await page
-        .locator('[role="tabpanel"][data-state="active"]')
+        .locator('[role="tabpanel"]:not([hidden])')
         .evaluate((tabpanel) =>
             Array.from(tabpanel.querySelectorAll('*'))
                 .filter((element) => {

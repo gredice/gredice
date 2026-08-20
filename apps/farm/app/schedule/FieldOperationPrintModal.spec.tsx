@@ -62,7 +62,7 @@ test('lets farmers exclude labels and restore the full print selection', async (
     await expect(dialog.getByText('Odabrano: 2 od 3 etiketa')).toBeVisible();
     await expect(
         dialog.getByRole('checkbox', { name: 'Odaberi sve' }),
-    ).toHaveAttribute('data-state', 'indeterminate');
+    ).toHaveAttribute('aria-checked', 'mixed');
 
     await dialog.getByRole('checkbox', { name: 'Odaberi sve' }).click();
 
