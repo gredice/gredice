@@ -15,6 +15,7 @@ import {
     getRaisedBedFieldsWithEvents,
     knownEvents,
     knownEventTypes,
+    PendingPlantStatusApprovalRequestConflictError,
     rejectApprovalRequest,
     upsertRaisedBedField,
 } from '@gredice/storage';
@@ -121,7 +122,13 @@ test('plant status approval requests stay pending until reviewed', async () => {
                 requestedStatus: 'ready',
                 requestedBy: 'farmer-approval-1',
             }),
-        /Već postoji zahtjev/u,
+        (error: unknown) => {
+            assert.ok(
+                error instanceof PendingPlantStatusApprovalRequestConflictError,
+            );
+            assert.match(error.message, /Već postoji zahtjev/u);
+            return true;
+        },
     );
 
     const pendingCountBeforeReview = await getPendingApprovalRequestsCount();
