@@ -996,7 +996,44 @@ test('outlet selection param opens the selected outlet offer', async ({
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
-test('owned inventory sorts remain hidden when the store offer is withdrawn', async ({
+test('owned inventory sorts remain hidden when no current offer exists', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '103',
+                    entityTypeName: 'plantSort',
+                    amount: 2,
+                },
+            ]}
+            unavailableSortIds={[103]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+
+    const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
+    const unavailableInventorySort = page.locator(
+        '[data-plant-picker-sort-id="103"]',
+    );
+    await expect(unavailableInventorySort).toHaveCount(0);
+    await expect(saintPierreSort).toBeVisible();
+    await expect(
+        saintPierreSort.getByRole('button', { name: /ruksaka/ }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    expect(posts).toHaveLength(0);
+});
+
+test('a withdrawn store sort can be sown only through an active outlet offer', async ({
     mount,
     page,
 }) => {
@@ -1008,10 +1045,10 @@ test('owned inventory sorts remain hidden when the store offer is withdrawn', as
                 {
                     entityId: '101',
                     entityTypeName: 'plantSort',
-                    amount: 2,
+                    amount: 1,
                 },
             ]}
-            unavailableSortIds={[101, 103]}
+            unavailableSortIds={[101]}
         />,
     );
 
@@ -1019,20 +1056,37 @@ test('owned inventory sorts remain hidden when the store offer is withdrawn', as
     await page.getByRole('button', { name: /Rajčica/ }).click();
 
     const cherrySort = page.locator('[data-plant-picker-sort-id="101"]');
-    const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
-    const unavailableSortWithoutInventory = page.locator(
-        '[data-plant-picker-sort-id="103"]',
+    await expect(cherrySort).toBeVisible();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+
+    const addToCart = page.getByRole('button', { name: 'Dodaj u košaru' });
+    await expect(addToCart).toBeDisabled();
+    await expect(addToCart).toHaveAttribute(
+        'title',
+        'Odabrana sorta trenutačno nije dostupna za sijanje',
     );
-    await expect(cherrySort).toHaveCount(0);
-    await expect(unavailableSortWithoutInventory).toHaveCount(0);
-    await expect(saintPierreSort).toBeVisible();
-    await expect(
-        saintPierreSort.getByRole('button', { name: /ruksaka/ }),
-    ).toHaveCount(0);
-    await expect(
-        page.getByRole('button', { name: 'Dodaj u košaru' }),
-    ).toBeDisabled();
+
+    await cherrySort
+        .getByRole('button', { name: 'Koristi iz ruksaka (1)' })
+        .click();
+    await expect(addToCart).toBeDisabled();
     expect(posts).toHaveLength(0);
+
+    const sowingMode = page.getByRole('radiogroup', {
+        name: 'Način sijanja',
+    });
+    await sowingMode.getByText('Preostalo 3').click();
+    await expect(addToCart).toBeEnabled();
+    await addToCart.click();
+
+    await expect.poll(() => posts.length).toBe(1);
+    const post = posts[0];
+    expect(isRecord(post)).toBe(true);
+    if (!isRecord(post)) {
+        return;
+    }
+    expect(post.outletOfferId).toBe(302);
+    expect(post.currency).not.toBe('inventory');
 });
 
 test('a sole inventory-only sort is not auto-selected', async ({
@@ -1050,6 +1104,7 @@ test('a sole inventory-only sort is not auto-selected', async ({
                     amount: 1,
                 },
             ]}
+            outletOffers={[]}
             unavailableSortIds={[101, 102, 103, 104, 105]}
         />,
     );
@@ -1081,6 +1136,7 @@ test('a preselected withdrawn sort cannot be confirmed from inventory', async ({
                     amount: 1,
                 },
             ]}
+            outletOffers={[]}
             preselectedPlantId={1}
             preselectedSortId={101}
             unavailableSortIds={[101]}

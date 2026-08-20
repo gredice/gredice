@@ -252,7 +252,9 @@ export function PlantsSortList({
     const normalizedSearch = search.trim().toLowerCase();
     const sortedPlantSorts = useMemo(() => {
         const availablePlantSorts = plantSorts?.filter(
-            (sort) => sort.store.availableInStore,
+            (sort) =>
+                sort.store.availableInStore ||
+                outletOffersBySortId?.has(sort.id),
         );
         const filteredPlantSorts =
             normalizedSearch.length > 0
@@ -266,7 +268,7 @@ export function PlantsSortList({
         return filteredPlantSorts
             ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
             : undefined;
-    }, [favoriteSortIds, normalizedSearch, plantSorts]);
+    }, [favoriteSortIds, normalizedSearch, outletOffersBySortId, plantSorts]);
 
     // Select first sort if only one is available
     useEffect(() => {
