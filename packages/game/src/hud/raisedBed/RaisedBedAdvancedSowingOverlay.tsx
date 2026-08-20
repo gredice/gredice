@@ -1,9 +1,12 @@
 'use client';
 
 import { plantFieldStatusLabel } from '@gredice/js/plants';
-import { Sprout } from '@gredice/ui/icons';
+import { PlantGridIcon } from '@gredice/ui/GridIcons';
+import { Info, MapPin, Sprout } from '@gredice/ui/icons';
+import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
 import { GameModal } from '../../shared-ui/game-modal';
 import {
@@ -19,25 +22,40 @@ function plantingFieldsLabel(planting: AdvancedSowingGardenPlantingVisual) {
         .join(', ');
 }
 
+function plantingFieldsHeading(planting: AdvancedSowingGardenPlantingVisual) {
+    const fields = plantingFieldsLabel(planting);
+    return planting.memberships.length === 1
+        ? `Polje ${fields}`
+        : `Polja ${fields}`;
+}
+
+export type AdvancedSowingPlantSortVisual = {
+    coverUrl: string | null;
+    id: number;
+    name: string;
+};
+
 export function RaisedBedAdvancedSowingOverlay({
     bedFieldCount,
     gardenId,
     plantings,
-    plantNames,
+    plantingMode = false,
+    plantSorts,
     raisedBedId,
 }: {
     bedFieldCount: number;
     gardenId: number;
     plantings: readonly AdvancedSowingGardenPlantingVisual[];
-    plantNames: readonly { id: number; name: string }[];
+    plantingMode?: boolean;
+    plantSorts: readonly AdvancedSowingPlantSortVisual[];
     raisedBedId: number;
 }) {
     const [selectedPlantingId, setSelectedPlantingId] = useState<number | null>(
         null,
     );
     const groups = groupAdvancedSowingGardenPlantingsByFootprint(plantings);
-    const plantNameBySortId = new Map(
-        plantNames.map((plant) => [plant.id, plant.name]),
+    const plantSortById = new Map(
+        plantSorts.map((plantSort) => [plantSort.id, plantSort]),
     );
     const totalRows = bedFieldCount / 3;
 
@@ -61,11 +79,14 @@ export function RaisedBedAdvancedSowingOverlay({
                 const selectedPlanting = group.plantings.find(
                     (planting) => planting.id === selectedPlantingId,
                 );
+                const selectedPlantSort = selectedPlanting
+                    ? plantSortById.get(selectedPlanting.plantSortId)
+                    : undefined;
                 const triggerLabel =
                     group.plantings.length === 1
-                        ? (plantNameBySortId.get(
+                        ? (plantSortById.get(
                               group.plantings[0]?.plantSortId ?? 0,
-                          ) ?? 'Napredna sjetva')
+                          )?.name ?? 'Napredna sjetva')
                         : `${group.plantings.length.toString()} sadnje`;
                 const positionLabels = group.positionIndices
                     .map((positionIndex) => positionIndex + 1)
@@ -86,8 +107,31 @@ export function RaisedBedAdvancedSowingOverlay({
                         }}
                     >
                         <GameModal
-                            className="max-w-xl"
-                            description="Odaberite i pregledajte spremljenu naprednu sadnju."
+                            className="max-w-md"
+                            description="Vizualni pregled odabrane sadnje."
+                            headerDescription={
+                                selectedPlanting
+                                    ? plantingFieldsHeading(selectedPlanting)
+                                    : 'Odaberi sadnju za prikaz'
+                            }
+                            headerIcon={
+                                selectedPlanting ? (
+                                    <PlantOrSortImage
+                                        alt={
+                                            selectedPlantSort?.name ??
+                                            'Nepoznata biljka'
+                                        }
+                                        className="size-12 rounded-full object-cover"
+                                        coverUrl={
+                                            selectedPlantSort?.coverUrl ?? null
+                                        }
+                                        height={48}
+                                        width={48}
+                                    />
+                                ) : (
+                                    <Sprout className="size-6" />
+                                )
+                            }
                             modal={false}
                             onOpenChange={(open) => {
                                 setSelectedPlantingId(
@@ -96,37 +140,84 @@ export function RaisedBedAdvancedSowingOverlay({
                                         : null,
                                 );
                             }}
-                            title="Napredna sjetva"
+                            showHeader
+                            title={selectedPlantSort?.name ?? 'Sadnje u polju'}
                             trigger={
                                 <button
                                     aria-label={`Otvori naprednu sjetvu na poljima ${positionLabels}: ${triggerLabel}`}
-                                    className="pointer-events-auto absolute right-1 top-1 flex size-11 items-center justify-center rounded-full border border-emerald-800 bg-emerald-100 text-emerald-950 shadow-md transition-colors hover:bg-emerald-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2 dark:border-emerald-200 dark:bg-emerald-950 dark:text-emerald-50 dark:hover:bg-emerald-900"
+                                    className={cx(
+                                        'pointer-events-auto absolute inset-0 flex items-center justify-center overflow-hidden rounded-sm transition-colors hover:bg-emerald-100/45 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2 dark:hover:bg-emerald-950/45',
+                                        plantingMode && 'pointer-events-none',
+                                    )}
                                     data-advanced-sowing-details-trigger={
                                         group.key
                                     }
+                                    disabled={plantingMode}
                                     type="button"
                                 >
-                                    <Sprout
-                                        aria-hidden
-                                        className="size-4 shrink-0"
-                                    />
-                                    {group.plantings.length > 1 ? (
-                                        <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-emerald-800 px-1 text-[10px] font-bold leading-4 text-white dark:bg-emerald-200 dark:text-emerald-950">
-                                            {group.plantings.length}
-                                        </span>
-                                    ) : null}
+                                    <span className="flex items-center justify-center -space-x-3">
+                                        {group.plantings.map((planting) => {
+                                            const plantSort = plantSortById.get(
+                                                planting.plantSortId,
+                                            );
+
+                                            return (
+                                                <span
+                                                    className="flex size-16 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-white p-1 shadow-md ring-1 ring-emerald-900/15"
+                                                    data-advanced-sowing-field-plant={
+                                                        planting.id
+                                                    }
+                                                    key={planting.id}
+                                                >
+                                                    <PlantOrSortImage
+                                                        alt={
+                                                            plantSort?.name ??
+                                                            'Nepoznata biljka'
+                                                        }
+                                                        className="size-full rounded-full object-cover"
+                                                        coverUrl={
+                                                            plantSort?.coverUrl ??
+                                                            null
+                                                        }
+                                                        height={56}
+                                                        width={56}
+                                                    />
+                                                </span>
+                                            );
+                                        })}
+                                    </span>
+                                    <span className="absolute bottom-1 left-1 flex h-7 items-center gap-1 rounded-full border border-emerald-800/30 bg-white/95 px-2 text-xs font-semibold text-emerald-950 shadow-sm dark:bg-emerald-950/95 dark:text-emerald-50">
+                                        {group.plantings.length === 1 ? (
+                                            <>
+                                                <PlantGridIcon
+                                                    aria-hidden
+                                                    className="size-4"
+                                                    totalPlants={
+                                                        group.plantings[0]
+                                                            ?.plantCount ?? 1
+                                                    }
+                                                />
+                                                {group.plantings[0]?.plantsPerAxis.toString()}{' '}
+                                                ×{' '}
+                                                {group.plantings[0]?.plantsPerAxis.toString()}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sprout
+                                                    aria-hidden
+                                                    className="size-4"
+                                                />
+                                                {group.plantings.length} sadnje
+                                            </>
+                                        )}
+                                    </span>
+                                    <span className="absolute right-1 top-1 flex size-7 items-center justify-center rounded-full border border-emerald-800/30 bg-white/95 text-emerald-950 shadow-sm dark:bg-emerald-950/95 dark:text-emerald-50">
+                                        <Info aria-hidden className="size-4" />
+                                    </span>
                                 </button>
                             }
                         >
                             <Stack spacing={4}>
-                                <Typography
-                                    level="body2"
-                                    className="text-muted-foreground"
-                                >
-                                    Polja {positionLabels}. Svaka stavka je
-                                    jedna logička sadnja sa spremljenim razmakom
-                                    i gustoćom.
-                                </Typography>
                                 {group.plantings.length > 1 ? (
                                     <fieldset className="grid gap-2">
                                         <legend className="sr-only">
@@ -134,9 +225,12 @@ export function RaisedBedAdvancedSowingOverlay({
                                         </legend>
                                         {group.plantings.map((planting) => {
                                             const plantName =
-                                                plantNameBySortId.get(
+                                                plantSortById.get(
                                                     planting.plantSortId,
-                                                ) ?? 'Nepoznata biljka';
+                                                )?.name ?? 'Nepoznata biljka';
+                                            const plantSort = plantSortById.get(
+                                                planting.plantSortId,
+                                            );
 
                                             return (
                                                 <button
@@ -144,7 +238,7 @@ export function RaisedBedAdvancedSowingOverlay({
                                                         selectedPlantingId ===
                                                         planting.id
                                                     }
-                                                    className="flex min-h-11 items-center justify-between gap-3 rounded-md border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/60 aria-pressed:border-emerald-700 aria-pressed:bg-emerald-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 dark:aria-pressed:bg-emerald-950/40"
+                                                    className="flex min-h-14 items-center gap-3 rounded-md border bg-card px-3 py-2 text-left transition-colors hover:bg-muted/60 aria-pressed:border-emerald-700 aria-pressed:bg-emerald-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 dark:aria-pressed:bg-emerald-950/40"
                                                     data-advanced-sowing-planting-choice={
                                                         planting.id
                                                     }
@@ -156,8 +250,32 @@ export function RaisedBedAdvancedSowingOverlay({
                                                     }
                                                     type="button"
                                                 >
-                                                    <span className="min-w-0 font-medium">
-                                                        {plantName}
+                                                    <PlantOrSortImage
+                                                        alt={plantName}
+                                                        className="size-10 shrink-0 rounded-full object-cover"
+                                                        coverUrl={
+                                                            plantSort?.coverUrl ??
+                                                            null
+                                                        }
+                                                        height={40}
+                                                        width={40}
+                                                    />
+                                                    <span className="min-w-0 flex-1 font-medium">
+                                                        <span className="block truncate">
+                                                            {plantName}
+                                                        </span>
+                                                        <span className="mt-0.5 flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                                                            <PlantGridIcon
+                                                                aria-hidden
+                                                                className="size-3.5"
+                                                                totalPlants={
+                                                                    planting.plantCount
+                                                                }
+                                                            />
+                                                            {planting.plantsPerAxis.toString()}{' '}
+                                                            ×{' '}
+                                                            {planting.plantsPerAxis.toString()}
+                                                        </span>
                                                     </span>
                                                 </button>
                                             );
@@ -175,75 +293,69 @@ export function RaisedBedAdvancedSowingOverlay({
                                 ) : null}
                                 {selectedPlanting ? (
                                     <div
-                                        className="space-y-3 rounded-md border bg-muted/20 p-3"
+                                        className="space-y-4"
                                         data-advanced-sowing-planting-id={
                                             selectedPlanting.id
                                         }
                                     >
-                                        <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                            <Typography
-                                                component="h3"
-                                                level="body1"
-                                                semiBold
-                                            >
-                                                {plantNameBySortId.get(
-                                                    selectedPlanting.plantSortId,
-                                                ) ?? 'Nepoznata biljka'}
-                                            </Typography>
-                                        </div>
-                                        <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                                            <div>
-                                                <dt className="text-xs text-muted-foreground">
-                                                    Razmak
-                                                </dt>
-                                                <dd>
-                                                    {selectedPlanting.selectedSeedingDistanceCm.toString()}{' '}
-                                                    cm
-                                                </dd>
+                                        <dl className="grid grid-cols-2 gap-2 text-sm">
+                                            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 p-3">
+                                                <PlantGridIcon
+                                                    aria-hidden
+                                                    className="size-7 shrink-0 text-emerald-700 dark:text-emerald-300"
+                                                    totalPlants={
+                                                        selectedPlanting.plantCount
+                                                    }
+                                                />
+                                                <div className="min-w-0">
+                                                    <dt className="text-xs text-muted-foreground">
+                                                        Gustoća
+                                                    </dt>
+                                                    <dd className="font-semibold">
+                                                        {selectedPlanting.plantsPerAxis.toString()}{' '}
+                                                        ×{' '}
+                                                        {selectedPlanting.plantsPerAxis.toString()}
+                                                    </dd>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <dt className="text-xs text-muted-foreground">
-                                                    Gustoća
-                                                </dt>
-                                                <dd>
-                                                    {selectedPlanting.plantsPerAxis.toString()}{' '}
-                                                    ×{' '}
-                                                    {selectedPlanting.plantsPerAxis.toString()}
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt className="text-xs text-muted-foreground">
-                                                    Otisak
-                                                </dt>
-                                                <dd>
-                                                    {selectedPlanting.spanRows.toString()}{' '}
-                                                    ×{' '}
-                                                    {selectedPlanting.spanColumns.toString()}{' '}
-                                                    polja
-                                                </dd>
-                                            </div>
-                                            <div>
-                                                <dt className="text-xs text-muted-foreground">
-                                                    Polja
-                                                </dt>
-                                                <dd>
-                                                    {plantingFieldsLabel(
-                                                        selectedPlanting,
-                                                    )}
-                                                </dd>
+                                            <div className="flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 p-3">
+                                                <MapPin
+                                                    aria-hidden
+                                                    className="size-7 shrink-0 text-emerald-700 dark:text-emerald-300"
+                                                />
+                                                <div className="min-w-0">
+                                                    <dt className="text-xs text-muted-foreground">
+                                                        {selectedPlanting
+                                                            .memberships
+                                                            .length === 1
+                                                            ? 'Polje'
+                                                            : 'Polja'}
+                                                    </dt>
+                                                    <dd className="truncate font-semibold">
+                                                        {plantingFieldsLabel(
+                                                            selectedPlanting,
+                                                        )}
+                                                    </dd>
+                                                </div>
                                             </div>
                                             {selectedPlanting.lifecycleStatus ? (
-                                                <div>
-                                                    <dt className="text-xs text-muted-foreground">
-                                                        Status
-                                                    </dt>
-                                                    <dd>
-                                                        {
-                                                            plantFieldStatusLabel(
-                                                                selectedPlanting.lifecycleStatus,
-                                                            ).shortLabel
-                                                        }
-                                                    </dd>
+                                                <div className="col-span-2 flex min-w-0 items-center gap-3 rounded-lg bg-muted/60 p-3">
+                                                    <Sprout
+                                                        aria-hidden
+                                                        className="size-7 shrink-0 text-emerald-700 dark:text-emerald-300"
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <dt className="text-xs text-muted-foreground">
+                                                            Status
+                                                        </dt>
+                                                        <dd className="font-semibold">
+                                                            {
+                                                                plantFieldStatusLabel(
+                                                                    selectedPlanting.lifecycleStatus,
+                                                                ).shortLabel
+                                                            }
+                                                        </dd>
+                                                    </div>
                                                 </div>
                                             ) : null}
                                         </dl>
@@ -254,16 +366,7 @@ export function RaisedBedAdvancedSowingOverlay({
                                                 planting={selectedPlanting}
                                                 raisedBedId={raisedBedId}
                                             />
-                                        ) : (
-                                            <Typography
-                                                className="rounded-md bg-muted px-3 py-2 text-muted-foreground"
-                                                level="body3"
-                                            >
-                                                Zadatak sijanja trenutačno nije
-                                                dostupan. Osvježi vrt za
-                                                najnovije podatke.
-                                            </Typography>
-                                        )}
+                                        ) : null}
                                     </div>
                                 ) : null}
                             </Stack>

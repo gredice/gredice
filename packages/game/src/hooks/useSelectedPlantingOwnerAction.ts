@@ -1,6 +1,5 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { SelectedPlantingOwnerLifecycleStatus } from '../hud/raisedBed/selectedPlantingOwnerActions';
 import { currentAccountKeys } from './useCurrentAccount';
 import { useGardensKeys } from './useGardens';
 import { notificationsQueryKey } from './useNotifications';
@@ -23,18 +22,11 @@ export type SelectedPlantingOwnerAction =
           type: 'cancel';
           reason: string;
           target: SelectedPlantingOwnerActionTarget;
-      }
-    | {
-          effectiveAt: string;
-          type: 'updateStatus';
-          status: SelectedPlantingOwnerLifecycleStatus;
-          target: SelectedPlantingOwnerActionTarget;
       };
 
 export type SelectedPlantingOwnerActionResult =
     | { type: 'reschedule' }
-    | { refundAmount: number; type: 'cancel' }
-    | { type: 'updateStatus' };
+    | { refundAmount: number; type: 'cancel' };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
@@ -128,18 +120,7 @@ async function submitSelectedPlantingOwnerAction({
                 : 0;
         return { refundAmount, type: 'cancel' };
     }
-    const response = await route.$patch({
-        param,
-        json: {
-            ...identity,
-            effectiveAt: action.effectiveAt,
-            status: action.status,
-        },
-    });
-    if (response.status !== 200) {
-        throw new Error(await getResponseErrorMessage(response));
-    }
-    return { type: 'updateStatus' };
+    throw new Error('Nepodržana promjena sijanja.');
 }
 
 export function useSelectedPlantingOwnerAction(

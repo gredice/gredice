@@ -3,6 +3,13 @@ import type { Page } from '@playwright/test';
 import type { AdvancedSowingGardenPlantingInput } from '../../../packages/game/src/hud/raisedBed/advancedSowingGardenVisuals';
 import { AdvancedSowingPersistedStory } from './AdvancedSowingPersistedStory';
 
+const plantSortCoverUrl =
+    'https://cdn.gredice.com/entity-attributes/0580c848-eda3-4084-9751-75e1ee020fc7-basil-realistic-340.png';
+
+function plantSort(id: number, name: string) {
+    return { coverUrl: plantSortCoverUrl, id, name };
+}
+
 function selectedPlanting(
     overrides: Partial<AdvancedSowingGardenPlantingInput> = {},
 ): AdvancedSowingGardenPlantingInput {
@@ -118,10 +125,7 @@ test('requires an explicit planting choice for co-plants in one field', async ({
     const component = await mount(
         <AdvancedSowingPersistedStory
             plantings={plantingInputs}
-            plantNames={[
-                { id: 42, name: 'Bosiljak' },
-                { id: 43, name: 'Rajčica' },
-            ]}
+            plantSorts={[plantSort(42, 'Bosiljak'), plantSort(43, 'Rajčica')]}
         />,
     );
 
@@ -133,16 +137,12 @@ test('requires an explicit planting choice for co-plants in one field', async ({
         'data-advanced-sowing-membership-positions',
         '17',
     );
-    const underlyingPicker = component.locator(
-        '[data-underlying-plant-picker="true"]',
-    );
-    await underlyingPicker.evaluate((element) => {
-        element.addEventListener('click', () => {
-            element.setAttribute('data-clicked', 'true');
-        });
-    });
-    await underlyingPicker.click({ position: { x: 60, y: 50 } });
-    await expect(underlyingPicker).toHaveAttribute('data-clicked', 'true');
+    await expect(
+        footprintTrigger.locator('[data-advanced-sowing-field-plant]'),
+    ).toHaveCount(2);
+    await expect(
+        footprintTrigger.getByRole('img', { name: 'Bosiljak' }),
+    ).toBeVisible();
 
     const detailsTrigger = component.locator(
         '[data-advanced-sowing-details-trigger]',
@@ -166,8 +166,45 @@ test('requires an explicit planting choice for co-plants in one field', async ({
     await expect(
         page.locator('[data-advanced-sowing-planting-id="902"]'),
     ).toHaveCount(1);
-    await expect(page.getByText('30 cm')).toBeVisible();
-    await expect(page.getByText('1 × 1 polja')).toBeVisible();
+    const plantingDetails = page.locator(
+        '[data-advanced-sowing-planting-id="902"]',
+    );
+    await expect(
+        plantingDetails.getByText('1 × 1', { exact: true }),
+    ).toBeVisible();
+    await expect(
+        plantingDetails.getByText('Polje', { exact: true }),
+    ).toBeVisible();
+    await expect(plantingDetails.getByText('Razmak')).toHaveCount(0);
+});
+
+test('keeps advanced field imagery visible without blocking planting mode', async ({
+    mount,
+}) => {
+    const component = await mount(
+        <AdvancedSowingPersistedStory
+            plantingMode
+            plantings={[selectedPlanting()]}
+            plantSorts={[plantSort(42, 'Bosiljak')]}
+        />,
+    );
+    const underlyingPicker = component.locator(
+        '[data-underlying-plant-picker="true"]',
+    );
+    await underlyingPicker.evaluate((element) => {
+        element.addEventListener('click', () => {
+            element.setAttribute('data-clicked', 'true');
+        });
+    });
+
+    await expect(
+        component.locator('[data-advanced-sowing-field-plant="901"]'),
+    ).toBeVisible();
+    await expect(
+        component.locator('[data-advanced-sowing-details-trigger]'),
+    ).toBeDisabled();
+    await underlyingPicker.click({ position: { x: 60, y: 50 } });
+    await expect(underlyingPicker).toHaveAttribute('data-clicked', 'true');
 });
 
 test('keeps one persisted 2 by 2 planting visible with every membership', async ({
@@ -213,7 +250,7 @@ test('keeps one persisted 2 by 2 planting visible with every membership', async 
     const component = await mount(
         <AdvancedSowingPersistedStory
             plantings={plantingInputs}
-            plantNames={[{ id: 42, name: 'Tikvica' }]}
+            plantSorts={[plantSort(42, 'Tikvica')]}
         />,
     );
 
@@ -230,11 +267,17 @@ test('keeps one persisted 2 by 2 planting visible with every membership', async 
     await expect(
         page.locator('[data-advanced-sowing-planting-id="901"]'),
     ).toHaveCount(1);
-    await expect(page.getByText('60 cm')).toBeVisible();
-    await expect(page.getByText('2 × 2 polja')).toBeVisible();
+    const plantingDetails = page.locator(
+        '[data-advanced-sowing-planting-id="901"]',
+    );
+    await expect(
+        plantingDetails.getByText('1 × 1', { exact: true }),
+    ).toBeVisible();
     await expect(
         page.getByText('14, 15, 17, 18', { exact: true }),
     ).toBeVisible();
+    await expect(page.getByText('Razmak')).toHaveCount(0);
+    await expect(page.getByText('Otisak')).toHaveCount(0);
     await expect(
         page.locator('[data-selected-planting-owner-controls="true"]'),
     ).toBeVisible();
@@ -260,7 +303,7 @@ test('reschedules a persisted selected task with a fresh command identity', asyn
     await mount(
         <AdvancedSowingPersistedStory
             plantings={[selectedPlanting()]}
-            plantNames={[{ id: 42, name: 'Bosiljak' }]}
+            plantSorts={[plantSort(42, 'Bosiljak')]}
         />,
     );
 
@@ -299,7 +342,7 @@ test('confirms cancellation and reports the bounded one-per-planting refund', as
     await mount(
         <AdvancedSowingPersistedStory
             plantings={[selectedPlanting()]}
-            plantNames={[{ id: 42, name: 'Bosiljak' }]}
+            plantSorts={[plantSort(42, 'Bosiljak')]}
         />,
     );
 
@@ -333,16 +376,11 @@ test('confirms cancellation and reports the bounded one-per-planting refund', as
     ).toBeVisible();
 });
 
-test('offers the owner graph after direct Admin completion and confirms an effective date', async ({
+test('keeps lifecycle state read-only after farmer completion', async ({
     mount,
     page,
 }) => {
-    const capture = await captureOwnerRequest(page, {
-        created: true,
-        isActive: true,
-        lifecycleStatus: 'ready',
-        lifecycleStoppedAt: null,
-    });
+    const capture = await captureOwnerRequest(page);
     await mount(
         <AdvancedSowingPersistedStory
             plantings={[
@@ -357,136 +395,20 @@ test('offers the owner graph after direct Admin completion and confirms an effec
                     },
                 }),
             ]}
-            plantNames={[{ id: 42, name: 'Bosiljak' }]}
+            plantSorts={[plantSort(42, 'Bosiljak')]}
         />,
     );
 
     await page.locator('[data-advanced-sowing-details-trigger]').click();
+    await expect(page.getByText('Proklijala', { exact: true })).toBeVisible();
+    await expect(page.getByText('Datum promjene statusa')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Označi kao/u })).toHaveCount(
+        0,
+    );
     await expect(
-        page.getByText('Sijanje je dovršeno', { exact: false }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Označi kao posijana' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Označi kao nije proklijala' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Označi kao spremna za berbu' }),
-    ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: 'Označi kao uklonjena' }),
+        page.locator('[data-selected-planting-owner-controls="true"]'),
     ).toHaveCount(0);
-
-    await page
-        .getByRole('button', { name: 'Označi kao spremna za berbu' })
-        .click();
     expect(capture.getRequestCount()).toBe(0);
-    const confirmation = page.getByRole('alertdialog', {
-        name: 'Potvrda promjene stanja',
-    });
-    await expect(confirmation).toBeVisible();
-    await confirmation
-        .getByRole('button', { name: 'Promijeni stanje' })
-        .click();
-
-    const request = await capture.requestPromise;
-    expect(request.method).toBe('PATCH');
-    expect(request.pathname.endsWith('/plantings/901')).toBe(true);
-    expectCommandIdentity(request.payload, 210);
-    expect(request.payload).toEqual({
-        commandId: expect.any(String),
-        effectiveAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
-        expectedLifecycleVersionEventId: 210,
-        expectedPlantSortId: 42,
-        status: 'ready',
-    });
-});
-
-test('does not remove a logical multi-field planting until explicit confirmation', async ({
-    mount,
-    page,
-}) => {
-    const capture = await captureOwnerRequest(page, {
-        created: true,
-        isActive: false,
-        lifecycleStatus: 'removed',
-        lifecycleStoppedAt: new Date().toISOString(),
-    });
-    await mount(
-        <AdvancedSowingPersistedStory
-            plantings={[
-                selectedPlanting({
-                    layoutKey: 'v1:fields:2x2:plants:1x1',
-                    lifecycleStatus: 'harvested',
-                    lifecycleVersionEventId: 333,
-                    memberships: [
-                        {
-                            isAnchor: true,
-                            positionIndex: 17,
-                            relativeColumn: 0,
-                            relativeRow: 0,
-                        },
-                        {
-                            isAnchor: false,
-                            positionIndex: 16,
-                            relativeColumn: 1,
-                            relativeRow: 0,
-                        },
-                        {
-                            isAnchor: false,
-                            positionIndex: 14,
-                            relativeColumn: 0,
-                            relativeRow: 1,
-                        },
-                        {
-                            isAnchor: false,
-                            positionIndex: 13,
-                            relativeColumn: 1,
-                            relativeRow: 1,
-                        },
-                    ],
-                    plantCount: 1,
-                    plantsPerAxis: 1,
-                    selectedSeedingDistanceCm: 60,
-                    selectedTask: {
-                        scheduledDate: '2026-08-10T00:00:00.000Z',
-                        sowingLocation: 'direct',
-                        status: 'completed',
-                        verification: {
-                            verifiedAt: '2026-08-10T10:00:00.000Z',
-                        },
-                    },
-                    spanColumns: 2,
-                    spanRows: 2,
-                }),
-            ]}
-            plantNames={[{ id: 42, name: 'Tikvica' }]}
-        />,
-    );
-
-    await page.locator('[data-advanced-sowing-details-trigger]').click();
-    await page.getByRole('button', { name: 'Označi kao uklonjena' }).click();
-    expect(capture.getRequestCount()).toBe(0);
-    const confirmation = page.getByRole('alertdialog', {
-        name: 'Potvrda promjene stanja',
-    });
-    await expect(
-        confirmation.getByText('Promjena vrijedi za sva pripadajuća polja.', {
-            exact: false,
-        }),
-    ).toBeVisible();
-    expect(capture.getRequestCount()).toBe(0);
-    await confirmation
-        .getByRole('button', { name: 'Promijeni stanje' })
-        .click();
-
-    const request = await capture.requestPromise;
-    expect(request.method).toBe('PATCH');
-    expectCommandIdentity(request.payload, 333);
-    expect(request.payload).toEqual(
-        expect.objectContaining({ status: 'removed' }),
-    );
 });
 
 test('keeps pending verification read-only', async ({ mount, page }) => {
@@ -503,21 +425,16 @@ test('keeps pending verification read-only', async ({ mount, page }) => {
                     },
                 }),
             ]}
-            plantNames={[{ id: 42, name: 'Bosiljak' }]}
+            plantSorts={[plantSort(42, 'Bosiljak')]}
         />,
     );
 
     await page.locator('[data-advanced-sowing-details-trigger]').click();
-    await expect(page.getByText('Čeka provjeru sijanja')).toBeVisible();
     await expect(
-        page.locator('[data-selected-planting-lifecycle-actions="true"]'),
+        page.locator('[data-selected-planting-owner-controls="true"]'),
     ).toHaveCount(0);
     await expect(
         page.locator('[data-selected-planting-reschedule="true"]'),
     ).toHaveCount(0);
-    await expect(
-        page.getByText(
-            'Status biljke moći ćeš mijenjati nakon što sijanje bude dovršeno i provjereno.',
-        ),
-    ).toBeVisible();
+    await expect(page.getByText('Datum promjene statusa')).toHaveCount(0);
 });

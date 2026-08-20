@@ -1,19 +1,9 @@
-import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
-
 export type SelectedPlantingOwnerTaskStatus =
     | 'planned'
     | 'blocked'
     | 'pendingVerification'
     | 'completed'
     | 'cancelled';
-
-export type SelectedPlantingOwnerLifecycleStatus =
-    | 'sowed'
-    | 'sprouted'
-    | 'notSprouted'
-    | 'died'
-    | 'ready'
-    | 'removed';
 
 export type SelectedPlantingOwnerTaskSnapshot = {
     scheduledDate: string | null;
@@ -33,8 +23,6 @@ export type SelectedPlantingOwnerActionModel = {
     canCancel: boolean;
     canReschedule: boolean;
     cancelDisabledReason: string | null;
-    lifecycleTargets: SelectedPlantingOwnerLifecycleStatus[];
-    waitingForVerification: boolean;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,22 +45,6 @@ function isSelectedPlantingOwnerTaskStatus(
         case 'pendingVerification':
         case 'completed':
         case 'cancelled':
-            return true;
-        default:
-            return false;
-    }
-}
-
-function isSelectedPlantingOwnerLifecycleStatus(
-    value: string,
-): value is SelectedPlantingOwnerLifecycleStatus {
-    switch (value) {
-        case 'sowed':
-        case 'sprouted':
-        case 'notSprouted':
-        case 'died':
-        case 'ready':
-        case 'removed':
             return true;
         default:
             return false;
@@ -140,29 +112,6 @@ function getCancelDisabledReason(
     return null;
 }
 
-function getLifecycleTargets(
-    currentStatus: string | null,
-): SelectedPlantingOwnerLifecycleStatus[] {
-    if (!currentStatus) {
-        return [];
-    }
-    if (
-        currentStatus === 'notSprouted' ||
-        currentStatus === 'died' ||
-        currentStatus === 'harvested'
-    ) {
-        const userTargets =
-            userAllowedPlantStatusTransitions[currentStatus] ?? [];
-        return [
-            ...userTargets.filter(isSelectedPlantingOwnerLifecycleStatus),
-            'removed',
-        ];
-    }
-    return (userAllowedPlantStatusTransitions[currentStatus] ?? []).filter(
-        isSelectedPlantingOwnerLifecycleStatus,
-    );
-}
-
 export function getSelectedPlantingOwnerActionModel(
     snapshot: SelectedPlantingOwnerActionSnapshot,
     referenceDate = new Date(),
@@ -178,16 +127,10 @@ export function getSelectedPlantingOwnerActionModel(
     const cancelDisabledReason = isBeforeSowing
         ? getCancelDisabledReason(task.scheduledDate, referenceDate)
         : null;
-    const canAdvanceLifecycle = hasSafeIdentity && task?.status === 'completed';
-
     return {
         canCancel: isBeforeSowing && cancelDisabledReason === null,
         canReschedule: isBeforeSowing,
         cancelDisabledReason,
-        lifecycleTargets: canAdvanceLifecycle
-            ? getLifecycleTargets(snapshot.lifecycleStatus)
-            : [],
-        waitingForVerification: task?.status === 'pendingVerification',
     };
 }
 

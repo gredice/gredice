@@ -371,7 +371,11 @@ export function RaisedBedField({
         isRecord(raisedBedSource) ? raisedBedSource.plantings : null,
         totalRows * totalColumns,
     );
-    const advancedSowingPlantNames = (allSorts ?? []).map((sort) => ({
+    const advancedSowingPlantSorts = (allSorts ?? []).map((sort) => ({
+        coverUrl:
+            sort.image?.cover?.url ??
+            sort.information.plant.image?.cover?.url ??
+            null,
         id: sort.id,
         name: sort.information.name,
     }));
@@ -556,7 +560,8 @@ export function RaisedBedField({
                     bedFieldCount={totalRows * totalColumns}
                     gardenId={gardenId}
                     plantings={advancedSowingPlantings}
-                    plantNames={advancedSowingPlantNames}
+                    plantingMode={isPlantingMode}
+                    plantSorts={advancedSowingPlantSorts}
                     raisedBedId={raisedBedId}
                 />
             ) : null}

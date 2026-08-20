@@ -104,7 +104,6 @@ import {
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
-    updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
     withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
 import { del, put } from '@vercel/blob';
@@ -281,19 +280,6 @@ const cancelSelectedPlantingBodySchema =
     selectedPlantingOwnerIdentityBodySchema.extend({
         effectiveAt: z.iso.datetime().optional(),
         reason: z.string().trim().min(1).max(2000),
-    });
-
-const updateSelectedPlantingStatusBodySchema =
-    selectedPlantingOwnerIdentityBodySchema.extend({
-        effectiveAt: z.iso.datetime().optional(),
-        status: z.enum([
-            'sowed',
-            'sprouted',
-            'notSprouted',
-            'died',
-            'ready',
-            'removed',
-        ]),
     });
 
 const gardenCameraVectorSchema = z.tuple([
@@ -4085,100 +4071,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
                 return context.json(
                     { error: 'Failed to cancel planting' },
-                    500,
-                );
-            }
-        },
-    )
-    .patch(
-        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId',
-        describeRoute({
-            description:
-                'Update the lifecycle status of one selected Advanced Sowing planting',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-                plantingId: z.string(),
-                raisedBedId: z.string(),
-            }),
-        ),
-        zValidator('json', updateSelectedPlantingStatusBodySchema),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId, plantingId, raisedBedId } =
-                context.req.valid('param');
-            const {
-                commandId,
-                effectiveAt,
-                expectedLifecycleVersionEventId,
-                expectedPlantSortId,
-                status,
-            } = context.req.valid('json');
-            const gardenIdNumber = Number.parseInt(gardenId, 10);
-            const plantingIdNumber = Number.parseInt(plantingId, 10);
-            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
-            if (
-                !Number.isSafeInteger(gardenIdNumber) ||
-                gardenIdNumber <= 0 ||
-                !Number.isSafeInteger(plantingIdNumber) ||
-                plantingIdNumber <= 0 ||
-                !Number.isSafeInteger(raisedBedIdNumber) ||
-                raisedBedIdNumber <= 0
-            ) {
-                return context.json({ error: 'Invalid planting target' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            try {
-                if (
-                    !(await selectedPlantingMatchesGardenRoute({
-                        accountId,
-                        gardenId: gardenIdNumber,
-                        plantingId: plantingIdNumber,
-                        raisedBedId: raisedBedIdNumber,
-                    }))
-                ) {
-                    return context.json({ error: 'Planting not found' }, 404);
-                }
-                const result =
-                    await updateSelectedRaisedBedPlantingLifecycleStatusForOwner(
-                        {
-                            commandId,
-                            ...(effectiveAt ? { effectiveAt } : {}),
-                            expectedLifecycleVersionEventId,
-                            expectedPlantSortId,
-                            kind: 'selected',
-                            owner: { accountId, userId },
-                            plantingId: plantingIdNumber,
-                            status,
-                        },
-                    );
-                return context.json(
-                    {
-                        created: result.created,
-                        isActive: result.isActive,
-                        lifecycleStatus: result.lifecycleStatus,
-                        lifecycleStoppedAt:
-                            result.lifecycleStoppedAt?.toISOString() ?? null,
-                    },
-                    200,
-                );
-            } catch (error) {
-                if (error instanceof ScheduleTaskSubmissionError) {
-                    return selectedPlantingOwnerErrorResponse(context, error);
-                }
-                console.error('Failed to update selected planting status', {
-                    accountId,
-                    error,
-                    gardenId: gardenIdNumber,
-                    plantingId: plantingIdNumber,
-                    raisedBedId: raisedBedIdNumber,
-                });
-                return context.json(
-                    { error: 'Failed to update planting' },
                     500,
                 );
             }

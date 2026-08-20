@@ -1,13 +1,11 @@
 'use client';
 
-import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Input } from '@gredice/ui/Input';
-import { Calendar, Close, Sprout } from '@gredice/ui/icons';
+import { Calendar, Close } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
-import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
@@ -20,7 +18,6 @@ import { useSelectedPlantingOwnerAction } from '../../hooks/useSelectedPlantingO
 import type { AdvancedSowingGardenPlantingVisual } from './advancedSowingGardenVisuals';
 import {
     getSelectedPlantingOwnerActionModel,
-    type SelectedPlantingOwnerLifecycleStatus,
     selectedPlantingOwnerTaskStatusLabel,
 } from './selectedPlantingOwnerActions';
 
@@ -53,12 +50,6 @@ function scheduleDateLabel(scheduledDateValue: string | null) {
     }).format(scheduledDate);
 }
 
-function effectiveDateIso(dateValue: string) {
-    const [year, month, day] = dateValue.split('-').map(Number);
-    const date = new Date(year, month - 1, day, 12, 0, 0);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
 export function RaisedBedSelectedPlantingOwnerControls({
     gardenId,
     planting,
@@ -77,17 +68,6 @@ export function RaisedBedSelectedPlantingOwnerControls({
     );
     const [cancellationReason, setCancellationReason] = useState('');
     const [cancelToConfirm, setCancelToConfirm] = useState(false);
-    const today = formatDiaryRescheduleDateInput(new Date());
-    const lifecycleStartedDate = planting.lifecycleStartedAt
-        ? formatDiaryRescheduleDateInput(new Date(planting.lifecycleStartedAt))
-        : null;
-    const minimumLifecycleDate =
-        lifecycleStartedDate && lifecycleStartedDate <= today
-            ? lifecycleStartedDate
-            : undefined;
-    const [lifecycleEffectiveDate, setLifecycleEffectiveDate] = useState(today);
-    const [statusToConfirm, setStatusToConfirm] =
-        useState<SelectedPlantingOwnerLifecycleStatus | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const greenhouseSwitchId = useId();
@@ -97,7 +77,11 @@ export function RaisedBedSelectedPlantingOwnerControls({
     const expectedLifecycleVersionEventId =
         planting.expectedLifecycleVersionEventId;
 
-    if (!task || expectedLifecycleVersionEventId === null) {
+    if (
+        !task ||
+        expectedLifecycleVersionEventId === null ||
+        !actionModel.canReschedule
+    ) {
         return null;
     }
 
@@ -161,36 +145,6 @@ export function RaisedBedSelectedPlantingOwnerControls({
         }
     }
 
-    async function handleStatusChange(
-        status: SelectedPlantingOwnerLifecycleStatus,
-    ) {
-        setErrorMessage(null);
-        setSuccessMessage(null);
-        const effectiveAt = effectiveDateIso(lifecycleEffectiveDate);
-        if (!effectiveAt) {
-            setErrorMessage('Odaberi ispravan datum promjene statusa.');
-            return;
-        }
-        try {
-            await mutation.mutateAsync({
-                effectiveAt,
-                status,
-                target,
-                type: 'updateStatus',
-            });
-            setStatusToConfirm(null);
-            setSuccessMessage(
-                `Status je promijenjen u „${plantFieldStatusLabel(status).shortLabel}”.`,
-            );
-        } catch (error) {
-            setErrorMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Promjena statusa nije uspjela.',
-            );
-        }
-    }
-
     return (
         <Stack
             className="rounded-md border bg-card p-3"
@@ -221,108 +175,104 @@ export function RaisedBedSelectedPlantingOwnerControls({
                 </Alert>
             ) : null}
 
-            {actionModel.canReschedule ? (
-                <form
-                    className="space-y-3 border-t pt-3"
-                    data-selected-planting-reschedule="true"
-                    onSubmit={handleReschedule}
-                >
-                    <Typography level="body2" semiBold>
-                        Promijeni termin prije sijanja
-                    </Typography>
-                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-                        <CalendarDatePicker
-                            disabled={mutation.isPending}
-                            fullWidth
-                            label="Novi datum sijanja"
-                            min={minimumDate}
-                            name="selectedPlantingScheduledDate"
-                            onValueChange={setScheduledDate}
-                            required
-                            value={scheduledDate}
-                        />
-                        <div className="space-y-1">
-                            <label
-                                className="block text-sm font-medium text-foreground"
-                                htmlFor={greenhouseSwitchId}
-                            >
-                                Mjesto sijanja
-                            </label>
-                            <div className="flex h-10 items-center gap-2 rounded-md border px-3">
-                                <Switch
-                                    aria-label="Sijanje u stakleniku"
-                                    checked={sowInGreenhouse}
-                                    disabled={mutation.isPending}
-                                    id={greenhouseSwitchId}
-                                    onCheckedChange={setSowInGreenhouse}
-                                    size="sm"
-                                />
-                                <span className="text-sm">
-                                    {sowInGreenhouse ? 'Staklenik' : 'Izravno'}
-                                </span>
-                            </div>
+            <form
+                className="space-y-3 border-t pt-3"
+                data-selected-planting-reschedule="true"
+                onSubmit={handleReschedule}
+            >
+                <Typography level="body2" semiBold>
+                    Promijeni termin prije sijanja
+                </Typography>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <CalendarDatePicker
+                        disabled={mutation.isPending}
+                        fullWidth
+                        label="Novi datum sijanja"
+                        min={minimumDate}
+                        name="selectedPlantingScheduledDate"
+                        onValueChange={setScheduledDate}
+                        required
+                        value={scheduledDate}
+                    />
+                    <div className="space-y-1">
+                        <label
+                            className="block text-sm font-medium text-foreground"
+                            htmlFor={greenhouseSwitchId}
+                        >
+                            Mjesto sijanja
+                        </label>
+                        <div className="flex h-10 items-center gap-2 rounded-md border px-3">
+                            <Switch
+                                aria-label="Sijanje u stakleniku"
+                                checked={sowInGreenhouse}
+                                disabled={mutation.isPending}
+                                id={greenhouseSwitchId}
+                                onCheckedChange={setSowInGreenhouse}
+                                size="sm"
+                            />
+                            <span className="text-sm">
+                                {sowInGreenhouse ? 'Staklenik' : 'Izravno'}
+                            </span>
                         </div>
                     </div>
-                    <Button
-                        disabled={mutation.isPending}
-                        loading={mutation.isPending}
-                        size="sm"
-                        startDecorator={<Calendar className="size-4" />}
-                        type="submit"
-                        variant="soft"
-                    >
-                        Spremi raspored
-                    </Button>
-                </form>
-            ) : null}
-
-            {actionModel.canReschedule ? (
-                <div
-                    className="space-y-3 border-t pt-3"
-                    data-selected-planting-cancel="true"
-                >
-                    <Typography level="body2" semiBold>
-                        Otkaži prije sijanja
-                    </Typography>
-                    <Input
-                        disabled={mutation.isPending || !actionModel.canCancel}
-                        fullWidth
-                        label="Razlog otkazivanja"
-                        maxLength={2000}
-                        onChange={(event) =>
-                            setCancellationReason(event.target.value)
-                        }
-                        placeholder="Primjerice: promjena plana"
-                        value={cancellationReason}
-                    />
-                    {actionModel.cancelDisabledReason ? (
-                        <Typography level="body3" secondary>
-                            {actionModel.cancelDisabledReason}
-                        </Typography>
-                    ) : (
-                        <Typography level="body3" secondary>
-                            Otkazivanje je trajno. Mogući povrat prikazat će se
-                            nakon potvrde.
-                        </Typography>
-                    )}
-                    <Button
-                        color="danger"
-                        disabled={
-                            mutation.isPending ||
-                            !actionModel.canCancel ||
-                            !cancellationReason.trim()
-                        }
-                        loading={mutation.isPending}
-                        onClick={() => setCancelToConfirm(true)}
-                        size="sm"
-                        startDecorator={<Close className="size-4" />}
-                        type="button"
-                        variant="soft"
-                    >
-                        Otkaži sijanje
-                    </Button>
                 </div>
-            ) : null}
+                <Button
+                    disabled={mutation.isPending}
+                    loading={mutation.isPending}
+                    size="sm"
+                    startDecorator={<Calendar className="size-4" />}
+                    type="submit"
+                    variant="soft"
+                >
+                    Spremi raspored
+                </Button>
+            </form>
+
+            <div
+                className="space-y-3 border-t pt-3"
+                data-selected-planting-cancel="true"
+            >
+                <Typography level="body2" semiBold>
+                    Otkaži prije sijanja
+                </Typography>
+                <Input
+                    disabled={mutation.isPending || !actionModel.canCancel}
+                    fullWidth
+                    label="Razlog otkazivanja"
+                    maxLength={2000}
+                    onChange={(event) =>
+                        setCancellationReason(event.target.value)
+                    }
+                    placeholder="Primjerice: promjena plana"
+                    value={cancellationReason}
+                />
+                {actionModel.cancelDisabledReason ? (
+                    <Typography level="body3" secondary>
+                        {actionModel.cancelDisabledReason}
+                    </Typography>
+                ) : (
+                    <Typography level="body3" secondary>
+                        Otkazivanje je trajno. Mogući povrat prikazat će se
+                        nakon potvrde.
+                    </Typography>
+                )}
+                <Button
+                    color="danger"
+                    disabled={
+                        mutation.isPending ||
+                        !actionModel.canCancel ||
+                        !cancellationReason.trim()
+                    }
+                    loading={mutation.isPending}
+                    onClick={() => setCancelToConfirm(true)}
+                    size="sm"
+                    startDecorator={<Close className="size-4" />}
+                    type="button"
+                    variant="soft"
+                >
+                    Otkaži sijanje
+                </Button>
+            </div>
             <ModalConfirm
                 cancelLabel="Odustani"
                 confirmLabel={
@@ -340,87 +290,6 @@ export function RaisedBedSelectedPlantingOwnerControls({
             >
                 Otkazivanje se ne može poništiti. Želiš li otkazati ovu cijelu
                 sadnju?
-            </ModalConfirm>
-
-            {actionModel.waitingForVerification ? (
-                <Alert color="neutral">
-                    Status biljke moći ćeš mijenjati nakon što sijanje bude
-                    dovršeno i provjereno.
-                </Alert>
-            ) : null}
-
-            {actionModel.lifecycleTargets.length > 0 ? (
-                <div
-                    className="space-y-3 border-t pt-3"
-                    data-selected-planting-lifecycle-actions="true"
-                >
-                    <Stack spacing={1}>
-                        <Typography level="body2" semiBold>
-                            Napredovanje biljke
-                        </Typography>
-                        <Typography level="body3" secondary>
-                            Odaberi samo stanje koje si provjerio u gredici.
-                        </Typography>
-                    </Stack>
-                    <CalendarDatePicker
-                        disabled={mutation.isPending}
-                        fullWidth
-                        label="Datum promjene statusa"
-                        max={today}
-                        min={minimumLifecycleDate}
-                        name="selectedPlantingLifecycleEffectiveDate"
-                        onValueChange={setLifecycleEffectiveDate}
-                        required
-                        value={lifecycleEffectiveDate}
-                    />
-                    <Row className="flex-wrap" spacing={2}>
-                        {actionModel.lifecycleTargets.map((status) => (
-                            <Button
-                                color={
-                                    status === 'removed' ? 'danger' : 'primary'
-                                }
-                                disabled={mutation.isPending}
-                                key={status}
-                                loading={mutation.isPending}
-                                onClick={() => setStatusToConfirm(status)}
-                                size="sm"
-                                startDecorator={<Sprout className="size-4" />}
-                                type="button"
-                                variant="soft"
-                            >
-                                Označi kao{' '}
-                                {plantFieldStatusLabel(
-                                    status,
-                                ).shortLabel.toLocaleLowerCase('hr-HR')}
-                            </Button>
-                        ))}
-                    </Row>
-                </div>
-            ) : null}
-            <ModalConfirm
-                cancelLabel="Odustani"
-                confirmLabel={
-                    mutation.isPending ? 'Spremam...' : 'Promijeni stanje'
-                }
-                header="Potvrda promjene stanja"
-                onConfirm={() => {
-                    if (statusToConfirm && !mutation.isPending) {
-                        void handleStatusChange(statusToConfirm);
-                    }
-                }}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        setStatusToConfirm(null);
-                    }
-                }}
-                open={statusToConfirm !== null}
-                title="Potvrda promjene stanja biljke"
-            >
-                {statusToConfirm === 'removed'
-                    ? 'Jeste li sigurni da želite označiti cijelu sadnju kao uklonjenu? Promjena vrijedi za sva pripadajuća polja.'
-                    : statusToConfirm
-                      ? `Jeste li sigurni da želite promijeniti stanje biljke u „${plantFieldStatusLabel(statusToConfirm).shortLabel}”?`
-                      : 'Jeste li sigurni da želite promijeniti stanje biljke?'}
             </ModalConfirm>
         </Stack>
     );
