@@ -163,26 +163,32 @@ export function SunflowerPackagesPanel() {
 
         const breakdownRows = (
             <div className="space-y-0.5">
-                <Row justifyContent="space-between">
-                    <Typography level="body3" className="text-muted-foreground">
+                <Row justifyContent="space-between" className="min-w-0 gap-3">
+                    <Typography
+                        level="body3"
+                        className="whitespace-nowrap text-muted-foreground"
+                    >
                         Osnovni iznos
                     </Typography>
                     <Typography
                         level="body3"
                         bold
-                        className="whitespace-nowrap tabular-nums"
+                        className="shrink-0 whitespace-nowrap tabular-nums"
                     >
                         {formatSunflowers(pkg.baseSunflowers)} 🌻
                     </Typography>
                 </Row>
-                <Row justifyContent="space-between">
-                    <Typography level="body3" className="text-primary">
+                <Row justifyContent="space-between" className="min-w-0 gap-3">
+                    <Typography
+                        level="body3"
+                        className="whitespace-nowrap text-primary"
+                    >
                         Bonus {pkg.bonusPercentage} %
                     </Typography>
                     <Typography
                         level="body3"
                         bold
-                        className="whitespace-nowrap text-primary tabular-nums"
+                        className="shrink-0 whitespace-nowrap text-primary tabular-nums"
                     >
                         + {formatSunflowers(pkg.bonusSunflowers)} 🌻
                     </Typography>
@@ -195,9 +201,11 @@ export function SunflowerPackagesPanel() {
                 key={pkg.code}
                 data-sunflower-package={pkg.code}
                 className={cx(
-                    'border-tertiary/30 md:min-w-0',
-                    featured && 'md:col-span-3',
+                    '@container/package min-w-0 border-tertiary/30',
+                    featured &&
+                        '@[36rem]/sunflower-packages:col-span-2 @[50rem]/sunflower-packages:col-span-3',
                     featured && 'border-primary/40 bg-primary/5',
+                    isBestValue && 'border-primary/40 bg-primary/[0.03]',
                 )}
             >
                 <CardContent noHeader className="h-full">
@@ -206,8 +214,13 @@ export function SunflowerPackagesPanel() {
                             <Row
                                 justifyContent="space-between"
                                 alignItems="start"
+                                className="min-w-0 gap-2"
                             >
-                                <Typography level="body1" bold>
+                                <Typography
+                                    level="body1"
+                                    bold
+                                    className="min-w-0"
+                                >
                                     {pkg.name}
                                 </Typography>
                                 {pkg.tag ? (
@@ -245,7 +258,7 @@ export function SunflowerPackagesPanel() {
                             <>
                                 <div
                                     data-package-breakdown="desktop"
-                                    className="mt-1 hidden rounded-lg border bg-muted/20 p-3 md:block"
+                                    className="mt-1 hidden rounded-lg border bg-muted/20 p-3 @[28rem]/package:block"
                                 >
                                     <Typography
                                         level="body3"
@@ -261,7 +274,7 @@ export function SunflowerPackagesPanel() {
                                             level="body3"
                                             bold
                                             uppercase
-                                            className="text-muted-foreground"
+                                            className="shrink-0 whitespace-nowrap text-muted-foreground"
                                         >
                                             Ukupno
                                         </Typography>
@@ -276,8 +289,8 @@ export function SunflowerPackagesPanel() {
                                 </div>
 
                                 <details
-                                    data-package-breakdown="mobile"
-                                    className="group mt-1 rounded-lg border bg-muted/20 md:hidden"
+                                    data-package-breakdown="compact"
+                                    className="group mt-1 rounded-lg border bg-muted/20 @[28rem]/package:hidden"
                                 >
                                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
                                         <span className="min-w-0">
@@ -318,7 +331,7 @@ export function SunflowerPackagesPanel() {
                                     level="body3"
                                     bold
                                     uppercase
-                                    className="text-muted-foreground"
+                                    className="shrink-0 whitespace-nowrap text-muted-foreground"
                                 >
                                     Ukupno
                                 </Typography>
@@ -362,7 +375,11 @@ export function SunflowerPackagesPanel() {
               : null;
 
     return (
-        <Stack spacing={4}>
+        <Stack
+            spacing={4}
+            className="@container/sunflower-packages min-w-0"
+            data-sunflower-packages-panel
+        >
             <Stack spacing={1}>
                 <Typography level="h5">Paketi suncokreta</Typography>
                 <Typography level="body3" className="text-muted-foreground">
@@ -401,7 +418,7 @@ export function SunflowerPackagesPanel() {
             ) : null}
 
             {initialOffers.length > 0 || mainPackages.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-3 @[36rem]/sunflower-packages:grid-cols-2 @[50rem]/sunflower-packages:grid-cols-3">
                     {initialOffers.map((pkg) => packageCard(pkg, true))}
                     {mainPackages.map((pkg) => packageCard(pkg))}
                 </div>
