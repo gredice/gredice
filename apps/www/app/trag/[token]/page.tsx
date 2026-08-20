@@ -37,6 +37,7 @@ import {
     type PlantMonthCalendarRow,
 } from '../../biljke/PlantMonthCalendar';
 import { HarvestTraceStatusEvent } from './HarvestTraceStatusEvent';
+import { HarvestTraceWateringGrid } from './HarvestTraceWateringGrid';
 
 export const dynamic = 'force-dynamic';
 
@@ -764,6 +765,9 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
                         </>
                     )}
                 </div>
+                {hasWatering ? (
+                    <HarvestTraceWateringGrid timeline={trace.timeline} />
+                ) : null}
             </Stack>
         </section>
     );
