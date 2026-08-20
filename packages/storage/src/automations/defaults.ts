@@ -20,6 +20,8 @@ export const seasonalSowedWateringAutomationKey =
     'default.seasonal-sowed-watering';
 export const operationImagePlantStatusReviewAutomationKey =
     'default.operation-image-plant-status-review';
+export const harvestOperationPlantStatusReviewAutomationKey =
+    'default.harvest-operation-plant-status-review';
 export const seedlingTransplantDirectSowingLocationAutomationKey =
     'default.seedling-transplant-direct-sowing-location';
 export const seedlingTransplantWateringAutomationKey =
@@ -67,6 +69,8 @@ export const monthlyFarmInventoryOperationConfigs = [
 export const RAISED_BED_DETAILED_INSPECTION_OPERATION_ID = 652;
 export const RAISED_BED_DETAILED_INSPECTION_OPERATION_NAME =
     'detailedRaisedBedInspection';
+export const HARVEST_OPERATION_PLANT_STATUS_REQUESTER =
+    'automation:harvest-operation-status-review';
 
 export function seasonalSowedWateringAutomationGraph(): AutomationGraph {
     return {
@@ -158,6 +162,56 @@ export function operationImagePlantStatusReviewAutomationGraph(): AutomationGrap
                 id: 'images-to-review',
                 source: 'has-images',
                 target: 'review-plant-statuses',
+            },
+        ],
+    };
+}
+
+export function harvestOperationPlantStatusReviewAutomationGraph(): AutomationGraph {
+    return {
+        nodes: [
+            {
+                id: 'trigger',
+                kind: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                position: { x: 0, y: 160 },
+                config: {
+                    eventType: knownEventTypes.operations.complete,
+                },
+            },
+            {
+                id: 'operation-is-harvest',
+                kind: 'condition',
+                moduleKey: automationModuleKeys.conditionOperationMatches,
+                position: { x: 280, y: 160 },
+                config: {
+                    status: 'pendingVerification',
+                    stage: 'harvest',
+                },
+            },
+            {
+                id: 'propose-harvested-status',
+                kind: 'action',
+                moduleKey:
+                    automationModuleKeys.actionCreatePlantStatusApprovalRequests,
+                position: { x: 620, y: 160 },
+                config: {
+                    targetStatus: 'harvested',
+                    requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+                    note: 'Potvrdite zahtjev samo ako je biljka potpuno obrana; odbijte ga ako se biljka može ponovno brati.',
+                },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-operation-match',
+                source: 'trigger',
+                target: 'operation-is-harvest',
+            },
+            {
+                id: 'operation-match-to-proposal',
+                source: 'operation-is-harvest',
+                target: 'propose-harvested-status',
             },
         ],
     };
@@ -522,6 +576,22 @@ export async function ensureDefaultAutomationDefinitions() {
             },
         });
 
+    const harvestOperationPlantStatusReview =
+        await upsertAutomationDefinitionByKey({
+            key: harvestOperationPlantStatusReviewAutomationKey,
+            name: 'Predloži status ubrano nakon radnje berbe',
+            description:
+                'Kada je radnja berbe završena, za svaku ciljanu biljku kreiraj zahtjev za potvrdu promjene statusa na ubrano bez automatske promjene biljke.',
+            status: 'enabled',
+            graph: harvestOperationPlantStatusReviewAutomationGraph(),
+            metadata: {
+                managedBy: 'gredice',
+                defaultAutomation: true,
+                operationStage: 'harvest',
+                targetStatus: 'harvested',
+            },
+        });
+
     const seedlingTransplantDirectSowingLocation =
         await upsertAutomationDefinitionByKey({
             key: seedlingTransplantDirectSowingLocationAutomationKey,
@@ -662,6 +732,7 @@ export async function ensureDefaultAutomationDefinitions() {
     return {
         seasonalSowedWatering,
         operationImagePlantStatusReview,
+        harvestOperationPlantStatusReview,
         seedlingTransplantDirectSowingLocation,
         seedlingTransplantWatering,
         plantRemovalOperationStatus,

@@ -1,4 +1,8 @@
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import {
+    createPlantStatusApprovalRequest,
+    getApprovalRequests,
+} from '../repositories/approvalRequestsRepo';
 import { getEntityFormatted } from '../repositories/entitiesRepo';
 import {
     createEvent,
@@ -65,6 +69,8 @@ const createGreenhouseSeedlingWateringOperationsActionKey =
 const createRaisedBedOperationsActionKey = 'action.createRaisedBedOperations';
 const updateRaisedBedFieldPlantAttributesActionKey =
     'action.updateRaisedBedFieldPlantAttributes';
+const createPlantStatusApprovalRequestsActionKey =
+    'action.createPlantStatusApprovalRequests';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
@@ -151,6 +157,8 @@ export const automationModuleKeys = {
     actionCreateRaisedBedOperations: createRaisedBedOperationsActionKey,
     actionUpdateRaisedBedFieldPlantAttributes:
         updateRaisedBedFieldPlantAttributesActionKey,
+    actionCreatePlantStatusApprovalRequests:
+        createPlantStatusApprovalRequestsActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
@@ -176,6 +184,11 @@ function getRecord(value: unknown): AutomationJsonObject {
     return value && typeof value === 'object' && !Array.isArray(value)
         ? (value as AutomationJsonObject)
         : {};
+}
+
+function referencedEntityName(value: unknown) {
+    const information = getRecord(getRecord(value).information);
+    return getString(information, 'name');
 }
 
 function getString(config: AutomationJsonObject, key: string) {
@@ -1189,6 +1202,81 @@ async function resolveOperationRaisedBedFieldTarget(
     };
 }
 
+async function resolveOperationRaisedBedFieldTargets(
+    event: AutomationSourceEvent | undefined,
+) {
+    if (!event) {
+        return {
+            ok: false as const,
+            result: skip('No source event is available.'),
+        };
+    }
+
+    const operationId = Number(event.aggregateId);
+    if (!Number.isInteger(operationId) || operationId <= 0) {
+        return {
+            ok: false as const,
+            result: skip('Source event aggregate is not an operation id.'),
+        };
+    }
+
+    const operation = await getOperationById(operationId);
+    if (!operation?.raisedBedId) {
+        return {
+            ok: false as const,
+            result: skip('Operation has no raised-bed target.', {
+                operationId,
+            }),
+        };
+    }
+
+    const raisedBed = await getRaisedBed(operation.raisedBedId);
+    if (!raisedBed) {
+        return {
+            ok: false as const,
+            result: skip('Operation target raised bed was not found.', {
+                operationId,
+                raisedBedId: operation.raisedBedId,
+            }),
+        };
+    }
+
+    const operationEntity = await getEntityFormatted<EntityStandardized>(
+        operation.entityId,
+    );
+    const application =
+        typeof operationEntity?.attributes?.application === 'string'
+            ? operationEntity.attributes.application
+            : null;
+    const fields = operation.raisedBedFieldId
+        ? raisedBed.fields.filter(
+              (field) =>
+                  field.id === operation.raisedBedFieldId && field.active,
+          )
+        : application === 'raisedBedFull'
+          ? raisedBed.fields.filter((field) => field.active)
+          : [];
+
+    if (fields.length === 0) {
+        return {
+            ok: false as const,
+            result: skip('Operation has no active raised-bed field targets.', {
+                operationId,
+                raisedBedId: raisedBed.id,
+                raisedBedFieldId: operation.raisedBedFieldId,
+                application,
+            }),
+        };
+    }
+
+    return {
+        ok: true as const,
+        operationId,
+        raisedBed,
+        fields,
+    };
+}
+
 function configFieldsForEventType() {
     return [
         {
@@ -1494,6 +1582,12 @@ const operationMatchesConditionModule: AutomationModule = {
             type: 'string',
             placeholder: 'plant',
         },
+        {
+            key: 'stage',
+            label: 'Operation plant stage',
+            type: 'string',
+            placeholder: 'harvest',
+        },
     ],
     dryRunSupported: true,
     mutatesData: false,
@@ -1530,7 +1624,8 @@ const operationMatchesConditionModule: AutomationModule = {
         }
 
         const expectedApplication = getString(node.config, 'application');
-        if (expectedApplication) {
+        const expectedStage = getString(node.config, 'stage');
+        if (expectedApplication || expectedStage) {
             const operationEntity =
                 await getEntityFormatted<EntityStandardized>(
                     operation.entityId,
@@ -1540,10 +1635,23 @@ const operationMatchesConditionModule: AutomationModule = {
                     ? operationEntity.attributes.application
                     : null;
 
-            if (actualApplication !== expectedApplication) {
+            if (
+                expectedApplication &&
+                actualApplication !== expectedApplication
+            ) {
                 return skip('Operation application did not match.', {
                     expected: expectedApplication,
                     actual: actualApplication,
+                });
+            }
+
+            const actualStage = referencedEntityName(
+                operationEntity?.attributes?.stage,
+            );
+            if (expectedStage && actualStage !== expectedStage) {
+                return skip('Operation plant stage did not match.', {
+                    expected: expectedStage,
+                    actual: actualStage ?? null,
                 });
             }
         }
@@ -2910,6 +3018,222 @@ const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {
         updateRaisedBedFieldPlantAttributes({ context, node }),
 };
 
+function validatePlantStatusApprovalRequestsConfig(
+    config: AutomationJsonObject,
+) {
+    const errors = [
+        ...requiredString(config, 'targetStatus'),
+        ...requiredString(config, 'requestedBy'),
+    ];
+    const targetStatus = getString(config, 'targetStatus');
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        errors.push('targetStatus is not a supported plant lifecycle status.');
+    }
+    return errors;
+}
+
+const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
+    key: createPlantStatusApprovalRequestsActionKey,
+    kind: 'action',
+    title: 'Create plant-status approval requests',
+    description:
+        'Creates pending plant-status proposals for the active fields targeted by an operation.',
+    category: 'Raised-bed fields',
+    configFields: [
+        {
+            key: 'targetStatus',
+            label: 'Proposed status',
+            type: 'string',
+            required: true,
+            placeholder: 'harvested',
+        },
+        {
+            key: 'requestedBy',
+            label: 'Requested by',
+            type: 'string',
+            required: true,
+            placeholder: 'automation:operation-plant-status-review',
+        },
+        {
+            key: 'note',
+            label: 'Review note',
+            type: 'string',
+            required: false,
+        },
+    ],
+    inputDescription:
+        'An operation event targeting one field or a whole raised bed.',
+    outputDescription:
+        'Created or reused approval request ids, eligible target counts, and skipped fields.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validatePlantStatusApprovalRequestsConfig,
+    execute: async (context, node) => {
+        const targetStatus = getString(node.config, 'targetStatus');
+        const requestedBy = getString(node.config, 'requestedBy');
+        if (!targetStatus || !requestedBy) {
+            throw new AutomationModuleExecutionError(
+                'Plant-status approval action is missing targetStatus or requestedBy.',
+                'invalid_config',
+            );
+        }
+
+        const resolved = await resolveOperationRaisedBedFieldTargets(
+            context.event,
+        );
+        if (!resolved.ok) {
+            return resolved.result;
+        }
+
+        const pendingRequests = await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        });
+        const candidates: Array<{
+            positionIndex: number;
+            raisedBedFieldId: number;
+            plantCycleEventId: number;
+            plantCycleVersionEventId: number;
+            plantSortId: number;
+            currentStatus: string;
+            existingRequestId: string | null;
+        }> = [];
+        const skippedTargets: AutomationJsonObject[] = [];
+
+        for (const field of resolved.fields) {
+            const sourcePlantCycle = context.event
+                ? contextEventPlantCycle(field, context.event)
+                : null;
+            const activePlantCycle = field.plantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            if (
+                !sourcePlantCycle ||
+                !activePlantCycle ||
+                sourcePlantCycle.plantPlaceEventId !==
+                    activePlantCycle.plantPlaceEventId
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'plant_cycle_changed',
+                });
+                continue;
+            }
+
+            if (!field.plantStatus || typeof field.plantSortId !== 'number') {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'plant_snapshot_incomplete',
+                });
+                continue;
+            }
+            if (field.plantStatus === targetStatus) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'already_target_status',
+                    currentStatus: field.plantStatus,
+                });
+                continue;
+            }
+            if (
+                !canAutomationUpdatePlantStatus(field.plantStatus, targetStatus)
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'transition_not_allowed',
+                    currentStatus: field.plantStatus,
+                });
+                continue;
+            }
+
+            const existingRequest = pendingRequests.find(
+                (request) =>
+                    request.target.kind === 'raisedBedField.plantStatus' &&
+                    request.target.raisedBedId === resolved.raisedBed.id &&
+                    request.target.positionIndex === field.positionIndex,
+            );
+            if (
+                existingRequest?.target.kind === 'raisedBedField.plantStatus' &&
+                existingRequest.target.requestedStatus !== targetStatus
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'different_pending_request',
+                    pendingRequestId: existingRequest.id,
+                    pendingStatus: existingRequest.target.requestedStatus,
+                });
+                continue;
+            }
+
+            candidates.push({
+                positionIndex: field.positionIndex,
+                raisedBedFieldId: field.id,
+                plantCycleEventId: activePlantCycle.plantPlaceEventId,
+                plantCycleVersionEventId: activePlantCycle.endedEventId,
+                plantSortId: field.plantSortId,
+                currentStatus: field.plantStatus,
+                existingRequestId: existingRequest?.id ?? null,
+            });
+        }
+
+        const existingRequestIds = candidates.flatMap((candidate) =>
+            candidate.existingRequestId ? [candidate.existingRequestId] : [],
+        );
+        const output = {
+            operationId: resolved.operationId,
+            raisedBedId: resolved.raisedBed.id,
+            targetStatus,
+            targetCount: resolved.fields.length,
+            eligibleCount: candidates.length,
+            projectedCreateCount: candidates.length - existingRequestIds.length,
+            existingRequestIds,
+            skippedTargets,
+        };
+
+        if (candidates.length === 0) {
+            return skip(
+                'No operation target plants need an approval request.',
+                {
+                    ...output,
+                },
+            );
+        }
+        if (context.dryRun) {
+            return success({ dryRun: true, ...output });
+        }
+
+        const configuredNote = getString(node.config, 'note');
+        const note = `${configuredNote ?? 'Automatski prijedlog promjene stanja biljke nakon završene radnje.'} Radnja #${resolved.operationId.toString()}.`;
+        const requestIds: string[] = [];
+        for (const candidate of candidates) {
+            if (candidate.existingRequestId) {
+                requestIds.push(candidate.existingRequestId);
+                continue;
+            }
+
+            const request = await createPlantStatusApprovalRequest({
+                raisedBedId: resolved.raisedBed.id,
+                positionIndex: candidate.positionIndex,
+                raisedBedFieldId: candidate.raisedBedFieldId,
+                plantCycleEventId: candidate.plantCycleEventId,
+                plantCycleVersionEventId: candidate.plantCycleVersionEventId,
+                accountId: resolved.raisedBed.accountId,
+                gardenId: resolved.raisedBed.gardenId,
+                plantSortId: candidate.plantSortId,
+                currentStatus: candidate.currentStatus,
+                requestedStatus: targetStatus,
+                requestedBy,
+                effectiveAt: context.event?.createdAt,
+                note,
+            });
+            requestIds.push(request.id);
+        }
+
+        return success({ ...output, requestIds });
+    },
+};
+
 const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
     {
         key: createPlantStatusRequestsFromImageAnalysisActionKey,
@@ -3056,6 +3380,7 @@ export const automationModules = [
     createGreenhouseSeedlingWateringOperationsActionModule,
     createRaisedBedOperationsActionModule,
     updateRaisedBedFieldPlantAttributesActionModule,
+    createPlantStatusApprovalRequestsActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];
