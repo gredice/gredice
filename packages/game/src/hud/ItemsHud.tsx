@@ -1237,7 +1237,7 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
         <Popper
             open={open}
             className={cx(
-                'w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]',
+                'w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-(--available-height)',
                 hiddenForHudDrag && 'hidden',
             )}
             sideOffset={12}

@@ -119,6 +119,7 @@ import {
     DropdownMenuItemFragment,
     DropdownMenuLabel,
     DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuSub,
@@ -579,8 +580,12 @@ function StatusMenu() {
                     <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value="ready">
                             <DropdownMenuItemFragment>
-                                <DropdownMenuItem>Spremno</DropdownMenuItem>
-                                <DropdownMenuItem>U tijeku</DropdownMenuItem>
+                                <DropdownMenuRadioItem value="ready">
+                                    Spremno
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="active">
+                                    U tijeku
+                                </DropdownMenuRadioItem>
                             </DropdownMenuItemFragment>
                         </DropdownMenuRadioGroup>
                     </DropdownMenuSubContent>
