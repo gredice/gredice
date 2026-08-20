@@ -2,6 +2,7 @@ import type { EntityStandardized } from '../@types/EntityStandardized';
 import {
     createPlantStatusApprovalRequest,
     getApprovalRequests,
+    PendingPlantStatusApprovalRequestConflictError,
 } from '../repositories/approvalRequestsRepo';
 import { getEntityFormatted } from '../repositories/entitiesRepo';
 import {
@@ -3219,22 +3220,38 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
                 continue;
             }
 
-            const request = await createPlantStatusApprovalRequest({
-                raisedBedId: resolved.raisedBed.id,
-                positionIndex: candidate.positionIndex,
-                raisedBedFieldId: candidate.raisedBedFieldId,
-                plantCycleEventId: candidate.plantCycleEventId,
-                plantCycleVersionEventId: candidate.plantCycleVersionEventId,
-                accountId: resolved.raisedBed.accountId,
-                gardenId: resolved.raisedBed.gardenId,
-                plantSortId: candidate.plantSortId,
-                currentStatus: candidate.currentStatus,
-                requestedStatus: targetStatus,
-                requestedBy,
-                effectiveAt: context.event?.createdAt,
-                note,
-            });
-            requestIds.push(request.id);
+            try {
+                const request = await createPlantStatusApprovalRequest({
+                    raisedBedId: resolved.raisedBed.id,
+                    positionIndex: candidate.positionIndex,
+                    raisedBedFieldId: candidate.raisedBedFieldId,
+                    plantCycleEventId: candidate.plantCycleEventId,
+                    plantCycleVersionEventId:
+                        candidate.plantCycleVersionEventId,
+                    accountId: resolved.raisedBed.accountId,
+                    gardenId: resolved.raisedBed.gardenId,
+                    plantSortId: candidate.plantSortId,
+                    currentStatus: candidate.currentStatus,
+                    requestedStatus: targetStatus,
+                    requestedBy,
+                    effectiveAt: context.event?.createdAt,
+                    note,
+                });
+                requestIds.push(request.id);
+            } catch (error) {
+                if (
+                    error instanceof
+                    PendingPlantStatusApprovalRequestConflictError
+                ) {
+                    skippedTargets.push({
+                        positionIndex: candidate.positionIndex,
+                        reason: error.code,
+                    });
+                    continue;
+                }
+
+                throw error;
+            }
         }
 
         return success({ ...output, requestIds });

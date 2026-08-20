@@ -53,6 +53,15 @@ type CreatePlantStatusApprovalRequestInput = {
     note?: string | null;
 };
 
+export class PendingPlantStatusApprovalRequestConflictError extends Error {
+    readonly code = 'different_pending_request';
+
+    constructor() {
+        super('Već postoji zahtjev za promjenu stanja ove biljke.');
+        this.name = 'PendingPlantStatusApprovalRequestConflictError';
+    }
+}
+
 type StorageClient = ReturnType<typeof storage>;
 type DatabaseClient = StorageClient | ScheduleTaskTransaction;
 
@@ -535,9 +544,7 @@ export async function createPlantStatusApprovalRequest(
                     return existingPendingRequest;
                 }
 
-                throw new Error(
-                    'Već postoji zahtjev za promjenu stanja ove biljke.',
-                );
+                throw new PendingPlantStatusApprovalRequestConflictError();
             }
 
             const requestId = uuidV4();
