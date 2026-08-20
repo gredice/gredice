@@ -14,6 +14,7 @@ const now = '2026-05-13T00:00:00.000Z';
 
 declare global {
     interface Window {
+        __grediceDepleteInventory?: () => void;
         __grediceRemoveOutlet302?: () => void;
     }
 }
@@ -444,6 +445,22 @@ function OutletOfferRefetchTestHook() {
     return null;
 }
 
+function InventoryDepletionTestHook() {
+    const queryClient = ReactQuery.useQueryClient();
+
+    useEffect(() => {
+        window.__grediceDepleteInventory = () => {
+            queryClient.setQueryData(['inventory'], { items: [] });
+        };
+
+        return () => {
+            delete window.__grediceDepleteInventory;
+        };
+    }, [queryClient]);
+
+    return null;
+}
+
 export function PlantPickerTestStory({
     advancedSowingRange,
     cartItems,
@@ -457,6 +474,7 @@ export function PlantPickerTestStory({
     propagatingRanges,
     searchParams,
     selectedCartItemId,
+    showInventoryDepletionControl = false,
     showOutletRefetchControl = false,
     positionIndex = 0,
     unavailableSortIds,
@@ -473,6 +491,7 @@ export function PlantPickerTestStory({
     propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
     selectedCartItemId?: number;
+    showInventoryDepletionControl?: boolean;
     showOutletRefetchControl?: boolean;
     positionIndex?: number;
     unavailableSortIds?: number[];
@@ -489,6 +508,9 @@ export function PlantPickerTestStory({
             searchParams={searchParams}
             unavailableSortIds={unavailableSortIds}
         >
+            {showInventoryDepletionControl ? (
+                <InventoryDepletionTestHook />
+            ) : null}
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}

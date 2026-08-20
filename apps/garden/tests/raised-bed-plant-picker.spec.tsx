@@ -1098,6 +1098,44 @@ test('a sole inventory-only sort is auto-selected with inventory payment', async
     expect(post.currency).toBe('inventory');
 });
 
+test('an inventory-only sort cannot be confirmed after inventory is depleted', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '101',
+                    entityTypeName: 'plantSort',
+                    amount: 1,
+                },
+            ]}
+            showInventoryDepletionControl
+            unavailableSortIds={[101, 103]}
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeEnabled();
+
+    await page.evaluate(() => window.__grediceDepleteInventory?.());
+
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toHaveAttribute('title', 'Odabrana sorta više nije dostupna u ruksaku');
+    expect(posts).toHaveLength(0);
+});
+
 test('scheduled greenhouse sowing sends date and sowing location together', async ({
     mount,
     page,
