@@ -12,6 +12,15 @@ export class OperationScheduleConflictError extends Error {
     }
 }
 
+function isScheduleTaskConflictError(error: unknown): boolean {
+    return (
+        error instanceof Error &&
+        error.name === 'ScheduleTaskSubmissionError' &&
+        'code' in error &&
+        error.code === 'task_changed'
+    );
+}
+
 export async function runOperationScheduleAction(
     action: () => Promise<void>,
 ): Promise<OperationScheduleActionResult> {
@@ -19,8 +28,14 @@ export async function runOperationScheduleAction(
         await action();
         return { success: true };
     } catch (error) {
-        if (error instanceof OperationScheduleConflictError) {
-            return { success: false, message: error.message };
+        if (
+            error instanceof OperationScheduleConflictError ||
+            isScheduleTaskConflictError(error)
+        ) {
+            return {
+                success: false,
+                message: OPERATION_SCHEDULE_CONFLICT_MESSAGE,
+            };
         }
 
         throw error;

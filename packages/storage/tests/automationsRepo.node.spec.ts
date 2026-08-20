@@ -13,6 +13,7 @@ import {
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
+    createAttributeDefinition,
     createAutomationDefinition,
     createAutomationRun,
     createEntity,
@@ -20,6 +21,8 @@ import {
     createFarm,
     createOperation,
     createOutletOffer,
+    createPlantStatusApprovalRequest,
+    deleteAttributeDefinition,
     deleteRaisedBedField,
     enqueueAutomationRunsFromDomainEvents,
     enqueueAutomationRunsFromSchedules,
@@ -31,6 +34,7 @@ import {
     farmRaisedBedWeedingAutomationKey,
     farmRaisedBedWeedingBiweeklyAnchorDate,
     farms,
+    getApprovalRequests,
     getAutomationDefinitionByKey,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
@@ -43,6 +47,9 @@ import {
     getRaisedBedOperationsByScheduleRange,
     greenhouseSeedlingWateringAutomationGraph,
     greenhouseSeedlingWateringAutomationKey,
+    HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    harvestOperationPlantStatusReviewAutomationGraph,
+    harvestOperationPlantStatusReviewAutomationKey,
     knownEvents,
     knownEventTypes,
     listActiveRaisedBedOperationTargets,
@@ -73,6 +80,7 @@ import {
     updateAutomationDefinition,
     updateEntity,
     updateRaisedBed,
+    upsertAttributeValue,
     upsertEntityType,
     upsertRaisedBedField,
     validateAutomationGraph,
@@ -86,11 +94,17 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
+const harvestTestAttributeDefinitionIds = new Set<number>();
+
 afterEach(async () => {
     await storage().delete(automationRunSteps);
     await storage().delete(automationRuns);
     await storage().delete(automationDefinitions);
     await storage().delete(automationEventCursors);
+    for (const definitionId of harvestTestAttributeDefinitionIds) {
+        await deleteAttributeDefinition(definitionId);
+    }
+    harvestTestAttributeDefinitionIds.clear();
 });
 
 async function createAutomationRaisedBedContext() {
@@ -565,6 +579,78 @@ async function createTestPlantSortForOutlet() {
     });
 
     return entityId;
+}
+
+async function createPublishedHarvestOperationEntity(
+    application: 'plant' | 'raisedBedFull',
+) {
+    await upsertEntityType({ name: 'plantStage', label: 'Faze biljaka' });
+    await upsertEntityType({ name: 'operation', label: 'Radnje' });
+
+    const stageNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        entityTypeName: 'plantStage',
+        dataType: 'text',
+    });
+    const operationNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+    const operationStageDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'stage',
+        label: 'Faza',
+        entityTypeName: 'operation',
+        dataType: 'ref:plantStage',
+    });
+    const operationApplicationDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'application',
+        label: 'Primjena',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+    harvestTestAttributeDefinitionIds.add(stageNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationStageDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationApplicationDefinitionId);
+
+    const stageId = await createEntity('plantStage');
+    await upsertAttributeValue({
+        attributeDefinitionId: stageNameDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId: stageId,
+        value: 'harvest',
+    });
+    await updateEntity({ id: stageId, state: 'published' });
+
+    const operationEntityId = await createEntity('operation');
+    await upsertAttributeValue({
+        attributeDefinitionId: operationNameDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: `testHarvest${application}`,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: operationStageDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: stageId.toString(),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: operationApplicationDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: application,
+    });
+    await updateEntity({ id: operationEntityId, state: 'published' });
+
+    return operationEntityId;
 }
 
 test('automation definitions persist graph trigger metadata and event-run idempotency', async () => {
@@ -3544,6 +3630,369 @@ test('generic plant-attributes automation updates status and sowing location tog
             ])
         ).length,
         1,
+    );
+});
+
+test('default harvest automation creates one review proposal without changing the plant state', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('plant');
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+    assert.strictEqual(
+        definition.triggerEventType,
+        knownEventTypes.operations.complete,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        harvestOperationPlantStatusReviewAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationStage: 'harvest',
+        targetStatus: 'harvested',
+    });
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 1);
+    const request = requests[0];
+    assert.ok(request);
+    assert.strictEqual(
+        request.requestedBy,
+        HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    );
+    assert.match(
+        request.note ?? '',
+        /Potvrdite zahtjev samo ako je biljka potpuno obrana/,
+    );
+    assert.strictEqual(request.target.kind, 'raisedBedField.plantStatus');
+    assert.strictEqual(request.target.raisedBedId, raisedBedId);
+    assert.strictEqual(request.target.positionIndex, 0);
+    assert.strictEqual(request.target.raisedBedFieldId, field.id);
+    assert.strictEqual(request.target.currentStatus, 'ready');
+    assert.strictEqual(request.target.requestedStatus, 'harvested');
+
+    const unchangedRaisedBed = await getRaisedBed(raisedBedId);
+    assert.strictEqual(unchangedRaisedBed?.fields[0]?.plantStatus, 'ready');
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'replay',
+        sourceEvent: event,
+        input: run.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'succeeded');
+    assert.strictEqual(
+        (
+            await getApprovalRequests({
+                status: 'pending',
+                kind: 'raisedBedField.plantStatus',
+            })
+        ).filter(
+            (candidate) =>
+                candidate.target.kind === 'raisedBedField.plantStatus' &&
+                candidate.target.raisedBedId === raisedBedId,
+        ).length,
+        1,
+    );
+});
+
+test('plant-status approval creation serializes concurrent proposals for the same plant snapshot', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    const plantCycle = field?.plantCycles.find((candidate) => candidate.active);
+    assert.ok(field);
+    assert.ok(plantCycle);
+
+    const input = {
+        raisedBedId,
+        positionIndex: field.positionIndex,
+        raisedBedFieldId: field.id,
+        plantCycleEventId: plantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: plantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: field.plantSortId,
+        currentStatus: field.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    };
+    const [firstRequest, secondRequest] = await Promise.all([
+        createPlantStatusApprovalRequest(input),
+        createPlantStatusApprovalRequest(input),
+    ]);
+
+    assert.strictEqual(firstRequest.id, secondRequest.id);
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 1);
+});
+
+test('harvest automation replaces stale pending snapshot reuse with a current proposal', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const initialField = (await getRaisedBed(raisedBedId))?.fields[0];
+    const initialPlantCycle = initialField?.plantCycles.find(
+        (candidate) => candidate.active,
+    );
+    assert.ok(initialField);
+    assert.ok(initialPlantCycle);
+    const staleRequest = await createPlantStatusApprovalRequest({
+        raisedBedId,
+        positionIndex: initialField.positionIndex,
+        raisedBedFieldId: initialField.id,
+        plantCycleEventId: initialPlantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: initialPlantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: initialField.plantSortId,
+        currentStatus: initialField.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'firstFlowers',
+        }),
+    );
+    const currentField = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(currentField);
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('plant');
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: currentField.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 2);
+    const currentRequest = requests.find(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.currentStatus === 'firstFlowers',
+    );
+    assert.ok(currentRequest);
+    assert.notStrictEqual(currentRequest.id, staleRequest.id);
+});
+
+test('whole-bed harvest automation proposes harvested status for every active target plant', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    for (const [positionIndex, status] of [
+        [0, 'ready'],
+        [1, 'firstFlowers'],
+    ] as const) {
+        const aggregateId = `${raisedBedId}|${positionIndex.toString()}`;
+        await upsertRaisedBedField({ raisedBedId, positionIndex });
+        await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: (101 + positionIndex).toString(),
+                scheduledDate: '2026-08-20T06:00:00.000Z',
+            }),
+        );
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, { status }),
+        );
+    }
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('raisedBedFull');
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.deepStrictEqual(
+        requests
+            .map((request) => request.target.positionIndex)
+            .sort((left, right) => left - right),
+        [0, 1],
+    );
+    assert.ok(
+        requests.every(
+            (request) =>
+                request.target.kind === 'raisedBedField.plantStatus' &&
+                request.target.requestedStatus === 'harvested',
+        ),
     );
 });
 

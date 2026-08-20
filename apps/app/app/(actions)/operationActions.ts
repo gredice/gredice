@@ -759,7 +759,7 @@ export async function unacceptOperationAction(
     );
 }
 
-export async function assignOperationUserAction(
+async function assignOperationUser(
     operationId: number,
     expectedEntityId: number,
     expectedTaskVersionEventId: number,
@@ -781,7 +781,7 @@ export async function assignOperationUserAction(
         operationId,
     });
     if (!assignment.changed) {
-        return { success: true };
+        return;
     }
 
     if (assignment.newlyAssignedUserIds.length > 0) {
@@ -792,8 +792,22 @@ export async function assignOperationUserAction(
     }
 
     await revalidateOperationPaths(operation);
+}
 
-    return { success: true };
+export async function assignOperationUserAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    assignedUserIds: string[],
+) {
+    return runOperationScheduleAction(() =>
+        assignOperationUser(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+            assignedUserIds,
+        ),
+    );
 }
 
 async function revalidateOperationPaths(
@@ -933,8 +947,6 @@ async function verifyOperationCompletion(
         notifySlack: result.created,
     });
     await revalidateOperationPaths(verifiedOperation);
-
-    return { success: true };
 }
 
 type OperationCompletionActor = {
@@ -977,8 +989,6 @@ async function completeOperationForActor(
     }
 
     await revalidateOperationPaths(operation);
-
-    return { success: true };
 }
 
 export async function completeOperation(
@@ -993,16 +1003,18 @@ export async function completeOperation(
         userId,
     } = await auth(['admin', 'farmer']);
 
-    return completeOperationForActor(
-        operationId,
-        expectedEntityId,
-        expectedTaskVersionEventId,
-        {
-            role: role === 'admin' ? 'admin' : 'farmer',
-            userId,
-        },
-        imageUrls,
-        notes,
+    return runOperationScheduleAction(() =>
+        completeOperationForActor(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+            {
+                role: role === 'admin' ? 'admin' : 'farmer',
+                userId,
+            },
+            imageUrls,
+            notes,
+        ),
     );
 }
 
@@ -1083,7 +1095,7 @@ export async function completeOperationsWithImageUrls(
     };
 }
 
-export async function updateOperationCompletionEvidenceAction(
+async function updateOperationCompletionEvidenceMutation(
     operationId: number,
     expectedTaskVersionEventId: number,
     imageUrls: unknown,
@@ -1106,8 +1118,22 @@ export async function updateOperationCompletionEvidenceAction(
 
     const updatedOperation = await getOperationById(operationId);
     await revalidateOperationPaths(updatedOperation);
+}
 
-    return { success: true };
+export async function updateOperationCompletionEvidenceAction(
+    operationId: number,
+    expectedTaskVersionEventId: number,
+    imageUrls: unknown,
+    notes?: string,
+) {
+    return runOperationScheduleAction(() =>
+        updateOperationCompletionEvidenceMutation(
+            operationId,
+            expectedTaskVersionEventId,
+            imageUrls,
+            notes,
+        ),
+    );
 }
 
 export async function verifyOperationAction(
@@ -1115,10 +1141,12 @@ export async function verifyOperationAction(
     expectedTaskVersionEventId: number,
 ) {
     const { userId } = await auth(['admin']);
-    return verifyOperationCompletion(
-        operationId,
-        userId,
-        expectedTaskVersionEventId,
+    return runOperationScheduleAction(() =>
+        verifyOperationCompletion(
+            operationId,
+            userId,
+            expectedTaskVersionEventId,
+        ),
     );
 }
 

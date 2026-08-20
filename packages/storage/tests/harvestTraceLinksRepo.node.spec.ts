@@ -634,6 +634,11 @@ test('getPublicHarvestTraceByToken includes raised-bed operations and excludes o
             ?.operationCategoryName,
         'watering',
     );
+    assert.equal(
+        trace.timeline.find((item) => item.title === 'Navodnjavanje (54L)')
+            ?.isWatering,
+        true,
+    );
     assert.equal(trace.statistics.wateringCount, 1);
     assert.equal(trace.statistics.totalWaterLiters, 54);
     assert.equal(trace.statistics.plantWaterLiters, 3);
@@ -697,6 +702,57 @@ test('getPublicHarvestTraceByToken includes raised-bed operations and excludes o
     assert.equal(serialized.includes('"harvestOperationId"'), false);
     assert.equal(serialized.includes('"raisedBedFieldId"'), false);
     assert.equal(serialized.includes('Radnja #'), false);
+});
+
+test('getPublicHarvestTraceByToken exposes canonical watering classification for localized categories and labels', async () => {
+    const fixture = await createHarvestTraceFixture();
+    const localizedCategoryEntityId = await createPublishedEntity(
+        'operation',
+        'Njega biljke',
+        { operationCategoryName: 'Zalijevanje' },
+    );
+    const localizedLabelEntityId = await createPublishedEntity(
+        'operation',
+        'Zalijevanje biljke',
+    );
+
+    await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        entityId: localizedCategoryEntityId,
+        timestamp: new Date('2026-05-21T08:00:00.000Z'),
+        completedAt: new Date('2026-05-21T09:00:00.000Z'),
+    });
+    await createAcceptedOperation({
+        accountId: fixture.accountId,
+        farmId: fixture.farmId,
+        gardenId: fixture.gardenId,
+        raisedBedId: fixture.raisedBedId,
+        entityId: localizedLabelEntityId,
+        timestamp: new Date('2026-05-22T08:00:00.000Z'),
+        completedAt: new Date('2026-05-22T09:00:00.000Z'),
+    });
+
+    const trace = await getPublicHarvestTraceByToken(fixture.link.publicToken);
+    assert.ok(trace);
+    assert.equal(trace.statistics.wateringCount, 3);
+    assert.equal(
+        trace.timeline.find((item) => item.title === 'Njega biljke')
+            ?.isWatering,
+        true,
+    );
+    assert.equal(
+        trace.timeline.find((item) => item.title === 'Zalijevanje biljke')
+            ?.isWatering,
+        true,
+    );
+    assert.equal(
+        trace.timeline.find((item) => item.title === 'Fotografiranje gredice')
+            ?.isWatering,
+        false,
+    );
 });
 
 test('getPublicHarvestTraceByToken includes completed operations before acceptance and groups same-day operations', async () => {
