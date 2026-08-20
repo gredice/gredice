@@ -14,6 +14,7 @@ const now = '2026-05-13T00:00:00.000Z';
 
 declare global {
     interface Window {
+        __grediceDepleteInventory?: () => void;
         __grediceRemoveOutlet302?: () => void;
     }
 }
@@ -241,6 +242,7 @@ function createPlantPickerQueryClient({
     inventoryItems = [],
     plantings = [],
     propagatingRanges,
+    unavailableSortIds = [],
 }: {
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
@@ -249,6 +251,7 @@ function createPlantPickerQueryClient({
     inventoryItems?: TestInventoryItem[];
     plantings?: unknown[];
     propagatingRanges?: PlantData['calendar']['propagating'];
+    unavailableSortIds?: number[];
 } = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -342,6 +345,10 @@ function createPlantPickerQueryClient({
             ...sort.information,
             plant: advancedSowingTomatoPlant,
         },
+        store: {
+            ...sort.store,
+            availableInStore: !unavailableSortIds.includes(sort.id),
+        },
     }));
     queryClient.setQueryData(
         ['plants'],
@@ -362,6 +369,7 @@ function PlantPickerTestProviders({
     plantings = [],
     propagatingRanges,
     searchParams,
+    unavailableSortIds,
 }: PropsWithChildren<{
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
@@ -371,6 +379,7 @@ function PlantPickerTestProviders({
     plantings?: unknown[];
     propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
+    unavailableSortIds?: number[];
 }>) {
     const queryClient = useMemo(
         () =>
@@ -382,6 +391,7 @@ function PlantPickerTestProviders({
                 inventoryItems,
                 plantings,
                 propagatingRanges,
+                unavailableSortIds,
             }),
         [
             advancedSowingRange,
@@ -391,6 +401,7 @@ function PlantPickerTestProviders({
             inventoryItems,
             plantings,
             propagatingRanges,
+            unavailableSortIds,
         ],
     );
     const gameStore = useMemo(
@@ -434,6 +445,22 @@ function OutletOfferRefetchTestHook() {
     return null;
 }
 
+function InventoryDepletionTestHook() {
+    const queryClient = ReactQuery.useQueryClient();
+
+    useEffect(() => {
+        window.__grediceDepleteInventory = () => {
+            queryClient.setQueryData(['inventory'], { items: [] });
+        };
+
+        return () => {
+            delete window.__grediceDepleteInventory;
+        };
+    }, [queryClient]);
+
+    return null;
+}
+
 export function PlantPickerTestStory({
     advancedSowingRange,
     cartItems,
@@ -447,8 +474,10 @@ export function PlantPickerTestStory({
     propagatingRanges,
     searchParams,
     selectedCartItemId,
+    showInventoryDepletionControl = false,
     showOutletRefetchControl = false,
     positionIndex = 0,
+    unavailableSortIds,
 }: {
     advancedSowingRange?: TestAdvancedSowingRange;
     cartItems?: TestShoppingCartItem[];
@@ -462,8 +491,10 @@ export function PlantPickerTestStory({
     propagatingRanges?: PlantData['calendar']['propagating'];
     searchParams?: string;
     selectedCartItemId?: number;
+    showInventoryDepletionControl?: boolean;
     showOutletRefetchControl?: boolean;
     positionIndex?: number;
+    unavailableSortIds?: number[];
 } = {}) {
     return (
         <PlantPickerTestProviders
@@ -475,7 +506,11 @@ export function PlantPickerTestStory({
             plantings={plantings}
             propagatingRanges={propagatingRanges}
             searchParams={searchParams}
+            unavailableSortIds={unavailableSortIds}
         >
+            {showInventoryDepletionControl ? (
+                <InventoryDepletionTestHook />
+            ) : null}
             {showOutletRefetchControl ? <OutletOfferRefetchTestHook /> : null}
             <PlantPicker
                 gardenId={1}
