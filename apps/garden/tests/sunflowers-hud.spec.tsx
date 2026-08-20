@@ -151,7 +151,7 @@ test.describe('Sunflowers HUD', () => {
             '[data-sunflower-package="vrtna_kosarica"]',
         );
         const mobileBreakdown = popularPackage.locator(
-            '[data-package-breakdown="mobile"]',
+            '[data-package-breakdown="compact"]',
         );
         await expect(mobileBreakdown).not.toHaveAttribute('open', '');
         await expect(
@@ -172,6 +172,55 @@ test.describe('Sunflowers HUD', () => {
         await expect(
             mobileBreakdown.getByText('Bonus 5 %', { exact: true }),
         ).toBeVisible();
+    });
+
+    test('adapts desktop package cards to the narrow profile column', async ({
+        mount,
+        page,
+    }) => {
+        await page.setViewportSize({ width: 950, height: 760 });
+        await mount(<SunflowerPackagesPanelStory panelWidth={400} />);
+
+        const mainPackageCards = [
+            page.locator('[data-sunflower-package="mali_zalogaj"]'),
+            page.locator('[data-sunflower-package="vrtna_kosarica"]'),
+            page.locator('[data-sunflower-package="mirna_sezona"]'),
+        ];
+        const mainPackageBoxes = await Promise.all(
+            mainPackageCards.map((card) => card.boundingBox()),
+        );
+        if (mainPackageBoxes.some((box) => box === null)) {
+            throw new Error('Expected every main package card to be visible.');
+        }
+        const [smallPackageBox, popularPackageBox, bestValuePackageBox] =
+            mainPackageBoxes;
+        expect(smallPackageBox?.x).toBe(popularPackageBox?.x);
+        expect(popularPackageBox?.x).toBe(bestValuePackageBox?.x);
+        expect(smallPackageBox?.y).toBeLessThan(popularPackageBox?.y ?? 0);
+        expect(popularPackageBox?.y).toBeLessThan(bestValuePackageBox?.y ?? 0);
+
+        const bestValuePackage = mainPackageCards[2];
+        await expect(
+            bestValuePackage.locator('[data-package-breakdown="desktop"]'),
+        ).not.toBeVisible();
+        await expect(
+            bestValuePackage.locator('[data-package-breakdown="compact"]'),
+        ).toBeVisible();
+        await expect(
+            bestValuePackage
+                .locator('[data-package-breakdown="compact"]')
+                .getByText('110.000 🌻', { exact: true }),
+        ).toBeVisible();
+
+        const panelOverflow = await page
+            .locator('[data-sunflower-packages-panel]')
+            .evaluate((panel) => ({
+                clientWidth: panel.clientWidth,
+                scrollWidth: panel.scrollWidth,
+            }));
+        expect(panelOverflow.scrollWidth).toBeLessThanOrEqual(
+            panelOverflow.clientWidth + 1,
+        );
     });
 
     test('hides the one-time package after it has been used', async ({
