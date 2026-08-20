@@ -1,5 +1,6 @@
 import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
@@ -150,24 +151,29 @@ export default async function RootLayout({
                     />
                 ))}
             </Head>
-            <body className={`${montserrat.variable} antialiased`}>
-                {postHogApiKey ? (
-                    <PostHogProvider
-                        apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
-                    >
-                        <PostHogPageView />
-                        {content}
-                    </PostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className={`${montserrat.variable} antialiased`}
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <PostHogProvider
+                            apiKey={postHogApiKey}
+                            clientOptions={{
+                                api_host: postHogApiHost,
+                                capture_exceptions: true,
+                                debug: process.env.NODE_ENV === 'development',
+                                defaults: '2026-01-30',
+                                ui_host: postHogUiHost ?? null,
+                            }}
+                        >
+                            <PostHogPageView />
+                            {content}
+                        </PostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

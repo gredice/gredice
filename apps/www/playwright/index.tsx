@@ -1,1 +1,1 @@
-// import '../app/globals.css';
+import '@gredice/ui/utilities.css';

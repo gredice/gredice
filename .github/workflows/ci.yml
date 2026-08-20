@@ -20,6 +20,17 @@ env:
   TURBO_TEAM: gredice
 
 jobs:
+  ui_primitives:
+    name: "Validate UI primitive boundary"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 24
+      - run: node --test scripts/check-ui-primitives.test.mjs
+      - run: node scripts/check-ui-primitives.mjs
+
   changes:
     name: "Detect changes"
     runs-on: ubuntu-latest

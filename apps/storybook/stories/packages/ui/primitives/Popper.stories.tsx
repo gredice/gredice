@@ -12,7 +12,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Popper provides a lightweight Radix Popover-compatible API for badges and contextual micro-surfaces.',
+                    'Popper provides a library-neutral API for badges and contextual micro-surfaces rendered through the shared portal contract.',
             },
         },
     },
