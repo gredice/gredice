@@ -110,9 +110,13 @@ export function GameHud({
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
     if (gardenAvatarView !== 'overview') {
+        // Interacting with a garden box or a sign while walking has to open its
+        // modal right away, so those keep rendering without their HUD shells.
         return (
             <>
                 <GardenAvatarHud />
+                {!isSandbox && <InventoryHud hideTrigger />}
+                <WoodenSignModal />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
             </>
         );

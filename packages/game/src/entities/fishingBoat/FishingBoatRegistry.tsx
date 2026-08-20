@@ -14,11 +14,18 @@ import {
     Raycaster,
     Vector2,
 } from 'three';
+import type { FishingBoatOarSide } from './fishingBoatOars';
+
+export type FishingBoatOarController = {
+    group: Group;
+    pivot: [number, number, number];
+    side: FishingBoatOarSide;
+};
 
 export type FishingBoatController = {
     blockId: string;
     object: Group;
-    oars: Group;
+    oars: FishingBoatOarController[];
 };
 
 type FishingBoatRegistry = {

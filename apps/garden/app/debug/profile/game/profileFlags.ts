@@ -13,6 +13,10 @@ export function resolveGameProfileAdaptiveHigh(value: string | undefined) {
     return value === '1';
 }
 
+export function resolveGameProfileGardenAvatar(value: string | undefined) {
+    return value === '1';
+}
+
 export function resolveGameProfileOperationVisuals(value: string | undefined) {
     return value === '1';
 }
@@ -35,11 +39,15 @@ export function resolveGameProfileWeatherSurface(
     return value === 'legacy' ? 'legacy' : 'integrated';
 }
 
-export function resolveGameProfileFlags(weatherSurface: string | undefined) {
+export function resolveGameProfileFlags(
+    weatherSurface: string | undefined,
+    gardenAvatar?: string,
+) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
 
     return {
         enableDebugHudFlag: true,
+        enableGardenAvatarFlag: resolveGameProfileGardenAvatar(gardenAvatar),
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
     } satisfies NonNullable<GameSceneProps['flags']>;

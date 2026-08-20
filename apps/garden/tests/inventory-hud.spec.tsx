@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     InventoryHudClosedStory,
     InventoryHudGardenBoxesOpenStory,
+    InventoryHudTriggerlessStory,
 } from './InventoryHudStory';
 
 test('inventory HUD badge counts backpack items without garden box contents', async ({
@@ -98,4 +99,16 @@ test('garden box block item can be placed back into the garden', async ({
 
     await expect.poll(() => placeRequestCount).toBe(1);
     await expect(page.getByRole('dialog', { name: 'Bucket' })).toBeHidden();
+});
+
+test('inventory opens without a HUD shell for avatar garden box interactions', async ({
+    mount,
+    page,
+}) => {
+    await mount(<InventoryHudTriggerlessStory />);
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Vrtna kutija 1')).toBeVisible();
+    await expect(page.locator('[data-inventory-hud-shell]')).toHaveCount(0);
+    await expect(page.locator('button[title="Inventar"]')).toHaveCount(0);
 });

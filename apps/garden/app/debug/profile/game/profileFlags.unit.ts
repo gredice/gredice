@@ -4,6 +4,7 @@ import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
+    resolveGameProfileGardenAvatar,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
@@ -36,14 +37,25 @@ describe('resolveGameProfileOperationVisuals', () => {
     });
 });
 
+describe('resolveGameProfileGardenAvatar', () => {
+    it('keeps the walkable avatar behind an explicit opt-in', () => {
+        assert.equal(resolveGameProfileGardenAvatar(undefined), false);
+        assert.equal(resolveGameProfileGardenAvatar('0'), false);
+        assert.equal(resolveGameProfileGardenAvatar('unexpected'), false);
+        assert.equal(resolveGameProfileGardenAvatar('1'), true);
+    });
+});
+
 describe('resolveGameProfileFlags', () => {
     it('defaults production-profile weather surfaces to the integrated path', () => {
         assert.deepEqual(resolveGameProfileFlags(undefined), {
             enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
         });
         assert.deepEqual(resolveGameProfileFlags('integrated'), {
             enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
         });
     });
@@ -51,7 +63,16 @@ describe('resolveGameProfileFlags', () => {
     it('allows explicit legacy weather-surface comparisons', () => {
         assert.deepEqual(resolveGameProfileFlags('legacy'), {
             enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
             enableIntegratedWeatherSurfacesFlag: false,
+        });
+    });
+
+    it('spawns the walkable avatar when the profile asks for it', () => {
+        assert.deepEqual(resolveGameProfileFlags(undefined, '1'), {
+            enableDebugHudFlag: true,
+            enableGardenAvatarFlag: true,
+            enableIntegratedWeatherSurfacesFlag: true,
         });
     });
 });

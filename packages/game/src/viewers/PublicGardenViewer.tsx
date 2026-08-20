@@ -32,6 +32,7 @@ import {
 } from '../controls/GameCameraRig';
 import { GardenAvatar } from '../entities/avatar/GardenAvatar';
 import { GardenVisitorAvatar } from '../entities/avatar/GardenVisitorAvatar';
+import type { GardenAvatarInteractionResult } from '../entities/avatar/gardenAvatarInteractions';
 import type { GardenAvatarPoint } from '../entities/avatar/gardenAvatarMovement';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
 import { Bees } from '../entities/bees/Bees';
@@ -516,12 +517,14 @@ function PublicGardenScene({
     const renderTransientDetails = renderLivingDetails && !capture;
     const [visualOccluders, setVisualOccluders] = useState<Group | null>(null);
     const interactWithAvatarBlock = useCallback(
-        (block: Block) => {
+        (block: Block): GardenAvatarInteractionResult => {
             if (!onAvatarInteractBlock) {
-                return false;
+                return 'ignored';
             }
             onAvatarInteractBlock(block.id);
-            return true;
+            // Selecting a block opens the offer modal on top of the scene, so
+            // the cursor has to come back.
+            return 'opened-ui';
         },
         [onAvatarInteractBlock],
     );
