@@ -35,6 +35,7 @@ import {
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import { beeSpeechMessages } from '../animals/actorSpeechMessages';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import { getCactusVariantConfig } from '../Cactus';
 import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
 import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
@@ -1210,12 +1211,15 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     });
 
     useEffect(() => {
-        randomRef.current = createRandom(habitat.seed);
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.startTarget.position);
+        const initialized = initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.startTarget,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+        if (initialized) {
+            randomRef.current = createRandom(habitat.seed);
         }
-    }, [habitat.seed, habitat.startTarget.position]);
+    }, [habitat.seed, habitat.startTarget]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {

@@ -52,6 +52,7 @@ import {
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
 } from '../animals/animalPresence';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type CatBehavior,
     type CatWeather,
@@ -1351,14 +1352,12 @@ function Cat({
     }, [actions, activeAnimation]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.pillow.position);
-            if (habitat.pillow.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.pillow.facingYaw;
-            }
-        }
-    }, [habitat.pillow.facingYaw, habitat.pillow.position]);
+        initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.pillow,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+    }, [habitat.pillow]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {

@@ -52,6 +52,7 @@ import {
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
 } from '../animals/animalPresence';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type DogBehavior,
     type DogWeather,
@@ -1524,14 +1525,12 @@ function Dog({
     }, [actions, activeAnimation]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.dogHouse.position);
-            if (habitat.dogHouse.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.dogHouse.facingYaw;
-            }
-        }
-    }, [habitat.dogHouse.facingYaw, habitat.dogHouse.position]);
+        initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.dogHouse,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+    }, [habitat.dogHouse]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
