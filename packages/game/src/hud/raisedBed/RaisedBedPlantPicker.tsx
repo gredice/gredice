@@ -362,14 +362,11 @@ export function PlantPicker({
         resetSearch();
     }
 
-    function handleSortSelect(
-        sort: PlantSortData,
-        options: { useInventory: boolean },
-    ) {
+    function handleSortSelect(sort: PlantSortData) {
         setSelectedSortId(sort.id);
         setUseOutletOffer(false);
         setSelectedOutletOfferId(null);
-        setUseInventoryItem(options.useInventory);
+        setUseInventoryItem(false);
         setSowInGreenhouse(
             isGreenhouseSowingRecommended(
                 sort.information.plant,
@@ -869,18 +866,23 @@ export function PlantPicker({
     const selectedSortAvailableFromInventory =
         selectedSort !== undefined &&
         (inventoryAvailabilityBySortId.get(selectedSort.id) ?? 0) > 0;
-    const inventorySowingBlocksMutation =
+    const selectedSortUnavailableForSowing =
         !isSandbox &&
         !useOutletOffer &&
-        ((useInventoryItem && !selectedSortAvailableFromInventory) ||
-            (!useInventoryItem &&
-                selectedSort?.store.availableInStore === false));
+        selectedSortId !== null &&
+        selectedSort?.store.availableInStore !== true;
+    const selectedInventoryUnavailableForSowing =
+        !isSandbox &&
+        !useOutletOffer &&
+        useInventoryItem &&
+        !selectedSortAvailableFromInventory;
     const directSowingBlocksMutation =
         legacySowingBlocksMutation || outletSowingBlocksMutation;
     const sowingBlocksMutation =
         advancedSowingBlocksMutation ||
         directSowingBlocksMutation ||
-        inventorySowingBlocksMutation;
+        selectedSortUnavailableForSowing ||
+        selectedInventoryUnavailableForSowing;
     const sowingMutationNoticeId = directSowingBlocksMutation
         ? legacySowingNoticeId
         : advancedSowingBlocksMutation
@@ -1420,15 +1422,15 @@ export function PlantPicker({
                                             ? 'Odaberi sortu prije potvrde'
                                             : selectedOutletOfferUnavailable
                                               ? 'Odabrana outlet sadnica više nije dostupna'
-                                              : inventorySowingBlocksMutation
-                                                ? selectedSortAvailableFromInventory
-                                                    ? 'Odabrana sorta dostupna je samo iz ruksaka'
-                                                    : 'Odabrana sorta više nije dostupna u ruksaku'
-                                                : directSowingBlocksMutation
-                                                  ? 'Obična sjetva nije dostupna na polju postojeće ili planirane napredne sjetve'
-                                                  : advancedSowingBlocksMutation
-                                                    ? 'Odabrani raspored nije dostupan na ovim poljima'
-                                                    : undefined
+                                              : selectedSortUnavailableForSowing
+                                                ? 'Odabrana sorta trenutačno nije dostupna za sijanje'
+                                                : selectedInventoryUnavailableForSowing
+                                                  ? 'Odabrana sorta više nije dostupna u ruksaku'
+                                                  : directSowingBlocksMutation
+                                                    ? 'Obična sjetva nije dostupna na polju postojeće ili planirane napredne sjetve'
+                                                    : advancedSowingBlocksMutation
+                                                      ? 'Odabrani raspored nije dostupan na ovim poljima'
+                                                      : undefined
                                     }
                                     loading={
                                         isSandbox

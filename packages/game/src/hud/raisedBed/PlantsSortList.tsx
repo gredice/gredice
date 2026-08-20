@@ -31,17 +31,10 @@ import {
     type NeighborPlantSummary,
 } from './plantRelationshipSignals';
 
-type PlantSortSelectionOptions = {
-    useInventory: boolean;
-};
-
 type PlantsSortListProps = {
     plantId: number;
     selectedSortId: number | null;
-    onChange: (
-        plant: PlantSortData,
-        options: PlantSortSelectionOptions,
-    ) => void;
+    onChange: (plant: PlantSortData) => void;
     search: string;
     flyToShoppingCart?: boolean;
     neighborPlants?: NeighborPlantSummary[];
@@ -77,7 +70,7 @@ function PlantSortListItem({
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
-    onChange: (sort: PlantSortData, options: PlantSortSelectionOptions) => void;
+    onChange: (sort: PlantSortData) => void;
     flyToShoppingCart?: boolean;
     neighborPlants: NeighborPlantSummary[];
     outletOffers?: OutletOfferData[];
@@ -88,8 +81,6 @@ function PlantSortListItem({
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
     const relationshipCandidate = getPlantRelationshipCandidateForSort(sort);
-    const inventoryOnly =
-        !sort.store.availableInStore && Boolean(availableFromInventory);
     const relationshipSignal = relationshipCandidate
         ? getPlantRelationshipSignal({
               candidate: relationshipCandidate,
@@ -143,7 +134,7 @@ function PlantSortListItem({
                               }
                             : {}),
                     });
-                    onChange(sort, { useInventory: inventoryOnly });
+                    onChange(sort);
                 }}
             >
                 <Row spacing={3}>
@@ -261,9 +252,7 @@ export function PlantsSortList({
     const normalizedSearch = search.trim().toLowerCase();
     const sortedPlantSorts = useMemo(() => {
         const availablePlantSorts = plantSorts?.filter(
-            (sort) =>
-                sort.store.availableInStore ||
-                (inventoryAvailabilityBySortId?.get(sort.id) ?? 0) > 0,
+            (sort) => sort.store.availableInStore,
         );
         const filteredPlantSorts =
             normalizedSearch.length > 0
@@ -277,29 +266,14 @@ export function PlantsSortList({
         return filteredPlantSorts
             ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
             : undefined;
-    }, [
-        favoriteSortIds,
-        inventoryAvailabilityBySortId,
-        normalizedSearch,
-        plantSorts,
-    ]);
+    }, [favoriteSortIds, normalizedSearch, plantSorts]);
 
     // Select first sort if only one is available
     useEffect(() => {
         if (sortedPlantSorts?.length === 1 && !selectedSortId) {
-            const onlySort = sortedPlantSorts[0];
-            onChange(onlySort, {
-                useInventory:
-                    !onlySort.store.availableInStore &&
-                    (inventoryAvailabilityBySortId?.get(onlySort.id) ?? 0) > 0,
-            });
+            onChange(sortedPlantSorts[0]);
         }
-    }, [
-        inventoryAvailabilityBySortId,
-        sortedPlantSorts,
-        selectedSortId,
-        onChange,
-    ]);
+    }, [sortedPlantSorts, selectedSortId, onChange]);
 
     return (
         <>
