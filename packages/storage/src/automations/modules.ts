@@ -3151,7 +3151,14 @@ const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
                 (request) =>
                     request.target.kind === 'raisedBedField.plantStatus' &&
                     request.target.raisedBedId === resolved.raisedBed.id &&
-                    request.target.positionIndex === field.positionIndex,
+                    request.target.positionIndex === field.positionIndex &&
+                    request.target.plantCycleEventId ===
+                        activePlantCycle.plantPlaceEventId &&
+                    request.target.plantCycleVersionEventId ===
+                        activePlantCycle.endedEventId &&
+                    request.target.raisedBedFieldId === field.id &&
+                    request.target.plantSortId === field.plantSortId &&
+                    request.target.currentStatus === field.plantStatus,
             );
             if (
                 existingRequest?.target.kind === 'raisedBedField.plantStatus' &&

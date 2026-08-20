@@ -21,6 +21,7 @@ import {
     createFarm,
     createOperation,
     createOutletOffer,
+    createPlantStatusApprovalRequest,
     deleteAttributeDefinition,
     deleteRaisedBedField,
     enqueueAutomationRunsFromDomainEvents,
@@ -3692,6 +3693,11 @@ test('default harvest automation creates one review proposal without changing th
         knownEventTypes.operations.complete,
         operationId.toString(),
     );
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
     const run = await getAutomationRunForEvent(definition.id, event.id);
     const startedRun = await startAutomationRun(run.id, {
         lockedBy: 'automations-test',
@@ -3759,6 +3765,157 @@ test('default harvest automation creates one review proposal without changing th
         ).length,
         1,
     );
+});
+
+test('plant-status approval creation serializes concurrent proposals for the same plant snapshot', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    const plantCycle = field?.plantCycles.find((candidate) => candidate.active);
+    assert.ok(field);
+    assert.ok(plantCycle);
+
+    const input = {
+        raisedBedId,
+        positionIndex: field.positionIndex,
+        raisedBedFieldId: field.id,
+        plantCycleEventId: plantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: plantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: field.plantSortId,
+        currentStatus: field.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    };
+    const [firstRequest, secondRequest] = await Promise.all([
+        createPlantStatusApprovalRequest(input),
+        createPlantStatusApprovalRequest(input),
+    ]);
+
+    assert.strictEqual(firstRequest.id, secondRequest.id);
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 1);
+});
+
+test('harvest automation replaces stale pending snapshot reuse with a current proposal', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const initialField = (await getRaisedBed(raisedBedId))?.fields[0];
+    const initialPlantCycle = initialField?.plantCycles.find(
+        (candidate) => candidate.active,
+    );
+    assert.ok(initialField);
+    assert.ok(initialPlantCycle);
+    const staleRequest = await createPlantStatusApprovalRequest({
+        raisedBedId,
+        positionIndex: initialField.positionIndex,
+        raisedBedFieldId: initialField.id,
+        plantCycleEventId: initialPlantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: initialPlantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: initialField.plantSortId,
+        currentStatus: initialField.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'firstFlowers',
+        }),
+    );
+    const currentField = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(currentField);
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('plant');
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: currentField.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 2);
+    const currentRequest = requests.find(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.currentStatus === 'firstFlowers',
+    );
+    assert.ok(currentRequest);
+    assert.notStrictEqual(currentRequest.id, staleRequest.id);
 });
 
 test('whole-bed harvest automation proposes harvested status for every active target plant', async () => {

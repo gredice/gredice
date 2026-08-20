@@ -185,7 +185,6 @@ export function harvestOperationPlantStatusReviewAutomationGraph(): AutomationGr
                 moduleKey: automationModuleKeys.conditionOperationMatches,
                 position: { x: 280, y: 160 },
                 config: {
-                    status: 'pendingVerification',
                     stage: 'harvest',
                 },
             },
