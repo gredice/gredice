@@ -668,6 +668,7 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
                     ? ` · ${formatLiters(statistics.totalWaterLiters)} za gredicu`
                     : null}
             </Typography>
+            <HarvestTraceWateringGrid timeline={trace.timeline} />
         </StatisticCard>
     ) : null;
 
@@ -765,9 +766,6 @@ function TraceStatistics({ trace }: { trace: PublicHarvestTrace }) {
                         </>
                     )}
                 </div>
-                {hasWatering ? (
-                    <HarvestTraceWateringGrid timeline={trace.timeline} />
-                ) : null}
             </Stack>
         </section>
     );
