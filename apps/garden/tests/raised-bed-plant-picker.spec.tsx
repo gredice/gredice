@@ -996,7 +996,7 @@ test('outlet selection param opens the selected outlet offer', async ({
     expect(post.additionalData).toBe(JSON.stringify({ outletOfferId: 302 }));
 });
 
-test('sort rows show backpack action only for available backpack items', async ({
+test('owned inventory sorts remain available when the store offer is withdrawn', async ({
     mount,
     page,
 }) => {
@@ -1011,6 +1011,7 @@ test('sort rows show backpack action only for available backpack items', async (
                     amount: 2,
                 },
             ]}
+            unavailableSortIds={[101, 103]}
         />,
     );
 
@@ -1019,10 +1020,14 @@ test('sort rows show backpack action only for available backpack items', async (
 
     const cherrySort = page.locator('[data-plant-picker-sort-id="101"]');
     const saintPierreSort = page.locator('[data-plant-picker-sort-id="102"]');
+    const unavailableSortWithoutInventory = page.locator(
+        '[data-plant-picker-sort-id="103"]',
+    );
     const backpackButton = cherrySort.getByRole('button', {
         name: 'Koristi iz ruksaka (2)',
     });
     await expect(backpackButton).toBeVisible();
+    await expect(unavailableSortWithoutInventory).toHaveCount(0);
     await expect(
         saintPierreSort.getByRole('button', { name: /ruksaka/ }),
     ).toHaveCount(0);

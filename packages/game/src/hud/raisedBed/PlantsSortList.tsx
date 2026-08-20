@@ -251,22 +251,29 @@ export function PlantsSortList({
     const favoriteSortIds = useFavoriteIds('plantSort');
     const normalizedSearch = search.trim().toLowerCase();
     const sortedPlantSorts = useMemo(() => {
-        const storePlants = plantSorts?.filter(
-            (sort) => sort.store.availableInStore,
+        const availablePlantSorts = plantSorts?.filter(
+            (sort) =>
+                sort.store.availableInStore ||
+                (inventoryAvailabilityBySortId?.get(sort.id) ?? 0) > 0,
         );
         const filteredPlantSorts =
             normalizedSearch.length > 0
-                ? storePlants?.filter((sort) =>
+                ? availablePlantSorts?.filter((sort) =>
                       sort.information.name
                           .toLowerCase()
                           .includes(normalizedSearch),
                   )
-                : storePlants;
+                : availablePlantSorts;
 
         return filteredPlantSorts
             ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
             : undefined;
-    }, [favoriteSortIds, normalizedSearch, plantSorts]);
+    }, [
+        favoriteSortIds,
+        inventoryAvailabilityBySortId,
+        normalizedSearch,
+        plantSorts,
+    ]);
 
     // Select first sort if only one is available
     useEffect(() => {
