@@ -27,14 +27,16 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'GitHub-style daily watering heatmap shown on the public harvest trace.',
+                    'Compact daily watering heatmap embedded in the watering statistics card on the public harvest trace.',
             },
         },
         layout: 'fullscreen',
     },
     render: (args) => (
         <div className="mx-auto max-w-4xl bg-background p-4 sm:p-8">
-            <HarvestTraceWateringGrid {...args} />
+            <div className="max-w-sm rounded-lg border bg-card p-3">
+                <HarvestTraceWateringGrid {...args} />
+            </div>
         </div>
     ),
 } satisfies Meta<typeof HarvestTraceWateringGrid>;
@@ -49,7 +51,9 @@ export const DarkMode: Story = {
     render: (args) => (
         <div className="dark min-h-screen bg-background p-4 text-foreground sm:p-8">
             <div className="mx-auto max-w-4xl">
-                <HarvestTraceWateringGrid {...args} />
+                <div className="max-w-sm rounded-lg border bg-card p-3">
+                    <HarvestTraceWateringGrid {...args} />
+                </div>
             </div>
         </div>
     ),
