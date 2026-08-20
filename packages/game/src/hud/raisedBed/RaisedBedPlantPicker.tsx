@@ -869,17 +869,18 @@ export function PlantPicker({
     const selectedSortAvailableFromInventory =
         selectedSort !== undefined &&
         (inventoryAvailabilityBySortId.get(selectedSort.id) ?? 0) > 0;
-    const inventoryOnlySowingBlocksMutation =
+    const inventorySowingBlocksMutation =
         !isSandbox &&
         !useOutletOffer &&
-        selectedSort?.store.availableInStore === false &&
-        (!useInventoryItem || !selectedSortAvailableFromInventory);
+        ((useInventoryItem && !selectedSortAvailableFromInventory) ||
+            (!useInventoryItem &&
+                selectedSort?.store.availableInStore === false));
     const directSowingBlocksMutation =
         legacySowingBlocksMutation || outletSowingBlocksMutation;
     const sowingBlocksMutation =
         advancedSowingBlocksMutation ||
         directSowingBlocksMutation ||
-        inventoryOnlySowingBlocksMutation;
+        inventorySowingBlocksMutation;
     const sowingMutationNoticeId = directSowingBlocksMutation
         ? legacySowingNoticeId
         : advancedSowingBlocksMutation
@@ -1419,7 +1420,7 @@ export function PlantPicker({
                                             ? 'Odaberi sortu prije potvrde'
                                             : selectedOutletOfferUnavailable
                                               ? 'Odabrana outlet sadnica više nije dostupna'
-                                              : inventoryOnlySowingBlocksMutation
+                                              : inventorySowingBlocksMutation
                                                 ? selectedSortAvailableFromInventory
                                                     ? 'Odabrana sorta dostupna je samo iz ruksaka'
                                                     : 'Odabrana sorta više nije dostupna u ruksaku'

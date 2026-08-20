@@ -1136,6 +1136,44 @@ test('an inventory-only sort cannot be confirmed after inventory is depleted', a
     expect(posts).toHaveLength(0);
 });
 
+test('an offered sort using inventory cannot be confirmed after inventory is depleted', async ({
+    mount,
+    page,
+}) => {
+    const posts = await mockShoppingCartPosts(page);
+
+    await mount(
+        <PlantPickerTestStory
+            inventoryItems={[
+                {
+                    entityId: '101',
+                    entityTypeName: 'plantSort',
+                    amount: 1,
+                },
+            ]}
+            showInventoryDepletionControl
+        />,
+    );
+
+    await page.getByRole('button', { name: 'Sijanje' }).click();
+    await page.getByRole('button', { name: /Rajčica/ }).click();
+    await page.getByRole('button', { name: /Cherry rajčica/ }).click();
+    await page.getByRole('button', { name: 'Koristi iz ruksaka (1)' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeEnabled();
+
+    await page.evaluate(() => window.__grediceDepleteInventory?.());
+
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toBeDisabled();
+    await expect(
+        page.getByRole('button', { name: 'Dodaj u košaru' }),
+    ).toHaveAttribute('title', 'Odabrana sorta više nije dostupna u ruksaku');
+    expect(posts).toHaveLength(0);
+});
+
 test('scheduled greenhouse sowing sends date and sowing location together', async ({
     mount,
     page,
