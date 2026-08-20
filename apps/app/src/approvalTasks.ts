@@ -73,6 +73,9 @@ function approvalRequestRequesterLabel(requestedBy: string) {
     if (requestedBy === 'automation:raised-bed-image-status-review') {
         return 'AI analiza gredice';
     }
+    if (requestedBy === 'automation:harvest-operation-status-review') {
+        return 'Automatizacija nakon berbe';
+    }
 
     return requestedBy;
 }

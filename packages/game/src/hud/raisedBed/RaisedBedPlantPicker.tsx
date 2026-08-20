@@ -863,10 +863,26 @@ export function PlantPicker({
     );
     const outletSowingBlocksMutation =
         useOutletOffer && !pendingAdvancedSowingTargetAvailability.available;
+    const selectedSortAvailableFromInventory =
+        selectedSort !== undefined &&
+        (inventoryAvailabilityBySortId.get(selectedSort.id) ?? 0) > 0;
+    const selectedSortUnavailableForSowing =
+        !isSandbox &&
+        !useOutletOffer &&
+        selectedSortId !== null &&
+        selectedSort?.store.availableInStore !== true;
+    const selectedInventoryUnavailableForSowing =
+        !isSandbox &&
+        !useOutletOffer &&
+        useInventoryItem &&
+        !selectedSortAvailableFromInventory;
     const directSowingBlocksMutation =
         legacySowingBlocksMutation || outletSowingBlocksMutation;
     const sowingBlocksMutation =
-        advancedSowingBlocksMutation || directSowingBlocksMutation;
+        advancedSowingBlocksMutation ||
+        directSowingBlocksMutation ||
+        selectedSortUnavailableForSowing ||
+        selectedInventoryUnavailableForSowing;
     const sowingMutationNoticeId = directSowingBlocksMutation
         ? legacySowingNoticeId
         : advancedSowingBlocksMutation
@@ -1406,11 +1422,15 @@ export function PlantPicker({
                                             ? 'Odaberi sortu prije potvrde'
                                             : selectedOutletOfferUnavailable
                                               ? 'Odabrana outlet sadnica više nije dostupna'
-                                              : directSowingBlocksMutation
-                                                ? 'Obična sjetva nije dostupna na polju postojeće ili planirane napredne sjetve'
-                                                : advancedSowingBlocksMutation
-                                                  ? 'Odabrani raspored nije dostupan na ovim poljima'
-                                                  : undefined
+                                              : selectedSortUnavailableForSowing
+                                                ? 'Odabrana sorta trenutačno nije dostupna za sijanje'
+                                                : selectedInventoryUnavailableForSowing
+                                                  ? 'Odabrana sorta više nije dostupna u ruksaku'
+                                                  : directSowingBlocksMutation
+                                                    ? 'Obična sjetva nije dostupna na polju postojeće ili planirane napredne sjetve'
+                                                    : advancedSowingBlocksMutation
+                                                      ? 'Odabrani raspored nije dostupan na ovim poljima'
+                                                      : undefined
                                     }
                                     loading={
                                         isSandbox

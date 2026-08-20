@@ -53,6 +53,7 @@ import {
     isAnimalSwimmingAt,
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type CatPathCell,
     type CatPathResult,
@@ -1168,12 +1169,12 @@ function FarmAnimal({
     });
 
     useEffect(() => {
-        runtimeRef.current = null;
-        groupRef.current?.position.copy(habitat.home.position);
-        if (groupRef.current && habitat.home.facingYaw !== undefined) {
-            groupRef.current.rotation.y = habitat.home.facingYaw;
-        }
-    }, [habitat.home.facingYaw, habitat.home.position]);
+        initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.home,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+    }, [habitat.home]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {

@@ -747,8 +747,9 @@ async function buildAnalysisPrompt({
                         ].join('\n'),
                     },
                     ...imageUrls.map((imageUrl) => ({
-                        type: 'image' as const,
-                        image: new URL(imageUrl),
+                        type: 'file' as const,
+                        data: new URL(imageUrl),
+                        mediaType: 'image',
                     })),
                 ],
             },

@@ -16,6 +16,11 @@ marks the targeted raised-bed field plant status as `removed`, which closes the
 plant cycle and frees the field for future planting. Plant field changes are
 available as configurable action modules so new operation-driven plant-state
 automations can be created from the admin graph editor without adding code. A
+completed operation in the `harvest` plant stage creates a pending proposal to
+change every active targeted plant to `harvested`; whole-raised-bed harvests
+expand to the active fields in that bed. Reviewers approve the proposal only
+when that plant is fully harvested and reject it when another harvest is
+expected, so the completion event never changes plant state directly. A
 managed weekly schedule also creates `Fotografiranje gredice` operations every
 Tuesday and Friday for active raised beds, reusing the existing operation
 completion image flow and `photographyUpdate` visual reward handling.
@@ -116,7 +121,7 @@ MVP modules:
   on the day before the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
-  operation application.
+  operation application or plant stage.
 - `condition.plantStatusEquals`: checks current raised-bed field plant status.
 - `action.queueSeasonalSowingOfferOperations`: queues seasonal free watering
   operations.
@@ -148,6 +153,10 @@ MVP modules:
 - `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
   sowing location events for the operation target field. Use this for new
   no-code plant-state automations.
+- `action.createPlantStatusApprovalRequests`: creates pending plant-status
+  proposals without mutating the plant. A field-targeted operation creates one
+  proposal, while a whole-raised-bed operation expands to every active field;
+  pending proposals are reused on retries.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
   then creates pending plant-status approval requests and field-level weed-state
