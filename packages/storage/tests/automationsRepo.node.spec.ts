@@ -21,6 +21,7 @@ import {
     createFarm,
     createOperation,
     createOutletOffer,
+    deleteAttributeDefinition,
     deleteRaisedBedField,
     enqueueAutomationRunsFromDomainEvents,
     enqueueAutomationRunsFromSchedules,
@@ -92,11 +93,17 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
+const harvestTestAttributeDefinitionIds = new Set<number>();
+
 afterEach(async () => {
     await storage().delete(automationRunSteps);
     await storage().delete(automationRuns);
     await storage().delete(automationDefinitions);
     await storage().delete(automationEventCursors);
+    for (const definitionId of harvestTestAttributeDefinitionIds) {
+        await deleteAttributeDefinition(definitionId);
+    }
+    harvestTestAttributeDefinitionIds.clear();
 });
 
 async function createAutomationRaisedBedContext() {
@@ -607,6 +614,10 @@ async function createPublishedHarvestOperationEntity(
         entityTypeName: 'operation',
         dataType: 'text',
     });
+    harvestTestAttributeDefinitionIds.add(stageNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationStageDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationApplicationDefinitionId);
 
     const stageId = await createEntity('plantStage');
     await upsertAttributeValue({
