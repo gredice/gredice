@@ -9,11 +9,9 @@ test('watering grid spans complete Monday-to-Sunday weeks across the trace', () 
     const weeks = buildHarvestTraceWateringGrid([
         {
             occurredAt: '2026-05-06T12:00:00',
-            operationCategoryName: 'sowing',
         },
         {
             occurredAt: '2026-05-12T12:00:00',
-            operationCategoryName: 'harvest',
         },
     ]);
 
@@ -28,21 +26,21 @@ test('watering grid spans complete Monday-to-Sunday weeks across the trace', () 
 test('watering grid aggregates same-day watering counts and scales intensity', () => {
     const weeks = buildHarvestTraceWateringGrid([
         {
+            isWatering: true,
             occurredAt: '2026-05-04T08:00:00',
-            operationCategoryName: 'watering',
         },
         {
+            isWatering: true,
             occurredAt: '2026-05-04T16:00:00',
-            operationCategoryName: 'watering',
             operationCount: 2,
         },
         {
+            isWatering: true,
             occurredAt: '2026-05-05T08:00:00',
-            operationCategoryName: 'watering',
         },
         {
+            isWatering: false,
             occurredAt: '2026-05-06T08:00:00',
-            operationCategoryName: 'photographyUpdate',
             operationCount: 20,
         },
     ]);
@@ -68,12 +66,12 @@ test('watering grid aggregates same-day watering counts and scales intensity', (
 test('watering grid ignores invalid dates without losing valid trace days', () => {
     const weeks = buildHarvestTraceWateringGrid([
         {
+            isWatering: true,
             occurredAt: 'not-a-date',
-            operationCategoryName: 'watering',
         },
         {
+            isWatering: true,
             occurredAt: '2026-05-10T12:00:00',
-            operationCategoryName: 'watering',
         },
     ]);
 

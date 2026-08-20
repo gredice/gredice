@@ -7,10 +7,10 @@ const timeline = [
         occurredAt: '2026-04-08T08:00:00.000Z',
     },
     ...Array.from({ length: 34 }, (_, index) => ({
+        isWatering: true,
         occurredAt: new Date(
             Date.UTC(2026, 3, 10 + index * 3, 8),
         ).toISOString(),
-        operationCategoryName: 'watering',
         operationCount: index % 8 === 0 ? 3 : index % 3 === 0 ? 2 : 1,
     })),
     {

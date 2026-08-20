@@ -1,6 +1,6 @@
 export type HarvestTraceWateringGridItem = {
+    isWatering?: boolean;
     occurredAt: string;
-    operationCategoryName?: string;
     operationCount?: number;
 };
 
@@ -48,7 +48,7 @@ export function formatHarvestTraceWateringDayKey(date: Date) {
 }
 
 function wateringCount(item: HarvestTraceWateringGridItem) {
-    if (item.operationCategoryName?.toLocaleLowerCase('hr-HR') !== 'watering') {
+    if (item.isWatering !== true) {
         return 0;
     }
 
