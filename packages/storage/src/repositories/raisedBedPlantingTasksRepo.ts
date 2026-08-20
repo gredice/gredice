@@ -1,6 +1,5 @@
 import 'server-only';
 
-import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { validate as isUuid, version as uuidVersion } from 'uuid';
@@ -65,12 +64,6 @@ const mutableLifecycleStatusSet = new Set<string>(
         (status) => status !== 'cancelled' && status !== 'pendingVerification',
     ),
 );
-const ownerRemovalSourceStatuses = new Set<RaisedBedPlantingLifecycleStatus>([
-    'notSprouted',
-    'died',
-    'harvested',
-]);
-
 export type SelectedRaisedBedPlantingTaskCommandIdentity = {
     kind: 'selected';
     plantingId: number;
@@ -169,15 +162,6 @@ export type CancelSelectedRaisedBedPlantingTaskForOwnerInput =
     SelectedRaisedBedPlantingOwnerCommandBase & {
         effectiveAt?: string;
         reason: string;
-    };
-
-export type UpdateSelectedRaisedBedPlantingLifecycleStatusForOwnerInput =
-    SelectedRaisedBedPlantingOwnerCommandBase & {
-        effectiveAt?: string;
-        status: Exclude<
-            RaisedBedPlantingLifecycleStatus,
-            'cancelled' | 'pendingVerification'
-        >;
     };
 
 type SelectedPlantingContext = {
@@ -323,18 +307,6 @@ function normalizeOwnerScheduledDate(value: string) {
     return startOfUtcDay(
         new Date(normalizeIsoDate(value, 'Datum sijanja')),
     ).toISOString();
-}
-
-function isOwnerLifecycleStatusTransitionAllowed(
-    currentStatus: RaisedBedPlantingLifecycleStatus,
-    nextStatus: RaisedBedPlantingLifecycleStatus,
-) {
-    if (nextStatus === 'removed') {
-        return ownerRemovalSourceStatuses.has(currentStatus);
-    }
-    return (userAllowedPlantStatusTransitions[currentStatus] ?? []).includes(
-        nextStatus,
-    );
 }
 
 function assertOwnerCanCancelScheduledTask(
@@ -1512,80 +1484,6 @@ export async function cancelSelectedRaisedBedPlantingTaskForOwner(
                     refundSunflowerAmount,
                     `refund:selectedRaisedBedPlanting:${context.plantingId.toString()}`,
                     tx,
-                );
-            }
-        },
-        (tx, plantingId) =>
-            getOwnerAuthorizedSelectedPlanting(
-                tx,
-                normalized.owner,
-                plantingId,
-            ),
-        transaction,
-    );
-}
-
-export async function updateSelectedRaisedBedPlantingLifecycleStatusForOwner(
-    input: UpdateSelectedRaisedBedPlantingLifecycleStatusForOwnerInput,
-    transaction?: ScheduleTaskTransaction,
-) {
-    const normalized = normalizeOwnerIdentity(input);
-    const status = normalizeLifecycleStatusChangeTarget(input.status);
-    const effectiveAt = input.effectiveAt
-        ? normalizeIsoDate(input.effectiveAt, 'Datum promjene stanja')
-        : undefined;
-    const payload = {
-        commandId: normalized.commandId,
-        expectedLifecycleVersionEventId:
-            normalized.expectedLifecycleVersionEventId,
-        changedBy: normalized.owner.userId,
-        ...(effectiveAt ? { effectiveAt } : {}),
-        status,
-    };
-    return executeAuthorizedSelectedPlantingCommand(
-        normalized,
-        payload,
-        (aggregateId) =>
-            knownEvents.raisedBedPlantings.lifecycleStatusChangedV1(
-                aggregateId,
-                payload,
-            ),
-        ({ context, projection, task }) => {
-            if (status !== 'removed') {
-                assertRaisedBedAvailable(context);
-            }
-            if (task.status !== 'completed') {
-                throw new ScheduleTaskSubmissionError(
-                    'invalid_status',
-                    'Životni ciklus možeš mijenjati tek nakon potvrđenog dovršenja sijanja.',
-                );
-            }
-            if (
-                !isOwnerLifecycleStatusTransitionAllowed(
-                    projection.status,
-                    status,
-                )
-            ) {
-                throw new ScheduleTaskSubmissionError(
-                    'invalid_status',
-                    `Promjena stanja iz ${projection.status} u ${status} nije dopuštena.`,
-                );
-            }
-            const currentDate = new Date();
-            const effectiveDate = effectiveAt
-                ? new Date(effectiveAt)
-                : currentDate;
-            if (
-                !isSelectedRaisedBedPlantingEffectiveDateAllowed({
-                    currentDate,
-                    effectiveDate,
-                    nextStatus: status,
-                    projection,
-                })
-            ) {
-                throw new ScheduleTaskSubmissionError(
-                    'invalid_input',
-                    'Datum stanja mora biti između početka životnog ciklusa, prethodne promjene stanja i današnjeg datuma.',
                 );
             }
         },

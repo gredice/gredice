@@ -4,17 +4,20 @@ import {
     type AdvancedSowingGardenPlantingInput,
     buildAdvancedSowingGardenPlantingVisuals,
 } from '../../../packages/game/src/hud/raisedBed/advancedSowingGardenVisuals';
+import type { AdvancedSowingPlantSortVisual } from '../../../packages/game/src/hud/raisedBed/RaisedBedAdvancedSowingOverlay';
 import { RaisedBedAdvancedSowingOverlay } from '../../../packages/game/src/hud/raisedBed/RaisedBedAdvancedSowingOverlay';
 
 export function AdvancedSowingPersistedStory({
     gardenId = 1,
     plantings: plantingInputs,
-    plantNames,
+    plantingMode = false,
+    plantSorts,
     raisedBedId = 101,
 }: {
     gardenId?: number;
     plantings: AdvancedSowingGardenPlantingInput[];
-    plantNames: Array<{ id: number; name: string }>;
+    plantingMode?: boolean;
+    plantSorts: AdvancedSowingPlantSortVisual[];
     raisedBedId?: number;
 }) {
     const queryClient = useMemo(
@@ -46,7 +49,8 @@ export function AdvancedSowingPersistedStory({
                     bedFieldCount={18}
                     gardenId={gardenId}
                     plantings={plantings}
-                    plantNames={plantNames}
+                    plantingMode={plantingMode}
+                    plantSorts={plantSorts}
                     raisedBedId={raisedBedId}
                 />
             </div>

@@ -54,8 +54,6 @@ describe('selected planting owner actions', () => {
                 canCancel: true,
                 canReschedule: true,
                 cancelDisabledReason: null,
-                lifecycleTargets: [],
-                waitingForVerification: false,
             },
         );
         assert.equal(
@@ -81,7 +79,7 @@ describe('selected planting owner actions', () => {
         );
     });
 
-    it('waits for pending Farm verification and enables both completed paths', () => {
+    it('keeps completed and pending-verification plantings read-only', () => {
         assert.equal(
             selectedPlantingOwnerTaskStatusLabel({
                 status: 'completed',
@@ -105,84 +103,27 @@ describe('selected planting owner actions', () => {
                 canCancel: false,
                 canReschedule: false,
                 cancelDisabledReason: null,
-                lifecycleTargets: [],
-                waitingForVerification: true,
             },
         );
 
-        const adminCompleted = getSelectedPlantingOwnerActionModel(
-            snapshot({
-                lifecycleStatus: 'sowed',
-                selectedTask: {
-                    scheduledDate: '2026-08-10T00:00:00.000Z',
-                    sowingLocation: 'direct',
-                    status: 'completed',
-                    verified: false,
-                },
-            }),
-            referenceDate,
-        );
-        const farmerCompletedAndVerified = getSelectedPlantingOwnerActionModel(
-            snapshot({
-                lifecycleStatus: 'sowed',
-                selectedTask: {
-                    scheduledDate: '2026-08-10T00:00:00.000Z',
-                    sowingLocation: 'direct',
-                    status: 'completed',
-                    verified: true,
-                },
-            }),
-            referenceDate,
-        );
-        assert.deepEqual(adminCompleted.lifecycleTargets, ['sprouted']);
-        assert.deepEqual(farmerCompletedAndVerified.lifecycleTargets, [
-            'sprouted',
-        ]);
-        assert.deepEqual(
-            getSelectedPlantingOwnerActionModel(
-                snapshot({ expectedLifecycleVersionEventId: null }),
-                referenceDate,
-            ).lifecycleTargets,
-            [],
-        );
-    });
-
-    it('mirrors the owner lifecycle graph without farmer-only targets', () => {
-        const completedTask = {
-            scheduledDate: '2026-08-10T00:00:00.000Z',
-            sowingLocation: 'direct' as const,
-            status: 'completed' as const,
-            verified: true,
-        };
         assert.deepEqual(
             getSelectedPlantingOwnerActionModel(
                 snapshot({
-                    lifecycleStatus: 'sprouted',
-                    selectedTask: completedTask,
+                    lifecycleStatus: 'sowed',
+                    selectedTask: {
+                        scheduledDate: '2026-08-10T00:00:00.000Z',
+                        sowingLocation: 'direct',
+                        status: 'completed',
+                        verified: true,
+                    },
                 }),
                 referenceDate,
-            ).lifecycleTargets,
-            ['sowed', 'notSprouted', 'died', 'ready'],
-        );
-        assert.deepEqual(
-            getSelectedPlantingOwnerActionModel(
-                snapshot({
-                    lifecycleStatus: 'harvested',
-                    selectedTask: completedTask,
-                }),
-                referenceDate,
-            ).lifecycleTargets,
-            ['removed'],
-        );
-        assert.deepEqual(
-            getSelectedPlantingOwnerActionModel(
-                snapshot({
-                    lifecycleStatus: 'firstFlowers',
-                    selectedTask: completedTask,
-                }),
-                referenceDate,
-            ).lifecycleTargets,
-            [],
+            ),
+            {
+                canCancel: false,
+                canReschedule: false,
+                cancelDisabledReason: null,
+            },
         );
     });
 
@@ -196,8 +137,6 @@ describe('selected planting owner actions', () => {
                 canCancel: false,
                 canReschedule: false,
                 cancelDisabledReason: null,
-                lifecycleTargets: [],
-                waitingForVerification: false,
             },
         );
     });

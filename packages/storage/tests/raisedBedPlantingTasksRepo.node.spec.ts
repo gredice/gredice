@@ -31,7 +31,6 @@ import {
     type SelectedRaisedBedPlantingTaskReadModel,
     storage,
     updateSelectedRaisedBedPlantingLifecycleStatus,
-    updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
     upsertEntityType,
     upsertRaisedBedField,
     users,
@@ -400,12 +399,11 @@ test('keeps stopped crops collision-active until explicit removal', async () => 
         true,
     );
 
-    const corrected =
-        await updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(failed.task),
-            owner: fixture.owner,
-            status: 'sprouted',
-        });
+    const corrected = await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...commandIdentity(failed.task),
+        actor: { userId: fixture.adminId, role: 'admin' },
+        status: 'sprouted',
+    });
     assert.equal(corrected.isActive, true);
     assert.equal(corrected.lifecycleStoppedAt, null);
 
@@ -414,12 +412,11 @@ test('keeps stopped crops collision-active until explicit removal', async () => 
         actor: { userId: fixture.adminId, role: 'admin' },
         status: 'died',
     });
-    const removed =
-        await updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(died.task),
-            owner: fixture.owner,
-            status: 'removed',
-        });
+    const removed = await updateSelectedRaisedBedPlantingLifecycleStatus({
+        ...commandIdentity(died.task),
+        actor: { userId: fixture.adminId, role: 'admin' },
+        status: 'removed',
+    });
     assert.equal(removed.isActive, false);
     assert.equal(
         (await getRaisedBedPlanting(fixture.plantingId))?.isActive,
@@ -551,103 +548,6 @@ test('enforces Farm assignment and owner account membership independently', asyn
         }),
         'not_authorized',
     );
-});
-
-test('keeps owner lifecycle changes behind task verification and the Garden user graph', async () => {
-    const fixture = await createSelectedTaskFixture();
-    await expectSubmissionError(
-        updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(fixture.task),
-            owner: fixture.owner,
-            status: 'sowed',
-        }),
-        'invalid_status',
-    );
-    await expectSubmissionError(
-        Reflect.apply(
-            updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
-            undefined,
-            [
-                {
-                    ...commandIdentity(fixture.task),
-                    owner: fixture.owner,
-                    status: 'pendingVerification',
-                },
-            ],
-        ),
-        'invalid_input',
-    );
-    await expectSubmissionError(
-        Reflect.apply(
-            updateSelectedRaisedBedPlantingLifecycleStatusForOwner,
-            undefined,
-            [
-                {
-                    ...commandIdentity(fixture.task),
-                    owner: fixture.owner,
-                    status: 'cancelled',
-                },
-            ],
-        ),
-        'invalid_input',
-    );
-
-    const completed = await completeSelectedRaisedBedPlantingTask({
-        ...commandIdentity(fixture.task),
-        actor: { userId: fixture.farmerId, role: 'farmer' },
-    });
-    await expectSubmissionError(
-        updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(completed.task),
-            owner: fixture.owner,
-            status: 'sprouted',
-        }),
-        'invalid_status',
-    );
-
-    const verified = await verifySelectedRaisedBedPlantingTask({
-        ...commandIdentity(completed.task),
-        actor: { userId: fixture.adminId, role: 'admin' },
-    });
-    await expectSubmissionError(
-        updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(verified.task),
-            owner: fixture.owner,
-            status: 'firstFlowers',
-        }),
-        'invalid_status',
-    );
-    const sprouted =
-        await updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(verified.task),
-            owner: fixture.owner,
-            status: 'sprouted',
-        });
-    const ready = await updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-        ...commandIdentity(sprouted.task),
-        owner: fixture.owner,
-        status: 'ready',
-    });
-    await expectSubmissionError(
-        updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(ready.task),
-            owner: fixture.owner,
-            status: 'removed',
-        }),
-        'invalid_status',
-    );
-    const harvested = await updateSelectedRaisedBedPlantingLifecycleStatus({
-        ...commandIdentity(ready.task),
-        actor: { userId: fixture.adminId, role: 'admin' },
-        status: 'harvested',
-    });
-    const removed =
-        await updateSelectedRaisedBedPlantingLifecycleStatusForOwner({
-            ...commandIdentity(harvested.task),
-            owner: fixture.owner,
-            status: 'removed',
-        });
-    assert.equal(removed.isActive, false);
 });
 
 test('applies diary future-date rules to owner reschedule and cancellation', async () => {
