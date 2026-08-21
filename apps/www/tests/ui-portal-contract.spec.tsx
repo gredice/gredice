@@ -27,7 +27,9 @@ test('keeps portaled overlays outside the isolated application root', async ({
     await expect(page.locator('body')).toHaveCSS('position', 'relative');
     expect(
         await dialog.evaluate(
-            (element) => element.parentElement === document.body,
+            (element) =>
+                document.body.contains(element) &&
+                element.closest('[data-gredice-ui-root]') === null,
         ),
     ).toBe(true);
 });
