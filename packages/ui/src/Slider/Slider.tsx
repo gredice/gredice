@@ -1,14 +1,33 @@
 'use client';
 
 import * as SliderPrimitive from '@radix-ui/react-slider';
-import { type ComponentProps, type ReactNode, useId } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
+import { useId } from 'react';
+import type { UiDirection, UiOrientation } from '../lib/primitiveTypes';
 import { cx } from '../utils';
 
-export type SliderProps = ComponentProps<typeof SliderPrimitive.Root> & {
+export type SliderProps = Omit<
+    HTMLAttributes<HTMLSpanElement>,
+    'defaultValue' | 'onChange'
+> & {
+    defaultValue?: number[];
+    dir?: UiDirection;
+    disabled?: boolean;
+    form?: string;
+    inverted?: boolean;
     label?: ReactNode;
+    max?: number;
+    min?: number;
+    minStepsBetweenThumbs?: number;
+    name?: string;
+    onValueChange?(value: number[]): void;
+    onValueCommit?(value: number[]): void;
+    orientation?: UiOrientation;
     rangeClassName?: string;
+    step?: number;
     thumbClassName?: string;
     trackClassName?: string;
+    value?: number[];
 };
 
 export function Slider({

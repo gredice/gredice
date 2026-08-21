@@ -2,20 +2,41 @@
 
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import type { HTMLAttributes, ReactNode } from 'react';
+import type {
+    UiAlign,
+    UiCollisionPadding,
+    UiSide,
+    UiVirtualElementRef,
+} from '../lib/primitiveTypes';
 import { cx } from '../utils';
 
-export type PopperProps = HTMLAttributes<HTMLDivElement> & {
+export type PopperProps = Omit<HTMLAttributes<HTMLDivElement>, 'onSelect'> & {
     trigger?: ReactNode;
     anchor?: ReactNode;
-    virtualRef?: PopoverPrimitive.PopoverAnchorProps['virtualRef'];
+    virtualRef?: UiVirtualElementRef;
     open?: boolean;
-    side?: 'top' | 'right' | 'bottom' | 'left';
+    defaultOpen?: boolean;
+    modal?: boolean;
+    side?: UiSide;
     sideOffset?: number;
-    align?: 'start' | 'center' | 'end';
+    align?: UiAlign;
     alignOffset?: number;
     onOpenChange?: (open: boolean) => void;
-    onOpenAutoFocus?: PopoverPrimitive.PopoverContentProps['onOpenAutoFocus'];
+    onOpenAutoFocus?(event: Event): void;
+    onCloseAutoFocus?(event: Event): void;
+    onEscapeKeyDown?(event: Event): void;
+    onPointerDownOutside?(event: Event): void;
+    onFocusOutside?(event: Event): void;
+    onInteractOutside?(event: Event): void;
     container?: HTMLElement;
+    arrowPadding?: number;
+    avoidCollisions?: boolean;
+    collisionBoundary?: Element | null | Array<Element | null>;
+    collisionPadding?: UiCollisionPadding;
+    forceMount?: true;
+    hideWhenDetached?: boolean;
+    sticky?: 'partial' | 'always';
+    updatePositionStrategy?: 'optimized' | 'always';
 };
 
 export function Popper({
@@ -25,6 +46,8 @@ export function Popper({
     children,
     className,
     container,
+    defaultOpen,
+    modal,
     onOpenChange,
     open,
     side,
@@ -38,7 +61,12 @@ export function Popper({
         alignOffset ?? (align === 'center' ? 0 : align === 'start' ? -4 : 4);
 
     return (
-        <PopoverPrimitive.Root onOpenChange={onOpenChange} open={open}>
+        <PopoverPrimitive.Root
+            defaultOpen={defaultOpen}
+            modal={modal}
+            onOpenChange={onOpenChange}
+            open={open}
+        >
             {trigger ? (
                 <PopoverPrimitive.Trigger asChild>
                     {trigger}

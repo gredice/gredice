@@ -3,13 +3,13 @@
 import * as SelectPrimitive from '@radix-ui/react-select';
 import type {
     ChangeEvent,
-    ComponentPropsWithoutRef,
     HTMLAttributes,
     KeyboardEvent,
     ReactNode,
 } from 'react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, Down, Search, Up } from '../icons';
+import type { UiDirection } from '../lib/primitiveTypes';
 import { Stack } from '../Stack';
 import { cx } from '../utils';
 
@@ -27,31 +27,36 @@ export type SelectItem<T extends string> = {
 
 export type SelectItemsProps<T extends string> = Omit<
     HTMLAttributes<HTMLDivElement>,
-    'defaultValue' | 'onChange'
-> &
-    Omit<
-        ComponentPropsWithoutRef<typeof SelectPrimitive.Root>,
-        'defaultValue' | 'onValueChange' | 'value'
-    > & {
-        value?: T;
-        defaultValue?: T;
-        onValueChange?(value: T): void;
-        label?: string;
-        items: SelectItem<T>[];
-        placeholder?: string;
-        helperText?: string;
-        variant?: 'outlined' | 'plain';
-        container?: HTMLElement;
-        /** Defaults to true when the select has more than five items. */
-        searchable?: boolean;
-        searchPlaceholder?: string;
-        searchValue?: string;
-        /** Supplying this disables client filtering unless `clientSideFilter` is true. */
-        onSearchValueChange?(value: string): void;
-        /** Set to false for paginated or server-filtered option sets. */
-        clientSideFilter?: boolean;
-        emptySearchText?: string;
-    };
+    'defaultValue' | 'dir' | 'onChange'
+> & {
+    autoComplete?: string;
+    defaultOpen?: boolean;
+    value?: T;
+    defaultValue?: T;
+    dir?: UiDirection;
+    disabled?: boolean;
+    form?: string;
+    name?: string;
+    onOpenChange?(open: boolean): void;
+    onValueChange?(value: T): void;
+    open?: boolean;
+    required?: boolean;
+    label?: string;
+    items: SelectItem<T>[];
+    placeholder?: string;
+    helperText?: string;
+    variant?: 'outlined' | 'plain';
+    container?: HTMLElement;
+    /** Defaults to true when the select has more than five items. */
+    searchable?: boolean;
+    searchPlaceholder?: string;
+    searchValue?: string;
+    /** Supplying this disables client filtering unless `clientSideFilter` is true. */
+    onSearchValueChange?(value: string): void;
+    /** Set to false for paginated or server-filtered option sets. */
+    clientSideFilter?: boolean;
+    emptySearchText?: string;
+};
 
 function toSelectValue(value: string | undefined) {
     if (value === undefined) {

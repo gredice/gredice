@@ -13,7 +13,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Modal provides a Radix Dialog-backed surface with the Signalco-compatible trigger, title, and dismissible props.',
+                    'Modal provides a library-neutral responsive surface with stable trigger, title, description, and dismissal behavior.',
             },
         },
     },

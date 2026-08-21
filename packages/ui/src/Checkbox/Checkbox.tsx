@@ -2,12 +2,18 @@
 
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import { Check, Minus } from 'lucide-react';
-import { type ComponentPropsWithoutRef, type ReactNode, useId } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useId } from 'react';
+import type { UiCheckedState } from '../lib/primitiveTypes';
 import { cx } from '../utils';
 
-export type CheckboxProps = ComponentPropsWithoutRef<
-    typeof CheckboxPrimitive.Root
+export type CheckboxProps = Omit<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    'checked' | 'defaultChecked' | 'onChange'
 > & {
+    checked?: UiCheckedState;
+    defaultChecked?: UiCheckedState;
+    onCheckedChange?(checked: UiCheckedState): void;
     label?: ReactNode;
     disableIcon?: boolean;
     readOnly?: boolean;

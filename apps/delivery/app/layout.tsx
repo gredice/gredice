@@ -1,4 +1,5 @@
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
@@ -27,14 +28,19 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="hr" translate="no">
-            <body className="min-h-screen min-w-0 overflow-x-hidden bg-background antialiased">
-                <ClientAppProvider>
-                    <AuthAppProvider>
-                        <ImpersonationBanner />
-                        {children}
-                    </AuthAppProvider>
-                </ClientAppProvider>
-                <Analytics />
+            <body
+                className="min-h-screen min-w-0 overflow-x-hidden bg-background antialiased"
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    <ClientAppProvider>
+                        <AuthAppProvider>
+                            <ImpersonationBanner />
+                            {children}
+                        </AuthAppProvider>
+                    </ClientAppProvider>
+                    <Analytics />
+                </UiApplicationRoot>
             </body>
         </html>
     );

@@ -3,28 +3,134 @@
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import {
     type AnchorHTMLAttributes,
-    type ComponentPropsWithoutRef,
+    type ButtonHTMLAttributes,
     Fragment,
     forwardRef,
     type HTMLAttributes,
     type ReactNode,
 } from 'react';
 import { Navigate } from '../icons';
+import type {
+    LegacyAsChildProps,
+    UiAlign,
+    UiCollisionPadding,
+    UiDirection,
+    UiSide,
+} from '../lib/primitiveTypes';
 import { Row } from '../Row';
 import { cx } from '../utils';
 
-export const DropdownMenu = DropdownMenuPrimitive.Root;
-export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
-export const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
-export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
-export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+export type DropdownMenuProps = {
+    children?: ReactNode;
+    defaultOpen?: boolean;
+    dir?: UiDirection;
+    modal?: boolean;
+    onOpenChange?(open: boolean): void;
+    open?: boolean;
+};
+
+export function DropdownMenu(props: DropdownMenuProps) {
+    return <DropdownMenuPrimitive.Root {...props} />;
+}
+
+export type DropdownMenuTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> &
+    LegacyAsChildProps;
+
+export const DropdownMenuTrigger = forwardRef<
+    HTMLButtonElement,
+    DropdownMenuTriggerProps
+>(function DropdownMenuTrigger(props, ref) {
+    return <DropdownMenuPrimitive.Trigger ref={ref} {...props} />;
+});
+
+export type DropdownMenuGroupProps = HTMLAttributes<HTMLDivElement> &
+    LegacyAsChildProps;
+
+export const DropdownMenuGroup = forwardRef<
+    HTMLDivElement,
+    DropdownMenuGroupProps
+>(function DropdownMenuGroup(props, ref) {
+    return <DropdownMenuPrimitive.Group ref={ref} {...props} />;
+});
+
+export type DropdownMenuPortalProps = {
+    children?: ReactNode;
+    container?: HTMLElement | null;
+    forceMount?: true;
+};
+
+export function DropdownMenuPortal(props: DropdownMenuPortalProps) {
+    return <DropdownMenuPrimitive.Portal {...props} />;
+}
+
+export type DropdownMenuSubProps = {
+    children?: ReactNode;
+    defaultOpen?: boolean;
+    onOpenChange?(open: boolean): void;
+    open?: boolean;
+};
+
+export function DropdownMenuSub(props: DropdownMenuSubProps) {
+    return <DropdownMenuPrimitive.Sub {...props} />;
+}
+
+export type DropdownMenuRadioGroupProps = HTMLAttributes<HTMLDivElement> &
+    LegacyAsChildProps & {
+        onValueChange?(value: string): void;
+        value?: string;
+    };
+
+export const DropdownMenuRadioGroup = forwardRef<
+    HTMLDivElement,
+    DropdownMenuRadioGroupProps
+>(function DropdownMenuRadioGroup(props, ref) {
+    return <DropdownMenuPrimitive.RadioGroup ref={ref} {...props} />;
+});
+
+type DropdownMenuPositioningProps = {
+    align?: UiAlign;
+    alignOffset?: number;
+    arrowPadding?: number;
+    avoidCollisions?: boolean;
+    collisionBoundary?: Element | null | Array<Element | null>;
+    collisionPadding?: UiCollisionPadding;
+    hideWhenDetached?: boolean;
+    side?: UiSide;
+    sideOffset?: number;
+    sticky?: 'partial' | 'always';
+    updatePositionStrategy?: 'optimized' | 'always';
+};
+
+type DropdownMenuDismissalProps = {
+    forceMount?: true;
+    loop?: boolean;
+    onCloseAutoFocus?(event: Event): void;
+    onEscapeKeyDown?(event: Event): void;
+    onFocusOutside?(event: Event): void;
+    onInteractOutside?(event: Event): void;
+    onPointerDownOutside?(event: Event): void;
+};
+
+export type DropdownMenuContentProps = Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'dir'
+> &
+    LegacyAsChildProps &
+    DropdownMenuPositioningProps &
+    DropdownMenuDismissalProps;
+
+export type DropdownMenuSubTriggerProps = Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'onSelect'
+> & {
+    disabled?: boolean;
+    inset?: boolean;
+    textValue?: string;
+};
 
 export const DropdownMenuSubTrigger = forwardRef<
     HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
-        inset?: boolean;
-    }
+    DropdownMenuSubTriggerProps
 >(function DropdownMenuSubTrigger(
     { className, inset, children, ...props },
     ref,
@@ -47,7 +153,9 @@ export const DropdownMenuSubTrigger = forwardRef<
 
 export const DropdownMenuSubContent = forwardRef<
     HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+    Omit<DropdownMenuContentProps, 'align' | 'onCloseAutoFocus' | 'side'> & {
+        align?: Exclude<UiAlign, 'center'>;
+    }
 >(function DropdownMenuSubContent({ className, ...props }, ref) {
     return (
         <DropdownMenuPrimitive.SubContent
@@ -63,7 +171,7 @@ export const DropdownMenuSubContent = forwardRef<
 
 export const DropdownMenuContent = forwardRef<
     HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+    DropdownMenuContentProps
 >(function DropdownMenuContent({ className, sideOffset = 4, ...props }, ref) {
     return (
         <DropdownMenuPrimitive.Portal>
@@ -80,16 +188,25 @@ export const DropdownMenuContent = forwardRef<
     );
 });
 
-export const DropdownMenuItem = forwardRef<
-    HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+export type DropdownMenuItemProps = Omit<
+    HTMLAttributes<HTMLDivElement>,
+    'onSelect'
+> &
+    LegacyAsChildProps & {
+        disabled?: boolean;
         inset?: boolean;
         href?: string;
+        onSelect?(event: Event): void;
         rel?: string;
         startDecorator?: ReactNode;
         endDecorator?: ReactNode;
         target?: AnchorHTMLAttributes<HTMLAnchorElement>['target'];
-    }
+        textValue?: string;
+    };
+
+export const DropdownMenuItem = forwardRef<
+    HTMLDivElement,
+    DropdownMenuItemProps
 >(function DropdownMenuItem(
     {
         children,
@@ -147,9 +264,10 @@ export const DropdownMenuItem = forwardRef<
 
 export const DropdownMenuLabel = forwardRef<
     HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
-        inset?: boolean;
-    }
+    HTMLAttributes<HTMLDivElement> &
+        LegacyAsChildProps & {
+            inset?: boolean;
+        }
 >(function DropdownMenuLabel({ className, inset, ...props }, ref) {
     return (
         <DropdownMenuPrimitive.Label
@@ -166,7 +284,7 @@ export const DropdownMenuLabel = forwardRef<
 
 export const DropdownMenuSeparator = forwardRef<
     HTMLDivElement,
-    ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
+    HTMLAttributes<HTMLDivElement> & LegacyAsChildProps
 >(function DropdownMenuSeparator({ className, ...props }, ref) {
     return (
         <DropdownMenuPrimitive.Separator

@@ -30,6 +30,7 @@
         "typescript": "7.0.2"
     },
     "dependencies": {
+        "@base-ui/react": "1.7.0",
         "@gredice/js": "workspace:*",
         "@posthog/next": "0.8.0",
         "@radix-ui/react-alert-dialog": "1.1.19",
