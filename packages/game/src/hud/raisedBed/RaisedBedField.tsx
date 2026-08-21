@@ -371,6 +371,11 @@ export function RaisedBedField({
         isRecord(raisedBedSource) ? raisedBedSource.plantings : null,
         totalRows * totalColumns,
     );
+    const advancedSowingPositionIndices = new Set(
+        advancedSowingPlantings.flatMap((planting) =>
+            planting.memberships.map((membership) => membership.positionIndex),
+        ),
+    );
     const advancedSowingPlantSorts = (allSorts ?? []).map((sort) => ({
         coverUrl:
             sort.image?.cover?.url ??
@@ -379,6 +384,16 @@ export function RaisedBedField({
         id: sort.id,
         name: sort.information.name,
     }));
+    const advancedSowingStandardFields = raisedBed.fields.flatMap((field) =>
+        field.active && typeof field.plantSortId === 'number'
+            ? [
+                  {
+                      plantSortId: field.plantSortId,
+                      positionIndex: field.positionIndex,
+                  },
+              ]
+            : [],
+    );
     const rows = Array.from({ length: totalRows }, (_, index) => ({
         id: `row-${index.toString()}`,
         index,
@@ -563,6 +578,7 @@ export function RaisedBedField({
                     plantingMode={isPlantingMode}
                     plantSorts={advancedSowingPlantSorts}
                     raisedBedId={raisedBedId}
+                    standardFields={advancedSowingStandardFields}
                 />
             ) : null}
             <DndContext
@@ -628,7 +644,15 @@ export function RaisedBedField({
                                                 showHandle={isInCart}
                                             >
                                                 {({ isDragging }) => (
-                                                    <div className="relative size-full">
+                                                    <div
+                                                        className="relative size-full"
+                                                        inert={
+                                                            !isPlantingMode &&
+                                                            advancedSowingPositionIndices.has(
+                                                                positionIndex,
+                                                            )
+                                                        }
+                                                    >
                                                         <RaisedBedFieldItem
                                                             cartPlantItem={
                                                                 cartItemsByPosition.get(

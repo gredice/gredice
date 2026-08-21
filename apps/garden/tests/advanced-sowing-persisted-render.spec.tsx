@@ -143,26 +143,20 @@ test('requires an explicit planting choice for co-plants in one field', async ({
     await expect(
         footprintTrigger.getByRole('img', { name: 'Bosiljak' }),
     ).toBeVisible();
-
-    const detailsTrigger = component.locator(
-        '[data-advanced-sowing-details-trigger]',
-    );
-    const triggerBox = await detailsTrigger.boundingBox();
-    expect(triggerBox?.width).toBeGreaterThanOrEqual(44);
-    expect(triggerBox?.height).toBeGreaterThanOrEqual(44);
-    await detailsTrigger.click();
-
     await expect(
-        page.locator('[data-advanced-sowing-planting-choice="901"]'),
-    ).toBeVisible();
-    await expect(
-        page.locator('[data-advanced-sowing-planting-choice="902"]'),
-    ).toBeVisible();
-    await expect(
-        page.locator('[data-advanced-sowing-planting-id]'),
+        footprintTrigger.getByText('4 × 4', { exact: true }),
     ).toHaveCount(0);
 
-    await page.locator('[data-advanced-sowing-planting-choice="902"]').click();
+    const tomatoSegment = component.locator(
+        '[data-advanced-sowing-field-segment="advanced:902"]',
+    );
+    const triggerBox = await tomatoSegment.boundingBox();
+    expect(triggerBox?.width).toBeGreaterThanOrEqual(44);
+    expect(triggerBox?.height).toBeGreaterThanOrEqual(44);
+    await tomatoSegment.click();
+
+    await expect(page.getByRole('tab', { name: 'Bosiljak' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Rajčica' })).toBeVisible();
     await expect(
         page.locator('[data-advanced-sowing-planting-id="902"]'),
     ).toHaveCount(1);
@@ -176,6 +170,11 @@ test('requires an explicit planting choice for co-plants in one field', async ({
         plantingDetails.getByText('Polje', { exact: true }),
     ).toBeVisible();
     await expect(plantingDetails.getByText('Razmak')).toHaveCount(0);
+
+    await page.getByRole('tab', { name: 'Bosiljak' }).click();
+    await expect(
+        page.locator('[data-advanced-sowing-planting-id="901"]'),
+    ).toHaveCount(1);
 });
 
 test('keeps advanced field imagery visible without blocking planting mode', async ({
@@ -198,10 +197,12 @@ test('keeps advanced field imagery visible without blocking planting mode', asyn
     });
 
     await expect(
-        component.locator('[data-advanced-sowing-field-plant="901"]'),
+        component.locator('[data-advanced-sowing-field-plant="advanced:901"]'),
     ).toBeVisible();
     await expect(
-        component.locator('[data-advanced-sowing-details-trigger]'),
+        component.locator(
+            '[data-advanced-sowing-details-trigger="advanced:901"]',
+        ),
     ).toBeDisabled();
     await underlyingPicker.click({ position: { x: 60, y: 50 } });
     await expect(underlyingPicker).toHaveAttribute('data-clicked', 'true');
@@ -262,7 +263,10 @@ test('keeps one persisted 2 by 2 planting visible with every membership', async 
         'data-advanced-sowing-membership-positions',
         '13,14,16,17',
     );
-    await component.locator('[data-advanced-sowing-details-trigger]').click();
+    await component
+        .locator('[data-advanced-sowing-details-trigger="advanced:901"]')
+        .first()
+        .click();
 
     await expect(
         page.locator('[data-advanced-sowing-planting-id="901"]'),
@@ -307,7 +311,9 @@ test('reschedules a persisted selected task with a fresh command identity', asyn
         />,
     );
 
-    await page.locator('[data-advanced-sowing-details-trigger]').click();
+    await page
+        .locator('[data-advanced-sowing-details-trigger="advanced:901"]')
+        .click();
     await page.getByRole('switch', { name: 'Sijanje u stakleniku' }).click();
     await page.getByRole('button', { name: 'Spremi raspored' }).click();
 
@@ -346,7 +352,9 @@ test('confirms cancellation and reports the bounded one-per-planting refund', as
         />,
     );
 
-    await page.locator('[data-advanced-sowing-details-trigger]').click();
+    await page
+        .locator('[data-advanced-sowing-details-trigger="advanced:901"]')
+        .click();
     await page
         .getByRole('textbox', { name: 'Razlog otkazivanja' })
         .fill('Promjena plana.');
@@ -399,7 +407,9 @@ test('keeps lifecycle state read-only after farmer completion', async ({
         />,
     );
 
-    await page.locator('[data-advanced-sowing-details-trigger]').click();
+    await page
+        .locator('[data-advanced-sowing-details-trigger="advanced:901"]')
+        .click();
     await expect(page.getByText('Proklijala', { exact: true })).toBeVisible();
     await expect(page.getByText('Datum promjene statusa')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Označi kao/u })).toHaveCount(
@@ -429,7 +439,9 @@ test('keeps pending verification read-only', async ({ mount, page }) => {
         />,
     );
 
-    await page.locator('[data-advanced-sowing-details-trigger]').click();
+    await page
+        .locator('[data-advanced-sowing-details-trigger="advanced:901"]')
+        .click();
     await expect(
         page.locator('[data-selected-planting-owner-controls="true"]'),
     ).toHaveCount(0);
