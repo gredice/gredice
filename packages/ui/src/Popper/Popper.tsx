@@ -119,11 +119,27 @@ export function Popper({
         [],
     );
     const handleOpenChange = useCallback(
-        (nextOpen: boolean) => {
+        (
+            nextOpen: boolean,
+            eventDetails: PopoverPrimitive.Root.ChangeEventDetails,
+        ) => {
+            if (
+                !nextOpen &&
+                eventDetails.reason === 'escape-key' &&
+                !modalPortalContainer
+            ) {
+                onEscapeKeyDown?.(eventDetails.event);
+
+                if (eventDetails.event.defaultPrevented) {
+                    eventDetails.cancel();
+                    return;
+                }
+            }
+
             setUncontrolledOpen(nextOpen);
             onOpenChange?.(nextOpen);
         },
-        [onOpenChange],
+        [modalPortalContainer, onEscapeKeyDown, onOpenChange],
     );
     const currentOpen = open ?? uncontrolledOpen;
 
