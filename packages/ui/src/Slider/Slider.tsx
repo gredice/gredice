@@ -86,9 +86,6 @@ export function Slider({
     const internalValue = verticalInverted
         ? invertValues(value, min, max)
         : value;
-    const publicThumbValues = verticalInverted
-        ? [...publicValue].reverse()
-        : publicValue;
     const thumbInputRefs = useRef<Array<HTMLInputElement | null>>([]);
     const thumbCount = value?.length ?? defaultValue?.length ?? 1;
 
@@ -113,6 +110,7 @@ export function Slider({
             return;
         }
 
+        const publicThumbValues = [...publicValue].reverse();
         for (const [index, input] of thumbInputRefs.current.entries()) {
             const thumbValue = publicThumbValues[index];
 
@@ -123,7 +121,7 @@ export function Slider({
             input.setAttribute('aria-valuenow', String(thumbValue));
             input.setAttribute('aria-valuetext', String(thumbValue));
         }
-    }, [publicThumbValues, verticalInverted]);
+    }, [publicValue, verticalInverted]);
 
     return (
         <DirectionProvider direction={resolvedDirection}>
