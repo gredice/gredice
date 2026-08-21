@@ -255,7 +255,7 @@ export function RaisedBedField({
     useEffect(() => {
         function syncDialogState() {
             const openDialog = document.querySelector(
-                '[role="dialog"][data-state="open"], [data-vaul-drawer][data-state="open"]',
+                '[role="dialog"][data-open]',
             );
             setIsHudDialogOpen(Boolean(openDialog));
         }
@@ -266,7 +266,7 @@ export function RaisedBedField({
         });
         observer.observe(document.body, {
             attributes: true,
-            attributeFilter: ['data-state'],
+            attributeFilter: ['data-open'],
             childList: true,
             subtree: true,
         });
