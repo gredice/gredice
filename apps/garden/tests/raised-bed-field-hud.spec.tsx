@@ -1107,6 +1107,64 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toHaveCount(0);
     });
 
+    test('co-planted field splits both plants and switches their detail tabs', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario(true)}
+            />,
+        );
+
+        const splitField = page.locator(
+            '[data-advanced-sowing-field-position="0"]',
+        );
+        await expect(splitField).toBeVisible();
+        await expect(
+            splitField.locator('[data-advanced-sowing-field-segment]'),
+        ).toHaveCount(2);
+        await expect(
+            splitField.getByRole('img', { name: 'Cherry rajčica' }),
+        ).toBeVisible();
+        await expect(
+            splitField.getByRole('img', { name: 'Klasični bosiljak' }),
+        ).toBeVisible();
+        await expect(
+            splitField.getByText('2 × 2', { exact: true }),
+        ).toHaveCount(0);
+
+        await splitField
+            .locator('[data-advanced-sowing-field-segment="standard:0"]')
+            .click();
+        const standardDialog = page.getByRole('dialog', {
+            name: 'Biljka "Cherry rajčica"',
+        });
+        await expect(standardDialog).toBeVisible();
+        await expect(
+            standardDialog.getByRole('tab', { name: 'Cherry rajčica' }),
+        ).toBeVisible();
+        await standardDialog
+            .getByRole('tab', { name: 'Klasični bosiljak' })
+            .click();
+
+        const advancedDialog = page.getByRole('dialog', {
+            name: 'Klasični bosiljak',
+        });
+        await expect(advancedDialog).toBeVisible();
+        await expect(
+            advancedDialog.getByText('Gustoća', { exact: true }),
+        ).toBeVisible();
+        await advancedDialog.getByRole('button', { name: 'Zatvori' }).click();
+
+        await splitField
+            .locator('[data-advanced-sowing-field-segment="advanced:202"]')
+            .click();
+        await expect(
+            page.getByRole('dialog', { name: 'Klasični bosiljak' }),
+        ).toBeVisible();
+    });
+
     test('abandoned raised bed shows inactivity message instead of sowing grid', async ({
         mount,
         page,
