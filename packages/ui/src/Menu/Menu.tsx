@@ -262,11 +262,9 @@ export const DropdownMenuSubTrigger = forwardRef<
     HTMLDivElement,
     DropdownMenuSubTriggerProps
 >(function DropdownMenuSubTrigger(
-    { asChild, className, inset, children, textValue, ...props },
+    { className, inset, children, textValue, ...props },
     ref,
 ) {
-    const render = getLegacyRender(asChild, children);
-
     return (
         <MenuPrimitive.SubmenuTrigger
             className={cx(
@@ -276,15 +274,10 @@ export const DropdownMenuSubTrigger = forwardRef<
             )}
             label={textValue}
             ref={ref}
-            render={render}
             {...props}
         >
-            {render ? undefined : (
-                <>
-                    {children}
-                    <Navigate aria-hidden className="ml-auto size-4" />
-                </>
-            )}
+            {children}
+            <Navigate aria-hidden className="ml-auto size-4" />
         </MenuPrimitive.SubmenuTrigger>
     );
 });
