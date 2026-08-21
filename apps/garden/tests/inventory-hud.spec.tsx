@@ -53,7 +53,7 @@ test('inventory can open directly on garden boxes tab', async ({
     );
     await expect(
         page.getByRole('tab', { name: /Kutije\s+1/u }),
-    ).toHaveAttribute('data-state', 'active');
+    ).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByText('Vrtna kutija 1')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Bucket' })).toBeVisible();
     await expect(page.getByText(/Predmeti u ruksaku koje možeš/u)).toBeHidden();

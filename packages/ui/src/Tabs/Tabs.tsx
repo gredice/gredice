@@ -1,13 +1,9 @@
 'use client';
 
-import * as TabsPrimitive from '@radix-ui/react-tabs';
-import type {
-    ButtonHTMLAttributes,
-    CSSProperties,
-    ForwardedRef,
-    HTMLAttributes,
-} from 'react';
-import { forwardRef, useCallback, useLayoutEffect, useState } from 'react';
+import { DirectionProvider } from '@base-ui/react/direction-provider';
+import { Tabs as TabsPrimitive } from '@base-ui/react/tabs';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
 import type {
     LegacyAsChildProps,
     UiDirection,
@@ -18,38 +14,10 @@ function cx(...classes: Array<string | false | null | undefined>) {
     return classes.filter(Boolean).join(' ');
 }
 
-function setForwardedRef<T>(ref: ForwardedRef<T>, value: T | null) {
-    if (typeof ref === 'function') {
-        ref(value);
-        return;
-    }
+const TabsActivationContext = createContext(true);
 
-    if (ref) {
-        ref.current = value;
-    }
-}
-
-type TabsIndicator = {
-    height: number;
-    left: number;
-    top: number;
-    width: number;
-};
-
-function areIndicatorsEqual(
-    current: TabsIndicator | null,
-    next: TabsIndicator | null,
-) {
-    if (!current || !next) {
-        return current === next;
-    }
-
-    return (
-        Math.abs(current.height - next.height) < 0.5 &&
-        Math.abs(current.left - next.left) < 0.5 &&
-        Math.abs(current.top - next.top) < 0.5 &&
-        Math.abs(current.width - next.width) < 0.5
-    );
+function getLegacyRender(asChild: boolean | undefined, children: ReactNode) {
+    return asChild && isValidElement(children) ? children : undefined;
 }
 
 export type TabsProps = HTMLAttributes<HTMLDivElement> &
@@ -62,143 +30,70 @@ export type TabsProps = HTMLAttributes<HTMLDivElement> &
         value?: string;
     };
 
-export const Tabs = forwardRef<HTMLDivElement, TabsProps>(
-    function Tabs(props, ref) {
-        return <TabsPrimitive.Root ref={ref} {...props} />;
+export const Tabs = forwardRef<HTMLDivElement, TabsProps>(function Tabs(
+    {
+        activationMode = 'automatic',
+        asChild,
+        children,
+        defaultValue,
+        dir,
+        onValueChange,
+        value,
+        ...props
     },
-);
+    ref,
+) {
+    const render = getLegacyRender(asChild, children);
+
+    return (
+        <DirectionProvider direction={dir}>
+            <TabsActivationContext.Provider
+                value={activationMode === 'automatic'}
+            >
+                <TabsPrimitive.Root
+                    ref={ref}
+                    defaultValue={defaultValue ?? null}
+                    dir={dir}
+                    onValueChange={(nextValue) => {
+                        if (typeof nextValue === 'string') {
+                            onValueChange?.(nextValue);
+                        }
+                    }}
+                    render={render}
+                    value={value}
+                    {...props}
+                >
+                    {render ? undefined : children}
+                </TabsPrimitive.Root>
+            </TabsActivationContext.Provider>
+        </DirectionProvider>
+    );
+});
 
 export type TabsListProps = HTMLAttributes<HTMLDivElement> & {
     loop?: boolean;
 };
 
 export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
-    function TabsList({ className, ...props }, ref) {
-        const [listElement, setListElement] = useState<HTMLDivElement | null>(
-            null,
-        );
-        const [indicator, setIndicator] = useState<TabsIndicator | null>(null);
-        const handleListRef = useCallback(
-            (node: HTMLDivElement | null) => {
-                setListElement(node);
-                setForwardedRef(ref, node);
-            },
-            [ref],
-        );
-
-        useLayoutEffect(() => {
-            if (!listElement || typeof window === 'undefined') {
-                return;
-            }
-
-            const tabsListElement = listElement;
-            let frameId: number | undefined;
-
-            function measureIndicator() {
-                const activeTrigger =
-                    tabsListElement.querySelector<HTMLElement>(
-                        '[role="tab"][data-state="active"]',
-                    );
-
-                if (!activeTrigger) {
-                    setIndicator((current) =>
-                        areIndicatorsEqual(current, null) ? current : null,
-                    );
-                    return;
-                }
-
-                const nextIndicator = {
-                    height: activeTrigger.offsetHeight,
-                    left: activeTrigger.offsetLeft - tabsListElement.scrollLeft,
-                    top: activeTrigger.offsetTop - tabsListElement.scrollTop,
-                    width: activeTrigger.offsetWidth,
-                };
-
-                setIndicator((current) =>
-                    areIndicatorsEqual(current, nextIndicator)
-                        ? current
-                        : nextIndicator,
-                );
-            }
-
-            function updateIndicator() {
-                if (frameId !== undefined) {
-                    window.cancelAnimationFrame(frameId);
-                }
-
-                frameId = window.requestAnimationFrame(measureIndicator);
-            }
-
-            let resizeObserver: ResizeObserver | undefined;
-
-            function observeTabs() {
-                if (resizeObserver) {
-                    resizeObserver.disconnect();
-                    resizeObserver.observe(tabsListElement);
-                    for (const tab of tabsListElement.querySelectorAll<HTMLElement>(
-                        '[role="tab"]',
-                    )) {
-                        resizeObserver.observe(tab);
-                    }
-                }
-
-                updateIndicator();
-            }
-
-            if (typeof ResizeObserver !== 'undefined') {
-                resizeObserver = new ResizeObserver(updateIndicator);
-            }
-
-            const mutationObserver = new MutationObserver(observeTabs);
-
-            observeTabs();
-            mutationObserver.observe(tabsListElement, {
-                attributeFilter: ['data-state', 'disabled'],
-                attributes: true,
-                childList: true,
-                subtree: true,
-            });
-            tabsListElement.addEventListener('scroll', updateIndicator, {
-                passive: true,
-            });
-            window.addEventListener('resize', updateIndicator);
-
-            return () => {
-                if (frameId !== undefined) {
-                    window.cancelAnimationFrame(frameId);
-                }
-
-                mutationObserver.disconnect();
-                resizeObserver?.disconnect();
-                tabsListElement.removeEventListener('scroll', updateIndicator);
-                window.removeEventListener('resize', updateIndicator);
-            };
-        }, [listElement]);
-
-        const indicatorStyle: CSSProperties | undefined = indicator
-            ? {
-                  height: indicator.height,
-                  opacity: 1,
-                  transform: `translate3d(${indicator.left}px, ${indicator.top}px, 0)`,
-                  width: indicator.width,
-              }
-            : undefined;
+    function TabsList({ children, className, loop, ...props }, ref) {
+        const activateOnFocus = useContext(TabsActivationContext);
 
         return (
             <TabsPrimitive.List
-                ref={handleListRef}
+                ref={ref}
+                activateOnFocus={activateOnFocus}
                 className={cx(
                     'relative isolate inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-border bg-muted/80 p-1 text-muted-foreground shadow-xs',
                     className,
                 )}
+                loopFocus={loop}
                 {...props}
             >
-                <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute left-0 top-0 z-0 rounded-md bg-background opacity-0 shadow-xs transition-[transform,width,height,opacity] duration-200 ease-out motion-reduce:transition-none"
-                    style={indicatorStyle}
+                <TabsPrimitive.Indicator
+                    className="pointer-events-none absolute left-0 top-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-md bg-background shadow-xs transition-[translate,width,height] duration-200 ease-out motion-reduce:transition-none"
+                    renderBeforeHydration
                 />
-                {props.children}
+                {children}
             </TabsPrimitive.List>
         );
     },
@@ -210,20 +105,25 @@ export type TabsTriggerProps = ButtonHTMLAttributes<HTMLButtonElement> &
     };
 
 export const TabsTrigger = forwardRef<HTMLButtonElement, TabsTriggerProps>(
-    function TabsTrigger({ className, ...props }, ref) {
+    function TabsTrigger({ asChild, children, className, ...props }, ref) {
+        const render = getLegacyRender(asChild, children);
+
         return (
-            <TabsPrimitive.Trigger
+            <TabsPrimitive.Tab
                 ref={ref}
                 className={cx(
                     'relative z-10 inline-flex min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium leading-none text-muted-foreground transition-colors',
                     'hover:bg-background/70 hover:text-foreground',
                     'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                     'disabled:pointer-events-none disabled:opacity-50',
-                    'data-[state=active]:text-foreground data-[state=active]:hover:bg-transparent',
+                    'data-[active]:text-foreground data-[active]:hover:bg-transparent',
                     className,
                 )}
+                render={render}
                 {...props}
-            />
+            >
+                {render ? undefined : children}
+            </TabsPrimitive.Tab>
         );
     },
 );
@@ -235,16 +135,25 @@ export type TabsContentProps = HTMLAttributes<HTMLDivElement> &
     };
 
 export const TabsContent = forwardRef<HTMLDivElement, TabsContentProps>(
-    function TabsContent({ className, ...props }, ref) {
+    function TabsContent(
+        { asChild, children, className, forceMount, ...props },
+        ref,
+    ) {
+        const render = getLegacyRender(asChild, children);
+
         return (
-            <TabsPrimitive.Content
+            <TabsPrimitive.Panel
                 ref={ref}
                 className={cx(
-                    'mt-2 outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    'mt-2 outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [[hidden]]:hidden',
                     className,
                 )}
+                keepMounted={forceMount}
+                render={render}
                 {...props}
-            />
+            >
+                {render ? undefined : children}
+            </TabsPrimitive.Panel>
         );
     },
 );
