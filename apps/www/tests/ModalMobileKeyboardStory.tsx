@@ -11,6 +11,7 @@ import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Popper } from '@gredice/ui/Popper';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { useState } from 'react';
 
 export function MobileModalForm() {
@@ -29,6 +30,7 @@ export function ModalInteractionStory({
     mobileOverride?: boolean;
 }) {
     const [selection, setSelection] = useState<string>();
+    const [menuAction, setMenuAction] = useState('nije odabrano');
 
     return (
         <>
@@ -43,13 +45,26 @@ export function ModalInteractionStory({
                     <Popper trigger={<Button>Otvori pomoć</Button>}>
                         Dodatne postavke prikaza
                     </Popper>
+                    <Tooltip delayDuration={0}>
+                        <TooltipTrigger asChild>
+                            <Button variant="outlined">Prikaži savjet</Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            Savjet unutar aktivnog modala
+                        </TooltipContent>
+                    </Tooltip>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button>Otvori izbornik</Button>
+                            <Button variant="outlined">Otvori akcije</Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                            <DropdownMenuItem>
-                                Radnja izbornika
+                        <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                                onSelect={() => setMenuAction('details')}
+                            >
+                                Prikaz detalja
+                            </DropdownMenuItem>
+                            <DropdownMenuItem disabled>
+                                Nedostupna akcija
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -67,6 +82,7 @@ export function ModalInteractionStory({
                 </Stack>
             </Modal>
             <output aria-label="Odabrana gustoća">{selection}</output>
+            <output aria-label="Odabrana akcija">{menuAction}</output>
         </>
     );
 }

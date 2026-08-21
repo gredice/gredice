@@ -69,7 +69,7 @@ test('keeps the focused field available while the mobile keyboard changes', asyn
         .toBe('0px');
 });
 
-test('supports nested selection, long content, safe areas, and focus return', async ({
+test('supports nested overlays, long content, safe areas, and focus return', async ({
     mount,
     page,
 }) => {
@@ -89,14 +89,31 @@ test('supports nested selection, long content, safe areas, and focus return', as
     await expect(page.getByText('Dodatne postavke prikaza')).not.toBeVisible();
     await expect(dialog).toBeVisible();
 
-    await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+    const tooltipTrigger = dialog.getByRole('button', {
+        name: 'Prikaži savjet',
+    });
+    await tooltipTrigger.focus();
     await expect(
-        page.getByRole('menuitem', { name: 'Radnja izbornika' }),
+        dialog.getByRole('tooltip', {
+            name: 'Savjet unutar aktivnog modala',
+        }),
     ).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Otvori akcije' }).click();
+    const menu = dialog.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).not.toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByRole('button', { name: 'Otvori akcije' }).click();
+    await expect(menu).toBeVisible();
+    await menu.getByRole('menuitem', { name: 'Prikaz detalja' }).click();
     await expect(
-        page.getByRole('menuitem', { name: 'Radnja izbornika' }),
-    ).not.toBeVisible();
+        page.locator('output[aria-label="Odabrana akcija"]'),
+    ).toHaveText('details');
     await expect(dialog).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Gustoća prikaza' }).click();
