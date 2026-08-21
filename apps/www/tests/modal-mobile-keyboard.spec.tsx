@@ -15,6 +15,13 @@ test('keeps the focused field available while the mobile keyboard changes', asyn
 
     const dialog = page.getByRole('dialog', { name: 'Uredi podatke' });
     const drawerViewport = page.locator('[data-modal-drawer-viewport]');
+    await expect
+        .poll(() =>
+            dialog.evaluate((element) =>
+                element.contains(document.activeElement),
+            ),
+        )
+        .toBe(true);
     await page.getByLabel('Naziv').focus();
 
     await page.evaluate(() => {
@@ -80,6 +87,16 @@ test('supports nested selection, long content, safe areas, and focus return', as
     await expect(page.getByText('Dodatne postavke prikaza')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.getByText('Dodatne postavke prikaza')).not.toBeVisible();
+    await expect(dialog).toBeVisible();
+
+    await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+    await expect(
+        page.getByRole('menuitem', { name: 'Radnja izbornika' }),
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(
+        page.getByRole('menuitem', { name: 'Radnja izbornika' }),
+    ).not.toBeVisible();
     await expect(dialog).toBeVisible();
 
     await page.getByRole('combobox', { name: 'Gustoća prikaza' }).click();

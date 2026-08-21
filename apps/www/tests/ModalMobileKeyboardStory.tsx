@@ -1,5 +1,11 @@
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@gredice/ui/Menu';
 import { Modal } from '@gredice/ui/Modal';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Popper } from '@gredice/ui/Popper';
@@ -37,6 +43,16 @@ export function ModalInteractionStory({
                     <Popper trigger={<Button>Otvori pomoć</Button>}>
                         Dodatne postavke prikaza
                     </Popper>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button>Otvori izbornik</Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem>
+                                Radnja izbornika
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <SelectItems
                         items={[
                             { value: 'compact', label: 'Kompaktno' },

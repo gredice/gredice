@@ -5,11 +5,8 @@ import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer';
 import {
     type HTMLAttributes,
     isValidElement,
-    type KeyboardEvent,
     type ReactNode,
-    useCallback,
     useLayoutEffect,
-    useRef,
     useState,
 } from 'react';
 import { Close } from '../icons';
@@ -183,29 +180,6 @@ function MobileModal({
 }: Omit<ModalProps, 'disableMobile' | 'hideClose' | 'mobileOverride'>) {
     const hasDescription = hasAccessibleDescription(description);
     const triggerRender = isValidElement(trigger) ? trigger : undefined;
-    const triggerElementRef = useRef<HTMLElement | null>(null);
-    const popupRef = useRef<HTMLDivElement>(null);
-    const registerTriggerElement = useCallback(
-        (element: HTMLElement | null) => {
-            triggerElementRef.current = element;
-        },
-        [],
-    );
-
-    function handleTriggerKeyDown(event: KeyboardEvent<HTMLElement>) {
-        if (modal === false || event.key !== 'Tab') {
-            return;
-        }
-
-        const focusableElements = getFocusableElements(popupRef.current);
-        const nextFocus = event.shiftKey
-            ? focusableElements.at(-1)
-            : focusableElements[0];
-        if (nextFocus) {
-            event.preventDefault();
-            nextFocus.focus();
-        }
-    }
 
     function handleOpenChange(
         nextOpen: boolean,
@@ -228,11 +202,7 @@ function MobileModal({
             swipeDirection="down"
         >
             {trigger ? (
-                <DrawerPrimitive.Trigger
-                    onKeyDown={handleTriggerKeyDown}
-                    ref={registerTriggerElement}
-                    render={triggerRender}
-                >
+                <DrawerPrimitive.Trigger render={triggerRender}>
                     {triggerRender ? undefined : trigger}
                 </DrawerPrimitive.Trigger>
             ) : null}
@@ -257,10 +227,6 @@ function MobileModal({
                                 'fixed inset-x-0 bottom-0 z-50 mt-4 flex max-h-[calc(100dvh-1rem)] w-full max-w-full min-w-0 touch-none flex-col overflow-hidden rounded-t-[10px] border bg-background outline-hidden [transform:translateY(var(--drawer-swipe-movement-y))] transition-transform duration-300 ease-out data-[swiping]:select-none data-[swiping]:duration-0 data-[starting-style]:[transform:translateY(calc(100%+2px))] data-[ending-style]:[transform:translateY(calc(100%+2px))] data-[ending-style]:duration-[calc(var(--drawer-swipe-strength,1)*300ms)] motion-reduce:!animate-none motion-reduce:!transition-none motion-reduce:!duration-0',
                                 className,
                             )}
-                            initialFocus={() =>
-                                triggerElementRef.current ?? false
-                            }
-                            ref={popupRef}
                             {...rest}
                         >
                             <DrawerPrimitive.Title className="sr-only">
@@ -317,22 +283,5 @@ function hasAccessibleDescription(description: ReactNode) {
         description !== null &&
         description !== false &&
         description !== ''
-    );
-}
-
-function getFocusableElements(container: HTMLElement | null) {
-    if (!container) {
-        return [];
-    }
-
-    return Array.from(
-        container.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), a[href], input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
-        ),
-    ).filter(
-        (element) =>
-            element.tabIndex >= 0 &&
-            !element.hidden &&
-            element.getClientRects().length > 0,
     );
 }
