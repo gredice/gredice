@@ -361,7 +361,10 @@ export const DropdownMenuSubContent = forwardRef<
             container={context?.portalContainer}
             keepMounted={forceMount}
         >
-            <MenuPrimitive.Positioner {...positioningProps}>
+            <MenuPrimitive.Positioner
+                {...positioningProps}
+                data-base-ui-swipe-ignore
+            >
                 <MenuPrimitive.Popup
                     className={cx(menuPopupClassName, 'shadow-lg', className)}
                     finalFocus={getFinalFocusBehavior(onCloseAutoFocus)}
@@ -422,7 +425,10 @@ export const DropdownMenuContent = forwardRef<
             container={context?.portalContainer}
             keepMounted={forceMount}
         >
-            <MenuPrimitive.Positioner {...positioningProps}>
+            <MenuPrimitive.Positioner
+                {...positioningProps}
+                data-base-ui-swipe-ignore
+            >
                 <MenuPrimitive.Popup
                     className={cx(menuPopupClassName, className)}
                     finalFocus={getFinalFocusBehavior(onCloseAutoFocus)}

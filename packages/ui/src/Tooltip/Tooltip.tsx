@@ -230,6 +230,7 @@ export const TooltipContent = forwardRef<HTMLDivElement, TooltipContentProps>(
                     }
                     collisionBoundary={getCollisionBoundary(collisionBoundary)}
                     collisionPadding={collisionPadding}
+                    data-base-ui-swipe-ignore
                     disableAnchorTracking={
                         updatePositionStrategy === 'optimized'
                     }

@@ -317,17 +317,20 @@ export function CompleteOperationModal({
         requestAnimationFrame(() => sessionChangedFocusRef.current?.focus());
     }, [localDraft.gate.kind]);
 
-    const focusCompletionForm = () => {
+    const focusCompletionForm = (attempt = 0) => {
         requestAnimationFrame(() => {
-            if (attachNotes) {
-                notesInputRef.current?.focus();
-                return;
+            const focusTarget = attachNotes
+                ? notesInputRef.current
+                : document.querySelector<HTMLButtonElement>(
+                      `[data-operation-draft-focus-target="${operationId.toString()}"]`,
+                  );
+            if (focusTarget) {
+                focusTarget.focus();
             }
-            document
-                .querySelector<HTMLButtonElement>(
-                    `[data-operation-draft-focus-target="${operationId.toString()}"]`,
-                )
-                ?.focus();
+
+            if (attempt === 0) {
+                focusCompletionForm(1);
+            }
         });
     };
 

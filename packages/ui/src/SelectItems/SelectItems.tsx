@@ -19,7 +19,6 @@ import { cx } from '../utils';
 
 const EMPTY_VALUE = '__gredice_select_empty__';
 const SEARCH_ITEM_THRESHOLD = 5;
-const dialogSelectStack: symbol[] = [];
 
 const triggerClassName =
     'flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground';
@@ -149,7 +148,6 @@ export function SelectItems<T extends string>({
     const [dialogPortalContainer, setDialogPortalContainer] =
         useState<HTMLElement>();
     const searchInputRef = useRef<HTMLInputElement>(null);
-    const escapeBoundaryId = useRef(Symbol('select-escape-boundary'));
     const isOpen = open ?? internalOpen;
     const shouldClientFilter = clientSideFilter ?? !onSearchValueChange;
     const searchQuery = searchValue ?? internalSearchValue;
@@ -329,52 +327,6 @@ export function SelectItems<T extends string>({
         }
     }, [internalSearchValue, isOpen, onSearchValueChange, searchValue]);
 
-    useEffect(() => {
-        if (!isOpen || !dialogPortalContainer) {
-            return;
-        }
-
-        const boundaryId = escapeBoundaryId.current;
-        dialogSelectStack.push(boundaryId);
-
-        function handleEscape(event: KeyboardEvent) {
-            if (
-                event.key !== 'Escape' ||
-                dialogSelectStack.at(-1) !== boundaryId
-            ) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (isSearchActive && searchQuery) {
-                clearSearch();
-                return;
-            }
-
-            handleOpenChange(false);
-        }
-
-        window.addEventListener('keydown', handleEscape, { capture: true });
-        return () => {
-            window.removeEventListener('keydown', handleEscape, {
-                capture: true,
-            });
-            const stackIndex = dialogSelectStack.lastIndexOf(boundaryId);
-            if (stackIndex >= 0) {
-                dialogSelectStack.splice(stackIndex, 1);
-            }
-        };
-    }, [
-        clearSearch,
-        dialogPortalContainer,
-        handleOpenChange,
-        isOpen,
-        isSearchActive,
-        searchQuery,
-    ]);
-
     const rootValue = toSelectValue(value);
     const rootDefaultValue = toSelectValue(defaultValue);
     const rootClassName = cx(
@@ -456,6 +408,7 @@ export function SelectItems<T extends string>({
                                 align="start"
                                 className={positionerClassName}
                                 collisionPadding={8}
+                                data-base-ui-swipe-ignore
                                 sideOffset={4}
                             >
                                 <ComboboxPrimitive.Popup
@@ -579,6 +532,7 @@ export function SelectItems<T extends string>({
                                 alignItemWithTrigger={false}
                                 className={positionerClassName}
                                 collisionPadding={8}
+                                data-base-ui-swipe-ignore
                                 sideOffset={4}
                             >
                                 <SelectPrimitive.Popup
