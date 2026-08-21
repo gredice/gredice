@@ -44,7 +44,6 @@
         "@gredice/notifications": "workspace:*",
         "@gredice/storage": "workspace:*",
         "@gredice/ui": "workspace:*",
-        "@mdxeditor/editor": "4.0.4",
         "@playwright/experimental-ct-react": "1.61.1",
         "@playwright/test": "1.61.1",
         "@tailwindcss/postcss": "4.3.2",

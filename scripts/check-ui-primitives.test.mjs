@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
-    findRestrictedUiPrimitiveImports,
-    validateUiPrimitiveImports,
+    findRestrictedUiPrimitives,
+    validateUiPrimitives,
 } from './check-ui-primitives.mjs';
 
 function fixture(files) {
@@ -22,24 +22,25 @@ function fixture(files) {
     return root;
 }
 
-test('allows only explicitly inventoried Radix and Vaul imports', (context) => {
+test('allows Base UI only inside the shared UI package', (context) => {
     const root = fixture({
-        'packages/ui/src/Modal.tsx': "import { Drawer } from 'vaul';\n",
+        'packages/ui/package.json': JSON.stringify({
+            dependencies: { '@base-ui/react': '1.7.0' },
+        }),
         'packages/ui/src/BaseDialog.tsx':
             "import { Dialog } from '@base-ui/react/dialog';\n",
         'apps/www/page.tsx': "import { Modal } from '@gredice/ui/Modal';\n",
     });
     context.after(() => rmSync(root, { recursive: true }));
 
-    const result = findRestrictedUiPrimitiveImports(
-        root,
-        new Set(['packages/ui/src/Modal.tsx']),
-    );
+    const result = findRestrictedUiPrimitives(root);
 
     assert.deepEqual(result.unexpectedImports, []);
-    assert.deepEqual(result.staleAllowlistEntries, []);
-    assert.equal(result.legacyImports.length, 1);
-    assert.equal(result.imports.length, 2);
+    assert.deepEqual(result.unexpectedDependencies, []);
+    assert.equal(result.legacyImports.length, 0);
+    assert.equal(result.legacyDependencies.length, 0);
+    assert.equal(result.imports.length, 1);
+    assert.equal(result.dependencies.length, 1);
 });
 
 test('keeps Base UI implementation imports inside packages/ui', (context) => {
@@ -49,7 +50,7 @@ test('keeps Base UI implementation imports inside packages/ui', (context) => {
     });
     context.after(() => rmSync(root, { recursive: true }));
 
-    const result = findRestrictedUiPrimitiveImports(root, new Set());
+    const result = findRestrictedUiPrimitives(root);
 
     assert.deepEqual(result.unexpectedImports, [
         {
@@ -67,7 +68,7 @@ test('reports new restricted imports with their source location', (context) => {
     });
     context.after(() => rmSync(root, { recursive: true }));
 
-    const result = findRestrictedUiPrimitiveImports(root, new Set());
+    const result = findRestrictedUiPrimitives(root);
 
     assert.deepEqual(result.unexpectedImports, [
         {
@@ -78,18 +79,45 @@ test('reports new restricted imports with their source location', (context) => {
     ]);
 });
 
-test('rejects stale allowlist entries so migration slices shrink the boundary', (context) => {
+test('rejects direct Radix and Vaul dependency declarations', (context) => {
     const root = fixture({
-        'packages/ui/src/Button.tsx': 'export function Button() {}\n',
+        'apps/garden/package.json': JSON.stringify({
+            dependencies: { '@radix-ui/react-dialog': '1.1.18' },
+            devDependencies: { vaul: '1.1.2' },
+        }),
+    });
+    context.after(() => rmSync(root, { recursive: true }));
+
+    const result = findRestrictedUiPrimitives(root);
+
+    assert.deepEqual(result.unexpectedDependencies, [
+        {
+            field: 'dependencies',
+            file: 'apps/garden/package.json',
+            specifier: '@radix-ui/react-dialog',
+        },
+        {
+            field: 'devDependencies',
+            file: 'apps/garden/package.json',
+            specifier: 'vaul',
+        },
+    ]);
+    assert.throws(
+        () => validateUiPrimitives(root),
+        /declares primitive outside its approved boundary/u,
+    );
+});
+
+test('rejects Base UI dependency declarations outside packages/ui', (context) => {
+    const root = fixture({
+        'apps/www/package.json': JSON.stringify({
+            dependencies: { '@base-ui/react': '1.7.0' },
+        }),
     });
     context.after(() => rmSync(root, { recursive: true }));
 
     assert.throws(
-        () =>
-            validateUiPrimitiveImports(
-                root,
-                new Set(['packages/ui/src/Migrated.tsx']),
-            ),
-        /stale temporary allowlist entry/u,
+        () => validateUiPrimitives(root),
+        /apps\/www\/package\.json declares primitive outside its approved boundary/u,
     );
 });

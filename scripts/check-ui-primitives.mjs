@@ -1,8 +1,6 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-export const TEMPORARY_UI_PRIMITIVE_ALLOWLIST = new Set();
 
 const SOURCE_EXTENSIONS = new Set([
     '.cjs',
@@ -17,6 +15,7 @@ const SOURCE_EXTENSIONS = new Set([
 const IGNORED_DIRECTORIES = new Set([
     '.next',
     '.turbo',
+    '.vercel',
     'build',
     'coverage',
     'dist',
@@ -26,6 +25,12 @@ const IGNORED_DIRECTORIES = new Set([
 ]);
 const PRIMITIVE_IMPORT =
     /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)["'](@base-ui\/react(?:\/[^"']+)?|@radix-ui\/[^"']+|vaul)["']/gu;
+const DEPENDENCY_FIELDS = [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+];
 
 function sourceFiles(directory) {
     const files = [];
@@ -53,11 +58,57 @@ function lineNumber(source, index) {
     return source.slice(0, index).split('\n').length;
 }
 
-export function findRestrictedUiPrimitiveImports(
-    root,
-    allowlist = TEMPORARY_UI_PRIMITIVE_ALLOWLIST,
-) {
+function manifestFiles(directory) {
+    const files = [];
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) {
+            continue;
+        }
+
+        const entryPath = path.join(directory, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...manifestFiles(entryPath));
+        } else if (entry.name === 'package.json') {
+            files.push(entryPath);
+        }
+    }
+
+    return files;
+}
+
+function packageManifests(root) {
+    const manifests = [];
+    const rootManifest = path.join(root, 'package.json');
+
+    if (existsSync(rootManifest)) {
+        manifests.push(rootManifest);
+    }
+
+    for (const sourceRoot of ['apps', 'packages']) {
+        const absoluteSourceRoot = path.join(root, sourceRoot);
+
+        manifests.push(...manifestFiles(absoluteSourceRoot));
+    }
+
+    return manifests;
+}
+
+function isPrimitiveDependency(specifier) {
+    return (
+        specifier === '@base-ui/react' ||
+        specifier === 'vaul' ||
+        specifier.startsWith('@radix-ui/')
+    );
+}
+
+function isLegacyPrimitive(specifier) {
+    return specifier === 'vaul' || specifier.startsWith('@radix-ui/');
+}
+
+export function findRestrictedUiPrimitives(root) {
     const imports = [];
+    const dependencies = [];
 
     for (const sourceRoot of ['apps', 'packages']) {
         const absoluteSourceRoot = path.join(root, sourceRoot);
@@ -74,40 +125,66 @@ export function findRestrictedUiPrimitiveImports(
         }
     }
 
-    const legacyImports = imports.filter(
-        ({ specifier }) =>
-            specifier === 'vaul' || specifier.startsWith('@radix-ui/'),
-    );
-    const importedFiles = new Set(legacyImports.map((entry) => entry.file));
+    for (const file of packageManifests(root)) {
+        const manifest = JSON.parse(readFileSync(file, 'utf8'));
+
+        for (const field of DEPENDENCY_FIELDS) {
+            const declarations = manifest[field];
+            if (!declarations || typeof declarations !== 'object') {
+                continue;
+            }
+
+            for (const specifier of Object.keys(declarations)) {
+                if (isPrimitiveDependency(specifier)) {
+                    dependencies.push({
+                        field,
+                        file: path
+                            .relative(root, file)
+                            .split(path.sep)
+                            .join('/'),
+                        specifier,
+                    });
+                }
+            }
+        }
+    }
 
     return {
+        dependencies,
         imports,
-        legacyImports,
-        staleAllowlistEntries: [...allowlist].filter(
-            (file) => !importedFiles.has(file),
+        legacyDependencies: dependencies.filter(({ specifier }) =>
+            isLegacyPrimitive(specifier),
         ),
+        legacyImports: imports.filter(({ specifier }) =>
+            isLegacyPrimitive(specifier),
+        ),
+        unexpectedDependencies: dependencies.filter(({ file, specifier }) => {
+            if (specifier === '@base-ui/react') {
+                return file !== 'packages/ui/package.json';
+            }
+
+            return true;
+        }),
         unexpectedImports: imports.filter((entry) => {
             if (entry.specifier.startsWith('@base-ui/react')) {
                 return !entry.file.startsWith('packages/ui/');
             }
 
-            return !allowlist.has(entry.file);
+            return true;
         }),
     };
 }
 
-export function validateUiPrimitiveImports(
-    root,
-    allowlist = TEMPORARY_UI_PRIMITIVE_ALLOWLIST,
-) {
-    const result = findRestrictedUiPrimitiveImports(root, allowlist);
+export function validateUiPrimitives(root) {
+    const result = findRestrictedUiPrimitives(root);
     const errors = [
         ...result.unexpectedImports.map(
             ({ file, line, specifier }) =>
                 `${file}:${line} imports primitive outside its approved boundary: ${specifier}`,
         ),
-        ...result.staleAllowlistEntries.map(
-            (file) => `${file} is a stale temporary allowlist entry`,
+        ...result.unexpectedDependencies.map(
+            ({ field, file, specifier }) =>
+                `${file} declares primitive outside its approved boundary in ${field}: ${specifier}`,
         ),
     ];
 
@@ -126,8 +203,8 @@ const invokedAsScript =
     path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (invokedAsScript) {
-    const result = validateUiPrimitiveImports(repositoryRoot);
+    const result = validateUiPrimitives(repositoryRoot);
     console.log(
-        `UI primitive import guard passed (${result.legacyImports.length} temporary imports in ${TEMPORARY_UI_PRIMITIVE_ALLOWLIST.size} allowlisted files).`,
+        `UI primitive boundary passed (${result.imports.length} Base UI imports and ${result.dependencies.length} approved direct dependency declaration).`,
     );
 }

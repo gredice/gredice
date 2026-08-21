@@ -21,6 +21,20 @@ Use this guide for React, Next.js, TypeScript, UI components, and frontend app s
 - When adding a new `@gredice/ui` component or a meaningful new variant/state, update the relevant showcase story under `apps/storybook/stories/packages/ui/Showcases` so contributors can see it in an appropriate product context.
 - Prefer established `@gredice/*` primitives already used in the app before introducing a new dependency.
 
+### Shared primitive boundary
+
+Base UI is the headless implementation layer for interactive components owned
+by `@gredice/ui`. Application code and other packages must import the shared
+Gredice components rather than `@base-ui/react` directly. First-party Radix and
+Vaul imports or dependency declarations are prohibited; the
+`lint:ui-primitives` and `test:ui-primitives` checks enforce this boundary.
+
+Third-party packages may carry their own primitive implementation internally.
+In particular, `@mdxeditor/editor` currently brings Radix transitively for the
+App and WWW editors; that does not make Radix part of the Gredice UI contract.
+See [the Base UI migration record](./docs/base-ui-migration.md) for the portal,
+compatibility, and dependency-audit decisions.
+
 ## Next.js and React
 
 - Follow the App Router patterns already present in each app.
