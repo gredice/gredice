@@ -30,6 +30,7 @@ import {
 } from '../lib/deliveryFormatting';
 import type { PickupManifestScanResult } from '../lib/deliveryPickupScan';
 import { isDriverCommandResult } from '../lib/driverCommandResult';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 import { HarvestTraceScanner } from './HarvestTraceScanner';
 
 export type PickupManifestSyncSummary = {
@@ -132,7 +133,7 @@ export function DeliveryPickupCard({
     onDiscardSync: (operationId: string) => unknown | Promise<unknown>;
     showCurrentCommand?: boolean;
 }) {
-    const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(pickup.address)}`;
+    const navigationUrl = buildGoogleMapsDirectionsUrl(pickup.address);
     const current = actionState === 'current';
     const completed = actionState === 'completed';
     const syncMessage = syncAlert(sync);

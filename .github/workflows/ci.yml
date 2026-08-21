@@ -67,6 +67,17 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_garden_android:
+              - apps/garden-android/**
+              - apps/garden/app/manifest.json
+              - apps/garden/public/.well-known/assetlinks.json
+              - scripts/render-svg-png.swift
+              - scripts/validate-android-store-listing.mjs
+              - scripts/validate-garden-twa-contract.mjs
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
             app_farm:
               - apps/farm/**
               - packages/auth/**
@@ -94,6 +105,17 @@ jobs:
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
               - turbo.json
+            app_delivery_android:
+              - apps/delivery-android/**
+              - apps/delivery/app/icon.svg
+              - apps/delivery/app/manifest.json
+              - scripts/render-svg-png.swift
+              - scripts/validate-android-store-listing.mjs
+              - scripts/validate-delivery-car-contract.mjs
+              - .github/workflows/**
+              - package.json
+              - pnpm-lock.yaml
+              - pnpm-workspace.yaml
             app_app:
               - apps/app/**
               - packages/auth/**
@@ -195,8 +217,10 @@ jobs:
       app_www: ${{ steps.filter.outputs.app_www }}
       app_news: ${{ steps.filter.outputs.app_news }}
       app_garden: ${{ steps.filter.outputs.app_garden }}
+      app_garden_android: ${{ steps.filter.outputs.app_garden_android }}
       app_farm: ${{ steps.filter.outputs.app_farm }}
       app_delivery: ${{ steps.filter.outputs.app_delivery }}
+      app_delivery_android: ${{ steps.filter.outputs.app_delivery_android }}
       app_app: ${{ steps.filter.outputs.app_app }}
       app_api: ${{ steps.filter.outputs.app_api }}
       app_storybook: ${{ steps.filter.outputs.app_storybook }}
@@ -272,6 +296,16 @@ jobs:
       testShardPrepareScript: "test:ci:prepare"
     secrets: inherit
 
+  ci_garden_android:
+    name: "CI - garden Android"
+    needs: changes
+    if: success() && needs.changes.outputs.app_garden_android == 'true'
+    uses: ./.github/workflows/android_ci_reusable.yml
+    with:
+      name: "garden"
+      path: "apps/garden-android"
+      validateGardenTwaContract: true
+
   ci_farm:
     name: "CI - farm"
     needs: changes
@@ -293,6 +327,17 @@ jobs:
       path: "apps/delivery"
       vercelProjectIdSecretName: "VERCEL_PROJECT_ID_DELIVERY"
     secrets: inherit
+
+  ci_delivery_android:
+    name: "CI - delivery Android"
+    needs: changes
+    if: success() && needs.changes.outputs.app_delivery_android == 'true'
+    uses: ./.github/workflows/android_ci_reusable.yml
+    with:
+      name: "delivery"
+      path: "apps/delivery-android"
+      allowMissingStoreScreenshots: true
+      validateDeliveryCarContract: true
 
   ci_app:
     name: "CI - app"
@@ -481,8 +526,10 @@ jobs:
         ci_www,
         ci_news,
         ci_garden,
+        ci_garden_android,
         ci_farm,
         ci_delivery,
+        ci_delivery_android,
         ci_app,
         ci_api,
         ci_status,

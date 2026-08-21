@@ -497,6 +497,8 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
+  apps/delivery-android: {}
+
   apps/desktop:
     devDependencies:
       '@biomejs/biome':
@@ -732,6 +734,8 @@ importers:
       typescript:
         specifier: 7.0.2
         version: 7.0.2
+
+  apps/garden-android: {}
 
   apps/news:
     dependencies:

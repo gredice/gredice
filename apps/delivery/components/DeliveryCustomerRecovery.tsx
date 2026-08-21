@@ -8,6 +8,7 @@ import type {
     DeliveryHarvestSummary,
 } from '../lib/deliveryDashboardTypes';
 import { formatDeliveryDateTime } from '../lib/deliveryFormatting';
+import { buildGoogleMapsDirectionsUrl } from '../lib/googleMapsDirections';
 
 export function DeliveryCustomerRecovery({
     recovery,
@@ -55,7 +56,9 @@ export function DeliveryCustomerRecovery({
     }
 
     if (recovery.kind === 'hq-pickup') {
-        const navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(recovery.pickupAddress)}`;
+        const navigationUrl = buildGoogleMapsDirectionsUrl(
+            recovery.pickupAddress,
+        );
         return (
             <Alert color="info" startDecorator={<Info className="size-5" />}>
                 <div className="space-y-3">

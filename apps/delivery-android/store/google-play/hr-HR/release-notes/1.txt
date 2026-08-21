@@ -1,0 +1,1 @@
+Prvi zatvoreni test prikaza dviju oglednih stanica i otvaranja zadane navigacijske aplikacije u vozilu.
