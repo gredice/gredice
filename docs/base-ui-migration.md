@@ -23,7 +23,7 @@ Gredice components.
 | Radix `asChild` trigger composition | Keep the library-owned compatibility prop until the owning component slice replaces call sites with Base UI `render`. Do not add new `asChild` call sites. |
 | Menu `onSelect` | Preserve the `(event: Event) => void` contract, including `event.preventDefault()` to keep a menu open. Adapt Base UI event details inside the wrapper. |
 | Tabs `forceMount` | Keep the public compatibility prop through the tabs slice, then translate it to Base UI `keepMounted`. Preserve Radix's current automatic activation with `activateOnFocus`. |
-| Checkbox indeterminate state | Preserve `checked` and `defaultChecked` as `boolean | 'indeterminate'`. |
+| Checkbox indeterminate state | Preserve `checked` and `defaultChecked` as `boolean \| 'indeterminate'`. |
 | Popper custom container | Preserve the `container` escape hatch and default to the shared body portal contract. |
 | Popper open autofocus | Preserve the cancellable native-event callback while adapting it inside the Base UI wrapper. |
 | Slider values | Preserve array-valued `value`, `defaultValue`, `onValueChange`, and `onValueCommit` contracts. |

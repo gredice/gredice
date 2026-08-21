@@ -122,12 +122,11 @@ export type DropdownMenuContentProps = Omit<
 export type DropdownMenuSubTriggerProps = Omit<
     HTMLAttributes<HTMLDivElement>,
     'onSelect'
-> &
-    LegacyAsChildProps & {
-        disabled?: boolean;
-        inset?: boolean;
-        textValue?: string;
-    };
+> & {
+    disabled?: boolean;
+    inset?: boolean;
+    textValue?: string;
+};
 
 export const DropdownMenuSubTrigger = forwardRef<
     HTMLDivElement,

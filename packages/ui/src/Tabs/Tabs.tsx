@@ -68,10 +68,9 @@ export const Tabs = forwardRef<HTMLDivElement, TabsProps>(
     },
 );
 
-export type TabsListProps = HTMLAttributes<HTMLDivElement> &
-    LegacyAsChildProps & {
-        loop?: boolean;
-    };
+export type TabsListProps = HTMLAttributes<HTMLDivElement> & {
+    loop?: boolean;
+};
 
 export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
     function TabsList({ className, ...props }, ref) {
