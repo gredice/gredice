@@ -75,9 +75,8 @@ export type TabsListProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
-    function TabsList({ asChild, children, className, loop, ...props }, ref) {
+    function TabsList({ children, className, loop, ...props }, ref) {
         const activateOnFocus = useContext(TabsActivationContext);
-        const render = getLegacyRender(asChild, children);
 
         return (
             <TabsPrimitive.List
@@ -88,14 +87,13 @@ export const TabsList = forwardRef<HTMLDivElement, TabsListProps>(
                     className,
                 )}
                 loopFocus={loop}
-                render={render}
                 {...props}
             >
                 <TabsPrimitive.Indicator
                     className="pointer-events-none absolute left-0 top-0 z-0 h-(--active-tab-height) w-(--active-tab-width) translate-x-(--active-tab-left) translate-y-(--active-tab-top) rounded-md bg-background shadow-xs transition-[translate,width,height] duration-200 ease-out motion-reduce:transition-none"
                     renderBeforeHydration
                 />
-                {render ? undefined : children}
+                {children}
             </TabsPrimitive.List>
         );
     },
