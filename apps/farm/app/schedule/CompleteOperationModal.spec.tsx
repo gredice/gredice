@@ -1783,7 +1783,7 @@ test('supports a keyboard-only blocker failure, retry, success, and close journe
 
     const dialog = page.getByRole('dialog', { name: 'Prijavi prepreku' });
     await expect(dialog).toBeVisible();
-    await expect(trigger).toBeFocused();
+    await expect(dialog).toBeFocused();
     const firstReason = dialog.getByRole('radio', {
         name: 'Vrijeme ili uvjeti nisu sigurni',
     });
