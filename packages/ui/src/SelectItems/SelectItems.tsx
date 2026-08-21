@@ -1,13 +1,17 @@
 'use client';
 
-import * as SelectPrimitive from '@radix-ui/react-select';
-import type {
-    ChangeEvent,
-    HTMLAttributes,
-    KeyboardEvent,
-    ReactNode,
+import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
+import { DirectionProvider } from '@base-ui/react/direction-provider';
+import { Select as SelectPrimitive } from '@base-ui/react/select';
+import type { HTMLAttributes, ReactNode } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
 } from 'react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, Down, Search, Up } from '../icons';
 import type { UiDirection } from '../lib/primitiveTypes';
 import { Stack } from '../Stack';
@@ -15,6 +19,16 @@ import { cx } from '../utils';
 
 const EMPTY_VALUE = '__gredice_select_empty__';
 const SEARCH_ITEM_THRESHOLD = 5;
+const dialogSelectStack: symbol[] = [];
+
+const triggerClassName =
+    'flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground';
+const positionerClassName =
+    'z-50 w-[var(--anchor-width)] min-w-32 max-w-[var(--available-width)]';
+const popupClassName =
+    'relative max-h-[min(24rem,var(--available-height))] min-w-32 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md outline-hidden data-[side=bottom]:translate-y-1 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:-translate-x-1 data-[side=left]:slide-in-from-right-2 data-[side=right]:translate-x-1 data-[side=right]:slide-in-from-left-2 data-[side=top]:-translate-y-1 data-[side=top]:slide-in-from-bottom-2 data-[starting-style]:animate-in data-[starting-style]:fade-in-0 data-[starting-style]:zoom-in-95 data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[ending-style]:zoom-out-95 motion-reduce:animate-none motion-reduce:transition-none';
+const itemClassName =
+    'relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-sm outline-hidden data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50';
 
 export type SelectItem<T extends string> = {
     value: T;
@@ -66,12 +80,24 @@ function toSelectValue(value: string | undefined) {
     return value === '' ? EMPTY_VALUE : value;
 }
 
-function fromSelectValue<T extends string>(value: string) {
-    return (value === EMPTY_VALUE ? '' : value) as T;
+function toFormValue(value: string) {
+    return value === EMPTY_VALUE ? '' : value;
 }
 
 function itemLabel<T extends string>(item: SelectItem<T>) {
     return item.content ?? item.label ?? item.value;
+}
+
+function itemTextValue<T extends string>(item: SelectItem<T>) {
+    if (typeof item.content === 'string') {
+        return item.content;
+    }
+
+    if (typeof item.label === 'string') {
+        return item.label;
+    }
+
+    return item.title ?? item.value;
 }
 
 function itemSearchText<T extends string>(item: SelectItem<T>) {
@@ -86,20 +112,17 @@ function itemSearchText<T extends string>(item: SelectItem<T>) {
         .toLocaleLowerCase();
 }
 
-function isInputEditingKey(event: KeyboardEvent<HTMLInputElement>) {
-    return (
-        event.key.length === 1 ||
-        event.key === 'Backspace' ||
-        event.key === 'Delete'
-    );
-}
-
 export function SelectItems<T extends string>({
-    clientSideFilter,
+    autoComplete,
     className,
+    clientSideFilter,
     container,
+    defaultOpen,
     defaultValue,
+    dir,
+    disabled,
     emptySearchText = 'Nema rezultata.',
+    form,
     helperText,
     id,
     items,
@@ -110,6 +133,7 @@ export function SelectItems<T extends string>({
     onValueChange,
     open,
     placeholder,
+    required,
     searchable,
     searchPlaceholder = 'Pretraži opcije...',
     searchValue,
@@ -120,9 +144,12 @@ export function SelectItems<T extends string>({
     const generatedId = useId();
     const inputId = id ?? name ?? generatedId;
     const labelId = label ? `label-${inputId}` : undefined;
-    const [internalOpen, setInternalOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(defaultOpen ?? false);
     const [internalSearchValue, setInternalSearchValue] = useState('');
+    const [dialogPortalContainer, setDialogPortalContainer] =
+        useState<HTMLElement>();
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const escapeBoundaryId = useRef(Symbol('select-escape-boundary'));
     const isOpen = open ?? internalOpen;
     const shouldClientFilter = clientSideFilter ?? !onSearchValueChange;
     const searchQuery = searchValue ?? internalSearchValue;
@@ -135,39 +162,163 @@ export function SelectItems<T extends string>({
         shouldShowSearch &&
         (shouldClientFilter || Boolean(onSearchValueChange));
     const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase();
-    const visibleItems = useMemo(() => {
+    const itemData = useMemo(() => {
+        const encodedItems: string[] = [];
+        const itemByValue = new Map<string, SelectItem<T>>();
+        const originalValueByEncodedValue = new Map<string, T>();
+        const selectRootItems: Array<{ label: ReactNode; value: string }> = [];
+
+        for (const item of items) {
+            const encodedValue = toSelectValue(item.value) ?? item.value;
+            encodedItems.push(encodedValue);
+            itemByValue.set(encodedValue, item);
+            originalValueByEncodedValue.set(encodedValue, item.value);
+            selectRootItems.push({
+                label: itemLabel(item),
+                value: encodedValue,
+            });
+        }
+
+        return {
+            encodedItems,
+            itemByValue,
+            originalValueByEncodedValue,
+            selectRootItems,
+        };
+    }, [items]);
+    const {
+        encodedItems,
+        itemByValue,
+        originalValueByEncodedValue,
+        selectRootItems,
+    } = itemData;
+    const visibleEncodedItems = useMemo(() => {
         if (
             !isSearchActive ||
             !shouldClientFilter ||
             normalizedSearchQuery.length === 0
         ) {
-            return items;
+            return encodedItems;
         }
 
-        return items.filter((item) =>
-            itemSearchText(item).includes(normalizedSearchQuery),
-        );
-    }, [isSearchActive, items, normalizedSearchQuery, shouldClientFilter]);
+        return encodedItems.filter((encodedValue) => {
+            const item = itemByValue.get(encodedValue);
+            return item
+                ? itemSearchText(item).includes(normalizedSearchQuery)
+                : false;
+        });
+    }, [
+        encodedItems,
+        isSearchActive,
+        itemByValue,
+        normalizedSearchQuery,
+        shouldClientFilter,
+    ]);
+    const resolvedPortalContainer = container ?? dialogPortalContainer;
+
+    const registerTriggerElement = useCallback(
+        (element: HTMLButtonElement | null) => {
+            setDialogPortalContainer(
+                element?.closest<HTMLElement>(
+                    '[role="dialog"], [role="alertdialog"]',
+                ) ?? undefined,
+            );
+        },
+        [],
+    );
+
+    const getItemTextValue = useCallback(
+        (encodedValue: string) => {
+            const item = itemByValue.get(encodedValue);
+            return item ? itemTextValue(item) : encodedValue;
+        },
+        [itemByValue],
+    );
+
+    const handleOpenChange = useCallback(
+        (nextOpen: boolean) => {
+            setInternalOpen(nextOpen);
+            onOpenChange?.(nextOpen);
+        },
+        [onOpenChange],
+    );
+
+    const clearSearch = useCallback(() => {
+        if (searchValue === undefined) {
+            setInternalSearchValue('');
+        }
+
+        onSearchValueChange?.('');
+    }, [onSearchValueChange, searchValue]);
+
+    const handleComboboxOpenChange = useCallback(
+        (
+            nextOpen: boolean,
+            eventDetails: ComboboxPrimitive.Root.ChangeEventDetails,
+        ) => {
+            if (
+                !nextOpen &&
+                eventDetails.reason === 'escape-key' &&
+                searchQuery
+            ) {
+                eventDetails.cancel();
+                clearSearch();
+                return;
+            }
+
+            handleOpenChange(nextOpen);
+        },
+        [clearSearch, handleOpenChange, searchQuery],
+    );
+
+    const handleSearchValueChange = useCallback(
+        (
+            nextValue: string,
+            eventDetails: ComboboxPrimitive.Root.ChangeEventDetails,
+        ) => {
+            if (eventDetails.reason === 'input-clear') {
+                return;
+            }
+
+            if (searchValue === undefined) {
+                setInternalSearchValue(nextValue);
+            }
+
+            onSearchValueChange?.(nextValue);
+        },
+        [onSearchValueChange, searchValue],
+    );
+
+    const handleEncodedValueChange = useCallback(
+        (nextValue: string | null) => {
+            if (nextValue === null) {
+                return;
+            }
+
+            const originalValue = originalValueByEncodedValue.get(nextValue);
+            if (originalValue !== undefined) {
+                onValueChange?.(originalValue);
+            }
+        },
+        [onValueChange, originalValueByEncodedValue],
+    );
 
     useEffect(() => {
         if (!isOpen || !isSearchActive) {
             return;
         }
 
-        const isCoarsePointer =
-            typeof window !== 'undefined' &&
-            window.matchMedia('(pointer: coarse)').matches;
-
+        const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
         if (isCoarsePointer) {
             return;
         }
 
-        const timeoutId = setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
             searchInputRef.current?.focus();
         }, 0);
 
         return () => {
-            clearTimeout(timeoutId);
+            window.clearTimeout(timeoutId);
         };
     }, [isOpen, isSearchActive]);
 
@@ -178,159 +329,327 @@ export function SelectItems<T extends string>({
         }
     }, [internalSearchValue, isOpen, onSearchValueChange, searchValue]);
 
-    const handleOpenChange = (nextOpen: boolean) => {
-        setInternalOpen(nextOpen);
-        onOpenChange?.(nextOpen);
-    };
-
-    const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const nextValue = event.target.value;
-
-        if (searchValue === undefined) {
-            setInternalSearchValue(nextValue);
-        }
-
-        onSearchValueChange?.(nextValue);
-    };
-
-    const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Escape' && searchQuery) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            if (searchValue === undefined) {
-                setInternalSearchValue('');
-            }
-
-            onSearchValueChange?.('');
+    useEffect(() => {
+        if (!isOpen || !dialogPortalContainer) {
             return;
         }
 
-        if (isInputEditingKey(event)) {
+        const boundaryId = escapeBoundaryId.current;
+        dialogSelectStack.push(boundaryId);
+
+        function handleEscape(event: KeyboardEvent) {
+            if (
+                event.key !== 'Escape' ||
+                dialogSelectStack.at(-1) !== boundaryId
+            ) {
+                return;
+            }
+
+            event.preventDefault();
             event.stopPropagation();
+
+            if (isSearchActive && searchQuery) {
+                clearSearch();
+                return;
+            }
+
+            handleOpenChange(false);
         }
-    };
+
+        window.addEventListener('keydown', handleEscape, { capture: true });
+        return () => {
+            window.removeEventListener('keydown', handleEscape, {
+                capture: true,
+            });
+            const stackIndex = dialogSelectStack.lastIndexOf(boundaryId);
+            if (stackIndex >= 0) {
+                dialogSelectStack.splice(stackIndex, 1);
+            }
+        };
+    }, [
+        clearSearch,
+        dialogPortalContainer,
+        handleOpenChange,
+        isOpen,
+        isSearchActive,
+        searchQuery,
+    ]);
+
+    const rootValue = toSelectValue(value);
+    const rootDefaultValue = toSelectValue(defaultValue);
+    const rootClassName = cx(
+        triggerClassName,
+        variant === 'outlined' && 'border border-input bg-background',
+        variant === 'plain' && 'bg-transparent',
+    );
 
     return (
-        <Stack className={className} spacing={1}>
-            {label ? (
-                <label
-                    className="text-sm font-medium"
-                    htmlFor={inputId}
-                    id={labelId}
-                >
-                    {label}
-                </label>
-            ) : null}
-            <SelectPrimitive.Root
-                defaultValue={toSelectValue(defaultValue)}
-                name={name}
-                onOpenChange={handleOpenChange}
-                onValueChange={(nextValue) =>
-                    onValueChange?.(fromSelectValue(nextValue))
-                }
-                open={open}
-                value={toSelectValue(value)}
-                {...rest}
-            >
-                <SelectPrimitive.Trigger
-                    aria-label={label ?? placeholder}
-                    aria-labelledby={labelId}
-                    className={cx(
-                        'flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ring-offset-background focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
-                        '[&>span]:line-clamp-1 data-[placeholder]:text-muted-foreground',
-                        variant === 'outlined' &&
-                            'border border-input bg-background',
-                        variant === 'plain' && 'bg-transparent',
-                    )}
-                    id={inputId}
-                >
-                    <SelectPrimitive.Value placeholder={placeholder} />
-                    <SelectPrimitive.Icon asChild>
-                        <Down className="size-4 shrink-0 opacity-50" />
-                    </SelectPrimitive.Icon>
-                </SelectPrimitive.Trigger>
-                <SelectPrimitive.Portal container={container}>
-                    <SelectPrimitive.Content
-                        className="relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[side=bottom]:translate-y-1 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:-translate-x-1 data-[side=left]:slide-in-from-right-2 data-[side=right]:translate-x-1 data-[side=right]:slide-in-from-left-2 data-[side=top]:-translate-y-1 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
-                        position="popper"
+        <DirectionProvider direction={dir}>
+            <Stack {...rest} className={className} dir={dir} spacing={1}>
+                {label ? (
+                    <label
+                        className="text-sm font-medium"
+                        htmlFor={inputId}
+                        id={labelId}
                     >
-                        <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
-                            <Up className="size-4" />
-                        </SelectPrimitive.ScrollUpButton>
-                        {isSearchActive ? (
-                            <div
-                                className="border-b p-1"
-                                onPointerDown={(event) =>
-                                    event.stopPropagation()
-                                }
-                            >
-                                <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                                    <Search className="size-4 shrink-0 text-muted-foreground" />
-                                    <input
-                                        ref={searchInputRef}
-                                        aria-label={searchPlaceholder}
-                                        className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
-                                        onClick={(event) =>
-                                            event.stopPropagation()
-                                        }
-                                        onChange={handleSearchChange}
-                                        onKeyDown={handleSearchKeyDown}
-                                        onPointerDown={(event) =>
-                                            event.stopPropagation()
-                                        }
-                                        placeholder={searchPlaceholder}
-                                        type="search"
-                                        value={searchQuery}
-                                    />
-                                </div>
-                            </div>
-                        ) : null}
-                        <SelectPrimitive.Viewport className="h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] p-1">
-                            {visibleItems.length > 0 ? (
-                                visibleItems.map((item) => (
-                                    <SelectPrimitive.Item
-                                        className="relative flex w-full cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-sm outline-hidden focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                                        disabled={item.disabled}
-                                        key={item.value || EMPTY_VALUE}
-                                        title={item.title}
-                                        value={
-                                            toSelectValue(item.value) ??
-                                            item.value
-                                        }
-                                    >
-                                        <span className="absolute left-2 flex size-3.5 items-center justify-center">
-                                            <SelectPrimitive.ItemIndicator>
-                                                <Check className="size-4" />
-                                            </SelectPrimitive.ItemIndicator>
-                                        </span>
-                                        <SelectPrimitive.ItemText>
-                                            <span className="flex items-center gap-2">
-                                                {item.icon}
-                                                <span className="line-clamp-1">
-                                                    {itemLabel(item)}
-                                                </span>
+                        {label}
+                    </label>
+                ) : null}
+                {isSearchActive ? (
+                    <ComboboxPrimitive.Root
+                        autoComplete={autoComplete}
+                        defaultValue={rootDefaultValue}
+                        disabled={disabled}
+                        filteredItems={visibleEncodedItems}
+                        form={form}
+                        itemToStringLabel={getItemTextValue}
+                        itemToStringValue={toFormValue}
+                        items={encodedItems}
+                        inputValue={searchQuery}
+                        modal
+                        name={name}
+                        onInputValueChange={handleSearchValueChange}
+                        onOpenChange={handleComboboxOpenChange}
+                        onValueChange={handleEncodedValueChange}
+                        open={isOpen}
+                        required={required}
+                        value={rootValue}
+                    >
+                        <ComboboxPrimitive.Trigger
+                            ref={registerTriggerElement}
+                            aria-label={label ?? placeholder}
+                            aria-labelledby={labelId}
+                            className={rootClassName}
+                            id={inputId}
+                        >
+                            <ComboboxPrimitive.Value placeholder={placeholder}>
+                                {(selectedValue: string | null) => {
+                                    const item = selectedValue
+                                        ? itemByValue.get(selectedValue)
+                                        : undefined;
+
+                                    return (
+                                        <span className="line-clamp-1 flex min-w-0 items-center gap-2">
+                                            {item?.icon}
+                                            <span className="line-clamp-1">
+                                                {item
+                                                    ? itemLabel(item)
+                                                    : selectedValue
+                                                      ? toFormValue(
+                                                            selectedValue,
+                                                        )
+                                                      : placeholder}
                                             </span>
-                                        </SelectPrimitive.ItemText>
-                                    </SelectPrimitive.Item>
-                                ))
-                            ) : (
-                                <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                    {emptySearchText}
-                                </div>
-                            )}
-                        </SelectPrimitive.Viewport>
-                        <SelectPrimitive.ScrollDownButton className="flex cursor-default items-center justify-center py-1">
-                            <Down className="size-4" />
-                        </SelectPrimitive.ScrollDownButton>
-                    </SelectPrimitive.Content>
-                </SelectPrimitive.Portal>
-            </SelectPrimitive.Root>
-            {helperText ? (
-                <span className="text-sm text-red-600 dark:text-red-300">
-                    {helperText}
-                </span>
-            ) : null}
-        </Stack>
+                                        </span>
+                                    );
+                                }}
+                            </ComboboxPrimitive.Value>
+                            <Down
+                                aria-hidden
+                                className="size-4 shrink-0 opacity-50"
+                            />
+                        </ComboboxPrimitive.Trigger>
+                        <ComboboxPrimitive.Portal
+                            container={resolvedPortalContainer}
+                        >
+                            <ComboboxPrimitive.Positioner
+                                align="start"
+                                className={positionerClassName}
+                                collisionPadding={8}
+                                sideOffset={4}
+                            >
+                                <ComboboxPrimitive.Popup
+                                    className={popupClassName}
+                                    dir={dir}
+                                    initialFocus={false}
+                                >
+                                    <div className="border-b p-1">
+                                        <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                                            <Search className="size-4 shrink-0 text-muted-foreground" />
+                                            <ComboboxPrimitive.Input
+                                                ref={searchInputRef}
+                                                aria-label={searchPlaceholder}
+                                                className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
+                                                placeholder={searchPlaceholder}
+                                                role="searchbox"
+                                                type="search"
+                                            />
+                                        </div>
+                                    </div>
+                                    <ComboboxPrimitive.Empty className="px-3 py-2 text-sm text-muted-foreground">
+                                        {emptySearchText}
+                                    </ComboboxPrimitive.Empty>
+                                    <ComboboxPrimitive.List className="max-h-[calc(min(24rem,var(--available-height))-3rem)] overflow-y-auto p-1">
+                                        {(
+                                            encodedValue: string,
+                                            index: number,
+                                        ) => {
+                                            const item =
+                                                itemByValue.get(encodedValue);
+                                            if (!item) {
+                                                return null;
+                                            }
+
+                                            return (
+                                                <ComboboxPrimitive.Item
+                                                    className={itemClassName}
+                                                    disabled={item.disabled}
+                                                    index={index}
+                                                    key={encodedValue}
+                                                    title={item.title}
+                                                    value={encodedValue}
+                                                >
+                                                    <span className="absolute left-2 flex size-3.5 items-center justify-center">
+                                                        <ComboboxPrimitive.ItemIndicator>
+                                                            <Check className="size-4" />
+                                                        </ComboboxPrimitive.ItemIndicator>
+                                                    </span>
+                                                    <span className="flex min-w-0 items-center gap-2">
+                                                        {item.icon}
+                                                        <span className="line-clamp-1">
+                                                            {itemLabel(item)}
+                                                        </span>
+                                                    </span>
+                                                </ComboboxPrimitive.Item>
+                                            );
+                                        }}
+                                    </ComboboxPrimitive.List>
+                                </ComboboxPrimitive.Popup>
+                            </ComboboxPrimitive.Positioner>
+                        </ComboboxPrimitive.Portal>
+                    </ComboboxPrimitive.Root>
+                ) : (
+                    <SelectPrimitive.Root
+                        autoComplete={autoComplete}
+                        defaultValue={rootDefaultValue}
+                        disabled={disabled}
+                        form={form}
+                        itemToStringLabel={getItemTextValue}
+                        itemToStringValue={toFormValue}
+                        items={selectRootItems}
+                        name={name}
+                        onOpenChange={handleOpenChange}
+                        onValueChange={handleEncodedValueChange}
+                        open={isOpen}
+                        required={required}
+                        value={rootValue}
+                    >
+                        <SelectPrimitive.Trigger
+                            ref={registerTriggerElement}
+                            aria-label={label ?? placeholder}
+                            aria-labelledby={labelId}
+                            className={rootClassName}
+                            id={inputId}
+                        >
+                            <SelectPrimitive.Value
+                                className="line-clamp-1 flex min-w-0 items-center gap-2"
+                                placeholder={placeholder}
+                            >
+                                {(selectedValue: string | null) => {
+                                    const item = selectedValue
+                                        ? itemByValue.get(selectedValue)
+                                        : undefined;
+
+                                    return (
+                                        <>
+                                            {item?.icon}
+                                            <span className="line-clamp-1">
+                                                {item
+                                                    ? itemLabel(item)
+                                                    : selectedValue
+                                                      ? toFormValue(
+                                                            selectedValue,
+                                                        )
+                                                      : placeholder}
+                                            </span>
+                                        </>
+                                    );
+                                }}
+                            </SelectPrimitive.Value>
+                            <Down
+                                aria-hidden
+                                className="size-4 shrink-0 opacity-50"
+                            />
+                        </SelectPrimitive.Trigger>
+                        <SelectPrimitive.Portal
+                            container={resolvedPortalContainer}
+                        >
+                            <SelectPrimitive.Positioner
+                                align="start"
+                                alignItemWithTrigger={false}
+                                className={positionerClassName}
+                                collisionPadding={8}
+                                sideOffset={4}
+                            >
+                                <SelectPrimitive.Popup
+                                    className={popupClassName}
+                                    dir={dir}
+                                >
+                                    <SelectPrimitive.ScrollUpArrow className="flex cursor-default items-center justify-center py-1">
+                                        <Up className="size-4" />
+                                    </SelectPrimitive.ScrollUpArrow>
+                                    <SelectPrimitive.List className="max-h-[min(24rem,var(--available-height))] overflow-y-auto p-1">
+                                        {encodedItems.length > 0 ? (
+                                            encodedItems.map((encodedValue) => {
+                                                const item =
+                                                    itemByValue.get(
+                                                        encodedValue,
+                                                    );
+                                                if (!item) {
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <SelectPrimitive.Item
+                                                        className={
+                                                            itemClassName
+                                                        }
+                                                        disabled={item.disabled}
+                                                        key={encodedValue}
+                                                        label={itemTextValue(
+                                                            item,
+                                                        )}
+                                                        title={item.title}
+                                                        value={encodedValue}
+                                                    >
+                                                        <span className="absolute left-2 flex size-3.5 items-center justify-center">
+                                                            <SelectPrimitive.ItemIndicator>
+                                                                <Check className="size-4" />
+                                                            </SelectPrimitive.ItemIndicator>
+                                                        </span>
+                                                        <SelectPrimitive.ItemText>
+                                                            <span className="flex min-w-0 items-center gap-2">
+                                                                {item.icon}
+                                                                <span className="line-clamp-1">
+                                                                    {itemLabel(
+                                                                        item,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        </SelectPrimitive.ItemText>
+                                                    </SelectPrimitive.Item>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                                {emptySearchText}
+                                            </div>
+                                        )}
+                                    </SelectPrimitive.List>
+                                    <SelectPrimitive.ScrollDownArrow className="flex cursor-default items-center justify-center py-1">
+                                        <Down className="size-4" />
+                                    </SelectPrimitive.ScrollDownArrow>
+                                </SelectPrimitive.Popup>
+                            </SelectPrimitive.Positioner>
+                        </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                )}
+                {helperText ? (
+                    <span className="text-sm text-red-600 dark:text-red-300">
+                        {helperText}
+                    </span>
+                ) : null}
+            </Stack>
+        </DirectionProvider>
     );
 }

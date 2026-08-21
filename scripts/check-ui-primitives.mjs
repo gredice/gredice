@@ -1,11 +1,10 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const TEMPORARY_UI_PRIMITIVE_ALLOWLIST = new Set([
     'packages/ui/src/Modal/Modal.tsx',
     'packages/ui/src/ModalConfirm/ModalConfirm.tsx',
-    'packages/ui/src/SelectItems/SelectItems.tsx',
 ]);
 
 const SOURCE_EXTENSIONS = new Set([
