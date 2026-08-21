@@ -58,6 +58,15 @@ export const Range: Story = {
     },
 };
 
+export const Inverted: Story = {
+    args: {
+        'aria-label': 'Obrnuta vrijednost',
+        defaultValue: [30],
+        inverted: true,
+        label: 'Obrnuti smjer',
+    },
+};
+
 export const Vertical: Story = {
     args: {
         'aria-label': 'Visina prikaza',

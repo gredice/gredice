@@ -3,7 +3,7 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Slider as SliderPrimitive } from '@base-ui/react/slider';
 import type { HTMLAttributes, ReactNode } from 'react';
-import { useId } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import type { UiDirection, UiOrientation } from '../lib/primitiveTypes';
 import { cx } from '../utils';
 
@@ -69,20 +69,64 @@ export function Slider({
         'aria-labelledby': ariaLabelledBy,
         ...restRootAttributes
     } = rootAttributes;
-    const internalDefaultValue = inverted
-        ? invertValues(defaultValue, min, max)
+    const verticalInverted = inverted && orientation === 'vertical';
+    const resolvedDirection =
+        inverted && orientation === 'horizontal'
+            ? dir === 'rtl'
+                ? 'ltr'
+                : 'rtl'
+            : dir;
+    const [uncontrolledValue, setUncontrolledValue] = useState(
+        defaultValue ?? [min],
+    );
+    const publicValue = value ?? uncontrolledValue;
+    const internalDefaultValue = verticalInverted
+        ? invertValues(defaultValue ?? [min], min, max)
         : defaultValue;
-    const internalValue = inverted ? invertValues(value, min, max) : value;
+    const internalValue = verticalInverted
+        ? invertValues(value, min, max)
+        : value;
+    const publicThumbValues = verticalInverted
+        ? [...publicValue].reverse()
+        : publicValue;
+    const thumbInputRefs = useRef<Array<HTMLInputElement | null>>([]);
     const thumbCount = value?.length ?? defaultValue?.length ?? 1;
 
     function toPublicValue(nextValue: number[]) {
-        return inverted
+        return verticalInverted
             ? (invertValues(nextValue, min, max) ?? [])
             : [...nextValue];
     }
 
+    function handleValueChange(nextValue: number[]) {
+        const nextPublicValue = toPublicValue(nextValue);
+
+        if (value === undefined) {
+            setUncontrolledValue(nextPublicValue);
+        }
+
+        onValueChange?.(nextPublicValue);
+    }
+
+    useLayoutEffect(() => {
+        if (!verticalInverted) {
+            return;
+        }
+
+        for (const [index, input] of thumbInputRefs.current.entries()) {
+            const thumbValue = publicThumbValues[index];
+
+            if (!input || thumbValue === undefined) {
+                continue;
+            }
+
+            input.setAttribute('aria-valuenow', String(thumbValue));
+            input.setAttribute('aria-valuetext', String(thumbValue));
+        }
+    }, [publicThumbValues, verticalInverted]);
+
     return (
-        <DirectionProvider direction={dir}>
+        <DirectionProvider direction={resolvedDirection}>
             <SliderPrimitive.Root
                 className={cx(
                     'w-full data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto',
@@ -90,17 +134,15 @@ export function Slider({
                     className,
                 )}
                 defaultValue={internalDefaultValue}
-                dir={dir}
+                dir={resolvedDirection}
                 disabled={disabled}
-                form={form}
+                form={verticalInverted ? undefined : form}
                 id={sliderId}
                 max={max}
                 min={min}
                 minStepsBetweenValues={minStepsBetweenThumbs}
-                name={name}
-                onValueChange={(nextValue) =>
-                    onValueChange?.(toPublicValue(nextValue))
-                }
+                name={verticalInverted ? undefined : name}
+                onValueChange={handleValueChange}
                 onValueCommitted={(nextValue) =>
                     onValueCommit?.(toPublicValue(nextValue))
                 }
@@ -142,6 +184,9 @@ export function Slider({
                                     thumbClassName,
                                 )}
                                 index={index}
+                                inputRef={(input) => {
+                                    thumbInputRefs.current[index] = input;
+                                }}
                                 // biome-ignore lint/suspicious/noArrayIndexKey: Thumb slots have stable positional identity.
                                 key={`thumb-${index}`}
                             />
@@ -149,6 +194,19 @@ export function Slider({
                     </SliderPrimitive.Track>
                 </SliderPrimitive.Control>
             </SliderPrimitive.Root>
+            {verticalInverted && name
+                ? publicValue.map((currentValue, index) => (
+                      <input
+                          disabled={disabled}
+                          form={form}
+                          // biome-ignore lint/suspicious/noArrayIndexKey: Slider values have stable positional identity.
+                          key={`${sliderId}-value-${index}`}
+                          name={name}
+                          type="hidden"
+                          value={currentValue}
+                      />
+                  ))
+                : null}
         </DirectionProvider>
     );
 }

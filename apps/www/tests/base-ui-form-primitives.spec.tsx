@@ -109,6 +109,77 @@ test('keeps slider array values and keyboard controls', async ({
     await expect(slider).toHaveValue('100');
 });
 
+test('preserves inverted slider values for accessibility and forms', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <form data-testid="inverted-form">
+            <Slider
+                aria-label="Obrnuti raspon"
+                defaultValue={[20, 80]}
+                inverted
+                name="horizontal"
+                step={5}
+            />
+            <div className="h-56">
+                <Slider
+                    aria-label="Obrnuta visina"
+                    defaultValue={[20]}
+                    inverted
+                    name="vertical"
+                    orientation="vertical"
+                    step={5}
+                />
+            </div>
+        </form>,
+    );
+
+    const horizontal = page.getByRole('slider', {
+        name: 'Obrnuti raspon',
+    });
+    const vertical = page.getByRole('slider', { name: 'Obrnuta visina' });
+
+    await expect(horizontal).toHaveCount(2);
+    await expect(horizontal.nth(0)).toHaveAttribute('aria-valuenow', '20');
+    await expect(horizontal.nth(1)).toHaveAttribute('aria-valuenow', '80');
+    await expect(vertical).toHaveAttribute('aria-valuenow', '20');
+    expect(
+        await page.getByTestId('inverted-form').evaluate((form) => {
+            if (!(form instanceof HTMLFormElement)) {
+                return null;
+            }
+
+            const data = new FormData(form);
+            return {
+                horizontal: data.getAll('horizontal'),
+                vertical: data.getAll('vertical'),
+            };
+        }),
+    ).toEqual({ horizontal: ['20', '80'], vertical: ['20'] });
+
+    await horizontal.nth(0).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(horizontal.nth(0)).toHaveAttribute('aria-valuenow', '15');
+
+    await vertical.focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(vertical).toHaveAttribute('aria-valuenow', '15');
+    expect(
+        await page.getByTestId('inverted-form').evaluate((form) => {
+            if (!(form instanceof HTMLFormElement)) {
+                return null;
+            }
+
+            const data = new FormData(form);
+            return {
+                horizontal: data.getAll('horizontal'),
+                vertical: data.getAll('vertical'),
+            };
+        }),
+    ).toEqual({ horizontal: ['15', '80'], vertical: ['15'] });
+});
+
 test('keeps automatic and manual tabs activation plus mounted panels', async ({
     mount,
     page,
