@@ -53,7 +53,10 @@ import { useGameState } from '../useGameState';
 import { useOverviewSectionParam } from '../useUrlState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { HudCard } from './components/HudCard';
-import { useSuncokretChat } from './SuncokretChatProvider';
+import {
+    type SuncokretChatSeed,
+    useSuncokretChat,
+} from './SuncokretChatProvider';
 import { SuncokretChatTrigger } from './SuncokretChatTrigger';
 import {
     SuncokretConversationList,
@@ -183,6 +186,14 @@ function randomChatId() {
         : `suncokret-${Date.now().toString(36)}`;
 }
 
+function seedMessages(seed: SuncokretChatSeed): UIMessage[] {
+    return seed.messages.map((message, index) => ({
+        id: `${seed.id}-${index.toString()}`,
+        role: message.role,
+        parts: [{ type: 'text', text: message.text }],
+    }));
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -300,6 +311,8 @@ function toolActivityLabel(name: string) {
             return 'Provjeravam aktualno vrijeme';
         case 'getWeatherForecast':
             return 'Provjeravam vremensku prognozu';
+        case 'getDeliverySlots':
+            return 'Provjeravam termine dostave';
         case 'listGardenOperations':
             return 'Provjeravam radnje';
         case 'getRaisedBedAiHistory':
@@ -878,6 +891,8 @@ export function SuncokretChatHud() {
           ? defaultRaisedBedId
           : null;
     const positionIndex = chat?.target?.positionIndex ?? null;
+    const seed = chat?.target?.seed ?? null;
+    const appliedSeedIdRef = useRef<string | null>(null);
     const conversationLabel =
         chat?.target?.conversationLabel ??
         suncokretConversationLabel({
@@ -1022,6 +1037,20 @@ export function SuncokretChatHud() {
         };
     }, [apiOrigin, debug, featureFlagQuery, open]);
 
+    useEffect(() => {
+        if (!open || !seed || appliedSeedIdRef.current === seed.id) {
+            return;
+        }
+
+        appliedSeedIdRef.current = seed.id;
+        clearError();
+        setInput('');
+        setMessages(seedMessages(seed));
+        setActiveConversationId(randomChatId());
+        setActiveConversationTitle(seed.title ?? null);
+        setChatView('chat');
+    }, [clearError, open, seed, setMessages]);
+
     const showConversationList = async () => {
         if (loading) {
             return;
@@ -1151,8 +1180,32 @@ export function SuncokretChatHud() {
     const blocked = Boolean(
         limit?.blockedReason || dailyUsageExhausted || weeklyUsageExhausted,
     );
-    const contextSuggestions = suncokretContextSuggestions(uiContext);
+    const contextSuggestions =
+        seed?.suggestions ?? suncokretContextSuggestions(uiContext);
+    // A seeded thread already shows the analysis, so the empty-state prompts
+    // are offered under it until the first question is asked.
+    const showSeededSuggestions =
+        chatView === 'chat' &&
+        !loading &&
+        messages.length > 0 &&
+        messages.every((message) => message.role !== 'user');
     const isCloseup = view === 'closeup';
+    const suggestionButtons = contextSuggestions.map((suggestion, index) => (
+        <Button
+            key={suggestion.prompt}
+            fullWidth
+            size="sm"
+            variant="outlined"
+            className={cx(
+                'rounded-full',
+                index === 0 &&
+                    'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
+            )}
+            onClick={() => sendPrompt(suggestion.prompt)}
+        >
+            {suggestion.label}
+        </Button>
+    ));
 
     return (
         <>
@@ -1324,30 +1377,7 @@ export function SuncokretChatHud() {
                                                 spacing={2}
                                                 className="w-full"
                                             >
-                                                {contextSuggestions.map(
-                                                    (suggestion, index) => (
-                                                        <Button
-                                                            key={
-                                                                suggestion.prompt
-                                                            }
-                                                            fullWidth
-                                                            size="sm"
-                                                            variant="outlined"
-                                                            className={cx(
-                                                                'rounded-full',
-                                                                index === 0 &&
-                                                                    'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
-                                                            )}
-                                                            onClick={() =>
-                                                                sendPrompt(
-                                                                    suggestion.prompt,
-                                                                )
-                                                            }
-                                                        >
-                                                            {suggestion.label}
-                                                        </Button>
-                                                    ),
-                                                )}
+                                                {suggestionButtons}
                                             </Stack>
                                         </Stack>
                                     }
@@ -1376,6 +1406,35 @@ export function SuncokretChatHud() {
                                                 />
                                             ),
                                         })),
+                                        ...(showSeededSuggestions
+                                            ? [
+                                                  {
+                                                      id: 'suncokret-seed-suggestions',
+                                                      content: (
+                                                          <Stack
+                                                              spacing={2}
+                                                              className="w-full px-3"
+                                                          >
+                                                              <Typography
+                                                                  level="body3"
+                                                                  className="text-muted-foreground"
+                                                              >
+                                                                  Nastavi
+                                                                  razgovor
+                                                                  jednim od
+                                                                  prijedloga
+                                                                  ili pitaj
+                                                                  svoje
+                                                                  pitanje.
+                                                              </Typography>
+                                                              {
+                                                                  suggestionButtons
+                                                              }
+                                                          </Stack>
+                                                      ),
+                                                  },
+                                              ]
+                                            : []),
                                         ...(loading
                                             ? [
                                                   {

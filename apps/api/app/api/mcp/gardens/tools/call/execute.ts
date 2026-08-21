@@ -8,6 +8,7 @@ import {
     getRaisedBedAiHistoryEntries,
 } from '@gredice/storage';
 import { z } from 'zod';
+import { normalizeOperationNote } from '../../../../../../lib/ai/operationNotes';
 import {
     buildGardenCompositionContext,
     visibleOperationsForGarden,
@@ -216,6 +217,13 @@ export async function executeGardenTool(
                     scheduledDate: operation.scheduledDate,
                     completedAt: operation.completedAt,
                     createdAt: operation.createdAt,
+                    completionNotes: normalizeOperationNote(
+                        operation.completionNotes,
+                    ),
+                    blockReasonLabel: normalizeOperationNote(
+                        operation.blockReasonLabel,
+                    ),
+                    blockNote: normalizeOperationNote(operation.blockNote),
                 })),
                 total: operations.length,
                 limit: input.limit,

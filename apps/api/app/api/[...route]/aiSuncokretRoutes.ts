@@ -30,6 +30,7 @@ import {
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import { getUpcomingDeliverySlotsContext } from '../../../lib/ai/gardenScheduleContext';
 import {
     buildSuncokretFinalAnswerSystemPrompt,
     buildSuncokretSystemPrompt,
@@ -592,6 +593,12 @@ function buildTools({
                     : { days: [] };
             },
         }),
+        getDeliverySlots: tool({
+            description:
+                'Dohvati otvorene termine dostave u sljedećih 7 dana. Koristi ih kada preporučuješ ili planiraš berbu kako bi berbu povezao s konkretnim terminom dostave.',
+            inputSchema: z.object({}),
+            execute: () => getUpcomingDeliverySlotsContext(),
+        }),
         listGardenOperations: tool({
             description: 'Dohvati radnje za vrt ili gredicu.',
             inputSchema: z.object({
@@ -1104,6 +1111,7 @@ const app = new Hono<{ Variables: ChatVariables }>()
                           }
                         : null,
                     positionIndex: body.positionIndex,
+                    referenceDate: new Date(),
                     uiContext: body.uiContext,
                 }),
                 messages: body.messages.slice(-MAX_CONTEXT_MESSAGES),
