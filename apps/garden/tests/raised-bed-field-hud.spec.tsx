@@ -2851,16 +2851,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
-        await expect(dialog).toHaveAttribute(
-            'data-vaul-drawer-direction',
-            'bottom',
-        );
         await expect(
-            dialog.locator(
-                'div.bg-muted.mx-auto.h-2.w-\\[100px\\].rounded-full',
-            ),
-        ).toHaveCount(1);
+            dialog.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
     });
 
     test('raised bed header no longer exposes the abandonment action', async ({
@@ -3022,7 +3015,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        // Wait for the vaul slide-in animation to complete before measuring.
+        // Wait for the drawer transition to complete before measuring.
         await page.waitForTimeout(700);
         const dialogBox = await dialog.boundingBox();
         if (!dialogBox) {
@@ -3091,8 +3084,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
-        // Let vaul's slide-in animation settle so layout measurements are
+        await expect(
+            dialog.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
+        // Let the drawer transition settle so layout measurements are
         // taken against the resting position rather than mid-transform values.
         await page.waitForTimeout(700);
         return dialog;
@@ -3195,7 +3190,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             .getByRole('dialog')
             .filter({ hasText: /Prethodna biljka/ });
         await expect(detailsDrawer).toBeVisible();
-        await expect(detailsDrawer).toHaveAttribute('data-vaul-drawer', '');
+        await expect(
+            detailsDrawer.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
         await page.waitForTimeout(700);
         return { detailsDrawer, historyListDrawer };
     }
@@ -3338,7 +3335,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        // Wait for vaul's slide-in animation to settle before sampling layout.
+        // Wait for the drawer transition to settle before sampling layout.
         await page.waitForTimeout(700);
 
         const dialogBox = await dialog.boundingBox();
