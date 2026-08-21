@@ -44,6 +44,9 @@ test('closes a popper before returning focus to its trigger', async ({
 
     await expect(popper).not.toBeVisible();
     await expect(trigger).toBeFocused();
+    await expect(page.locator('output[aria-label="Zadnja radnja"]')).toHaveText(
+        'escape',
+    );
 });
 
 test('supports disabled items, submenus, links, and keyboard return in menus', async ({

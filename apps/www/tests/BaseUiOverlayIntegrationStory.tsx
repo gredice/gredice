@@ -28,6 +28,7 @@ export function BaseUiOverlayIntegrationStory() {
 
             <Popper
                 aria-label="Detalji prikaza"
+                onEscapeKeyDown={() => setLastAction('escape')}
                 role="dialog"
                 trigger={<Button variant="outlined">Otvori detalje</Button>}
             >
