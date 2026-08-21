@@ -124,9 +124,10 @@ test('keeps externally filtered results without filtering them twice', async ({
     mount,
     page,
 }) => {
-    await mount(
+    const component = await mount(
         <SelectItems
             clientSideFilter={false}
+            dir="rtl"
             items={[{ value: 'account-1', label: 'Green Farm' }]}
             label="Account"
             onSearchValueChange={() => undefined}
@@ -136,9 +137,33 @@ test('keeps externally filtered results without filtering them twice', async ({
     );
 
     await page.getByRole('combobox', { name: 'Account' }).click();
+    const search = page.getByRole('searchbox', {
+        name: 'Pretraži opcije...',
+    });
+    await expect(search).toHaveValue('remote query');
     await expect(
         page.getByRole('option', { name: 'Green Farm' }),
     ).toBeVisible();
+    await expect(
+        page
+            .locator('[dir="rtl"]')
+            .filter({ has: page.getByRole('option', { name: 'Green Farm' }) }),
+    ).toHaveCount(1);
+
+    await component.update(
+        <SelectItems
+            clientSideFilter={false}
+            dir="rtl"
+            items={[{ value: 'account-2', label: 'Blue Farm' }]}
+            label="Account"
+            onSearchValueChange={() => undefined}
+            open
+            searchable
+            searchValue="updated query"
+        />,
+    );
+    await expect(search).toHaveValue('updated query');
+    await expect(page.getByRole('option', { name: 'Blue Farm' })).toBeVisible();
 });
 
 test('uses the ordinary select path and serializes an empty value', async ({
@@ -149,6 +174,7 @@ test('uses the ordinary select path and serializes an empty value', async ({
         <SelectItems
             defaultOpen
             defaultValue=""
+            dir="rtl"
             items={[
                 { value: '', label: 'All values' },
                 { value: 'active', label: 'Active' },
@@ -163,6 +189,11 @@ test('uses the ordinary select path and serializes an empty value', async ({
     await expect(page.locator('input[name="status"]')).toHaveValue('');
 
     await expect(page.getByRole('option', { name: 'Active' })).toBeVisible();
+    await expect(
+        page
+            .locator('[dir="rtl"]')
+            .filter({ has: page.getByRole('option', { name: 'Active' }) }),
+    ).toHaveCount(1);
     await page.getByRole('option', { name: 'Active' }).click();
     await expect(trigger).toHaveText(/Active/);
     await expect(page.locator('input[name="status"]')).toHaveValue('active');

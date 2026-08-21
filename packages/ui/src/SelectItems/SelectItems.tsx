@@ -1,6 +1,7 @@
 'use client';
 
 import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
+import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { Select as SelectPrimitive } from '@base-ui/react/select';
 import type { HTMLAttributes, ReactNode } from 'react';
 import {
@@ -383,198 +384,106 @@ export function SelectItems<T extends string>({
     );
 
     return (
-        <Stack {...rest} className={className} dir={dir} spacing={1}>
-            {label ? (
-                <label
-                    className="text-sm font-medium"
-                    htmlFor={inputId}
-                    id={labelId}
-                >
-                    {label}
-                </label>
-            ) : null}
-            {isSearchActive ? (
-                <ComboboxPrimitive.Root
-                    autoComplete={autoComplete}
-                    defaultValue={rootDefaultValue}
-                    disabled={disabled}
-                    filteredItems={visibleEncodedItems}
-                    form={form}
-                    itemToStringLabel={getItemTextValue}
-                    itemToStringValue={toFormValue}
-                    items={encodedItems}
-                    modal
-                    name={name}
-                    onInputValueChange={handleSearchValueChange}
-                    onOpenChange={handleComboboxOpenChange}
-                    onValueChange={handleEncodedValueChange}
-                    open={isOpen}
-                    required={required}
-                    value={rootValue}
-                >
-                    <ComboboxPrimitive.Trigger
-                        ref={registerTriggerElement}
-                        aria-label={label ?? placeholder}
-                        aria-labelledby={labelId}
-                        className={rootClassName}
-                        id={inputId}
+        <DirectionProvider direction={dir}>
+            <Stack {...rest} className={className} dir={dir} spacing={1}>
+                {label ? (
+                    <label
+                        className="text-sm font-medium"
+                        htmlFor={inputId}
+                        id={labelId}
                     >
-                        <ComboboxPrimitive.Value placeholder={placeholder}>
-                            {(selectedValue: string | null) => {
-                                const item = selectedValue
-                                    ? itemByValue.get(selectedValue)
-                                    : undefined;
-
-                                return (
-                                    <span className="line-clamp-1 flex min-w-0 items-center gap-2">
-                                        {item?.icon}
-                                        <span className="line-clamp-1">
-                                            {item
-                                                ? itemLabel(item)
-                                                : selectedValue
-                                                  ? toFormValue(selectedValue)
-                                                  : placeholder}
-                                        </span>
-                                    </span>
-                                );
-                            }}
-                        </ComboboxPrimitive.Value>
-                        <Down
-                            aria-hidden
-                            className="size-4 shrink-0 opacity-50"
-                        />
-                    </ComboboxPrimitive.Trigger>
-                    <ComboboxPrimitive.Portal
-                        container={resolvedPortalContainer}
+                        {label}
+                    </label>
+                ) : null}
+                {isSearchActive ? (
+                    <ComboboxPrimitive.Root
+                        autoComplete={autoComplete}
+                        defaultValue={rootDefaultValue}
+                        disabled={disabled}
+                        filteredItems={visibleEncodedItems}
+                        form={form}
+                        itemToStringLabel={getItemTextValue}
+                        itemToStringValue={toFormValue}
+                        items={encodedItems}
+                        inputValue={searchQuery}
+                        modal
+                        name={name}
+                        onInputValueChange={handleSearchValueChange}
+                        onOpenChange={handleComboboxOpenChange}
+                        onValueChange={handleEncodedValueChange}
+                        open={isOpen}
+                        required={required}
+                        value={rootValue}
                     >
-                        <ComboboxPrimitive.Positioner
-                            align="start"
-                            className={positionerClassName}
-                            collisionPadding={8}
-                            sideOffset={4}
+                        <ComboboxPrimitive.Trigger
+                            ref={registerTriggerElement}
+                            aria-label={label ?? placeholder}
+                            aria-labelledby={labelId}
+                            className={rootClassName}
+                            id={inputId}
                         >
-                            <ComboboxPrimitive.Popup
-                                className={popupClassName}
-                                initialFocus={false}
+                            <ComboboxPrimitive.Value placeholder={placeholder}>
+                                {(selectedValue: string | null) => {
+                                    const item = selectedValue
+                                        ? itemByValue.get(selectedValue)
+                                        : undefined;
+
+                                    return (
+                                        <span className="line-clamp-1 flex min-w-0 items-center gap-2">
+                                            {item?.icon}
+                                            <span className="line-clamp-1">
+                                                {item
+                                                    ? itemLabel(item)
+                                                    : selectedValue
+                                                      ? toFormValue(
+                                                            selectedValue,
+                                                        )
+                                                      : placeholder}
+                                            </span>
+                                        </span>
+                                    );
+                                }}
+                            </ComboboxPrimitive.Value>
+                            <Down
+                                aria-hidden
+                                className="size-4 shrink-0 opacity-50"
+                            />
+                        </ComboboxPrimitive.Trigger>
+                        <ComboboxPrimitive.Portal
+                            container={resolvedPortalContainer}
+                        >
+                            <ComboboxPrimitive.Positioner
+                                align="start"
+                                className={positionerClassName}
+                                collisionPadding={8}
+                                sideOffset={4}
                             >
-                                <div className="border-b p-1">
-                                    <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                                        <Search className="size-4 shrink-0 text-muted-foreground" />
-                                        <ComboboxPrimitive.Input
-                                            ref={searchInputRef}
-                                            aria-label={searchPlaceholder}
-                                            className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
-                                            placeholder={searchPlaceholder}
-                                            role="searchbox"
-                                            type="search"
-                                        />
+                                <ComboboxPrimitive.Popup
+                                    className={popupClassName}
+                                    dir={dir}
+                                    initialFocus={false}
+                                >
+                                    <div className="border-b p-1">
+                                        <div className="flex h-9 items-center rounded-sm border border-input bg-background px-2 ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                                            <Search className="size-4 shrink-0 text-muted-foreground" />
+                                            <ComboboxPrimitive.Input
+                                                ref={searchInputRef}
+                                                aria-label={searchPlaceholder}
+                                                className="min-w-0 flex-1 bg-transparent px-2 py-1 text-sm outline-hidden placeholder:text-muted-foreground"
+                                                placeholder={searchPlaceholder}
+                                                role="searchbox"
+                                                type="search"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <ComboboxPrimitive.Empty className="px-3 py-2 text-sm text-muted-foreground">
-                                    {emptySearchText}
-                                </ComboboxPrimitive.Empty>
-                                <ComboboxPrimitive.List className="max-h-[calc(min(24rem,var(--available-height))-3rem)] overflow-y-auto p-1">
-                                    {(encodedValue: string, index: number) => {
-                                        const item =
-                                            itemByValue.get(encodedValue);
-                                        if (!item) {
-                                            return null;
-                                        }
-
-                                        return (
-                                            <ComboboxPrimitive.Item
-                                                className={itemClassName}
-                                                disabled={item.disabled}
-                                                index={index}
-                                                key={encodedValue}
-                                                title={item.title}
-                                                value={encodedValue}
-                                            >
-                                                <span className="absolute left-2 flex size-3.5 items-center justify-center">
-                                                    <ComboboxPrimitive.ItemIndicator>
-                                                        <Check className="size-4" />
-                                                    </ComboboxPrimitive.ItemIndicator>
-                                                </span>
-                                                <span className="flex min-w-0 items-center gap-2">
-                                                    {item.icon}
-                                                    <span className="line-clamp-1">
-                                                        {itemLabel(item)}
-                                                    </span>
-                                                </span>
-                                            </ComboboxPrimitive.Item>
-                                        );
-                                    }}
-                                </ComboboxPrimitive.List>
-                            </ComboboxPrimitive.Popup>
-                        </ComboboxPrimitive.Positioner>
-                    </ComboboxPrimitive.Portal>
-                </ComboboxPrimitive.Root>
-            ) : (
-                <SelectPrimitive.Root
-                    autoComplete={autoComplete}
-                    defaultValue={rootDefaultValue}
-                    disabled={disabled}
-                    form={form}
-                    itemToStringLabel={getItemTextValue}
-                    itemToStringValue={toFormValue}
-                    items={selectRootItems}
-                    name={name}
-                    onOpenChange={handleOpenChange}
-                    onValueChange={handleEncodedValueChange}
-                    open={isOpen}
-                    required={required}
-                    value={rootValue}
-                >
-                    <SelectPrimitive.Trigger
-                        ref={registerTriggerElement}
-                        aria-label={label ?? placeholder}
-                        aria-labelledby={labelId}
-                        className={rootClassName}
-                        id={inputId}
-                    >
-                        <SelectPrimitive.Value
-                            className="line-clamp-1 flex min-w-0 items-center gap-2"
-                            placeholder={placeholder}
-                        >
-                            {(selectedValue: string | null) => {
-                                const item = selectedValue
-                                    ? itemByValue.get(selectedValue)
-                                    : undefined;
-
-                                return (
-                                    <>
-                                        {item?.icon}
-                                        <span className="line-clamp-1">
-                                            {item
-                                                ? itemLabel(item)
-                                                : selectedValue
-                                                  ? toFormValue(selectedValue)
-                                                  : placeholder}
-                                        </span>
-                                    </>
-                                );
-                            }}
-                        </SelectPrimitive.Value>
-                        <Down
-                            aria-hidden
-                            className="size-4 shrink-0 opacity-50"
-                        />
-                    </SelectPrimitive.Trigger>
-                    <SelectPrimitive.Portal container={resolvedPortalContainer}>
-                        <SelectPrimitive.Positioner
-                            align="start"
-                            alignItemWithTrigger={false}
-                            className={positionerClassName}
-                            collisionPadding={8}
-                            sideOffset={4}
-                        >
-                            <SelectPrimitive.Popup className={popupClassName}>
-                                <SelectPrimitive.ScrollUpArrow className="flex cursor-default items-center justify-center py-1">
-                                    <Up className="size-4" />
-                                </SelectPrimitive.ScrollUpArrow>
-                                <SelectPrimitive.List className="max-h-[min(24rem,var(--available-height))] overflow-y-auto p-1">
-                                    {encodedItems.length > 0 ? (
-                                        encodedItems.map((encodedValue) => {
+                                    <ComboboxPrimitive.Empty className="px-3 py-2 text-sm text-muted-foreground">
+                                        {emptySearchText}
+                                    </ComboboxPrimitive.Empty>
+                                    <ComboboxPrimitive.List className="max-h-[calc(min(24rem,var(--available-height))-3rem)] overflow-y-auto p-1">
+                                        {(
+                                            encodedValue: string,
+                                            index: number,
+                                        ) => {
                                             const item =
                                                 itemByValue.get(encodedValue);
                                             if (!item) {
@@ -582,51 +491,165 @@ export function SelectItems<T extends string>({
                                             }
 
                                             return (
-                                                <SelectPrimitive.Item
+                                                <ComboboxPrimitive.Item
                                                     className={itemClassName}
                                                     disabled={item.disabled}
+                                                    index={index}
                                                     key={encodedValue}
-                                                    label={itemTextValue(item)}
                                                     title={item.title}
                                                     value={encodedValue}
                                                 >
                                                     <span className="absolute left-2 flex size-3.5 items-center justify-center">
-                                                        <SelectPrimitive.ItemIndicator>
+                                                        <ComboboxPrimitive.ItemIndicator>
                                                             <Check className="size-4" />
-                                                        </SelectPrimitive.ItemIndicator>
+                                                        </ComboboxPrimitive.ItemIndicator>
                                                     </span>
-                                                    <SelectPrimitive.ItemText>
-                                                        <span className="flex min-w-0 items-center gap-2">
-                                                            {item.icon}
-                                                            <span className="line-clamp-1">
-                                                                {itemLabel(
-                                                                    item,
-                                                                )}
-                                                            </span>
+                                                    <span className="flex min-w-0 items-center gap-2">
+                                                        {item.icon}
+                                                        <span className="line-clamp-1">
+                                                            {itemLabel(item)}
                                                         </span>
-                                                    </SelectPrimitive.ItemText>
-                                                </SelectPrimitive.Item>
+                                                    </span>
+                                                </ComboboxPrimitive.Item>
                                             );
-                                        })
-                                    ) : (
-                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                            {emptySearchText}
-                                        </div>
-                                    )}
-                                </SelectPrimitive.List>
-                                <SelectPrimitive.ScrollDownArrow className="flex cursor-default items-center justify-center py-1">
-                                    <Down className="size-4" />
-                                </SelectPrimitive.ScrollDownArrow>
-                            </SelectPrimitive.Popup>
-                        </SelectPrimitive.Positioner>
-                    </SelectPrimitive.Portal>
-                </SelectPrimitive.Root>
-            )}
-            {helperText ? (
-                <span className="text-sm text-red-600 dark:text-red-300">
-                    {helperText}
-                </span>
-            ) : null}
-        </Stack>
+                                        }}
+                                    </ComboboxPrimitive.List>
+                                </ComboboxPrimitive.Popup>
+                            </ComboboxPrimitive.Positioner>
+                        </ComboboxPrimitive.Portal>
+                    </ComboboxPrimitive.Root>
+                ) : (
+                    <SelectPrimitive.Root
+                        autoComplete={autoComplete}
+                        defaultValue={rootDefaultValue}
+                        disabled={disabled}
+                        form={form}
+                        itemToStringLabel={getItemTextValue}
+                        itemToStringValue={toFormValue}
+                        items={selectRootItems}
+                        name={name}
+                        onOpenChange={handleOpenChange}
+                        onValueChange={handleEncodedValueChange}
+                        open={isOpen}
+                        required={required}
+                        value={rootValue}
+                    >
+                        <SelectPrimitive.Trigger
+                            ref={registerTriggerElement}
+                            aria-label={label ?? placeholder}
+                            aria-labelledby={labelId}
+                            className={rootClassName}
+                            id={inputId}
+                        >
+                            <SelectPrimitive.Value
+                                className="line-clamp-1 flex min-w-0 items-center gap-2"
+                                placeholder={placeholder}
+                            >
+                                {(selectedValue: string | null) => {
+                                    const item = selectedValue
+                                        ? itemByValue.get(selectedValue)
+                                        : undefined;
+
+                                    return (
+                                        <>
+                                            {item?.icon}
+                                            <span className="line-clamp-1">
+                                                {item
+                                                    ? itemLabel(item)
+                                                    : selectedValue
+                                                      ? toFormValue(
+                                                            selectedValue,
+                                                        )
+                                                      : placeholder}
+                                            </span>
+                                        </>
+                                    );
+                                }}
+                            </SelectPrimitive.Value>
+                            <Down
+                                aria-hidden
+                                className="size-4 shrink-0 opacity-50"
+                            />
+                        </SelectPrimitive.Trigger>
+                        <SelectPrimitive.Portal
+                            container={resolvedPortalContainer}
+                        >
+                            <SelectPrimitive.Positioner
+                                align="start"
+                                alignItemWithTrigger={false}
+                                className={positionerClassName}
+                                collisionPadding={8}
+                                sideOffset={4}
+                            >
+                                <SelectPrimitive.Popup
+                                    className={popupClassName}
+                                    dir={dir}
+                                >
+                                    <SelectPrimitive.ScrollUpArrow className="flex cursor-default items-center justify-center py-1">
+                                        <Up className="size-4" />
+                                    </SelectPrimitive.ScrollUpArrow>
+                                    <SelectPrimitive.List className="max-h-[min(24rem,var(--available-height))] overflow-y-auto p-1">
+                                        {encodedItems.length > 0 ? (
+                                            encodedItems.map((encodedValue) => {
+                                                const item =
+                                                    itemByValue.get(
+                                                        encodedValue,
+                                                    );
+                                                if (!item) {
+                                                    return null;
+                                                }
+
+                                                return (
+                                                    <SelectPrimitive.Item
+                                                        className={
+                                                            itemClassName
+                                                        }
+                                                        disabled={item.disabled}
+                                                        key={encodedValue}
+                                                        label={itemTextValue(
+                                                            item,
+                                                        )}
+                                                        title={item.title}
+                                                        value={encodedValue}
+                                                    >
+                                                        <span className="absolute left-2 flex size-3.5 items-center justify-center">
+                                                            <SelectPrimitive.ItemIndicator>
+                                                                <Check className="size-4" />
+                                                            </SelectPrimitive.ItemIndicator>
+                                                        </span>
+                                                        <SelectPrimitive.ItemText>
+                                                            <span className="flex min-w-0 items-center gap-2">
+                                                                {item.icon}
+                                                                <span className="line-clamp-1">
+                                                                    {itemLabel(
+                                                                        item,
+                                                                    )}
+                                                                </span>
+                                                            </span>
+                                                        </SelectPrimitive.ItemText>
+                                                    </SelectPrimitive.Item>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                                {emptySearchText}
+                                            </div>
+                                        )}
+                                    </SelectPrimitive.List>
+                                    <SelectPrimitive.ScrollDownArrow className="flex cursor-default items-center justify-center py-1">
+                                        <Down className="size-4" />
+                                    </SelectPrimitive.ScrollDownArrow>
+                                </SelectPrimitive.Popup>
+                            </SelectPrimitive.Positioner>
+                        </SelectPrimitive.Portal>
+                    </SelectPrimitive.Root>
+                )}
+                {helperText ? (
+                    <span className="text-sm text-red-600 dark:text-red-300">
+                        {helperText}
+                    </span>
+                ) : null}
+            </Stack>
+        </DirectionProvider>
     );
 }
