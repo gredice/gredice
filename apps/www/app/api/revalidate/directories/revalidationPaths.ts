@@ -18,7 +18,11 @@ const revalidationPathsByEntityType: Record<
     PublicDirectoryEntityType,
     RevalidationPath[]
 > = {
-    block: [{ path: '/blokovi' }, { path: '/blokovi/[alias]', type: 'page' }],
+    block: [
+        { path: '/blokovi' },
+        { path: '/blokovi/ljubimci' },
+        { path: '/blokovi/[alias]', type: 'page' },
+    ],
     brand: [
         { path: '/sjeme' },
         { path: '/sjeme/[slug]', type: 'page' },

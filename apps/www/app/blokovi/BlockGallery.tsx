@@ -51,11 +51,11 @@ function BlockGalleryItem(
 
 export function BlockGallery({
     blocks,
-    hasMatchingPlant,
+    hasOtherResults,
     normalizedSearch,
 }: {
     blocks: BlockData[] | undefined;
-    hasMatchingPlant: boolean;
+    hasOtherResults: boolean;
     normalizedSearch: string;
 }) {
     const filteredBlocks = orderBy(blocks ?? [], (a, b) =>
@@ -72,7 +72,7 @@ export function BlockGallery({
 
     return (
         <>
-            {filteredBlocks.length === 0 && !hasMatchingPlant ? (
+            {filteredBlocks.length === 0 && !hasOtherResults ? (
                 <Typography level="body2">Nema rezultata pretrage.</Typography>
             ) : null}
             <Gallery

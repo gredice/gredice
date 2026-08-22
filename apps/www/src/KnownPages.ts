@@ -32,6 +32,7 @@ export const KnownPages = {
     BlockPlants: PublicDirectoryPaths.BlockPlants as Route,
     BlockPlant: (alias: string) =>
         PublicDirectoryPaths.BlockPlant(alias) as Route,
+    BlockPets: PublicDirectoryPaths.BlockPets as Route,
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
