@@ -74,6 +74,7 @@ export const PublicDirectoryPaths = {
     BlockPlant(alias: string) {
         return `/blokovi/biljke/${toPublicPageAlias(alias)}`;
     },
+    BlockPets: '/blokovi/ljubimci',
     Operations: '/radnje',
     Operation(alias: string) {
         return `/radnje/${toPublicPageAlias(alias)}`;
