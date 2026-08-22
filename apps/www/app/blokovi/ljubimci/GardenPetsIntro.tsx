@@ -20,9 +20,9 @@ const steps = [
     },
     {
         icon: <Heart aria-hidden className="size-5" />,
-        title: 'Vole društvo',
+        title: 'Reagiraju na tebe',
         description:
-            'Kad im priđeš dovoljno blizu, možeš ih pomaziti — nakon maženja neko će vrijeme krenuti za tobom.',
+            'Klikni na ljubimca pa će ti se javiti svojim glasom i krenuti u novu aktivnost.',
     },
 ] satisfies Array<{
     icon: ReactNode;
