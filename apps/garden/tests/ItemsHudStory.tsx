@@ -418,6 +418,14 @@ const blockFixtures: Record<
         height: 0.76,
         stackable: false,
     },
+    Sheep: {
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        sunflowers: 500,
+        height: 0.64,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -548,6 +556,7 @@ const blockNames = [
     'Horse',
     'PigletPen',
     'Rabbit',
+    'Sheep',
     'Bush',
     'Tree',
     'Pine',

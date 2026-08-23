@@ -184,6 +184,29 @@ function createPigletPathfindingStacks() {
     return serializeStacks(stacks);
 }
 
+function createSheepPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -4, -1, 'Sheep');
+    placeBlock(stacks, -4, 1, 'Sheep');
+    placeBlock(stacks, -2, 0, 'Sheep');
+    placeBlock(stacks, 3, -2, 'Tree');
+    placeBlock(stacks, 3, 2, 'StoneMedium');
+    for (let z = -4; z <= 1; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+    for (let x = 2; x <= 5; x += 1) {
+        placeBlock(stacks, x, 0, 'Block_Water');
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createGoatPathfindingStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -345,6 +368,25 @@ function createBatStacks() {
     return serializeStacks(stacks);
 }
 
+function createButterflyStacks() {
+    const stacks = createGroundStacks({
+        minX: -4,
+        maxX: 4,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -2, -1, 'Tulip');
+    placeBlock(stacks, 0, 1, 'Tulip');
+    placeBlock(stacks, 2, -2, 'Tulip');
+    placeBlock(stacks, -3, 2, 'CactusPricklyPear');
+    placeBlock(stacks, 3, 2, 'CactusBarrel');
+    placeBlock(stacks, 0, 0, 'StoneLarge');
+    placeBlock(stacks, 1, 0, 'Tree');
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -357,6 +399,8 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
+    placeBlock(stacks, -3, 1, 'Sheep');
+    placeBlock(stacks, -1, 3, 'Sheep');
     placeBlock(stacks, -3, -3, 'Goat', 1);
     placeBlock(stacks, -2, 0, 'Rabbit', 0, 0);
     placeBlock(stacks, 2, 0, 'Tree');
@@ -484,6 +528,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 onClick={() =>
                     persistAnimalDebugStacks(
                         storageKey,
+                        createSheepPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Sheep flock
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
                         createGoatPathfindingStacks(),
                     )
                 }
@@ -563,6 +621,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Frog wetland
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createButterflyStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Butterflies
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

@@ -3,6 +3,7 @@ export type ActorGroundingShadowSpecies =
     | 'beachBall'
     | 'bee'
     | 'bird'
+    | 'butterfly'
     | 'cat'
     | 'chicken'
     | 'dog'
@@ -12,6 +13,7 @@ export type ActorGroundingShadowSpecies =
     | 'ladybug'
     | 'piglet'
     | 'rabbit'
+    | 'sheep'
     | 'slug'
     | 'squirrel';
 
@@ -108,6 +110,13 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 2.6,
         maxFootprintScale: 2.1,
     },
+    butterfly: {
+        baseHalfLength: 0.13,
+        baseHalfWidth: 0.09,
+        baseOpacity: 0.18,
+        cutoffHeight: 1.8,
+        maxFootprintScale: 2,
+    },
     cat: {
         baseHalfLength: 0.38,
         baseHalfWidth: 0.23,
@@ -171,12 +180,12 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 0.9,
         maxFootprintScale: 1.6,
     },
-    squirrel: {
-        baseHalfLength: 0.26,
-        baseHalfWidth: 0.18,
-        baseOpacity: 0.3,
-        cutoffHeight: 0.9,
-        maxFootprintScale: 1.55,
+    sheep: {
+        baseHalfLength: 0.47,
+        baseHalfWidth: 0.29,
+        baseOpacity: 0.35,
+        cutoffHeight: 1.2,
+        maxFootprintScale: 1.65,
     },
     slug: {
         baseHalfLength: 0.25,
@@ -184,6 +193,13 @@ export const actorGroundingShadowProfiles = {
         baseOpacity: 0.2,
         cutoffHeight: 0.22,
         maxFootprintScale: 1.2,
+    },
+    squirrel: {
+        baseHalfLength: 0.26,
+        baseHalfWidth: 0.18,
+        baseOpacity: 0.3,
+        cutoffHeight: 0.9,
+        maxFootprintScale: 1.55,
     },
 } satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;
 
