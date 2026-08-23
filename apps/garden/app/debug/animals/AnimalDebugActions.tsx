@@ -257,6 +257,26 @@ function createFrogWetlandStacks() {
     return serializeStacks(stacks);
 }
 
+function createBatStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, -3, 'Tree');
+    placeBlock(stacks, 5, 3, 'Pine');
+    placeBlock(stacks, -4, 3, 'Bush');
+    placeBlock(stacks, 4, -3, 'DeadTreeTall');
+    placeBlock(stacks, 0, 0, 'GardenBox');
+    placeBlock(stacks, 1, 0, 'Composter');
+    placeBlock(stacks, -1, 1, 'WaterWell');
+    placeBlock(stacks, 2, -1, 'Tree');
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -306,6 +326,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
 
     return (
         <div className="pointer-events-none absolute left-2 top-2 z-20 flex max-w-[calc(100vw-1rem)] flex-wrap gap-1.5">
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createBatStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Bats
+            </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
                 color="neutral"

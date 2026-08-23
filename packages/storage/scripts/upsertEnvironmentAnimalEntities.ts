@@ -22,6 +22,7 @@ import {
     upsertEntityTypeCategory,
 } from '../src';
 import {
+    batEnvironmentAnimal,
     environmentAnimalEntityTypeName,
     ladybugEnvironmentAnimal,
 } from '../src/data/environmentAnimalDirectory';
@@ -56,7 +57,7 @@ const entityTypeCategory = {
 };
 
 const entityType = {
-    icon: 'frog',
+    icon: 'PawPrint',
     isRoot: true,
     label: 'Životinje okoliša',
     name: environmentAnimalEntityTypeName,
@@ -66,8 +67,11 @@ const entityType = {
 const attributeCategories = [
     { label: 'Informacije', name: 'information', order: 'a' },
     { label: 'Stanište', name: 'habitat', order: 'b' },
-    { label: 'Pojavljivanje', name: 'spawn', order: 'c' },
-    { label: 'Ponašanje', name: 'behavior', order: 'd' },
+    { label: 'Aktivnost', name: 'activity', order: 'c' },
+    { label: 'Vrijeme', name: 'weather', order: 'd' },
+    { label: 'Pojavljivanje', name: 'spawn', order: 'e' },
+    { label: 'Ponašanje', name: 'behavior', order: 'f' },
+    { label: 'Model', name: 'model', order: 'g' },
     { label: 'Slika', name: 'image', order: 'z' },
 ] as const;
 
@@ -273,6 +277,84 @@ const attributeSpecs: AttributeSpec[] = [
         required: true,
     },
     {
+        category: 'habitat',
+        dataType: 'number',
+        display: false,
+        label: 'Najmanja površina staništa',
+        name: 'minimumCells',
+        order: 'bj',
+        required: false,
+    },
+    {
+        category: 'activity',
+        dataType: 'number',
+        display: false,
+        label: 'Kraj aktivnosti u zoru',
+        name: 'dawnEnd',
+        order: 'ca',
+        required: false,
+    },
+    {
+        category: 'activity',
+        dataType: 'number',
+        display: false,
+        label: 'Početak aktivnosti u sumrak',
+        name: 'duskStart',
+        order: 'cb',
+        required: false,
+    },
+    ...[
+        ['maxFog', 'Najveća magla'],
+        ['maxRain', 'Najveća kiša'],
+        ['maxSnow', 'Najveći snijeg'],
+        ['maxThunder', 'Najveća grmljavina'],
+        ['maxWindSpeed', 'Najveća brzina vjetra'],
+    ].map(([name, label], index) => ({
+        category: 'weather',
+        dataType: 'number',
+        display: false,
+        label,
+        name,
+        order: `d${String.fromCharCode(97 + index)}`,
+        required: false,
+    })),
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najviše skupina u sceni',
+        name: 'maxGroupsPerScene',
+        order: 'ce',
+        required: false,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najveća ukupna populacija',
+        name: 'maxGlobal',
+        order: 'cf',
+        required: false,
+    },
+    {
+        category: 'behavior',
+        dataType: 'boolean',
+        display: true,
+        label: 'Može se postaviti',
+        name: 'placeable',
+        order: 'df',
+        required: false,
+    },
+    {
+        category: 'model',
+        dataType: 'text',
+        display: false,
+        label: 'Model u registru igre',
+        name: 'assetName',
+        order: 'ga',
+        required: false,
+    },
+    {
         category: 'image',
         dataType: 'image',
         display: true,
@@ -289,6 +371,7 @@ const frogAttributes = {
     'behavior.cropImpact': 'neutralan-koristan',
     'behavior.movement':
         'Čuči i mirno diše, povremeno trepće ili zakrekeće. Kreće se lukovima skoka uz pripremu i doskok, prednost daje plitkoj vodi te brzo i sigurno odskače od lika bez prolaska kroz prepreke.',
+    'behavior.placeable': 'false',
     'behavior.purchasable': 'false',
     'habitat.allowedTerrain':
         'Block_Swamp_Ground,Block_Swamp_Ground_Angle,Block_Swamp_Water',
@@ -306,6 +389,7 @@ const frogAttributes = {
     'information.name': 'Frog',
     'information.shortDescription':
         'Samosvojna močvarna žaba koja voli plitku vodu i sigurno odskače od prolaznika.',
+    'model.assetName': 'Frog',
     'spawn.cooldownMaxSeconds': '32',
     'spawn.cooldownMinSeconds': '18',
     'spawn.maxPopulation': '3',
@@ -314,6 +398,7 @@ const frogAttributes = {
 
 const environmentAnimals: EnvironmentAnimalRecord[] = [
     { attributes: frogAttributes, name: 'Frog' },
+    batEnvironmentAnimal,
     ladybugEnvironmentAnimal,
 ];
 
