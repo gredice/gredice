@@ -81,6 +81,7 @@ export const localSandboxBlockNames = [
     'ChickenCoop',
     'DogHouse',
     'PigletPen',
+    'Cow',
     'Bush',
     'Tree',
     'Pine',
@@ -156,6 +157,13 @@ const localSandboxBlockMetadata: Partial<
             'Mali obor s kaljužom koji u vrt dovodi razigranog praščića.',
         fullDescription:
             'Postavi niski obor od pruća s koritom i kaljužom pa će u vrt stići razigrani praščić. Njuškat će po zemlji, valjati se u blatu i vraćati se u svoj zaklon.',
+    },
+    Cow: {
+        label: 'Krava',
+        shortDescription:
+            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+        fullDescription:
+            'Smjesti kravu na travnati dio vrta. Mirno će pasti, preživati, prošetati okolicom i držati ugodan razmak od drugih krava.',
     },
     Block_Stone: {
         label: 'Kamen',
@@ -422,6 +430,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         MoonRainBarrel: 1,
         ChickenCoop: 0.86,
         PigletPen: 0.78,
+        Cow: 1.26,
         FishingBoat: 0.62,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
@@ -605,6 +614,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.78,
         hitboxWidth: 0.94,
     },
+    Cow: {
+        hitboxDepth: 2.08,
+        hitboxHeight: 1.26,
+        hitboxWidth: 0.93,
+    },
 };
 
 type LocalSandboxPlacementAttributes = Partial<
@@ -674,6 +688,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     PigletPen: {
         placeableOnWater: false,
         spanDepth: 1,
+        spanWidth: 1,
+    },
+    Cow: {
+        placeableOnWater: false,
+        spanDepth: 2,
         spanWidth: 1,
     },
 };

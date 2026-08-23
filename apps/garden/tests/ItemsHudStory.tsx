@@ -392,6 +392,16 @@ const blockFixtures: Record<
         height: 0.78,
         stackable: false,
     },
+    Cow: {
+        label: 'Krava',
+        shortDescription:
+            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+        sunflowers: 850,
+        height: 1.26,
+        spanDepth: 2,
+        spanWidth: 1,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -519,6 +529,7 @@ const blockNames = [
     'ChickenCoop',
     'DogHouse',
     'PigletPen',
+    'Cow',
     'Bush',
     'Tree',
     'Pine',

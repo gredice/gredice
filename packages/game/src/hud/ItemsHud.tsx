@@ -185,6 +185,7 @@ const petItems: HudItemEntity[] = [
     { type: 'entity', name: 'ChickenCoop' },
     { type: 'entity', name: 'DogHouse' },
     { type: 'entity', name: 'PigletPen' },
+    { type: 'entity', name: 'Cow' },
 ];
 
 const terrainItems: HudItemPicker[] = [

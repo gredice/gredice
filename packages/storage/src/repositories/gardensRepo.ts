@@ -1,4 +1,5 @@
 import 'server-only';
+import { resolvePersistedAppearanceVariantIndex } from '@gredice/js/appearanceVariants';
 import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
@@ -580,20 +581,31 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
-    db: DatabaseClient = storage(),
+    options: {
+        appearanceVariant?: number;
+        db?: DatabaseClient;
+    } = {},
 ) {
     const blockId = uuidV4();
+    const db = options.db ?? storage();
+    const appearanceVariant = resolvePersistedAppearanceVariantIndex(
+        blockName,
+        options.appearanceVariant,
+        blockId,
+    );
 
     await Promise.all([
         db.insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName,
+            variant: appearanceVariant,
         }),
         createEvent(
             knownEvents.gardens.blockPlacedV1(gardenId.toString(), {
                 id: blockId,
                 name: blockName,
+                variant: appearanceVariant,
             }),
             db,
         ),

@@ -1,3 +1,7 @@
+import {
+    isPersistedAppearanceVariantPlacementValid,
+    isPersistedAppearanceVariantUpdateAllowed,
+} from '@gredice/js/appearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
@@ -3043,6 +3047,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator(
             'json',
             z.object({
+                appearanceVariant: z.number().int().optional(),
                 blockName: z.string(),
                 expectedExistingBlocks: z.array(z.string()).optional(),
                 position: z
@@ -3079,8 +3084,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, expectedExistingBlocks, position } =
-                context.req.valid('json');
+            const {
+                appearanceVariant,
+                blockName,
+                expectedExistingBlocks,
+                position,
+            } = context.req.valid('json');
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -3089,6 +3098,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!block) {
                 return context.json(
                     { error: 'Requested block not found' },
+                    400,
+                );
+            }
+            if (
+                !isPersistedAppearanceVariantPlacementValid(
+                    blockName,
+                    appearanceVariant,
+                )
+            ) {
+                return context.json(
+                    { error: 'Invalid persisted appearance variant' },
                     400,
                 );
             }
@@ -3170,10 +3190,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
+                appearanceVariant,
                 blockName,
                 cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
-                    createGardenBlock,
+                    createGardenBlock: async (
+                        nextGardenId,
+                        nextBlockName,
+                        options,
+                    ) =>
+                        await createGardenBlock(
+                            nextGardenId,
+                            nextBlockName,
+                            options,
+                        ),
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
                     spendSunflowers: garden.isSandbox
@@ -3246,6 +3276,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json(
                     { error: 'Only wooden signs can have a message' },
                     400,
+                );
+            }
+            if (
+                !isPersistedAppearanceVariantUpdateAllowed(
+                    block.name,
+                    block.variant,
+                    variant,
+                )
+            ) {
+                return context.json(
+                    { error: 'Persisted appearance variants are immutable' },
+                    409,
                 );
             }
 

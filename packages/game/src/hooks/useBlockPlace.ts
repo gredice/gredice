@@ -1,4 +1,5 @@
 import { clientAuthenticated } from '@gredice/client';
+import { selectPersistedAppearanceVariantIndex } from '@gredice/js/appearanceVariants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     createLocalSandboxBlockId,
@@ -31,6 +32,7 @@ type CurrentGardenData = NonNullable<
 >;
 
 type BlockPlaceVariables = {
+    appearanceVariant?: number;
     blockName: string;
     expectedExistingBlocks?: string[];
     localBlockId?: string;
@@ -163,6 +165,9 @@ export function useBlockPlace() {
                 },
                 json: {
                     blockName: variables.blockName,
+                    ...(variables.appearanceVariant !== undefined
+                        ? { appearanceVariant: variables.appearanceVariant }
+                        : {}),
                     ...(variables.expectedExistingBlocks
                         ? {
                               expectedExistingBlocks:
@@ -204,12 +209,18 @@ export function useBlockPlace() {
                     variables.localBlockId = localSandboxStorageKey
                         ? optimisticBlockId
                         : undefined;
+                    variables.appearanceVariant =
+                        selectPersistedAppearanceVariantIndex(
+                            variables.blockName,
+                            optimisticBlockId,
+                        ) ?? undefined;
                     const optimisticPlacement = createOptimisticBlockPlacement(
                         currentGarden,
                         blockData,
                         variables.blockName,
                         optimisticBlockId,
                         {
+                            appearanceVariant: variables.appearanceVariant,
                             preferredPosition:
                                 variables.position ??
                                 getPreferredBlockPlacementPosition(

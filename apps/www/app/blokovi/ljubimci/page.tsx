@@ -18,7 +18,7 @@ import { GardenPetsIntro } from './GardenPetsIntro';
 import { OtherGardenResidents } from './OtherGardenResidents';
 
 const pageDescription =
-    'Pas, mačka, kokoš i praščić stižu u vrt sa svojim blokom i sami se brinu za svoj dan.';
+    'Pas, mačka, kokoš, praščić i krava dolaze u vrt sa svojim blokom i sami se brinu za svoj dan.';
 
 export const revalidate = 43200; // 12 hours
 

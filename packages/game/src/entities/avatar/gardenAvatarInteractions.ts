@@ -28,6 +28,7 @@ export const gardenAvatarBeachBallKickDistance = 0.66;
 export const gardenAvatarAnimalAimProfiles = {
     Cat: { centerHeight: 0.3, hitRadius: 0.42 },
     Chicken: { centerHeight: 0.22, hitRadius: 0.32 },
+    Cow: { centerHeight: 0.68, hitRadius: 0.74 },
     Dog: { centerHeight: 0.42, hitRadius: 0.42 },
     Piglet: { centerHeight: 0.32, hitRadius: 0.4 },
 } satisfies Record<
@@ -41,6 +42,7 @@ export function isPettableAnimalSpecies(
     return (
         species === 'Cat' ||
         species === 'Chicken' ||
+        species === 'Cow' ||
         species === 'Dog' ||
         species === 'Piglet'
     );

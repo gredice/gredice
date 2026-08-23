@@ -7,6 +7,7 @@ type StoredSandboxBlock = {
     id: string;
     name: string;
     rotation: number;
+    variant?: number;
 };
 
 type StoredSandboxStack = {
@@ -57,6 +58,7 @@ function placeBlock(
     z: number,
     name: string,
     rotation = 0,
+    variant?: number,
 ) {
     const stack = stacks.get(stackKey(x, z));
     if (!stack) {
@@ -67,6 +69,7 @@ function placeBlock(
         id: `animal-debug:${animalDebugStorageVersion}:${name}:${x}:${z}`,
         name,
         rotation,
+        variant,
     });
 }
 
@@ -74,7 +77,7 @@ function replaceGround(
     stacks: Map<string, StoredSandboxStack>,
     x: number,
     z: number,
-    name: 'Block_Dry_Ground' | 'Block_Sand',
+    name: 'Block_Dry_Ground' | 'Block_Sand' | 'Block_Water',
 ) {
     const stack = stacks.get(stackKey(x, z));
     const ground = stack?.blocks[0];
@@ -176,6 +179,36 @@ function createPigletPathfindingStacks() {
     return serializeStacks(stacks);
 }
 
+function createCowHerdStacks() {
+    const stacks = createGroundStacks({
+        minX: -7,
+        maxX: 7,
+        minZ: -5,
+        maxZ: 5,
+    });
+
+    placeBlock(stacks, -4, -2, 'Cow', 0, 0);
+    placeBlock(stacks, -4, 2, 'Cow', 1, 1);
+    placeBlock(stacks, 4, 0, 'Cow', 2, 0);
+    placeBlock(stacks, 0, -4, 'Tree');
+    placeBlock(stacks, 0, 4, 'WaterWell');
+    placeBlock(stacks, 2, -3, 'StoneLarge');
+    placeBlock(stacks, -1, 3, 'Bucket');
+
+    for (let z = -5; z <= 5; z += 1) {
+        if (z < -1 || z > 1) {
+            replaceGround(stacks, 1, z, 'Block_Water');
+        }
+    }
+    for (let z = -2; z <= 2; z += 1) {
+        if (z !== 0) {
+            placeBlock(stacks, -1, z, 'GardenBox');
+        }
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createBirdStacks() {
     const stacks = createGroundStacks({
         minX: -4,
@@ -223,6 +256,8 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
+    placeBlock(stacks, -3, 0, 'Cow', 0, 0);
+    placeBlock(stacks, 4, 1, 'Cow', 2, 1);
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -329,6 +364,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Piglet path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createCowHerdStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Cow herd
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

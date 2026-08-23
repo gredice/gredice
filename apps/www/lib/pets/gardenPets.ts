@@ -7,6 +7,8 @@ export type GardenPet = {
     genitive: string;
     /** Name of the block that brings the animal into the garden. */
     homeBlockName: string;
+    /** Whether the catalog block is the animal itself or its home. */
+    placementMode: 'animal' | 'home';
     /** Sound the animal makes in the garden. */
     sound: string;
     shortDescription: string;
@@ -29,6 +31,7 @@ export const gardenPets = [
         name: 'Pas',
         genitive: 'psa',
         homeBlockName: 'DogHouse',
+        placementMode: 'home',
         sound: 'Vau!',
         shortDescription:
             'Veseli čuvar vrta koji obilazi svaki kutak i juri za pticama.',
@@ -51,6 +54,7 @@ export const gardenPets = [
         name: 'Mačka',
         genitive: 'mačke',
         homeBlockName: 'CatPillow',
+        placementMode: 'home',
         sound: 'Mijau!',
         shortDescription:
             'Tiha lovkinja koja vreba ptice i najradije drijema na svom jastuku.',
@@ -73,6 +77,7 @@ export const gardenPets = [
         name: 'Kokoš',
         genitive: 'kokoši',
         homeBlockName: 'ChickenCoop',
+        placementMode: 'home',
         sound: 'Kokoda!',
         shortDescription:
             'Znatiželjna kokoš koja cijeli dan kljuca i istražuje oko kokošinjca.',
@@ -94,6 +99,7 @@ export const gardenPets = [
         name: 'Praščić',
         genitive: 'praščića',
         homeBlockName: 'PigletPen',
+        placementMode: 'home',
         sound: 'Grok-grok!',
         shortDescription:
             'Razigrani praščić koji rije po zemlji i valja se u kaljuži.',
@@ -109,5 +115,28 @@ export const gardenPets = [
         weatherRoutine:
             'Podnosi više kiše od ostalih ljubimaca, ali se pred nevremenom povlači u obor.',
         searchTerms: ['prase', 'obor', 'svinja'],
+    },
+    {
+        slug: 'krava',
+        name: 'Krava',
+        genitive: 'krave',
+        homeBlockName: 'Cow',
+        placementMode: 'animal',
+        sound: 'Muuu!',
+        shortDescription:
+            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+        fullDescription:
+            'Krava je smirena stanovnica vrta. Polako pase i preživa, pomiče uši i glavu te repom tjera dosadne muhe. Povremeno prošeće ili kratko potrči, a više krava drži ugodan razmak dok zajedno istražuju travnate dijelove vrta.',
+        habits: [
+            'Pase i mirno preživa',
+            'Pomiče uši i glavu te zamahuje repom',
+            'Hoda polako, uz povremeni kratki kas',
+            'Drži ugodan razmak od drugih krava',
+        ],
+        dayRangeBlocks: 5.5,
+        nightRoutine: 'Zadržava svoj mirni ritam u istom dijelu vrta.',
+        weatherRoutine:
+            'Ostaje na prohodnom tlu i nastavlja svoje uobičajene aktivnosti.',
+        searchTerms: ['krave', 'govedo', 'kravica'],
     },
 ] as const satisfies readonly GardenPet[];

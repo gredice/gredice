@@ -199,7 +199,13 @@ describe('garden avatar world interactions', () => {
 
     it('selects every fresh, nearby pettable animal on the center ray', () => {
         const ray = new Ray(new Vector3(0, 0.3, 0), new Vector3(0, 0, -1));
-        for (const species of ['Cat', 'Chicken', 'Dog', 'Piglet'] as const) {
+        for (const species of [
+            'Cat',
+            'Chicken',
+            'Cow',
+            'Dog',
+            'Piglet',
+        ] as const) {
             assert.equal(isPettableAnimalSpecies(species), true);
             const aimed = resolveAimedGardenAvatarAnimal({
                 actorPosition: new Vector3(0, 0, 0),
@@ -228,6 +234,10 @@ describe('garden avatar world interactions', () => {
         assert.ok(
             gardenAvatarAnimalAimProfiles.Chicken.hitRadius <
                 gardenAvatarAnimalAimProfiles.Piglet.hitRadius,
+        );
+        assert.ok(
+            gardenAvatarAnimalAimProfiles.Piglet.hitRadius <
+                gardenAvatarAnimalAimProfiles.Cow.hitRadius,
         );
         assert.equal(
             resolveAimedGardenAvatarAnimal({

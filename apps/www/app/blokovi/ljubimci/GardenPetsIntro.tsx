@@ -10,7 +10,7 @@ const steps = [
         icon: <Home aria-hidden className="size-5" />,
         title: 'Svaki ljubimac ima svoj blok',
         description:
-            'Pseća kućica, mačji jastuk, kokošinjac i obor za praščića — svaki blok dovodi svog stanara.',
+            'Pseća kućica, mačji jastuk, kokošinjac, obor za praščića i krava — svaki blok donosi svog stanara.',
     },
     {
         icon: <PawPrint aria-hidden className="size-5" />,

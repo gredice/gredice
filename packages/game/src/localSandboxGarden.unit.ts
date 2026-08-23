@@ -60,6 +60,12 @@ test('persists local sandbox stacks in local storage', () => {
                             rotation: 0,
                             message: '  ABCDEFGHIJKL\nMNOPQRSTUVWX  ',
                         },
+                        {
+                            id: createLocalSandboxBlockId('Cow'),
+                            name: 'Cow',
+                            rotation: 1,
+                            variant: 1,
+                        },
                     ],
                 },
             ],
@@ -79,6 +85,8 @@ test('persists local sandbox stacks in local storage', () => {
             loadedGarden.stacks[0]?.blocks[1]?.message,
             'ABCDEFGHIJKL\nMNOPQRSTUVWX',
         );
+        assert.equal(loadedGarden.stacks[0]?.blocks[2]?.name, 'Cow');
+        assert.equal(loadedGarden.stacks[0]?.blocks[2]?.variant, 1);
     });
 });
 

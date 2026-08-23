@@ -352,7 +352,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         const createdBlockId = await createGardenBlock(
                             gardenId,
                             blockName,
-                            tx,
+                            { db: tx },
                         );
                         await updateGardenStack(
                             gardenId,

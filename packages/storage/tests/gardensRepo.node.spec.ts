@@ -628,6 +628,26 @@ test('createGardenBlock and getGardenBlocks', async () => {
     assert.ok(blocks.some((b) => b.id === blockId));
 });
 
+test('createGardenBlock persists Cow coats once while leaving other blocks unvaried', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+
+    const selectedCowId = await createGardenBlock(gardenId, 'Cow', {
+        appearanceVariant: 1,
+    });
+    const legacyCowId = await createGardenBlock(gardenId, 'Cow');
+    const otherBlockId = await createGardenBlock(gardenId, 'BlockA');
+
+    const selectedCow = await getGardenBlock(gardenId, selectedCowId);
+    const legacyCow = await getGardenBlock(gardenId, legacyCowId);
+    const otherBlock = await getGardenBlock(gardenId, otherBlockId);
+    assert.equal(selectedCow?.variant, 1);
+    assert.ok(legacyCow?.variant === 0 || legacyCow?.variant === 1);
+    assert.equal(otherBlock?.variant, null);
+});
+
 test('getGardenBlock returns correct block', async () => {
     createTestDb();
     const accountId = await createAccount();

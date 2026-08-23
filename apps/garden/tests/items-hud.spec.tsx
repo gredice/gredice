@@ -21,6 +21,7 @@ const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
     { label: 'Kokošinjac', price: 500, picker: 'Ljubimci' },
     { label: 'Obor za praščića', price: 500, picker: 'Ljubimci' },
+    { label: 'Krava', price: 850, picker: 'Ljubimci' },
     { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
     { label: 'Kamena ograda', price: 5, picker: 'Ograde' },
     { label: 'Ograda od poliranog kamena', price: 5, picker: 'Ograde' },
@@ -558,6 +559,7 @@ test('decorations are grouped into summer, furniture, pets, and signs', async ({
     await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Krava' })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Chicken', exact: true }),
     ).toHaveCount(0);
@@ -865,6 +867,7 @@ test('local sandbox decoration picker includes current decoration blocks', async
     await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Krava' })).toBeVisible();
     await page.getByRole('button', { name: 'Natrag' }).click();
 
     await page.getByRole('button', { name: 'Malč' }).click();

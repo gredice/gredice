@@ -102,4 +102,36 @@ describe('purchaseGardenBlock', () => {
             'spendSunflowers',
         ]);
     });
+
+    it('passes the placement-selected Cow coat to storage unchanged', async () => {
+        let storedAppearanceVariant: number | undefined;
+
+        const result = await purchaseGardenBlock({
+            accountId: 'account-1',
+            appearanceVariant: 1,
+            blockName: 'Cow',
+            cost: 850,
+            gardenId: 42,
+            hasTargetStack: true,
+            placement: {
+                x: 3,
+                y: 4,
+                existingBlocks: ['ground-1'],
+            },
+            dependencies: {
+                createGardenBlock: async (_gardenId, _blockName, options) => {
+                    storedAppearanceVariant = options.appearanceVariant;
+                    return 'cow-1';
+                },
+                createGardenStack: async () => undefined,
+                deleteGardenBlock: async () => undefined,
+                spendSunflowers: async () => undefined,
+                synchronizeGardenStacksAndRaisedBeds: async () => undefined,
+                updateGardenStack: async () => undefined,
+            },
+        });
+
+        assert.equal(result.ok, true);
+        assert.equal(storedAppearanceVariant, 1);
+    });
 });

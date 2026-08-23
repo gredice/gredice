@@ -18,12 +18,14 @@ test('empty search keeps every pet visible', () => {
         'Mačka',
         'Kokoš',
         'Praščić',
+        'Krava',
     ]);
 });
 
 test('searching a pet name matches only that pet', () => {
     assert.deepEqual(matchingPetNames('pas'), ['Pas']);
     assert.deepEqual(matchingPetNames('Mačka'), ['Mačka']);
+    assert.deepEqual(matchingPetNames('krava'), ['Krava']);
 });
 
 test('searching the visible category label keeps the whole group discoverable', () => {

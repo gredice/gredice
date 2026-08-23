@@ -28,6 +28,8 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
     /** Optional per-placement message used by editable sign previews. */
     message?: string | null;
+    /** Optional persisted appearance variant used by entity previews. */
+    variant?: number;
     appBaseUrl?: string;
     className?: string;
     noControl?: boolean;
@@ -88,6 +90,7 @@ export function EntityViewer({
     appBaseUrl,
     entityName,
     message,
+    variant: configuredVariant,
     zoom,
     itemPosition,
     className,
@@ -122,10 +125,12 @@ export function EntityViewer({
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
-    let variant: number | undefined;
-    if (entityName === 'PineAdvent') {
-        variant = 100;
-    }
+    const variant =
+        entityName === 'PineAdvent'
+            ? 100
+            : entityName === 'Cow'
+              ? (configuredVariant ?? 0)
+              : configuredVariant;
     const block: Block = {
         id: uuidv4(),
         name: entityName,

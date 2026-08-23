@@ -562,7 +562,7 @@ export async function openAdventCalendar2025Day({
                     const blockId = await createGardenBlock(
                         primaryGarden.id,
                         CHRISTMAS_TREE_BLOCK_NAME,
-                        tx,
+                        { db: tx },
                     );
                     await placeBlockAtAvailablePosition(blockId);
                 }
@@ -572,7 +572,7 @@ export async function openAdventCalendar2025Day({
                         const blockId = await createGardenBlock(
                             primaryGarden.id,
                             award.blockId,
-                            tx,
+                            { db: tx },
                         );
                         await placeBlockAtAvailablePosition(blockId);
                     }
