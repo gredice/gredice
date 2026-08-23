@@ -17,6 +17,8 @@ import {
     resolveLadybugHabitatChange,
     selectLadybugRelocationTarget,
     selectLadybugSpawnAssignments,
+    shouldLadybugDespawnSlot,
+    shouldLadybugRecheckHabitat,
     shouldLadybugTakeFlight,
     smoothLadybugTransition,
 } from './ladybugBehavior';
@@ -228,6 +230,7 @@ test('selects relocation deterministically and skips blocked routes', () => {
 
 test('stays, safely relocates, or despawns when a host changes', () => {
     const current = candidate('current', 0, 0);
+    const movedCurrent = candidate('current', 1, 0);
     const replacement = candidate('replacement', 0, 2);
     const base = {
         blockedCells: [],
@@ -236,9 +239,12 @@ test('stays, safely relocates, or despawns when a host changes', () => {
         sequence: 2,
     };
 
-    assert.equal(
-        resolveLadybugHabitatChange({ ...base, candidates: [current] }).action,
-        'stay',
+    assert.deepEqual(
+        resolveLadybugHabitatChange({
+            ...base,
+            candidates: [movedCurrent],
+        }),
+        { action: 'stay', target: movedCurrent },
     );
     assert.equal(
         resolveLadybugHabitatChange({
@@ -250,6 +256,52 @@ test('stays, safely relocates, or despawns when a host changes', () => {
     assert.equal(
         resolveLadybugHabitatChange({ ...base, candidates: [] }).action,
         'despawn',
+    );
+});
+
+test('rechecks habitat only while surface-bound', () => {
+    assert.equal(shouldLadybugRecheckHabitat('crawl'), true);
+    assert.equal(shouldLadybugRecheckHabitat('pause'), true);
+    assert.equal(shouldLadybugRecheckHabitat('wing-opening'), false);
+    assert.equal(shouldLadybugRecheckHabitat('takeoff'), false);
+    assert.equal(shouldLadybugRecheckHabitat('flight'), false);
+    assert.equal(shouldLadybugRecheckHabitat('landing'), false);
+    assert.equal(shouldLadybugRecheckHabitat('despawn'), false);
+    assert.equal(shouldLadybugRecheckHabitat('hidden'), false);
+});
+
+test('despawns visible slots when activity or assignment ends', () => {
+    assert.equal(
+        shouldLadybugDespawnSlot({
+            active: true,
+            hasAssignment: true,
+            phase: 'crawl',
+        }),
+        false,
+    );
+    assert.equal(
+        shouldLadybugDespawnSlot({
+            active: true,
+            hasAssignment: false,
+            phase: 'pause',
+        }),
+        true,
+    );
+    assert.equal(
+        shouldLadybugDespawnSlot({
+            active: false,
+            hasAssignment: true,
+            phase: 'flight',
+        }),
+        true,
+    );
+    assert.equal(
+        shouldLadybugDespawnSlot({
+            active: false,
+            hasAssignment: false,
+            phase: 'despawn',
+        }),
+        false,
     );
 });
 

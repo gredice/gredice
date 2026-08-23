@@ -48,6 +48,7 @@ import {
     resolveLadybugHabitatChange,
     selectLadybugRelocationTarget,
     selectLadybugSpawnAssignments,
+    shouldLadybugDespawnSlot,
     shouldLadybugTakeFlight,
     smoothLadybugTransition,
 } from './ladybugBehavior';
@@ -923,7 +924,13 @@ function LadybugActor({
                     runtimeRef.current = runtime;
                 }
             }
-        } else if (!active && runtime.phase !== 'despawn') {
+        } else if (
+            shouldLadybugDespawnSlot({
+                active,
+                hasAssignment: assignment !== null,
+                phase: runtime.phase,
+            })
+        ) {
             runtime = createDespawnState(group.position, now, runtime.target);
             runtimeRef.current = runtime;
         }
@@ -932,11 +939,7 @@ function LadybugActor({
             return;
         }
 
-        if (
-            runtime.phase !== 'despawn' &&
-            runtime.phase !== 'flight' &&
-            runtime.phase !== 'landing'
-        ) {
+        if (runtime.phase === 'crawl' || runtime.phase === 'pause') {
             const habitatChange = resolveLadybugHabitatChange({
                 blockedCells,
                 candidates: targets,
@@ -959,6 +962,9 @@ function LadybugActor({
                     now,
                     runtime.target,
                 );
+                runtimeRef.current = runtime;
+            } else {
+                runtime = { ...runtime, target: habitatChange.target };
                 runtimeRef.current = runtime;
             }
         }

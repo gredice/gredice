@@ -53,6 +53,26 @@ export const ladybugBehaviorPhases = [
     'despawn',
 ] satisfies LadybugBehaviorPhase[];
 
+export function shouldLadybugDespawnSlot({
+    active,
+    hasAssignment,
+    phase,
+}: {
+    active: boolean;
+    hasAssignment: boolean;
+    phase: LadybugBehaviorPhase | 'hidden';
+}) {
+    return (
+        phase !== 'hidden' && phase !== 'despawn' && (!active || !hasAssignment)
+    );
+}
+
+export function shouldLadybugRecheckHabitat(
+    phase: LadybugBehaviorPhase | 'hidden',
+): phase is 'crawl' | 'pause' {
+    return phase === 'crawl' || phase === 'pause';
+}
+
 const ladybugDayStart = 0.32;
 const ladybugDayEnd = 0.72;
 const ladybugMinimumTemperatureCelsius = 18;
