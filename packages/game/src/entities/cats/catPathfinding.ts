@@ -72,8 +72,14 @@ function createSearchBounds(
     blockedCells: CatPathCell[],
     startCell: CatPathCell,
     targetCell: CatPathCell,
+    traversableCells: CatPathCell[] | undefined,
 ): SearchBounds {
-    const cells = [startCell, targetCell, ...blockedCells];
+    const cells = [
+        startCell,
+        targetCell,
+        ...blockedCells,
+        ...(traversableCells ?? []),
+    ];
     const xs = cells.map((cell) => cell.x);
     const zs = cells.map((cell) => cell.z);
 
@@ -167,14 +173,20 @@ function canWalkCell({
     cell,
     startCell,
     targetCell,
+    traversableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
     cell: CatPathCell;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    traversableKeys: Set<string> | null;
 }) {
     if (!isCellInsideBounds(cell, bounds)) {
+        return false;
+    }
+
+    if (traversableKeys && !traversableKeys.has(cellKey(cell))) {
         return false;
     }
 
@@ -184,13 +196,14 @@ function canWalkCell({
     );
 }
 
-function directPathCrossesBlockedCell({
+function directPathCrossesUnavailableCell({
     blockedKeys,
     canTraverseEdge,
     from,
     startCell,
     targetCell,
     to,
+    traversableKeys,
 }: {
     blockedKeys: Set<string>;
     canTraverseEdge?: CatPathEdgeTraversal;
@@ -198,18 +211,20 @@ function directPathCrossesBlockedCell({
     startCell: CatPathCell;
     targetCell: CatPathCell;
     to: CatPathPoint;
+    traversableKeys: Set<string> | null;
 }) {
     const distance = horizontalDistance(from, to);
     const steps = Math.max(1, Math.ceil(distance / directPathSampleStep));
     let previousCell = startCell;
 
-    for (let step = 1; step < steps; step += 1) {
+    for (let step = 1; step <= steps; step += 1) {
         const progress = step / steps;
         const cell = roundCell({
             x: from.x + (to.x - from.x) * progress,
             z: from.z + (to.z - from.z) * progress,
         });
 
+        const key = cellKey(cell);
         if (
             !isSameCell(cell, previousCell) &&
             canTraverseEdge &&
@@ -220,9 +235,31 @@ function directPathCrossesBlockedCell({
 
         if (
             !isTemporarilyAllowedCell(cell, startCell, targetCell) &&
-            blockedKeys.has(cellKey(cell))
+            (blockedKeys.has(key) ||
+                (traversableKeys !== null && !traversableKeys.has(key)))
         ) {
             return true;
+        }
+        if (
+            Math.abs(cell.x - previousCell.x) === 1 &&
+            Math.abs(cell.z - previousCell.z) === 1
+        ) {
+            const cornerCells = [
+                { x: cell.x, z: previousCell.z },
+                { x: previousCell.x, z: cell.z },
+            ];
+            if (
+                cornerCells.some((cornerCell) => {
+                    const cornerKey = cellKey(cornerCell);
+                    return (
+                        blockedKeys.has(cornerKey) ||
+                        (traversableKeys !== null &&
+                            !traversableKeys.has(cornerKey))
+                    );
+                })
+            ) {
+                return true;
+            }
         }
         previousCell = cell;
     }
@@ -248,6 +285,7 @@ function canWalkDiagonal({
     direction,
     startCell,
     targetCell,
+    traversableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
@@ -255,6 +293,7 @@ function canWalkDiagonal({
     direction: CatPathCell;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    traversableKeys: Set<string> | null;
 }) {
     if (direction.x === 0 || direction.z === 0) {
         return true;
@@ -267,6 +306,7 @@ function canWalkDiagonal({
             cell: { x: cell.x + direction.x, z: cell.z },
             startCell,
             targetCell,
+            traversableKeys,
         }) &&
         canWalkCell({
             blockedKeys,
@@ -274,6 +314,7 @@ function canWalkDiagonal({
             cell: { x: cell.x, z: cell.z + direction.z },
             startCell,
             targetCell,
+            traversableKeys,
         })
     );
 }
@@ -333,12 +374,14 @@ function findCellPath({
     canTraverseEdge,
     startCell,
     targetCell,
+    traversableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
     canTraverseEdge?: CatPathEdgeTraversal;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    traversableKeys: Set<string> | null;
 }) {
     const startKey = cellKey(startCell);
     const targetKey = cellKey(targetCell);
@@ -390,6 +433,7 @@ function findCellPath({
                     cell: neighborCell,
                     startCell,
                     targetCell,
+                    traversableKeys,
                 }) ||
                 !canWalkDiagonal({
                     blockedKeys,
@@ -398,6 +442,7 @@ function findCellPath({
                     direction,
                     startCell,
                     targetCell,
+                    traversableKeys,
                 }) ||
                 (canTraverseEdge &&
                     !canTraverseEdge(current.node.cell, neighborCell))
@@ -515,30 +560,41 @@ export function findCatPath({
     from,
     surfaces,
     to,
+    traversableCells,
 }: {
     blockedCells: CatPathCell[];
     canTraverseEdge?: CatPathEdgeTraversal;
     from: CatPathPoint;
     surfaces: CatPathSurface[];
     to: CatPathPoint;
+    traversableCells?: CatPathCell[];
 }): CatPathResult {
     const startCell = roundCell(from);
     const targetCell = roundCell(to);
     const surfaceByKey = createSurfaceMap(surfaces, from, to);
     const blockedKeys = new Set(blockedCells.map(cellKey));
+    const traversableKeys = traversableCells
+        ? new Set(traversableCells.map(cellKey))
+        : null;
     const blockedCellCount = blockedKeys.size;
     const directPoints = [from, to];
-    const bounds = createSearchBounds(blockedCells, startCell, targetCell);
+    const bounds = createSearchBounds(
+        blockedCells,
+        startCell,
+        targetCell,
+        traversableCells,
+    );
 
     if (
         isSameCell(startCell, targetCell) ||
-        !directPathCrossesBlockedCell({
+        !directPathCrossesUnavailableCell({
             blockedKeys,
             canTraverseEdge,
             from,
             startCell,
             targetCell,
             to,
+            traversableKeys,
         })
     ) {
         return {
@@ -558,6 +614,7 @@ export function findCatPath({
         canTraverseEdge,
         startCell,
         targetCell,
+        traversableKeys,
     });
     if (!cellPath.cells) {
         return {
