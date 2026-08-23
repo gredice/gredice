@@ -47,6 +47,7 @@ import {
 import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
+import { Slugs } from '../entities/slugs/Slugs';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { useBlockData } from '../hooks/useBlockData';
 import { currentGardenKeys } from '../hooks/useCurrentGarden';
@@ -716,6 +717,20 @@ function PublicGardenScene({
                                                             garden={garden}
                                                             groundDecorationDensity={
                                                                 qualityProfile.groundDecorationDensity
+                                                            }
+                                                        />
+                                                    </Suspense>
+                                                )}
+                                            {renderTransientDetails &&
+                                                garden && (
+                                                    <Suspense fallback={null}>
+                                                        <Slugs
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
+                                                            weatherDisabled={
+                                                                noWeather
                                                             }
                                                         />
                                                     </Suspense>
