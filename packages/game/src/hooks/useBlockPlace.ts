@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import {
+    createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
     isValidEntityAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
@@ -150,12 +151,17 @@ export function useBlockPlace() {
                 throw new Error('No garden selected');
             }
 
+            variables.variant ??= createEntityAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
+
             if (localSandboxStorageKey) {
                 return {
                     id:
                         variables.localBlockId ??
                         createLocalSandboxBlockId(variables.blockName),
-                    variant: variables.variant,
+                    variant: variables.variant ?? null,
                 };
             }
 
@@ -188,6 +194,11 @@ export function useBlockPlace() {
             return await response.json();
         },
         onMutate: async (variables) => {
+            variables.variant ??= createEntityAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
+
             if (
                 isAppearanceVariantEntityName(variables.blockName) &&
                 !isValidEntityAppearanceVariant(
@@ -195,7 +206,9 @@ export function useBlockPlace() {
                     variables.variant,
                 )
             ) {
-                throw new Error('Odaberi boju konja prije postavljanja.');
+                throw new Error(
+                    'Odaberi valjanu boju životinje prije postavljanja.',
+                );
             }
             if (!garden) {
                 return;
@@ -308,6 +321,7 @@ export function useBlockPlace() {
                               currentGarden,
                               context.optimisticBlockId,
                               data.id,
+                              data.variant,
                           )
                         : currentGarden,
             );

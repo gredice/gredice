@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    createEntityAppearanceVariantForPlacement,
     defineAppearanceVariants,
     getHorseAppearanceVariantDefinition,
     horseAppearanceVariants,
     isAppearanceVariantEntityName,
+    isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
+    rabbitAppearanceVariants,
     resolveHorseAppearanceVariant,
+    resolveRabbitAppearanceVariant,
 } from './index';
 
 describe('Horse appearance variants', () => {
@@ -64,6 +68,75 @@ describe('Horse appearance variants', () => {
         );
         assert.equal(horseAppearanceVariants.isVariant(missing), true);
         assert.equal(getHorseAppearanceVariantDefinition(3).id, 'dapple-gray');
+    });
+});
+
+describe('Rabbit appearance variants', () => {
+    it('exposes exactly two readable coat-color families', () => {
+        assert.deepEqual(rabbitAppearanceVariants.variants, [
+            { id: 'chestnut-agouti', value: 0 },
+            { id: 'cream', value: 1 },
+        ]);
+    });
+
+    it('selects a coat once from the placement random source', () => {
+        assert.equal(
+            createEntityAppearanceVariantForPlacement('Rabbit', () => 0),
+            0,
+        );
+        assert.equal(
+            createEntityAppearanceVariantForPlacement('Rabbit', () => 0.999),
+            1,
+        );
+        assert.equal(
+            createEntityAppearanceVariantForPlacement('Horse', () => 0.999),
+            undefined,
+        );
+        assert.equal(
+            createEntityAppearanceVariantForPlacement('Bucket', () => 0.999),
+            undefined,
+        );
+    });
+
+    it('keeps a persisted coat and deterministically repairs legacy data', () => {
+        assert.equal(resolveRabbitAppearanceVariant(1, 'rabbit-42'), 1);
+
+        const firstFallback = resolveRabbitAppearanceVariant(
+            null,
+            'legacy-rabbit',
+        );
+        assert.equal(
+            resolveRabbitAppearanceVariant(999, 'legacy-rabbit'),
+            firstFallback,
+        );
+        assert.equal(rabbitAppearanceVariants.isVariant(firstFallback), true);
+    });
+
+    it('locks the coat while leaving ordinary block variants mutable', () => {
+        assert.equal(
+            isEntityAppearanceVariantUpdateAllowed({
+                entityName: 'Rabbit',
+                currentVariant: 0,
+                requestedVariant: 0,
+            }),
+            true,
+        );
+        assert.equal(
+            isEntityAppearanceVariantUpdateAllowed({
+                entityName: 'Rabbit',
+                currentVariant: 0,
+                requestedVariant: 1,
+            }),
+            false,
+        );
+        assert.equal(
+            isEntityAppearanceVariantUpdateAllowed({
+                entityName: 'FenceGate',
+                currentVariant: 0,
+                requestedVariant: 1,
+            }),
+            true,
+        );
     });
 });
 

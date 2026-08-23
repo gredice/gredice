@@ -83,6 +83,7 @@ describe('animal movement terrain', () => {
         assert.ok((surfaces[0]?.waterDepth ?? 0) > 0);
         assert.equal(isAnimalSwimmingAt({ x: 1, z: 2 }, surfaces), true);
         assert.equal(canAnimalSettleAt({ x: 1, z: 2 }, surfaces), false);
+        assert.equal(canAnimalSettleAt({ x: 8, z: 8 }, surfaces), false);
     });
 
     it('treats swamp water as a swimming surface', () => {

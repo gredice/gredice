@@ -36,7 +36,7 @@ type PurchaseGardenBlockParams = {
     gardenId: number;
     hasTargetStack: boolean;
     placement: PurchasedBlockPlacement;
-    variant?: number;
+    variant: number | null;
     dependencies: PurchaseGardenBlockDependencies;
 };
 
