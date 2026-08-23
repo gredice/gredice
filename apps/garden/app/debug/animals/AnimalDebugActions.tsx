@@ -377,6 +377,25 @@ function createBatStacks() {
     return serializeStacks(stacks);
 }
 
+function createButterflyStacks() {
+    const stacks = createGroundStacks({
+        minX: -4,
+        maxX: 4,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -2, -1, 'Tulip');
+    placeBlock(stacks, 0, 1, 'Tulip');
+    placeBlock(stacks, 2, -2, 'Tulip');
+    placeBlock(stacks, -3, 2, 'CactusPricklyPear');
+    placeBlock(stacks, 3, 2, 'CactusBarrel');
+    placeBlock(stacks, 0, 0, 'StoneLarge');
+    placeBlock(stacks, 1, 0, 'Tree');
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -612,6 +631,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Frog wetland
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createButterflyStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Butterflies
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

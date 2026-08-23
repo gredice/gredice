@@ -3,6 +3,7 @@ export type ActorGroundingShadowSpecies =
     | 'beachBall'
     | 'bee'
     | 'bird'
+    | 'butterfly'
     | 'cat'
     | 'chicken'
     | 'cow'
@@ -108,6 +109,13 @@ export const actorGroundingShadowProfiles = {
         baseOpacity: 0.26,
         cutoffHeight: 2.6,
         maxFootprintScale: 2.1,
+    },
+    butterfly: {
+        baseHalfLength: 0.13,
+        baseHalfWidth: 0.09,
+        baseOpacity: 0.18,
+        cutoffHeight: 1.8,
+        maxFootprintScale: 2,
     },
     cat: {
         baseHalfLength: 0.38,

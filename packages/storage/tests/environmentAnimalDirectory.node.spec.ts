@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     batEnvironmentAnimal,
+    butterflyEnvironmentAnimal,
+    butterflyEnvironmentAnimalAttributeSpecs,
+    butterflyWingVariantDirectory,
     environmentAnimalEntityTypeName,
 } from '../src/data/environmentAnimalDirectory';
 
@@ -59,5 +62,75 @@ describe('Bat environment-animal directory specification', () => {
             ),
             false,
         );
+    });
+});
+
+describe('Butterfly environment-animal directory specification', () => {
+    it('defines a dedicated non-purchasable environment entity type', () => {
+        assert.equal(environmentAnimalEntityTypeName, 'environmentAnimal');
+        assert.equal(
+            butterflyEnvironmentAnimal.attributes['habitat.spawnMode'],
+            'environment',
+        );
+        assert.equal(
+            butterflyEnvironmentAnimal.attributes['behavior.purchasable'],
+            'false',
+        );
+        assert.equal(
+            butterflyEnvironmentAnimal.attributes['behavior.petPickerVisible'],
+            'false',
+        );
+    });
+
+    it('declares every butterfly-specific directory attribute', () => {
+        const specificPaths = new Set(
+            butterflyEnvironmentAnimalAttributeSpecs.map(
+                ({ category, name }) => `${category}.${name}`,
+            ),
+        );
+
+        for (const path of [
+            'appearance.modelName',
+            'appearance.wingVariants',
+            'behavior.petPickerVisible',
+            'habitat.weatherLimits',
+            'spawn.lifetimeMaxSeconds',
+            'spawn.lifetimeMinSeconds',
+        ]) {
+            assert.ok(specificPaths.has(path));
+        }
+    });
+
+    it('keeps eight distinct, named wing palettes in the directory record', () => {
+        assert.equal(butterflyWingVariantDirectory.length, 8);
+        assert.equal(
+            new Set(butterflyWingVariantDirectory.map(({ id }) => id)).size,
+            butterflyWingVariantDirectory.length,
+        );
+        assert.equal(
+            new Set(
+                butterflyWingVariantDirectory.map(
+                    ({ primary, secondary }) => `${primary}:${secondary}`,
+                ),
+            ).size,
+            butterflyWingVariantDirectory.length,
+        );
+        assert.deepEqual(
+            JSON.parse(
+                butterflyEnvironmentAnimal.attributes[
+                    'appearance.wingVariants'
+                ],
+            ),
+            butterflyWingVariantDirectory,
+        );
+    });
+
+    it('keeps butterfly-only wing data optional for other wildlife', () => {
+        const wingVariants = butterflyEnvironmentAnimalAttributeSpecs.find(
+            ({ category, name }) =>
+                `${category}.${name}` === 'appearance.wingVariants',
+        );
+
+        assert.equal(wingVariants?.required, false);
     });
 });
