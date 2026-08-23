@@ -120,7 +120,7 @@ describe('purchaseGardenBlock', () => {
             },
             dependencies: {
                 createGardenBlock: async (_gardenId, _blockName, options) => {
-                    storedAppearanceVariant = options.appearanceVariant;
+                    storedAppearanceVariant = options?.appearanceVariant;
                     return 'cow-1';
                 },
                 createGardenStack: async () => undefined,
