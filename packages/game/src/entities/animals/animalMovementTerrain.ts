@@ -1,4 +1,5 @@
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getStackBlockHeight } from '../../utils/stackHeightCore';
@@ -291,28 +292,96 @@ export function createAnimalMovementSurfaces({
     return surfaces;
 }
 
-export function createAnimalBlockedCells(stacks: Stack[] | undefined) {
-    const blockedCells: AnimalMovementCell[] = [];
+export type AnimalBlockedCellOptions = {
+    /**
+     * Catalog data is optional for compatibility with existing callers. When
+     * supplied, multi-cell decoration footprints are blocked in full.
+     */
+    blockData?: BlockData[] | null;
+    /** Chebyshev-distance clearance around every occupied cell. */
+    clearanceCells?: number;
+    /** Blocks that own a roaming actor can omit their persisted anchor. */
+    ignoredBlockIds?: ReadonlySet<string> | readonly string[];
+    /** Land animals can treat water cells as navigation blockers. */
+    blockWater?: boolean;
+};
+
+function createIgnoredBlockIdSet(
+    ignoredBlockIds: AnimalBlockedCellOptions['ignoredBlockIds'],
+) {
+    return ignoredBlockIds instanceof Set
+        ? ignoredBlockIds
+        : new Set(ignoredBlockIds ?? []);
+}
+
+function addBlockedCellWithClearance({
+    blockedCells,
+    clearanceCells,
+    x,
+    z,
+}: {
+    blockedCells: Map<string, AnimalMovementCell>;
+    clearanceCells: number;
+    x: number;
+    z: number;
+}) {
+    for (let offsetX = -clearanceCells; offsetX <= clearanceCells; offsetX++) {
+        for (
+            let offsetZ = -clearanceCells;
+            offsetZ <= clearanceCells;
+            offsetZ++
+        ) {
+            const cell = {
+                x: Math.round(x + offsetX),
+                z: Math.round(z + offsetZ),
+            };
+            blockedCells.set(`${cell.x}:${cell.z}`, cell);
+        }
+    }
+}
+
+export function createAnimalBlockedCells(
+    stacks: Stack[] | undefined,
+    options: AnimalBlockedCellOptions = {},
+) {
+    const blockedCells = new Map<string, AnimalMovementCell>();
+    const blockDataByName = new Map(
+        options.blockData?.map((block) => [block.information.name, block]) ??
+            [],
+    );
+    const clearanceCells = Math.max(0, Math.floor(options.clearanceCells ?? 0));
+    const ignoredBlockIds = createIgnoredBlockIdSet(options.ignoredBlockIds);
 
     for (const stack of stacks ?? []) {
-        const topBlock = stack.blocks.at(-1);
+        const topBlock = stack.blocks.findLast(
+            (block) => !ignoredBlockIds.has(block.id),
+        );
         if (
             !topBlock ||
             isAnimalGroundBlockName(topBlock.name) ||
-            isAnimalWaterBlockName(topBlock.name) ||
+            (isAnimalWaterBlockName(topBlock.name) && !options.blockWater) ||
             passThroughDecorationNames.has(topBlock.name) ||
             (isFenceGateBlockName(topBlock.name) && isFenceGateOpen(topBlock))
         ) {
             continue;
         }
 
-        blockedCells.push({
-            x: Math.round(stack.position.x),
-            z: Math.round(stack.position.z),
-        });
+        const blockDefinition = blockDataByName.get(topBlock.name);
+        const footprint = getGardenBlockFootprintOffsets(
+            blockDefinition,
+            topBlock.rotation,
+        );
+        for (const offset of footprint) {
+            addBlockedCellWithClearance({
+                blockedCells,
+                clearanceCells,
+                x: stack.position.x + offset.x,
+                z: stack.position.z + offset.y,
+            });
+        }
     }
 
-    return blockedCells;
+    return [...blockedCells.values()];
 }
 
 export function getAnimalMovementSurfaceAt(

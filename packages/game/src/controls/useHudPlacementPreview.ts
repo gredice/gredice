@@ -81,6 +81,7 @@ export function useHudPlacementPreview(
                 x: placementPreview.position.x,
                 y: placementPreview.position.z,
             },
+            variant: hudPlacementDrag?.variant,
         });
         clearHudPlacementDrag();
     }, [
@@ -91,6 +92,7 @@ export function useHudPlacementPreview(
         isBlocked,
         placeBlock,
         placementPreview,
+        hudPlacementDrag?.variant,
     ]);
 
     return {

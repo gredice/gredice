@@ -9,7 +9,6 @@ import {
     gardenStacks,
     gardens,
     type InsertGarden,
-    type InsertGardenBlock,
     raisedBeds,
     type SelectGardenLike,
     type UpdateGarden,
@@ -581,25 +580,33 @@ export async function getGardenBlock(gardenId: number, blockId: string) {
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
+    variantOrDb: number | null | DatabaseClient = null,
     db: DatabaseClient = storage(),
-    options: Pick<InsertGardenBlock, 'variant'> = {},
 ) {
     const blockId = uuidV4();
+    const variant =
+        typeof variantOrDb === 'number' || variantOrDb === null
+            ? variantOrDb
+            : null;
+    const database =
+        typeof variantOrDb === 'number' || variantOrDb === null
+            ? db
+            : variantOrDb;
 
     await Promise.all([
-        db.insert(gardenBlocks).values({
+        database.insert(gardenBlocks).values({
             id: blockId,
             gardenId,
             name: blockName,
-            variant: options.variant,
+            variant,
         }),
         createEvent(
-            knownEvents.gardens.blockPlacedV1(gardenId.toString(), {
+            knownEvents.gardens.blockPlacedV2(gardenId.toString(), {
                 id: blockId,
                 name: blockName,
-                variant: options.variant ?? null,
+                variant,
             }),
-            db,
+            database,
         ),
     ]);
 

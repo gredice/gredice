@@ -31,12 +31,12 @@ type PurchasedBlockPlacement = {
 
 type PurchaseGardenBlockParams = {
     accountId: string;
-    appearanceVariant: number | null;
     blockName: string;
     cost: number;
     gardenId: number;
     hasTargetStack: boolean;
     placement: PurchasedBlockPlacement;
+    variant: number | null;
     dependencies: PurchaseGardenBlockDependencies;
 };
 
@@ -58,12 +58,12 @@ export async function purchaseGardenBlock(
 ): Promise<PurchaseGardenBlockResult> {
     const {
         accountId,
-        appearanceVariant,
         blockName,
         cost,
         gardenId,
         hasTargetStack,
         placement,
+        variant,
         dependencies,
     } = params;
     const { x, y, existingBlocks } = placement;
@@ -78,7 +78,7 @@ export async function purchaseGardenBlock(
         blockId = await dependencies.createGardenBlock(
             gardenId,
             blockName,
-            appearanceVariant,
+            variant ?? null,
         );
         await dependencies.updateGardenStack(gardenId, {
             x,
@@ -157,6 +157,6 @@ export async function purchaseGardenBlock(
         ok: true,
         blockId,
         position: { x, y },
-        variant: appearanceVariant,
+        variant: variant ?? null,
     };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { resolvePersistedAppearanceVariant } from '@gredice/js/appearanceVariants';
+import { resolveRabbitAppearanceVariant } from '@gredice/js/entityAppearanceVariants';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
@@ -411,11 +411,10 @@ export function Rabbit({
             ),
         [currentStackHeight, stack.position.x, stack.position.z],
     );
-    const persistedVariant = resolvePersistedAppearanceVariant({
-        blockName: 'Rabbit',
-        persistedVariant: block.variant ?? variant,
-        stableId: block.id,
-    });
+    const persistedVariant = resolveRabbitAppearanceVariant(
+        block.variant ?? variant,
+        block.id,
+    );
     const palette =
         persistedVariant === 1 ? rabbitCoatPalettes[1] : rabbitCoatPalettes[0];
     const rabbitModel = useMemo(() => {
