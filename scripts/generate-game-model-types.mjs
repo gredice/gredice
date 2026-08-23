@@ -129,7 +129,7 @@ function exportTypesBundle() {
 
 function generateTypes() {
     execSync(
-        `pnpm dlx gltfjsx@6.5.3 ${JSON.stringify(tmpTypesGlb)} --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx`,
+        `pnpm dlx --allow-build=sharp gltfjsx@6.5.3 ${JSON.stringify(tmpTypesGlb)} --types --typeonly --output ../../packages/game/src/models/GameAssets.tsx`,
         {
             cwd: gardenDir,
             stdio: 'inherit',

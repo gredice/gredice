@@ -80,9 +80,11 @@ export const localSandboxBlockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
+    'Goat',
     'PigletPen',
     'Rabbit',
     'Horse',
+    'Sheep',
     'Bush',
     'Tree',
     'Pine',
@@ -159,6 +161,13 @@ const localSandboxBlockMetadata: Partial<
         fullDescription:
             'Postavi niski obor od pruća s koritom i kaljužom pa će u vrt stići razigrani praščić. Njuškat će po zemlji, valjati se u blatu i vraćati se u svoj zaklon.',
     },
+    Goat: {
+        label: 'Koza',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+        fullDescription:
+            'Smjesti kozu na slobodno mjesto u vrtu. Istraživat će prohodne staze, brstiti i preživati, povremeno razigrano poskočiti te ti oprezno prići prije nego što se odmakne na ugodnu udaljenost.',
+    },
     Rabbit: {
         label: 'Zec',
         shortDescription:
@@ -172,6 +181,13 @@ const localSandboxBlockMetadata: Partial<
             'Miran vrtni konj koji pase i polako obilazi slobodne staze.',
         fullDescription:
             'Smjesti konja u vrt, odaberi mu boju dlake i gledaj kako mirno pase, osluškuje okolinu te polako obilazi prohodne staze. Kad ima dovoljno prostora, nakratko prelazi u kas, ali ostaje oprezan uz gredice, ograde i druge prepreke.',
+    },
+    Sheep: {
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        fullDescription:
+            'Smjesti vunastu ovcu na travnati dio vrta. Mirno će pasti, preživati i istraživati okolicu, a više ovaca držat će se na ugodnoj udaljenosti bez naguravanja.',
     },
     Block_Stone: {
         label: 'Kamen',
@@ -437,9 +453,11 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WoodenHandLantern: 0.66,
         MoonRainBarrel: 1,
         ChickenCoop: 0.86,
+        Goat: 0.72,
         PigletPen: 0.78,
         Rabbit: 0.456,
         Horse: 1.46,
+        Sheep: 0.64,
         FishingBoat: 0.62,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
@@ -623,6 +641,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.78,
         hitboxWidth: 0.94,
     },
+    Goat: {
+        hitboxDepth: 0.72,
+        hitboxHeight: 0.72,
+        hitboxWidth: 0.5,
+    },
     Rabbit: {
         hitboxDepth: 0.432,
         hitboxHeight: 0.456,
@@ -632,6 +655,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxDepth: 1.86,
         hitboxHeight: 1.46,
         hitboxWidth: 0.76,
+    },
+    Sheep: {
+        hitboxDepth: 0.92,
+        hitboxHeight: 0.64,
+        hitboxWidth: 0.64,
     },
 };
 
@@ -704,6 +732,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
         spanDepth: 1,
         spanWidth: 1,
     },
+    Goat: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
     Rabbit: {
         placeableOnWater: false,
         spanDepth: 1,
@@ -712,6 +745,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     Horse: {
         placeableOnWater: false,
         spanDepth: 2,
+        spanWidth: 1,
+    },
+    Sheep: {
+        placeableOnWater: false,
+        spanDepth: 1,
         spanWidth: 1,
     },
 };

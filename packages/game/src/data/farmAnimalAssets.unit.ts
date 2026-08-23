@@ -9,9 +9,11 @@ type JsonRecord = Record<string, unknown>;
 
 const farmAssetNames = [
     'Chicken',
+    'Goat',
     'Piglet',
     'ChickenCoop',
     'PigletPen',
+    'Sheep',
 ] as const;
 const manifestPath = fileURLToPath(
     new URL('../../../../assets/game-assets.json', import.meta.url),
@@ -55,6 +57,21 @@ function readDocument(assetName: (typeof farmAssetNames)[number]) {
     return document;
 }
 
+function nodeChildrenNames(document: JsonRecord, nodeName: string) {
+    const nodes = records(document.nodes, 'nodes');
+    const node = nodes.find((candidate) => candidate.name === nodeName);
+    assert.ok(node, `Missing ${nodeName}`);
+    const children = node.children;
+    assert.ok(Array.isArray(children), `${nodeName}.children must be an array`);
+    return children.map((childIndex) => {
+        assert.equal(typeof childIndex, 'number');
+        const child = nodes[childIndex];
+        assert.ok(child, `Missing ${nodeName} child ${childIndex}`);
+        assert.equal(typeof child.name, 'string');
+        return child.name;
+    });
+}
+
 function close(actual: number, expected: number) {
     assert.ok(
         Math.abs(actual - expected) < 0.000_01,
@@ -93,8 +110,13 @@ function assertLinearMaterial(
 }
 
 describe('farm animal assets', () => {
-    it('exports both animals facing the runtime movement direction', () => {
-        for (const assetName of ['Chicken', 'Piglet'] as const) {
+    it('exports every animal facing the runtime movement direction', () => {
+        for (const assetName of [
+            'Chicken',
+            'Goat',
+            'Piglet',
+            'Sheep',
+        ] as const) {
             const document = readDocument(assetName);
             const root = records(document.nodes, `${assetName}.nodes`).find(
                 (candidate) => candidate.name === `${assetName}_Root`,
@@ -115,6 +137,7 @@ describe('farm animal assets', () => {
             'Material.Chicken.Cream',
             [0.92, 0.79, 0.52],
         );
+        assertLinearMaterial('Goat', 'Material.Goat.Cream', [0.86, 0.79, 0.63]);
         assertLinearMaterial(
             'Piglet',
             'Material.Piglet.Pink',
@@ -130,6 +153,82 @@ describe('farm animal assets', () => {
             'Material.PigletPen.Oak',
             [0.43, 0.25, 0.12],
         );
+        assertLinearMaterial(
+            'Sheep',
+            'Material.Sheep.Wool',
+            [0.91, 0.84, 0.68],
+        );
+    });
+
+    it('exports the sheep with stable animal-specific animation pivots', () => {
+        const document = readDocument('Sheep');
+        const nodeNames = new Set(
+            records(document.nodes, 'Sheep.nodes').map((node) => node.name),
+        );
+        const meshNames = new Set(
+            records(document.meshes, 'Sheep.meshes').map((mesh) => mesh.name),
+        );
+        for (const name of [
+            'Sheep_Root',
+            'Sheep_BodyPivot',
+            'Sheep_HeadPivot',
+            'Sheep_JawPivot',
+            'Sheep_EarPivot_L',
+            'Sheep_EarPivot_R',
+            'Sheep_TailPivot',
+            'Sheep_LegPivot_FL',
+            'Sheep_LegPivot_FR',
+            'Sheep_LegPivot_RL',
+            'Sheep_LegPivot_RR',
+            'Sheep_WoolBody',
+            'Sheep_Head',
+            'Sheep_Muzzle',
+        ]) {
+            assert.ok(nodeNames.has(name), `Missing Sheep rig node ${name}`);
+        }
+        for (const name of [
+            'Sheep_WoolBody',
+            'Sheep_WoolChest',
+            'Sheep_Tail',
+        ]) {
+            assert.ok(meshNames.has(name), `Missing Sheep mesh role ${name}`);
+        }
+    });
+
+    it('keeps the goat animation rig and readable anatomy in the exported GLB', () => {
+        const document = readDocument('Goat');
+        const nodeNames = new Set(
+            records(document.nodes, 'Goat.nodes').map(
+                (candidate) => candidate.name,
+            ),
+        );
+
+        for (const nodeName of [
+            'Goat_BodyPivot',
+            'Goat_NeckPivot',
+            'Goat_HeadPivot',
+            'Goat_JawPivot',
+            'Goat_EarPivot_L',
+            'Goat_EarPivot_R',
+            'Goat_TailPivot',
+            'Goat_LegPivot_FL',
+            'Goat_LegPivot_FR',
+            'Goat_LegPivot_RL',
+            'Goat_LegPivot_RR',
+            'Goat_Horn_L',
+            'Goat_Horn_R',
+            'Goat_Beard',
+            'Goat_Hoof_FL',
+            'Goat_Hoof_FR',
+            'Goat_Hoof_RL',
+            'Goat_Hoof_RR',
+        ]) {
+            assert.equal(nodeNames.has(nodeName), true, nodeName);
+        }
+
+        const neckChildren = nodeChildrenNames(document, 'Goat_NeckPivot');
+        assert.equal(neckChildren.includes('Goat_Collar'), true);
+        assert.equal(neckChildren.includes('Goat_SunflowerCharm'), true);
     });
 
     it('cache-busts every corrected farm GLB by its content hash', () => {
