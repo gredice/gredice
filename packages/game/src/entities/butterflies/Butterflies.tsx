@@ -59,7 +59,7 @@ import {
 
 type ButterflyWeatherOverride = Partial<NonNullable<GameState['weather']>>;
 
-type ButterflyHabitat = {
+export type ButterflyHabitat = {
     center: Vector3;
     id: string;
     seed: number;
@@ -262,6 +262,7 @@ function smoothProgress(progress: number) {
 
 function makeFlightState({
     from,
+    ignoredBlockIds,
     now,
     obstacles,
     phase,
@@ -269,6 +270,7 @@ function makeFlightState({
     to,
 }: {
     from: Vector3;
+    ignoredBlockIds?: ReadonlySet<string>;
     now: number;
     obstacles: readonly AnimalFlightObstacle[];
     phase: ButterflyFlightPhase;
@@ -277,6 +279,7 @@ function makeFlightState({
 }) {
     const waypoints = createObstacleSafeFlightWaypoints({
         from,
+        ignoredBlockIds,
         obstacles,
         to,
     });
@@ -349,15 +352,17 @@ function findSafeMeanderTarget({
         : null;
 }
 
-function createMeanderState({
+export function createMeanderState({
     from,
     habitat,
+    ignoredBlockIds,
     now,
     obstacles,
     random,
 }: {
     from: Vector3;
     habitat: ButterflyHabitat;
+    ignoredBlockIds?: ReadonlySet<string>;
     now: number;
     obstacles: readonly AnimalFlightObstacle[];
     random: () => number;
@@ -366,6 +371,7 @@ function createMeanderState({
     return target
         ? makeFlightState({
               from,
+              ignoredBlockIds,
               now,
               obstacles,
               phase: 'meandering',
@@ -375,7 +381,7 @@ function createMeanderState({
         : null;
 }
 
-function createApproachState({
+export function createApproachState({
     from,
     now,
     obstacles,
@@ -388,6 +394,7 @@ function createApproachState({
 }) {
     return makeFlightState({
         from,
+        ignoredBlockIds: new Set(target.blockIds ?? []),
         now,
         obstacles,
         phase: 'approaching',
@@ -398,21 +405,24 @@ function createApproachState({
     });
 }
 
-function createTakeoffState({
+export function createTakeoffState({
     from,
     now,
     obstacles,
+    target,
 }: {
     from: Vector3;
     now: number;
     obstacles: readonly AnimalFlightObstacle[];
+    target: PollinatorFlowerTarget | null;
 }) {
     return makeFlightState({
         from,
+        ignoredBlockIds: new Set(target?.blockIds ?? []),
         now,
         obstacles,
         phase: 'taking-off',
-        target: null,
+        target,
         to: from.clone().add(new Vector3(0, 0.58, 0)),
     });
 }
@@ -423,12 +433,14 @@ function createDepartureState({
     now,
     obstacles,
     random,
+    target,
 }: {
     from: Vector3;
     habitat: ButterflyHabitat;
     now: number;
     obstacles: readonly AnimalFlightObstacle[];
     random: () => number;
+    target: PollinatorFlowerTarget | null;
 }) {
     const angle = random() * fullTurn;
     const to = new Vector3(
@@ -438,10 +450,11 @@ function createDepartureState({
     );
     return makeFlightState({
         from,
+        ignoredBlockIds: new Set(target?.blockIds ?? []),
         now,
         obstacles,
         phase: 'departing',
-        target: null,
+        target,
         to,
     });
 }
@@ -779,6 +792,7 @@ function Butterfly({
                 createMeanderState({
                     from: group.position,
                     habitat,
+                    ignoredBlockIds: new Set(target.blockIds ?? []),
                     now,
                     obstacles,
                     random,
@@ -819,6 +833,7 @@ function Butterfly({
                 now,
                 obstacles,
                 random,
+                target: runtime.target,
             });
             if (!departure) {
                 onDespawn(descriptor.id);
@@ -848,12 +863,14 @@ function Butterfly({
                               now,
                               obstacles,
                               random,
+                              target: runtime.target,
                           })
                         : animalDebugCommand.behavior === 'taking-off'
                           ? createTakeoffState({
                                 from: group.position,
                                 now,
                                 obstacles,
+                                target: runtime.target ?? target,
                             })
                           : animalDebugCommand.behavior === 'landing' && target
                             ? createLandingState({
@@ -882,6 +899,9 @@ function Butterfly({
                                 : createMeanderState({
                                       from: group.position,
                                       habitat,
+                                      ignoredBlockIds: new Set(
+                                          runtime.target?.blockIds ?? [],
+                                      ),
                                       now,
                                       obstacles,
                                       random,
@@ -911,6 +931,7 @@ function Butterfly({
                     from: group.position,
                     now,
                     obstacles,
+                    target: runtime.target,
                 });
                 if (takeoff) {
                     runtime = takeoff;
@@ -932,6 +953,7 @@ function Butterfly({
                 from: group.position,
                 now,
                 obstacles,
+                target: runtime.target,
             });
             if (takeoff) {
                 runtime = takeoff;
@@ -948,6 +970,7 @@ function Butterfly({
                     from: group.position,
                     now,
                     obstacles,
+                    target: runtime.target,
                 });
                 if (takeoff) {
                     runtime = takeoff;
@@ -1047,6 +1070,7 @@ function Butterfly({
                             from: group.position,
                             now,
                             obstacles,
+                            target: runtime.target,
                         }) ??
                         runtime;
                     runtimeRef.current = runtime;
@@ -1063,6 +1087,9 @@ function Butterfly({
                             : createMeanderState({
                                   from: group.position,
                                   habitat,
+                                  ignoredBlockIds: new Set(
+                                      runtime.target?.blockIds ?? [],
+                                  ),
                                   now,
                                   obstacles,
                                   random,
