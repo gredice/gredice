@@ -344,7 +344,12 @@ export type GardenAvatarPresence = {
     yaw: number;
 };
 
-export type PettableAnimalSpecies = 'Cat' | 'Chicken' | 'Dog' | 'Piglet';
+export type PettableAnimalSpecies =
+    | 'Cat'
+    | 'Chicken'
+    | 'Dog'
+    | 'Goat'
+    | 'Piglet';
 
 export type GardenAvatarAnimalPetRequest = {
     createdAt: number;

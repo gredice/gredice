@@ -34,7 +34,7 @@ describe('actor grounding-shadow projection', () => {
         assert.equal(resolved.z, groundedState.z);
     });
 
-    it('uses compact species footprints for chicken, rabbit, and piglet', () => {
+    it('uses compact species footprints for chicken, goat, rabbit, and piglet', () => {
         const chicken = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'chicken',
@@ -43,6 +43,11 @@ describe('actor grounding-shadow projection', () => {
         const piglet = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'piglet',
+            state: groundedState,
+        });
+        const goat = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'goat',
             state: groundedState,
         });
         const rabbit = resolveActorGroundingShadow({
@@ -56,11 +61,16 @@ describe('actor grounding-shadow projection', () => {
             actorGroundingShadowProfiles.chicken.baseHalfLength,
         );
         assert.equal(
+            goat.halfLength,
+            actorGroundingShadowProfiles.goat.baseHalfLength,
+        );
+        assert.equal(
             piglet.halfLength,
             actorGroundingShadowProfiles.piglet.baseHalfLength,
         );
         assert.ok(piglet.halfLength > chicken.halfLength);
         assert.ok(piglet.halfWidth > chicken.halfWidth);
+        assert.ok(goat.halfLength > piglet.halfLength);
         assert.equal(
             rabbit.halfLength,
             actorGroundingShadowProfiles.rabbit.baseHalfLength,
