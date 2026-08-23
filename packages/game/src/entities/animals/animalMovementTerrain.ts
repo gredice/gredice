@@ -1,4 +1,5 @@
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import type { Stack } from '../../types/Stack';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { getStackBlockHeight } from '../../utils/stackHeightCore';
@@ -11,8 +12,11 @@ import {
     isWalkwayBlockName,
     isWaterCoveredByWalkway,
 } from '../walkwayPlacement';
-import { getWaterBlockColumnSurfaceY } from '../waterBlockDepth';
-import { isWaterBlockName } from '../waterBlockNames';
+import {
+    getWaterBlockColumnSurfaceY,
+    getWaterBlockDepthSamples,
+} from '../waterBlockDepth';
+import { isWaterBlockName, swampWaterBlockName } from '../waterBlockNames';
 
 export type AnimalMovementCell = {
     x: number;
@@ -21,12 +25,20 @@ export type AnimalMovementCell = {
 
 export type AnimalMovementSurface = AnimalMovementCell & {
     bottomY?: number;
+    habitat?: 'general' | 'wetland';
     halfDepth?: number;
     halfWidth?: number;
     kind: 'ground' | 'water';
     rotation?: number;
     slopeBlockName?: string;
+    sourceBlockName?: string;
+    waterDepth?: number;
     y: number;
+};
+
+export type AnimalSettlementPolicy = {
+    habitat?: NonNullable<AnimalMovementSurface['habitat']>;
+    waterMaxDepth?: number;
 };
 
 const movementSurfaceHalfSize = 0.5;
@@ -74,12 +86,21 @@ const groundBlockNames = new Set([
     'Block_Swamp_Ground_Angle',
 ]);
 
+const wetlandGroundBlockNames = new Set([
+    'Block_Swamp_Ground',
+    'Block_Swamp_Ground_Angle',
+]);
+
 export function isAnimalGroundBlockName(name: string) {
     return groundBlockNames.has(name);
 }
 
 export function isAnimalWaterBlockName(name: string) {
     return isWaterBlockName(name);
+}
+
+export function isAnimalWetlandBlockName(name: string) {
+    return wetlandGroundBlockNames.has(name) || name === swampWaterBlockName;
 }
 
 function getGroundSurfaceY({
@@ -130,6 +151,27 @@ function getGroundSurfaceY({
     return walkwaySurfaceHeight > 0 ? walkwaySurfaceHeight + groundLift : 0;
 }
 
+function getGroundMovementSurfaceBlockName(stack: Stack) {
+    const firstBlockingIndex = stack.blocks.findIndex(
+        (block, blockIndex) =>
+            !isAnimalGroundBlockName(block.name) &&
+            !isWalkwayBlockName(block.name) &&
+            !isWaterCoveredByWalkway(stack, blockIndex),
+    );
+    const surfaceBlocks = stack.blocks.slice(
+        0,
+        firstBlockingIndex === -1 ? stack.blocks.length : firstBlockingIndex,
+    );
+
+    return (
+        surfaceBlocks.findLast(
+            (block) =>
+                isAnimalGroundBlockName(block.name) ||
+                isWalkwayBlockName(block.name),
+        )?.name ?? ''
+    );
+}
+
 function createStairMovementSurfaces({
     blockData,
     groundLift,
@@ -156,11 +198,15 @@ function createStairMovementSurfaces({
     return [
         {
             bottomY: bottomHeight + groundLift,
+            habitat: isAnimalWetlandBlockName(topBlock.name)
+                ? 'wetland'
+                : 'general',
             halfDepth: 0.5,
             halfWidth: 0.5,
             kind: 'ground',
             rotation,
             slopeBlockName: topBlock.name,
+            sourceBlockName: topBlock.name,
             x: stack.position.x,
             y,
             z: stack.position.z,
@@ -189,7 +235,18 @@ export function createAnimalMovementSurfaces({
 
         if (isAnimalWaterBlockName(topBlock.name)) {
             surfaces.push({
+                habitat: isAnimalWetlandBlockName(topBlock.name)
+                    ? 'wetland'
+                    : 'general',
                 kind: 'water',
+                sourceBlockName: topBlock.name,
+                waterDepth: Math.max(
+                    ...getWaterBlockDepthSamples({
+                        block: topBlock,
+                        blockData,
+                        stack,
+                    }),
+                ),
                 x: stack.position.x,
                 y: Math.max(
                     0,
@@ -217,8 +274,14 @@ export function createAnimalMovementSurfaces({
                 continue;
             }
 
+            const movementSurfaceBlockName =
+                getGroundMovementSurfaceBlockName(stack);
             surfaces.push({
+                habitat: isAnimalWetlandBlockName(movementSurfaceBlockName)
+                    ? 'wetland'
+                    : 'general',
                 kind: 'ground',
+                sourceBlockName: stack.blocks[0]?.name ?? topBlock.name,
                 x: stack.position.x,
                 y,
                 z: stack.position.z,
@@ -229,28 +292,96 @@ export function createAnimalMovementSurfaces({
     return surfaces;
 }
 
-export function createAnimalBlockedCells(stacks: Stack[] | undefined) {
-    const blockedCells: AnimalMovementCell[] = [];
+export type AnimalBlockedCellOptions = {
+    /**
+     * Catalog data is optional for compatibility with existing callers. When
+     * supplied, multi-cell decoration footprints are blocked in full.
+     */
+    blockData?: BlockData[] | null;
+    /** Chebyshev-distance clearance around every occupied cell. */
+    clearanceCells?: number;
+    /** Blocks that own a roaming actor can omit their persisted anchor. */
+    ignoredBlockIds?: ReadonlySet<string> | readonly string[];
+    /** Land animals can treat water cells as navigation blockers. */
+    blockWater?: boolean;
+};
+
+function createIgnoredBlockIdSet(
+    ignoredBlockIds: AnimalBlockedCellOptions['ignoredBlockIds'],
+) {
+    return ignoredBlockIds instanceof Set
+        ? ignoredBlockIds
+        : new Set(ignoredBlockIds ?? []);
+}
+
+function addBlockedCellWithClearance({
+    blockedCells,
+    clearanceCells,
+    x,
+    z,
+}: {
+    blockedCells: Map<string, AnimalMovementCell>;
+    clearanceCells: number;
+    x: number;
+    z: number;
+}) {
+    for (let offsetX = -clearanceCells; offsetX <= clearanceCells; offsetX++) {
+        for (
+            let offsetZ = -clearanceCells;
+            offsetZ <= clearanceCells;
+            offsetZ++
+        ) {
+            const cell = {
+                x: Math.round(x + offsetX),
+                z: Math.round(z + offsetZ),
+            };
+            blockedCells.set(`${cell.x}:${cell.z}`, cell);
+        }
+    }
+}
+
+export function createAnimalBlockedCells(
+    stacks: Stack[] | undefined,
+    options: AnimalBlockedCellOptions = {},
+) {
+    const blockedCells = new Map<string, AnimalMovementCell>();
+    const blockDataByName = new Map(
+        options.blockData?.map((block) => [block.information.name, block]) ??
+            [],
+    );
+    const clearanceCells = Math.max(0, Math.floor(options.clearanceCells ?? 0));
+    const ignoredBlockIds = createIgnoredBlockIdSet(options.ignoredBlockIds);
 
     for (const stack of stacks ?? []) {
-        const topBlock = stack.blocks.at(-1);
+        const topBlock = stack.blocks.findLast(
+            (block) => !ignoredBlockIds.has(block.id),
+        );
         if (
             !topBlock ||
             isAnimalGroundBlockName(topBlock.name) ||
-            isAnimalWaterBlockName(topBlock.name) ||
+            (isAnimalWaterBlockName(topBlock.name) && !options.blockWater) ||
             passThroughDecorationNames.has(topBlock.name) ||
             (isFenceGateBlockName(topBlock.name) && isFenceGateOpen(topBlock))
         ) {
             continue;
         }
 
-        blockedCells.push({
-            x: Math.round(stack.position.x),
-            z: Math.round(stack.position.z),
-        });
+        const blockDefinition = blockDataByName.get(topBlock.name);
+        const footprint = getGardenBlockFootprintOffsets(
+            blockDefinition,
+            topBlock.rotation,
+        );
+        for (const offset of footprint) {
+            addBlockedCellWithClearance({
+                blockedCells,
+                clearanceCells,
+                x: stack.position.x + offset.x,
+                z: stack.position.z + offset.y,
+            });
+        }
     }
 
-    return blockedCells;
+    return [...blockedCells.values()];
 }
 
 export function getAnimalMovementSurfaceAt(
@@ -310,8 +441,21 @@ export function getAnimalMovementYAt(
 export function canAnimalSettleAt(
     position: AnimalMovementCell,
     surfaces: AnimalMovementSurface[],
+    policy?: AnimalSettlementPolicy,
 ) {
-    return getAnimalMovementSurfaceAt(position, surfaces)?.kind !== 'water';
+    const surface = getAnimalMovementSurfaceAt(position, surfaces);
+    if (!surface || (policy?.habitat && surface.habitat !== policy.habitat)) {
+        return false;
+    }
+
+    if (surface.kind !== 'water') {
+        return true;
+    }
+
+    return (
+        policy?.waterMaxDepth !== undefined &&
+        (surface.waterDepth ?? Number.POSITIVE_INFINITY) <= policy.waterMaxDepth
+    );
 }
 
 export function isAnimalSwimmingAt(

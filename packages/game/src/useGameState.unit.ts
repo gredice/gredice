@@ -103,6 +103,44 @@ test('setActiveDragPreview skips equivalent drag preview updates', () => {
     }
 });
 
+test('HUD placement drag preserves an explicit appearance variant without selecting one', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().beginHudPlacementDrag({
+            blockName: 'Horse',
+            clientX: 10,
+            clientY: 20,
+            pointerId: 1,
+            pointerType: 'mouse',
+            variant: 5,
+        });
+        assert.equal(store.getState().hudPlacementDrag?.variant, 5);
+
+        store.getState().updateHudPlacementDragPointer({
+            clientX: 30,
+            clientY: 40,
+            pointerId: 1,
+        });
+        assert.equal(store.getState().hudPlacementDrag?.variant, 5);
+
+        store.getState().beginHudPlacementDrag({
+            blockName: 'Horse',
+            clientX: 10,
+            clientY: 20,
+            pointerId: 2,
+            pointerType: 'mouse',
+        });
+        assert.equal(store.getState().hudPlacementDrag?.variant, undefined);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('closeup camera stays active while the requested view returns to normal', () => {
     const store = createGameState({
         appBaseUrl: '',

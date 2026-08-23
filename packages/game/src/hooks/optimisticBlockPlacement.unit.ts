@@ -87,6 +87,19 @@ function createWaterOnlyGarden() {
 }
 
 describe('createOptimisticBlockPlacement', () => {
+    it('keeps an explicit appearance variant on the optimistic block', () => {
+        const placement = createOptimisticBlockPlacement(
+            { stacks: [] },
+            blockData,
+            'Shade',
+            'optimistic-variant',
+            { variant: 5 },
+        );
+
+        assert.ok(placement);
+        assert.equal(placement.stacks[0]?.blocks[0]?.variant, 5);
+    });
+
     it('uses the shared placement resolver for new block purchases', () => {
         const placement = createOptimisticBlockPlacement(
             {

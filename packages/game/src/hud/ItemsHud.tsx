@@ -1,4 +1,8 @@
 import type { BlockData } from '@gredice/client';
+import {
+    type HorseAppearanceVariant,
+    horseAppearanceVariants,
+} from '@gredice/js/entityAppearanceVariants';
 import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
@@ -21,6 +25,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { isUserPlaceableEntityName } from '../entities/ladybugs/environmentAnimalPolicy';
 import { arrowSignNames } from '../entities/signageConfig';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
@@ -184,6 +189,7 @@ const petItems: HudItemEntity[] = [
     { type: 'entity', name: 'CatPillow' },
     { type: 'entity', name: 'ChickenCoop' },
     { type: 'entity', name: 'DogHouse' },
+    { type: 'entity', name: 'Horse' },
     { type: 'entity', name: 'PigletPen' },
 ];
 
@@ -486,11 +492,13 @@ function useHudEntityDragPlacement({
     enabled,
     onHudDragEnd,
     onHudDragStart,
+    variant,
 }: {
     blockName: string;
     enabled: boolean;
     onHudDragEnd?: () => void;
     onHudDragStart?: () => void;
+    variant?: number;
 }) {
     const sessionRef = useRef<HudDragSession | null>(null);
     const listenerCleanupRef = useRef<(() => void) | null>(null);
@@ -547,6 +555,7 @@ function useHudEntityDragPlacement({
                 beginHudPlacementDrag({
                     blockName,
                     pointerType: session.pointerType,
+                    variant,
                     ...pointer,
                 });
             } else {
@@ -560,6 +569,7 @@ function useHudEntityDragPlacement({
             blockName,
             onHudDragStart,
             updateHudPlacementDragPointer,
+            variant,
         ],
     );
 
@@ -724,6 +734,7 @@ function getSandboxExtraItemsByPicker(
         const name = block.information.name;
 
         if (
+            !isUserPlaceableEntityName(name) ||
             defaultHudEntityNames.has(name) ||
             names.has(name) ||
             sandboxHiddenEntityNames.has(name)
@@ -817,10 +828,32 @@ function getDecorationItemsWithSandboxExtras({
     return [...itemsWithGiftBoxes, ...decorationExtraItems];
 }
 
+function filterUserPlaceableHudItems(hudItems: HudItem[]): HudItem[] {
+    return hudItems.flatMap<HudItem>((item) => {
+        if (item.type === 'entity') {
+            return isUserPlaceableEntityName(item.name) ? [item] : [];
+        }
+
+        if (item.type === 'picker') {
+            return [
+                {
+                    ...item,
+                    items: filterUserPlaceableHudItems(item.items),
+                },
+            ];
+        }
+
+        return [item];
+    });
+}
+
 function getSandboxHudItems(hudItems: HudItem[]): HudItem[] {
     return hudItems.flatMap<HudItem>((item) => {
         if (item.type === 'entity') {
-            return sandboxHiddenEntityNames.has(item.name) ? [] : [item];
+            return sandboxHiddenEntityNames.has(item.name) ||
+                !isUserPlaceableEntityName(item.name)
+                ? []
+                : [item];
         }
 
         if (item.type === 'picker') {
@@ -847,11 +880,13 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
+    const userPlaceableItems = filterUserPlaceableHudItems(items);
+
     if (!isSandbox) {
-        return items;
+        return userPlaceableItems;
     }
 
-    const sandboxItems = getSandboxHudItems(items);
+    const sandboxItems = getSandboxHudItems(userPlaceableItems);
     const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
     if (
         sandboxExtraItemsByPicker.Blokovi.length === 0 &&
@@ -892,10 +927,16 @@ function getHudItems({
 
 function PlaceEntityButton({
     name,
+    onPlaced,
+    onSelectionRequired,
     simple,
+    variant,
 }: {
     name: string;
+    onPlaced?: () => void;
+    onSelectionRequired?: () => void;
     simple?: boolean;
+    variant?: number;
 }) {
     const placeBlock = useBlockPlace();
     const entityPlacement = useHudEntityPlacementState(name);
@@ -919,9 +960,18 @@ function PlaceEntityButton({
             return;
         }
 
-        placeBlock.mutate({
-            blockName: name,
-        });
+        if (name === 'Horse' && variant === undefined) {
+            onSelectionRequired?.();
+            return;
+        }
+
+        placeBlock.mutate(
+            {
+                blockName: name,
+                variant,
+            },
+            { onSuccess: onPlaced },
+        );
     }
 
     if (!isPlaceable && simple) return null;
@@ -937,7 +987,10 @@ function PlaceEntityButton({
                 size={simple ? 'sm' : 'md'}
                 variant="soft"
                 disabled={
-                    !isPlaceable || !isAvailableNow || !hasEnoughSunflowers
+                    !isPlaceable ||
+                    !isAvailableNow ||
+                    !hasEnoughSunflowers ||
+                    (name === 'Horse' && !simple && variant === undefined)
                 }
                 endDecorator={
                     <Row
@@ -958,7 +1011,15 @@ function PlaceEntityButton({
                 }
             >
                 {!simple && <span className="self-center">Postavi</span>}
+                {simple && name === 'Horse' && variant === undefined ? (
+                    <span className="sr-only">Odaberi dlaku</span>
+                ) : null}
             </Button>
+            {name === 'Horse' && !simple && variant === undefined ? (
+                <Typography level="body3" className="text-muted-foreground">
+                    Odaberi boju dlake prije postavljanja.
+                </Typography>
+            ) : null}
             {availabilityMessage && !simple && (
                 <Typography level="body3" className="text-muted-foreground">
                     {availabilityMessage}
@@ -970,6 +1031,50 @@ function PlaceEntityButton({
                 </Typography>
             )}
         </Stack>
+    );
+}
+
+function HorseCoatPicker({
+    selectedVariant,
+    onChange,
+}: {
+    selectedVariant: HorseAppearanceVariant | null;
+    onChange: (variant: HorseAppearanceVariant) => void;
+}) {
+    return (
+        <fieldset className="grid gap-2">
+            <legend className="mb-1 text-sm font-semibold">Boja dlake</legend>
+            <div className="grid grid-cols-2 gap-2">
+                {horseAppearanceVariants.variants.map((variant) => (
+                    <label
+                        key={variant.id}
+                        className={cx(
+                            'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
+                            selectedVariant === variant.value
+                                ? 'border-primary bg-primary/10'
+                                : 'border-border hover:bg-primary/5',
+                        )}
+                    >
+                        <input
+                            type="radio"
+                            name="horse-coat"
+                            value={variant.value}
+                            checked={selectedVariant === variant.value}
+                            onChange={() => onChange(variant.value)}
+                            className="sr-only"
+                        />
+                        <span
+                            aria-hidden="true"
+                            className="size-5 shrink-0 rounded-full border border-black/15 shadow-inner"
+                            style={{
+                                background: `linear-gradient(135deg, ${variant.coatColor} 0 64%, ${variant.maneColor} 64%)`,
+                            }}
+                        />
+                        <span>{variant.label}</span>
+                    </label>
+                ))}
+            </div>
+        </fieldset>
     );
 }
 
@@ -985,12 +1090,18 @@ function EntityItem({
     onHudDragStart,
 }: EntityItemProps) {
     const [open, setOpen] = useState(false);
+    const [horseVariant, setHorseVariant] =
+        useState<HorseAppearanceVariant | null>(null);
+    const isHorse = name === horseAppearanceVariants.entityName;
     const entityPlacement = useHudEntityPlacementState(name);
     const dragPlacement = useHudEntityDragPlacement({
         blockName: name,
-        enabled: entityPlacement?.availability.canPlace ?? false,
+        enabled:
+            (entityPlacement?.availability.canPlace ?? false) &&
+            (!isHorse || horseVariant !== null),
         onHudDragEnd,
         onHudDragStart,
+        variant: horseVariant ?? undefined,
     });
 
     if (!entityPlacement) return null;
@@ -1043,7 +1154,22 @@ function EntityItem({
                             <Typography level="body2">
                                 {block.information.shortDescription}
                             </Typography>
-                            <PlaceEntityButton name={name} />
+                            {isHorse ? (
+                                <HorseCoatPicker
+                                    selectedVariant={horseVariant}
+                                    onChange={setHorseVariant}
+                                />
+                            ) : null}
+                            <PlaceEntityButton
+                                name={name}
+                                variant={horseVariant ?? undefined}
+                                onPlaced={() => {
+                                    if (isHorse) {
+                                        setHorseVariant(null);
+                                        setOpen(false);
+                                    }
+                                }}
+                            />
                             <Link
                                 href={KnownPages.GrediceBlock(
                                     block.information.label,
@@ -1063,7 +1189,18 @@ function EntityItem({
                     </Row>
                 </Stack>
             </Popper>
-            <PlaceEntityButton name={name} simple />
+            <PlaceEntityButton
+                name={name}
+                simple
+                variant={horseVariant ?? undefined}
+                onPlaced={() => {
+                    if (isHorse) {
+                        setHorseVariant(null);
+                        setOpen(false);
+                    }
+                }}
+                onSelectionRequired={() => setOpen(true)}
+            />
         </Stack>
     );
 }

@@ -6,7 +6,11 @@ export type ActorGroundingShadowSpecies =
     | 'cat'
     | 'chicken'
     | 'dog'
-    | 'piglet';
+    | 'frog'
+    | 'horse'
+    | 'ladybug'
+    | 'piglet'
+    | 'slug';
 
 export type ActorGroundingShadowState = {
     actorY: number;
@@ -122,12 +126,40 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 1.6,
         maxFootprintScale: 1.7,
     },
+    frog: {
+        baseHalfLength: 0.2,
+        baseHalfWidth: 0.17,
+        baseOpacity: 0.28,
+        cutoffHeight: 0.75,
+        maxFootprintScale: 1.55,
+    },
+    horse: {
+        baseHalfLength: 0.76,
+        baseHalfWidth: 0.34,
+        baseOpacity: 0.38,
+        cutoffHeight: 2,
+        maxFootprintScale: 1.55,
+    },
+    ladybug: {
+        baseHalfLength: 0.075,
+        baseHalfWidth: 0.052,
+        baseOpacity: 0.2,
+        cutoffHeight: 0.7,
+        maxFootprintScale: 1.5,
+    },
     piglet: {
         baseHalfLength: 0.36,
         baseHalfWidth: 0.24,
         baseOpacity: 0.34,
         cutoffHeight: 1.1,
         maxFootprintScale: 1.6,
+    },
+    slug: {
+        baseHalfLength: 0.25,
+        baseHalfWidth: 0.1,
+        baseOpacity: 0.2,
+        cutoffHeight: 0.22,
+        maxFootprintScale: 1.2,
     },
 } satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;
 
