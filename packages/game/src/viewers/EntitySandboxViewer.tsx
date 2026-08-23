@@ -24,7 +24,7 @@ function createEntitySandboxBlock(
         id: `entity-sandbox:${name}:${index}`,
         name,
         rotation,
-        variant: name === 'PineAdvent' ? 100 : undefined,
+        variant: name === 'PineAdvent' ? 100 : name === 'Horse' ? 0 : undefined,
     };
 }
 

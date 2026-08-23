@@ -27,6 +27,7 @@ import type {
     DeliveryRunAbandonedPayload,
     DeliveryRunReassignedPayload,
     GardenBlockPlacePayload,
+    GardenBlockPlacePayloadV2,
     GardenBlockRemovePayload,
     GardenCreatePayload,
     GardenRenamePayload,
@@ -184,6 +185,15 @@ export const knownEvents = {
         ) => ({
             type: knownEventTypes.gardens.blockPlace,
             version: 1,
+            aggregateId,
+            data,
+        }),
+        blockPlacedV2: (
+            aggregateId: string,
+            data: GardenBlockPlacePayloadV2,
+        ) => ({
+            type: knownEventTypes.gardens.blockPlace,
+            version: 2,
             aggregateId,
             data,
         }),
