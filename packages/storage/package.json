@@ -53,8 +53,10 @@
         "blocks:farm-animal-homes:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts",
         "blocks:cow:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertCowBlockEntity.ts",
         "environment-animals:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertEnvironmentAnimalEntities.ts",
+        "blocks:horse:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertHorseBlockEntity.ts",
         "blocks:terrain-variations:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertTerrainVariationBlockEntities.ts",
         "blocks:fishing-boat:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFishingBoatBlockEntity.ts",
+        "environment-animals:slug:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertEnvironmentAnimalSlug.ts",
         "blocks:raised-bed:update": "tsx --conditions=react-server --env-file=.env ./scripts/updateRaisedBedBlockEntity.ts",
         "harvest-traces:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillHarvestTraceLinks.ts",
         "payout-items:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPayoutRequestItems.ts"

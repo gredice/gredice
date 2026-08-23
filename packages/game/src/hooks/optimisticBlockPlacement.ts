@@ -110,9 +110,9 @@ export function createOptimisticBlockPlacement<
     blockName: string,
     blockId: string,
     options: {
-        appearanceVariant?: number | null;
         preferredPosition?: BlockPlacementPosition | null;
         requestedPosition?: BlockPlacementPosition | null;
+        variant?: number;
     } = {},
 ) {
     const placement = resolveBlockPlacement(garden, blockData, blockName, {
@@ -129,9 +129,7 @@ export function createOptimisticBlockPlacement<
         id: blockId,
         name: blockName,
         rotation: 0,
-        ...(options.appearanceVariant !== undefined
-            ? { variant: options.appearanceVariant }
-            : {}),
+        ...(options.variant === undefined ? {} : { variant: options.variant }),
     };
     const stacks = garden.stacks.map((stack) => {
         if (stack.position.x !== x || stack.position.z !== y) {

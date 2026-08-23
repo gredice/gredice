@@ -26,6 +26,8 @@ const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
+    /** Optional durable appearance value for entities with placement variants. */
+    appearanceVariant?: number;
     /** Optional per-placement message used by editable sign previews. */
     message?: string | null;
     /** Optional persisted appearance variant used by entity previews. */
@@ -89,6 +91,7 @@ function CameraLookAt({
 export function EntityViewer({
     appBaseUrl,
     entityName,
+    appearanceVariant,
     message,
     variant: configuredVariant,
     zoom,
@@ -125,12 +128,13 @@ export function EntityViewer({
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
+    const selectedAppearanceVariant = configuredVariant ?? appearanceVariant;
     const variant =
         entityName === 'PineAdvent'
             ? 100
             : entityName === 'Cow'
-              ? (configuredVariant ?? 0)
-              : configuredVariant;
+              ? (selectedAppearanceVariant ?? 0)
+              : selectedAppearanceVariant;
     const block: Block = {
         id: uuidv4(),
         name: entityName,

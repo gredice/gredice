@@ -18,6 +18,7 @@ import {
     deleteGardenStack,
     getAccountGardens,
     getAccountGardensMetadata,
+    getAllEvents,
     getAllRaisedBedsFiltered,
     getGarden,
     getGardenBlock,
@@ -35,6 +36,7 @@ import {
     getRaisedBeds,
     getUserLikedGardenIds,
     knownEvents,
+    knownEventTypes,
     listUserGardenLikes,
     PublicGardenLikeTargetNotFoundError,
     RAISED_BED_PHOTO_OPERATION_ID,
@@ -628,24 +630,54 @@ test('createGardenBlock and getGardenBlocks', async () => {
     assert.ok(blocks.some((b) => b.id === blockId));
 });
 
-test('createGardenBlock persists Cow coats once while leaving other blocks unvaried', async () => {
+test('createGardenBlock persists the Horse variant and records it in the placement event', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
 
-    const selectedCowId = await createGardenBlock(gardenId, 'Cow', {
-        appearanceVariant: 1,
-    });
-    const legacyCowId = await createGardenBlock(gardenId, 'Cow');
-    const otherBlockId = await createGardenBlock(gardenId, 'BlockA');
+    const blockId = await createGardenBlock(gardenId, 'Horse', 5);
+    const block = await getGardenBlock(gardenId, blockId);
+    const placementEvents = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    const placementEvent = placementEvents.find(
+        (event) => event.data?.id === blockId,
+    );
 
-    const selectedCow = await getGardenBlock(gardenId, selectedCowId);
-    const legacyCow = await getGardenBlock(gardenId, legacyCowId);
-    const otherBlock = await getGardenBlock(gardenId, otherBlockId);
-    assert.equal(selectedCow?.variant, 1);
-    assert.ok(legacyCow?.variant === 0 || legacyCow?.variant === 1);
-    assert.equal(otherBlock?.variant, null);
+    assert.equal(block?.variant, 5);
+    assert.equal(placementEvent?.version, 2);
+    assert.deepEqual(placementEvent?.data, {
+        id: blockId,
+        name: 'Horse',
+        variant: 5,
+    });
+});
+
+test('createGardenBlock persists the placement-selected Cow coat in storage and events', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+
+    const blockId = await createGardenBlock(gardenId, 'Cow', 1);
+    const block = await getGardenBlock(gardenId, blockId);
+    const placementEvents = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    const placementEvent = placementEvents.find(
+        (event) => event.data?.id === blockId,
+    );
+
+    assert.equal(block?.variant, 1);
+    assert.equal(placementEvent?.version, 2);
+    assert.deepEqual(placementEvent?.data, {
+        id: blockId,
+        name: 'Cow',
+        variant: 1,
+    });
 });
 
 test('getGardenBlock returns correct block', async () => {

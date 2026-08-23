@@ -59,6 +59,7 @@ import { GiftBoxPurpleSilver } from './GiftBoxPurpleSilver';
 import { GiftBoxRedWhite } from './GiftBoxRedWhite';
 import { GiftBoxWhiteGreen } from './GiftBoxWhiteGreen';
 import { HazelLightArch } from './HazelLightArch';
+import { Horse } from './horses/Horse';
 import { IceCreamCart } from './IceCreamCart';
 import { InflatablePoolSmall } from './InflatablePoolSmall';
 import { LemonadeStand } from './LemonadeStand';
@@ -206,6 +207,7 @@ export const entityNameMap = {
     ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
     PigletPen: PigletPen,
+    Horse: Horse,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,

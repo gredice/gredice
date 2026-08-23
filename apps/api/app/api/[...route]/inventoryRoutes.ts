@@ -1,3 +1,4 @@
+import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVariants';
 import {
     consumeGardenBoxInventoryItem,
     createGardenBlock,
@@ -290,6 +291,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            if (isAppearanceVariantEntityName(blockName)) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće postaviti iz vrtne kutije.',
+                    },
+                    400,
+                );
+            }
+
             const blockNameById = new Map(
                 gardenBlocks.map((gardenBlock) => [
                     gardenBlock.id,
@@ -352,7 +362,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         const createdBlockId = await createGardenBlock(
                             gardenId,
                             blockName,
-                            { db: tx },
+                            tx,
                         );
                         await updateGardenStack(
                             gardenId,

@@ -131,6 +131,10 @@ export type GardenBlockPlacePayload = {
     variant?: number | null;
 };
 
+export type GardenBlockPlacePayloadV2 = GardenBlockPlacePayload & {
+    variant: number | null;
+};
+
 export type GardenBlockRemovePayload = {
     id: string;
 };

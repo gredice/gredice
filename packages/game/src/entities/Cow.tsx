@@ -1,4 +1,4 @@
-import { resolvePersistedAppearanceVariantIndex } from '@gredice/js/appearanceVariants';
+import { resolveCowAppearanceVariant } from '@gredice/js/entityAppearanceVariants';
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
@@ -351,12 +351,10 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
         () => createCowHabitat({ block, blockData, stack, stacks }),
         [block, blockData, stack, stacks],
     );
-    const appearanceVariant =
-        resolvePersistedAppearanceVariantIndex(
-            'Cow',
-            block.variant,
-            block.id,
-        ) ?? 0;
+    const appearanceVariant = resolveCowAppearanceVariant(
+        block.variant,
+        block.id,
+    );
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
         const brownPatches = scene.getObjectByName('Cow_Coat_BrownPatches');

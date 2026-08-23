@@ -115,7 +115,7 @@ describe('createOptimisticBlockPlacement', () => {
             blockData,
             'Cow',
             'optimistic-cow',
-            { appearanceVariant: 1 },
+            { variant: 1 },
         );
 
         assert.ok(placement);
@@ -128,6 +128,19 @@ describe('createOptimisticBlockPlacement', () => {
             .flatMap((stack) => stack.blocks)
             .find((block) => block.id === 'cow-1');
         assert.equal(cow?.variant, 1);
+    });
+
+    it('keeps an explicit appearance variant on the optimistic block', () => {
+        const placement = createOptimisticBlockPlacement(
+            { stacks: [] },
+            blockData,
+            'Shade',
+            'optimistic-variant',
+            { variant: 5 },
+        );
+
+        assert.ok(placement);
+        assert.equal(placement.stacks[0]?.blocks[0]?.variant, 5);
     });
 
     it('uses the shared placement resolver for new block purchases', () => {

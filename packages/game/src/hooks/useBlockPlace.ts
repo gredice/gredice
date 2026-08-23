@@ -1,5 +1,10 @@
 import { clientAuthenticated } from '@gredice/client';
-import { selectPersistedAppearanceVariantIndex } from '@gredice/js/appearanceVariants';
+import {
+    isAppearanceVariantEntityName,
+    isValidEntityAppearanceVariant,
+    requiresExplicitAppearanceVariantSelection,
+    selectEntityAppearanceVariant,
+} from '@gredice/js/entityAppearanceVariants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     createLocalSandboxBlockId,
@@ -32,11 +37,11 @@ type CurrentGardenData = NonNullable<
 >;
 
 type BlockPlaceVariables = {
-    appearanceVariant?: number;
     blockName: string;
     expectedExistingBlocks?: string[];
     localBlockId?: string;
     position?: BlockPlacePosition;
+    variant?: number;
 };
 
 type BlockPlacePosition = {
@@ -63,9 +68,7 @@ async function getBlockPlacementError(response: Response) {
 }
 
 function createOptimisticBlockId(blockName: string) {
-    const timestamp = Date.now().toString(36);
-    const randomSuffix = Math.random().toString(36).slice(2);
-    return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
+    return `${optimisticBlockIdPrefix}:${blockName}:${globalThis.crypto.randomUUID()}`;
 }
 
 function updateCurrentAccountSunflowers(
@@ -154,6 +157,7 @@ export function useBlockPlace() {
                     id:
                         variables.localBlockId ??
                         createLocalSandboxBlockId(variables.blockName),
+                    variant: variables.variant,
                 };
             }
 
@@ -165,9 +169,6 @@ export function useBlockPlace() {
                 },
                 json: {
                     blockName: variables.blockName,
-                    ...(variables.appearanceVariant !== undefined
-                        ? { appearanceVariant: variables.appearanceVariant }
-                        : {}),
                     ...(variables.expectedExistingBlocks
                         ? {
                               expectedExistingBlocks:
@@ -177,6 +178,9 @@ export function useBlockPlace() {
                     ...(variables.position
                         ? { position: variables.position }
                         : {}),
+                    ...(variables.variant === undefined
+                        ? {}
+                        : { variant: variables.variant }),
                 },
             });
             if (!response.ok) {
@@ -209,24 +213,43 @@ export function useBlockPlace() {
                     variables.localBlockId = localSandboxStorageKey
                         ? optimisticBlockId
                         : undefined;
-                    variables.appearanceVariant =
-                        selectPersistedAppearanceVariantIndex(
+                    if (
+                        isAppearanceVariantEntityName(variables.blockName) &&
+                        variables.variant === undefined &&
+                        !requiresExplicitAppearanceVariantSelection(
                             variables.blockName,
-                            optimisticBlockId,
-                        ) ?? undefined;
+                        )
+                    ) {
+                        variables.variant =
+                            selectEntityAppearanceVariant(
+                                variables.blockName,
+                                optimisticBlockId,
+                            ) ?? undefined;
+                    }
+                    if (
+                        isAppearanceVariantEntityName(variables.blockName) &&
+                        !isValidEntityAppearanceVariant(
+                            variables.blockName,
+                            variables.variant,
+                        )
+                    ) {
+                        throw new Error(
+                            'Odaberi varijantu izgleda prije postavljanja.',
+                        );
+                    }
                     const optimisticPlacement = createOptimisticBlockPlacement(
                         currentGarden,
                         blockData,
                         variables.blockName,
                         optimisticBlockId,
                         {
-                            appearanceVariant: variables.appearanceVariant,
                             preferredPosition:
                                 variables.position ??
                                 getPreferredBlockPlacementPosition(
                                     gameCamera?.getSnapshot(),
                                 ),
                             requestedPosition: variables.position,
+                            variant: variables.variant,
                         },
                     );
                     if (!optimisticPlacement) {

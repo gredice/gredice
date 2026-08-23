@@ -1,7 +1,8 @@
 import {
-    isPersistedAppearanceVariantPlacementValid,
-    isPersistedAppearanceVariantUpdateAllowed,
-} from '@gredice/js/appearanceVariants';
+    isAppearanceVariantEntityName,
+    isAppearanceVariantRotationLocked,
+    isValidEntityAppearanceVariant,
+} from '@gredice/js/entityAppearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
@@ -2904,6 +2905,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            if (isAppearanceVariantEntityName(block.name)) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće spremiti u vrtnu kutiju.',
+                    },
+                    400,
+                );
+            }
+
             const inventoryBlock = blockData.find(
                 (candidate) => candidate.information?.name === block.name,
             );
@@ -3047,8 +3057,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         zValidator(
             'json',
             z.object({
-                appearanceVariant: z.number().int().optional(),
                 blockName: z.string(),
+                variant: z.number().int().nonnegative().optional(),
                 expectedExistingBlocks: z.array(z.string()).optional(),
                 position: z
                     .object({
@@ -3084,12 +3094,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const {
-                appearanceVariant,
-                blockName,
-                expectedExistingBlocks,
-                position,
-            } = context.req.valid('json');
+            const { blockName, expectedExistingBlocks, position, variant } =
+                context.req.valid('json');
+
+            if (
+                isAppearanceVariantEntityName(blockName) &&
+                !isValidEntityAppearanceVariant(blockName, variant)
+            ) {
+                return context.json(
+                    {
+                        error: 'Odaberi varijantu izgleda prije postavljanja.',
+                    },
+                    400,
+                );
+            }
+            if (
+                !isAppearanceVariantEntityName(blockName) &&
+                variant !== undefined
+            ) {
+                return context.json(
+                    { error: 'Ovaj predmet nema varijante izgleda.' },
+                    400,
+                );
+            }
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -3098,17 +3125,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!block) {
                 return context.json(
                     { error: 'Requested block not found' },
-                    400,
-                );
-            }
-            if (
-                !isPersistedAppearanceVariantPlacementValid(
-                    blockName,
-                    appearanceVariant,
-                )
-            ) {
-                return context.json(
-                    { error: 'Invalid persisted appearance variant' },
                     400,
                 );
             }
@@ -3190,19 +3206,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
-                appearanceVariant,
                 blockName,
                 cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
                     createGardenBlock: async (
                         nextGardenId,
                         nextBlockName,
-                        options,
+                        nextVariant,
                     ) =>
                         await createGardenBlock(
                             nextGardenId,
                             nextBlockName,
-                            options,
+                            nextVariant,
                         ),
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
@@ -3219,6 +3234,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     y,
                     existingBlocks,
                 },
+                variant,
             });
             if (!purchaseResult.ok) {
                 return context.json(
@@ -3230,6 +3246,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: purchaseResult.blockId,
                 position: purchaseResult.position,
+                variant: purchaseResult.variant,
             });
         },
     )
@@ -3279,15 +3296,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
             if (
-                !isPersistedAppearanceVariantUpdateAllowed(
-                    block.name,
-                    block.variant,
-                    variant,
-                )
+                variant !== undefined &&
+                isAppearanceVariantEntityName(block.name)
             ) {
                 return context.json(
-                    { error: 'Persisted appearance variants are immutable' },
-                    409,
+                    {
+                        error: 'Izgled životinje nije moguće promijeniti nakon postavljanja.',
+                    },
+                    400,
+                );
+            }
+            if (
+                rotation !== undefined &&
+                rotation !== block.rotation &&
+                isAppearanceVariantRotationLocked(block.name)
+            ) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće rotirati nakon postavljanja.',
+                    },
+                    400,
                 );
             }
 

@@ -44,6 +44,7 @@ describe('purchaseGardenBlock', () => {
             ok: true,
             blockId: 'block-1',
             position: { x: 3, y: 4 },
+            variant: null,
         });
         assert.deepEqual(calls, [
             'createGardenStack',
@@ -95,6 +96,7 @@ describe('purchaseGardenBlock', () => {
             ok: true,
             blockId: 'block-1',
             position: { x: 3, y: 4 },
+            variant: null,
         });
         assert.deepEqual(calls, [
             'createGardenBlock',
@@ -104,11 +106,10 @@ describe('purchaseGardenBlock', () => {
     });
 
     it('passes the placement-selected Cow coat to storage unchanged', async () => {
-        let storedAppearanceVariant: number | undefined;
+        let storedAppearanceVariant: number | null | undefined;
 
         const result = await purchaseGardenBlock({
             accountId: 'account-1',
-            appearanceVariant: 1,
             blockName: 'Cow',
             cost: 850,
             gardenId: 42,
@@ -118,9 +119,10 @@ describe('purchaseGardenBlock', () => {
                 y: 4,
                 existingBlocks: ['ground-1'],
             },
+            variant: 1,
             dependencies: {
-                createGardenBlock: async (_gardenId, _blockName, options) => {
-                    storedAppearanceVariant = options?.appearanceVariant;
+                createGardenBlock: async (_gardenId, _blockName, variant) => {
+                    storedAppearanceVariant = variant;
                     return 'cow-1';
                 },
                 createGardenStack: async () => undefined,
@@ -131,7 +133,45 @@ describe('purchaseGardenBlock', () => {
             },
         });
 
-        assert.equal(result.ok, true);
         assert.equal(storedAppearanceVariant, 1);
+        assert.deepEqual(result, {
+            ok: true,
+            blockId: 'cow-1',
+            position: { x: 3, y: 4 },
+            variant: 1,
+        });
+    });
+
+    it('persists and returns an explicit appearance variant', async () => {
+        let createdVariant: number | null | undefined;
+
+        const result = await purchaseGardenBlock({
+            accountId: 'account-1',
+            blockName: 'Horse',
+            cost: 600,
+            gardenId: 42,
+            hasTargetStack: true,
+            placement: { x: 3, y: 4, existingBlocks: ['ground-1'] },
+            variant: 5,
+            dependencies: {
+                createGardenBlock: async (_gardenId, _blockName, variant) => {
+                    createdVariant = variant;
+                    return 'horse-1';
+                },
+                createGardenStack: async () => undefined,
+                deleteGardenBlock: async () => undefined,
+                spendSunflowers: async () => undefined,
+                synchronizeGardenStacksAndRaisedBeds: async () => undefined,
+                updateGardenStack: async () => undefined,
+            },
+        });
+
+        assert.equal(createdVariant, 5);
+        assert.deepEqual(result, {
+            ok: true,
+            blockId: 'horse-1',
+            position: { x: 3, y: 4 },
+            variant: 5,
+        });
     });
 });
