@@ -365,16 +365,25 @@ export function createSlugSpawnPlan({
                 left.candidate.id.localeCompare(right.candidate.id),
         );
     const selected: SlugHabitatCandidate[] = [];
+    const boundedLocalCap = Math.max(1, Math.floor(localCap));
 
     for (const { candidate } of ranked) {
         if (selected.length >= Math.max(0, maxPopulation)) {
             break;
         }
-        const nearbyCount = selected.filter(
+        const nearbySelected = selected.filter(
             (existing) =>
                 horizontalDistance(existing, candidate) <= localRadius,
-        ).length;
-        if (nearbyCount >= Math.max(1, localCap)) {
+        );
+        const exceedsCandidateCap = nearbySelected.length >= boundedLocalCap;
+        const exceedsExistingCap = nearbySelected.some(
+            (existing) =>
+                selected.filter(
+                    (other) =>
+                        horizontalDistance(existing, other) <= localRadius,
+                ).length >= boundedLocalCap,
+        );
+        if (exceedsCandidateCap || exceedsExistingCap) {
             continue;
         }
         selected.push(candidate);

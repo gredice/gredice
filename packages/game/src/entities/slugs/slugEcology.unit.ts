@@ -137,4 +137,32 @@ describe('slug ecology', () => {
         assert.ok((sampled[47] ?? 0) > 120);
         assert.ok((sampled.at(-1) ?? 0) > 260);
     });
+
+    it('does not exceed the cap around an already selected central slug', () => {
+        const candidates = [
+            { ...moistCell, id: 'center', moisture: 1, score: 1, x: 0 },
+            { ...moistCell, id: 'left', moisture: 0.8, score: 0.8, x: -3 },
+            { ...moistCell, id: 'right', moisture: 0.8, score: 0.8, x: 3 },
+        ];
+        const plan = createSlugSpawnPlan({
+            candidates,
+            localCap: 2,
+            localRadius: 3,
+            maxPopulation: 3,
+            seed: 'central-cap',
+        });
+
+        assert.equal(plan.length, 2);
+        for (const spawn of plan) {
+            assert.ok(
+                plan.filter(
+                    (other) =>
+                        Math.hypot(
+                            spawn.candidate.x - other.candidate.x,
+                            spawn.candidate.z - other.candidate.z,
+                        ) <= 3,
+                ).length <= 2,
+            );
+        }
+    });
 });
