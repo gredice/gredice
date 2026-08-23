@@ -51,6 +51,7 @@
         "blocks:stone-fences:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertStoneFenceBlockEntities.ts",
         "blocks:fence-gates:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertStoneFenceBlockEntities.ts --gates-only",
         "blocks:farm-animal-homes:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts",
+        "blocks:rabbit:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts --name Rabbit",
         "environment-animals:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertEnvironmentAnimalEntities.ts",
         "blocks:horse:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertHorseBlockEntity.ts",
         "blocks:terrain-variations:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertTerrainVariationBlockEntities.ts",

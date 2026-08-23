@@ -38,7 +38,7 @@ function getMoveBlocks(args: MoveArgs): MoveBlockArgs[] {
     ];
 }
 
-function moveBlockOptimistically(
+export function moveBlockOptimistically(
     stacks: GardenStack[],
     sourcePosition: { x: number; z: number },
     destinationPosition: { x: number; z: number },

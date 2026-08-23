@@ -9,6 +9,9 @@ import type { GLTF } from 'three-stdlib';
 type ActionName =
     | 'BirdSmall_Idle'
     | 'BirdSmall_Flap'
+    | 'Bat_Flap'
+    | 'Bat_Glide'
+    | 'Bat_Roost'
     | 'Cat_Idle'
     | 'Cat_Walk'
     | 'Cat_LayDown'
@@ -52,6 +55,42 @@ export type GLTFResult = GLTF & {
         BirdSmall_Leg_R: THREE.Mesh;
         BirdSmall_BellyPatch: THREE.Mesh;
         BirdSmall_Body: THREE.Mesh;
+        Bat_Ear_L: THREE.Mesh;
+        Bat_Ear_R: THREE.Mesh;
+        Bat_Eye_L: THREE.Mesh;
+        Bat_Eye_R: THREE.Mesh;
+        Bat_EyeGlint_L: THREE.Mesh;
+        Bat_EyeGlint_R: THREE.Mesh;
+        Bat_Head: THREE.Mesh;
+        Bat_InnerEar_L: THREE.Mesh;
+        Bat_InnerEar_R: THREE.Mesh;
+        Bat_Muzzle: THREE.Mesh;
+        Bat_Nose: THREE.Mesh;
+        Bat_Foot_L: THREE.Mesh;
+        Bat_Foot_R: THREE.Mesh;
+        Bat_Leg_L: THREE.Mesh;
+        Bat_Leg_R: THREE.Mesh;
+        Bat_TailMembrane: THREE.Mesh;
+        Bat_FingerBack_L: THREE.Mesh;
+        Bat_FingerFront_L: THREE.Mesh;
+        Bat_FingerMid_L: THREE.Mesh;
+        Bat_HandMembrane_L: THREE.Mesh;
+        Bat_ThumbClaw_L: THREE.Mesh;
+        Bat_Forearm_L: THREE.Mesh;
+        Bat_OuterMembrane_L: THREE.Mesh;
+        Bat_InnerMembrane_L: THREE.Mesh;
+        Bat_UpperArm_L: THREE.Mesh;
+        Bat_FingerBack_R: THREE.Mesh;
+        Bat_FingerFront_R: THREE.Mesh;
+        Bat_FingerMid_R: THREE.Mesh;
+        Bat_HandMembrane_R: THREE.Mesh;
+        Bat_ThumbClaw_R: THREE.Mesh;
+        Bat_Forearm_R: THREE.Mesh;
+        Bat_OuterMembrane_R: THREE.Mesh;
+        Bat_InnerMembrane_R: THREE.Mesh;
+        Bat_UpperArm_R: THREE.Mesh;
+        Bat_Body: THREE.Mesh;
+        Bat_Chest: THREE.Mesh;
         Bee_Antenna_L: THREE.Mesh;
         Bee_Antenna_R: THREE.Mesh;
         Bee_AntennaTip_L: THREE.Mesh;
@@ -252,6 +291,31 @@ export type GLTFResult = GLTF & {
         Goat_Leg_RL: THREE.Mesh;
         Goat_Hoof_RR: THREE.Mesh;
         Goat_Leg_RR: THREE.Mesh;
+        Rabbit_Ear_L: THREE.Mesh;
+        Rabbit_InnerEar_L: THREE.Mesh;
+        Rabbit_Ear_R: THREE.Mesh;
+        Rabbit_InnerEar_R: THREE.Mesh;
+        Rabbit_Nose: THREE.Mesh;
+        Rabbit_Whiskers: THREE.Mesh;
+        Rabbit_Eye_L: THREE.Mesh;
+        Rabbit_Eye_R: THREE.Mesh;
+        Rabbit_EyeGlint_L: THREE.Mesh;
+        Rabbit_EyeGlint_R: THREE.Mesh;
+        Rabbit_Head: THREE.Mesh;
+        Rabbit_Muzzle: THREE.Mesh;
+        Rabbit_Tail: THREE.Mesh;
+        Rabbit_Body: THREE.Mesh;
+        Rabbit_Chest: THREE.Mesh;
+        Rabbit_Haunch_L: THREE.Mesh;
+        Rabbit_Haunch_R: THREE.Mesh;
+        Rabbit_FrontLeg_L: THREE.Mesh;
+        Rabbit_FrontPaw_L: THREE.Mesh;
+        Rabbit_FrontLeg_R: THREE.Mesh;
+        Rabbit_FrontPaw_R: THREE.Mesh;
+        Rabbit_HindFoot_L: THREE.Mesh;
+        Rabbit_HindLeg_L: THREE.Mesh;
+        Rabbit_HindFoot_R: THREE.Mesh;
+        Rabbit_HindLeg_R: THREE.Mesh;
         Frog_BackSpots: THREE.Mesh;
         Frog_Belly: THREE.Mesh;
         Frog_Body: THREE.Mesh;
@@ -1445,6 +1509,14 @@ export type GLTFResult = GLTF & {
         'Material.BasketPin': THREE.MeshStandardMaterial;
         'Material.BasketRim': THREE.MeshStandardMaterial;
         'Material.BasketWeave': THREE.MeshStandardMaterial;
+        'Material.Bat.Claw': THREE.MeshStandardMaterial;
+        'Material.Bat.Eye': THREE.MeshStandardMaterial;
+        'Material.Bat.EyeGlint': THREE.MeshStandardMaterial;
+        'Material.Bat.InnerEar': THREE.MeshStandardMaterial;
+        'Material.Bat.WarmBrown': THREE.MeshStandardMaterial;
+        'Material.Bat.WarmCharcoal': THREE.MeshStandardMaterial;
+        'Material.Bat.WingMembrane': THREE.MeshStandardMaterial;
+        'Material.Bat.WingMembraneLight': THREE.MeshStandardMaterial;
         'Material.BeachUmbrella.CanopyCoral': THREE.MeshStandardMaterial;
         'Material.BeachUmbrella.CanopyCream': THREE.MeshStandardMaterial;
         'Material.BeachUmbrella.CanopyTeal': THREE.MeshStandardMaterial;
@@ -1718,6 +1790,11 @@ export type GLTFResult = GLTF & {
         'Material.PlantTieLoop.Twine': THREE.MeshStandardMaterial;
         'Material.PlantTieLoop.TwineLight': THREE.MeshStandardMaterial;
         'Material.PolishedStoneFence.Surface': THREE.MeshStandardMaterial;
+        'Material.Rabbit.Charcoal': THREE.MeshStandardMaterial;
+        'Material.Rabbit.EyeGlint': THREE.MeshStandardMaterial;
+        'Material.Rabbit.FurPrimary': THREE.MeshStandardMaterial;
+        'Material.Rabbit.FurSecondary': THREE.MeshStandardMaterial;
+        'Material.Rabbit.InnerEar': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Glow': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Limestone': THREE.MeshStandardMaterial;
         'Material.RoofTileLantern.Terracotta': THREE.MeshStandardMaterial;

@@ -13,7 +13,9 @@ import {
 } from '../src';
 
 // Deploy the runtime models and public covers before using --apply. The default
-// dry-run prevents catalogue entries from pointing at assets that are not live.
+// dry-run prevents animal catalogue entries from pointing at assets that are
+// not live. Goat and Rabbit are directly placeable animals; the other entries
+// are homes.
 
 const actor = {
     id: 'codex',
@@ -22,7 +24,7 @@ const actor = {
 
 const entityTypeName = 'block';
 
-function farmAnimalHomeSpec({
+function animalBlockSpec({
     fullDescription,
     height,
     hitboxDepth,
@@ -30,6 +32,7 @@ function farmAnimalHomeSpec({
     label,
     name,
     shortDescription,
+    sunflowers = 500,
 }: {
     fullDescription: string;
     height: number;
@@ -38,6 +41,7 @@ function farmAnimalHomeSpec({
     label: string;
     name: string;
     shortDescription: string;
+    sunflowers?: number;
 }) {
     const heightValue = height.toString();
 
@@ -63,13 +67,13 @@ function farmAnimalHomeSpec({
             'information.label': label,
             'information.name': name,
             'information.shortDescription': shortDescription,
-            'prices.sunflowers': '500',
+            'prices.sunflowers': sunflowers.toString(),
         },
     };
 }
 
 const blockSpecs = [
-    farmAnimalHomeSpec({
+    animalBlockSpec({
         name: 'ChickenCoop',
         label: 'Kokošinjac',
         shortDescription:
@@ -80,7 +84,7 @@ const blockSpecs = [
         hitboxDepth: 0.97,
         hitboxWidth: 0.76,
     }),
-    farmAnimalHomeSpec({
+    animalBlockSpec({
         name: 'Goat',
         label: 'Koza',
         shortDescription:
@@ -91,7 +95,7 @@ const blockSpecs = [
         hitboxDepth: 0.72,
         hitboxWidth: 0.5,
     }),
-    farmAnimalHomeSpec({
+    animalBlockSpec({
         name: 'PigletPen',
         label: 'Obor za praščića',
         shortDescription:
@@ -101,6 +105,18 @@ const blockSpecs = [
         height: 0.78,
         hitboxDepth: 0.89,
         hitboxWidth: 0.94,
+    }),
+    animalBlockSpec({
+        name: 'Rabbit',
+        label: 'Zec',
+        shortDescription:
+            'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
+        fullDescription:
+            'Postavi zeca izravno u vrt. Skakutat će po sigurnom tlu, zastajati kako bi njuškao, uređivao krzno i kratko grickao travu, a pred avatarom će brzo pobjeći obilazeći prepreke.',
+        height: 0.76,
+        hitboxDepth: 0.72,
+        hitboxWidth: 0.58,
+        sunflowers: 350,
     }),
 ] satisfies Array<{
     name: string;
@@ -194,9 +210,9 @@ async function main() {
     const { apply, blockName } = parseOptions(process.argv.slice(2));
     const selectedBlockSpecs = blockName
         ? blockSpecs.filter((spec) => spec.name === blockName)
-        : blockSpecs;
+        : blockSpecs.filter((spec) => spec.name !== 'Rabbit');
     if (selectedBlockSpecs.length === 0) {
-        throw new Error(`Unknown farm animal home block: ${blockName}`);
+        throw new Error(`Unknown animal catalogue block: ${blockName}`);
     }
 
     const definitions = await getAttributeDefinitions(entityTypeName);

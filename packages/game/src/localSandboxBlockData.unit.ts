@@ -223,6 +223,14 @@ test('local sandbox exposes animal placement blocks used by the item HUD', () =>
             hitboxHeight: 0.78,
             hitboxWidth: 0.94,
         },
+        {
+            name: 'Rabbit',
+            label: 'Zec',
+            height: 0.76,
+            hitboxDepth: 0.72,
+            hitboxHeight: 0.76,
+            hitboxWidth: 0.58,
+        },
     ];
 
     for (const expected of expectedHomes) {
