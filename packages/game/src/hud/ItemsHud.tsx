@@ -25,6 +25,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { isUserPlaceableEntityName } from '../entities/ladybugs/environmentAnimalPolicy';
 import { arrowSignNames } from '../entities/signageConfig';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
@@ -734,6 +735,7 @@ function getSandboxExtraItemsByPicker(
         const name = block.information.name;
 
         if (
+            !isUserPlaceableEntityName(name) ||
             defaultHudEntityNames.has(name) ||
             names.has(name) ||
             sandboxHiddenEntityNames.has(name)
@@ -827,10 +829,32 @@ function getDecorationItemsWithSandboxExtras({
     return [...itemsWithGiftBoxes, ...decorationExtraItems];
 }
 
+function filterUserPlaceableHudItems(hudItems: HudItem[]): HudItem[] {
+    return hudItems.flatMap<HudItem>((item) => {
+        if (item.type === 'entity') {
+            return isUserPlaceableEntityName(item.name) ? [item] : [];
+        }
+
+        if (item.type === 'picker') {
+            return [
+                {
+                    ...item,
+                    items: filterUserPlaceableHudItems(item.items),
+                },
+            ];
+        }
+
+        return [item];
+    });
+}
+
 function getSandboxHudItems(hudItems: HudItem[]): HudItem[] {
     return hudItems.flatMap<HudItem>((item) => {
         if (item.type === 'entity') {
-            return sandboxHiddenEntityNames.has(item.name) ? [] : [item];
+            return sandboxHiddenEntityNames.has(item.name) ||
+                !isUserPlaceableEntityName(item.name)
+                ? []
+                : [item];
         }
 
         if (item.type === 'picker') {
@@ -857,11 +881,13 @@ function getHudItems({
     blockData: BlockData[] | null | undefined;
     isSandbox: boolean;
 }) {
+    const userPlaceableItems = filterUserPlaceableHudItems(items);
+
     if (!isSandbox) {
-        return items;
+        return userPlaceableItems;
     }
 
-    const sandboxItems = getSandboxHudItems(items);
+    const sandboxItems = getSandboxHudItems(userPlaceableItems);
     const sandboxExtraItemsByPicker = getSandboxExtraItemsByPicker(blockData);
     if (
         sandboxExtraItemsByPicker.Blokovi.length === 0 &&

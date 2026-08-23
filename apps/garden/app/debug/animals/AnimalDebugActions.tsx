@@ -248,6 +248,23 @@ function createBeeStacks() {
     return serializeStacks(stacks);
 }
 
+function createLadybugStacks() {
+    const stacks = createGroundStacks({
+        minX: -4,
+        maxX: 4,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -3, -2, 'Tulip');
+    placeBlock(stacks, -1, 1, 'Tulip');
+    placeBlock(stacks, 2, -2, 'CactusBarrel');
+    placeBlock(stacks, 3, 2, 'CactusPricklyPear');
+    placeBlock(stacks, 0, 0, 'GardenBox');
+
+    return serializeStacks(stacks);
+}
+
 function createFrogWetlandStacks() {
     const stacks = createGroundStacks({
         minX: -5,
@@ -430,6 +447,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Bees
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createLadybugStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Ladybugs
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
