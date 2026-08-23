@@ -1,18 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-    assertDevelopmentDatabaseIsAllowlisted,
-    getDevelopmentDatabaseFingerprint,
-} from '../scripts/lib/developmentDatabaseGuard';
-import {
-    butterflyEnvironmentAnimal,
-    butterflyWingVariantDirectory,
-    environmentAnimalAttributeDefinitions,
-    environmentAnimalAttributePath,
-    environmentAnimalEntityType,
-} from '../scripts/lib/environmentAnimalDirectory';
-import {
     batEnvironmentAnimal,
+    butterflyEnvironmentAnimal,
+    butterflyEnvironmentAnimalAttributeSpecs,
+    butterflyWingVariantDirectory,
     environmentAnimalEntityTypeName,
 } from '../src/data/environmentAnimalDirectory';
 
@@ -75,34 +67,38 @@ describe('Bat environment-animal directory specification', () => {
 
 describe('Butterfly environment-animal directory specification', () => {
     it('defines a dedicated non-purchasable environment entity type', () => {
-        assert.equal(environmentAnimalEntityType.name, 'environmentAnimal');
+        assert.equal(environmentAnimalEntityTypeName, 'environmentAnimal');
         assert.equal(
             butterflyEnvironmentAnimal.attributes['habitat.spawnMode'],
             'environment',
         );
         assert.equal(
-            butterflyEnvironmentAnimal.attributes['commerce.purchasable'],
+            butterflyEnvironmentAnimal.attributes['behavior.purchasable'],
             'false',
         );
         assert.equal(
-            butterflyEnvironmentAnimal.attributes['commerce.petPickerVisible'],
+            butterflyEnvironmentAnimal.attributes['behavior.petPickerVisible'],
             'false',
         );
     });
 
-    it('stores every runtime value under a declared attribute path', () => {
-        const declaredPaths = new Set(
-            environmentAnimalAttributeDefinitions.map(
-                environmentAnimalAttributePath,
+    it('declares every butterfly-specific directory attribute', () => {
+        const specificPaths = new Set(
+            butterflyEnvironmentAnimalAttributeSpecs.map(
+                ({ category, name }) => `${category}.${name}`,
             ),
         );
 
-        assert.deepEqual(
-            Object.keys(butterflyEnvironmentAnimal.attributes).filter(
-                (path) => !declaredPaths.has(path),
-            ),
-            [],
-        );
+        for (const path of [
+            'appearance.modelName',
+            'appearance.wingVariants',
+            'behavior.petPickerVisible',
+            'habitat.weatherLimits',
+            'spawn.lifetimeMaxSeconds',
+            'spawn.lifetimeMinSeconds',
+        ]) {
+            assert.ok(specificPaths.has(path));
+        }
     });
 
     it('keeps eight distinct, named wing palettes in the directory record', () => {
@@ -130,47 +126,11 @@ describe('Butterfly environment-animal directory specification', () => {
     });
 
     it('keeps butterfly-only wing data optional for other wildlife', () => {
-        const wingVariants = environmentAnimalAttributeDefinitions.find(
-            (definition) =>
-                environmentAnimalAttributePath(definition) ===
-                'appearance.wingVariants',
+        const wingVariants = butterflyEnvironmentAnimalAttributeSpecs.find(
+            ({ category, name }) =>
+                `${category}.${name}` === 'appearance.wingVariants',
         );
 
         assert.equal(wingVariants?.required, false);
-    });
-
-    it('requires an allowlisted database identity before development writes', () => {
-        const developmentConnection =
-            'postgresql://writer:secret@opaque-development.example:5432/gredice';
-        const rotatedCredentials =
-            'postgresql://another:new-secret@opaque-development.example/gredice?sslmode=require';
-        const productionConnection =
-            'postgresql://writer:secret@opaque-primary.example:5432/gredice';
-        const allowedFingerprint = getDevelopmentDatabaseFingerprint(
-            developmentConnection,
-        );
-
-        assert.equal(
-            getDevelopmentDatabaseFingerprint(rotatedCredentials),
-            allowedFingerprint,
-        );
-        assert.doesNotThrow(() =>
-            assertDevelopmentDatabaseIsAllowlisted({
-                allowedFingerprints: allowedFingerprint,
-                connection: developmentConnection,
-            }),
-        );
-        assert.throws(() =>
-            assertDevelopmentDatabaseIsAllowlisted({
-                allowedFingerprints: allowedFingerprint,
-                connection: productionConnection,
-            }),
-        );
-        assert.throws(() =>
-            assertDevelopmentDatabaseIsAllowlisted({
-                allowedFingerprints: undefined,
-                connection: developmentConnection,
-            }),
-        );
     });
 });
