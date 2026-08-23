@@ -30,7 +30,7 @@ export function temporaryAccountClientAddress(headers: Headers) {
 export async function temporaryAccountRateLimitAllows(clientAddress: string) {
     const client = redisCacheClient('gredice');
     if (!client) {
-        return true;
+        return !process.env.VERCEL_ENV;
     }
 
     const addressHash = createHash('sha256')
