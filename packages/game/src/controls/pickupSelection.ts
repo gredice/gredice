@@ -1,0 +1,166 @@
+import type { BlockData } from '@gredice/client';
+import {
+    type ActiveDragPreviewTarget,
+    activeDragPreviewTargetMatches,
+} from '../dragPreviewIdentity';
+import type { Block } from '../types/Block';
+import type { GardenStack } from '../types/Stack';
+import { getStackHeight } from '../utils/stackHeightCore';
+import type { MovingSegment } from './PickupPlacementResolver';
+
+export type PickupSelectionMoveRequest = {
+    sourcePosition: { x: number; z: number };
+    destinationPosition: { x: number; z: number };
+    blockIndex: number;
+    sourceBlockId: string;
+};
+
+type SelectedSegmentCandidate = {
+    target: ActiveDragPreviewTarget;
+    sourceStack: GardenStack;
+    sourceStartIndex: number;
+    block: Block;
+};
+
+function stackPositionMatches(
+    stack: GardenStack,
+    target: ActiveDragPreviewTarget,
+) {
+    return (
+        stack.position.x === target.stackPosition.x &&
+        stack.position.z === target.stackPosition.z
+    );
+}
+
+function stackKey(stack: GardenStack) {
+    return `${stack.position.x}|${stack.position.z}`;
+}
+
+function findSelectedSegmentCandidate(
+    stacks: GardenStack[] | undefined,
+    target: ActiveDragPreviewTarget,
+): SelectedSegmentCandidate | null {
+    const sourceStack = stacks?.find((stack) =>
+        stackPositionMatches(stack, target),
+    );
+    if (!sourceStack) {
+        return null;
+    }
+
+    const sourceStartIndex = sourceStack.blocks.findIndex(
+        (candidate) => candidate.id === target.blockId,
+    );
+    const block = sourceStack.blocks[sourceStartIndex];
+    if (sourceStartIndex < 0 || !block) {
+        return null;
+    }
+
+    return {
+        target,
+        sourceStack,
+        sourceStartIndex,
+        block,
+    };
+}
+
+function selectionTargetsInclude(
+    targets: ActiveDragPreviewTarget[],
+    target: ActiveDragPreviewTarget,
+) {
+    return targets.some((candidate) =>
+        activeDragPreviewTargetMatches(candidate, target),
+    );
+}
+
+function getSelectedSegmentCandidates({
+    primaryTarget,
+    selectedTargets,
+    stacks,
+}: {
+    primaryTarget: ActiveDragPreviewTarget;
+    selectedTargets: ActiveDragPreviewTarget[];
+    stacks: GardenStack[] | undefined;
+}) {
+    const targets = selectionTargetsInclude(selectedTargets, primaryTarget)
+        ? selectedTargets
+        : [primaryTarget, ...selectedTargets];
+    const candidateByStackKey = new Map<string, SelectedSegmentCandidate>();
+
+    for (const target of targets) {
+        const candidate = findSelectedSegmentCandidate(stacks, target);
+        if (!candidate) {
+            continue;
+        }
+
+        const key = stackKey(candidate.sourceStack);
+        const existing = candidateByStackKey.get(key);
+        if (
+            !existing ||
+            candidate.sourceStartIndex < existing.sourceStartIndex
+        ) {
+            candidateByStackKey.set(key, candidate);
+        }
+    }
+
+    return Array.from(candidateByStackKey.values());
+}
+
+export function createPickupSelectionMovingSegments({
+    blockData,
+    canRecyclePrimarySegment,
+    primaryTarget,
+    selectedTargets,
+    stacks,
+}: {
+    blockData: BlockData[] | null | undefined;
+    canRecyclePrimarySegment: boolean;
+    primaryTarget: ActiveDragPreviewTarget;
+    selectedTargets: ActiveDragPreviewTarget[];
+    stacks: GardenStack[] | undefined;
+}): MovingSegment[] {
+    const selectedCandidates = getSelectedSegmentCandidates({
+        primaryTarget,
+        selectedTargets,
+        stacks,
+    });
+    const hasExtraSelectedSegment = selectedCandidates.some(
+        (candidate) =>
+            !activeDragPreviewTargetMatches(candidate.target, primaryTarget),
+    );
+    const selectedSegments = selectedCandidates.map((candidate) => ({
+        sourceStack: candidate.sourceStack,
+        sourceStartIndex: candidate.sourceStartIndex,
+        blocks: candidate.sourceStack.blocks.slice(candidate.sourceStartIndex),
+        baseHeight: getStackHeight(
+            blockData,
+            candidate.sourceStack,
+            candidate.block,
+        ),
+        canRecycle:
+            canRecyclePrimarySegment &&
+            !hasExtraSelectedSegment &&
+            activeDragPreviewTargetMatches(candidate.target, primaryTarget),
+    }));
+
+    return selectedSegments;
+}
+
+export function createPickupSelectionMoveRequests(
+    movingSegments: MovingSegment[],
+    relative: { x: number; z: number },
+): PickupSelectionMoveRequest[] {
+    return movingSegments.flatMap((segment) =>
+        segment.blocks.map((segmentBlock) => ({
+            sourcePosition: {
+                x: segment.sourceStack.position.x,
+                z: segment.sourceStack.position.z,
+            },
+            destinationPosition: {
+                x: segment.sourceStack.position.x + relative.x,
+                z: segment.sourceStack.position.z + relative.z,
+            },
+            blockIndex: segment.sourceStartIndex,
+            sourceBlockId: segmentBlock.id,
+        })),
+    );
+}

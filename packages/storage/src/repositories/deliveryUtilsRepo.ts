@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import {
     attributeDefinitions,
     attributeValues,
@@ -11,12 +11,19 @@ import { storage } from '../storage';
 // Check if a shopping cart contains any deliverable items
 export async function cartContainsDeliverableItems(
     cartId: number,
+    {
+        excludeCartItemIds = [],
+    }: { excludeCartItemIds?: readonly number[] } = {},
 ): Promise<boolean> {
     const items = await storage().query.shoppingCartItems.findMany({
         where: and(
             eq(shoppingCartItems.cartId, cartId),
+            eq(shoppingCartItems.entityTypeName, 'operation'),
             eq(shoppingCartItems.isDeleted, false),
             eq(shoppingCartItems.status, 'new'), // Only check unpaid items
+            excludeCartItemIds.length > 0
+                ? notInArray(shoppingCartItems.id, [...excludeCartItemIds])
+                : undefined,
         ),
     });
 
@@ -83,6 +90,7 @@ export async function getDeliverableCartItems(
     const items = await storage().query.shoppingCartItems.findMany({
         where: and(
             eq(shoppingCartItems.cartId, cartId),
+            eq(shoppingCartItems.entityTypeName, 'operation'),
             eq(shoppingCartItems.isDeleted, false),
             eq(shoppingCartItems.status, 'new'),
         ),
@@ -148,7 +156,11 @@ export async function getDeliverableCartItems(
     );
 
     // Filter items to only include those with deliverable entities
-    return items.filter((item) => deliverableEntityIds.has(item.entityId));
+    return items.filter(
+        (item) =>
+            item.entityTypeName === 'operation' &&
+            deliverableEntityIds.has(item.entityId),
+    );
 }
 
 // Check if specific cart item is deliverable
@@ -183,6 +195,7 @@ export async function isCartItemDeliverable({
                 attributeValues.attributeDefinitionId,
                 deliverableAttributeDef.id,
             ),
+            eq(attributeValues.entityTypeName, 'operation'),
             eq(attributeValues.isDeleted, false),
         ),
     });

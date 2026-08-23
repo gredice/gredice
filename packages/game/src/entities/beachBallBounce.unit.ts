@@ -9,6 +9,7 @@ import {
     createBeachBallBounceEnvironment,
     getBeachBallSurfaceHeight,
     isBeachBallPassableTerrainBlockName,
+    startBeachBallBounce,
 } from './beachBallBounce';
 
 function block(name: string, id = name, rotation = 0): Block {
@@ -53,6 +54,27 @@ function activeState(
 }
 
 describe('beach ball bounce', () => {
+    it('starts a normalized forward kick without moving the stored offset', () => {
+        const state = activeState({
+            active: false,
+            collisionCount: 2,
+            offsetX: 0.4,
+            offsetZ: -0.2,
+        });
+        const kicked = startBeachBallBounce({
+            direction: { x: 3, z: 4 },
+            speed: 2.5,
+            state,
+        });
+
+        assert.equal(kicked.active, true);
+        assert.equal(kicked.collisionCount, 2);
+        assert.equal(kicked.offsetX, 0.4);
+        assert.equal(kicked.offsetZ, -0.2);
+        assert.equal(kicked.velocityX, 1.5);
+        assert.equal(kicked.velocityZ, 2);
+    });
+
     it('ignores terrain and the moving beach ball block as obstacles', () => {
         const environment = createBeachBallBounceEnvironment({
             movingBlockId: 'ball',
@@ -64,6 +86,14 @@ describe('beach ball bounce', () => {
         });
 
         assert.equal(isBeachBallPassableTerrainBlockName('Block_Water'), true);
+        assert.equal(
+            isBeachBallPassableTerrainBlockName('Block_Swamp_Water'),
+            true,
+        );
+        assert.equal(
+            isBeachBallPassableTerrainBlockName('Block_Stone_Stairs_Half'),
+            true,
+        );
         assert.deepEqual(environment.obstacles, []);
 
         const nextState = advanceBeachBallBounce(
@@ -108,6 +138,34 @@ describe('beach ball bounce', () => {
         assert.ok(nextState.velocityX < 0);
         assert.ok(Math.hypot(nextState.velocityX, nextState.velocityZ) < 3);
         assert.equal(nextState.collisionCount, 1);
+    });
+
+    it('cannot tunnel through an occupied cell during a fast frame', () => {
+        const environment = createBeachBallBounceEnvironment({
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [
+                    block('Block_Grass'),
+                    block('Raised_Bed', 'raised-bed'),
+                ]),
+                stack(2, 0, [block('Block_Grass')]),
+            ],
+        });
+
+        const nextState = advanceBeachBallBounce(
+            activeState({ velocityX: 40 }),
+            environment,
+            {
+                baseX: 0,
+                baseZ: 0,
+                deltaSeconds: 0.2,
+            },
+        );
+
+        assert.ok(nextState.offsetX < 0.25);
+        assert.ok(nextState.velocityX < 0);
+        assert.ok(nextState.collisionCount >= 1);
     });
 
     it('uses multi-block footprint spans for obstacle cells', () => {
@@ -187,6 +245,66 @@ describe('beach ball bounce', () => {
             }),
             0.22,
         );
+    });
+
+    it('rolls over low ground coverings and follows their surface height', () => {
+        const environment = createBeachBallBounceEnvironment({
+            blockData: [
+                blockData('Block_Grass', 0.4),
+                blockData('MulchWood', 0.01),
+                blockData('StoneWalkway', 0.1),
+                blockData('LowBorder', 0.1001),
+            ],
+            movingBlockId: 'ball',
+            stacks: [
+                stack(0, 0, [block('Block_Grass'), block('BeachBall', 'ball')]),
+                stack(1, 0, [
+                    block('Block_Grass'),
+                    block('MulchWood', 'mulch'),
+                ]),
+                stack(2, 0, [
+                    block('Block_Grass'),
+                    block('StoneWalkway', 'walkway'),
+                ]),
+                stack(3, 0, [
+                    block('Block_Grass'),
+                    block('LowBorder', 'border'),
+                ]),
+            ],
+        });
+
+        assert.deepEqual(environment.obstacles, [{ x: 3, z: 0 }]);
+        assert.ok(
+            Math.abs(
+                getBeachBallSurfaceHeight(environment, {
+                    fallbackHeight: 0.4,
+                    worldX: 1,
+                    worldZ: 0,
+                }) - 0.41,
+            ) < 0.000_001,
+        );
+        assert.equal(
+            getBeachBallSurfaceHeight(environment, {
+                fallbackHeight: 0.4,
+                worldX: 2,
+                worldZ: 0,
+            }),
+            0.5,
+        );
+
+        const nextState = advanceBeachBallBounce(
+            activeState({ offsetX: 0.25, velocityX: 3 }),
+            environment,
+            {
+                baseX: 0,
+                baseZ: 0,
+                deltaSeconds: 0.2,
+            },
+        );
+
+        assert.ok(nextState.offsetX > 0.25);
+        assert.ok(nextState.velocityX > 0);
+        assert.equal(nextState.collisionCount, 0);
     });
 
     it('does not use non-terrain block height as a beach ball surface', () => {

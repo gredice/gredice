@@ -6,18 +6,32 @@ export function ItemCard({
     children,
     label,
     href,
-}: PropsWithChildren<{ label: string | ReactElement; href: Route | URL }>) {
+    mediaViewTransitionName,
+}: PropsWithChildren<{
+    label: string | ReactElement;
+    href: Route;
+    mediaViewTransitionName?: string;
+}>) {
     return (
-        <Card
-            className="overflow-hidden hover:shadow-xl transition-all group border-tertiary border-b-4"
-            href={href as string}
+        <a
+            className="group block h-full rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            href={href}
         >
-            <CardOverflow className="p-0 aspect-square overflow-hidden mb-2">
-                <div className="relative size-full">{children}</div>
-            </CardOverflow>
-            <CardHeader className="bg-muted/60 border-t -m-2 py-2 px-3 group-hover:bg-muted transition-all h-full">
-                {label}
-            </CardHeader>
-        </Card>
+            <Card className="h-full overflow-hidden border-tertiary border-b-4 transition-all group-hover:bg-accent group-hover:text-accent-foreground group-hover:shadow-xl">
+                <CardOverflow
+                    className="public-content-card-view-transition mb-2 aspect-square overflow-hidden p-0"
+                    style={
+                        mediaViewTransitionName
+                            ? { viewTransitionName: mediaViewTransitionName }
+                            : undefined
+                    }
+                >
+                    <div className="relative size-full">{children}</div>
+                </CardOverflow>
+                <CardHeader className="-m-2 h-full border-t bg-muted/60 px-3 py-2 transition-all group-hover:bg-muted">
+                    {label}
+                </CardHeader>
+            </Card>
+        </a>
     );
 }

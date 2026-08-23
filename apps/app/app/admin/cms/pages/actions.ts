@@ -48,6 +48,16 @@ function formOptionalText(formData: FormData, key: string) {
     return value.length > 0 ? value : null;
 }
 
+function formImagePoiCoordinate(formData: FormData, key: string) {
+    const rawValue = formText(formData, key).trim();
+    if (!rawValue) {
+        return 50;
+    }
+
+    const value = Number(rawValue);
+    return Number.isInteger(value) && value >= 0 && value <= 100 ? value : 50;
+}
+
 function toCmsImagePathSegment(value: string) {
     const normalized = value
         .trim()
@@ -123,6 +133,8 @@ function cmsPageInputFromForm(formData: FormData): CreateCmsPageInput {
         metaTitle: formOptionalText(formData, 'metaTitle'),
         metaDescription: formOptionalText(formData, 'metaDescription'),
         metaImageUrl: formOptionalText(formData, 'metaImageUrl'),
+        metaImagePoiX: formImagePoiCoordinate(formData, 'metaImagePoiX'),
+        metaImagePoiY: formImagePoiCoordinate(formData, 'metaImagePoiY'),
         seoImageUrl: formOptionalText(formData, 'seoImageUrl'),
         canonicalPath: formOptionalText(formData, 'canonicalPath'),
         noIndex: formData.get('noIndex') === 'on',

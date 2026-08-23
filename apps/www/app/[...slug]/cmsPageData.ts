@@ -17,6 +17,8 @@ export type CmsRoutePage = {
     metaTitle?: string | null;
     metaDescription?: string | null;
     metaImageUrl?: string | null;
+    metaImagePoiX?: number | null;
+    metaImagePoiY?: number | null;
     seoImageUrl?: string | null;
     canonicalPath?: string | null;
     noIndex?: boolean;

@@ -1,18 +1,44 @@
 'use client';
 
 import type { EntityStandardized } from '@gredice/storage';
+import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Checkbox } from '@gredice/ui/Checkbox';
 import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { upload } from '@vercel/blob/client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useOperationCompletionSync } from '../../components/offline/OperationCompletionSyncContext';
+import type { HandoffOperationCompletionDraftToQueueResult } from '../../lib/offline/operationCompletionQueueStore';
 import {
     completeFarmOperation,
     completeFarmOperationWithImageUrls,
+    recoverFarmOperationCompletionImage,
+    refreshFarmScheduleAfterSubmission,
+    validateFarmOperationUploadTarget,
 } from './actions';
+import {
+    getFarmOperationCompletionImageFileError,
+    getFarmOperationCompletionImagePathPrefix,
+    getFarmOperationCompletionSubmissionImagePath,
+    MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT,
+} from './operationCompletionProof';
+import { ScheduleTaskCompletionButton } from './ScheduleTaskCompletionButton';
+import {
+    getScheduleOperationCompletionRequirements,
+    getScheduleOperationCompletionRequirementsFingerprint,
+    isScheduleOperationRequirementVisible,
+} from './scheduleOperationRequirements';
+import { getScheduleOperationProofRequirementsId } from './scheduleTaskIds';
+import {
+    getScheduleTaskCompletionSuccessMessage,
+    type ScheduleTaskSubmissionFailure,
+} from './scheduleTaskSubmissionResult';
+import {
+    type OperationCompletionDraftSaveState,
+    useOperationCompletionDraft,
+} from './useOperationCompletionDraft';
 
 type UploadItemStatus = 'pending' | 'uploading' | 'uploaded' | 'failed';
 
@@ -26,18 +52,76 @@ type UploadItem = {
     attempts: number;
 };
 
+type UploadImageResult =
+    | { failure: ScheduleTaskSubmissionFailure; url: null }
+    | { failure: null; url: string | null };
+
 const MAX_UPLOAD_ATTEMPTS = 3;
 const MULTIPART_UPLOAD_THRESHOLD_BYTES = 5 * 1024 * 1024;
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
 
-function createUploadItem(file: File): UploadItem {
+function createUploadItem(file: File, id = crypto.randomUUID()): UploadItem {
     return {
-        id: crypto.randomUUID(),
+        id,
         file,
         progress: 0,
         status: 'pending',
         attempts: 0,
     };
+}
+
+function getLocalDraftSaveErrorMessage(
+    reason: Extract<
+        OperationCompletionDraftSaveState,
+        { kind: 'error' }
+    >['reason'],
+) {
+    switch (reason) {
+        case 'draft_count_limit':
+            return 'Dosegnuto je ograničenje od 5 lokalnih skica. Otvori drugi zadatak sa skicom i odbaci je prije spremanja nove.';
+        case 'draft_size_limit':
+            return 'Lokalne skice koriste dopuštenih 100 MB. Ukloni fotografije ili odbaci drugu skicu.';
+        case 'draft_changed':
+            return 'Lokalna skica promijenila se u drugom prozoru. Pregledaj trenutnu skicu prije nastavka.';
+        case 'incompatible':
+            return 'Zadatak se promijenio pa se ova lokalna skica ne može spremiti. Osvježi raspored prije nastavka.';
+        case 'quota_exceeded':
+            return 'Uređaj nema dovoljno prostora za lokalnu skicu. Unos ostaje otvoren, ali možda neće preživjeti osvježavanje.';
+        case 'session_changed':
+            return 'Sesija je završila. Ovaj unos neće ostati spremljen na uređaju.';
+        default:
+            return 'Lokalna skica se ne može spremiti na ovom uređaju. Unos ostaje otvoren, ali možda neće preživjeti osvježavanje.';
+    }
+}
+
+function getQueueHandoffErrorMessage(
+    reason: Extract<
+        HandoffOperationCompletionDraftToQueueResult,
+        { status: 'error' }
+    >['reason'],
+) {
+    switch (reason) {
+        case 'draft_count_limit':
+            return 'Dosegnuto je ograničenje od 5 lokalnih unosa. Pregledaj spremljene radnje prije nastavka.';
+        case 'draft_size_limit':
+            return 'Lokalni unosi koriste dopuštenih 100 MB. Ukloni fotografije ili odbaci drugi unos.';
+        case 'quota_exceeded':
+            return 'Uređaj nema dovoljno prostora za sigurno spremanje radnje. Ukloni fotografije ili oslobodi prostor pa pokušaj ponovno.';
+        case 'draft_changed':
+            return 'Unos se promijenio u drugom prozoru. Zatvori i ponovno otvori zadatak prije nastavka.';
+        case 'incompatible':
+            return 'Zadatak se promijenio pa ovaj unos nije moguće poslati. Osvježi raspored.';
+        case 'queue_conflict':
+            return 'Za ovu radnju već postoji druga lokalna predaja. Ovaj unos nije zamijenio njezine napomene ili fotografije; pregledaj postojeće slanje.';
+        case 'server_confirmed':
+            return 'Ova radnja već je potvrđena na farmi. Osvježi raspored.';
+        case 'session_changed':
+            return 'Sesija je završila. Ponovno se prijavi prije spremanja radnje.';
+        case 'invalid_input':
+            return 'Lokalni unos nije ispravan. Pregledaj podatke i pokušaj ponovno.';
+        case 'storage_unavailable':
+            return 'Radnju nije moguće sigurno spremiti na ovom uređaju. Unos ostaje otvoren; provjeri prostor i pokušaj ponovno.';
+    }
 }
 
 function clampUploadProgress(progress: number) {
@@ -86,69 +170,306 @@ function getUploadItemProgressClassName(uploadItem: UploadItem) {
 }
 
 interface CompleteOperationModalProps {
+    accountId: string;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     operationId: number;
+    sessionIncarnation: string;
     label: string;
     conditions?: EntityStandardized['conditions'];
+    defaultOpen?: boolean;
+    userId: string;
 }
 
 export function CompleteOperationModal({
+    accountId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
     operationId,
+    sessionIncarnation,
     label,
     conditions,
+    defaultOpen = false,
+    userId,
 }: CompleteOperationModalProps) {
-    const [isOpen, setIsOpen] = useState(false);
+    const completionSync = useOperationCompletionSync();
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
     const [notes, setNotes] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [requiresRefresh, setRequiresRefresh] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [successNeedsScheduleRefresh, setSuccessNeedsScheduleRefresh] =
+        useState(false);
+    const [imageSelectionMessage, setImageSelectionMessage] = useState<
+        string | null
+    >(null);
+    const [isResolvingLocalDraft, setIsResolvingLocalDraft] = useState(false);
+    const [localDraftCleanupWarning, setLocalDraftCleanupWarning] =
+        useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const cameraInputRef = useRef<HTMLInputElement>(null);
+    const notesInputRef = useRef<HTMLTextAreaElement>(null);
+    const sessionChangedFocusRef = useRef<HTMLDivElement>(null);
+    const submissionInFlightRef = useRef(false);
+    const errorRef = useRef<HTMLDivElement>(null);
+    const previousDraftScopeIdentityRef = useRef<string | null>(null);
 
-    const attachImages = Boolean(
-        conditions?.completionAttachImages ||
-            conditions?.completionAttachImagesRequired,
+    const requirements = getScheduleOperationCompletionRequirements({
+        conditions,
+    });
+    const expectedRequirementsFingerprint =
+        getScheduleOperationCompletionRequirementsFingerprint(requirements);
+    const localDraft = useOperationCompletionDraft({
+        accountId,
+        enabled: isOpen,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        notes,
+        operationId,
+        photos: uploadItems.map(({ file, id }) => ({ file, id })),
+        requirementsFingerprint: expectedRequirementsFingerprint,
+        sessionIncarnation,
+        userId,
+    });
+    const attachImages = isScheduleOperationRequirementVisible(
+        requirements.images,
     );
-    const attachImagesRequired = Boolean(
-        conditions?.completionAttachImagesRequired,
+    const attachImagesRequired = requirements.images === 'required';
+    const attachNotes = isScheduleOperationRequirementVisible(
+        requirements.notes,
     );
-    const attachNotes = Boolean(
-        conditions?.completionAttachNotes ||
-            conditions?.completionAttachNotesRequired,
-    );
-    const attachNotesRequired = Boolean(
-        conditions?.completionAttachNotesRequired,
-    );
+    const attachNotesRequired = requirements.notes === 'required';
+    const proofRequirementsId =
+        attachImages || attachNotes
+            ? getScheduleOperationProofRequirementsId(operationId)
+            : undefined;
+    const notesInputId = `operation-${operationId.toString()}-completion-notes`;
+    const notesCounterId = `${notesInputId}-counter`;
     const trimmedNotes = notes.trim();
     const notesRequiredMissing =
         attachNotesRequired && trimmedNotes.length === 0;
     const hasFailedUploads = uploadItems.some(
         (uploadItem) => uploadItem.status === 'failed',
     );
+    const imageLimitReached =
+        uploadItems.length >= MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT;
+    const localDraftBlocksEditing = localDraft.gate.kind !== 'none';
+    const currentQueueItem = completionSync?.items.find(
+        (item) => item.operationId === operationId,
+    );
+    const currentQueueState =
+        currentQueueItem?.state ??
+        (localDraft.gate.kind === 'queued' ||
+        localDraft.gate.kind === 'server_confirmed'
+            ? localDraft.gate.item.state
+            : null);
+    const currentQueueServerState =
+        currentQueueItem?.serverState ??
+        (localDraft.gate.kind === 'queued' ||
+        localDraft.gate.kind === 'server_confirmed'
+            ? localDraft.gate.item.serverState
+            : null);
+    const currentQueueFailureMessage =
+        currentQueueItem?.failureMessage ??
+        (localDraft.gate.kind === 'queued' &&
+        localDraft.gate.item.failureCode === 'expired'
+            ? 'Lokalni unos je istekao i njegov je sadržaj uklonjen s uređaja. Provjeri raspored pa odbaci ovaj zapis prije novog pokušaja.'
+            : null);
+    const draftScopeIdentity = JSON.stringify([
+        userId,
+        accountId,
+        operationId,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        expectedRequirementsFingerprint,
+        sessionIncarnation,
+    ]);
+
+    useEffect(() => {
+        const previousIdentity = previousDraftScopeIdentityRef.current;
+        previousDraftScopeIdentityRef.current = draftScopeIdentity;
+        if (
+            previousIdentity === null ||
+            previousIdentity === draftScopeIdentity
+        ) {
+            return;
+        }
+        setNotes('');
+        setUploadItems([]);
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
+    }, [draftScopeIdentity]);
+
+    useEffect(() => {
+        if (localDraft.gate.kind !== 'session_changed') {
+            return;
+        }
+        setNotes('');
+        setUploadItems([]);
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        requestAnimationFrame(() => sessionChangedFocusRef.current?.focus());
+    }, [localDraft.gate.kind]);
+
+    const focusCompletionForm = (attempt = 0) => {
+        requestAnimationFrame(() => {
+            const focusTarget = attachNotes
+                ? notesInputRef.current
+                : document.querySelector<HTMLButtonElement>(
+                      `[data-operation-draft-focus-target="${operationId.toString()}"]`,
+                  );
+            if (focusTarget) {
+                focusTarget.focus();
+            }
+
+            if (attempt === 0) {
+                focusCompletionForm(1);
+            }
+        });
+    };
+
+    const resumeLocalDraft = () => {
+        const restoredDraft = localDraft.resume();
+        if (!restoredDraft) {
+            return;
+        }
+        setNotes(restoredDraft.notes);
+        setUploadItems(
+            restoredDraft.photos.map(({ file, id }) =>
+                createUploadItem(file, id),
+            ),
+        );
+        setErrorMessage(null);
+        setImageSelectionMessage(null);
+        focusCompletionForm();
+    };
+
+    const discardLocalDraft = async () => {
+        setIsResolvingLocalDraft(true);
+        try {
+            const discarded = await localDraft.discard();
+            if (discarded) {
+                setNotes('');
+                setUploadItems([]);
+                setErrorMessage(null);
+                setImageSelectionMessage(null);
+                focusCompletionForm();
+            }
+        } finally {
+            setIsResolvingLocalDraft(false);
+        }
+    };
+
+    const resetCompletedDraft = () => {
+        setSuccessMessage(null);
+        setSuccessNeedsScheduleRefresh(false);
+        setErrorMessage(null);
+        setRequiresRefresh(false);
+        setImageSelectionMessage(null);
+        setLocalDraftCleanupWarning(false);
+        setUploadItems([]);
+        setNotes('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+    };
+
+    const refreshAfterSuccess = () => {
+        void refreshFarmScheduleAfterSubmission().catch((error) => {
+            console.error('Error refreshing completed task:', error);
+            window.location.reload();
+        });
+    };
+
+    const finishSuccess = () => {
+        const shouldRefreshSchedule = successNeedsScheduleRefresh;
+        resetCompletedDraft();
+        setIsOpen(false);
+        if (shouldRefreshSchedule) {
+            refreshAfterSuccess();
+        }
+    };
 
     const handleOpenChange = (open: boolean) => {
-        setIsOpen(open);
-        setErrorMessage(null);
-        if (!open) {
-            setUploadItems([]);
-            setNotes('');
-            if (fileInputRef.current) fileInputRef.current.value = '';
-            if (cameraInputRef.current) cameraInputRef.current.value = '';
+        if (!open && submissionInFlightRef.current) {
+            return;
         }
+
+        if (!open && successMessage) {
+            finishSuccess();
+            return;
+        }
+
+        setIsOpen(open);
+        if (!open && !requiresRefresh) {
+            void localDraft.flush();
+            setErrorMessage(null);
+            setImageSelectionMessage(null);
+        }
+    };
+
+    const clearRetryableError = () => {
+        if (requiresRefresh) {
+            return;
+        }
+        setErrorMessage(null);
     };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
-            const nextUploadItems = Array.from(event.target.files).map(
-                createUploadItem,
+            const selectedFiles = Array.from(event.target.files);
+            const acceptedFiles = selectedFiles.filter(
+                (file) =>
+                    getFarmOperationCompletionImageFileError(file) === null,
             );
-            setUploadItems((currentUploadItems) => [
-                ...currentUploadItems,
-                ...nextUploadItems,
-            ]);
-            setErrorMessage(null);
+            const rejectedFileErrors = selectedFiles
+                .map(getFarmOperationCompletionImageFileError)
+                .filter((message) => message !== null);
+            const availableSlots = Math.max(
+                0,
+                MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT - uploadItems.length,
+            );
+            setUploadItems((currentUploadItems) => {
+                const remainingSlots = Math.max(
+                    0,
+                    MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT -
+                        currentUploadItems.length,
+                );
+                return [
+                    ...currentUploadItems,
+                    ...acceptedFiles
+                        .slice(0, remainingSlots)
+                        .map((file) => createUploadItem(file)),
+                ];
+            });
+            const selectionMessages = [
+                rejectedFileErrors[0]
+                    ? `${rejectedFileErrors[0]} Odaberi drugu fotografiju.`
+                    : null,
+                acceptedFiles.length > availableSlots
+                    ? `Možeš dodati najviše ${MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT} fotografija. Višak nije dodan.`
+                    : null,
+            ].filter((message): message is string => Boolean(message));
+            setImageSelectionMessage(selectionMessages.join(' ') || null);
+            clearRetryableError();
         }
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
+    };
+
+    const removeUploadItem = (uploadItemId: string) => {
+        setUploadItems((currentUploadItems) =>
+            currentUploadItems.filter(
+                (uploadItem) => uploadItem.id !== uploadItemId,
+            ),
+        );
+        setImageSelectionMessage(null);
+        clearRetryableError();
     };
 
     const updateUploadItem = (
@@ -164,25 +485,116 @@ export function CompleteOperationModal({
         );
     };
 
-    const resetUploadItem = (uploadItemId: string) => {
-        setErrorMessage(null);
-        updateUploadItem(uploadItemId, (uploadItem) => ({
-            ...uploadItem,
+    const markUploadTargetFailure = (
+        uploadItemId: string,
+        failure: ScheduleTaskSubmissionFailure,
+    ) => {
+        updateUploadItem(uploadItemId, (currentUploadItem) => ({
+            ...currentUploadItem,
+            errorMessage: failure.message,
             progress: 0,
-            status: 'pending',
-            errorMessage: undefined,
-            attempts: 0,
+            status: 'failed',
+            uploadedUrl: undefined,
         }));
     };
 
-    const uploadImage = async (uploadItem: UploadItem) => {
+    const markStoredImagesForRetry = (imageUrls: string[] | undefined) => {
+        if (!imageUrls || imageUrls.length === 0) {
+            return;
+        }
+        const retryUrls = new Set(imageUrls);
+        setUploadItems((currentUploadItems) =>
+            currentUploadItems.map((uploadItem) =>
+                uploadItem.uploadedUrl && retryUrls.has(uploadItem.uploadedUrl)
+                    ? {
+                          ...uploadItem,
+                          attempts: 0,
+                          errorMessage:
+                              'Fotografiju treba ponovno učitati. Pokušaj ponovno.',
+                          progress: 0,
+                          status: 'failed',
+                          uploadedUrl: undefined,
+                      }
+                    : uploadItem,
+            ),
+        );
+    };
+
+    const uploadImage = async (
+        uploadItem: UploadItem,
+        submissionId?: string,
+    ): Promise<UploadImageResult> => {
         const extension = uploadItem.file.name.includes('.')
             ? uploadItem.file.name.slice(uploadItem.file.name.lastIndexOf('.'))
             : '';
         let lastErrorMessage = 'Spremanje slike nije uspjelo.';
 
+        const markUploaded = (url: string, attempt: number) => {
+            updateUploadItem(uploadItem.id, (currentUploadItem) => ({
+                ...currentUploadItem,
+                progress: 100,
+                status: 'uploaded',
+                uploadedUrl: url,
+                errorMessage: undefined,
+                attempts: attempt,
+            }));
+            return { failure: null, url } satisfies UploadImageResult;
+        };
+
+        const recoverIdempotentUpload = async (
+            attempt = uploadItem.attempts,
+        ) => {
+            if (!submissionId) {
+                return null;
+            }
+            const recovered = await recoverFarmOperationCompletionImage(
+                operationId,
+                expectedEntityId,
+                expectedTaskVersionEventId,
+                expectedRequirementsFingerprint,
+                submissionId,
+                uploadItem.id,
+                uploadItem.file.name,
+            );
+            if (!recovered.success) {
+                markUploadTargetFailure(uploadItem.id, recovered);
+                return {
+                    failure: recovered,
+                    url: null,
+                } satisfies UploadImageResult;
+            }
+            return recovered.imageUrl
+                ? markUploaded(recovered.imageUrl, attempt)
+                : null;
+        };
+
+        const initialTargetValidation = await validateFarmOperationUploadTarget(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+            expectedRequirementsFingerprint,
+        );
+        if (!initialTargetValidation.success) {
+            markUploadTargetFailure(uploadItem.id, initialTargetValidation);
+            return { failure: initialTargetValidation, url: null };
+        }
+
+        const previouslyUploaded = await recoverIdempotentUpload();
+        if (previouslyUploaded) {
+            return previouslyUploaded;
+        }
+
         for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
-            const pathname = `operations/${operationId}/${uploadItem.id}-${attempt}${extension}`;
+            const pathname = submissionId
+                ? getFarmOperationCompletionSubmissionImagePath(
+                      operationId,
+                      expectedEntityId,
+                      expectedTaskVersionEventId,
+                      submissionId,
+                      uploadItem.id,
+                      uploadItem.file.name,
+                  )
+                : `${getFarmOperationCompletionImagePathPrefix(operationId, expectedEntityId, expectedTaskVersionEventId)}${uploadItem.id}-${attempt}${extension}`;
 
             updateUploadItem(uploadItem.id, (currentUploadItem) => ({
                 ...currentUploadItem,
@@ -197,7 +609,19 @@ export function CompleteOperationModal({
                     access: 'public',
                     contentType: uploadItem.file.type || undefined,
                     handleUploadUrl: '/api/operations/images/upload',
-                    clientPayload: JSON.stringify({ operationId }),
+                    clientPayload: JSON.stringify({
+                        ...(submissionId
+                            ? {
+                                  attachmentId: uploadItem.id,
+                                  fileName: uploadItem.file.name,
+                                  submissionId,
+                              }
+                            : {}),
+                        expectedEntityId,
+                        expectedRequirementsFingerprint,
+                        expectedTaskVersionEventId,
+                        operationId,
+                    }),
                     multipart:
                         uploadItem.file.size > MULTIPART_UPLOAD_THRESHOLD_BYTES,
                     onUploadProgress: ({ percentage }) => {
@@ -213,26 +637,29 @@ export function CompleteOperationModal({
                     },
                 });
 
-                updateUploadItem(uploadItem.id, (currentUploadItem) => ({
-                    ...currentUploadItem,
-                    progress: 100,
-                    status: 'uploaded',
-                    uploadedUrl: uploadedImage.url,
-                    errorMessage: undefined,
-                    attempts: attempt,
-                }));
-
-                return uploadedImage.url;
-            } catch (error) {
-                console.error(
-                    'Error uploading image:',
-                    uploadItem.file.name,
-                    error,
-                );
+                return markUploaded(uploadedImage.url, attempt);
+            } catch {
+                console.error('Error uploading completion image.');
                 lastErrorMessage =
-                    error instanceof Error && error.message
-                        ? error.message
-                        : 'Spremanje slike nije uspjelo.';
+                    'Spremanje fotografije nije uspjelo. Pokušaj ponovno.';
+                const recoveredUpload = await recoverIdempotentUpload(attempt);
+                if (recoveredUpload) {
+                    return recoveredUpload;
+                }
+                const currentTargetValidation =
+                    await validateFarmOperationUploadTarget(
+                        operationId,
+                        expectedEntityId,
+                        expectedTaskVersionEventId,
+                        expectedRequirementsFingerprint,
+                    );
+                if (!currentTargetValidation.success) {
+                    markUploadTargetFailure(
+                        uploadItem.id,
+                        currentTargetValidation,
+                    );
+                    return { failure: currentTargetValidation, url: null };
+                }
             }
         }
 
@@ -245,19 +672,69 @@ export function CompleteOperationModal({
             attempts: MAX_UPLOAD_ATTEMPTS,
         }));
 
-        return null;
+        return { failure: null, url: null };
     };
 
     const handleConfirm = async () => {
+        if (submissionInFlightRef.current || localDraftBlocksEditing) {
+            return;
+        }
+
         try {
             setErrorMessage(null);
+            setRequiresRefresh(false);
             if (notesRequiredMissing) {
                 setErrorMessage('Napomena je obavezna za završetak.');
                 return;
             }
 
+            submissionInFlightRef.current = true;
             setIsSubmitting(true);
             const completionNotes = attachNotes ? trimmedNotes : undefined;
+            let submissionId: string | undefined;
+            if (completionSync?.mode === 'enabled') {
+                if (!navigator.onLine) {
+                    const handoff = await localDraft.handoffToQueue({
+                        operationLabel: label,
+                    });
+                    if (handoff.status === 'error') {
+                        setErrorMessage(
+                            getQueueHandoffErrorMessage(handoff.reason),
+                        );
+                        setRequiresRefresh(
+                            handoff.reason === 'server_confirmed' ||
+                                handoff.reason === 'incompatible' ||
+                                handoff.reason === 'queue_conflict' ||
+                                handoff.reason === 'draft_changed',
+                        );
+                        requestAnimationFrame(() => errorRef.current?.focus());
+                        return;
+                    }
+                    if (handoff.status === 'existing') {
+                        return;
+                    }
+                    setSuccessMessage(
+                        `Radnja „${label}” sigurno je spremljena samo na ovom uređaju. Poslat će se kada ponovno otvoriš aplikaciju uz internetsku vezu.`,
+                    );
+                    setSuccessNeedsScheduleRefresh(false);
+                    return;
+                }
+
+                const preparation = await localDraft.prepareSubmission();
+                if (preparation.status === 'error') {
+                    setErrorMessage(
+                        getLocalDraftSaveErrorMessage(preparation.reason),
+                    );
+                    setRequiresRefresh(
+                        preparation.reason === 'draft_changed' ||
+                            preparation.reason === 'incompatible',
+                    );
+                    requestAnimationFrame(() => errorRef.current?.focus());
+                    return;
+                }
+                submissionId = preparation.submissionId;
+            }
+            let result: Awaited<ReturnType<typeof completeFarmOperation>>;
             if (attachImages && uploadItems.length > 0) {
                 const imageUrls: string[] = [];
                 for (const uploadItem of uploadItems) {
@@ -269,35 +746,81 @@ export function CompleteOperationModal({
                         continue;
                     }
 
-                    const uploadedUrl = await uploadImage(uploadItem);
-                    if (!uploadedUrl) {
+                    const uploadResult = await uploadImage(
+                        uploadItem,
+                        submissionId,
+                    );
+                    if (uploadResult.failure) {
+                        setErrorMessage(uploadResult.failure.message);
+                        setRequiresRefresh(!uploadResult.failure.canRetry);
+                        requestAnimationFrame(() => errorRef.current?.focus());
+                        return;
+                    }
+                    if (!uploadResult.url) {
                         setErrorMessage(
                             'Neke slike nisu učitane. Neuspjele stavke možete pokušati ponovno bez ponovnog odabira.',
                         );
+                        requestAnimationFrame(() => errorRef.current?.focus());
                         return;
                     }
 
-                    imageUrls.push(uploadedUrl);
+                    imageUrls.push(uploadResult.url);
                 }
-                await completeFarmOperationWithImageUrls(
+                result = await completeFarmOperationWithImageUrls(
                     operationId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
+                    expectedRequirementsFingerprint,
                     imageUrls,
                     completionNotes,
+                    submissionId,
                 );
             } else {
-                await completeFarmOperation(
+                result = await completeFarmOperation(
                     operationId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
+                    expectedRequirementsFingerprint,
                     undefined,
                     completionNotes,
+                    submissionId,
                 );
             }
-            handleOpenChange(false);
+            if (!result.success) {
+                markStoredImagesForRetry(result.retryImageUrls);
+                setErrorMessage(result.message);
+                setRequiresRefresh(!result.canRetry);
+                requestAnimationFrame(() => errorRef.current?.focus());
+                return;
+            }
+            const localConfirmationSucceeded =
+                await localDraft.discardAfterServerSuccess();
+            setLocalDraftCleanupWarning(!localConfirmationSucceeded);
+            setSuccessMessage(
+                getScheduleTaskCompletionSuccessMessage({
+                    kind: 'operation',
+                    label,
+                    state: result.state,
+                }),
+            );
+            setSuccessNeedsScheduleRefresh(true);
         } catch (error) {
             console.error('Error completing operation:', error);
-            setErrorMessage('Spremanje nije uspjelo. Pokušajte ponovno.');
+            setErrorMessage(
+                'Radnja nije spremljena. Provjeri vezu i pokušaj ponovno.',
+            );
+            setRequiresRefresh(false);
+            requestAnimationFrame(() => errorRef.current?.focus());
         } finally {
+            submissionInFlightRef.current = false;
             setIsSubmitting(false);
         }
+    };
+
+    const refreshTasks = () => {
+        resetCompletedDraft();
+        setIsOpen(false);
+        window.location.reload();
     };
 
     const imageRequirementText = attachImages
@@ -314,205 +837,584 @@ export function CompleteOperationModal({
     return (
         <Modal
             title="Potvrda završetka radnje"
+            dismissible={!isSubmitting}
             open={isOpen}
             onOpenChange={handleOpenChange}
             trigger={
-                <Checkbox
-                    className="size-5"
-                    checked={isOpen}
-                    onCheckedChange={(checked: boolean) =>
-                        handleOpenChange(checked)
-                    }
+                <ScheduleTaskCompletionButton
+                    actionLabel="Dovrši radnju"
+                    aria-describedby={proofRequirementsId}
+                    label={label}
                 />
             }
         >
-            <Stack spacing={4}>
-                <Typography>
-                    Jeste li sigurni da želite označiti operaciju kao završenu:{' '}
-                    <strong>{label}</strong>?
-                </Typography>
-                {attachImages && (
-                    <Stack spacing={2}>
-                        {imageRequirementText && (
-                            <Typography level="body2" className="italic">
-                                {imageRequirementText}
-                            </Typography>
-                        )}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            className="hidden"
-                            onChange={handleFileChange}
-                        />
-                        <input
-                            ref={cameraInputRef}
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            className="hidden"
-                            onChange={handleFileChange}
-                        />
-                        <Button
-                            variant="outlined"
-                            type="button"
-                            onClick={() => cameraInputRef.current?.click()}
-                            disabled={isSubmitting}
+            {successMessage && currentQueueState !== 'server_confirmed' ? (
+                <Stack spacing={4}>
+                    <h2 className="text-lg font-semibold">Radnja spremljena</h2>
+                    <Alert color="success" role="status">
+                        {successMessage}
+                    </Alert>
+                    {localDraftCleanupWarning ? (
+                        <Alert color="warning" role="status">
+                            Radnja je spremljena na farmi, ali lokalnu skicu
+                            nije moguće očistiti. Osvježi raspored prije
+                            ponovnog otvaranja zadatka.
+                        </Alert>
+                    ) : null}
+                    <Button
+                        fullWidth
+                        onClick={finishSuccess}
+                        size="lg"
+                        type="button"
+                        variant="solid"
+                    >
+                        U redu
+                    </Button>
+                </Stack>
+            ) : (
+                <Stack spacing={4}>
+                    <Typography>
+                        Jeste li sigurni da želite označiti operaciju kao
+                        završenu: <strong>{label}</strong>?
+                    </Typography>
+                    {localDraft.gate.kind === 'checking' ? (
+                        <Stack spacing={2}>
+                            <Alert color="info" role="status">
+                                Provjeravam postoji li lokalna skica na ovom
+                                uređaju…
+                            </Alert>
+                            <Button
+                                fullWidth
+                                onClick={() => handleOpenChange(false)}
+                                size="lg"
+                                type="button"
+                                variant="outlined"
+                            >
+                                Zatvori
+                            </Button>
+                        </Stack>
+                    ) : null}
+                    {localDraft.gate.kind === 'session_changed' ? (
+                        <Alert
+                            color="warning"
+                            data-operation-draft-gate
+                            role="alert"
                         >
-                            Uslikaj fotografiju
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isSubmitting}
+                            <Stack spacing={3}>
+                                <div
+                                    data-operation-draft-session-focus
+                                    ref={sessionChangedFocusRef}
+                                    tabIndex={-1}
+                                >
+                                    <Typography level="body2" semiBold>
+                                        Sesija je završila
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Ovaj unos nije spremljen i neće ostati
+                                        na ovom uređaju. Ponovno se prijavi
+                                        prije nastavka.
+                                    </Typography>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    onClick={() => handleOpenChange(false)}
+                                    size="lg"
+                                    type="button"
+                                    variant="outlined"
+                                >
+                                    Zatvori
+                                </Button>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'queued' &&
+                    currentQueueState !== 'server_confirmed' ? (
+                        <Alert
+                            color={
+                                currentQueueState === 'failed'
+                                    ? 'warning'
+                                    : 'info'
+                            }
+                            data-operation-completion-queue-gate
+                            role="status"
                         >
-                            {uploadItems.length > 0
-                                ? 'Dodaj još slika'
-                                : 'Dodaj slike'}
-                        </Button>
-                        {uploadItems.length > 0 && (
-                            <Typography level="body2">
-                                Odabrano {uploadItems.length}{' '}
-                                {uploadItems.length === 1 ? 'slika' : 'slike'}
-                            </Typography>
-                        )}
-                        {uploadItems.length > 0 && (
-                            <Stack spacing={2}>
-                                {uploadItems.map((uploadItem) => {
-                                    const progress =
-                                        uploadItem.status === 'uploaded'
-                                            ? 100
-                                            : clampUploadProgress(
-                                                  uploadItem.progress,
-                                              );
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        {currentQueueState === 'syncing'
+                                            ? 'Šaljem radnju farmi'
+                                            : currentQueueState === 'failed'
+                                              ? 'Potrebna je tvoja radnja'
+                                              : 'Radnja čeka slanje'}
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {currentQueueState === 'syncing'
+                                            ? 'Ostani u aplikaciji dok se napomena i fotografije šalju.'
+                                            : currentQueueState === 'failed'
+                                              ? (currentQueueFailureMessage ??
+                                                'Pregledaj spremljeni unos prije ponovnog slanja ili odbacivanja.')
+                                              : 'Unos je sigurno spremljen samo na ovom uređaju. Poslat će se kada je aplikacija otvorena uz internetsku vezu.'}
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <Button
+                                        fullWidth
+                                        href="/settings#sinkronizacija-radnji"
+                                        size="lg"
+                                        type="button"
+                                        variant="solid"
+                                    >
+                                        Pregledaj slanje
+                                    </Button>
+                                    <Button
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'server_confirmed' ||
+                    currentQueueState === 'server_confirmed' ? (
+                        <Alert
+                            color="success"
+                            data-operation-completion-server-receipt
+                            role="status"
+                        >
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Radnja je spremljena na farmi
+                                    </Typography>
+                                    <Typography level="body2">
+                                        {currentQueueServerState ===
+                                        'pendingVerification'
+                                            ? 'Poslužitelj je potvrdio primitak, a radnja sada čeka provjeru.'
+                                            : 'Poslužitelj je potvrdio dovršetak radnje.'}
+                                    </Typography>
+                                </div>
+                                <Button
+                                    fullWidth
+                                    onClick={refreshTasks}
+                                    size="lg"
+                                    type="button"
+                                    variant="solid"
+                                >
+                                    Osvježi raspored
+                                </Button>
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'found' ? (
+                        <Alert color="info" data-operation-draft-gate>
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Pronađena lokalna skica
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Skica je spremljena samo na ovom
+                                        uređaju. Radnja još nije dovršena.
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={resumeLocalDraft}
+                                        size="lg"
+                                        type="button"
+                                        variant="solid"
+                                    >
+                                        Nastavi uređivanje
+                                    </Button>
+                                    <Button
+                                        color="danger"
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        loading={isResolvingLocalDraft}
+                                        onClick={() => void discardLocalDraft()}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Odbaci skicu
+                                    </Button>
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="plain"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                                {localDraft.saveState.kind === 'error' ? (
+                                    <Typography
+                                        aria-live="assertive"
+                                        className="text-red-800 dark:text-red-200"
+                                        data-operation-draft-gate-error
+                                        level="body2"
+                                    >
+                                        {localDraft.saveState.reason ===
+                                        'draft_changed'
+                                            ? 'Skica se promijenila u drugom prozoru. Pregledaj trenutnu skicu prije odbacivanja.'
+                                            : 'Lokalnu skicu trenutačno nije moguće odbaciti. Zatvori prozor i pokušaj ponovno.'}
+                                    </Typography>
+                                ) : null}
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.gate.kind === 'stale' ? (
+                        <Alert color="warning" data-operation-draft-gate>
+                            <Stack spacing={3}>
+                                <div>
+                                    <Typography level="body2" semiBold>
+                                        Zadatak se promijenio
+                                    </Typography>
+                                    <Typography level="body2">
+                                        Spremljena skica pripada staroj verziji
+                                        zadatka i ne može se koristiti. Odbaci
+                                        je prije nastavka.
+                                    </Typography>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <Button
+                                        color="danger"
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        loading={isResolvingLocalDraft}
+                                        onClick={() => void discardLocalDraft()}
+                                        size="lg"
+                                        type="button"
+                                        variant="outlined"
+                                    >
+                                        Odbaci skicu
+                                    </Button>
+                                    <Button
+                                        disabled={isResolvingLocalDraft}
+                                        fullWidth
+                                        onClick={() => handleOpenChange(false)}
+                                        size="lg"
+                                        type="button"
+                                        variant="plain"
+                                    >
+                                        Zatvori
+                                    </Button>
+                                </div>
+                                {localDraft.saveState.kind === 'error' ? (
+                                    <Typography
+                                        aria-live="assertive"
+                                        className="text-red-800 dark:text-red-200"
+                                        data-operation-draft-gate-error
+                                        level="body2"
+                                    >
+                                        {localDraft.saveState.reason ===
+                                        'draft_changed'
+                                            ? 'Skica se promijenila u drugom prozoru. Pregledaj trenutnu skicu prije odbacivanja.'
+                                            : 'Lokalnu skicu trenutačno nije moguće odbaciti. Zatvori prozor i pokušaj ponovno.'}
+                                    </Typography>
+                                ) : null}
+                            </Stack>
+                        </Alert>
+                    ) : null}
+                    {localDraft.notice === 'expired' ? (
+                        <Alert color="warning" role="status">
+                            Lokalna skica istekla je nakon 7 dana i uklonjena
+                            je. Možeš započeti novu skicu.
+                        </Alert>
+                    ) : null}
+                    {localDraft.notice === 'storage_unavailable' ? (
+                        <Alert color="warning" role="status">
+                            Lokalna skica se ne može spremiti na ovom uređaju.
+                            Unos ostaje otvoren, ali možda neće preživjeti
+                            osvježavanje.
+                        </Alert>
+                    ) : null}
+                    {!localDraftBlocksEditing && attachImages && (
+                        <Stack spacing={2}>
+                            {imageRequirementText && (
+                                <Typography level="body2" className="italic">
+                                    {imageRequirementText}
+                                </Typography>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleFileChange}
+                            />
+                            <input
+                                ref={cameraInputRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={handleFileChange}
+                            />
+                            <Button
+                                data-operation-draft-focus-target={operationId}
+                                variant="outlined"
+                                type="button"
+                                onClick={() => cameraInputRef.current?.click()}
+                                disabled={isSubmitting || imageLimitReached}
+                                size="lg"
+                            >
+                                Uslikaj fotografiju
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={isSubmitting || imageLimitReached}
+                                size="lg"
+                            >
+                                {uploadItems.length > 0
+                                    ? 'Dodaj još slika'
+                                    : 'Dodaj slike'}
+                            </Button>
+                            {uploadItems.length > 0 && (
+                                <Typography level="body2">
+                                    Odabrano {uploadItems.length} od najviše{' '}
+                                    {MAX_FARM_OPERATION_COMPLETION_IMAGE_COUNT}{' '}
+                                    fotografija
+                                </Typography>
+                            )}
+                            {imageSelectionMessage && (
+                                <Typography
+                                    aria-live="assertive"
+                                    className="text-amber-700 dark:text-amber-300"
+                                    data-image-selection-message
+                                    level="body2"
+                                    role="alert"
+                                >
+                                    {imageSelectionMessage}
+                                </Typography>
+                            )}
+                            {uploadItems.length > 0 && (
+                                <Stack spacing={2}>
+                                    {uploadItems.map((uploadItem, index) => {
+                                        const ordinal = index + 1;
+                                        const progress =
+                                            uploadItem.status === 'uploaded'
+                                                ? 100
+                                                : clampUploadProgress(
+                                                      uploadItem.progress,
+                                                  );
 
-                                    return (
-                                        <div
-                                            key={uploadItem.id}
-                                            className="rounded-md border px-3 py-2"
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0 flex-1">
+                                        return (
+                                            <div
+                                                data-operation-upload-item
+                                                key={uploadItem.id}
+                                                className="rounded-md border px-3 py-2"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0 flex-1">
+                                                        <Typography
+                                                            className="text-foreground"
+                                                            level="body2"
+                                                            semiBold
+                                                        >
+                                                            Fotografija{' '}
+                                                            {ordinal}
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body2"
+                                                            className="truncate"
+                                                            title={
+                                                                uploadItem.file
+                                                                    .name
+                                                            }
+                                                        >
+                                                            {
+                                                                uploadItem.file
+                                                                    .name
+                                                            }
+                                                        </Typography>
+                                                        <Typography
+                                                            level="body2"
+                                                            className={`text-xs ${getUploadItemStatusClassName(uploadItem)}`}
+                                                        >
+                                                            {getUploadItemStatusLabel(
+                                                                uploadItem,
+                                                            )}
+                                                        </Typography>
+                                                    </div>
                                                     <Typography
                                                         level="body2"
-                                                        className="truncate"
+                                                        className="text-xs text-muted-foreground"
                                                     >
-                                                        {uploadItem.file.name}
-                                                    </Typography>
-                                                    <Typography
-                                                        level="body2"
-                                                        className={`text-xs ${getUploadItemStatusClassName(uploadItem)}`}
-                                                    >
-                                                        {getUploadItemStatusLabel(
-                                                            uploadItem,
-                                                        )}
+                                                        {progress}%
                                                     </Typography>
                                                 </div>
-                                                <Typography
-                                                    level="body2"
-                                                    className="text-xs text-muted-foreground"
-                                                >
-                                                    {progress}%
-                                                </Typography>
-                                            </div>
-                                            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                                                 <div
-                                                    className={`h-full transition-[width] duration-200 ${getUploadItemProgressClassName(uploadItem)}`}
-                                                    style={{
-                                                        width: `${progress}%`,
-                                                    }}
-                                                />
-                                            </div>
-                                            {uploadItem.status === 'failed' &&
-                                                !isSubmitting && (
+                                                    aria-label={`Učitavanje fotografije ${ordinal}`}
+                                                    aria-valuemax={100}
+                                                    aria-valuemin={0}
+                                                    aria-valuenow={progress}
+                                                    className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
+                                                    role="progressbar"
+                                                >
+                                                    <div
+                                                        className={`h-full transition-[width] duration-200 ${getUploadItemProgressClassName(uploadItem)}`}
+                                                        style={{
+                                                            width: `${progress}%`,
+                                                        }}
+                                                    />
+                                                </div>
+                                                {!isSubmitting && (
                                                     <div className="mt-2">
                                                         <Button
-                                                            variant="outlined"
-                                                            type="button"
+                                                            aria-label={`Ukloni fotografiju ${ordinal}: ${uploadItem.file.name}`}
                                                             onClick={() =>
-                                                                resetUploadItem(
+                                                                removeUploadItem(
                                                                     uploadItem.id,
                                                                 )
                                                             }
+                                                            size="lg"
+                                                            type="button"
+                                                            variant="plain"
                                                         >
-                                                            Pokušaj ponovno
+                                                            Ukloni
                                                         </Button>
                                                     </div>
                                                 )}
-                                        </div>
-                                    );
-                                })}
-                            </Stack>
-                        )}
-                        {isSubmitting && (
-                            <Typography level="body2">
-                                Učitavanje slika u tijeku...
+                                            </div>
+                                        );
+                                    })}
+                                </Stack>
+                            )}
+                            {isSubmitting && (
+                                <Typography level="body2">
+                                    Učitavanje slika u tijeku...
+                                </Typography>
+                            )}
+                        </Stack>
+                    )}
+                    {!localDraftBlocksEditing && attachNotes && (
+                        <Stack spacing={2}>
+                            {notesRequirementText && (
+                                <label
+                                    className="text-sm italic"
+                                    htmlFor={notesInputId}
+                                >
+                                    {notesRequirementText}
+                                </label>
+                            )}
+                            <textarea
+                                ref={notesInputRef}
+                                aria-describedby={notesCounterId}
+                                aria-invalid={notesRequiredMissing || undefined}
+                                id={notesInputId}
+                                value={notes}
+                                onChange={(event) => {
+                                    setNotes(event.target.value);
+                                    clearRetryableError();
+                                }}
+                                placeholder="Upišite napomenu o završetku..."
+                                className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                                rows={3}
+                                maxLength={MAX_COMPLETION_NOTES_LENGTH}
+                                disabled={isSubmitting}
+                                required={attachNotesRequired}
+                            />
+                            <Typography
+                                id={notesCounterId}
+                                level="body2"
+                                className="text-xs text-muted-foreground"
+                            >
+                                {notes.length}/{MAX_COMPLETION_NOTES_LENGTH}
                             </Typography>
-                        )}
-                    </Stack>
-                )}
-                {attachNotes && (
-                    <Stack spacing={2}>
-                        {notesRequirementText && (
-                            <Typography level="body2" className="italic">
-                                {notesRequirementText}
-                            </Typography>
-                        )}
-                        <textarea
-                            value={notes}
-                            onChange={(event) => {
-                                setNotes(event.target.value);
-                                setErrorMessage(null);
-                            }}
-                            placeholder="Upišite napomenu o završetku..."
-                            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                            rows={3}
-                            maxLength={MAX_COMPLETION_NOTES_LENGTH}
-                            disabled={isSubmitting}
-                            required={attachNotesRequired}
-                        />
-                        <Typography
-                            level="body2"
-                            className="text-xs text-muted-foreground"
+                        </Stack>
+                    )}
+                    {!localDraftBlocksEditing && errorMessage && (
+                        <div
+                            data-schedule-submission-error
+                            ref={errorRef}
+                            tabIndex={-1}
                         >
-                            {notes.length}/{MAX_COMPLETION_NOTES_LENGTH}
-                        </Typography>
-                    </Stack>
-                )}
-                {errorMessage && (
-                    <Typography level="body2" className="text-red-600">
-                        {errorMessage}
-                    </Typography>
-                )}
-                <Row
-                    spacing={2}
-                    justifyContent="end"
-                    className="flex-wrap gap-y-2"
-                >
-                    <Button
-                        variant="outlined"
-                        onClick={() => handleOpenChange(false)}
-                        disabled={isSubmitting}
-                    >
-                        Odustani
-                    </Button>
-                    <Button
-                        variant="solid"
-                        onClick={handleConfirm}
-                        disabled={
-                            isSubmitting ||
-                            (attachImagesRequired &&
-                                uploadItems.length === 0) ||
-                            notesRequiredMissing
-                        }
-                        loading={isSubmitting}
-                    >
-                        {hasFailedUploads ? 'Pokušaj ponovno' : 'Potvrdi'}
-                    </Button>
-                </Row>
-            </Stack>
+                            <Alert color="danger" role="alert">
+                                {errorMessage}
+                            </Alert>
+                        </div>
+                    )}
+                    {!localDraftBlocksEditing ? (
+                        <>
+                            {localDraft.saveState.kind === 'error' ? (
+                                <Alert color="warning" role="status">
+                                    {getLocalDraftSaveErrorMessage(
+                                        localDraft.saveState.reason,
+                                    )}
+                                </Alert>
+                            ) : null}
+                            <Row
+                                spacing={2}
+                                justifyContent="end"
+                                className="flex-wrap gap-y-2"
+                            >
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => handleOpenChange(false)}
+                                    disabled={isSubmitting}
+                                    size="lg"
+                                >
+                                    Odustani
+                                </Button>
+                                <Button
+                                    variant="solid"
+                                    aria-busy={isSubmitting}
+                                    onClick={
+                                        requiresRefresh
+                                            ? refreshTasks
+                                            : handleConfirm
+                                    }
+                                    disabled={
+                                        isSubmitting ||
+                                        (attachImagesRequired &&
+                                            uploadItems.length === 0) ||
+                                        notesRequiredMissing
+                                    }
+                                    loading={isSubmitting}
+                                    data-operation-draft-focus-target={
+                                        operationId
+                                    }
+                                    size="lg"
+                                >
+                                    {errorMessage && requiresRefresh
+                                        ? 'Osvježi zadatke'
+                                        : hasFailedUploads || errorMessage
+                                          ? 'Pokušaj ponovno'
+                                          : 'Potvrdi'}
+                                </Button>
+                            </Row>
+                            <Typography
+                                aria-live="polite"
+                                className="text-center text-muted-foreground"
+                                data-operation-draft-status
+                                level="body3"
+                            >
+                                {localDraft.saveState.kind === 'error' ||
+                                localDraft.notice === 'storage_unavailable'
+                                    ? 'Unos trenutačno nije spremljen na ovom uređaju. Radnja još nije dovršena.'
+                                    : localDraft.saveState.kind === 'saving'
+                                      ? 'Spremam lokalnu skicu…'
+                                      : localDraft.saveState.kind === 'saved'
+                                        ? 'Spremljeno samo na ovom uređaju — radnja još nije dovršena.'
+                                        : 'Napomena i fotografije spremaju se samo na ovom uređaju. Radnja nije dovršena dok je ne potvrdiš.'}
+                            </Typography>
+                        </>
+                    ) : null}
+                </Stack>
+            )}
         </Modal>
     );
 }

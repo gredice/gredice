@@ -1,11 +1,12 @@
 @import "tailwindcss";
+@import "@gredice/ui/utilities.css";
 @config "../tailwind.config.ts";
 @source "../../../packages/ui/src";
 
 @layer base {
     :root {
         interpolate-size: allow-keywords;
-        --background: 36 43% 93%;
+        --background: 28 76.5% 98%;
         --foreground: 32 22% 10%;
 
         --muted: 35 38% 88%;
@@ -45,6 +46,12 @@
 
         --bg-selection: #8b5e34;
         --text-selection: #fff;
+
+        --farm-mobile-navigation-height: 3.5rem;
+        --farm-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+        --farm-safe-area-left: env(safe-area-inset-left, 0px);
+        --farm-safe-area-right: env(safe-area-inset-right, 0px);
+        --farm-safe-area-top: env(safe-area-inset-top, 0px);
     }
 
     .dark {
@@ -104,6 +111,12 @@
         font-feature-settings:
             "rlig" 1,
             "calt" 1;
+    }
+
+    @media (max-width: 767px) {
+        html {
+            font-size: 17px;
+        }
     }
 
     button,

@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     clearSandboxField,
     createAccount,
+    createEntity,
     createEvent,
     createGardenStack,
     createNotification,
@@ -13,9 +14,13 @@ import {
     getRaisedBedFieldsWithEvents,
     getSandboxGardenDeletionCandidate,
     knownEvents,
+    listGardenPreviewBlobDeletions,
+    replaceGardenPreview,
     sowSandboxField,
     storage,
+    updateGarden,
     updateGardenStack,
+    upsertEntityType,
 } from '@gredice/storage';
 import { and, eq, inArray, like, or } from 'drizzle-orm';
 import {
@@ -26,6 +31,8 @@ import {
     notifications,
     operations,
     raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBedSensors,
     raisedBeds,
     shoppingCartItems,
@@ -73,18 +80,41 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
     await ensureFarmId();
     const accountId = await createAccount();
     const gardenId = await createSandboxGarden({ accountId });
+    await updateGarden({ id: gardenId, isPublic: true });
+    const previewPathname = `garden-previews/${gardenId.toString()}/sandbox.webp`;
+    const capturedAt = new Date();
+    await replaceGardenPreview({
+        byteSize: 100,
+        captureRequestId: `sandbox-delete-${gardenId.toString()}`,
+        captureRequestedAt: capturedAt,
+        capturedAt,
+        contentType: 'image/webp',
+        gardenId,
+        height: 630,
+        imageUrl: `https://example.test/${previewPathname}`,
+        pathname: previewPathname,
+        rendererVersion: 'garden-preview-v1',
+        sourceRevision: 'a'.repeat(64),
+        width: 1200,
+    });
     const blockId = await createTestBlock(gardenId, 'sandbox-delete-block');
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const [plantSortId] = await createSandboxPlantSorts(1);
 
     await createGardenStack(gardenId, { x: 0, y: 0 });
     await updateGardenStack(gardenId, { x: 0, y: 0, blocks: [blockId] });
     await sowSandboxField({
         raisedBedId,
         positionIndex: 4,
-        plantSortId: 337,
+        plantSortId,
         sowDate: daysAgo(30),
         status: 'sprouted',
     });
+    const [sandboxPlanting] = await storage()
+        .select({ id: raisedBedPlantings.id })
+        .from(raisedBedPlantings)
+        .where(eq(raisedBedPlantings.raisedBedId, raisedBedId));
+    assert.ok(sandboxPlanting);
     await createEvent(
         knownEvents.raisedBeds.createdV1(raisedBedId.toString(), {
             blockId,
@@ -154,6 +184,14 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
     assert.ok(attempts > 1, 'test should exercise retry continuation');
     assert.equal(await getGarden(gardenId), null);
     assert.equal(await getSandboxGardenDeletionCandidate(gardenId), undefined);
+    assert.equal(
+        (
+            await listGardenPreviewBlobDeletions({
+                now: new Date('2100-07-11T12:00:00.000Z'),
+            })
+        ).find((row) => row.pathname === previewPathname)?.reason,
+        'garden_deleted',
+    );
 
     const gardenRows = await storage()
         .select({ id: gardens.id })
@@ -184,6 +222,18 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         .from(raisedBedFields)
         .where(eq(raisedBedFields.raisedBedId, raisedBedId));
     assert.equal(fieldRows.length, 0);
+
+    const plantingRows = await storage()
+        .select({ id: raisedBedPlantings.id })
+        .from(raisedBedPlantings)
+        .where(eq(raisedBedPlantings.raisedBedId, raisedBedId));
+    assert.equal(plantingRows.length, 0);
+
+    const plantingMembershipRows = await storage()
+        .select({ id: raisedBedPlantingFields.id })
+        .from(raisedBedPlantingFields)
+        .where(eq(raisedBedPlantingFields.plantingId, sandboxPlanting.id));
+    assert.equal(plantingMembershipRows.length, 0);
 
     const sensorRows = await storage()
         .select({ id: raisedBedSensors.id })
@@ -255,6 +305,7 @@ test('sowSandboxField backdates the plant so it renders already grown', async ()
     const gardenId = await createSandboxGarden({ accountId });
     const blockId = await createTestBlock(gardenId, 'sandbox-block-1');
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const [plantSortId] = await createSandboxPlantSorts(1);
 
     const ageDays = 80;
     const sowDate = new Date();
@@ -263,7 +314,7 @@ test('sowSandboxField backdates the plant so it renders already grown', async ()
     await sowSandboxField({
         raisedBedId,
         positionIndex: 3,
-        plantSortId: 337,
+        plantSortId,
         sowDate,
         status: 'ready',
     });
@@ -271,7 +322,7 @@ test('sowSandboxField backdates the plant so it renders already grown', async ()
     const fields = await getRaisedBedFieldsWithEvents(raisedBedId);
     const field = fields.find((candidate) => candidate.positionIndex === 3);
     assert.ok(field, 'sown field should exist');
-    assert.equal(field?.plantSortId, 337);
+    assert.equal(field?.plantSortId, plantSortId);
     // A render-eligible status so generated plants are drawn.
     assert.equal(field?.plantStatus, 'ready');
     assert.ok(field?.plantSowDate, 'plantSowDate should be set');
@@ -289,6 +340,13 @@ function daysAgo(days: number) {
     return date;
 }
 
+async function createSandboxPlantSorts(count: number) {
+    await upsertEntityType({ name: 'plantSort', label: 'Plant sort' });
+    return Promise.all(
+        Array.from({ length: count }, () => createEntity('plantSort')),
+    );
+}
+
 test('replanting a sandbox field at an older age replaces the previous plant', async () => {
     createTestDb();
     await ensureFarmId();
@@ -296,13 +354,15 @@ test('replanting a sandbox field at an older age replaces the previous plant', a
     const gardenId = await createSandboxGarden({ accountId });
     const blockId = await createTestBlock(gardenId, 'sandbox-block-2');
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const [youngPlantSortId, olderPlantSortId] =
+        await createSandboxPlantSorts(2);
 
     // First a young plant, then replant the same position with an OLDER plant
     // whose backdated sow date predates the first plant's events.
     await sowSandboxField({
         raisedBedId,
         positionIndex: 5,
-        plantSortId: 230,
+        plantSortId: youngPlantSortId,
         sowDate: daysAgo(14),
         status: 'sprouted',
     });
@@ -310,7 +370,7 @@ test('replanting a sandbox field at an older age replaces the previous plant', a
     await sowSandboxField({
         raisedBedId,
         positionIndex: 5,
-        plantSortId: 337,
+        plantSortId: olderPlantSortId,
         sowDate: olderSowDate,
         status: 'ready',
     });
@@ -326,7 +386,7 @@ test('replanting a sandbox field at an older age replaces the previous plant', a
     );
     const field = positionFields[0];
     // The newest plant wins, even though its sow date is further in the past.
-    assert.equal(field.plantSortId, 337);
+    assert.equal(field.plantSortId, olderPlantSortId);
     assert.equal(field.plantStatus, 'ready');
     const sownAt = new Date(field.plantSowDate ?? 0).getTime();
     assert.ok(
@@ -342,11 +402,12 @@ test('clearSandboxField empties the field position', async () => {
     const gardenId = await createSandboxGarden({ accountId });
     const blockId = await createTestBlock(gardenId, 'sandbox-block-3');
     const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const [plantSortId] = await createSandboxPlantSorts(1);
 
     await sowSandboxField({
         raisedBedId,
         positionIndex: 2,
-        plantSortId: 230,
+        plantSortId,
         sowDate: daysAgo(40),
         status: 'ready',
     });
@@ -357,4 +418,9 @@ test('clearSandboxField empties the field position', async () => {
         !fields.some((candidate) => candidate.positionIndex === 2),
         'cleared position should have no plant',
     );
+    const plantingRows = await storage()
+        .select({ id: raisedBedPlantings.id })
+        .from(raisedBedPlantings)
+        .where(eq(raisedBedPlantings.raisedBedId, raisedBedId));
+    assert.equal(plantingRows.length, 0);
 });

@@ -3,7 +3,7 @@ import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Fence, Security, User } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -78,57 +78,63 @@ export default async function UsersPage({
 
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Korisnicko ime</Table.Head>
-                                <Table.Head>Datum kreiranja</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {filteredUsers.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={2}>
-                                        <NoDataPlaceholder>
-                                            Nema korisnika
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
-                            {filteredUsers.map((user) => {
-                                const role = getUserRoleMeta(user.role);
+                    <div className="min-w-0">
+                        {filteredUsers.length === 0 ? (
+                            <div className="p-4">
+                                <NoDataPlaceholder>
+                                    Nema korisnika
+                                </NoDataPlaceholder>
+                            </div>
+                        ) : (
+                            <ul className="divide-y">
+                                {filteredUsers.map((user) => {
+                                    const role = getUserRoleMeta(user.role);
 
-                                return (
-                                    <Table.Row key={user.id}>
-                                        <Table.Cell>
-                                            <div className="flex items-center gap-2">
-                                                <span
-                                                    title={role.label}
-                                                    role="img"
-                                                    aria-label={role.label}
-                                                    className="text-muted-foreground"
+                                    return (
+                                        <li
+                                            key={user.id}
+                                            className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <span
+                                                        title={role.label}
+                                                        role="img"
+                                                        aria-label={role.label}
+                                                        className="shrink-0 text-muted-foreground"
+                                                    >
+                                                        {role.icon}
+                                                    </span>
+                                                    <Link
+                                                        href={KnownPages.User(
+                                                            user.id,
+                                                        )}
+                                                        className="min-w-0 truncate text-sm font-medium text-primary underline-offset-4 hover:underline"
+                                                    >
+                                                        {user.userName}
+                                                    </Link>
+                                                </div>
+                                                <Typography
+                                                    component="span"
+                                                    level="body3"
+                                                    className="pl-7 text-muted-foreground sm:pl-0 sm:text-right"
                                                 >
-                                                    {role.icon}
-                                                </span>
-                                                <Link
-                                                    href={KnownPages.User(
-                                                        user.id,
-                                                    )}
-                                                >
-                                                    {user.userName}
-                                                </Link>
+                                                    Kreiran:{' '}
+                                                    <span className="whitespace-nowrap">
+                                                        <LocalDateTime
+                                                            time={false}
+                                                        >
+                                                            {user.createdAt}
+                                                        </LocalDateTime>
+                                                    </span>
+                                                </Typography>
                                             </div>
-                                        </Table.Cell>
-                                        <Table.Cell>
-                                            <LocalDateTime time={false}>
-                                                {user.createdAt}
-                                            </LocalDateTime>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                );
-                            })}
-                        </Table.Body>
-                    </Table>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
                 </CardOverflow>
             </Card>
         </Stack>

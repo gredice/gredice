@@ -8,14 +8,17 @@ Gredice publishes canonical public information at https://www.gredice.com. Prefe
 
 - [Home](https://www.gredice.com/): Platform overview and main navigation.
 - [Plants](https://www.gredice.com/biljke): Plant catalog and growing references.
+- [Seeds](https://www.gredice.com/sjeme): Searchable seed package catalog with plant, variety, brand, and package details.
+- [Seed brands](https://www.gredice.com/sjeme/brendovi): Seed brand directory and their cataloged seeds.
 - [Blocks](https://www.gredice.com/blokovi): Raised-bed block catalog and layouts.
 - [Operations](https://www.gredice.com/radnje): Gardening operations and activity guidance.
-- [Recipes](https://www.gredice.com/recepti): Recipe content built from garden produce.
 - [News](https://www.gredice.com/novosti): Blog posts and changelog updates.
 - [What's new](https://www.gredice.com/novosti/sto-je-novo): Timeline of published product updates.
-- [Delivery](https://www.gredice.com/dostava): Delivery options and service information.
+- [Zagreb vegetable delivery](https://www.gredice.com/dostava-povrca-zagreb): How Gredice garden harvest and delivery work for Zagreb customers.
+- [Delivery terms](https://www.gredice.com/dostava): Delivery options, zones, pricing, pickup, and scheduling information.
 - [Pricing](https://www.gredice.com/cjenik): Current public pricing and plan information.
 - [Harvest quality and safety](https://www.gredice.com/kvaliteta-i-sigurnost-uroda): Public overview of harvest hygiene, traceability, and handling boundaries.
+- [MCP for AI assistants](https://www.gredice.com/mcp): Connect compatible AI assistants to Gredice public knowledge and authorized garden tools.
 
 ## Company and Support
 

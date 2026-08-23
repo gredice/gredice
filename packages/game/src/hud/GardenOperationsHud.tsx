@@ -5,23 +5,25 @@ import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Approved,
     Calendar,
-    Close,
     Error as ErrorIcon,
     History,
     Hourglass,
     Inbox,
+    Info,
     ListTodo,
     MailCheck,
     Navigate,
     ShoppingCart,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
+import { Markdown } from '@gredice/ui/Markdown';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Popper } from '@gredice/ui/Popper';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@gredice/ui/Tooltip';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import {
@@ -30,9 +32,13 @@ import {
     useCallback,
     useMemo,
     useRef,
+    useState,
 } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
-import { SegmentedProgress } from '../controls/components/SegmentedProgress';
+import {
+    getSowingGardenOperationStatus,
+    hasAssignedSowingUser,
+} from '../hooks/gardenOperationStatus';
 import {
     getDiaryCancelDisabledReason,
     isDiaryCancelTargetEligible,
@@ -44,7 +50,7 @@ import {
     useGardenOperations,
 } from '../hooks/useGardenOperations';
 import { useLiveTime } from '../hooks/useLiveTime';
-import { useOperations } from '../hooks/useOperations';
+import { useOperationDefinitions } from '../hooks/useOperations';
 import { useSorts } from '../hooks/usePlantSorts';
 import {
     type DiaryRescheduleTarget,
@@ -55,13 +61,15 @@ import {
     type ShoppingCartItemData,
     useShoppingCart,
 } from '../hooks/useShoppingCart';
-import { ScrollView } from '../shared-ui/ScrollView';
+import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import { buildGardenOperationDiaryTarget } from './gardenOperationDiaryTargets';
+import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
 type OperationData = NonNullable<
-    ReturnType<typeof useOperations>['data']
+    ReturnType<typeof useOperationDefinitions>['data']
 >[number];
 type PlantSortData = NonNullable<ReturnType<typeof useSorts>['data']>[number];
 type CurrentGardenData = NonNullable<
@@ -69,6 +77,15 @@ type CurrentGardenData = NonNullable<
 >;
 type RaisedBedData = CurrentGardenData['raisedBeds'][number];
 type RaisedBedFieldData = RaisedBedData['fields'][number];
+type GardenOperationTargetGarden = {
+    raisedBeds: {
+        fields: {
+            id: number;
+            plantSortId?: number | null;
+            positionIndex: number;
+        }[];
+    }[];
+};
 type GardenOperationHudItem = GardenOperationItem;
 type OperationTargetDetails =
     | {
@@ -87,8 +104,15 @@ type SowingPlantLifecycleEntry = {
     assignedAt?: string | Date | null;
     assignedUserId?: string | null;
     assignedUserIds?: string[] | null;
+    cancellationReason?: string | null;
+    cancelReason?: string | null;
+    blockedAt?: string | Date | null;
+    blockImageUrls?: string[] | null;
+    blockNote?: string | null;
+    blockReasonLabel?: string | null;
     createdAt?: string | Date | null;
     endedAt?: string | Date | null;
+    endedEventId?: number | null;
     plantPlaceEventId?: number | null;
     plantScheduledDate?: string | Date | null;
     plantSowDate?: string | Date | null;
@@ -115,41 +139,41 @@ const uiPipeline: GardenOperationStatus[] = [
 ];
 
 const terminalFailureStatuses = new Set<GardenOperationStatus>([
+    'blocked',
     'failed',
     'canceled',
 ]);
 
 const hiddenFromActive = new Set<GardenOperationStatus>([
     'completed',
+    'blocked',
     'failed',
     'canceled',
 ]);
 const nonEditableStatuses = new Set<GardenOperationStatus>([
     'completed',
+    'blocked',
     'canceled',
 ]);
 const cartOperationEntityType = 'operation' as const;
 export const cartPlantSortEntityType = 'plantSort' as const;
 const plantingOperationLabel = 'Sadnja';
 const plantSortFallbackLabel = 'Sorta';
-const sowingCompletedStatuses = new Set([
-    'sowed',
-    'sprouted',
-    'firstFlowers',
-    'firstFruitSet',
-    'ready',
-    'harvested',
-    'notSprouted',
-    'died',
-    'removed',
-]);
-
 type StatusConfig = {
     label: string;
     icon: ComponentType<{ className?: string }>;
     colorClass: string;
 };
 type OperationDisplayStatus = GardenOperationStatus | 'scheduled';
+type OperationStatusProgressStep = {
+    status: OperationDisplayStatus;
+    date: string | null;
+    reached: boolean;
+    current: boolean;
+    pending: boolean;
+    failed?: boolean;
+    skipped?: boolean;
+};
 
 const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
     new: {
@@ -177,6 +201,11 @@ const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
         icon: Approved,
         colorClass: 'text-green-600',
     },
+    blocked: {
+        label: 'Blokirano',
+        icon: ErrorIcon,
+        colorClass: 'text-amber-700',
+    },
     failed: {
         label: 'Neuspjelo',
         icon: ErrorIcon,
@@ -184,8 +213,8 @@ const statusConfig: Record<GardenOperationStatus, StatusConfig> = {
     },
     canceled: {
         label: 'Otkazano',
-        icon: Close,
-        colorClass: 'text-neutral-500',
+        icon: ErrorIcon,
+        colorClass: 'text-red-600',
     },
 };
 const scheduledStatusConfig: StatusConfig = {
@@ -194,6 +223,12 @@ const scheduledStatusConfig: StatusConfig = {
     colorClass: 'text-indigo-600',
 };
 
+function getDisplayStatusConfig(status: OperationDisplayStatus) {
+    return status === 'scheduled'
+        ? scheduledStatusConfig
+        : statusConfig[status];
+}
+
 function formatDate(value?: string | null) {
     if (!value) return null;
     return new Date(value).toLocaleDateString('hr-HR', {
@@ -201,20 +236,6 @@ function formatDate(value?: string | null) {
         month: 'long',
         year: 'numeric',
     });
-}
-
-function formatCompactDate(value?: string | null) {
-    if (!value) return null;
-    return new Date(value).toLocaleDateString('hr-HR', {
-        day: 'numeric',
-        month: 'numeric',
-        year: 'numeric',
-    });
-}
-
-function formatDateTime(value?: string | null) {
-    if (!value) return null;
-    return new Date(value).toLocaleString('hr-HR');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -317,43 +338,8 @@ function getSowingEntryCompletedAt(entry: SowingPlantLifecycleEntry) {
     );
 }
 
-function hasAssignedSowingUser(entry: SowingPlantLifecycleEntry) {
-    return (
-        (entry.assignedUserIds?.length ?? 0) > 0 ||
-        Boolean(entry.assignedUserId)
-    );
-}
-
-function getSowingOperationStatus(
-    entry: SowingPlantLifecycleEntry,
-): GardenOperationStatus | null {
-    const status = entry.plantStatus ?? 'new';
-
-    if (status === 'deleted' || status === 'canceled') {
-        return 'canceled';
-    }
-
-    if (sowingCompletedStatuses.has(status)) {
-        return 'completed';
-    }
-
-    if (status === 'pendingVerification') {
-        return 'confirmed';
-    }
-
-    if (hasAssignedSowingUser(entry)) {
-        return 'assigned';
-    }
-
-    if (status === 'planned' || entry.plantScheduledDate) {
-        return 'planned';
-    }
-
-    if (status === 'new') {
-        return 'new';
-    }
-
-    return null;
+function getSowingEntryCancellationReason(entry: SowingPlantLifecycleEntry) {
+    return entry.cancellationReason ?? entry.cancelReason ?? null;
 }
 
 function buildSowingStatusHistory(
@@ -423,6 +409,16 @@ function buildSowingStatusHistory(
         });
     }
 
+    if (status === 'blocked') {
+        history.push({
+            status: 'blocked',
+            changedAt:
+                toIsoString(entry.blockedAt) ??
+                toIsoString(entry.updatedAt) ??
+                createdAt,
+        });
+    }
+
     return history;
 }
 
@@ -450,7 +446,7 @@ export function buildSowingOperationItems(
                     return [];
                 }
 
-                const status = getSowingOperationStatus(entry);
+                const status = getSowingGardenOperationStatus(entry);
                 if (!status) {
                     return [];
                 }
@@ -472,6 +468,10 @@ export function buildSowingOperationItems(
                     {
                         id: -sourceId,
                         entityId: entry.plantSortId,
+                        taskVersionEventId:
+                            typeof entry.endedEventId === 'number'
+                                ? entry.endedEventId
+                                : null,
                         entityTypeName: cartPlantSortEntityType,
                         raisedBedId: raisedBed.id,
                         raisedBedFieldId: field.id,
@@ -485,6 +485,27 @@ export function buildSowingOperationItems(
                                 : null,
                         verifiedAt: status === 'completed' ? completedAt : null,
                         canceledAt,
+                        cancellationReason:
+                            status === 'canceled'
+                                ? getSowingEntryCancellationReason(entry)
+                                : null,
+                        blockedAt:
+                            status === 'blocked'
+                                ? (toIsoString(entry.blockedAt) ??
+                                  toIsoString(entry.updatedAt))
+                                : null,
+                        blockReasonLabel:
+                            status === 'blocked'
+                                ? (entry.blockReasonLabel ?? null)
+                                : null,
+                        blockNote:
+                            status === 'blocked'
+                                ? (entry.blockNote ?? null)
+                                : null,
+                        blockImageUrls:
+                            status === 'blocked'
+                                ? (entry.blockImageUrls ?? [])
+                                : [],
                         imageUrls: [],
                         completionNotes: null,
                         targetLabel: formatRaisedBedTargetLabel(
@@ -549,7 +570,7 @@ function getOperationTargetDetails(
 
 function getOperationFieldPositionIndex(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     if (operation.raisedBedFieldId == null) {
         return undefined;
@@ -569,7 +590,7 @@ function getOperationFieldPositionIndex(
 
 function getOperationField(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     if (operation.raisedBedFieldId == null) {
         return null;
@@ -589,83 +610,33 @@ function getOperationField(
 
 function getOperationFieldPlantSortId(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ) {
     return getOperationField(operation, garden)?.plantSortId ?? null;
 }
 
 export function getGardenOperationRescheduleTarget(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ): DiaryRescheduleTarget | null {
     if (isFinishedOperation(operation)) {
         return null;
     }
 
     const positionIndex = getOperationFieldPositionIndex(operation, garden);
-
-    if (operation.entityTypeName === cartOperationEntityType) {
-        return {
-            type: 'operation',
-            operationId: operation.id,
-            raisedBedId: operation.raisedBedId,
-            raisedBedFieldId: operation.raisedBedFieldId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    if (
-        operation.entityTypeName === cartPlantSortEntityType &&
-        operation.raisedBedId &&
-        typeof positionIndex === 'number'
-    ) {
-        return {
-            type: 'raisedBedFieldPlant',
-            raisedBedId: operation.raisedBedId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    return null;
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
 }
 
 export function getGardenOperationCancelTarget(
     operation: GardenOperationHudItem,
-    garden: CurrentGardenData | null | undefined,
+    garden: GardenOperationTargetGarden | null | undefined,
 ): DiaryRescheduleTarget | null {
     if (isFinishedOperation(operation) || !operation.scheduledDate) {
         return null;
     }
 
     const positionIndex = getOperationFieldPositionIndex(operation, garden);
-
-    if (operation.entityTypeName === cartOperationEntityType) {
-        return {
-            type: 'operation',
-            operationId: operation.id,
-            raisedBedId: operation.raisedBedId,
-            raisedBedFieldId: operation.raisedBedFieldId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    if (
-        operation.entityTypeName === cartPlantSortEntityType &&
-        operation.raisedBedId &&
-        typeof positionIndex === 'number'
-    ) {
-        return {
-            type: 'raisedBedFieldPlant',
-            raisedBedId: operation.raisedBedId,
-            positionIndex,
-            scheduledDate: operation.scheduledDate,
-        };
-    }
-
-    return null;
+    return buildGardenOperationDiaryTarget(operation, positionIndex);
 }
 
 function getOperationDisplayStatus(
@@ -707,6 +678,7 @@ function getOperationDisplayStatusDate(
     return (
         matchingHistoryDate ??
         operation.verifiedAt ??
+        operation.blockedAt ??
         operation.completedAt ??
         operation.canceledAt ??
         operation.scheduledAt ??
@@ -808,6 +780,10 @@ function isFinishedOperation(operation: GardenOperationHudItem) {
     );
 }
 
+function getOperationTaskDisplayDate(operation: GardenOperationHudItem) {
+    return operation.completedAt ?? operation.scheduledDate;
+}
+
 function OperationScheduleText({ label }: { label: string }) {
     return (
         <Row spacing={1} className="min-w-0 text-muted-foreground">
@@ -830,24 +806,24 @@ export function GardenOperationScheduleAction({
     operation: GardenOperationHudItem;
     referenceDate: Date;
 }) {
-    const scheduledDateLabel = formatDate(operation.scheduledDate);
+    const taskDateLabel = formatDate(getOperationTaskDisplayDate(operation));
 
     if (isFinishedOperation(operation)) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
     if (!garden) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
     const target = getGardenOperationRescheduleTarget(operation, garden);
     if (!target) {
-        return scheduledDateLabel ? (
-            <OperationScheduleText label={scheduledDateLabel} />
+        return taskDateLabel ? (
+            <OperationScheduleText label={taskDateLabel} />
         ) : null;
     }
 
@@ -860,7 +836,7 @@ export function GardenOperationScheduleAction({
             entryName={entryName}
             gardenId={garden.id}
             target={target}
-            triggerLabel={scheduledDateLabel ?? 'Zakaži'}
+            triggerLabel={taskDateLabel ?? 'Zakaži'}
         />
     );
 }
@@ -910,21 +886,252 @@ function StatusBadge({
     size?: 'sm' | 'md';
     className?: string;
 }) {
-    const config =
-        status === 'scheduled' ? scheduledStatusConfig : statusConfig[status];
+    const config = getDisplayStatusConfig(status);
     const Icon = config.icon;
     const iconSize = size === 'md' ? 'size-4' : 'size-3.5';
     const textLevel = size === 'md' ? 'body2' : 'body3';
     return (
-        <Row
-            spacing={1}
-            className={cx('min-w-0 max-w-full', config.colorClass, className)}
+        <span
+            className={cx(
+                'flex min-w-0 max-w-full flex-row items-center gap-1',
+                config.colorClass,
+                className,
+            )}
         >
             <Icon className={cx(iconSize, 'shrink-0')} />
-            <Typography level={textLevel} semiBold noWrap className="min-w-0">
+            <Typography
+                level={textLevel}
+                semiBold
+                noWrap
+                component="span"
+                className="min-w-0"
+            >
                 {config.label}
             </Typography>
-        </Row>
+        </span>
+    );
+}
+
+function buildStatusProgressSteps(
+    operation: GardenOperationHudItem,
+    displayStatus: OperationDisplayStatus,
+): OperationStatusProgressStep[] {
+    if (displayStatus === 'scheduled') {
+        return [
+            {
+                status: 'scheduled',
+                date: operation.scheduledDate ?? null,
+                reached: true,
+                current: true,
+                pending: false,
+            },
+        ];
+    }
+
+    const historyByStatus = new Map(
+        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
+    );
+    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
+    const displayStatusDate =
+        getOperationDisplayStatusDate(operation, displayStatus) ?? null;
+
+    const hasReached = (status: GardenOperationStatus) => {
+        if (historyByStatus.has(status)) return true;
+        const idx = uiPipeline.indexOf(status);
+        if (idx === -1) return false;
+        return uiPipeline
+            .slice(idx + 1)
+            .some((later) => historyByStatus.has(later));
+    };
+
+    const currentIdx = uiPipeline.indexOf(operation.status);
+    const pipelineToShow = uiPipeline.filter((status, idx) => {
+        if (hasReached(status)) return true;
+        if (isTerminalFailure) return true;
+        if (currentIdx >= 0 && idx >= currentIdx) return true;
+        return false;
+    });
+    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
+
+    const steps: OperationStatusProgressStep[] = pipelineToShow.map(
+        (status, idx) => {
+            const reached = hasReached(status);
+            const current = !isTerminalFailure && status === operation.status;
+
+            return {
+                status,
+                date:
+                    historyByStatus.get(status) ??
+                    (current ? displayStatusDate : null),
+                reached,
+                current,
+                pending:
+                    !isTerminalFailure && !reached && idx === firstPendingIdx,
+                skipped: isTerminalFailure && !reached,
+            };
+        },
+    );
+
+    if (isTerminalFailure) {
+        steps.push({
+            status: operation.status,
+            date:
+                historyByStatus.get(operation.status) ??
+                operation.blockedAt ??
+                operation.canceledAt ??
+                operation.completedAt ??
+                displayStatusDate,
+            reached: true,
+            current: true,
+            pending: false,
+            failed: true,
+        });
+    }
+
+    return steps;
+}
+
+function OperationStatusProgressIndicator({
+    steps,
+    label,
+}: {
+    steps: OperationStatusProgressStep[];
+    label?: string;
+}) {
+    const dots = steps.map((step) => (
+        <span
+            key={step.status}
+            className={cx(
+                'size-1.5 rounded-full border border-tertiary bg-background',
+                step.reached && !step.failed && 'border-green-600 bg-green-500',
+                step.pending &&
+                    'animate-pulse border-green-500 bg-green-500/20',
+                step.skipped && 'border-muted-foreground/30 bg-muted',
+                step.failed &&
+                    step.status === 'blocked' &&
+                    'border-amber-600 bg-amber-500/20',
+                step.failed &&
+                    step.status !== 'blocked' &&
+                    'border-red-500 bg-red-500/20',
+                step.current && 'size-2.5 border-2',
+            )}
+        />
+    ));
+
+    if (label) {
+        return (
+            <span
+                aria-label={label}
+                className="flex shrink-0 items-center gap-0.5"
+                data-operation-status-progress
+                role="img"
+            >
+                {dots}
+            </span>
+        );
+    }
+
+    return (
+        <span
+            aria-hidden
+            className="flex shrink-0 items-center gap-0.5"
+            data-operation-status-progress
+        >
+            {dots}
+        </span>
+    );
+}
+
+function OperationStatusTooltipContent({
+    steps,
+}: {
+    steps: OperationStatusProgressStep[];
+}) {
+    return (
+        <Stack spacing={1} className="min-w-52">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                Statusi radnje
+            </Typography>
+            <Stack spacing={0.75}>
+                {steps.map((step) => {
+                    const config = getDisplayStatusConfig(step.status);
+                    const Icon = config.icon;
+                    const dateLabel = formatDate(step.date);
+                    const fallbackLabel = step.current
+                        ? 'Trenutno'
+                        : step.skipped
+                          ? 'Preskočeno'
+                          : 'Čeka';
+
+                    return (
+                        <Row
+                            key={step.status}
+                            spacing={2}
+                            justifyContent="space-between"
+                            className="min-w-0"
+                        >
+                            <span
+                                className={cx(
+                                    'flex min-w-0 items-center gap-1',
+                                    config.colorClass,
+                                )}
+                            >
+                                <Icon className="size-3.5 shrink-0" />
+                                <Typography
+                                    level="body3"
+                                    component="span"
+                                    noWrap
+                                    className="min-w-0 text-popover-foreground"
+                                >
+                                    {config.label}
+                                </Typography>
+                            </span>
+                            <Typography
+                                level="body3"
+                                component="span"
+                                noWrap
+                                className="shrink-0 text-popover-foreground/75"
+                            >
+                                {dateLabel ?? fallbackLabel}
+                            </Typography>
+                        </Row>
+                    );
+                })}
+            </Stack>
+        </Stack>
+    );
+}
+
+function OperationTerminalReasonTooltipContent({
+    title,
+    reason,
+}: {
+    title: string;
+    reason: string;
+}) {
+    return (
+        <Stack spacing={0.75} className="max-w-64">
+            <Typography
+                level="body3"
+                semiBold
+                component="span"
+                className="text-popover-foreground"
+            >
+                {title}
+            </Typography>
+            <Typography
+                level="body3"
+                component="span"
+                className="whitespace-normal text-popover-foreground/80"
+            >
+                {reason}
+            </Typography>
+        </Stack>
     );
 }
 
@@ -935,19 +1142,127 @@ function OperationStatusSummary({
     operation: GardenOperationHudItem;
     status: OperationDisplayStatus;
 }) {
-    const statusDate = formatCompactDate(
-        getOperationDisplayStatusDate(operation, status),
+    const config = getDisplayStatusConfig(status);
+    const steps = useMemo(
+        () => buildStatusProgressSteps(operation, status),
+        [operation, status],
     );
+    const terminalReason =
+        status === 'canceled'
+            ? operation.cancellationReason?.trim()
+            : status === 'blocked'
+              ? [operation.blockReasonLabel, operation.blockNote]
+                    .map((value) => value?.trim())
+                    .filter(Boolean)
+                    .join(': ')
+              : undefined;
+    const terminalReasonTitle =
+        status === 'blocked' ? 'Razlog prepreke' : 'Razlog otkazivanja';
+    const hasTerminalReason = Boolean(terminalReason);
+    const isTerminalFailureStatus =
+        status !== 'scheduled' && terminalFailureStatuses.has(status);
+    const showProgressIndicator =
+        !hasTerminalReason &&
+        status !== 'confirmed' &&
+        status !== 'completed' &&
+        !isTerminalFailureStatus;
+    const progressLabel =
+        showProgressIndicator && status !== 'scheduled'
+            ? 'Tijek radnje'
+            : undefined;
+    const tooltipIntentRef = useRef(false);
+    const [tooltipOpen, setTooltipOpen] = useState(false);
+    const handleTooltipOpenChange = useCallback((nextOpen: boolean) => {
+        if (!nextOpen) {
+            setTooltipOpen(false);
+            return;
+        }
+
+        if (tooltipIntentRef.current) {
+            setTooltipOpen(true);
+        }
+    }, []);
+    const clearTooltipIntent = useCallback(() => {
+        tooltipIntentRef.current = false;
+        setTooltipOpen(false);
+    }, []);
 
     return (
-        <Stack spacing={0.25} className="shrink-0 items-end">
-            <StatusBadge status={status} />
-            {statusDate && (
-                <Typography level="body3" secondary noWrap>
-                    {statusDate}
-                </Typography>
-            )}
-        </Stack>
+        <Tooltip
+            delayDuration={100}
+            onOpenChange={handleTooltipOpenChange}
+            open={tooltipOpen}
+        >
+            <TooltipTrigger asChild>
+                <button
+                    type="button"
+                    aria-label={
+                        hasTerminalReason
+                            ? `Status radnje: ${config.label}. ${terminalReasonTitle}`
+                            : `Status radnje: ${config.label}`
+                    }
+                    className="flex max-w-full shrink-0 flex-col items-end rounded-md px-1 py-0.5 text-right transition hover:bg-muted/50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    onBlur={clearTooltipIntent}
+                    onClick={(event) => {
+                        event.preventDefault();
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                            clearTooltipIntent();
+                            return;
+                        }
+
+                        if (event.key !== 'Enter' && event.key !== ' ') {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        tooltipIntentRef.current = true;
+                        setTooltipOpen((currentOpen) => !currentOpen);
+                    }}
+                    onPointerDown={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerEnter={() => {
+                        tooltipIntentRef.current = true;
+                    }}
+                    onPointerLeave={clearTooltipIntent}
+                >
+                    <span className="flex min-w-0 max-w-full items-center justify-end gap-1.5">
+                        <StatusBadge status={status} className="justify-end" />
+                        {hasTerminalReason ? (
+                            <Info
+                                aria-hidden
+                                className={cx(
+                                    'size-3.5 shrink-0',
+                                    status === 'blocked'
+                                        ? 'text-amber-700'
+                                        : 'text-red-600',
+                                )}
+                                data-operation-terminal-reason
+                            />
+                        ) : showProgressIndicator ? (
+                            <OperationStatusProgressIndicator
+                                label={progressLabel}
+                                steps={steps}
+                            />
+                        ) : null}
+                    </span>
+                </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-72 p-2">
+                {hasTerminalReason && terminalReason ? (
+                    <OperationTerminalReasonTooltipContent
+                        reason={terminalReason}
+                        title={terminalReasonTitle}
+                    />
+                ) : (
+                    <OperationStatusTooltipContent steps={steps} />
+                )}
+            </TooltipContent>
+        </Tooltip>
     );
 }
 
@@ -985,130 +1300,6 @@ function useInfiniteScroll(fetchNextPage: () => void, hasNextPage?: boolean) {
     );
 }
 
-function buildSegments(operation: GardenOperationItem) {
-    const historyByStatus = new Map(
-        operation.statusHistory.map((entry) => [entry.status, entry.changedAt]),
-    );
-    const isTerminalFailure = terminalFailureStatuses.has(operation.status);
-
-    const hasReached = (status: GardenOperationStatus) => {
-        if (historyByStatus.has(status)) return true;
-        const idx = uiPipeline.indexOf(status);
-        if (idx === -1) return false;
-        return uiPipeline
-            .slice(idx + 1)
-            .some((later) => historyByStatus.has(later));
-    };
-
-    const currentIdx = uiPipeline.indexOf(operation.status);
-
-    const pipelineToShow = uiPipeline.filter((status, idx) => {
-        if (hasReached(status)) return true;
-        if (isTerminalFailure) return true;
-        if (currentIdx >= 0 && idx >= currentIdx) return true;
-        return false;
-    });
-
-    const firstPendingIdx = pipelineToShow.findIndex((s) => !hasReached(s));
-
-    const segments = pipelineToShow.map((status, idx) => {
-        const reached = hasReached(status);
-        const config = statusConfig[status];
-        const date = historyByStatus.get(status);
-        const tooltipParts = [config.label];
-        const dateStr = formatDateTime(date ?? null);
-        if (dateStr) tooltipParts.push(dateStr);
-        const title = tooltipParts.join(' — ');
-
-        if (reached) {
-            const StatusIcon = config.icon;
-            return {
-                value: 100,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title,
-            };
-        }
-
-        if (isTerminalFailure) {
-            const StatusIcon = config.icon;
-            return {
-                value: 0,
-                failed: true,
-                label: config.label,
-                icon: (
-                    <StatusIcon
-                        className={cx('size-3.5 shrink-0', config.colorClass)}
-                    />
-                ),
-                title: `${config.label} — preskočeno`,
-            };
-        }
-
-        const isNextPending = idx === firstPendingIdx;
-        const StatusIcon = config.icon;
-        return {
-            value: isNextPending ? 50 : 0,
-            indeterminate: isNextPending,
-            highlighted: isNextPending,
-            label: config.label,
-            icon: (
-                <StatusIcon
-                    className={cx('size-3.5 shrink-0', config.colorClass)}
-                />
-            ),
-            title,
-        };
-    });
-
-    if (isTerminalFailure) {
-        const terminalConfig = statusConfig[operation.status];
-        const StatusIcon = terminalConfig.icon;
-        segments.push({
-            value: 0,
-            failed: true,
-            label: terminalConfig.label,
-            icon: (
-                <StatusIcon
-                    className={cx(
-                        'size-3.5 shrink-0',
-                        terminalConfig.colorClass,
-                    )}
-                />
-            ),
-            title: `${terminalConfig.label} — ${
-                formatDateTime(
-                    operation.canceledAt ?? operation.completedAt ?? null,
-                ) ?? ''
-            }`.trim(),
-        });
-    }
-
-    return segments;
-}
-
-function OperationProgress({
-    operation,
-    className,
-}: {
-    operation: GardenOperationHudItem;
-    className?: string;
-}) {
-    const segments = useMemo(() => buildSegments(operation), [operation]);
-
-    return (
-        <SegmentedProgress
-            aria-label="Tijek radnje"
-            className={cx('w-full min-w-0 max-w-full pb-6', className)}
-            segments={segments}
-        />
-    );
-}
-
 function OperationSchedule({
     operation,
     cancelAction,
@@ -1118,14 +1309,19 @@ function OperationSchedule({
     cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
 }) {
-    const scheduledDate = formatDate(operation.scheduledDate);
+    const taskDate = formatDate(getOperationTaskDisplayDate(operation));
     const scheduleContent = scheduleAction ? (
-        <div className="w-fit max-w-full">{scheduleAction}</div>
-    ) : scheduledDate ? (
-        <Row spacing={1} className="w-fit max-w-full text-muted-foreground">
+        <div className="min-w-0 max-w-full overflow-hidden">
+            {scheduleAction}
+        </div>
+    ) : taskDate ? (
+        <Row
+            spacing={1}
+            className="min-w-0 max-w-full justify-end text-muted-foreground"
+        >
             <Calendar aria-hidden className="size-3.5 shrink-0" />
-            <Typography level="body3" secondary noWrap>
-                {scheduledDate}
+            <Typography level="body3" secondary noWrap className="min-w-0">
+                {taskDate}
             </Typography>
         </Row>
     ) : null;
@@ -1135,16 +1331,24 @@ function OperationSchedule({
     }
 
     return (
-        <Row spacing={1} className="w-fit max-w-full items-center">
+        <Row
+            spacing={0.5}
+            className="min-w-0 max-w-full flex-nowrap items-center justify-end overflow-hidden"
+        >
             {scheduleContent}
-            {cancelAction}
+            {cancelAction && <div className="shrink-0">{cancelAction}</div>}
         </Row>
     );
 }
 
 function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
-    const imageUrls = operation.imageUrls;
-    const completionNotes = operation.completionNotes?.trim();
+    const isBlocked = operation.status === 'blocked';
+    const imageUrls = isBlocked
+        ? operation.blockImageUrls
+        : operation.imageUrls;
+    const completionNotes = isBlocked
+        ? operation.blockNote?.trim()
+        : operation.completionNotes?.trim();
 
     if (!imageUrls.length && !completionNotes) {
         return null;
@@ -1170,13 +1374,12 @@ function OperationEvidence({ operation }: { operation: GardenOperationItem }) {
                 </div>
             )}
             {completionNotes && (
-                <Typography
-                    level="body2"
-                    className="break-words"
+                <Markdown
+                    className="min-w-0 break-words text-sm prose-headings:my-1 prose-headings:text-sm prose-li:my-0 prose-ol:my-1 prose-p:my-1 prose-p:whitespace-pre-line prose-ul:my-1"
                     data-operation-notes
                 >
                     {completionNotes}
-                </Typography>
+                </Markdown>
             )}
         </Stack>
     );
@@ -1339,7 +1542,6 @@ export function GardenOperationCard({
     targetPlantSortData,
     currentGarden,
     referenceDate,
-    progressClassName,
     cancelAction,
     scheduleAction,
     action,
@@ -1351,7 +1553,6 @@ export function GardenOperationCard({
     targetPlantSortData?: PlantSortData;
     currentGarden?: CurrentGardenData | null;
     referenceDate: Date;
-    progressClassName?: string;
     cancelAction?: ReactNode;
     scheduleAction?: ReactNode;
     action?: ReactNode;
@@ -1363,7 +1564,6 @@ export function GardenOperationCard({
     });
     const targetDetails = getOperationTargetDetails(operation, currentGarden);
     const displayStatus = getOperationDisplayStatus(operation, referenceDate);
-    const isScheduledUnassigned = displayStatus === 'scheduled';
 
     return (
         <div
@@ -1384,43 +1584,47 @@ export function GardenOperationCard({
                     spacing={1.5}
                     className="min-w-0 max-w-full flex-1 overflow-hidden"
                 >
-                    <Stack spacing={0.75}>
+                    <Stack spacing={0.5} className="min-w-0 max-w-full">
+                        <Row
+                            spacing={1}
+                            alignItems="start"
+                            className="min-w-0 max-w-full"
+                        >
+                            <Typography
+                                level="body2"
+                                semiBold
+                                noWrap
+                                className="min-w-0 flex-1"
+                            >
+                                {resolvedOperationName}
+                            </Typography>
+                            <div className="min-w-0 max-w-[45%] shrink-0 overflow-hidden">
+                                <OperationStatusSummary
+                                    operation={operation}
+                                    status={displayStatus}
+                                />
+                            </div>
+                        </Row>
                         <Row
                             spacing={1}
                             alignItems="start"
                             className="min-w-0 max-w-full gap-y-1"
                         >
-                            <Stack spacing={0.5} className="min-w-0 flex-1">
-                                <Typography
-                                    level="body2"
-                                    semiBold
-                                    noWrap
-                                    className="min-w-0"
-                                >
-                                    {resolvedOperationName}
-                                </Typography>
+                            <div className="min-w-0 flex-1">
                                 <OperationTargetLabel
                                     targetDetails={targetDetails}
                                 />
-                            </Stack>
-                            <OperationStatusSummary
-                                operation={operation}
-                                status={displayStatus}
-                            />
+                            </div>
+                            <div className="min-w-0 max-w-[58%] shrink-0 overflow-hidden">
+                                <OperationSchedule
+                                    operation={operation}
+                                    cancelAction={cancelAction}
+                                    scheduleAction={scheduleAction}
+                                />
+                            </div>
                         </Row>
                     </Stack>
-                    <OperationSchedule
-                        operation={operation}
-                        cancelAction={cancelAction}
-                        scheduleAction={scheduleAction}
-                    />
                     <OperationEvidence operation={operation} />
-                    {!isScheduledUnassigned && (
-                        <OperationProgress
-                            operation={operation}
-                            className={progressClassName}
-                        />
-                    )}
                     {action && <div className="flex justify-end">{action}</div>}
                 </Stack>
             </Row>
@@ -1432,12 +1636,10 @@ function CartOperationCard({
     item,
     operationData,
     targetDetails,
-    onOpenCart,
 }: {
     item: ShoppingCartItemData;
     operationData?: OperationData;
     targetDetails: OperationTargetDetails;
-    onOpenCart: () => void;
 }) {
     const scheduledDate = getCartItemScheduledDate(item);
     const scheduledDateLabel = parseScheduledDate(item.additionalData)
@@ -1487,45 +1689,13 @@ function CartOperationCard({
                             iconClassName="dark:text-amber-100/85"
                         />
                     </Stack>
-                    <Row spacing={2} className="flex-wrap">
-                        <Typography
-                            level="body3"
-                            secondary
-                            className="dark:text-amber-100/80"
-                        >
-                            U košari, još nije kupljeno
-                        </Typography>
-                        <Typography
-                            level="body3"
-                            secondary
-                            className="dark:text-amber-100/80"
-                        >
-                            Zakazano: {scheduledDateLabel}
-                        </Typography>
-                    </Row>
-                    <Row justifyContent="space-between" spacing={2}>
-                        <Row
-                            spacing={1}
-                            className="text-amber-600 dark:text-amber-300"
-                        >
-                            <ShoppingCart className="size-3.5 shrink-0" />
-                            <Typography
-                                level="body3"
-                                semiBold
-                                className="dark:text-amber-200"
-                            >
-                                U košari
-                            </Typography>
-                        </Row>
-                        <Button
-                            variant="link"
-                            size="sm"
-                            className="px-0 dark:text-amber-50 dark:hover:text-white"
-                            onClick={onOpenCart}
-                        >
-                            Otvori košaru
-                        </Button>
-                    </Row>
+                    <Typography
+                        level="body3"
+                        secondary
+                        className="dark:text-amber-100/80"
+                    >
+                        Zakazano: {scheduledDateLabel}
+                    </Typography>
                 </Stack>
             </Row>
         </div>
@@ -1550,7 +1720,7 @@ function HistoryModal({
     referenceDate: Date;
 }) {
     return (
-        <Modal
+        <GameModal
             title="Povijest radnji"
             trigger={trigger}
             className="md:max-w-4xl"
@@ -1559,12 +1729,11 @@ function HistoryModal({
                 <Stack spacing={1}>
                     <Typography level="h5">Povijest radnji</Typography>
                     <Typography level="body2" secondary>
-                        Pregled svih radnji u tvom vrtu. Zadrži pokazivač iznad
-                        točke napretka za datum promjene statusa.
+                        Pregled svih radnji u tvom vrtu.
                     </Typography>
                 </Stack>
                 <Divider />
-                <ScrollView
+                <ScrollArea
                     className="-mx-6"
                     viewportClassName="max-h-[70vh]"
                     contentClassName="px-6 pr-4"
@@ -1576,96 +1745,92 @@ function HistoryModal({
                                 Nema radnji.
                             </Typography>
                         ) : (
-                            operations.map((operation) => (
-                                <GardenOperationCard
-                                    key={`${operation.entityTypeName}-${operation.id}`}
-                                    operation={operation}
-                                    operationName={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )?.information.label
-                                            : undefined
-                                    }
-                                    operationData={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    plantSortData={
-                                        operation.entityTypeName ===
-                                        cartPlantSortEntityType
-                                            ? plantSortById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined
-                                    }
-                                    targetPlantSortData={
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? (plantSortById.get(
-                                                  getOperationFieldPlantSortId(
-                                                      operation,
-                                                      currentGarden,
-                                                  ) ?? 0,
-                                              ) ?? undefined)
-                                            : undefined
-                                    }
-                                    currentGarden={currentGarden}
-                                    referenceDate={referenceDate}
-                                    progressClassName="md:max-w-80"
-                                />
-                            ))
+                            operations.map((operation) => {
+                                const operationData =
+                                    operation.entityTypeName ===
+                                    cartOperationEntityType
+                                        ? operationDataById.get(
+                                              operation.entityId,
+                                          )
+                                        : undefined;
+                                const plantSortData =
+                                    operation.entityTypeName ===
+                                    cartPlantSortEntityType
+                                        ? plantSortById.get(operation.entityId)
+                                        : undefined;
+                                const operationName =
+                                    operationData?.information.label;
+                                const entryName = getActiveOperationName({
+                                    operation,
+                                    operationName,
+                                    plantSortName:
+                                        plantSortData?.information.name,
+                                });
+                                const scheduleAction = (
+                                    <GardenOperationScheduleAction
+                                        entryName={entryName}
+                                        garden={currentGarden}
+                                        operation={operation}
+                                        referenceDate={referenceDate}
+                                    />
+                                );
+                                const cancelTarget =
+                                    getGardenOperationCancelTarget(
+                                        operation,
+                                        currentGarden,
+                                    );
+                                const cancelAction = cancelTarget ? (
+                                    <GardenOperationCancelAction
+                                        entryName={entryName}
+                                        garden={currentGarden}
+                                        operation={operation}
+                                        referenceDate={referenceDate}
+                                    />
+                                ) : undefined;
+
+                                return (
+                                    <GardenOperationCard
+                                        key={`${operation.entityTypeName}-${operation.id}`}
+                                        operation={operation}
+                                        operationName={operationName}
+                                        operationData={operationData}
+                                        plantSortData={plantSortData}
+                                        targetPlantSortData={
+                                            operation.entityTypeName ===
+                                            cartOperationEntityType
+                                                ? (plantSortById.get(
+                                                      getOperationFieldPlantSortId(
+                                                          operation,
+                                                          currentGarden,
+                                                      ) ?? 0,
+                                                  ) ?? undefined)
+                                                : undefined
+                                        }
+                                        currentGarden={currentGarden}
+                                        referenceDate={referenceDate}
+                                        scheduleAction={scheduleAction}
+                                        cancelAction={cancelAction}
+                                    />
+                                );
+                            })
                         )}
                         <div ref={listRef} className="h-1" />
                     </Stack>
-                </ScrollView>
+                </ScrollArea>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 
-function getLatestOperationChangeTime(operation: GardenOperationHudItem) {
-    let latest = new Date(operation.createdAt).getTime();
-
-    for (const entry of operation.statusHistory) {
-        const changedAt = new Date(entry.changedAt).getTime();
-        if (Number.isFinite(changedAt) && changedAt > latest) {
-            latest = changedAt;
-        }
-    }
-
-    return latest;
-}
-
 export function sortNewestFirst(operations: GardenOperationHudItem[]) {
-    return [...operations].sort((a, b) => {
-        const dateDiff =
-            getLatestOperationChangeTime(b) - getLatestOperationChangeTime(a);
-
-        return dateDiff !== 0 ? dateDiff : b.id - a.id;
-    });
-}
-
-function sortScheduledSoonestFirst(operations: GardenOperationHudItem[]) {
-    return [...operations].sort((a, b) => {
-        const aDate = new Date(a.scheduledDate ?? a.createdAt).getTime();
-        const bDate = new Date(b.scheduledDate ?? b.createdAt).getTime();
-        const dateDiff = aDate - bDate;
-
-        return dateDiff !== 0 ? dateDiff : a.id - b.id;
-    });
+    return sortOperationTasksNewestFirst(operations);
 }
 
 export function GardenOperationsHud() {
     const { track } = useGameAnalytics();
     const referenceDate = useLiveTime();
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const { data: cart } = useShoppingCart();
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
     const pending = useGardenOperations({
@@ -1715,7 +1880,7 @@ export function GardenOperationsHud() {
 
     const pendingOperations = useMemo(
         () =>
-            sortScheduledSoonestFirst(
+            sortNewestFirst(
                 [
                     ...(pending.data?.pages.flatMap((page) => page.items) ??
                         []),
@@ -1798,10 +1963,10 @@ export function GardenOperationsHud() {
             })
             .sort((a, b) => {
                 const dateDiff =
-                    getTimestamp(a.scheduledDate) -
-                    getTimestamp(b.scheduledDate);
+                    getTimestamp(b.scheduledDate) -
+                    getTimestamp(a.scheduledDate);
 
-                return dateDiff !== 0 ? dateDiff : a.item.id - b.item.id;
+                return dateDiff !== 0 ? dateDiff : b.item.id - a.item.id;
             });
     }, [cart?.items, currentGarden, operationDataById]);
     const activeOperationCount =
@@ -1842,7 +2007,7 @@ export function GardenOperationsHud() {
                     </Typography>
                 </Row>
                 <Divider />
-                <ScrollView
+                <ScrollArea
                     viewportClassName="max-h-[50vh]"
                     contentClassName="py-2 pl-3 pr-1"
                     viewportProps={{ 'data-infinite-scroll-root': 'true' }}
@@ -1883,9 +2048,6 @@ export function GardenOperationsHud() {
                                                 }
                                                 targetDetails={
                                                     cartOperation.targetDetails
-                                                }
-                                                onOpenCart={() =>
-                                                    setShoppingCartOpen(true)
                                                 }
                                             />
                                         ))}
@@ -1967,7 +2129,7 @@ export function GardenOperationsHud() {
                         )}
                         <div ref={pendingRef} className="h-1" />
                     </Stack>
-                </ScrollView>
+                </ScrollArea>
                 <Divider />
                 <HistoryModal
                     operations={historyOperations}

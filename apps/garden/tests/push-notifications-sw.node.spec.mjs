@@ -11,6 +11,7 @@ const serviceWorkerPath = path.resolve(
     '../public/push-notifications-sw.js',
 );
 const origin = 'https://vrt.gredice.test';
+const deliveryOrigin = 'https://dostava.gredice.com';
 
 async function createHarness({ clients = [] } = {}) {
     const source = await readFile(serviceWorkerPath, 'utf8');
@@ -195,6 +196,118 @@ test('stores same-origin action URLs in notification data, not action options', 
         JSON.parse(harness.fetchRequests[0].init.body).deliveryAttemptId,
         42,
     );
+});
+
+test('opens exact HTTPS delivery tracker links from notification and action URLs', async () => {
+    const harness = await createHarness();
+    const deliveryUrl = `${deliveryOrigin}/?delivery=request-123`;
+    const actionUrl = `${deliveryOrigin}/?delivery=request-456`;
+    const notification = await dispatchPush(harness, {
+        json: () => ({
+            actions: [
+                {
+                    action: 'track-delivery',
+                    title: 'Prati dostavu',
+                    url: actionUrl,
+                },
+            ],
+            title: 'Dostava je krenula',
+            url: deliveryUrl,
+        }),
+    });
+
+    assert.equal(notification.options.data.url, deliveryUrl);
+    assert.equal(
+        notification.options.data.actionUrls['track-delivery'],
+        actionUrl,
+    );
+
+    await dispatchClick(harness, notification, 'track-delivery');
+
+    assert.deepEqual(harness.openedUrls, [actionUrl]);
+});
+
+test('focuses an existing client for an exact delivery tracker link', async () => {
+    const deliveryUrl = `${deliveryOrigin}/?delivery=request-123`;
+    const harness = await createHarness({
+        clients: [{ url: deliveryUrl }],
+    });
+    const notification = await dispatchPush(harness, {
+        json: () => ({
+            title: 'Dostava je krenula',
+            url: deliveryUrl,
+        }),
+    });
+
+    await dispatchClick(harness, notification);
+
+    assert.deepEqual(harness.focusedUrls, [deliveryUrl]);
+    assert.deepEqual(harness.openedUrls, []);
+});
+
+test('keeps notification media same-origin when delivery navigation is external', async () => {
+    const harness = await createHarness();
+    const notification = await dispatchPush(harness, {
+        json: () => ({
+            actions: [
+                {
+                    action: 'track-delivery',
+                    icon: `${deliveryOrigin}/action.svg`,
+                    title: 'Prati dostavu',
+                    url: `${deliveryOrigin}/?delivery=request-123`,
+                },
+            ],
+            badge: `${deliveryOrigin}/badge.svg`,
+            icon: `${deliveryOrigin}/icon.svg`,
+            image: `${origin}/delivery.jpg`,
+            title: 'Dostava je krenula',
+            url: `${deliveryOrigin}/?delivery=request-123`,
+        }),
+    });
+
+    assert.equal(notification.options.icon, `${origin}/delivery.jpg`);
+    assert.equal(notification.options.image, `${origin}/delivery.jpg`);
+    assert.equal(notification.options.badge, '/badge.svg');
+    assert.equal(notification.options.actions[0].icon, undefined);
+});
+
+test('rejects delivery tracker URL variants that are not the exact HTTPS origin', async () => {
+    const rejectedUrls = [
+        'http://dostava.gredice.com/?delivery=request-123',
+        'javascript:alert(1)',
+        'https://driver:secret@dostava.gredice.com/?delivery=request-123',
+        'https://dostava.gredice.com:443/?delivery=request-123',
+        'https://dostava.gredice.com:8443/?delivery=request-123',
+        'https://sub.dostava.gredice.com/?delivery=request-123',
+        'https://dostava.gredice.com.evil.test/?delivery=request-123',
+    ];
+
+    for (const rejectedUrl of rejectedUrls) {
+        const harness = await createHarness();
+        const notification = await dispatchPush(harness, {
+            json: () => ({
+                actions: [
+                    {
+                        action: 'track-delivery',
+                        title: 'Prati dostavu',
+                        url: rejectedUrl,
+                    },
+                ],
+                title: 'Dostava je krenula',
+                url: rejectedUrl,
+            }),
+        });
+
+        assert.equal(notification.options.data.url, origin, rejectedUrl);
+        assert.equal(
+            notification.options.data.actionUrls,
+            undefined,
+            rejectedUrl,
+        );
+
+        await dispatchClick(harness, notification, 'track-delivery');
+        assert.deepEqual(harness.openedUrls, [`${origin}/`], rejectedUrl);
+    }
 });
 
 test('ignores unsafe default and action URLs', async () => {

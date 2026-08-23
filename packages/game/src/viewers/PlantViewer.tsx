@@ -1,11 +1,10 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { Vector3 } from 'three';
 import { groundGameAssetNames } from '../data/models';
 import { BlockGround } from '../entities/BlockGround';
-import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
 import { PlantGenerator } from '../generators/plant/PlantGenerator';
 import { Environment } from '../scene/Environment';
@@ -27,6 +26,7 @@ export interface PlantViewerProps {
     className?: string;
     animate?: boolean;
     includeEnvironment?: boolean;
+    includeGround?: boolean;
     lightingPreset?: 'default' | 'snapshot';
     zoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
@@ -66,6 +66,7 @@ export function PlantViewer({
     className,
     animate = true,
     includeEnvironment = true,
+    includeGround = true,
     lightingPreset = 'default',
     zoom = defaultZoom,
     cameraPosition = defaultCameraPosition,
@@ -75,23 +76,9 @@ export function PlantViewer({
     const lighting = lightingPresets[lightingPreset];
     const snapshotLighting = lightingPresets.snapshot;
 
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(generation),
-            rules: definition.rules,
-            seed,
-        }),
-        [definition.axiom, definition.rules, generation, seed],
-    );
-    const { symbols: lSystemSymbols } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
-
-    preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
+    if (includeGround) {
+        preloadGameAssetModels(APP_BASE_URL, groundGameAssetNames);
+    }
 
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
@@ -140,7 +127,6 @@ export function PlantViewer({
                         <PlantGenerator
                             key={`${plantType}-${seed}`}
                             plantDefinition={definition}
-                            lSystemSymbols={lSystemSymbols ?? []}
                             generation={generation}
                             seed={seed}
                             flowerGrowth={1}
@@ -151,19 +137,21 @@ export function PlantViewer({
                             showProduce
                         />
                     </group>
-                    <BlockGround
-                        stack={{
-                            position: new Vector3(0, 0, 0),
-                            blocks: [],
-                        }}
-                        block={{
-                            id: '',
-                            name: '',
-                            rotation: 0,
-                            variant: undefined,
-                        }}
-                        rotation={0}
-                    />
+                    {includeGround ? (
+                        <BlockGround
+                            stack={{
+                                position: new Vector3(0, 0, 0),
+                                blocks: [],
+                            }}
+                            block={{
+                                id: '',
+                                name: '',
+                                rotation: 0,
+                                variant: undefined,
+                            }}
+                            rotation={0}
+                        />
+                    ) : null}
                 </group>
                 <OrbitControls
                     minDistance={1}

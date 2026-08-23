@@ -8,6 +8,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, '..');
 const sourceFiles = [
     'electron/main.cjs',
+    'electron/oauth-redirect.cjs',
     'electron/preload.cjs',
     'scripts/check-desktop-sources.mjs',
     'scripts/desktop-apps.mjs',

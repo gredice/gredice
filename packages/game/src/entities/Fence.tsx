@@ -4,88 +4,86 @@ import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import type { FenceConnectionShape } from './fenceConnections';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
-import { useEntityNeighbors } from './helpers/useEntityNeighbors';
+import { useFenceConnectionState } from './helpers/useFenceConnectionState';
+
+export const fenceVariantNames = {
+    Solo: 'Fence_Solo',
+    Single: 'Fence_Single',
+    Middle: 'Fence_Middle',
+    Corner: 'Fence_Corner',
+    T: 'Fence_T',
+    Cross: 'Fence_Cross',
+} satisfies Record<
+    FenceConnectionShape,
+    keyof ReturnType<typeof useGameGLTF>['nodes']
+>;
+export const fenceExtensionName = 'Fence_Extension' satisfies keyof ReturnType<
+    typeof useGameGLTF
+>['nodes'];
 
 export function Fence({ stack, block, rotation }: EntityInstanceProps) {
     const { nodes, materials } = useGameGLTF('Fence');
     const currentStackHeight = useStackHeight(stack, block);
 
-    let variant:
-        | 'Fence_Solo'
-        | 'Fence_Single'
-        | 'Fence_Middle'
-        | 'Fence_Corner'
-        | 'Fence_T'
-        | 'Fence_Cross' = 'Fence_Solo';
-    let realizedRotation = rotation % 4;
-    const neighbors = useEntityNeighbors(stack, block);
-
-    // Variant: Solor, Single, Middle, Corner, T, Cross
-    if (neighbors.total === 1) {
-        variant = 'Fence_Single';
-        realizedRotation = neighbors.n
-            ? 3
-            : neighbors.s
-              ? 1
-              : neighbors.e
-                ? 0
-                : 2;
-    } else if (neighbors.total === 2) {
-        if (neighbors.n && neighbors.s) {
-            variant = 'Fence_Middle';
-            realizedRotation = 1;
-        } else if (neighbors.e && neighbors.w) {
-            variant = 'Fence_Middle';
-            realizedRotation = 0;
-        } else {
-            variant = 'Fence_Corner';
-            if (neighbors.n && neighbors.e) {
-                realizedRotation = 0;
-            } else if (neighbors.e && neighbors.s) {
-                realizedRotation = 1;
-            } else if (neighbors.s && neighbors.w) {
-                realizedRotation = 2;
-            } else if (neighbors.w && neighbors.n) {
-                realizedRotation = 3;
-            }
-        }
-    } else if (neighbors.total === 3) {
-        variant = 'Fence_T';
-        if (neighbors.n && neighbors.e && neighbors.s) {
-            realizedRotation = 0;
-        } else if (neighbors.e && neighbors.s && neighbors.w) {
-            realizedRotation = 1;
-        } else if (neighbors.s && neighbors.w && neighbors.n) {
-            realizedRotation = 2;
-        } else if (neighbors.w && neighbors.n && neighbors.e) {
-            realizedRotation = 3;
-        }
-    } else if (neighbors.total === 4) {
-        variant = 'Fence_Cross';
-    }
-
-    const [animatedRotation] = useAnimatedEntityRotation(realizedRotation);
+    const { connection, extensionRotations } = useFenceConnectionState(
+        stack,
+        block,
+        rotation,
+    );
+    const variant = fenceVariantNames[connection.shape];
+    const [animatedRotation] = useAnimatedEntityRotation(connection.rotation);
 
     return (
-        <animated.group
-            position={stack.position.clone().setY(currentStackHeight + 1)}
-            rotation={animatedRotation as unknown as [number, number, number]}
-        >
-            <mesh
-                castShadow
-                receiveShadow
-                geometry={nodes[variant].geometry}
-                material={materials['Material.Planks']}
+        <>
+            <animated.group
+                position={stack.position.clone().setY(currentStackHeight + 1)}
+                rotation={
+                    animatedRotation as unknown as [number, number, number]
+                }
             >
-                <SnowOverlay
+                <mesh
+                    castShadow
+                    receiveShadow
                     geometry={nodes[variant].geometry}
-                    maxThickness={0.09}
-                    slopeExponent={2.9}
-                    noiseScale={3.3}
-                />
-                <RainWetOverlay geometry={nodes[variant].geometry} />
-            </mesh>
-        </animated.group>
+                    material={materials['Material.Planks']}
+                >
+                    <SnowOverlay
+                        geometry={nodes[variant].geometry}
+                        maxThickness={0.09}
+                        slopeExponent={2.9}
+                        noiseScale={3.3}
+                    />
+                    <RainWetOverlay geometry={nodes[variant].geometry} />
+                </mesh>
+            </animated.group>
+            {extensionRotations.map((extensionRotation) => (
+                <group
+                    key={extensionRotation}
+                    position={stack.position
+                        .clone()
+                        .setY(currentStackHeight + 1)}
+                    rotation={[0, extensionRotation * (Math.PI / 2), 0]}
+                >
+                    <mesh
+                        castShadow
+                        receiveShadow
+                        geometry={nodes[fenceExtensionName].geometry}
+                        material={materials['Material.Planks']}
+                    >
+                        <SnowOverlay
+                            geometry={nodes[fenceExtensionName].geometry}
+                            maxThickness={0.09}
+                            slopeExponent={2.9}
+                            noiseScale={3.3}
+                        />
+                        <RainWetOverlay
+                            geometry={nodes[fenceExtensionName].geometry}
+                        />
+                    </mesh>
+                </group>
+            ))}
+        </>
     );
 }

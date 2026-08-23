@@ -8,10 +8,12 @@ export type BlockHitboxSize = {
 
 const minimumBlockHitboxSizes: Record<string, BlockHitboxSize> = {
     BirdHouse: { width: 0.72, height: 1.3, depth: 0.72 },
+    ChickenCoop: { width: 0.76, height: 0.86, depth: 0.97 },
     CactusColumnCluster: { width: 0.72, height: 1, depth: 0.62 },
     CactusPricklyPear: { width: 0.66, height: 0.95, depth: 0.45 },
     DeadTreeStump: { width: 0.45, height: 0.98, depth: 0.75 },
     DeadTreeTall: { width: 1.4, height: 1.8, depth: 0.52 },
+    PigletPen: { width: 0.94, height: 0.78, depth: 0.89 },
     Pine: { width: 1.12, height: 2.77, depth: 1.12 },
     PineAdvent: { width: 1.12, height: 2.77, depth: 1.12 },
     Shade: { width: 1, height: 1.05, depth: 1 },

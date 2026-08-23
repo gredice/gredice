@@ -100,7 +100,7 @@ export function CreatePlantModal({
                         vaših trenutnih postavki:
                     </p>
                     <ul className="mt-2 space-y-1 list-disc list-inside">
-                        <li>Trenutna L-sistem pravila i aksiom</li>
+                        <li>Trenutna arhitektura i razvojni program</li>
                         <li>
                             Sve vrednosti parametara (stabljika, list, cvet,
                             plod)

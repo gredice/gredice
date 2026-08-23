@@ -3,6 +3,9 @@ export interface FormatDeliveryWindowOptions {
     timeZone?: string;
 }
 
+export * from './deliveryAvailability';
+export * from './deliveryZoneMapData';
+
 function toDate(value: Date | string): Date {
     if (value instanceof Date) {
         return value;

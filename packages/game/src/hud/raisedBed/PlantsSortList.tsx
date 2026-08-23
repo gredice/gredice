@@ -1,6 +1,8 @@
 import type { PlantSortData } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
+import { BackpackIcon } from '@gredice/ui/BackpackIcon';
 import { Button } from '@gredice/ui/Button';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Check } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
@@ -9,7 +11,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useMemo } from 'react';
+import { type MouseEvent, useEffect, useMemo } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
 import type { OutletOfferData } from '../../hooks/useOutletOffers';
@@ -19,6 +21,7 @@ import {
     useAnimateFlyToShoppingCart,
 } from '../../indicators/AnimateFlyTo';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import { PlantRelationshipSignalChips } from './PlantsList';
@@ -36,6 +39,9 @@ type PlantsSortListProps = {
     flyToShoppingCart?: boolean;
     neighborPlants?: NeighborPlantSummary[];
     outletOffersBySortId?: Map<number, OutletOfferData[]>;
+    inventoryAvailabilityBySortId?: Map<number, number>;
+    inventorySelectedSortId?: number | null;
+    onInventoryToggle?: (sort: PlantSortData) => void;
 };
 
 const currencyFormatter = new Intl.NumberFormat('hr-HR', {
@@ -58,6 +64,9 @@ function PlantSortListItem({
     flyToShoppingCart,
     neighborPlants,
     outletOffers,
+    availableFromInventory,
+    inventorySelected,
+    onInventoryToggle,
 }: {
     sort: PlantSortData;
     selectedSortId: number | null;
@@ -65,6 +74,9 @@ function PlantSortListItem({
     flyToShoppingCart?: boolean;
     neighborPlants: NeighborPlantSummary[];
     outletOffers?: OutletOfferData[];
+    availableFromInventory?: number;
+    inventorySelected?: boolean;
+    onInventoryToggle?: (sort: PlantSortData) => void;
 }) {
     const animateFlyToShoppingCart = useAnimateFlyToShoppingCart();
     const { track } = useGameAnalytics();
@@ -87,6 +99,12 @@ function PlantSortListItem({
         animateFlyToShoppingCart.reset,
         animateFlyToShoppingCart.run,
     ]);
+
+    function handleInventoryToggle(event: MouseEvent<HTMLButtonElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        onInventoryToggle?.(sort);
+    }
 
     return (
         <Stack
@@ -153,9 +171,9 @@ function PlantSortListItem({
             >
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     {outletOffers?.length ? (
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-200">
+                        <OutletBadge>
                             {outletOfferBadgeLabel(outletOffers)}
-                        </span>
+                        </OutletBadge>
                     ) : null}
                     {relationshipSignal ? (
                         <PlantRelationshipSignalChips
@@ -163,30 +181,55 @@ function PlantSortListItem({
                         />
                     ) : null}
                 </div>
-                <Button
-                    title="Više informacija"
-                    href={KnownPages.GredicePlantSort(
-                        sort.information.plant.information?.name ?? 'nepoznato',
-                        sort.information.name,
-                    )}
-                    variant="link"
-                    size="sm"
-                    onClick={() =>
-                        track('game_plant_sort_details_opened', {
-                            plant_name:
-                                sort.information.plant.information?.name,
-                            sort_id: sort.id,
-                            sort_name: sort.information.name,
-                        })
-                    }
-                >
-                    Više informacija...
-                </Button>
-                <FavoriteToggleButton
-                    entityId={sort.id}
-                    entityType="plantSort"
-                    label={sort.information.name}
-                />
+                <div className="flex items-center gap-1">
+                    <Button
+                        title="Više informacija"
+                        href={KnownPages.GredicePlantSort(
+                            sort.information.plant.information?.name ??
+                                'nepoznato',
+                            sort.information.name,
+                        )}
+                        variant="link"
+                        size="sm"
+                        onClick={() =>
+                            track('game_plant_sort_details_opened', {
+                                plant_name:
+                                    sort.information.plant.information?.name,
+                                sort_id: sort.id,
+                                sort_name: sort.information.name,
+                            })
+                        }
+                    >
+                        Više informacija...
+                    </Button>
+                    {availableFromInventory ? (
+                        <IconButton
+                            aria-pressed={inventorySelected}
+                            className={cx(
+                                'size-8 shrink-0',
+                                inventorySelected &&
+                                    'text-green-700 dark:text-green-300',
+                            )}
+                            color={inventorySelected ? 'success' : 'neutral'}
+                            onClick={handleInventoryToggle}
+                            size="sm"
+                            title={
+                                inventorySelected
+                                    ? 'Ne koristi iz ruksaka'
+                                    : `Koristi iz ruksaka (${availableFromInventory})`
+                            }
+                            type="button"
+                            variant={inventorySelected ? 'soft' : 'plain'}
+                        >
+                            <BackpackIcon aria-hidden className="size-4" />
+                        </IconButton>
+                    ) : null}
+                    <FavoriteToggleButton
+                        entityId={sort.id}
+                        entityType="plantSort"
+                        label={sort.information.name}
+                    />
+                </div>
             </Row>
         </Stack>
     );
@@ -200,27 +243,32 @@ export function PlantsSortList({
     flyToShoppingCart,
     neighborPlants = [],
     outletOffersBySortId,
+    inventoryAvailabilityBySortId,
+    inventorySelectedSortId,
+    onInventoryToggle,
 }: PlantsSortListProps) {
     const { data: plantSorts, isLoading, isError } = usePlantSorts(plantId);
     const favoriteSortIds = useFavoriteIds('plantSort');
     const normalizedSearch = search.trim().toLowerCase();
     const sortedPlantSorts = useMemo(() => {
-        const storePlants = plantSorts?.filter(
-            (sort) => sort.store.availableInStore,
+        const availablePlantSorts = plantSorts?.filter(
+            (sort) =>
+                sort.store.availableInStore ||
+                outletOffersBySortId?.has(sort.id),
         );
         const filteredPlantSorts =
             normalizedSearch.length > 0
-                ? storePlants?.filter((sort) =>
+                ? availablePlantSorts?.filter((sort) =>
                       sort.information.name
                           .toLowerCase()
                           .includes(normalizedSearch),
                   )
-                : storePlants;
+                : availablePlantSorts;
 
         return filteredPlantSorts
             ? sortFavoritesFirst(filteredPlantSorts, favoriteSortIds)
             : undefined;
-    }, [favoriteSortIds, normalizedSearch, plantSorts]);
+    }, [favoriteSortIds, normalizedSearch, outletOffersBySortId, plantSorts]);
 
     // Select first sort if only one is available
     useEffect(() => {
@@ -258,6 +306,11 @@ export function PlantsSortList({
                         onChange={onChange}
                         neighborPlants={neighborPlants}
                         outletOffers={outletOffersBySortId?.get(sort.id)}
+                        availableFromInventory={inventoryAvailabilityBySortId?.get(
+                            sort.id,
+                        )}
+                        inventorySelected={inventorySelectedSortId === sort.id}
+                        onInventoryToggle={onInventoryToggle}
                         flyToShoppingCart={
                             flyToShoppingCart && selectedSortId === sort.id
                         }

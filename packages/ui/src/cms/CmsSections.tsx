@@ -1,5 +1,10 @@
 import { slugify } from '@gredice/js/slug';
-import { createElement, type ExoticComponent, type ReactNode } from 'react';
+import {
+    type CSSProperties,
+    createElement,
+    type ExoticComponent,
+    type ReactNode,
+} from 'react';
 import { Accordion } from '../Accordion';
 import { Button } from '../Button';
 import { Card } from '../Card';
@@ -286,16 +291,23 @@ export function CmsMediaImage({
     className,
     darkSrc,
     src,
+    style,
 }: {
     alt?: string;
     className?: string;
     darkSrc?: string;
     src: string;
+    style?: CSSProperties;
 }) {
     if (!darkSrc) {
         return (
             // biome-ignore lint/performance/noImgElement: CMS image URLs are remote and not known at build time.
-            <img alt={alt ?? ''} className={cx('block', className)} src={src} />
+            <img
+                alt={alt ?? ''}
+                className={cx('block', className)}
+                src={src}
+                style={style}
+            />
         );
     }
 
@@ -306,12 +318,14 @@ export function CmsMediaImage({
                 alt={alt ?? ''}
                 className={cx('image--light block', className)}
                 src={src}
+                style={style}
             />
             {/** biome-ignore lint/performance/noImgElement: CMS image URLs are remote and not known at build time. */}
             <img
                 alt={alt ?? ''}
                 className={cx('image--dark block', className)}
                 src={darkSrc}
+                style={style}
             />
         </>
     );

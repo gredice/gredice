@@ -14,7 +14,7 @@ interface ScheduleLabelPrintSectionProps {
     dayDataPromise: Promise<FarmScheduleDayData>;
     operationsDataPromise: ReturnType<typeof getFarmScheduleOperationsData>;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
-    date: Date;
+    dateKey: string;
 }
 
 function formatLabelCount(count: number) {
@@ -32,7 +32,6 @@ function formatLabelCount(count: number) {
 function formatLabelSummary(
     sowingLabelCount: number,
     harvestLabelCount: number,
-    traceLabelCount: number,
 ) {
     const parts = [];
     if (sowingLabelCount > 0) {
@@ -41,10 +40,6 @@ function formatLabelSummary(
     if (harvestLabelCount > 0) {
         parts.push(`berba: ${formatLabelCount(harvestLabelCount)}`);
     }
-    if (traceLabelCount > 0) {
-        parts.push(`QR trag: ${formatLabelCount(traceLabelCount)}`);
-    }
-
     return parts.join(' · ');
 }
 
@@ -52,7 +47,7 @@ export async function ScheduleLabelPrintSection({
     dayDataPromise,
     operationsDataPromise,
     plantSortsPromise,
-    date,
+    dateKey,
 }: ScheduleLabelPrintSectionProps) {
     const [dayData, operationsData, plantSorts] = await Promise.all([
         dayDataPromise,
@@ -63,7 +58,7 @@ export async function ScheduleLabelPrintSection({
         dayData,
         plantSorts,
         operationsData,
-        date,
+        dateKey,
     );
 
     if (printData.labels.length === 0) {
@@ -73,7 +68,6 @@ export async function ScheduleLabelPrintSection({
     const labelSummary = formatLabelSummary(
         printData.sowingLabelCount,
         printData.harvestLabelCount,
-        printData.traceLabelCount,
     );
 
     return (
@@ -85,12 +79,12 @@ export async function ScheduleLabelPrintSection({
             triggerVariant="solid"
             triggerSize="sm"
             triggerClassName="whitespace-nowrap"
-            printButtonLabel="Ispiši sve etikete"
+            printButtonLabel="Ispiši odabrane etikete"
             onPrintSuccess={markHarvestTraceLabelsPrintedAction}
             description={
                 <Stack spacing={1}>
                     <Typography>
-                        Ispis uključuje sve etikete za odabrani dan.
+                        Odaberite etikete koje želite ispisati za ovaj dan.
                     </Typography>
                     {labelSummary && (
                         <Typography

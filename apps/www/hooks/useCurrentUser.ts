@@ -7,7 +7,10 @@ export type CurrentUser = {
     userName: string;
     displayName?: string;
     avatarUrl?: string | null;
+    role: string;
 };
+
+export const currentUserQueryKey = ['currentUser'];
 
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
     try {
@@ -25,7 +28,7 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
 
 export function useCurrentUser() {
     return useQuery({
-        queryKey: ['currentUser'],
+        queryKey: currentUserQueryKey,
         queryFn: fetchCurrentUser,
         retry: false,
         staleTime: 5 * 60 * 1000,

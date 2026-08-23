@@ -2,10 +2,9 @@
 
 import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
-import { CmsMediaImage } from '@gredice/ui/cms';
+import { CmsMediaImage, cmsImageObjectPosition } from '@gredice/ui/cms';
 import { Close, ExternalLink } from '@gredice/ui/icons';
 import { Markdown } from '@gredice/ui/Markdown';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
@@ -28,6 +27,7 @@ import {
     whatsNewEntriesAudienceTag,
 } from '../hooks/useWhatsNewEntries';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 
 function formatEntryDate(value: Date | null) {
     if (!value) {
@@ -196,9 +196,13 @@ const audienceWhatsNewHref = `${KnownPages.GrediceWhatsNew}?tag=${encodeURICompo
 
 function ChangelogCoverImage({
     className,
+    pointOfInterestX,
+    pointOfInterestY,
     src,
 }: {
     className?: string;
+    pointOfInterestX?: number | null;
+    pointOfInterestY?: number | null;
     src: string | null | undefined;
 }) {
     if (!src) {
@@ -216,6 +220,12 @@ function ChangelogCoverImage({
                 alt=""
                 className="h-full w-full object-cover"
                 src={src}
+                style={{
+                    objectPosition: cmsImageObjectPosition(
+                        pointOfInterestX,
+                        pointOfInterestY,
+                    ),
+                }}
             />
         </div>
     );
@@ -325,8 +335,8 @@ export function WhatsNewWidget({
     return (
         <>
             {hasUnreadEntries ? (
-                <div className="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] left-2 z-20 md:bottom-16">
-                    <div className="pointer-events-auto relative w-[min(21rem,calc(100vw-1rem))] overflow-hidden rounded-lg border bg-background/95 text-foreground shadow-lg backdrop-blur">
+                <div className="pointer-events-none absolute bottom-[calc(var(--game-safe-area-bottom,0px)+4.75rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] z-20 md:bottom-[calc(var(--game-safe-area-bottom,0px)+4rem)]">
+                    <div className="pointer-events-auto relative w-[min(21rem,calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem))] overflow-hidden rounded-lg border bg-background/95 text-foreground shadow-lg backdrop-blur">
                         <button
                             className={cx(
                                 'grid w-full gap-3 px-3 py-2 pr-10 text-left transition-colors hover:bg-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -347,6 +357,8 @@ export function WhatsNewWidget({
                         >
                             <ChangelogCoverImage
                                 className="h-14 w-14"
+                                pointOfInterestX={latestEntry.metaImagePoiX}
+                                pointOfInterestY={latestEntry.metaImagePoiY}
                                 src={latestEntry.metaImageUrl}
                             />
                             <Stack className="min-w-0" spacing={1}>
@@ -370,8 +382,8 @@ export function WhatsNewWidget({
                     </div>
                 </div>
             ) : null}
-            <Modal
-                className="max-w-2xl overflow-hidden border-tertiary border-b-4 p-0"
+            <GameModal
+                className="max-w-2xl overflow-hidden p-0"
                 onOpenChange={setModalOpen}
                 open={modalOpen}
                 title="Što je novo"
@@ -440,6 +452,12 @@ export function WhatsNewWidget({
                                         >
                                             <ChangelogCoverImage
                                                 className="h-16 w-16"
+                                                pointOfInterestX={
+                                                    entry.metaImagePoiX
+                                                }
+                                                pointOfInterestY={
+                                                    entry.metaImagePoiY
+                                                }
                                                 src={entry.metaImageUrl}
                                             />
                                             <Stack
@@ -514,7 +532,7 @@ export function WhatsNewWidget({
                         </Stack>
                     </div>
                 </div>
-            </Modal>
+            </GameModal>
         </>
     );
 }

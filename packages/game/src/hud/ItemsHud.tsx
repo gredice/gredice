@@ -1,10 +1,9 @@
 import type { BlockData } from '@gredice/client';
-import { isNightOnlyBlockPurchase, isNightTimeOfDay } from '@gredice/js/blocks';
-import { BlockImage } from '@gredice/ui/BlockImage';
+import { BlockImage, getBlockImageUrl } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Info, Left, Navigate, Up } from '@gredice/ui/icons';
+import { Delete, Info, Left, Navigate, Up } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
 import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
@@ -12,18 +11,43 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import {
+    type DragEvent as ReactDragEvent,
+    type MouseEvent as ReactMouseEvent,
+    type PointerEvent as ReactPointerEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import { arrowSignNames } from '../entities/signageConfig';
 import { useBlockData } from '../hooks/useBlockData';
 import { useBlockPlace } from '../hooks/useBlockPlace';
 import { useCurrentAccount } from '../hooks/useCurrentAccount';
 import { useIsSandboxGarden } from '../hooks/useCurrentGarden';
+import { isInternalSceneBlockData } from '../internalSceneBlockData';
+import {
+    itemsHudDropTargetActiveAttribute,
+    itemsHudDropTargetAttribute,
+} from '../itemsHudDropTarget';
 import { KnownPages } from '../knownPages';
 import { useGameState } from '../useGameState';
 import { HudCard } from './components/HudCard';
+import {
+    type HudImagePreload,
+    preloadHudImages,
+    scheduleHudImagePreload,
+} from './hudImagePreload';
+import {
+    getHudEntityPlacementAvailability,
+    type HudEntityPlacementAvailability,
+} from './itemPlacementAvailability';
 
 type HudItemEntity = {
     type: 'entity';
     name: string;
+    footprintLabel?: string;
 };
 
 type HudItemPicker = {
@@ -34,6 +58,41 @@ type HudItemPicker = {
 };
 
 type HudItem = HudItemEntity | HudItemPicker | { type: 'separator' };
+
+const pickerThumbnailSize = 40;
+const entityThumbnailSize = 64;
+
+function getHudImagePreloads(hudItems: HudItem[]) {
+    return hudItems.flatMap<HudImagePreload>((item) => {
+        if (item.type === 'entity') {
+            return [
+                {
+                    src: getBlockImageUrl(item.name),
+                    width: entityThumbnailSize,
+                    height: entityThumbnailSize,
+                },
+            ];
+        }
+
+        if (item.type === 'picker') {
+            return [
+                {
+                    src: item.imageSrc,
+                    width: pickerThumbnailSize,
+                    height: pickerThumbnailSize,
+                },
+            ];
+        }
+
+        return [];
+    });
+}
+
+function getNextLevelHudImagePreloads(hudItems: HudItem[]) {
+    return hudItems.flatMap((item) =>
+        item.type === 'picker' ? getHudImagePreloads(item.items) : [],
+    );
+}
 
 const potItems: HudItemEntity[] = [
     { type: 'entity', name: 'PotLowBowl' },
@@ -57,6 +116,12 @@ const rockItems: HudItemEntity[] = [
     { type: 'entity', name: 'DesertStoneLarge' },
 ];
 
+const mulchItems: HudItemEntity[] = [
+    { type: 'entity', name: 'MulchWood' },
+    { type: 'entity', name: 'MulchCoconut' },
+    { type: 'entity', name: 'MulchHey' },
+];
+
 const treeItems: HudItemEntity[] = [
     { type: 'entity', name: 'PalmTree' },
     { type: 'entity', name: 'Tree' },
@@ -65,29 +130,199 @@ const treeItems: HudItemEntity[] = [
     { type: 'entity', name: 'DeadTreeStump' },
 ];
 
+const signItems: HudItemEntity[] = [
+    ...arrowSignNames.map<HudItemEntity>((name) => ({
+        type: 'entity',
+        name,
+    })),
+    { type: 'entity', name: 'WoodenSign' },
+];
+
+const lightingItems: HudItemEntity[] = [
+    { type: 'entity', name: 'FireflyJar' },
+    { type: 'entity', name: 'EnamelGardenLamp' },
+    { type: 'entity', name: 'DoubleGardenLightPole' },
+    { type: 'entity', name: 'HazelLightArch' },
+    { type: 'entity', name: 'RoofTileLantern' },
+    { type: 'entity', name: 'WickerGardenLantern' },
+    { type: 'entity', name: 'WoodenHandLantern' },
+    { type: 'entity', name: 'MoonRainBarrel' },
+];
+
+const fenceItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Fence' },
+    { type: 'entity', name: 'WhiteFence' },
+    { type: 'entity', name: 'StoneFence' },
+    { type: 'entity', name: 'PolishedStoneFence' },
+    { type: 'entity', name: 'FenceGate' },
+    { type: 'entity', name: 'WhiteFenceGate' },
+    { type: 'entity', name: 'StoneFenceGate' },
+    { type: 'entity', name: 'PolishedStoneFenceGate' },
+];
+
+const summerItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Shade' },
+    { type: 'entity', name: 'BeachUmbrella' },
+    { type: 'entity', name: 'LemonadeStand' },
+    { type: 'entity', name: 'IceCreamCart' },
+    { type: 'entity', name: 'SummerHat' },
+    { type: 'entity', name: 'BeachTowelStriped' },
+    { type: 'entity', name: 'InflatablePoolSmall' },
+    { type: 'entity', name: 'BeachChair' },
+    { type: 'entity', name: 'BeachBall' },
+    { type: 'entity', name: 'SandcastleSmallA' },
+];
+
+const furnitureItems: HudItemEntity[] = [
+    { type: 'entity', name: 'Stool' },
+    { type: 'entity', name: 'WoodenBench' },
+    { type: 'entity', name: 'OutletDisplayTable' },
+];
+
+const petItems: HudItemEntity[] = [
+    { type: 'entity', name: 'BirdHouse' },
+    { type: 'entity', name: 'CatPillow' },
+    { type: 'entity', name: 'ChickenCoop' },
+    { type: 'entity', name: 'DogHouse' },
+    { type: 'entity', name: 'PigletPen' },
+];
+
+const terrainItems: HudItemPicker[] = [
+    {
+        type: 'picker',
+        label: 'Trava',
+        imageSrc: getBlockImageUrl('Block_Grass'),
+        items: [
+            { type: 'entity', name: 'Block_Grass' },
+            { type: 'entity', name: 'Block_Grass_Angle' },
+            { type: 'entity', name: 'Block_Grass_Corner' },
+            { type: 'entity', name: 'Block_Grass_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Zemlja',
+        imageSrc: getBlockImageUrl('Block_Ground'),
+        items: [
+            { type: 'entity', name: 'Block_Ground' },
+            { type: 'entity', name: 'Block_Ground_Angle' },
+            { type: 'entity', name: 'Block_Ground_Corner' },
+            { type: 'entity', name: 'Block_Ground_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Suha zemlja',
+        imageSrc: getBlockImageUrl('Block_Dry_Ground'),
+        items: [
+            { type: 'entity', name: 'Block_Dry_Ground' },
+            { type: 'entity', name: 'Block_Dry_Ground_Angle' },
+            { type: 'entity', name: 'Block_Dry_Ground_Corner' },
+            { type: 'entity', name: 'Block_Dry_Ground_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Močvara',
+        imageSrc: getBlockImageUrl('Block_Swamp_Ground'),
+        items: [
+            { type: 'entity', name: 'Block_Swamp_Ground' },
+            { type: 'entity', name: 'Block_Swamp_Ground_Angle' },
+            { type: 'entity', name: 'Block_Swamp_Water' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Kamen',
+        imageSrc: getBlockImageUrl('Block_Stone'),
+        items: [
+            { type: 'entity', name: 'Block_Stone' },
+            { type: 'entity', name: 'Block_Stone_Angle' },
+            { type: 'entity', name: 'Block_Stone_Stairs' },
+            { type: 'entity', name: 'Block_Stone_Stairs_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Polirani kamen',
+        imageSrc: getBlockImageUrl('Block_Polished_Stone'),
+        items: [
+            { type: 'entity', name: 'Block_Polished_Stone' },
+            { type: 'entity', name: 'Block_Polished_Stone_Angle' },
+            { type: 'entity', name: 'Block_Polished_Stone_Stairs' },
+            {
+                type: 'entity',
+                name: 'Block_Polished_Stone_Stairs_Corner',
+            },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Šljunak',
+        imageSrc: getBlockImageUrl('Block_Gravel'),
+        items: [
+            { type: 'entity', name: 'Block_Gravel' },
+            { type: 'entity', name: 'Block_Gravel_Angle' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Pijesak',
+        imageSrc: getBlockImageUrl('Block_Sand'),
+        items: [
+            { type: 'entity', name: 'Block_Sand' },
+            { type: 'entity', name: 'Block_Sand_Angle' },
+            { type: 'entity', name: 'Block_Sand_Corner' },
+            { type: 'entity', name: 'Block_Sand_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Snijeg',
+        imageSrc: getBlockImageUrl('Block_Snow'),
+        items: [
+            { type: 'entity', name: 'Block_Snow' },
+            { type: 'entity', name: 'Block_Snow_Angle' },
+            { type: 'entity', name: 'Block_Snow_Corner' },
+            { type: 'entity', name: 'Block_Snow_Reverse_Corner' },
+        ],
+    },
+    {
+        type: 'picker',
+        label: 'Voda',
+        imageSrc: getBlockImageUrl('Block_Water'),
+        items: [{ type: 'entity', name: 'Block_Water' }],
+    },
+];
+
 const treeGroupEntityNames = new Set([
     ...treeItems.map((item) => item.name),
     'PineAdvent',
 ]);
 
 const treePickerLabel = 'Drveće';
-const treePickerImageSrc = 'https://www.gredice.com/assets/blocks/Tree.webp';
+const treePickerImageSrc = getBlockImageUrl('Tree');
 const giftBoxPickerLabel = 'Poklon kutije';
-const giftBoxPickerImageSrc =
-    'https://www.gredice.com/assets/blocks/GiftBox_RedWhite.webp';
+const giftBoxPickerImageSrc = getBlockImageUrl('GiftBox_RedWhite');
 
 const items: HudItem[] = [
     {
         type: 'picker',
-        label: 'Gredice',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Raised_Bed.webp',
-        items: [{ type: 'entity', name: 'Raised_Bed' }],
+        label: 'Gredica 1 × 2',
+        imageSrc: getBlockImageUrl('Raised_Bed'),
+        items: [
+            {
+                type: 'entity',
+                name: 'Raised_Bed',
+                footprintLabel: '1 × 2',
+            },
+        ],
     },
     { type: 'separator' },
     {
         type: 'picker',
         label: 'Alat',
-        imageSrc: 'https://www.gredice.com/assets/blocks/GardenBox.webp',
+        imageSrc: getBlockImageUrl('GardenBox'),
         items: [
             { type: 'entity', name: 'Bucket' },
             { type: 'entity', name: 'WateringCan' },
@@ -100,21 +335,25 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Dekoracija',
-        imageSrc: 'https://www.gredice.com/assets/blocks/Tree.webp',
+        imageSrc: getBlockImageUrl('Tree'),
         items: [
             {
                 type: 'picker',
                 label: 'Posude',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/PotRoundedBowl.webp',
+                imageSrc: getBlockImageUrl('PotRoundedBowl'),
                 items: potItems,
             },
             {
                 type: 'picker',
                 label: 'Kamenje',
-                imageSrc:
-                    'https://www.gredice.com/assets/blocks/StoneMedium.webp',
+                imageSrc: getBlockImageUrl('StoneMedium'),
                 items: rockItems,
+            },
+            {
+                type: 'picker',
+                label: 'Malč',
+                imageSrc: getBlockImageUrl('MulchWood'),
+                items: mulchItems,
             },
             {
                 type: 'picker',
@@ -122,23 +361,47 @@ const items: HudItem[] = [
                 imageSrc: treePickerImageSrc,
                 items: treeItems,
             },
-            { type: 'entity', name: 'Shade' },
-            { type: 'entity', name: 'BeachUmbrella' },
-            { type: 'entity', name: 'Stool' },
-            { type: 'entity', name: 'Fence' },
+            {
+                type: 'picker',
+                label: 'Znakovi',
+                imageSrc: getBlockImageUrl('ArrowSignWhiteRight'),
+                items: signItems,
+            },
+            {
+                type: 'picker',
+                label: 'Rasvjeta',
+                imageSrc: getBlockImageUrl('FireflyJar'),
+                items: lightingItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ljeto',
+                imageSrc: getBlockImageUrl('BeachUmbrella'),
+                items: summerItems,
+            },
+            {
+                type: 'picker',
+                label: 'Namještaj',
+                imageSrc: getBlockImageUrl('WoodenBench'),
+                items: furnitureItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ljubimci',
+                imageSrc: getBlockImageUrl('DogHouse'),
+                items: petItems,
+            },
+            {
+                type: 'picker',
+                label: 'Ograde',
+                imageSrc: getBlockImageUrl('Fence'),
+                items: fenceItems,
+            },
+            { type: 'entity', name: 'SmallWoodenBridge' },
+            { type: 'entity', name: 'WoodenWalkway' },
+            { type: 'entity', name: 'StoneWalkway' },
+            { type: 'entity', name: 'FishingBoat' },
             { type: 'entity', name: 'WaterWell' },
-            { type: 'entity', name: 'LemonadeStand' },
-            { type: 'entity', name: 'IceCreamCart' },
-            { type: 'entity', name: 'SummerHat' },
-            { type: 'entity', name: 'BeachTowelStriped' },
-            { type: 'entity', name: 'InflatablePoolSmall' },
-            { type: 'entity', name: 'BeachChair' },
-            { type: 'entity', name: 'BeachBall' },
-            { type: 'entity', name: 'SandcastleSmallA' },
-            { type: 'entity', name: 'BirdHouse' },
-            { type: 'entity', name: 'FireflyJar' },
-            { type: 'entity', name: 'CatPillow' },
-            { type: 'entity', name: 'DogHouse' },
             { type: 'entity', name: 'Bush' },
             { type: 'entity', name: 'Tulip' },
             { type: 'entity', name: 'Sunflower' },
@@ -150,34 +413,279 @@ const items: HudItem[] = [
     {
         type: 'picker',
         label: 'Blokovi',
-        imageSrc:
-            'https://www.gredice.com/assets/blocks/Block_Icon_GroundOverGrass.webp',
-        items: [
-            { type: 'entity', name: 'Block_Grass' },
-            { type: 'entity', name: 'Block_Ground' },
-            { type: 'entity', name: 'Block_Sand' },
-            { type: 'entity', name: 'Block_Snow' },
-            { type: 'entity', name: 'Block_Water' },
-            { type: 'entity', name: 'Block_Grass_Angle' },
-            { type: 'entity', name: 'Block_Ground_Angle' },
-            { type: 'entity', name: 'Block_Sand_Angle' },
-            { type: 'entity', name: 'Block_Snow_Angle' },
-            { type: 'entity', name: 'Block_Grass_Corner' },
-            { type: 'entity', name: 'Block_Ground_Corner' },
-            { type: 'entity', name: 'Block_Sand_Corner' },
-            { type: 'entity', name: 'Block_Snow_Corner' },
-            { type: 'entity', name: 'Block_Grass_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Ground_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Sand_Reverse_Corner' },
-            { type: 'entity', name: 'Block_Snow_Reverse_Corner' },
-        ],
+        imageSrc: getBlockImageUrl('Block_Icon_GroundOverGrass'),
+        items: terrainItems,
     },
 ];
 
 const sandboxHiddenEntityNames = new Set(['GardenBox']);
 const sandboxPickerImageSrcByLabel = new Map([
-    ['Alat', 'https://www.gredice.com/assets/blocks/WateringCan.webp'],
+    ['Alat', getBlockImageUrl('WateringCan')],
 ]);
+const mouseHudDragStartDistance = 6;
+const touchHudDragStartDistance = 12;
+
+function hudDragStartDistance(pointerType: string) {
+    return pointerType === 'touch'
+        ? touchHudDragStartDistance
+        : mouseHudDragStartDistance;
+}
+
+type HudEntityPlacementState = {
+    availability: HudEntityPlacementAvailability;
+    block: BlockData;
+};
+
+function useHudEntityPlacementState(
+    name: string,
+): HudEntityPlacementState | null {
+    const { data: blockData } = useBlockData();
+    const timeOfDay = useGameState((state) => state.timeOfDay);
+    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
+    const isSandbox = useIsSandboxGarden();
+    const block = blockData?.find((block) => block.information.name === name);
+    // Scene-only fallbacks keep authored public/outlet scenes renderable before
+    // their catalog row is deployed, but they must never become a shop item.
+    if (!block || isInternalSceneBlockData(block)) {
+        return null;
+    }
+
+    return {
+        availability: getHudEntityPlacementAvailability({
+            accountSunflowers: account?.sunflowers.amount,
+            block,
+            isAccountLoading,
+            isSandbox,
+            timeOfDay,
+        }),
+        block,
+    };
+}
+
+type HudDragSession = {
+    activated: boolean;
+    element: HTMLElement;
+    pointerId: number;
+    pointerType: string;
+    startClientX: number;
+    startClientY: number;
+};
+
+function releasePointerCapture(element: HTMLElement, pointerId: number) {
+    try {
+        if (element.hasPointerCapture(pointerId)) {
+            element.releasePointerCapture(pointerId);
+        }
+    } catch {
+        // Synthetic test events do not always create a browser pointer capture.
+    }
+}
+
+function useHudEntityDragPlacement({
+    blockName,
+    enabled,
+    onHudDragEnd,
+    onHudDragStart,
+}: {
+    blockName: string;
+    enabled: boolean;
+    onHudDragEnd?: () => void;
+    onHudDragStart?: () => void;
+}) {
+    const sessionRef = useRef<HudDragSession | null>(null);
+    const listenerCleanupRef = useRef<(() => void) | null>(null);
+    const suppressNextClick = useRef(false);
+    const beginHudPlacementDrag = useGameState(
+        (state) => state.beginHudPlacementDrag,
+    );
+    const updateHudPlacementDragPointer = useGameState(
+        (state) => state.updateHudPlacementDragPointer,
+    );
+    const requestHudPlacementDrop = useGameState(
+        (state) => state.requestHudPlacementDrop,
+    );
+    const clearHudPlacementDrag = useGameState(
+        (state) => state.clearHudPlacementDrag,
+    );
+
+    const cleanupSession = useCallback(() => {
+        const session = sessionRef.current;
+        if (session) {
+            releasePointerCapture(session.element, session.pointerId);
+        }
+
+        listenerCleanupRef.current?.();
+        listenerCleanupRef.current = null;
+        sessionRef.current = null;
+    }, []);
+
+    const handlePointerMove = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            const pointer = {
+                clientX: event.clientX,
+                clientY: event.clientY,
+                pointerId: event.pointerId,
+            };
+
+            if (!session.activated) {
+                const distance = Math.hypot(
+                    event.clientX - session.startClientX,
+                    event.clientY - session.startClientY,
+                );
+                if (distance <= hudDragStartDistance(session.pointerType)) {
+                    return;
+                }
+
+                session.activated = true;
+                suppressNextClick.current = true;
+                onHudDragStart?.();
+                beginHudPlacementDrag({
+                    blockName,
+                    pointerType: session.pointerType,
+                    ...pointer,
+                });
+            } else {
+                updateHudPlacementDragPointer(pointer);
+            }
+
+            event.preventDefault();
+        },
+        [
+            beginHudPlacementDrag,
+            blockName,
+            onHudDragStart,
+            updateHudPlacementDragPointer,
+        ],
+    );
+
+    const handlePointerUp = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            if (session.activated) {
+                event.preventDefault();
+                requestHudPlacementDrop({
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    pointerId: event.pointerId,
+                });
+                onHudDragEnd?.();
+            }
+
+            cleanupSession();
+        },
+        [cleanupSession, onHudDragEnd, requestHudPlacementDrop],
+    );
+
+    const handlePointerCancel = useCallback(
+        (event: PointerEvent) => {
+            const session = sessionRef.current;
+            if (!session || event.pointerId !== session.pointerId) {
+                return;
+            }
+
+            if (session.activated) {
+                clearHudPlacementDrag();
+                onHudDragEnd?.();
+            }
+
+            cleanupSession();
+        },
+        [cleanupSession, clearHudPlacementDrag, onHudDragEnd],
+    );
+
+    const addSessionListeners = useCallback(() => {
+        listenerCleanupRef.current?.();
+
+        const handleWindowPointerMove = (event: PointerEvent) =>
+            handlePointerMove(event);
+        const handleWindowPointerUp = (event: PointerEvent) =>
+            handlePointerUp(event);
+        const handleWindowPointerCancel = (event: PointerEvent) =>
+            handlePointerCancel(event);
+
+        window.addEventListener('pointermove', handleWindowPointerMove, {
+            passive: false,
+        });
+        window.addEventListener('pointerup', handleWindowPointerUp);
+        window.addEventListener('pointercancel', handleWindowPointerCancel);
+
+        listenerCleanupRef.current = () => {
+            window.removeEventListener('pointermove', handleWindowPointerMove);
+            window.removeEventListener('pointerup', handleWindowPointerUp);
+            window.removeEventListener(
+                'pointercancel',
+                handleWindowPointerCancel,
+            );
+        };
+    }, [handlePointerCancel, handlePointerMove, handlePointerUp]);
+
+    useEffect(() => cleanupSession, [cleanupSession]);
+
+    const handlePointerDown = useCallback(
+        (event: ReactPointerEvent<HTMLElement>) => {
+            if (
+                !enabled ||
+                event.button !== 0 ||
+                event.isPrimary === false ||
+                sessionRef.current
+            ) {
+                return;
+            }
+
+            try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+                // Pointer capture is best-effort for browser-driven drags.
+            }
+
+            sessionRef.current = {
+                activated: false,
+                element: event.currentTarget,
+                pointerId: event.pointerId,
+                pointerType: event.pointerType,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+            };
+            addSessionListeners();
+        },
+        [addSessionListeners, enabled],
+    );
+
+    const handleClick = useCallback((event: ReactMouseEvent<HTMLElement>) => {
+        if (!suppressNextClick.current) {
+            return;
+        }
+
+        suppressNextClick.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
+    const handleNativeDragStart = useCallback(
+        (event: ReactDragEvent<HTMLElement>) => {
+            event.preventDefault();
+        },
+        [],
+    );
+
+    return {
+        className: enabled
+            ? 'cursor-grab touch-none select-none active:cursor-grabbing'
+            : '',
+        onClick: handleClick,
+        onDragStart: handleNativeDragStart,
+        onPointerDown: handlePointerDown,
+    };
+}
 
 function collectEntityNames(hudItems: HudItem[], names = new Set<string>()) {
     for (const item of hudItems) {
@@ -389,33 +897,25 @@ function PlaceEntityButton({
     name: string;
     simple?: boolean;
 }) {
-    const { data: blockData } = useBlockData();
     const placeBlock = useBlockPlace();
-    const timeOfDay = useGameState((state) => state.timeOfDay);
-    const { data: account, isLoading: isAccountLoading } = useCurrentAccount();
-    // Sandbox ("play") gardens build for free — every block is placeable
-    // regardless of price or night-only availability.
+    const entityPlacement = useHudEntityPlacementState(name);
     const isSandbox = useIsSandboxGarden();
 
-    const block = blockData?.find((block) => block.information.name === name);
-    if (!block) return null;
-    const sunflowerPrice = block.prices.sunflowers ?? 0;
-    const hasSunflowerPrice = sunflowerPrice > 0;
-    const isAvailableNow =
-        isSandbox ||
-        !isNightOnlyBlockPurchase(block) ||
-        isNightTimeOfDay(timeOfDay);
-    const accountSunflowers = account?.sunflowers.amount;
-    const hasEnoughSunflowers =
-        isSandbox ||
-        !hasSunflowerPrice ||
-        (typeof accountSunflowers === 'number' &&
-            accountSunflowers >= sunflowerPrice);
-    const isPlaceable = isSandbox || hasSunflowerPrice;
+    if (!entityPlacement) return null;
+
+    const {
+        availabilityMessage,
+        hasEnoughSunflowers,
+        hasSunflowerPrice,
+        insufficientSunflowersMessage,
+        isAvailableNow,
+        isPlaceable,
+        sunflowerPrice,
+        canPlace,
+    } = entityPlacement.availability;
 
     function placeEntity() {
-        if (!blockData) {
-            console.warn('Cannot place entity, missing data');
+        if (!canPlace) {
             return;
         }
 
@@ -425,17 +925,6 @@ function PlaceEntityButton({
     }
 
     if (!isPlaceable && simple) return null;
-
-    const errorMessage =
-        placeBlock.error instanceof Error ? placeBlock.error.message : null;
-    const availabilityMessage =
-        !isAvailableNow && hasSunflowerPrice ? 'Dostupno samo noću.' : null;
-    const insufficientSunflowersMessage =
-        !hasEnoughSunflowers &&
-        !isAccountLoading &&
-        typeof accountSunflowers === 'number'
-            ? 'Nedovoljno suncokreta.'
-            : null;
 
     return (
         <Stack spacing={1}>
@@ -480,21 +969,36 @@ function PlaceEntityButton({
                     {insufficientSunflowersMessage}
                 </Typography>
             )}
-            {errorMessage && (
-                <Typography level="body3" className="text-red-600">
-                    {errorMessage}
-                </Typography>
-            )}
         </Stack>
     );
 }
 
-function EntityItem({ name }: HudItemEntity) {
-    const [open, setOpen] = useState(false);
-    const { data: blockData } = useBlockData();
+type EntityItemProps = HudItemEntity & {
+    onHudDragEnd?: () => void;
+    onHudDragStart?: () => void;
+};
 
-    const block = blockData?.find((block) => block.information.name === name);
-    if (!block) return null;
+function EntityItem({
+    footprintLabel,
+    name,
+    onHudDragEnd,
+    onHudDragStart,
+}: EntityItemProps) {
+    const [open, setOpen] = useState(false);
+    const entityPlacement = useHudEntityPlacementState(name);
+    const dragPlacement = useHudEntityDragPlacement({
+        blockName: name,
+        enabled: entityPlacement?.availability.canPlace ?? false,
+        onHudDragEnd,
+        onHudDragStart,
+    });
+
+    if (!entityPlacement) return null;
+
+    const { block } = entityPlacement;
+    const displayLabel = footprintLabel
+        ? `${block.information.label} ${footprintLabel}`
+        : block.information.label;
 
     return (
         <Stack spacing={2}>
@@ -502,17 +1006,23 @@ function EntityItem({ name }: HudItemEntity) {
                 open={open}
                 sideOffset={12}
                 onOpenChange={(open) => setOpen(open)}
+                data-items-hud-surface="true"
                 className="w-fit p-2 max-w-xs md:w-80 border-tertiary border-b-4"
                 trigger={
                     <IconButton
-                        aria-label={block.information.label}
+                        aria-label={displayLabel}
                         size="lg"
-                        className="size-16"
+                        className={cx('size-16', dragPlacement.className)}
                         variant="plain"
+                        data-items-hud-entity={name}
+                        onClick={dragPlacement.onClick}
+                        onDragStart={dragPlacement.onDragStart}
+                        onPointerDown={dragPlacement.onPointerDown}
                     >
                         <BlockImage
                             blockName={name}
-                            alt={block.information.label}
+                            alt={displayLabel}
+                            draggable={false}
                             width={64}
                             height={64}
                         />
@@ -523,15 +1033,13 @@ function EntityItem({ name }: HudItemEntity) {
                     <Row spacing={4} alignItems="start">
                         <BlockImage
                             blockName={name}
-                            alt={block.information.label}
+                            alt={displayLabel}
                             width={96}
                             height={96}
                             className="size-24 z-10 border rounded-lg"
                         />
                         <Stack spacing={2} className="w-full">
-                            <Typography semiBold>
-                                {block.information.label}
-                            </Typography>
+                            <Typography semiBold>{displayLabel}</Typography>
                             <Typography level="body2">
                                 {block.information.shortDescription}
                             </Typography>
@@ -567,6 +1075,15 @@ function SubPickerButton({
     picker: HudItemPicker;
     onOpen: () => void;
 }) {
+    const imagePreloads = useMemo(
+        () => getHudImagePreloads(picker.items),
+        [picker.items],
+    );
+    const preloadPickerImages = useCallback(
+        () => preloadHudImages(imagePreloads),
+        [imagePreloads],
+    );
+
     return (
         <Stack spacing={2} alignItems="center">
             <IconButton
@@ -575,11 +1092,15 @@ function SubPickerButton({
                 className="size-16"
                 variant="plain"
                 onClick={onOpen}
+                onFocus={preloadPickerImages}
+                onPointerEnter={preloadPickerImages}
+                onTouchStart={preloadPickerImages}
             >
                 <Image
                     src={picker.imageSrc}
                     alt={picker.label}
                     className="absolute size-10 -mb-4"
+                    draggable={false}
                     width={40}
                     height={40}
                 />
@@ -597,29 +1118,149 @@ function SubPickerButton({
 }
 
 function PickerItem({ label, items, imageSrc }: HudItemPicker) {
+    const [open, setOpen] = useState(false);
     const [activeSubPicker, setActiveSubPicker] =
         useState<HudItemPicker | null>(null);
+    const [hiddenForHudDrag, setHiddenForHudDrag] = useState(false);
+    const resetSubPickerAfterCloseRef = useRef(false);
+    const hudDragRestoreTimeoutRef = useRef<number | null>(null);
+    const subPickerResetTimeoutRef = useRef<number | null>(null);
     const currentLabel = activeSubPicker?.label ?? label;
     const currentItems = activeSubPicker?.items ?? items;
+    const currentImagePreloads = useMemo(
+        () => getHudImagePreloads(items),
+        [items],
+    );
+    const nextLevelImagePreloads = useMemo(
+        () => getNextLevelHudImagePreloads(currentItems),
+        [currentItems],
+    );
+    const preloadCurrentImages = useCallback(
+        () => preloadHudImages(currentImagePreloads),
+        [currentImagePreloads],
+    );
+
+    const clearHudDragRestoreTimeout = useCallback(() => {
+        if (hudDragRestoreTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(hudDragRestoreTimeoutRef.current);
+        hudDragRestoreTimeoutRef.current = null;
+    }, []);
+
+    const clearSubPickerResetTimeout = useCallback(() => {
+        if (subPickerResetTimeoutRef.current === null) {
+            return;
+        }
+
+        window.clearTimeout(subPickerResetTimeoutRef.current);
+        subPickerResetTimeoutRef.current = null;
+    }, []);
+
+    const resetClosedSubPicker = useCallback(() => {
+        resetSubPickerAfterCloseRef.current = false;
+        setActiveSubPicker(null);
+    }, []);
+
+    const scheduleClosedSubPickerReset = useCallback(() => {
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = true;
+        subPickerResetTimeoutRef.current = window.setTimeout(
+            resetClosedSubPicker,
+            180,
+        );
+    }, [clearSubPickerResetTimeout, resetClosedSubPicker]);
+
+    const restorePickerAfterHudDrag = useCallback(() => {
+        hudDragRestoreTimeoutRef.current = null;
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = false;
+        setHiddenForHudDrag(false);
+        setOpen(true);
+    }, [clearSubPickerResetTimeout]);
+
+    const handleHudDragStart = useCallback(() => {
+        clearHudDragRestoreTimeout();
+        clearSubPickerResetTimeout();
+        resetSubPickerAfterCloseRef.current = false;
+        setHiddenForHudDrag(true);
+    }, [clearHudDragRestoreTimeout, clearSubPickerResetTimeout]);
+
+    const handleHudDragEnd = useCallback(() => {
+        clearHudDragRestoreTimeout();
+        hudDragRestoreTimeoutRef.current = window.setTimeout(
+            restorePickerAfterHudDrag,
+            0,
+        );
+    }, [clearHudDragRestoreTimeout, restorePickerAfterHudDrag]);
+
+    const handleOpenChange = useCallback(
+        (nextOpen: boolean) => {
+            if (nextOpen) {
+                clearSubPickerResetTimeout();
+                if (resetSubPickerAfterCloseRef.current) {
+                    resetClosedSubPicker();
+                }
+                setOpen(true);
+                return;
+            }
+
+            setOpen(false);
+            setHiddenForHudDrag(false);
+            scheduleClosedSubPickerReset();
+        },
+        [
+            clearSubPickerResetTimeout,
+            resetClosedSubPicker,
+            scheduleClosedSubPickerReset,
+        ],
+    );
+
+    useEffect(
+        () => () => {
+            clearHudDragRestoreTimeout();
+            clearSubPickerResetTimeout();
+        },
+        [clearHudDragRestoreTimeout, clearSubPickerResetTimeout],
+    );
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        return scheduleHudImagePreload(nextLevelImagePreloads);
+    }, [nextLevelImagePreloads, open]);
 
     return (
         <Popper
-            className="w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-[var(--radix-popover-content-available-height)]"
+            open={open}
+            className={cx(
+                'w-fit overflow-hidden border-tertiary border-b-4 flex flex-col max-h-(--available-height)',
+                hiddenForHudDrag && 'hidden',
+            )}
             sideOffset={12}
-            onOpenChange={(open) => {
-                if (!open) setActiveSubPicker(null);
-            }}
+            onOpenChange={handleOpenChange}
+            data-active-items-picker={currentLabel}
+            data-items-hud-surface="true"
+            data-items-picker-content="true"
+            data-items-picker-drag-hidden={hiddenForHudDrag ? 'true' : 'false'}
             trigger={
                 <IconButton
                     aria-label={label}
                     size="lg"
                     className="size-16"
                     variant="plain"
+                    onFocus={preloadCurrentImages}
+                    onPointerEnter={preloadCurrentImages}
+                    onTouchStart={preloadCurrentImages}
                 >
                     <Image
                         src={imageSrc}
                         alt={label}
                         className="absolute size-10 -mb-4"
+                        draggable={false}
                         width={40}
                         height={40}
                     />
@@ -653,7 +1294,12 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
                 {currentItems.map((item) => {
                     if (item.type === 'entity') {
                         return (
-                            <EntityItem key={`entity:${item.name}`} {...item} />
+                            <EntityItem
+                                key={`entity:${item.name}`}
+                                {...item}
+                                onHudDragEnd={handleHudDragEnd}
+                                onHudDragStart={handleHudDragStart}
+                            />
                         );
                     } else if (item.type === 'picker') {
                         return (
@@ -675,22 +1321,69 @@ function PickerItem({ label, items, imageSrc }: HudItemPicker) {
 export function ItemsHud() {
     const { data: blockData } = useBlockData();
     const isSandbox = useIsSandboxGarden();
+    const pickupBlock = useGameState((state) => state.pickupBlock);
+    const dropTargetActive = useGameState(
+        (state) => state.itemsHudDropTargetActive,
+    );
     const hudItems = useMemo(
         () => getHudItems({ blockData, isSandbox }),
         [blockData, isSandbox],
+    );
+    const initialImagePreloads = useMemo(
+        () => getNextLevelHudImagePreloads(hudItems),
+        [hudItems],
+    );
+    const dropTargetVisible = Boolean(pickupBlock);
+    const dropTargetLabel = isSandbox ? 'Obriši' : 'Recikliranje';
+
+    useEffect(
+        () => scheduleHudImagePreload(initialImagePreloads),
+        [initialImagePreloads],
     );
 
     return (
         <HudCard
             data-items-hud
+            data-items-hud-surface="true"
+            {...(dropTargetVisible
+                ? {
+                      [itemsHudDropTargetAttribute]: 'true',
+                      [itemsHudDropTargetActiveAttribute]: dropTargetActive
+                          ? 'true'
+                          : 'false',
+                  }
+                : {})}
             open
             position="bottom"
-            className="pointer-events-auto static mx-auto mb-1 w-fit max-w-[calc(100vw-1rem)] overflow-x-auto rounded-xl border-0 bg-background/95 shadow-xl shadow-foreground/10 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:px-1"
+            className={cx(
+                'pointer-events-auto static relative mx-auto mb-1 w-fit max-w-[calc(100vw-1rem)] overflow-x-auto rounded-xl border-0 bg-background/95 shadow-xl shadow-foreground/10 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:px-1',
+                dropTargetVisible &&
+                    'border-2 border-dashed border-red-300 bg-red-50/95 shadow-red-950/15',
+                dropTargetActive &&
+                    'scale-[1.02] border-red-500 bg-red-100/95 shadow-red-950/25 ring-4 ring-red-500/20',
+            )}
             animateHeight
         >
+            {dropTargetVisible && (
+                <div
+                    aria-hidden="true"
+                    className={cx(
+                        'pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-xl bg-red-600/10 px-3 text-red-700 transition duration-150 ease-out',
+                        dropTargetActive && 'bg-red-600/85 text-white',
+                    )}
+                >
+                    <div className="flex items-center gap-2 rounded-full bg-background/90 px-3 py-1.5 text-sm font-semibold text-red-700 shadow-sm">
+                        <Delete className="size-4" strokeWidth={2.4} />
+                        <span>{dropTargetLabel}</span>
+                    </div>
+                </div>
+            )}
             <Row
                 spacing={1}
-                className="min-w-max md:px-1"
+                className={cx(
+                    'min-w-max md:px-1',
+                    dropTargetVisible && 'opacity-35',
+                )}
                 justifyContent="center"
             >
                 {hudItems.map((item, index) => {

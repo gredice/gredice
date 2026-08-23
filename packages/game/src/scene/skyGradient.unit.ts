@@ -1,0 +1,207 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+    defaultGameBackgroundPaletteIndex,
+    getGameBackgroundPaletteIndexByKey,
+} from './backgroundPalettes';
+import { resolveMoonlitNightScales } from './moonlight';
+import {
+    cloneSkyGradientColors,
+    isSkyGradientWithinEpsilon,
+    lerpSkyGradientColors,
+    resolveEnvironmentSkyBackgroundColors,
+    resolveGroundViewSkyGradientColors,
+    resolveSkyBackgroundColor,
+    resolveSkyGradientColors,
+} from './skyGradient';
+import { getSolarEclipseVisualScales } from './solarEclipse';
+
+function colorDistance(
+    first: { b: number; g: number; r: number },
+    second: { b: number; g: number; r: number },
+) {
+    return Math.hypot(
+        first.r - second.r,
+        first.g - second.g,
+        first.b - second.b,
+    );
+}
+
+function colorLuminance(color: { b: number; g: number; r: number }) {
+    return color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+}
+
+function resolveGradient({
+    moonlight = 0,
+    paletteIndex = defaultGameBackgroundPaletteIndex,
+    solarEclipseObscuration = 0,
+    timeOfDay,
+    weather,
+}: {
+    moonlight?: number;
+    paletteIndex?: number;
+    solarEclipseObscuration?: number;
+    timeOfDay: number;
+    weather?: Parameters<typeof resolveSkyGradientColors>[0]['weather'];
+}) {
+    const baseColors = resolveEnvironmentSkyBackgroundColors({
+        backgroundPaletteIndex: paletteIndex,
+        timeOfDay,
+    });
+    const moonlitNightScales = resolveMoonlitNightScales({
+        moonlight,
+        timeOfDay,
+    });
+    const backgroundColor = resolveSkyBackgroundColor({
+        background: baseColors.background,
+        moonlitSkyScale: moonlitNightScales.skyScale,
+        weather,
+    }).multiplyScalar(getSolarEclipseVisualScales(solarEclipseObscuration).sky);
+
+    return resolveSkyGradientColors({
+        backgroundColor,
+        backgroundPaletteIndex: paletteIndex,
+        moonlight,
+        solarEclipseObscuration,
+        timeOfDay,
+        weather,
+    });
+}
+
+test('neutral daytime sky resolves to a visible gradient', () => {
+    const gradient = resolveGradient({ timeOfDay: 0.5 });
+
+    assert.ok(colorDistance(gradient.zenith, gradient.horizon) > 0.025);
+    assert.ok(colorDistance(gradient.upper, gradient.horizon) > 0.015);
+    assert.ok(colorDistance(gradient.lower, gradient.horizon) < 0.001);
+    assert.ok(gradient.sunGlowIntensity > 0.4);
+});
+
+test('Croatian partial eclipse darkens every daylight gradient band and the solar glow', () => {
+    const clearDay = resolveGradient({ timeOfDay: 0.78 });
+    const eclipse = resolveGradient({
+        solarEclipseObscuration: 0.478,
+        timeOfDay: 0.78,
+    });
+
+    for (const key of ['zenith', 'upper', 'horizon', 'lower'] as const) {
+        assert.ok(
+            colorLuminance(eclipse[key]) < colorLuminance(clearDay[key]) * 0.8,
+            `Expected eclipse ${key} to be visibly darker than clear daylight`,
+        );
+    }
+    assert.ok(eclipse.sunGlowIntensity < clearDay.sunGlowIntensity * 0.6);
+    assert.equal(eclipse.moonGlowIntensity, clearDay.moonGlowIntensity);
+});
+
+test('neutral post-sunset sky darkens the lower background', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.45,
+        timeOfDay: 0.87,
+    });
+
+    assert.ok(
+        colorLuminance(gradient.lower) <
+            colorLuminance(gradient.horizon) - 0.025,
+    );
+    assert.ok(colorLuminance(gradient.lower) < 0.35);
+});
+
+test('neutral after-midnight sky keeps the lower background dark', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.45,
+        timeOfDay: 0.04,
+    });
+
+    assert.ok(colorLuminance(gradient.horizon) < 0.16);
+    assert.ok(colorLuminance(gradient.lower) < 0.12);
+});
+
+test('background palettes tint the same time of day differently', () => {
+    const blueGradient = resolveGradient({
+        paletteIndex: getGameBackgroundPaletteIndexByKey('light-blue'),
+        timeOfDay: 0.52,
+    });
+    const roseGradient = resolveGradient({
+        paletteIndex: getGameBackgroundPaletteIndexByKey('rose'),
+        timeOfDay: 0.52,
+    });
+
+    assert.ok(colorDistance(blueGradient.horizon, roseGradient.horizon) > 0.1);
+});
+
+test('moonlight and cloud cover tune glow strength at night', () => {
+    const moonlessGradient = resolveGradient({
+        moonlight: 0,
+        timeOfDay: 0.92,
+    });
+    const moonlitGradient = resolveGradient({
+        moonlight: 0.9,
+        timeOfDay: 0.92,
+    });
+    const overcastGradient = resolveGradient({
+        moonlight: 0.9,
+        timeOfDay: 0.92,
+        weather: { cloudy: 0.9 },
+    });
+
+    assert.ok(
+        moonlitGradient.moonGlowIntensity > moonlessGradient.moonGlowIntensity,
+    );
+    assert.ok(moonlitGradient.moonGlowIntensity < 0.16);
+    assert.ok(
+        overcastGradient.moonGlowIntensity < moonlitGradient.moonGlowIntensity,
+    );
+});
+
+test('ground view collapses the sky to the gradient lower color without celestial glow', () => {
+    const gradient = resolveGradient({
+        moonlight: 0.9,
+        timeOfDay: 0.5,
+    });
+    const groundView = resolveGroundViewSkyGradientColors(gradient);
+
+    assert.ok(colorDistance(groundView.zenith, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.upper, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.horizon, gradient.lower) < 0.001);
+    assert.ok(colorDistance(groundView.lower, gradient.lower) < 0.001);
+    assert.equal(groundView.sunGlowIntensity, 0);
+    assert.equal(groundView.moonGlowIntensity, 0);
+    assert.notEqual(groundView.lower, gradient.lower);
+});
+
+test('gradient convergence detects both color and glow intensity changes', () => {
+    const target = resolveGradient({ timeOfDay: 0.5 });
+    const displayed = cloneSkyGradientColors(target);
+
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), true);
+
+    displayed.horizon.r += 0.01;
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), false);
+
+    displayed.horizon.copy(target.horizon);
+    displayed.sunGlowIntensity += 0.01;
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), false);
+});
+
+test('gradient transition converges and can release its render lease', () => {
+    const displayed = resolveGradient({
+        moonlight: 0.8,
+        timeOfDay: 0.92,
+    });
+    const target = resolveGradient({ timeOfDay: 0.5 });
+    const transitionSeconds = 0.6;
+
+    for (let frame = 0; frame < 600; frame += 1) {
+        lerpSkyGradientColors(
+            displayed,
+            target,
+            1 - Math.exp(-(1 / transitionSeconds) * (1 / 60)),
+        );
+        if (isSkyGradientWithinEpsilon(displayed, target, 0.001)) {
+            break;
+        }
+    }
+
+    assert.equal(isSkyGradientWithinEpsilon(displayed, target, 0.001), true);
+});

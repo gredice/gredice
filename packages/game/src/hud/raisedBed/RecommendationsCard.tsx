@@ -1,4 +1,5 @@
 import type { OperationData, PlantData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardOverflow } from '@gredice/ui/Card';
@@ -23,6 +24,7 @@ import {
 } from './featuredOperations';
 import { RecommendationSection } from './RecommendationSection';
 import { OperationsListItem } from './shared/OperationsListItem';
+import { isPlantTargetMetadataResolved } from './shared/plantTargetMetadata';
 import { useOperationContextIndicators } from './shared/useOperationContextIndicators';
 
 type PlantHealthIssueSummary = NonNullable<
@@ -58,6 +60,10 @@ export function RecommendationsCard({
         isError: isOperationsError,
     } = useOperations();
     const { data: plantSort } = usePlantSort(plantSortId);
+    const isPlantMetadataResolved = isPlantTargetMetadataResolved(
+        plantSortId,
+        plantSort,
+    );
     const { data: plants } = usePlants();
     const { shoppingCartOperationIds, scheduledOperationIds } =
         useOperationContextIndicators({
@@ -74,7 +80,7 @@ export function RecommendationsCard({
             plantSort?.information.plant.information?.operations
                 ?.map((operation) => operation.information?.name)
                 .filter((name): name is string => Boolean(name)) ?? [];
-        return operationNames.length ? new Set(operationNames) : null;
+        return new Set(operationNames);
     }, [plantSort]);
 
     const showPlantOperationRecommendations =
@@ -93,32 +99,25 @@ export function RecommendationsCard({
             };
         }
 
-        if (!operations) {
+        if (!operations || !isPlantMetadataResolved) {
             return {
                 selectedStage: stageSequence[0],
                 stageOperations: [] as OperationData[],
             };
         }
 
-        const plantOperations = operations.filter(
-            (operation) => operation.attributes.application === 'plant',
-        );
-
         const filterByPlantSort = (ops: OperationData[]) => {
-            if (
-                !plantSortOperationNames ||
-                plantSortOperationNames.size === 0
-            ) {
-                return ops;
-            }
             return ops.filter((operation) =>
-                plantSortOperationNames.has(operation.information.name),
+                isOperationApplicableToPlant(
+                    operation,
+                    plantSortOperationNames,
+                ),
             );
         };
 
         for (const stage of stageSequence) {
             const stageOps = filterByPlantSort(
-                plantOperations.filter(
+                operations.filter(
                     (operation) =>
                         operation.attributes.stage.information?.name === stage,
                 ),
@@ -132,7 +131,7 @@ export function RecommendationsCard({
         const fallbackOperations =
             fallbackStage != null
                 ? filterByPlantSort(
-                      plantOperations.filter(
+                      operations.filter(
                           (operation) =>
                               operation.attributes.stage.information?.name ===
                               fallbackStage,
@@ -144,7 +143,12 @@ export function RecommendationsCard({
             selectedStage: fallbackStage,
             stageOperations: fallbackOperations,
         };
-    }, [operations, plantSortOperationNames, stageSequence]);
+    }, [
+        isPlantMetadataResolved,
+        operations,
+        plantSortOperationNames,
+        stageSequence,
+    ]);
 
     const featuredOperations = useMemo(() => {
         if (!selectedStage || stageOperations.length === 0) {
@@ -195,8 +199,9 @@ export function RecommendationsCard({
         ];
     }, [plant, showPlantOperationRecommendations]);
 
-    const healthOperationIds = useMemo(() => {
+    const { healthOperationIds, healthOperationNames } = useMemo(() => {
         const operationIds = new Set<number>();
+        const operationNames = new Set<string>();
         for (const issue of plantHealthIssues) {
             const issueOperationGroups: Array<
                 PlantHealthOperationSummary[] | undefined
@@ -208,10 +213,14 @@ export function RecommendationsCard({
             for (const issueOperations of issueOperationGroups) {
                 for (const operation of issueOperations ?? []) {
                     operationIds.add(operation.id);
+                    operationNames.add(operation.name);
                 }
             }
         }
-        return operationIds;
+        return {
+            healthOperationIds: operationIds,
+            healthOperationNames: operationNames,
+        };
     }, [plantHealthIssues]);
 
     const healthRecommendedOperations = useMemo(() => {
@@ -221,7 +230,14 @@ export function RecommendationsCard({
 
         return sortFavoritesFirst(
             operations
-                .filter((operation) => healthOperationIds.has(operation.id))
+                .filter(
+                    (operation) =>
+                        healthOperationIds.has(operation.id) &&
+                        isOperationApplicableToPlant(
+                            operation,
+                            healthOperationNames,
+                        ),
+                )
                 .sort((left, right) =>
                     left.information.label.localeCompare(
                         right.information.label,
@@ -230,7 +246,12 @@ export function RecommendationsCard({
                 ),
             favoriteOperationIds,
         );
-    }, [favoriteOperationIds, healthOperationIds, operations]);
+    }, [
+        favoriteOperationIds,
+        healthOperationIds,
+        healthOperationNames,
+        operations,
+    ]);
 
     const healthIssueLabels = useMemo(
         () => plantHealthIssues.map((issue) => issue.name),
@@ -274,7 +295,8 @@ export function RecommendationsCard({
         track,
     ]);
 
-    const isLoadingFeaturedOperations = isLoadingOperations;
+    const isLoadingFeaturedOperations =
+        isLoadingOperations || !isPlantMetadataResolved;
     const hasStageRecommendations = Boolean(stageSequence?.length);
     const hasHealthIssueRecommendations = plantHealthIssues.length > 0;
     const isLoadingHealthOperations =

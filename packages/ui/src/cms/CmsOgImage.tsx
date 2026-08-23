@@ -1,10 +1,13 @@
 import { Logotype } from '../PublicChrome/Logotype';
+import { cmsImageObjectPosition } from './CmsImagePointOfInterest';
 
 export type CmsOgImageKind = 'blog' | 'changelog' | 'page';
 
 export type CmsOgImageProps = {
     imageUrl?: string | null;
     kind?: CmsOgImageKind;
+    pointOfInterestX?: number | null;
+    pointOfInterestY?: number | null;
     tags?: string[];
     title: string;
 };
@@ -64,6 +67,8 @@ function visibleTags(tags: string[] | undefined) {
 export function CmsOgImage({
     imageUrl,
     kind = 'page',
+    pointOfInterestX,
+    pointOfInterestY,
     tags,
     title,
 }: CmsOgImageProps) {
@@ -108,7 +113,6 @@ export function CmsOgImage({
                     padding: '14px 18px',
                     position: 'relative',
                     width: hasImage ? 666 : '100%',
-                    zIndex: 1,
                 }}
             >
                 <div
@@ -222,23 +226,14 @@ export function CmsOgImage({
                         alt=""
                         src={normalizedImageUrl ?? undefined}
                         style={{
+                            borderRadius: 30,
                             height: '100%',
                             objectFit: 'cover',
+                            objectPosition: cmsImageObjectPosition(
+                                pointOfInterestX,
+                                pointOfInterestY,
+                            ),
                             width: '100%',
-                        }}
-                    />
-                    <div
-                        style={{
-                            borderColor: '#FFFFFFA6',
-                            borderRadius: 30,
-                            borderStyle: 'solid',
-                            borderWidth: 10,
-                            bottom: 0,
-                            display: 'flex',
-                            left: 0,
-                            position: 'absolute',
-                            right: 0,
-                            top: 0,
                         }}
                     />
                 </div>

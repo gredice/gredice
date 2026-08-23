@@ -3,13 +3,13 @@
 import { getAchievementDefinitions } from '@gredice/js/achievements';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useMemo, useState } from 'react';
 import { useAccountAchievements } from '../../hooks/useAccountAchievements';
+import { GameModal } from '../game-modal';
 
 type AccountAchievement = NonNullable<
     ReturnType<typeof useAccountAchievements>['data']
@@ -191,7 +191,7 @@ export function AchievementsOverview() {
             </div>
 
             {/* Achievement Details Modal */}
-            <Modal
+            <GameModal
                 open={Boolean(selectedAchievement)}
                 onOpenChange={(open) => {
                     if (!open) setSelectedAchievement(null);
@@ -316,7 +316,7 @@ export function AchievementsOverview() {
                         </Stack>
                     </Stack>
                 )}
-            </Modal>
+            </GameModal>
         </>
     );
 }

@@ -14,18 +14,21 @@ import { PageFilterInputNoSSR } from '../../components/shared/PageFilterInputNoS
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
 import { getPlantSortsData } from '../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
-import { merchantReturnPolicy } from '../../src/merchantReturnPolicy';
 import { CalendarInfoChip } from './CalendarInfoChip';
 import { PlantsCalendar } from './PlantsCalendar';
 import { PlantsGallery } from './PlantsGallery';
 import { PlantsSeedTimeFilterToggle } from './PlantsSeedTimeFilterToggle';
+import { plantArchivePath } from './plantArchivePath';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = createPublicMetadata({
     title: 'Biljke',
     description:
         'Za tebe smo pripremili opširnu listu biljaka koje možeš pronaći u našem asortimanu.',
-};
+    path: KnownPages.Plants,
+    category: 'Katalog biljaka',
+});
 
 export default async function PlantsPage({
     searchParams,
@@ -61,22 +64,11 @@ export default async function PlantsPage({
                             '@type': 'ListItem',
                             position: index + 1,
                             item: {
-                                '@type': 'Product',
+                                '@type': 'Thing',
+                                '@id': `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 name: plant.information.name,
                                 url: `https://www.gredice.com${KnownPages.Plant(plant.information.name)}`,
                                 image: plant.image?.cover?.url,
-                                offers:
-                                    typeof plant.prices?.perPlant === 'number'
-                                        ? {
-                                              '@type': 'Offer',
-                                              price: plant.prices.perPlant.toFixed(
-                                                  2,
-                                              ),
-                                              priceCurrency: 'EUR',
-                                              hasMerchantReturnPolicy:
-                                                  merchantReturnPolicy,
-                                          }
-                                        : undefined,
                             },
                         })),
                     }}
@@ -106,7 +98,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=popis${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'popis',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
@@ -121,7 +117,11 @@ export default async function PlantsPage({
                                 asChild
                             >
                                 <Link
-                                    href={`?pregled=kalendar${search ? `&pretraga=${search}` : ''}${isSeedTimeFilterEnabled ? '&vrijemeZaSijanje=1' : ''}`}
+                                    href={plantArchivePath({
+                                        search,
+                                        seedTimeOnly: isSeedTimeFilterEnabled,
+                                        view: 'kalendar',
+                                    })}
                                     prefetch
                                 >
                                     <Row spacing={2} className="cursor-default">
@@ -161,6 +161,16 @@ export default async function PlantsPage({
                     </TabsContent>
                 </Tabs>
             </Suspense>
+            <Typography level="body1" className="mt-8">
+                Odaberi što želiš uzgajati, a zatim provjeri kako funkcionira{' '}
+                <Link
+                    className="font-medium text-primary underline"
+                    href={KnownPages.DeliveryZagreb}
+                >
+                    dostava povrća u Zagrebu iz tvoje gredice
+                </Link>
+                .
+            </Typography>
             <Row spacing={4} className="mt-12">
                 <Typography level="body1">
                     Sviđa ti se odabir ili nema biljke koja te zanima?

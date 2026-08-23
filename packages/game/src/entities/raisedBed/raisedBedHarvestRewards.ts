@@ -1,6 +1,7 @@
 import type { BlockData } from '@gredice/client';
+import { getGardenBlockFootprintOffsets } from '@gredice/js/gardenBlocks';
 import type { OperationVisualReward } from '../../operationVisualRewards';
-import type { Stack } from '../../types/Stack';
+import type { GardenStack } from '../../types/Stack';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getBlockDataByName,
@@ -24,6 +25,7 @@ type ResolveRaisedBedHarvestPositionsInput = {
 type ResolveRaisedBedHarvestBasketStateInput = {
     fields: RaisedBedHarvestFieldInput[];
     hiddenOperationIds?: ReadonlySet<number>;
+    hiddenOperationIdsResolved?: boolean;
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
@@ -31,7 +33,17 @@ type ResolveRaisedBedHarvestBasketStateInput = {
 type ResolveRaisedBedHarvestBasketPlacementInput = {
     blockData: BlockData[] | null | undefined;
     blockIds: string[];
-    stacks: Stack[];
+    reservedPositionKeys?: ReadonlySet<string>;
+    stacks: GardenStack[];
+};
+
+type ResolveRaisedBedHarvestBasketPlacementsInput = {
+    blockData: BlockData[] | null | undefined;
+    raisedBeds: {
+        blockIds: string[];
+        raisedBedId: number;
+    }[];
+    stacks: GardenStack[];
 };
 
 export type RaisedBedHarvestBasketFillLevel = 'empty' | 'full' | 'partial';
@@ -58,12 +70,8 @@ function isHarvestRewardForRaisedBed(
     );
 }
 
-export function isHarvestRewardProgressed(reward: OperationVisualReward) {
-    return (
-        Boolean(reward.completedAt || reward.verifiedAt) ||
-        reward.status === 'completed' ||
-        reward.status === 'pendingVerification'
-    );
+export function isHarvestRewardCompleted(reward: OperationVisualReward) {
+    return reward.status === 'completed';
 }
 
 export function resolveRaisedBedHarvestPositions({
@@ -75,7 +83,7 @@ export function resolveRaisedBedHarvestPositions({
     const hasRaisedBedHarvest = visualRewards.some(
         (reward) =>
             isHarvestRewardForRaisedBed(reward, raisedBedId) &&
-            isHarvestRewardProgressed(reward) &&
+            isHarvestRewardCompleted(reward) &&
             reward.scope === 'raisedBed',
     );
     const harvestedFieldIds = new Set(
@@ -83,7 +91,7 @@ export function resolveRaisedBedHarvestPositions({
             .filter(
                 (reward) =>
                     isHarvestRewardForRaisedBed(reward, raisedBedId) &&
-                    isHarvestRewardProgressed(reward) &&
+                    isHarvestRewardCompleted(reward) &&
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null,
             )
@@ -114,9 +122,14 @@ export function resolveRaisedBedHarvestPositions({
 export function resolveRaisedBedHarvestBasketState({
     fields,
     hiddenOperationIds,
+    hiddenOperationIdsResolved = true,
     raisedBedId,
     visualRewards,
 }: ResolveRaisedBedHarvestBasketStateInput): RaisedBedHarvestBasketState | null {
+    if (!hiddenOperationIdsResolved) {
+        return null;
+    }
+
     const harvestRewards = visualRewards.filter(
         (reward) =>
             isHarvestRewardForRaisedBed(reward, raisedBedId) &&
@@ -128,32 +141,32 @@ export function resolveRaisedBedHarvestBasketState({
     }
 
     const occupiedFields = fields.filter(isRaisedBedFieldOccupied);
-    const progressedRaisedBedHarvest = harvestRewards.some(
+    const completedRaisedBedHarvest = harvestRewards.some(
         (reward) =>
-            reward.scope === 'raisedBed' && isHarvestRewardProgressed(reward),
+            reward.scope === 'raisedBed' && isHarvestRewardCompleted(reward),
     );
-    const progressedFieldHarvestIds = new Set(
+    const completedFieldHarvestIds = new Set(
         harvestRewards
             .filter(
                 (reward) =>
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null &&
-                    isHarvestRewardProgressed(reward),
+                    isHarvestRewardCompleted(reward),
             )
             .map((reward) => reward.raisedBedFieldId),
     );
     const producePlantSortIds = occupiedFields.flatMap((field) => {
         const harvested =
-            progressedRaisedBedHarvest ||
+            completedRaisedBedHarvest ||
             (typeof field.id === 'number' &&
-                progressedFieldHarvestIds.has(field.id));
+                completedFieldHarvestIds.has(field.id));
 
         return harvested && field.plantSortId ? [field.plantSortId] : [];
     });
     const fillLevel =
         producePlantSortIds.length === 0
             ? 'empty'
-            : progressedRaisedBedHarvest ||
+            : completedRaisedBedHarvest ||
                 producePlantSortIds.length >= occupiedFields.length
               ? 'full'
               : 'partial';
@@ -170,7 +183,7 @@ function stackPositionKey(position: { x: number; z: number }) {
 }
 
 function findStackAtPosition(
-    stacks: Stack[],
+    stacks: GardenStack[],
     position: { x: number; z: number },
 ) {
     return stacks.find(
@@ -181,7 +194,7 @@ function findStackAtPosition(
 
 function isFreeStackableStack(
     blockData: BlockData[] | null | undefined,
-    stack: Stack | undefined,
+    stack: GardenStack | undefined,
 ) {
     const topBlock = stack?.blocks.at(-1);
     if (
@@ -200,17 +213,30 @@ function isFreeStackableStack(
 export function resolveRaisedBedHarvestBasketPlacement({
     blockData,
     blockIds,
+    reservedPositionKeys,
     stacks,
 }: ResolveRaisedBedHarvestBasketPlacementInput): RaisedBedHarvestBasketPlacement | null {
-    const raisedBedStacks = blockIds.flatMap((blockId) => {
+    const raisedBedPlacements = blockIds.flatMap((blockId) => {
         const stack = stacks.find((candidate) =>
             candidate.blocks.some((block) => block.id === blockId),
         );
+        const block = stack?.blocks.find(
+            (candidate) => candidate.id === blockId,
+        );
 
-        return stack ? [stack] : [];
+        return stack && block ? [{ block, stack }] : [];
     });
+    const raisedBedPositions = raisedBedPlacements.flatMap(({ block, stack }) =>
+        getGardenBlockFootprintOffsets(
+            getBlockDataByName(blockData, block.name),
+            block.rotation,
+        ).map((offset) => ({
+            x: stack.position.x + offset.x,
+            z: stack.position.z + offset.y,
+        })),
+    );
     const raisedBedPositionKeys = new Set(
-        raisedBedStacks.map((stack) => stackPositionKey(stack.position)),
+        raisedBedPositions.map(stackPositionKey),
     );
     const neighborOffsets = [
         { x: 1, z: 0, rotation: Math.PI / 2 },
@@ -220,14 +246,18 @@ export function resolveRaisedBedHarvestBasketPlacement({
     ];
     const visited = new Set<string>();
 
-    for (const raisedBedStack of raisedBedStacks) {
+    for (const raisedBedPosition of raisedBedPositions) {
         for (const offset of neighborOffsets) {
             const destination = {
-                x: raisedBedStack.position.x + offset.x,
-                z: raisedBedStack.position.z + offset.z,
+                x: raisedBedPosition.x + offset.x,
+                z: raisedBedPosition.z + offset.z,
             };
             const key = stackPositionKey(destination);
-            if (visited.has(key) || raisedBedPositionKeys.has(key)) {
+            if (
+                visited.has(key) ||
+                raisedBedPositionKeys.has(key) ||
+                reservedPositionKeys?.has(key)
+            ) {
                 continue;
             }
 
@@ -250,4 +280,37 @@ export function resolveRaisedBedHarvestBasketPlacement({
     }
 
     return null;
+}
+
+export function resolveRaisedBedHarvestBasketPlacements({
+    blockData,
+    raisedBeds,
+    stacks,
+}: ResolveRaisedBedHarvestBasketPlacementsInput) {
+    const placements = new Map<number, RaisedBedHarvestBasketPlacement>();
+    const reservedPositionKeys = new Set<string>();
+
+    for (const raisedBed of [...raisedBeds].sort(
+        (first, second) => first.raisedBedId - second.raisedBedId,
+    )) {
+        const placement = resolveRaisedBedHarvestBasketPlacement({
+            blockData,
+            blockIds: raisedBed.blockIds,
+            reservedPositionKeys,
+            stacks,
+        });
+        if (!placement) {
+            continue;
+        }
+
+        placements.set(raisedBed.raisedBedId, placement);
+        reservedPositionKeys.add(
+            stackPositionKey({
+                x: placement.position[0],
+                z: placement.position[2],
+            }),
+        );
+    }
+
+    return placements;
 }

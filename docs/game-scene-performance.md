@@ -59,6 +59,23 @@ not accidentally based on `next dev`.
   overlay meshes. Instanced block control wrappers are skipped for no-control
   profile scenes and for covered instanced blocks, so stacked scenes no longer
   mount buried grass controls under every top block.
+- The 2026-07-03 terrain/water chunk pass added merged geometry output for
+  stable grass, sand, snow, and dirt terrain chunks while preserving the
+  existing instanced path for animated or interactive blocks. Water tops now
+  batch many foam-edge variants inside chunk meshes with per-vertex foam
+  and shore-depth attributes, and merged water side walls are partitioned by
+  chunk while still checking all water neighbors to avoid chunk-boundary side
+  seams. Water meshes carry sampled depth-map attributes: top surfaces grade by
+  water-column depth plus shaped terrain angle/corner depth under the surface,
+  then smooth those samples across adjacent top surfaces so flat stepped
+  columns shade as a continuous depth field instead of abrupt per-block bands.
+  Shore-distance color also uses smoothed per-vertex samples so flat water near
+  banks, islands, and garden edges fades toward deeper color gradually. Side
+  faces receive the same smoothed top-edge depth and shore samples, matching the
+  top color at the bend before easing darker down the wall. Shore foam still
+  follows exposed edges, and color/opacity ease continuously with depth instead
+  of snapping at a fixed block threshold. Production profile runs should be used
+  for before/after budget decisions.
 - Snow and rain overlays are optimized for repeated instanced blocks, but many
   non-instanced entities can still mount per-block `SnowOverlay` or
   `RainWetOverlay` meshes when weather makes them visible, so snow/rain profiles
@@ -83,7 +100,7 @@ Measured from the current workspace on 2026-04-29:
 | `castShadow` / `receiveShadow` occurrences | 109 | coarse source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |
 | Canvas DPR policy | low: cap 1, medium: cap 1.5, high: cap 2 | set as a DPR cap, not a forced upscale |
-| Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | profiler reports active rain/snow counts |
+| Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | rain fades through shader intensity and unmounts below the visible threshold; profiler reports active rain/snow counts |
 | Ground decoration policy | low: off, medium: 50%, high: 100% | skipped in far zoom and reported in profile metadata |
 | Snow overlay policy | low: min coverage 0.35, medium: 0.08, high: 0.02 | overlays are not mounted below the tier threshold |
 
@@ -142,11 +159,27 @@ cd apps/garden
 pnpm run profile:game:dense
 ```
 
-Run every core and dense scenario together:
+Run the dense mobile matrix to cover baseline, details, camera motion, rain,
+snow, cloudy, windy, and plant-heavy scenes with the mobile viewport and
+budgets:
+
+```bash
+cd apps/garden
+pnpm run profile:game:dense-mobile
+```
+
+Run every profiler scenario together:
 
 ```bash
 cd apps/garden
 pnpm run profile:game:all
+```
+
+Run the weather-transition matrix, including the rain-to-clear cutoff timing:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 ```
 
 Run the same production build/start flow as a CI gate with budget failures
@@ -201,16 +234,209 @@ The `dense` scenario set samples:
 - `game-dense-25x25-windy-desktop`
 - `game-plant-heavy-25x25-desktop`
 
+The `dense-mobile` scenario set samples:
+
+- `game-dense-25x25-baseline-mobile`
+- `game-dense-25x25-details-mobile`
+- `game-dense-25x25-camera-motion-mobile`
+- `game-dense-25x25-rain-mobile`
+- `game-dense-25x25-snow-mobile`
+- `game-dense-25x25-cloudy-mobile`
+- `game-dense-25x25-windy-mobile`
+- `game-plant-heavy-25x25-mobile`
+
+The `plant-closeup` scenario set isolates the expensive transition from the
+normal garden camera into a plant-heavy raised bed:
+
+- `game-plant-heavy-closeup-desktop`
+- `game-plant-heavy-closeup-mobile`
+
+Both scenarios use the deterministic `plant-heavy` garden and select center
+raised bed `29`, rather than a corner bed, so neighboring generated fields stay
+in view. The desktop scenario uses the medium tier at `1280x720`/DPR 1. The
+mobile scenario uses the automatic quality resolver at `390x844`/DPR 3 while
+emulating a constrained 4 GiB, four-core device. Each scenario runs in five
+fresh browser contexts and records separate cold and warm close-up transitions;
+the report includes the individual samples and medians.
+
+Run only this matrix with:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+```
+
+The close-up controller is enabled only when the debug profile route receives a
+valid `closeupRaisedBedId` query. It drives the real normal/close-up game-state
+transition while leaving the initial camera untouched. Outside an active debug
+session, the generated-plant instrumentation does not publish or retain
+per-session field, scheduler, cache, worker, instance-buffer, shader, or
+render-build state. Shader prewarming starts immediately when close-up intent
+becomes active, during the camera transition. Focused near detail retains its
+billboard and raised-bed shadow proxy until the matching renderer/quality
+prewarm reaches a terminal state. The retained representative materials cover
+both initial and React-updated custom-material cache keys plus instanced and
+non-instanced mid billboards, so Three.js cannot release or lazily introduce
+their programs when detailed plants mount. Failure and timeout remain visible
+fallbacks: they allow detail to mount instead of pinning the bed to a billboard.
+Program diagnostics are profile-session-only and retain hashed cache keys,
+numeric program IDs, and material names rather than raw shader cache keys.
+
+Each close-up pass separates the selected field's near-LOD intent,
+pending-near billboard fallback, first exact chunk, first detailed field, fully
+detailed field set, and settled camera milestones. Its raw JSON preserves the
+pending-or-first-detail and settled profile checkpoints. It also separates selected
+and non-selected field and plant counts by near/mid/far/invisible state;
+plant-generation requests, completions, consumer cancellations, worker duration,
+failures, and synchronous fallback task count; main-thread render-data builds;
+detailed stem, leaf, flower, produce, and thorn instances; billboard instances;
+detailed shadow-caster
+submissions/primitive instances; and active/peak generated-plant buffer
+capacity, bytes, uploads, releases, empty meshes, and orphan detections.
+Transition and steady-state samples include
+browser/rendered frames, draw and instanced calls, submitted triangles, long
+tasks, heap, and CDP task/script/layout duration. The steady-state record also
+captures the final `generatedPlantProfile` snapshot so work which settles after
+the transition sample is not lost.
+
+Batch instrumentation can report partial field readiness with
+`resolvedInstanceCount` and `billboardInstanceCount` on each field. The
+profiler uses those values rather than treating a whole field as either
+billboard or detailed: resolved instances contribute their detailed part
+counts, unresolved fallback instances contribute to
+`pendingNearPlantInstances` and `parts.billboardInstances`, and the
+fully-detailed milestone is reached only after every selected field has no
+billboard fallback. Each batch may also report `activeArchetypeCount` and
+`failedArchetypeCount`. The snapshot exposes their totals together with
+`detailedPlantInstanceCount` under `renderData`, plus
+`maxArchetypeCountPerBatch` for the bounded-archetype acceptance gate.
+
+The `generatedPlantProfile.pipeline` record accepts scheduler queue/current and
+peak depth, cancellation, stale-result, deduplication, and delivery counters;
+template-cache hit/miss/eviction/current and peak byte counters; and packed
+worker phase-duration and transfer-byte counters. Packed timings retain total
+and maximum values for topology generation, render-data construction, packing,
+root batching, and the complete worker request. Scheduler and cache cumulative
+counters are rebased to each cold or warm profile session. Pass the scheduler
+snapshot as `schedulerBaseline` when starting a session. Worker cache response
+deltas are accumulated directly, so cache counters remain valid after a worker
+restart resets its internal lifetime counters. Each sub-record has
+an `observed` flag, and the Markdown report renders `n/a` rather than zero until
+the corresponding runtime integration submits a sample.
+
+The optimization acceptance gate requires both `workerFailureCount` and
+`syncFallbackTaskCount` to remain zero. Worker construction failure still uses
+the compatibility fallback for gameplay, but a profile cannot call that
+main-thread path worker-clean.
+
+`PackedPlantRenderWorkerResponse` protocol v3 consumers should pass the complete worker
+timing object rather than only its total:
+
+```ts
+recordGeneratedPlantProfilePackedWorkerResult({
+    sessionId,
+    timings: response.timings,
+    transferByteLength: response.transferByteLength,
+});
+```
+
+### Developmental plant catalog benchmark (2026-08-04)
+
+`pnpm --dir packages/game benchmark:plants` measures every one of the 50 plant
+presets at generations 4, 8, and 12, with four deterministic archetype variants
+per preset. Each template receives six warmups and 24 measured samples. The
+legacy baseline was captured with the same matrix and Node 24 process
+immediately before the L-system implementation was removed.
+
+| Generation | Developmental instances | Legacy instances | Change | Developmental packed bytes | Legacy packed bytes | Change |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 3,572 | 8,777 | -59.3% | 276,912 | 675,720 | -59.0% |
+| 8 | 9,085 | 15,129 | -39.9% | 702,924 | 1,166,900 | -39.8% |
+| 12 | 11,220 | 21,258 | -47.2% | 865,472 | 1,640,616 | -47.2% |
+
+Mature generation timing across all 200 archetypes:
+
+| Phase | Developmental median | Legacy median | Change | Developmental p95 | Legacy p95 | Change |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Topology | 0.0263 ms | 0.0219 ms | +20.2% | 0.0661 ms | 0.0668 ms | -1.1% |
+| Render data | 0.0154 ms | 0.1513 ms | -89.8% | 0.0453 ms | 1.6204 ms | -97.2% |
+| Packing | 0.0064 ms | 0.0093 ms | -30.8% | 0.0167 ms | 0.0331 ms | -49.6% |
+| Total | 0.0494 ms | 0.1811 ms | -72.7% | 0.1270 ms | 1.7404 ms | -92.7% |
+
+The topology phase is roughly flat, while bounded organ counts and direct organ
+transforms remove most of the old turtle-rendering cost and nearly half of the
+mature worker payload. Browser frame-time and GPU behavior should still be
+validated with `/debug/plants?catalog=1`, which renders one mature instance of
+every preset in a single deterministic scene.
+
+The legacy `buildDurationMs` input remains accepted and maps to total worker
+duration, but it cannot populate the individual phase counters. Prewarm
+instrumentation records `scheduled`, `compiling`, `ready`, `failed`,
+`timed-out`, or `cancelled` status plus duration and program counts before and
+after compilation. Detail-swap instrumentation records any subsequent compile
+count and the post-swap program count:
+
+```ts
+recordGeneratedPlantProfileShaderPrewarm({
+    durationMs,
+    programCountAfter,
+    programCountBefore,
+    status: 'ready',
+});
+recordGeneratedPlantProfilePostSwapCompilation({
+    compilationCount,
+    prewarmReady,
+    programCount,
+    sessionId,
+});
+```
+
+All asynchronous generated-plant recorders accept an optional `sessionId`
+guard. Producers should capture the value returned by
+`startGeneratedPlantProfile()` (or
+`getGeneratedPlantProfileSessionId()`) before scheduling work and pass it on
+completion, so late results from a cold pass cannot contaminate a later warm
+pass. The first detailed swap is sampled once per session. If prewarm was not
+ready, `postSwapCompilationCount` stays `null` rather than reporting a
+misleading zero. The Markdown close-up summary includes transition and steady
+renderer/CDP/GPU medians, hierarchical LOD work per update, instance-buffer
+allocation/upload metrics, render-data counts, all packed worker phase
+totals/maxima, and shader status/deduplication/duration/program evidence.
+
+When WebGL2 exposes `EXT_disjoint_timer_query_webgl2`, transition and
+steady-state samples include directional GPU elapsed-time samples. The report
+sets `supported: false` and records the reason when the extension is
+unavailable, so a missing GPU number is not mistaken for zero work.
+
+Normal, cold pending-near (when the transition remains pending long enough to
+capture), and detailed screenshots are written below
+`apps/garden/test-results/game-profile/screenshots/<scenario>/`. The JSON and
+Markdown reports remain under `apps/garden/test-results/game-profile/`; use the
+raw JSON when comparing optimization implementations because it preserves all
+per-run cold/warm metadata.
+
 Each scenario records startup readiness, canvas backing size, reported DPR,
 requested mode, garden profile, controls mode, camera-motion mode, active
 quality tier, DPR cap, shadow map size, rain/snow particle counts, active snow
 overlay count, raised-bed mulch overlay count, ground decoration count, FPS,
 frame-time percentiles, long tasks, draw calls, instanced draw calls, submitted
 triangles, JS heap, CDP task/script/layout duration, console warnings, and
-budget pass/fail. Budgets warn during local runs and fail the process only when
-`GAME_PROFILE_FAIL_ON_BUDGET=1` is set, which `profile:game:ci` does for
-production checks. Managed production profiling refuses to reuse an already
-reachable base URL so it cannot silently profile a running `next dev` server.
+budget pass/fail. `fps` remains the browser requestAnimationFrame cadence;
+`renderedFps` and `renderedFrames` count only animation ticks that submit WebGL
+draw calls, so demand-rendering changes remain visible. Per-rendered-frame and
+per-second draw-call and triangle fields keep scene cost attributable when the
+browser and renderer cadences differ. Budgets warn during local runs and fail
+the process only when `GAME_PROFILE_FAIL_ON_BUDGET=1` is set, which
+`profile:game:ci` does for production checks. Managed production profiling
+refuses to reuse an already reachable base URL so it cannot silently profile a
+running `next dev` server.
+
+Use `--scenario` (or `GAME_PROFILE_SCENARIOS`) to run one or more exact scenario
+names independently of the selected scenario set. Repeat the option or provide
+a comma-separated list. Use `--soak-ms` (or `GAME_PROFILE_SOAK_MS`) to keep each
+scene running after warmup before collecting the existing `sample-ms` window.
+This provides a consistent post-soak measurement without changing sample
+semantics.
 
 Useful overrides:
 
@@ -218,8 +444,16 @@ Useful overrides:
 GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+GAME_PROFILE_CLOSEUP_REPEAT=1 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=all pnpm run profile:game
+pnpm run profile:game -- --scenario game-dense-25x25-rain-mobile
+GAME_PROFILE_SCENARIOS=game-dense-25x25-rain-mobile pnpm run profile:game
 GAME_PROFILE_WARMUP_MS=8000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=45000 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
+GAME_PROFILE_SOAK_MS=600000 GAME_PROFILE_SAMPLE_MS=10000 pnpm run profile:game
 GAME_PROFILE_FAIL_ON_BUDGET=1 pnpm run profile:game
 ```
 

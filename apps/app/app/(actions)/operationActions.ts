@@ -1,41 +1,63 @@
 'use server';
 
+import { operationCanceledNotificationType } from '@gredice/js/notifications';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import { getRaisedBedCloseupUrl } from '@gredice/js/urls';
 import {
+    getRaisedBedCloseupUrl,
+    validateHostedImageUrl,
+} from '@gredice/js/urls';
+import {
+    notifyDetailedRaisedBedInspectionVerified,
     notifyOperationAssignedUsers,
     notifyOperationUpdate,
 } from '@gredice/notifications';
 import {
     acceptOperation,
+    assignOperationTaskUsers,
+    cancelOperationTaskWithRefund,
     createEvent,
     createNotification,
     createOperation,
-    earnSunflowers,
+    deliverNotificationOperatorAlert,
     getAssignableFarmUsersByFarmIds,
     getAssignableFarmUsersByGardenIds,
-    getAssignableFarmUsersByOperationIds,
     getEntitiesFormatted,
     getEntityFormatted,
-    getFarmUserAcceptedOperationById,
     getOperationById,
     getRaisedBed,
     type InsertOperation,
     knownEvents,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+    submitOperationTaskCompletion,
     switchOperationEntity,
     unacceptOperation,
+    updateOperationCompletionEvidence,
+    verifyOperationTaskCompletion,
+    withOperationScheduleTaskTransaction,
 } from '@gredice/storage';
 import { revalidatePath } from 'next/cache';
 import type { EntityStandardized } from '../../lib/@types/EntityStandardized';
 import { auth } from '../../lib/auth/auth';
 import { KnownPages } from '../../src/KnownPages';
 import { operationDefinitionMatchesTargetScope } from '../admin/operations/operationScope';
+import {
+    OperationScheduleConflictError,
+    runOperationScheduleAction,
+} from '../admin/schedule/operationScheduleActionResult';
+import {
+    canAcceptOperationTask,
+    canRescheduleOperationTask,
+    canSwitchOperationTaskEntity,
+    canUnacceptOperationTask,
+} from '../admin/schedule/scheduleShared';
+import { classifyOperationCompletionNotificationType } from './operationCompletionNotification';
 
 const MAX_COMPLETION_NOTES_LENGTH = 2000;
+const MAX_COMPLETION_IMAGE_COUNT = 20;
 
 function normalizeCompletionNotes(notes?: string) {
     const normalizedNotes = notes?.trim();
@@ -50,6 +72,45 @@ function normalizeCompletionNotes(notes?: string) {
     return normalizedNotes;
 }
 
+function normalizeCompletionImageUrls(
+    value: unknown,
+    existingImageUrls: string[],
+) {
+    if (!Array.isArray(value)) {
+        throw new Error('Popis slika nije ispravan.');
+    }
+
+    const allowedExistingImageUrls = new Set(
+        existingImageUrls.map((imageUrl) => imageUrl.trim()).filter(Boolean),
+    );
+    const uniqueUrls = new Set<string>();
+    for (const item of value) {
+        if (typeof item !== 'string') {
+            throw new Error('Popis slika nije ispravan.');
+        }
+
+        const imageUrl = item.trim();
+        if (!imageUrl) {
+            continue;
+        }
+
+        const urlError = validateHostedImageUrl(imageUrl);
+        if (urlError && !allowedExistingImageUrls.has(imageUrl)) {
+            throw new Error('Slike moraju biti učitane kroz Gredice.');
+        }
+
+        uniqueUrls.add(imageUrl);
+    }
+
+    if (uniqueUrls.size > MAX_COMPLETION_IMAGE_COUNT) {
+        throw new Error(
+            `Zapis završetka može imati najviše ${MAX_COMPLETION_IMAGE_COUNT} slika.`,
+        );
+    }
+
+    return Array.from(uniqueUrls);
+}
+
 function buildRaisedBedNotificationLink(
     raisedBedName: string | null | undefined,
     positionIndex: number | null | undefined,
@@ -60,7 +121,9 @@ function buildRaisedBedNotificationLink(
 
     return getRaisedBedCloseupUrl(
         raisedBedName,
-        typeof positionIndex === 'number' ? { positionIndex } : undefined,
+        typeof positionIndex === 'number'
+            ? { fieldTab: 'diary', positionIndex }
+            : undefined,
     );
 }
 
@@ -156,11 +219,6 @@ export async function createOperationAction(formData: FormData) {
     return { success: true };
 }
 
-export type SingleCreateOperationActionState = {
-    success: boolean;
-    message: string;
-};
-
 type ParsedOperationTarget = {
     accountId?: string;
     farmId?: number;
@@ -216,109 +274,6 @@ function parseOperationTarget(rawTarget: string): ParsedOperationTarget {
     };
 }
 
-export async function singleCreateOperationAction(
-    _previousState: SingleCreateOperationActionState | null,
-    formData: FormData,
-): Promise<SingleCreateOperationActionState> {
-    try {
-        const { userId } = await auth(['admin']);
-        const entityId = formData.get('entityId')
-            ? Number(formData.get('entityId'))
-            : undefined;
-        if (!entityId) {
-            throw new Error('Entity ID is required');
-        }
-        const target = getStringFormValue(formData, 'target');
-        if (!target) {
-            throw new Error('Odaberite jednu ciljnu lokaciju.');
-        }
-        const selectedAssignedUserId =
-            getStringFormValue(formData, 'assignedUserId') || undefined;
-        const scheduledDate = formData.get('scheduledDate')
-            ? new Date(formData.get('scheduledDate') as string)
-            : undefined;
-
-        const parsedTarget = parseOperationTarget(target);
-        await assertRaisedBedAllowsNewOperation(parsedTarget.raisedBedId);
-
-        if (selectedAssignedUserId && parsedTarget.farmId) {
-            const assignableFarmUsersByFarmId =
-                await getAssignableFarmUsersByFarmIds([parsedTarget.farmId]);
-            const isUserAssignableToFarm =
-                assignableFarmUsersByFarmId[parsedTarget.farmId]?.some(
-                    (user) => user.id === selectedAssignedUserId,
-                ) ?? false;
-            if (!isUserAssignableToFarm) {
-                throw new Error(
-                    'Odabrani korisnik nije dostupan za odabranu radnju.',
-                );
-            }
-        } else if (selectedAssignedUserId && parsedTarget.gardenId) {
-            const assignableFarmUsersByGardenId =
-                await getAssignableFarmUsersByGardenIds([
-                    parsedTarget.gardenId,
-                ]);
-            const isUserAssignableToGarden =
-                assignableFarmUsersByGardenId[parsedTarget.gardenId]?.some(
-                    (user) => user.id === selectedAssignedUserId,
-                ) ?? false;
-            if (!isUserAssignableToGarden) {
-                throw new Error(
-                    'Odabrani korisnik nije dostupan za odabranu radnju.',
-                );
-            }
-        }
-
-        const operationId = await createOperation({
-            entityId,
-            entityTypeName: 'operation',
-            accountId: parsedTarget.accountId,
-            farmId: parsedTarget.farmId,
-            gardenId: parsedTarget.gardenId,
-            raisedBedId: parsedTarget.raisedBedId,
-            raisedBedFieldId: parsedTarget.raisedBedFieldId,
-            timestamp: undefined,
-        });
-
-        if (scheduledDate) {
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate: scheduledDate.toISOString(),
-                }),
-            );
-            await notifyOperationUpdate(operationId, 'scheduled', {
-                scheduledDate: scheduledDate.toISOString(),
-            });
-        }
-        if (selectedAssignedUserId) {
-            await createEvent(
-                knownEvents.operations.assignedV1(operationId.toString(), {
-                    assignedUserId: selectedAssignedUserId,
-                    assignedBy: userId,
-                }),
-            );
-            await notifyOperationAssignedUsers(operationId, [
-                selectedAssignedUserId,
-            ]);
-        }
-
-        revalidatePath(KnownPages.Schedule);
-        revalidatePath(KnownPages.Operations);
-        if (parsedTarget.farmId) {
-            revalidatePath(KnownPages.Farm(parsedTarget.farmId));
-        }
-
-        return { success: true, message: 'Radnja je uspješno kreirana.' };
-    } catch (error) {
-        return {
-            success: false,
-            message:
-                error instanceof Error
-                    ? error.message
-                    : 'Došlo je do greške pri kreiranju radnje.',
-        };
-    }
-}
 export type BulkCreateOperationsActionState = {
     success: boolean;
     message: string;
@@ -461,7 +416,10 @@ export async function bulkCreateOperationsAction(
 
         return {
             success: true,
-            message: `Uspješno kreirano ${createdCount} radnji.`,
+            message:
+                createdCount === 1
+                    ? 'Radnja je uspješno kreirana.'
+                    : `Uspješno kreirano ${createdCount} radnji.`,
             createdCount,
             totalCount: targets.length,
         };
@@ -496,6 +454,25 @@ function parseRequiredPositiveInteger(
     return parsed;
 }
 
+function parseRequiredTaskVersionEventId(formData: FormData) {
+    const value = formData.get('expectedTaskVersionEventId');
+    const parsed = typeof value === 'string' ? Number(value) : NaN;
+
+    if (!Number.isSafeInteger(parsed) || parsed < 0) {
+        throw new Error('Trenutna verzija radnje nije ispravna.');
+    }
+
+    return parsed;
+}
+
+function assertTaskVersionEventId(value: number) {
+    if (!Number.isSafeInteger(value) || value < 0) {
+        throw new Error('Trenutna verzija radnje nije ispravna.');
+    }
+
+    return value;
+}
+
 export async function switchOperationEntityAction(
     _previousState: SwitchOperationEntityActionState | null,
     formData: FormData,
@@ -513,17 +490,13 @@ export async function switchOperationEntityAction(
             'entityId',
             'Odaberite novu radnju.',
         );
-
-        const operation = await getOperationById(operationId);
-        if (
-            operation.entityId === entityId &&
-            operation.entityTypeName === 'operation'
-        ) {
-            return {
-                success: true,
-                message: 'Odabrana radnja je već postavljena.',
-            };
-        }
+        const expectedEntityId = parseRequiredPositiveInteger(
+            formData,
+            'expectedEntityId',
+            'Trenutna radnja nije ispravna.',
+        );
+        const expectedTaskVersionEventId =
+            parseRequiredTaskVersionEventId(formData);
 
         const availableOperations =
             await getEntitiesFormatted<EntityStandardized>('operation');
@@ -535,22 +508,59 @@ export async function switchOperationEntityAction(
             throw new Error('Odabrana radnja nije dostupna.');
         }
 
-        if (
-            !operationDefinitionMatchesTargetScope(
-                operation,
-                replacementOperation,
-            )
-        ) {
-            throw new Error(
-                'Odabrana radnja nije kompatibilna s lokacijom postojeće radnje.',
-            );
-        }
+        const mutation = await withOperationScheduleTaskTransaction(
+            operationId,
+            async (transaction) => {
+                const operation = await getOperationById(
+                    operationId,
+                    transaction,
+                );
+                if (
+                    operation.entityId !== expectedEntityId ||
+                    operation.taskVersionEventId !==
+                        expectedTaskVersionEventId ||
+                    operation.entityTypeName !== 'operation'
+                ) {
+                    throw new OperationScheduleConflictError();
+                }
+                if (!canSwitchOperationTaskEntity(operation.status)) {
+                    throw new Error(
+                        'Radnja se više ne može promijeniti nakon završetka ili prijave prepreke.',
+                    );
+                }
+                if (operation.entityId === entityId) {
+                    return { changed: false, operation };
+                }
+                if (
+                    !operationDefinitionMatchesTargetScope(
+                        operation,
+                        replacementOperation,
+                    )
+                ) {
+                    throw new Error(
+                        'Odabrana radnja nije kompatibilna s lokacijom postojeće radnje.',
+                    );
+                }
 
-        await switchOperationEntity(operationId, {
-            entityId,
-            entityTypeName: 'operation',
-        });
-        await revalidateOperationPaths(operation);
+                await switchOperationEntity(
+                    operationId,
+                    {
+                        entityId,
+                        entityTypeName: 'operation',
+                    },
+                    transaction,
+                );
+                return { changed: true, operation };
+            },
+        );
+        await revalidateOperationPaths(mutation.operation);
+
+        if (!mutation.changed) {
+            return {
+                success: true,
+                message: 'Odabrana radnja je već postavljena.',
+            };
+        }
 
         return { success: true, message: 'Radnja je promijenjena.' };
     } catch (error) {
@@ -564,7 +574,7 @@ export async function switchOperationEntityAction(
     }
 }
 
-export async function rescheduleOperationAction(formData: FormData) {
+async function rescheduleOperation(formData: FormData) {
     await auth(['admin']);
     const operationId = formData.get('operationId')
         ? Number(formData.get('operationId'))
@@ -572,67 +582,187 @@ export async function rescheduleOperationAction(formData: FormData) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
+    const expectedEntityId = formData.get('expectedEntityId')
+        ? Number(formData.get('expectedEntityId'))
+        : undefined;
+    if (!expectedEntityId) {
+        throw new Error('Expected operation entity ID is required');
+    }
+    const expectedTaskVersionEventId =
+        parseRequiredTaskVersionEventId(formData);
     const scheduledDate = formData.get('scheduledDate') as string;
     if (!scheduledDate) {
         throw new Error('Scheduled Date is required');
     }
 
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-
-    // Create a new scheduled event to reschedule the operation
     const newDate = new Date(scheduledDate);
-    await createEvent(
-        knownEvents.operations.scheduledV1(operationId.toString(), {
-            scheduledDate: newDate.toISOString(),
-        }),
+    const expectedOperation = await getOperationById(operationId);
+    const operation = await withOperationScheduleTaskTransaction(
+        operationId,
+        async (transaction) => {
+            const currentOperation = await getOperationById(
+                operationId,
+                transaction,
+            );
+            if (currentOperation.status !== expectedOperation.status) {
+                throw new OperationScheduleConflictError();
+            }
+            if (
+                currentOperation.entityId !== expectedEntityId ||
+                currentOperation.entityId !== expectedOperation.entityId ||
+                currentOperation.taskVersionEventId !==
+                    expectedTaskVersionEventId
+            ) {
+                throw new OperationScheduleConflictError();
+            }
+            if (!canRescheduleOperationTask(currentOperation.status)) {
+                throw new Error(
+                    'Radnja se više ne može zakazati ili prerasporediti.',
+                );
+            }
+            await createEvent(
+                knownEvents.operations.scheduledV1(operationId.toString(), {
+                    scheduledDate: newDate.toISOString(),
+                }),
+                transaction,
+            );
+            await unacceptOperation(operationId, transaction);
+            return currentOperation;
+        },
     );
-    await unacceptOperation(operationId);
 
     await notifyOperationUpdate(operationId, 'rescheduled', {
         scheduledDate: newDate.toISOString(),
     });
 
     await revalidateOperationPaths(operation);
-    return { success: true };
 }
 
-export async function acceptOperationAction(operationId: number) {
+export async function rescheduleOperationAction(formData: FormData) {
+    return runOperationScheduleAction(() => rescheduleOperation(formData));
+}
+
+async function acceptOperationMutation(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
     await auth(['admin']);
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-    if (!operation.assignedUserId) {
-        throw new Error(
-            'Radnja ne može biti potvrđena prije nego što korisnik bude dodijeljen.',
-        );
-    }
-    await acceptOperation(operationId);
+    const validExpectedTaskVersionEventId = assertTaskVersionEventId(
+        expectedTaskVersionEventId,
+    );
+    const expectedOperation = await getOperationById(operationId);
+    const operation = await withOperationScheduleTaskTransaction(
+        operationId,
+        async (transaction) => {
+            const currentOperation = await getOperationById(
+                operationId,
+                transaction,
+            );
+            if (
+                currentOperation.status !== expectedOperation.status ||
+                currentOperation.entityId !== expectedEntityId ||
+                currentOperation.entityId !== expectedOperation.entityId ||
+                currentOperation.taskVersionEventId !==
+                    validExpectedTaskVersionEventId ||
+                currentOperation.assignedUserId !==
+                    expectedOperation.assignedUserId
+            ) {
+                throw new OperationScheduleConflictError();
+            }
+            if (!currentOperation.assignedUserId) {
+                throw new Error(
+                    'Radnja ne može biti potvrđena prije nego što korisnik bude dodijeljen.',
+                );
+            }
+            if (!canAcceptOperationTask(currentOperation.status)) {
+                throw new Error(
+                    'Radnja se više ne može potvrditi nakon završetka, otkazivanja ili prijave prepreke.',
+                );
+            }
+            await acceptOperation(operationId, transaction);
+            return currentOperation;
+        },
+    );
     await notifyOperationUpdate(operationId, 'approved');
     await revalidateOperationPaths(operation);
 }
 
-export async function unacceptOperationAction(operationId: number) {
-    await auth(['admin']);
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-    if (!operation.isAccepted) {
-        return { success: true };
-    }
-
-    await unacceptOperation(operationId);
-    await revalidateOperationPaths(operation);
-
-    return { success: true };
+export async function acceptOperationAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
+    return runOperationScheduleAction(() =>
+        acceptOperationMutation(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+        ),
+    );
 }
 
-export async function assignOperationUserAction(
+async function unacceptOperationMutation(
     operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
+    await auth(['admin']);
+    const validExpectedTaskVersionEventId = assertTaskVersionEventId(
+        expectedTaskVersionEventId,
+    );
+    const expectedOperation = await getOperationById(operationId);
+    const mutation = await withOperationScheduleTaskTransaction(
+        operationId,
+        async (transaction) => {
+            const operation = await getOperationById(operationId, transaction);
+            if (
+                operation.status !== expectedOperation.status ||
+                operation.entityId !== expectedEntityId ||
+                operation.entityId !== expectedOperation.entityId ||
+                operation.taskVersionEventId !== validExpectedTaskVersionEventId
+            ) {
+                throw new OperationScheduleConflictError();
+            }
+            if (!operation.isAccepted) {
+                return { changed: false, operation };
+            }
+            if (!canUnacceptOperationTask(operation.status)) {
+                throw new Error(
+                    'Potvrda se više ne može poništiti nakon završetka ili prijave prepreke.',
+                );
+            }
+
+            await unacceptOperation(operationId, transaction);
+            return { changed: true, operation };
+        },
+    );
+    if (!mutation.changed) {
+        return;
+    }
+
+    const { operation } = mutation;
+    await revalidateOperationPaths(operation);
+}
+
+export async function unacceptOperationAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+) {
+    return runOperationScheduleAction(() =>
+        unacceptOperationMutation(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+        ),
+    );
+}
+
+async function assignOperationUser(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
     assignedUserIds: string[],
 ) {
     const { userId } = await auth(['admin']);
@@ -641,60 +771,43 @@ export async function assignOperationUserAction(
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    const normalizedAssignedUserIds = Array.from(
-        new Set(
-            assignedUserIds
-                .map((assignedUserId) => assignedUserId.trim())
-                .filter((assignedUserId) => assignedUserId.length > 0),
+    const assignment = await assignOperationTaskUsers({
+        assignedBy: userId,
+        assignedUserIds,
+        expectedEntityId,
+        expectedTaskVersionEventId: assertTaskVersionEventId(
+            expectedTaskVersionEventId,
         ),
-    );
-    const operationAssignedUserIds = operation.assignedUserIds ?? [];
-    if (
-        normalizedAssignedUserIds.length === operationAssignedUserIds.length &&
-        normalizedAssignedUserIds.every((assignedUserId) =>
-            operationAssignedUserIds.includes(assignedUserId),
-        )
-    ) {
-        return { success: true };
+        operationId,
+    });
+    if (!assignment.changed) {
+        return;
     }
 
-    if (normalizedAssignedUserIds.length > 0) {
-        const assignableFarmUsersByOperationId =
-            await getAssignableFarmUsersByOperationIds([operationId]);
-        const assignableFarmUsers =
-            assignableFarmUsersByOperationId[operationId] ?? [];
-
-        if (
-            !normalizedAssignedUserIds.every((assignedUserId) =>
-                assignableFarmUsers.some(
-                    (farmUser) => farmUser.id === assignedUserId,
-                ),
-            )
-        ) {
-            throw new Error(
-                'Jedan od odabranih korisnika nije dostupan za ovu radnju.',
-            );
-        }
-    }
-
-    await createEvent(
-        knownEvents.operations.assignedV1(operationId.toString(), {
-            assignedUserId: normalizedAssignedUserIds[0] ?? null,
-            assignedUserIds: normalizedAssignedUserIds,
-            assignedBy: userId,
-        }),
-    );
-
-    const newlyAssignedUserIds = normalizedAssignedUserIds.filter(
-        (assignedUserId) => !operationAssignedUserIds.includes(assignedUserId),
-    );
-    if (newlyAssignedUserIds.length > 0) {
-        await notifyOperationAssignedUsers(operationId, newlyAssignedUserIds);
+    if (assignment.newlyAssignedUserIds.length > 0) {
+        await notifyOperationAssignedUsers(
+            operationId,
+            assignment.newlyAssignedUserIds,
+        );
     }
 
     await revalidateOperationPaths(operation);
+}
 
-    return { success: true };
+export async function assignOperationUserAction(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    assignedUserIds: string[],
+) {
+    return runOperationScheduleAction(() =>
+        assignOperationUser(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+            assignedUserIds,
+        ),
+    );
 }
 
 async function revalidateOperationPaths(
@@ -702,6 +815,7 @@ async function revalidateOperationPaths(
 ) {
     revalidatePath(KnownPages.Schedule);
     revalidatePath(KnownPages.Operations);
+    revalidatePath(KnownPages.Approvals);
     revalidatePath(KnownPages.Operation(operation.id));
     if (operation.accountId)
         revalidatePath(KnownPages.Account(operation.accountId));
@@ -750,96 +864,104 @@ async function buildOperationCompletionNotification(
         header,
         content,
         linkUrl,
+        visualReward: operationData?.attributes?.visualReward ?? null,
     };
 }
 
 async function notifyVerifiedOperationCompletion(
     operation: Awaited<ReturnType<typeof getOperationById>>,
+    { notifySlack }: { notifySlack: boolean },
 ) {
-    const { header, content, linkUrl } =
-        await buildOperationCompletionNotification(operation);
     if (!operation.completedBy) {
         throw new Error('Completed operation is missing a completion actor.');
     }
+    if (!operation.verificationEventId || !operation.verifiedAt) {
+        throw new Error('Completed operation is missing a verification event.');
+    }
+
+    const detailedInspectionHandled =
+        operation.entityId === RAISED_BED_DETAILED_INSPECTION_OPERATION_ID
+            ? await notifyDetailedRaisedBedInspectionVerified(operation.id)
+            : false;
+    const completionNotification = detailedInspectionHandled
+        ? null
+        : await buildOperationCompletionNotification(operation);
 
     await Promise.all([
-        notifyOperationUpdate(operation.id, 'completed', {
-            completedBy: operation.completedBy,
-        }),
-        operation.accountId
-            ? createNotification({
-                  accountId: operation.accountId,
-                  gardenId: operation.gardenId,
-                  raisedBedId: operation.raisedBedId,
-                  header,
-                  content,
-                  imageUrl: operation.imageUrls?.[0],
-                  linkUrl,
-                  timestamp: new Date(),
+        notifySlack
+            ? notifyOperationUpdate(operation.id, 'completed', {
+                  completedBy: operation.completedBy,
               })
             : undefined,
+        operation.accountId && completionNotification
+            ? createNotification(
+                  {
+                      accountId: operation.accountId,
+                      category: 'garden',
+                      gardenId: operation.gardenId,
+                      raisedBedId: operation.raisedBedId,
+                      header: completionNotification.header,
+                      content: completionNotification.content,
+                      imageUrl: operation.imageUrls?.[0],
+                      linkUrl: completionNotification.linkUrl,
+                      metadata: {
+                          operationId: operation.id,
+                          operationEntityId: operation.entityId,
+                          raisedBedFieldId: operation.raisedBedFieldId ?? null,
+                          visualReward: completionNotification.visualReward,
+                      },
+                      priority: 'high',
+                      timestamp: operation.verifiedAt,
+                      type: classifyOperationCompletionNotificationType({
+                          hasImage: Boolean(operation.imageUrls?.[0]),
+                          raisedBedFieldId: operation.raisedBedFieldId,
+                          visualReward: completionNotification.visualReward,
+                      }),
+                  },
+                  {
+                      compatibleExistingClassifications: [
+                          { category: 'general', type: 'general' },
+                      ],
+                      idempotencyKey: `schedule-task:operation-completed:${operation.verificationEventId.toString()}`,
+                  },
+              )
+            : undefined,
     ]);
-}
-
-async function assertFarmerCanCompleteOperation(
-    userId: string,
-    operation: Awaited<ReturnType<typeof getOperationById>>,
-) {
-    const farmOperation = await getFarmUserAcceptedOperationById(
-        userId,
-        operation.id,
-    );
-    if (!farmOperation) {
-        throw new Error('Nemaš dozvolu za označavanje ove radnje.');
-    }
-
-    if (
-        (farmOperation.assignedUserIds?.length ?? 0) > 0 &&
-        !farmOperation.assignedUserIds?.includes(userId)
-    ) {
-        throw new Error('Ova radnja je dodijeljena drugom korisniku.');
-    }
 }
 
 async function verifyOperationCompletion(
     operationId: number,
     verifiedBy: string,
+    expectedTaskVersionEventId: number,
 ) {
-    const operation = await getOperationById(operationId);
-    if (!operation) {
-        throw new Error(`Operation with ID ${operationId} not found.`);
-    }
-
-    if (operation.status === 'completed') {
-        return { success: true };
-    }
-
-    if (operation.status !== 'pendingVerification') {
-        throw new Error('Radnja ne čeka verifikaciju.');
-    }
-
-    await createEvent(
-        knownEvents.operations.verifiedV1(operationId.toString(), {
-            verifiedBy,
-        }),
-    );
+    const result = await verifyOperationTaskCompletion({
+        expectedTaskVersionEventId: assertTaskVersionEventId(
+            expectedTaskVersionEventId,
+        ),
+        operationId,
+        verifiedBy,
+    });
 
     const verifiedOperation = await getOperationById(operationId);
-    await notifyVerifiedOperationCompletion(verifiedOperation);
+    await notifyVerifiedOperationCompletion(verifiedOperation, {
+        notifySlack: result.created,
+    });
     await revalidateOperationPaths(verifiedOperation);
-
-    return { success: true };
 }
 
-export async function completeOperation(
+type OperationCompletionActor = {
+    role: 'admin' | 'farmer';
+    userId: string;
+};
+
+async function completeOperationForActor(
     operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    actor: OperationCompletionActor,
     imageUrls?: string[],
     notes?: string,
 ) {
-    const {
-        user: { role },
-        userId,
-    } = await auth(['admin', 'farmer']);
     const completionNotes = normalizeCompletionNotes(notes);
     const operation = await getOperationById(operationId);
     if (!operation) {
@@ -849,66 +971,183 @@ export async function completeOperation(
         throw new Error('Operation must be accepted before completion');
     }
 
-    if (operation.status === 'completed') {
-        return { success: true };
-    }
-
-    if (operation.status === 'pendingVerification') {
-        if (role === 'admin') {
-            return verifyOperationCompletion(operationId, userId);
-        }
-
-        throw new Error('Radnja već čeka verifikaciju.');
-    }
-
-    if (operation.status === 'failed' || operation.status === 'canceled') {
-        throw new Error(
-            `Cannot complete operation with status ${operation.status}`,
-        );
-    }
-
-    if (role === 'farmer') {
-        await assertFarmerCanCompleteOperation(userId, operation);
-    }
-
-    await createEvent(
-        knownEvents.operations.completedV1(operationId.toString(), {
-            completedBy: userId,
-            images: imageUrls,
-            notes: completionNotes,
-        }),
-    );
-
-    if (role === 'admin') {
-        await createEvent(
-            knownEvents.operations.verifiedV1(operationId.toString(), {
-                verifiedBy: userId,
-            }),
-        );
-
+    const result = await submitOperationTaskCompletion({
+        actor,
+        imageUrls,
+        notes: completionNotes,
+        operationId,
+        expectedEntityId,
+        expectedTaskVersionEventId: assertTaskVersionEventId(
+            expectedTaskVersionEventId,
+        ),
+    });
+    if (result.status === 'completed') {
         const verifiedOperation = await getOperationById(operationId);
-        await notifyVerifiedOperationCompletion(verifiedOperation);
+        await notifyVerifiedOperationCompletion(verifiedOperation, {
+            notifySlack: result.created,
+        });
     }
 
     await revalidateOperationPaths(operation);
+}
 
-    return { success: true };
+export async function completeOperation(
+    operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
+    imageUrls?: string[],
+    notes?: string,
+) {
+    const {
+        user: { role },
+        userId,
+    } = await auth(['admin', 'farmer']);
+
+    return runOperationScheduleAction(() =>
+        completeOperationForActor(
+            operationId,
+            expectedEntityId,
+            expectedTaskVersionEventId,
+            {
+                role: role === 'admin' ? 'admin' : 'farmer',
+                userId,
+            },
+            imageUrls,
+            notes,
+        ),
+    );
 }
 
 export async function completeOperationWithImageUrls(
     operationId: number,
+    expectedEntityId: number,
+    expectedTaskVersionEventId: number,
     imageUrls: string[],
     notes?: string,
 ) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
-    return completeOperation(operationId, imageUrls, notes);
+    return completeOperation(
+        operationId,
+        expectedEntityId,
+        expectedTaskVersionEventId,
+        imageUrls,
+        notes,
+    );
 }
 
-export async function verifyOperationAction(operationId: number) {
+const MAX_BULK_PHOTO_OPERATION_COUNT = 200;
+
+type BulkPhotoOperationCompletion = {
+    operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
+    imageUrls: string[];
+};
+
+export async function completeOperationsWithImageUrls(
+    completions: BulkPhotoOperationCompletion[],
+) {
     const { userId } = await auth(['admin']);
-    return verifyOperationCompletion(operationId, userId);
+    if (
+        !Array.isArray(completions) ||
+        completions.length === 0 ||
+        completions.length > MAX_BULK_PHOTO_OPERATION_COUNT
+    ) {
+        throw new Error('Popis radnji za skupni završetak nije ispravan.');
+    }
+
+    const actor: OperationCompletionActor = {
+        role: 'admin',
+        userId,
+    };
+    const results = await Promise.allSettled(
+        completions.map((completion) =>
+            completeOperationForActor(
+                completion.operationId,
+                completion.expectedEntityId,
+                completion.expectedTaskVersionEventId,
+                actor,
+                completion.imageUrls,
+            ),
+        ),
+    );
+    const failedCount = results.filter(
+        (result) => result.status === 'rejected',
+    ).length;
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.error('Bulk photo operation completion failed:', {
+                operationId: completions[index]?.operationId,
+                error:
+                    result.reason instanceof Error
+                        ? result.reason.message
+                        : 'Unknown completion error',
+            });
+        }
+    });
+
+    return {
+        success: failedCount === 0,
+        completedCount: results.length - failedCount,
+        failedCount,
+    };
+}
+
+async function updateOperationCompletionEvidenceMutation(
+    operationId: number,
+    expectedTaskVersionEventId: number,
+    imageUrls: unknown,
+    notes?: string,
+) {
+    const { userId } = await auth(['admin']);
+    const operation = await getOperationById(operationId);
+    await updateOperationCompletionEvidence({
+        expectedTaskVersionEventId: assertTaskVersionEventId(
+            expectedTaskVersionEventId,
+        ),
+        imageUrls: normalizeCompletionImageUrls(
+            imageUrls,
+            operation.imageUrls ?? [],
+        ),
+        notes: normalizeCompletionNotes(notes) ?? '',
+        operationId,
+        updatedBy: userId,
+    });
+
+    const updatedOperation = await getOperationById(operationId);
+    await revalidateOperationPaths(updatedOperation);
+}
+
+export async function updateOperationCompletionEvidenceAction(
+    operationId: number,
+    expectedTaskVersionEventId: number,
+    imageUrls: unknown,
+    notes?: string,
+) {
+    return runOperationScheduleAction(() =>
+        updateOperationCompletionEvidenceMutation(
+            operationId,
+            expectedTaskVersionEventId,
+            imageUrls,
+            notes,
+        ),
+    );
+}
+
+export async function verifyOperationAction(
+    operationId: number,
+    expectedTaskVersionEventId: number,
+) {
+    const { userId } = await auth(['admin']);
+    return runOperationScheduleAction(() =>
+        verifyOperationCompletion(
+            operationId,
+            userId,
+            expectedTaskVersionEventId,
+        ),
+    );
 }
 
 export async function cancelOperationAction(formData: FormData) {
@@ -919,6 +1158,14 @@ export async function cancelOperationAction(formData: FormData) {
     if (!operationId) {
         throw new Error('Operation ID is required');
     }
+    const expectedEntityId = formData.get('expectedEntityId')
+        ? Number(formData.get('expectedEntityId'))
+        : undefined;
+    if (!expectedEntityId) {
+        throw new Error('Expected operation entity ID is required');
+    }
+    const expectedTaskVersionEventId =
+        parseRequiredTaskVersionEventId(formData);
     const reason = formData.get('reason') as string;
     if (!reason || reason.trim().length === 0) {
         throw new Error('Cancellation reason is required');
@@ -936,10 +1183,6 @@ export async function cancelOperationAction(formData: FormData) {
         throw new Error(`Operation with ID ${operationId} not found.`);
     }
 
-    if (operation.status === 'canceled') {
-        return { success: true };
-    }
-
     // Get operation details for notification and refund calculation
     const operationData = await getEntityFormatted<EntityStandardized>(
         operation.entityId,
@@ -951,7 +1194,7 @@ export async function cancelOperationAction(formData: FormData) {
         ? Math.round(operationData.prices.perOperation * 1000)
         : 0;
 
-    const header = 'Radnje je otkazana';
+    const header = 'Radnja je otkazana';
     let content = `Radnja **${operationData?.information?.label}** je otkazana.`;
     if (operation.raisedBedId) {
         const raisedBed = await getRaisedBed(operation.raisedBedId);
@@ -977,48 +1220,71 @@ export async function cancelOperationAction(formData: FormData) {
         }
     }
 
-    // Add reason
-    if (reason) {
-        content += `\nRazlog otkazivanja: ${reason}`;
+    const cancellation = await cancelOperationTaskWithRefund({
+        canceledBy: userId,
+        expectedEntityId,
+        expectedStatus: operation.status,
+        expectedTaskVersionEventId,
+        notificationRequested: shouldNotify,
+        operationId,
+        operatorNotificationRequested: shouldNotify,
+        reason,
+        refundAmount: shouldRefund ? refundAmount : 0,
+    });
+
+    if (cancellation.reason) {
+        content += `\nRazlog otkazivanja: ${cancellation.reason}`;
+    }
+    if (cancellation.refundAmount > 0) {
+        content += `\nSredstva su ti vraćena u iznosu od ${cancellation.refundAmount} 🌻.`;
     }
 
-    // Add refund information
-    if (shouldRefund && refundAmount > 0) {
-        content += `\nSredstva su ti vraćana u iznosu od ${refundAmount} 🌻.`;
+    if (
+        cancellation.notificationRequested &&
+        cancellation.operation.accountId
+    ) {
+        const notificationId = await createNotification(
+            {
+                accountId: cancellation.operation.accountId,
+                category: 'garden',
+                gardenId: cancellation.operation.gardenId,
+                raisedBedId: cancellation.operation.raisedBedId,
+                header,
+                content,
+                linkUrl,
+                metadata: {
+                    operationEntityId: cancellation.operation.entityId,
+                    operationId: cancellation.operation.id,
+                    raisedBedFieldId:
+                        cancellation.operation.raisedBedFieldId ?? null,
+                },
+                priority: 'high',
+                timestamp: cancellation.canceledAt,
+                type: operationCanceledNotificationType,
+            },
+            {
+                compatibleExistingClassifications: [
+                    { category: 'general', type: 'general' },
+                ],
+                idempotencyKey: `admin:operation-canceled:${cancellation.cancellationEventId.toString()}`,
+            },
+        );
+
+        if (cancellation.operatorNotificationRequested) {
+            const delivery = await deliverNotificationOperatorAlert(
+                notificationId,
+                () =>
+                    notifyOperationUpdate(operationId, 'canceled', {
+                        reason: cancellation.reason,
+                        canceledBy: cancellation.canceledBy,
+                    }),
+            );
+            if (delivery.status === 'failed') {
+                throw delivery.error;
+            }
+        }
     }
 
-    await createEvent(
-        knownEvents.operations.canceledV1(operationId.toString(), {
-            canceledBy: userId,
-            reason,
-        }),
-    );
-
-    await Promise.all([
-        notifyOperationUpdate(operationId, 'canceled', {
-            reason,
-            canceledBy: userId,
-        }),
-        shouldRefund && refundAmount > 0 && operation.accountId
-            ? earnSunflowers(
-                  operation.accountId,
-                  refundAmount,
-                  `refund:operation:${operationId}`,
-              )
-            : Promise.resolve(),
-        shouldNotify && operation.accountId
-            ? createNotification({
-                  accountId: operation.accountId,
-                  gardenId: operation.gardenId,
-                  raisedBedId: operation.raisedBedId,
-                  header,
-                  content,
-                  linkUrl,
-                  timestamp: new Date(),
-              })
-            : undefined,
-    ]);
-
-    await revalidateOperationPaths(operation);
+    await revalidateOperationPaths(cancellation.operation);
     return { success: true };
 }

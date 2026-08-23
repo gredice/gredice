@@ -20,7 +20,7 @@ import {
     scheduleCacheKeys,
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
-import { AUTO_CLOSE_WINDOW_MS } from '../helpers/timeSlotAutomation';
+import { hasTimeSlotCloseDeadlinePassed } from '../helpers/timeSlotAutomation';
 import {
     accounts,
     accountUsers,
@@ -36,10 +36,20 @@ import {
     users,
 } from '../schema';
 import { storage } from '../storage';
+import { enqueueCheckoutDeliveryNotifications } from './checkoutNotificationOutboxRepo';
 import { getDeliveryAddress } from './deliveryAddressesRepo';
+import {
+    acquireDeliveryDispatchLock,
+    withDeliveryDispatchTransaction,
+} from './deliveryDispatchRepo';
+import {
+    assertDeliveryRequestHasNoActiveAssignment,
+    cancelActiveDeliveryRunAssignment,
+} from './deliveryRunAssignmentsRepo';
 import { getEntitiesFormatted, getEntityFormatted } from './entitiesRepo';
 import {
     createEvent,
+    type DeliveryRequestHandoffVerificationPayload,
     getAllEvents,
     knownEvents,
     knownEventTypes,
@@ -50,6 +60,20 @@ import { getOperationById, getOperationsByIds } from './operationsRepo';
 import { getPickupLocation } from './pickupLocationsRepo';
 import { closeTimeSlot, getTimeSlot } from './timeSlotsRepo';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+type DeliveryRequestInput = {
+    operationId: number;
+    slotId: number;
+    mode: 'delivery' | 'pickup';
+    addressId?: number;
+    locationId?: number;
+    notes?: string;
+    accountId: string;
+};
 type DbEvent = Awaited<ReturnType<typeof getAllEvents>>[number];
 type DeliveryTraceLink = Awaited<
     ReturnType<typeof getHarvestTraceLinksForOperationIds>
@@ -60,6 +84,29 @@ type RaisedBedFieldWithEvents = Awaited<
 type DeliveryRaisedBedField = Partial<
     Pick<RaisedBedFieldWithEvents, 'plantCycles' | 'plantSortId'>
 >;
+
+export const DeliveryRequestFulfillmentErrorCodes = {
+    NOT_FOUND: 'delivery-request-not-found',
+    STATE_CONFLICT: 'delivery-request-state-conflict',
+} as const;
+
+export type DeliveryRequestFulfillmentErrorCode =
+    (typeof DeliveryRequestFulfillmentErrorCodes)[keyof typeof DeliveryRequestFulfillmentErrorCodes];
+
+export class DeliveryRequestFulfillmentError extends Error {
+    override name = 'DeliveryRequestFulfillmentError';
+
+    constructor(
+        readonly code: DeliveryRequestFulfillmentErrorCode,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
+export class CheckoutDeliveryRequestConflictError extends Error {
+    override name = 'CheckoutDeliveryRequestConflictError';
+}
 
 // TODO: Should use types from union of payloads for delivery events
 interface DeliveryEventData {
@@ -72,6 +119,151 @@ interface DeliveryEventData {
     deliveryNotes?: string;
     cancelReason?: string;
     accountId?: string;
+    exceptionOutcome?: 'deferred' | 'failed' | 'cancelled';
+    exceptionRetryable?: boolean;
+}
+
+export type DeliveryCustomerHandoffVerification =
+    | 'verified'
+    | 'no-label'
+    | 'skipped'
+    | 'not-recorded';
+
+export type DeliveryCustomerHandoffReceipt = {
+    fulfilledAt: Date;
+    verification: DeliveryCustomerHandoffVerification;
+};
+
+const deliveryHandoffResults = new Set([
+    'unverified',
+    'scanned',
+    'no-label',
+    'missing',
+    'skipped',
+]);
+const deliveryHandoffReasons = new Set([
+    'scanner-unavailable',
+    'label-unreadable',
+    'manual-verification',
+    'other-operational',
+]);
+const customerReceiptMaximumOfflineAgeMs = 36 * 60 * 60 * 1000;
+const customerReceiptMaximumFutureSkewMs = 5 * 60 * 1000;
+
+function customerFulfilledAt(event: DbEvent) {
+    if (
+        event.version !== 2 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        return event.createdAt;
+    }
+
+    const value = (event.data as Record<string, unknown>).fulfilledAt;
+    if (typeof value !== 'string' || value.length === 0 || value.length > 64) {
+        return event.createdAt;
+    }
+
+    const fulfilledAt = new Date(value);
+    const ageMs = event.createdAt.getTime() - fulfilledAt.getTime();
+    return Number.isFinite(fulfilledAt.getTime()) &&
+        ageMs <= customerReceiptMaximumOfflineAgeMs &&
+        ageMs >= -customerReceiptMaximumFutureSkewMs
+        ? fulfilledAt
+        : event.createdAt;
+}
+
+function customerHandoffVerification(
+    event: DbEvent,
+): DeliveryCustomerHandoffVerification {
+    if (
+        event.version !== 2 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        return 'not-recorded';
+    }
+
+    const eventData = event.data as Record<string, unknown>;
+    const handoff = eventData.handoffVerification;
+    if (
+        eventData.status !== DeliveryRequestStates.FULFILLED ||
+        !handoff ||
+        typeof handoff !== 'object' ||
+        Array.isArray(handoff)
+    ) {
+        return 'not-recorded';
+    }
+
+    const value = handoff as Record<string, unknown>;
+    const validTraceLinkId =
+        value.traceLinkId === null ||
+        (typeof value.traceLinkId === 'number' &&
+            Number.isSafeInteger(value.traceLinkId) &&
+            value.traceLinkId > 0);
+    const hasValidVerifiedAt =
+        typeof value.verifiedAt === 'string' &&
+        value.verifiedAt.length > 0 &&
+        value.verifiedAt.length <= 64 &&
+        Number.isFinite(Date.parse(value.verifiedAt));
+    const validVerifiedAt =
+        value.verifiedAt === undefined || hasValidVerifiedAt;
+    const validReason =
+        value.reason === undefined ||
+        (typeof value.reason === 'string' &&
+            deliveryHandoffReasons.has(value.reason));
+    const validResult =
+        typeof value.result === 'string' &&
+        deliveryHandoffResults.has(value.result);
+    const validReasonForResult =
+        value.result === 'skipped'
+            ? typeof value.reason === 'string'
+            : value.reason === undefined;
+    const validEvidenceForResult =
+        value.result === 'scanned'
+            ? value.qrAvailable === true &&
+              value.traceLinkId !== null &&
+              hasValidVerifiedAt
+            : value.result === 'unverified'
+              ? value.verifiedAt === undefined
+              : value.result === 'no-label'
+                ? value.qrAvailable === false || hasValidVerifiedAt
+                : value.result === 'missing' || value.result === 'skipped'
+                  ? hasValidVerifiedAt
+                  : false;
+
+    if (
+        value.version !== 1 ||
+        typeof value.runId !== 'string' ||
+        value.runId.trim().length === 0 ||
+        value.runId.length > 200 ||
+        typeof value.stopId !== 'number' ||
+        !Number.isSafeInteger(value.stopId) ||
+        value.stopId <= 0 ||
+        typeof value.retryAttempt !== 'number' ||
+        !Number.isSafeInteger(value.retryAttempt) ||
+        value.retryAttempt < 0 ||
+        typeof value.clientOperationId !== 'string' ||
+        value.clientOperationId.trim().length === 0 ||
+        value.clientOperationId.length > 200 ||
+        !validTraceLinkId ||
+        typeof value.qrAvailable !== 'boolean' ||
+        (value.qrAvailable && value.traceLinkId === null) ||
+        !validResult ||
+        !validReason ||
+        !validReasonForResult ||
+        !validEvidenceForResult ||
+        !validVerifiedAt
+    ) {
+        return 'not-recorded';
+    }
+
+    if (value.result === 'scanned') return 'verified';
+    if (value.result === 'no-label') return 'no-label';
+    if (value.result === 'skipped') return 'skipped';
+    return 'not-recorded';
 }
 
 function parseDeliveryEventData(value: unknown): DeliveryEventData {
@@ -109,6 +301,16 @@ function parseDeliveryEventData(value: unknown): DeliveryEventData {
     if (typeof record.accountId === 'string') {
         data.accountId = record.accountId;
     }
+    if (
+        record.outcome === 'deferred' ||
+        record.outcome === 'failed' ||
+        record.outcome === 'cancelled'
+    ) {
+        data.exceptionOutcome = record.outcome;
+    }
+    if (typeof record.retryable === 'boolean') {
+        data.exceptionRetryable = record.retryable;
+    }
 
     return data;
 }
@@ -121,10 +323,55 @@ const deliveryRequestEventTypes = [
     knownEventTypes.delivery.requestPreparing,
     knownEventTypes.delivery.requestReady,
     knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestExceptionRecorded,
+    knownEventTypes.delivery.requestExceptionRecovered,
     knownEventTypes.delivery.requestSurveySent,
     knownEventTypes.delivery.requestSlotChanged,
     knownEventTypes.delivery.userCancelled,
 ];
+
+export const deliveryDispatchEventTypes = [
+    knownEventTypes.delivery.requestCreated,
+    knownEventTypes.delivery.requestCancelled,
+    knownEventTypes.delivery.requestAddressChanged,
+    knownEventTypes.delivery.requestConfirmed,
+    knownEventTypes.delivery.requestPreparing,
+    knownEventTypes.delivery.requestReady,
+    knownEventTypes.delivery.requestFulfilled,
+    knownEventTypes.delivery.requestExceptionRecorded,
+    knownEventTypes.delivery.requestExceptionRecovered,
+    knownEventTypes.delivery.requestSlotChanged,
+    knownEventTypes.delivery.userCancelled,
+] as const;
+
+const deliveryDispatchEventTypeSet = new Set<string>(
+    deliveryDispatchEventTypes,
+);
+export async function getDeliveryDispatchRevision(
+    db: DatabaseClient = storage(),
+) {
+    const [row] = await db
+        .select({
+            revision: sql<number>`coalesce(max(${events.id}), 0)`,
+        })
+        .from(events)
+        .where(inArray(events.type, deliveryDispatchEventTypes));
+
+    return Number(row?.revision ?? 0);
+}
+
+function getDeliveryRequestDispatchEventId(requestEvents: DbEvent[]) {
+    let revision = 0;
+    for (const event of requestEvents) {
+        if (
+            deliveryDispatchEventTypeSet.has(event.type) &&
+            event.id > revision
+        ) {
+            revision = event.id;
+        }
+    }
+    return revision;
+}
 
 interface DeliveryRequestStateProjection {
     state: string;
@@ -137,6 +384,12 @@ interface DeliveryRequestStateProjection {
     deliveryNotes?: string;
     accountId?: string;
     surveySent: boolean;
+    customerHandoffReceipt?: DeliveryCustomerHandoffReceipt;
+    deliveryException?: {
+        outcome: 'deferred' | 'failed' | 'cancelled';
+        retryable: boolean;
+        recordedAt: Date;
+    };
 }
 
 export interface PendingDeliveryReadyEmailRequest {
@@ -213,6 +466,14 @@ function reconstructDeliveryRequestState(
     let deliveryNotes: string | undefined;
     let accountId: string | undefined;
     let surveySent = false;
+    let customerHandoffReceipt: DeliveryCustomerHandoffReceipt | undefined;
+    let deliveryException:
+        | {
+              outcome: 'deferred' | 'failed' | 'cancelled';
+              retryable: boolean;
+              recordedAt: Date;
+          }
+        | undefined;
 
     const asNumber = (value: unknown): number | undefined => {
         if (typeof value === 'number') return value;
@@ -244,6 +505,7 @@ function reconstructDeliveryRequestState(
             requestNotes = asString(data.requestNotes);
             state = DeliveryRequestStates.PENDING;
             accountId = asString(data.accountId);
+            customerHandoffReceipt = undefined;
         } else if (
             event.type === knownEventTypes.delivery.requestAddressChanged
         ) {
@@ -253,20 +515,64 @@ function reconstructDeliveryRequestState(
             requestNotes = asString(data.requestNotes);
         } else if (event.type === knownEventTypes.delivery.requestConfirmed) {
             state = DeliveryRequestStates.CONFIRMED;
+            cancelReason = undefined;
+            deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestPreparing) {
             state = DeliveryRequestStates.PREPARING;
+            cancelReason = undefined;
+            deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestReady) {
             state = DeliveryRequestStates.READY;
+            cancelReason = undefined;
+            deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestFulfilled) {
             state = DeliveryRequestStates.FULFILLED;
+            cancelReason = undefined;
+            deliveryException = undefined;
             deliveryNotes = data.deliveryNotes ?? deliveryNotes;
+            customerHandoffReceipt = {
+                fulfilledAt: customerFulfilledAt(event),
+                verification: customerHandoffVerification(event),
+            };
+        } else if (
+            event.type === knownEventTypes.delivery.requestExceptionRecorded &&
+            data.exceptionOutcome &&
+            state !== DeliveryRequestStates.FULFILLED &&
+            state !== DeliveryRequestStates.CANCELLED
+        ) {
+            state = data.exceptionOutcome;
+            deliveryException = {
+                outcome: data.exceptionOutcome,
+                retryable:
+                    data.exceptionOutcome === 'deferred' &&
+                    data.exceptionRetryable === true,
+                // Use the server-created audit timestamp. The event payload's
+                // occurredAt value originates on the driver's device and must
+                // not define public pickup policy deadlines.
+                recordedAt: event.createdAt,
+            };
+        } else if (
+            event.type === knownEventTypes.delivery.requestExceptionRecovered &&
+            (state === DeliveryRequestStates.DEFERRED ||
+                state === DeliveryRequestStates.FAILED)
+        ) {
+            state = DeliveryRequestStates.READY;
+            cancelReason = undefined;
+            deliveryException = undefined;
         } else if (event.type === knownEventTypes.delivery.requestSlotChanged) {
             slotId = asNumber(data.newSlotId);
         } else if (event.type === knownEventTypes.delivery.userCancelled) {
             state = DeliveryRequestStates.CANCELLED;
+            deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestCancelled) {
             state = DeliveryRequestStates.CANCELLED;
             cancelReason = asString(data.cancelReason);
+            deliveryException = undefined;
+            customerHandoffReceipt = undefined;
         } else if (event.type === knownEventTypes.delivery.requestSurveySent) {
             surveySent = true;
         }
@@ -283,6 +589,8 @@ function reconstructDeliveryRequestState(
         deliveryNotes,
         accountId,
         surveySent,
+        customerHandoffReceipt,
+        deliveryException,
     };
 }
 
@@ -347,7 +655,7 @@ async function reconstructDeliveryRequestRows<
         createdAt: Date;
         updatedAt: Date;
     },
->(requests: TRequest[]) {
+>(requests: TRequest[], accountIdsByOperationId: ReadonlyMap<number, string>) {
     if (requests.length === 0) {
         return [];
     }
@@ -358,14 +666,16 @@ async function reconstructDeliveryRequestRows<
     );
     const eventsByAggregateId = groupEventsByAggregateId(requestEvents);
     const reconstructedRows = requests.map((request) => {
+        const aggregateEvents = eventsByAggregateId.get(request.id) ?? [];
         const projection = reconstructDeliveryRequestState(
             request.createdAt,
-            eventsByAggregateId.get(request.id) ?? [],
+            aggregateEvents,
         );
 
         return {
             request,
             projection,
+            routeRevision: getDeliveryRequestDispatchEventId(aggregateEvents),
         };
     });
 
@@ -423,18 +733,177 @@ async function reconstructDeliveryRequestRows<
         locations.map((location) => [location.id, location]),
     );
 
-    return reconstructedRows.map((row) => ({
-        ...row,
-        slot: row.projection.slotId
-            ? slotsById.get(row.projection.slotId)
-            : undefined,
-        address: row.projection.addressId
+    return reconstructedRows.map((row) => {
+        const accountId = accountIdsByOperationId.get(row.request.operationId);
+        const address = row.projection.addressId
             ? addressesById.get(row.projection.addressId)
-            : undefined,
-        location: row.projection.locationId
-            ? locationsById.get(row.projection.locationId)
-            : undefined,
-    }));
+            : undefined;
+
+        return {
+            ...row,
+            accountId,
+            slot: row.projection.slotId
+                ? slotsById.get(row.projection.slotId)
+                : undefined,
+            address:
+                accountId && address?.accountId === accountId
+                    ? address
+                    : undefined,
+            location: row.projection.locationId
+                ? locationsById.get(row.projection.locationId)
+                : undefined,
+        };
+    });
+}
+
+export type DeliveryRequestDispatchSnapshot = {
+    deliveryRequestId: string;
+    state: string;
+    mode?: 'delivery' | 'pickup';
+    requestDispatchEventId: number;
+    address?: {
+        id: number;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        label: string;
+        contactName: string;
+        phone: string;
+        street1: string;
+        street2: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+    slot?: {
+        id: number;
+        updatedAt: Date;
+        locationId: number;
+        startAt: Date;
+        endAt: Date;
+    };
+    pickupLocation?: {
+        id: number;
+        updatedAt: Date;
+        name: string;
+        street1: string;
+        street2: string | null;
+        city: string;
+        postalCode: string;
+        countryCode: string;
+    };
+};
+
+export async function getDeliveryRequestDispatchSnapshots(
+    requestIds: string[],
+    db: DatabaseClient = storage(),
+): Promise<DeliveryRequestDispatchSnapshot[]> {
+    const uniqueRequestIds = Array.from(new Set(requestIds)).sort();
+    if (uniqueRequestIds.length === 0) return [];
+
+    const requestRows = await db.query.deliveryRequests.findMany({
+        where: inArray(deliveryRequests.id, uniqueRequestIds),
+        orderBy: [asc(deliveryRequests.id)],
+    });
+    const requestEvents = await getAllEvents(
+        [...deliveryDispatchEventTypes],
+        uniqueRequestIds,
+        { db },
+    );
+    const eventsByRequestId = groupEventsByAggregateId(requestEvents);
+    const projections = requestRows.map((request) => {
+        const aggregateEvents = eventsByRequestId.get(request.id) ?? [];
+        return {
+            request,
+            projection: reconstructDeliveryRequestState(
+                request.createdAt,
+                aggregateEvents,
+            ),
+            requestDispatchEventId:
+                getDeliveryRequestDispatchEventId(aggregateEvents),
+        };
+    });
+    const addressIds = Array.from(
+        new Set(
+            projections.flatMap(({ projection }) =>
+                projection.addressId ? [projection.addressId] : [],
+            ),
+        ),
+    );
+    const slotIds = Array.from(
+        new Set(
+            projections.flatMap(({ projection }) =>
+                projection.slotId ? [projection.slotId] : [],
+            ),
+        ),
+    );
+    const [addressRows, slotRows] = await Promise.all([
+        addressIds.length > 0
+            ? db.query.deliveryAddresses.findMany({
+                  where: inArray(deliveryAddresses.id, addressIds),
+              })
+            : Promise.resolve([]),
+        slotIds.length > 0
+            ? db.query.timeSlots.findMany({
+                  where: inArray(timeSlots.id, slotIds),
+              })
+            : Promise.resolve([]),
+    ]);
+    const pickupLocationIds = Array.from(
+        new Set(slotRows.map((slot) => slot.locationId)),
+    );
+    const pickupLocationRows =
+        pickupLocationIds.length > 0
+            ? await db.query.pickupLocations.findMany({
+                  where: inArray(pickupLocations.id, pickupLocationIds),
+              })
+            : [];
+    const addressesById = new Map(
+        addressRows.map((address) => [address.id, address]),
+    );
+    const slotsById = new Map(slotRows.map((slot) => [slot.id, slot]));
+    const pickupLocationsById = new Map(
+        pickupLocationRows.map((location) => [location.id, location]),
+    );
+
+    return projections.map(
+        ({ request, projection, requestDispatchEventId }) => {
+            const address = projection.addressId
+                ? addressesById.get(projection.addressId)
+                : undefined;
+            const slot = projection.slotId
+                ? slotsById.get(projection.slotId)
+                : undefined;
+            const pickupLocation = slot
+                ? pickupLocationsById.get(slot.locationId)
+                : undefined;
+            return {
+                deliveryRequestId: request.id,
+                state: projection.state,
+                mode: projection.mode,
+                requestDispatchEventId,
+                address,
+                slot,
+                pickupLocation,
+            };
+        },
+    );
+}
+
+function getOperationAccountIds(
+    requests: Array<{
+        operationId: number;
+        operation?: {
+            accountId: string | null;
+        } | null;
+    }>,
+) {
+    const accountIds = new Map<number, string>();
+    for (const request of requests) {
+        if (request.operation?.accountId) {
+            accountIds.set(request.operationId, request.operation.accountId);
+        }
+    }
+    return accountIds;
 }
 
 function filterDeliveryRequestRows<
@@ -498,18 +967,23 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
-        accountId,
+        customerHandoffReceipt,
+        deliveryException,
         surveySent,
     } = reconstructDeliveryRequestState(request.createdAt, events);
 
-    // Fetch slot, address, location, and operation in parallel
-    const [slot, address, location, operation] = await Promise.all([
+    const operation = await getOperationById(request.operationId);
+    if (!operation.accountId) {
+        throw new Error('Delivery request owner not found');
+    }
+    const accountId = operation.accountId;
+
+    // The operation owner is authoritative for request ownership. Event data
+    // is historical input and must not grant access to another account.
+    const [slot, address, location] = await Promise.all([
         slotId ? getTimeSlot(slotId) : undefined,
-        addressId && accountId
-            ? getDeliveryAddress(addressId, accountId)
-            : undefined,
+        addressId ? getDeliveryAddress(addressId, accountId) : undefined,
         locationId ? getPickupLocation(locationId) : undefined,
-        getOperationById(request.operationId),
     ]);
 
     const [operationEntity, raisedBed, fields, traceLinks] = await Promise.all([
@@ -607,7 +1081,10 @@ async function reconstructDeliveryRequestFromEvents(
         cancelReason,
         requestNotes,
         deliveryNotes,
+        customerHandoffReceipt,
+        deliveryException,
         surveySent,
+        routeRevision: getDeliveryRequestDispatchEventId(events),
         trace: traceLink
             ? {
                   id: traceLink.id,
@@ -667,8 +1144,18 @@ async function getDeliveryRequestsSummaryUncached(
     const requests = await storage().query.deliveryRequests.findMany({
         where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
         orderBy: [desc(deliveryRequests.createdAt)],
+        with: {
+            operation: {
+                columns: {
+                    accountId: true,
+                },
+            },
+        },
     });
-    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const reconstructedRows = await reconstructDeliveryRequestRows(
+        requests,
+        getOperationAccountIds(requests),
+    );
     const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
         state,
         slotId,
@@ -677,7 +1164,7 @@ async function getDeliveryRequestsSummaryUncached(
     });
 
     return filteredRows.map(
-        ({ request, projection, slot, address, location }) => ({
+        ({ request, projection, accountId, slot, address, location }) => ({
             id: request.id,
             operationId: request.operationId,
             state: projection.state,
@@ -686,12 +1173,14 @@ async function getDeliveryRequestsSummaryUncached(
             location,
             mode: projection.mode,
             cancelReason: projection.cancelReason,
+            deliveryException: projection.deliveryException,
             requestNotes: projection.requestNotes,
             deliveryNotes: projection.deliveryNotes,
+            customerHandoffReceipt: projection.customerHandoffReceipt,
             surveySent: projection.surveySent,
             createdAt: request.createdAt,
             updatedAt: request.updatedAt,
-            accountId: projection.accountId,
+            accountId,
         }),
     );
 }
@@ -725,7 +1214,10 @@ export async function getDeliveryRequestsWithEvents(
             },
         },
     });
-    const reconstructedRows = await reconstructDeliveryRequestRows(requests);
+    const reconstructedRows = await reconstructDeliveryRequestRows(
+        requests,
+        getOperationAccountIds(requests),
+    );
     const filteredRows = filterDeliveryRequestRows(reconstructedRows, {
         state,
         slotId,
@@ -856,7 +1348,15 @@ export async function getDeliveryRequestsWithEvents(
     );
 
     return filteredRows.map(
-        ({ request, projection, slot, address, location }) => {
+        ({
+            request,
+            projection,
+            accountId,
+            slot,
+            address,
+            location,
+            routeRevision,
+        }) => {
             const rawOperation = request.operation;
             const operation =
                 operationsById.get(request.operationId) ??
@@ -903,9 +1403,12 @@ export async function getDeliveryRequestsWithEvents(
                 location,
                 mode: projection.mode,
                 cancelReason: projection.cancelReason,
+                deliveryException: projection.deliveryException,
                 requestNotes: projection.requestNotes,
                 deliveryNotes: projection.deliveryNotes,
+                customerHandoffReceipt: projection.customerHandoffReceipt,
                 surveySent: projection.surveySent,
+                routeRevision,
                 trace: traceLink
                     ? {
                           id: traceLink.id,
@@ -915,7 +1418,7 @@ export async function getDeliveryRequestsWithEvents(
                     : null,
                 createdAt: request.createdAt,
                 updatedAt: request.updatedAt,
-                accountId: projection.accountId,
+                accountId,
             };
         },
     );
@@ -941,17 +1444,47 @@ export function getDeliveryRequests(
 // Get a specific delivery request by ID with events
 export async function getDeliveryRequest(
     requestId: string,
+    db: DatabaseClient = storage(),
 ): Promise<DeliveryRequestWithEvents | undefined> {
-    const request = await storage().query.deliveryRequests.findFirst({
+    const request = await db.query.deliveryRequests.findFirst({
         where: and(eq(deliveryRequests.id, requestId)),
     });
 
     if (!request) return undefined;
 
     // Get events for this request
-    const events = await getAllEvents(deliveryRequestEventTypes, [request.id]);
+    const events = await getAllEvents(deliveryRequestEventTypes, [request.id], {
+        db,
+    });
 
     return reconstructDeliveryRequestFromEvents(request, events);
+}
+
+export async function getDeliveryRequestOwners(
+    requestIds: string[],
+    db: DatabaseClient = storage(),
+) {
+    const uniqueRequestIds = Array.from(new Set(requestIds));
+    if (uniqueRequestIds.length === 0) return [];
+    const requests = await db.query.deliveryRequests.findMany({
+        columns: { id: true },
+        where: inArray(deliveryRequests.id, uniqueRequestIds),
+        with: {
+            operation: {
+                columns: { accountId: true },
+            },
+        },
+    });
+    return requests.flatMap((request) =>
+        request.operation?.accountId
+            ? [
+                  {
+                      accountId: request.operation.accountId,
+                      requestId: request.id,
+                  },
+              ]
+            : [],
+    );
 }
 
 // Get delivery requests by operation ID
@@ -987,20 +1520,13 @@ export async function getDeliveryRequestByOperation(
     return reconstructDeliveryRequestFromEvents(request, events);
 }
 
-// Create a new delivery request with event sourcing
-export async function createDeliveryRequest(data: {
-    operationId: number;
-    slotId: number;
-    mode: 'delivery' | 'pickup';
-    addressId?: number;
-    locationId?: number;
-    notes?: string;
-    accountId: string;
-}): Promise<string> {
-    const requestId = randomUUID();
-
+async function validateDeliveryRequestInput(
+    data: DeliveryRequestInput,
+    db: DatabaseClient = storage(),
+    options: { closeExpiredSlot?: boolean } = {},
+) {
     // Validate slot is available and not in the past
-    const slot = await storage().query.timeSlots.findFirst({
+    const slot = await db.query.timeSlots.findFirst({
         where: eq(timeSlots.id, data.slotId),
     });
 
@@ -1018,12 +1544,15 @@ export async function createDeliveryRequest(data: {
         throw new Error('Cannot book slots in the past');
     }
 
-    if (
-        slot.type === 'delivery' &&
-        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
-    ) {
-        await closeTimeSlot(slot.id);
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
+        if (options.closeExpiredSlot ?? true) {
+            await closeTimeSlot(slot.id);
+        }
         throw new Error('Time slot is not available for booking');
+    }
+
+    if (slot.type !== data.mode) {
+        throw new Error('Delivery mode does not match the selected time slot');
     }
 
     // Validate mode-specific requirements
@@ -1035,22 +1564,60 @@ export async function createDeliveryRequest(data: {
         throw new Error('Location ID is required for pickup mode');
     }
 
-    // Check if operation already has a delivery request
-    const existingRequest = await getDeliveryRequestByOperation(
-        data.operationId,
-    );
-    if (existingRequest) {
-        throw new Error('Operation already has a delivery request');
+    const operation = await db.query.operations.findFirst({
+        columns: {
+            id: true,
+        },
+        where: and(
+            eq(operations.id, data.operationId),
+            eq(operations.accountId, data.accountId),
+            eq(operations.isDeleted, false),
+        ),
+    });
+
+    if (!operation) {
+        throw new Error('Operation not found or access denied');
     }
 
-    // Create the projection record first (minimal schema)
-    await storage().insert(deliveryRequests).values({
+    if (data.mode === 'delivery' && data.addressId) {
+        const address = await db.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
+                eq(deliveryAddresses.id, data.addressId),
+                eq(deliveryAddresses.accountId, data.accountId),
+                isNull(deliveryAddresses.deletedAt),
+            ),
+        });
+        if (!address) {
+            throw new Error('Delivery address not found or access denied');
+        }
+    }
+
+    if (data.mode === 'pickup' && data.locationId) {
+        const location = await db.query.pickupLocations.findFirst({
+            where: eq(pickupLocations.id, data.locationId),
+        });
+        if (!location?.isActive || location.id !== slot.locationId) {
+            throw new Error(
+                'Pickup location does not match the selected time slot',
+            );
+        }
+    }
+}
+
+async function insertDeliveryRequest(
+    requestId: string,
+    data: DeliveryRequestInput,
+    db: DatabaseClient,
+    options: {
+        checkoutNotificationScope?: string;
+        enqueueCheckoutNotifications?: boolean;
+    } = {},
+) {
+    await db.insert(deliveryRequests).values({
         id: requestId,
         operationId: data.operationId,
     });
-
-    // Create the event with all business data
-
     await createEvent(
         knownEvents.delivery.requestCreatedV1(requestId, {
             operationId: data.operationId,
@@ -1061,9 +1628,167 @@ export async function createDeliveryRequest(data: {
             notes: data.notes,
             accountId: data.accountId,
         }),
+        db,
     );
+    if (options.enqueueCheckoutNotifications) {
+        await enqueueCheckoutDeliveryNotifications(
+            {
+                accountId: data.accountId,
+                addressId: data.addressId,
+                checkoutNotificationScope: options.checkoutNotificationScope,
+                mode: data.mode,
+                requestId,
+                slotId: data.slotId,
+            },
+            db,
+        );
+    }
+}
 
-    return requestId;
+function assertExistingCheckoutDeliveryRequest(
+    data: DeliveryRequestInput,
+    event: DbEvent,
+) {
+    if (
+        event.version !== 1 ||
+        !event.data ||
+        typeof event.data !== 'object' ||
+        Array.isArray(event.data)
+    ) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Existing checkout delivery request has malformed creation data.',
+        );
+    }
+    const stored = event.data as Record<string, unknown>;
+    const expected = {
+        operationId: data.operationId,
+        slotId: data.slotId,
+        mode: data.mode,
+        addressId: data.addressId ?? null,
+        locationId: data.locationId ?? null,
+        notes: data.notes ?? null,
+        accountId: data.accountId,
+    };
+    const storedFingerprint = {
+        operationId: stored.operationId,
+        slotId: stored.slotId,
+        mode: stored.mode,
+        addressId: stored.addressId ?? null,
+        locationId: stored.locationId ?? null,
+        notes: stored.notes ?? null,
+        accountId: stored.accountId,
+    };
+    const mismatch = (
+        Object.keys(expected) as Array<keyof typeof expected>
+    ).find((field) => storedFingerprint[field] !== expected[field]);
+    if (mismatch) {
+        throw new CheckoutDeliveryRequestConflictError(
+            `Existing checkout delivery request conflicts on ${mismatch}.`,
+        );
+    }
+}
+
+async function getExistingCheckoutDeliveryRequest(
+    data: DeliveryRequestInput,
+    db: DatabaseClient,
+): Promise<{ requestId: string; created: false } | null> {
+    const existingRequests = await db.query.deliveryRequests.findMany({
+        columns: { id: true },
+        where: eq(deliveryRequests.operationId, data.operationId),
+        limit: 2,
+    });
+    if (existingRequests.length > 1) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Operation has multiple delivery requests.',
+        );
+    }
+
+    const existingRequest = existingRequests[0];
+    if (!existingRequest) {
+        return null;
+    }
+
+    const ownedOperation = await db.query.operations.findFirst({
+        columns: { id: true },
+        where: and(
+            eq(operations.id, data.operationId),
+            eq(operations.accountId, data.accountId),
+            eq(operations.isDeleted, false),
+        ),
+    });
+    if (!ownedOperation) {
+        throw new Error('Operation not found or access denied');
+    }
+
+    const creationEvents = await getAllEvents(
+        knownEventTypes.delivery.requestCreated,
+        [existingRequest.id],
+        { db },
+    );
+    if (creationEvents.length !== 1) {
+        throw new CheckoutDeliveryRequestConflictError(
+            'Existing checkout delivery request has invalid creation history.',
+        );
+    }
+    assertExistingCheckoutDeliveryRequest(data, creationEvents[0]);
+    return { requestId: existingRequest.id, created: false };
+}
+
+// Create a new delivery request with event sourcing.
+// Ordinary callers retain the historical duplicate-rejection contract.
+export async function createDeliveryRequest(
+    data: DeliveryRequestInput,
+): Promise<string> {
+    const requestId = randomUUID();
+    await validateDeliveryRequestInput(data);
+
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        const existingRequest = await tx.query.deliveryRequests.findFirst({
+            columns: { id: true },
+            where: eq(deliveryRequests.operationId, data.operationId),
+        });
+        if (existingRequest) {
+            throw new Error('Operation already has a delivery request');
+        }
+
+        await insertDeliveryRequest(requestId, data, tx);
+
+        return requestId;
+    });
+}
+
+export async function getOrCreateDeliveryRequest(
+    data: DeliveryRequestInput,
+    options: { checkoutNotificationScope?: string } = {},
+): Promise<{ requestId: string; created: boolean }> {
+    const existing = await getExistingCheckoutDeliveryRequest(data, storage());
+    if (existing) {
+        return existing;
+    }
+
+    // Validate before acquiring the dispatch lock because closing an expired
+    // slot acquires that same lock on its own transaction.
+    await validateDeliveryRequestInput(data);
+
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        const existingAfterLock = await getExistingCheckoutDeliveryRequest(
+            data,
+            tx,
+        );
+        if (existingAfterLock) {
+            return existingAfterLock;
+        }
+
+        await validateDeliveryRequestInput(data, tx, {
+            closeExpiredSlot: false,
+        });
+        const requestId = randomUUID();
+        await insertDeliveryRequest(requestId, data, tx, {
+            checkoutNotificationScope: options.checkoutNotificationScope,
+            enqueueCheckoutNotifications: true,
+        });
+        return { requestId, created: true };
+    });
 }
 
 // Change the time slot for an existing delivery request
@@ -1071,21 +1796,6 @@ export async function changeDeliveryRequestSlot(
     requestId: string,
     newSlotId: number,
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
-
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (!request.slot?.id) {
-        throw new Error('Delivery request has no slot to change');
-    }
-
-    // If slot is the same, no-op
-    if (request.slot.id === newSlotId) {
-        return;
-    }
-
     // Validate new slot
     const slot = await storage().query.timeSlots.findFirst({
         where: eq(timeSlots.id, newSlotId),
@@ -1105,20 +1815,31 @@ export async function changeDeliveryRequestSlot(
 
     const now = new Date();
 
-    if (
-        slot.type === 'delivery' &&
-        slot.startAt.getTime() - now.getTime() < AUTO_CLOSE_WINDOW_MS
-    ) {
+    if (hasTimeSlotCloseDeadlinePassed(slot, now)) {
         await closeTimeSlot(slot.id);
         throw new Error('Time slot is not available for booking');
     }
 
-    await createEvent(
-        knownEvents.delivery.requestSlotChangedV1(requestId, {
-            previousSlotId: request.slot.id,
-            newSlotId,
-        }),
-    );
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+
+        if (!request) {
+            throw new Error('Delivery request not found');
+        }
+        if (!request.slot?.id) {
+            throw new Error('Delivery request has no slot to change');
+        }
+        if (request.slot.id === newSlotId) return;
+        await assertDeliveryRequestHasNoActiveAssignment(requestId, tx);
+
+        await createEvent(
+            knownEvents.delivery.requestSlotChangedV1(requestId, {
+                previousSlotId: request.slot.id,
+                newSlotId,
+            }),
+            tx,
+        );
+    });
 }
 
 // Cancel a delivery request
@@ -1129,105 +1850,150 @@ export async function cancelDeliveryRequest(
     note?: string,
     actorId?: string,
 ): Promise<void> {
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const cancelledAt = new Date();
+        const request = await getDeliveryRequest(requestId, tx);
+
+        if (!request) {
+            throw new Error('Delivery request not found');
+        }
+        const recordedByUser = actorId
+            ? await tx.query.users.findFirst({
+                  columns: { id: true },
+                  where: eq(users.id, actorId),
+              })
+            : undefined;
+        if (request.state === DeliveryRequestStates.CANCELLED) {
+            await cancelActiveDeliveryRunAssignment({
+                requestId,
+                occurredAt: cancelledAt,
+                recordedByUserId: recordedByUser?.id,
+                db: tx,
+            });
+            return;
+        }
+        if (request.state === DeliveryRequestStates.FULFILLED) {
+            throw new Error('Cannot cancel a fulfilled delivery request');
+        }
+        if (actorType === 'user' && request.slot?.id) {
+            const cutoffHours = 12;
+            const cutoffTime = new Date(
+                request.slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000,
+            );
+            if (new Date() >= cutoffTime) {
+                throw new Error('Cannot cancel - cutoff time has passed');
+            }
+        }
+
+        await createEvent(
+            knownEvents.delivery.requestCancelledV1(requestId, {
+                actorType,
+                cancelReason,
+                note,
+                cancelledBy: actorId,
+            }),
+            tx,
+        );
+        await cancelActiveDeliveryRunAssignment({
+            requestId,
+            occurredAt: cancelledAt,
+            recordedByUserId: recordedByUser?.id,
+            db: tx,
+        });
+    });
+}
+
+export async function cancelDeliveryRequestForAccount({
+    requestId,
+    accountId,
+    cancelReason,
+    note,
+    actorUserId,
+}: {
+    requestId: string;
+    accountId: string;
+    cancelReason: string;
+    note?: string;
+    actorUserId?: string;
+}): Promise<void> {
     const request = await getDeliveryRequest(requestId);
 
-    if (!request) {
+    if (!request || request.accountId !== accountId) {
         throw new Error('Delivery request not found');
     }
 
-    if (request.state === DeliveryRequestStates.CANCELLED) {
-        // Idempotent - already cancelled
-        return;
-    }
-
-    if (request.state === DeliveryRequestStates.FULFILLED) {
-        throw new Error('Cannot cancel a fulfilled delivery request');
-    }
-
-    // Check cutoff time for user cancellations
-    if (actorType === 'user' && request.slot?.id) {
-        const cutoffHours = 12; // Default cutoff
-        const cutoffTime = new Date(
-            request.slot.startAt.getTime() - cutoffHours * 60 * 60 * 1000,
-        );
-
-        if (new Date() >= cutoffTime) {
-            throw new Error('Cannot cancel - cutoff time has passed');
-        }
-    }
-
-    // Create the cancellation event
-    await createEvent(
-        knownEvents.delivery.requestCancelledV1(requestId, {
-            actorType,
-            cancelReason,
-            note,
-            cancelledBy: actorId,
-        }),
+    await cancelDeliveryRequest(
+        requestId,
+        'user',
+        cancelReason,
+        note,
+        actorUserId,
     );
+}
+
+export async function uncancelDeliveryRequest(
+    requestId: string,
+): Promise<void> {
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state !== DeliveryRequestStates.CANCELLED) return;
+
+        await createEvent(
+            knownEvents.delivery.requestConfirmedV1(requestId, {
+                status: DeliveryRequestStates.CONFIRMED,
+            }),
+            tx,
+        );
+    });
 }
 
 // Confirm a delivery request
 export async function confirmDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.CONFIRMED) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.CONFIRMED) {
-        // Idempotent - already confirmed
-        return;
-    }
-
-    // Create the confirmation event
-    await createEvent(
-        knownEvents.delivery.requestConfirmedV1(requestId, {
-            status: DeliveryRequestStates.CONFIRMED,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestConfirmedV1(requestId, {
+                status: DeliveryRequestStates.CONFIRMED,
+            }),
+            tx,
+        );
+    });
 }
 
 // Prepare a delivery request
 export async function prepareDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.PREPARING) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.PREPARING) {
-        // Idempotent - already preparing
-        return;
-    }
-
-    // Create the preparation event
-    await createEvent(
-        knownEvents.delivery.requestPreparingV1(requestId, {
-            status: DeliveryRequestStates.PREPARING,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestPreparingV1(requestId, {
+                status: DeliveryRequestStates.PREPARING,
+            }),
+            tx,
+        );
+    });
 }
 
 // Ready a delivery request
 export async function readyDeliveryRequest(requestId: string): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const request = await getDeliveryRequest(requestId, tx);
+        if (!request) throw new Error('Delivery request not found');
+        if (request.state === DeliveryRequestStates.READY) return;
 
-    if (!request) {
-        throw new Error('Delivery request not found');
-    }
-
-    if (request.state === DeliveryRequestStates.READY) {
-        // Idempotent - already ready
-        return;
-    }
-
-    // Create the ready event
-    await createEvent(
-        knownEvents.delivery.requestReadyV1(requestId, {
-            status: DeliveryRequestStates.READY,
-        }),
-    );
+        await createEvent(
+            knownEvents.delivery.requestReadyV1(requestId, {
+                status: DeliveryRequestStates.READY,
+            }),
+            tx,
+        );
+    });
 }
 
 export async function getPendingDeliveryReadyEmailRequestIds({
@@ -1389,11 +2155,31 @@ export async function markDeliveryReadyEmailsProcessed({
 export async function fulfillDeliveryRequest(
     requestId: string,
     deliveryNotes?: string,
+    db?: DatabaseClient,
+    handoffVerification?: DeliveryRequestHandoffVerificationPayload,
+    fulfilledAt?: Date,
 ): Promise<void> {
-    const request = await getDeliveryRequest(requestId);
+    if (!db) {
+        await withDeliveryDispatchTransaction(async (tx) => {
+            await fulfillDeliveryRequest(
+                requestId,
+                deliveryNotes,
+                tx,
+                handoffVerification,
+                fulfilledAt,
+            );
+        });
+        return;
+    }
+
+    await acquireDeliveryDispatchLock(db);
+    const request = await getDeliveryRequest(requestId, db);
 
     if (!request) {
-        throw new Error('Delivery request not found');
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.NOT_FOUND,
+            'Delivery request not found',
+        );
     }
 
     if (request.state === DeliveryRequestStates.FULFILLED) {
@@ -1402,15 +2188,35 @@ export async function fulfillDeliveryRequest(
     }
 
     if (request.state === DeliveryRequestStates.CANCELLED) {
-        throw new Error('Cannot fulfill a cancelled delivery request');
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.STATE_CONFLICT,
+            'Cannot fulfill a cancelled delivery request',
+        );
+    }
+    if (
+        request.state === DeliveryRequestStates.DEFERRED ||
+        request.state === DeliveryRequestStates.FAILED
+    ) {
+        throw new DeliveryRequestFulfillmentError(
+            DeliveryRequestFulfillmentErrorCodes.STATE_CONFLICT,
+            'Cannot fulfill a delivery request with an exception outcome',
+        );
     }
 
     // Create the fulfillment event
     await createEvent(
-        knownEvents.delivery.requestFulfilledV1(requestId, {
-            status: DeliveryRequestStates.FULFILLED,
-            deliveryNotes,
-        }),
+        handoffVerification
+            ? knownEvents.delivery.requestFulfilledV2(requestId, {
+                  status: DeliveryRequestStates.FULFILLED,
+                  deliveryNotes,
+                  fulfilledAt: (fulfilledAt ?? new Date()).toISOString(),
+                  handoffVerification,
+              })
+            : knownEvents.delivery.requestFulfilledV1(requestId, {
+                  status: DeliveryRequestStates.FULFILLED,
+                  deliveryNotes,
+              }),
+        db,
     );
 }
 

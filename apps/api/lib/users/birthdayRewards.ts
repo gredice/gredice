@@ -1,14 +1,13 @@
 import {
-    createEvent,
     createNotification,
-    earnSunflowers,
-    knownEvents,
+    grantBirthdaySunflowers,
     type SelectUser,
 } from '@gredice/storage';
 import { sendBirthdayGreeting } from '../email/transactional';
 import { differenceInCalendarDays, startOfUtcDay } from './birthdayUtils';
 
 export const BIRTHDAY_REWARD_AMOUNT = 9999;
+export const BIRTHDAY_REWARD_MIN_ACCOUNT_AGE_DAYS = 30;
 
 export type BirthdayRewardUser = SelectUser & {
     accounts: {
@@ -16,6 +15,33 @@ export type BirthdayRewardUser = SelectUser & {
         createdAt: Date;
     }[];
 };
+
+export type BirthdayRewardResult =
+    | {
+          rewarded: true;
+          accountId: string;
+          daysLate: number;
+      }
+    | {
+          rewarded: false;
+          reason: 'account_too_new' | 'already_rewarded' | 'no_account';
+          accountId?: string;
+      };
+
+export function isBirthdayRewardPrimaryAccountEligible({
+    accountCreatedAt,
+    rewardDate,
+}: {
+    accountCreatedAt: Date;
+    rewardDate: Date;
+}) {
+    const accountCreatedDay = startOfUtcDay(accountCreatedAt);
+    const rewardDay = startOfUtcDay(rewardDate);
+    return (
+        differenceInCalendarDays(rewardDay, accountCreatedDay) >=
+        BIRTHDAY_REWARD_MIN_ACCOUNT_AGE_DAYS
+    );
+}
 
 export async function grantBirthdayReward({
     user,
@@ -25,7 +51,7 @@ export async function grantBirthdayReward({
     user: BirthdayRewardUser;
     rewardDate: Date;
     isLate: boolean;
-}) {
+}): Promise<BirthdayRewardResult> {
     const accounts = [...user.accounts].sort(
         (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
     );
@@ -34,16 +60,37 @@ export async function grantBirthdayReward({
         console.warn('Skipping birthday reward for user without account', {
             userId: user.id,
         });
-        return { rewarded: false };
+        return { rewarded: false, reason: 'no_account' as const };
     }
 
-    const rewardReason = `birthday:${rewardDate.getUTCFullYear()}`;
+    if (
+        !isBirthdayRewardPrimaryAccountEligible({
+            accountCreatedAt: primaryAccount.createdAt,
+            rewardDate,
+        })
+    ) {
+        return {
+            rewarded: false,
+            reason: 'account_too_new' as const,
+            accountId: primaryAccount.accountId,
+        };
+    }
 
-    await earnSunflowers(
-        primaryAccount.accountId,
-        BIRTHDAY_REWARD_AMOUNT,
-        rewardReason,
-    );
+    const grantResult = await grantBirthdaySunflowers({
+        accountId: primaryAccount.accountId,
+        amount: BIRTHDAY_REWARD_AMOUNT,
+        isLate,
+        rewardDate,
+        userId: user.id,
+    });
+
+    if (grantResult.status === 'existing') {
+        return {
+            rewarded: false,
+            reason: 'already_rewarded' as const,
+            accountId: primaryAccount.accountId,
+        };
+    }
 
     const header = isLate
         ? 'Sretan rođendan (uz malo zakašnjenje)!'
@@ -58,14 +105,22 @@ export async function grantBirthdayReward({
         'Hvala ti što si dio Gredica - uživaj u slavlju! 🌼',
     ].join('\n\n');
 
-    await createNotification({
-        accountId: primaryAccount.accountId,
-        userId: user.id,
-        header,
-        content,
-        iconUrl: 'https://cdn.gredice.com/sunflower-large.svg',
-        timestamp: new Date(),
-    });
+    try {
+        await createNotification({
+            accountId: primaryAccount.accountId,
+            userId: user.id,
+            header,
+            content,
+            iconUrl: 'https://cdn.gredice.com/sunflower-large.svg',
+            timestamp: new Date(),
+        });
+    } catch (error) {
+        console.error('Failed to create birthday reward notification', {
+            userId: user.id,
+            accountId: primaryAccount.accountId,
+            error,
+        });
+    }
 
     const userEmail = user.userName.includes('@') ? user.userName : null;
     if (userEmail) {
@@ -82,16 +137,6 @@ export async function grantBirthdayReward({
             });
         }
     }
-
-    const normalizedRewardDate = startOfUtcDay(rewardDate);
-    await createEvent(
-        knownEvents.users.birthdayRewardV1(user.id, {
-            rewardDate: normalizedRewardDate.toISOString(),
-            accountId: primaryAccount.accountId,
-            amount: BIRTHDAY_REWARD_AMOUNT,
-            late: isLate,
-        }),
-    );
 
     const daysDifference = differenceInCalendarDays(new Date(), rewardDate);
     return {

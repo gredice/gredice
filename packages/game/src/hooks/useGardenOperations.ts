@@ -5,33 +5,20 @@ import {
     operationVisualRewardDebugOperationItems,
 } from '../operationVisualRewardDebugProfile';
 import { useGameState } from '../useGameState';
+import {
+    type GardenOperationStatus,
+    parseGardenOperationStatus,
+} from './gardenOperationStatus';
 import { useCurrentGarden } from './useCurrentGarden';
 
+export type { GardenOperationStatus } from './gardenOperationStatus';
+
 const DEFAULT_PAGE_SIZE = 20;
-
-const backendStatusMap: Record<string, GardenOperationStatus> = {
-    new: 'new',
-    planned: 'planned',
-    assigned: 'assigned',
-    pendingVerification: 'confirmed',
-    confirmed: 'confirmed',
-    completed: 'completed',
-    failed: 'failed',
-    canceled: 'canceled',
-};
-
-export type GardenOperationStatus =
-    | 'new'
-    | 'planned'
-    | 'assigned'
-    | 'confirmed'
-    | 'completed'
-    | 'failed'
-    | 'canceled';
 
 export type GardenOperationItem = {
     id: number;
     entityId: number;
+    taskVersionEventId: number | null;
     entityTypeName: string;
     raisedBedId: number | null;
     raisedBedFieldId: number | null;
@@ -42,6 +29,11 @@ export type GardenOperationItem = {
     completedAt: string | null;
     verifiedAt: string | null;
     canceledAt: string | null;
+    cancellationReason: string | null;
+    blockedAt: string | null;
+    blockReasonLabel: string | null;
+    blockNote: string | null;
+    blockImageUrls: string[];
     imageUrls: string[];
     completionNotes: string | null;
     targetLabel: string;
@@ -70,15 +62,27 @@ type CurrentGardenData = NonNullable<
 type GardenOperationItemResponse = Omit<
     GardenOperationItem,
     | 'completionNotes'
+    | 'blockedAt'
+    | 'blockImageUrls'
+    | 'blockNote'
+    | 'blockReasonLabel'
+    | 'cancellationReason'
     | 'entityTypeName'
     | 'imageUrls'
     | 'status'
     | 'statusHistory'
+    | 'taskVersionEventId'
 > & {
     completionNotes?: string | null;
+    blockedAt?: string | null;
+    blockImageUrls?: string[] | null;
+    blockNote?: string | null;
+    blockReasonLabel?: string | null;
     entityTypeName?: string;
     imageUrls?: string[] | null;
     status: string;
+    taskVersionEventId?: number | null;
+    cancellationReason?: string | null;
     statusHistory: ({
         status: string;
         changedAt: string;
@@ -89,23 +93,20 @@ type GardenOperationsPageResponse = Omit<GardenOperationsPage, 'items'> & {
     items: GardenOperationItemResponse[];
 };
 
-function parseGardenOperationStatus(status: string): GardenOperationStatus {
-    const mapped = backendStatusMap[status];
-    if (!mapped) {
-        throw new Error(`Unknown garden operation status: ${status}`);
-    }
-
-    return mapped;
-}
-
 function parseGardenOperationItem(
     item: GardenOperationItemResponse,
 ): GardenOperationItem {
     return {
         ...item,
         completionNotes: item.completionNotes ?? null,
+        blockedAt: item.blockedAt ?? null,
+        blockImageUrls: item.blockImageUrls ?? [],
+        blockNote: item.blockNote ?? null,
+        blockReasonLabel: item.blockReasonLabel ?? null,
+        cancellationReason: item.cancellationReason ?? null,
         entityTypeName: item.entityTypeName ?? 'operation',
         imageUrls: item.imageUrls ?? [],
+        taskVersionEventId: item.taskVersionEventId ?? null,
         status: parseGardenOperationStatus(item.status),
         statusHistory: item.statusHistory.flatMap((entry) => {
             if (!entry) {
@@ -149,7 +150,7 @@ async function getGardenOperationsPage(
         query: {
             cursor: input.cursor.toString(),
             limit: input.pageSize.toString(),
-            includeCompleted: input.includeCompleted.toString(),
+            includeCompleted: input.includeCompleted ? 'true' : 'false',
             ...(input.raisedBedId !== undefined
                 ? { raisedBedId: input.raisedBedId.toString() }
                 : {}),
@@ -299,13 +300,18 @@ export function useGardenOperations({
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
+    const isDeterministicEmptyMock =
+        isMock && mockGardenProfile === 'high-target';
 
     return useInfiniteQuery({
         queryKey: gardenOperationsQueryKey({
             gardenId: currentGarden?.id,
             includeCompleted,
             pageSize,
-            profile: isOperationRewardDebug ? mockGardenProfile : null,
+            profile:
+                isOperationRewardDebug || isDeterministicEmptyMock
+                    ? mockGardenProfile
+                    : null,
             raisedBedId,
             raisedBedFieldId,
             positionIndex,
@@ -329,6 +335,13 @@ export function useGardenOperations({
                     positionIndex,
                     cursor: pageParam,
                 });
+            }
+            if (isDeterministicEmptyMock) {
+                return {
+                    items: [],
+                    nextCursor: null,
+                    total: 0,
+                } satisfies GardenOperationsPage;
             }
 
             return getGardenOperationsPage({

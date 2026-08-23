@@ -1,6 +1,9 @@
 const { app, BrowserWindow, Menu, shell, session } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const {
+    createDesktopOAuthCallbackRedirectUrl,
+} = require('./oauth-redirect.cjs');
 
 const allowedPermissionNames = new Set([
     'clipboard-read',
@@ -384,12 +387,13 @@ function isTrustedAuthOrigin(parsedUrl) {
     );
 }
 
-function desktopAuthCallbackRedirectUrl(provider) {
-    if (!runtimeConfig.protocol) {
-        return null;
-    }
-
-    return `${runtimeConfig.protocol}://auth-callback/${provider}`;
+function desktopAuthCallbackRedirectUrl(provider, sourceAuthUrl) {
+    return createDesktopOAuthCallbackRedirectUrl({
+        protocol: runtimeConfig.protocol,
+        provider,
+        sourceAuthUrl,
+        trustedNavigationOrigins,
+    });
 }
 
 function openExternalOAuthLogin(targetUrl) {
@@ -400,7 +404,7 @@ function openExternalOAuthLogin(targetUrl) {
             return false;
         }
 
-        const redirectUrl = desktopAuthCallbackRedirectUrl(provider);
+        const redirectUrl = desktopAuthCallbackRedirectUrl(provider, parsedUrl);
         if (!redirectUrl) {
             return false;
         }

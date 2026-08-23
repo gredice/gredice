@@ -4,6 +4,8 @@ import type { NavContextType } from './NavContext';
 const idRouteTitlePrefixes = new Map([
     ['/admin/accounts', 'Račun'],
     ['/admin/automations', 'Automatizacija'],
+    ['/admin/billing/reconciliation', 'Usklađenje naplate'],
+    ['/admin/billing/previews', 'Pregled dokumenta'],
     ['/admin/cms/pages', 'Stranica'],
     ['/admin/community-edits', 'Prijedlog zajednice'],
     ['/admin/communication/emails', 'Email'],
@@ -191,6 +193,27 @@ function resolveOutletTitle(pathname: string) {
     return null;
 }
 
+function resolveSurveyTitle(pathname: string) {
+    if (pathname === '/admin/surveys/create') {
+        return 'Nova anketa';
+    }
+
+    const surveyMatch = pathname.match(
+        /^\/admin\/surveys\/([^/]+)(?:\/(design|responses|sends|statistics))?$/,
+    );
+    const surveyId = surveyMatch?.[1];
+    if (!surveyId) {
+        return null;
+    }
+
+    const section = surveyMatch[2];
+    if (section === 'design') return 'Dizajn ankete';
+    if (section === 'responses') return 'Odgovori ankete';
+    if (section === 'sends') return 'Slanja ankete';
+    if (section === 'statistics') return 'Statistika ankete';
+    return `Anketa ${decodePathSegment(surveyId)}`;
+}
+
 export function resolveAdminRouteTitle(
     pathname: string,
     navContext: NavContextType | undefined,
@@ -233,6 +256,11 @@ export function resolveAdminRouteTitle(
     const outletTitle = resolveOutletTitle(pathname);
     if (outletTitle) {
         return outletTitle;
+    }
+
+    const surveyTitle = resolveSurveyTitle(pathname);
+    if (surveyTitle) {
+        return surveyTitle;
     }
 
     const idSeparatorIndex = pathname.lastIndexOf('/');

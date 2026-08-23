@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { inflateSync } from 'node:zlib';
-import type { EntityStandardized } from '@gredice/storage';
+import type {
+    EntityStandardized,
+    SelectFarm,
+    SelectOperationPrice,
+} from '@gredice/storage';
 import {
     buildFarmerDocumentationPackage,
     currentDocumentationPages,
@@ -14,9 +18,9 @@ import { generateFarmerDocumentationPdf } from './farmerDocumentationPdf';
 const generatedAt = new Date('2026-06-13T10:00:00.000Z');
 const since = new Date('2026-06-01T00:00:00.000Z');
 const plantImageDataUrl =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWP4z8AAAAMBAQCc479ZAAAAAElFTkSuQmCC';
 const sortImageDataUrl =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADUlEQVR4nGNg+M8AAAICAQCOqX3YAAAAAElFTkSuQmCC';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWNgaGAAAAEEAIEl6+oTAAAAAElFTkSuQmCC';
 
 test('builds insert, replace, and discard instructions from manual revisions', () => {
     const documentationPackage = buildFarmerDocumentationPackage({
@@ -35,6 +39,7 @@ test('builds insert, replace, and discard instructions from manual revisions', (
                 {
                     duration: 25,
                     application: 'raisedBedFull',
+                    appliesToAllTargets: true,
                 },
                 { perOperation: 2.5 },
             ),
@@ -198,6 +203,14 @@ test('builds insert, replace, and discard instructions from manual revisions', (
         ),
         { label: 'Cijena', value: '2,50 EUR' },
     );
+    assert.equal(
+        documentationPackage.includedOperations[0]?.sections
+            .find((section) => section.title === 'Podaci radnje')
+            ?.lines.find((line) =>
+                line.startsWith('Primjenjivo na sve ciljeve:'),
+            ),
+        'Primjenjivo na sve ciljeve: Da',
+    );
     assert.deepEqual(
         documentationPackage.discardedOperations.map((operation) => [
             operation.code,
@@ -230,6 +243,228 @@ test('builds insert, replace, and discard instructions from manual revisions', (
             (plantSort) => [plantSort.code, plantSort.label],
         ),
         [['PS-0016', 'Stara sorta']],
+    );
+});
+
+test('documents advanced sowing ranges and recommended layouts', () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        operations: [],
+        plants: [
+            plantFixture({
+                id: 1014,
+                label: 'Gusta sadnja',
+                attributeOverrides: {
+                    seedingDistance: 15,
+                    seedingDistanceMin: 10,
+                    seedingDistanceMax: 30,
+                },
+            }),
+            plantFixture({
+                id: 2020,
+                label: 'Tikvica',
+                attributeOverrides: { seedingDistance: 60 },
+            }),
+            plantFixture({
+                id: 3030,
+                label: 'Nepodržana široka sadnja',
+                attributeOverrides: {
+                    seedingDistance: 30,
+                    seedingDistanceMax: 95,
+                },
+            }),
+            plantFixture({
+                id: 4040,
+                label: 'Neispravan razmak',
+                attributeOverrides: {
+                    seedingDistance: 25,
+                    seedingDistanceMin: 30,
+                },
+            }),
+        ],
+        plantSorts: [],
+        revisions: [],
+    });
+    const sowingRows = (plantId: number) =>
+        documentationPackage.currentPlants
+            .find((plant) => plant.id === plantId)
+            ?.sections.find((section) => section.title === 'Sjetva')
+            ?.attributes?.filter(
+                (row) =>
+                    row.label === 'Raspored za novu naprednu sjetvu/sadnju' ||
+                    row.label.includes('razmak sijanja/sadnje'),
+            );
+
+    assert.deepEqual(sowingRows(1014), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: '4 biljke u jednom polju. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Minimalni razmak sijanja/sadnje',
+            value: '10 cm',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '15 cm',
+        },
+        {
+            label: 'Maksimalni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(2020), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: '1 biljka preko 2 x 2 polja. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '60 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(3030), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: 'Raspon razmaka nije podržan za gredicu 3 x 6 polja. Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+        {
+            label: 'Maksimalni razmak sijanja/sadnje',
+            value: '95 cm',
+        },
+    ]);
+    assert.deepEqual(sowingRows(4040), [
+        {
+            label: 'Raspored za novu naprednu sjetvu/sadnju',
+            value: 'Neispravna konfiguracija razmaka (min ≤ preporučeni ≤ max). Za postojeće zadatke slijedite raspored spremljen u zadatku.',
+        },
+        {
+            label: 'Minimalni razmak sijanja/sadnje',
+            value: '30 cm',
+        },
+        {
+            label: 'Preporučeni razmak sijanja/sadnje',
+            value: '25 cm',
+        },
+    ]);
+});
+
+test('builds farmer payout price tables per farm', () => {
+    const documentationPackage = buildFarmerDocumentationPackage({
+        generatedAt,
+        since: null,
+        labelAttributeDefinitionIds: {
+            operation: new Set(),
+            plant: new Set(),
+            plantSort: new Set(),
+        },
+        farms: [farmFixture({ id: 7, name: 'Testna farma' })],
+        operations: [
+            operationFixture(
+                4,
+                'Zalijevanje',
+                {
+                    duration: 25,
+                    application: 'raisedBedFull',
+                },
+                { perOperation: 2.5 },
+            ),
+            operationFixture(6, 'Okopavanje', {
+                duration: 30,
+                application: 'raisedBed',
+            }),
+        ],
+        operationPrices: [
+            operationPriceFixture({
+                id: 1,
+                farmId: 7,
+                entityTypeName: 'sowing',
+                entityId: null,
+                pricePerUnit: '0.40',
+            }),
+            operationPriceFixture({
+                id: 2,
+                farmId: 7,
+                entityTypeName: 'operation',
+                entityId: 4,
+                pricePerUnit: '1.25',
+            }),
+        ],
+        plants: [
+            plantFixture({ prices: { perPlant: 1.25 } }),
+            plantFixture({
+                id: 2020,
+                label: 'Paprika',
+                prices: { perPlant: 2.5 },
+            }),
+        ],
+        plantSorts: [],
+        plantSortPlantAttributeDefinitionIds: new Set(),
+        revisions: [],
+    });
+
+    assert.equal(documentationPackage.payoutPrices.totalRows, 4);
+    assert.equal(documentationPackage.payoutPrices.configuredRows, 2);
+    assert.equal(documentationPackage.payoutPrices.missingRows, 2);
+    assert.deepEqual(
+        documentationPackage.payoutPrices.farms[0]?.rows.map((row) => [
+            row.code,
+            row.label,
+            row.userFacingPriceLabel,
+            row.durationLabel,
+            row.farmerPriceLabel,
+            row.farmerPricePerMinuteLabel,
+            row.hasFarmerPrice,
+        ]),
+        [
+            [
+                'SOW-DIRECT',
+                'Sijanje (direktno)',
+                '1,25 EUR - 2,50 EUR (prema cijeni biljke)',
+                'Nije primjenjivo',
+                '0,40 EUR',
+                '-',
+                true,
+            ],
+            [
+                'SOW-GREENHOUSE',
+                'Sijanje (staklenički rasad)',
+                '1,25 EUR - 2,50 EUR (prema cijeni biljke)',
+                'Nije primjenjivo',
+                'Nije definirano',
+                '-',
+                false,
+            ],
+            [
+                'OP-0004',
+                'Zalijevanje',
+                '2,50 EUR',
+                '25 min',
+                '1,25 EUR',
+                '0,05 EUR / min',
+                true,
+            ],
+            [
+                'OP-0006',
+                'Okopavanje',
+                'Nije definirano',
+                '30 min',
+                'Nije definirano',
+                '-',
+                false,
+            ],
+        ],
     );
 });
 
@@ -312,6 +547,7 @@ test('generates a guide-first PDF without page numbering text', async () => {
             plant: new Set(),
             plantSort: new Set(),
         },
+        farms: [farmFixture({ id: 7, name: 'Testna farma' })],
         plantSortPlantAttributeDefinitionIds: new Set(),
         operations: [
             operationFixture(
@@ -330,6 +566,22 @@ test('generates a guide-first PDF without page numbering text', async () => {
             operationFixture(8, 'Berba', {
                 duration: 35,
                 application: 'raisedBed',
+            }),
+        ],
+        operationPrices: [
+            operationPriceFixture({
+                id: 1,
+                farmId: 7,
+                entityTypeName: 'sowing',
+                entityId: null,
+                pricePerUnit: '0.40',
+            }),
+            operationPriceFixture({
+                id: 2,
+                farmId: 7,
+                entityTypeName: 'operation',
+                entityId: 4,
+                pricePerUnit: '1.25',
             }),
         ],
         plants: [plantFixture()],
@@ -386,6 +638,11 @@ test('generates a guide-first PDF without page numbering text', async () => {
     assertPdfText(content, 'Cherry rajčica');
     assertPdfText(content, 'Rajčica');
     assertPdfText(content, 'Vlažno tlo');
+    assertPdfText(content, 'CJENIK ISPLATA FARMERA');
+    assertPdfText(content, 'Testna farma');
+    assertPdfText(content, 'SOW-DIRECT');
+    assertPdfText(content, '0,40 EUR');
+    assertPdfText(content, '0,05 EUR / min');
     assert.match(
         content,
         /\/Differences \[128 \/Ccaron \/ccaron \/Cacute \/cacute \/Dcroat \/dcroat \/Scaron \/scaron \/Zcaron \/zcaron\]/,
@@ -735,6 +992,51 @@ function operationFixture(
     };
 }
 
+function farmFixture({
+    id = 1,
+    name = 'Farma',
+}: {
+    id?: number;
+    name?: string;
+} = {}): SelectFarm {
+    return {
+        id,
+        name,
+        latitude: 45.8,
+        longitude: 16,
+        slackChannelId: null,
+        snowAccumulation: 0,
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
+        isDeleted: false,
+    };
+}
+
+function operationPriceFixture({
+    entityId,
+    entityTypeName,
+    farmId,
+    id,
+    pricePerUnit,
+}: {
+    entityId: number | null;
+    entityTypeName: string;
+    farmId: number;
+    id: number;
+    pricePerUnit: string;
+}): SelectOperationPrice {
+    return {
+        id,
+        farmId,
+        entityTypeName,
+        entityId,
+        pricePerUnit,
+        currency: 'eur',
+        createdAt: generatedAt,
+        updatedAt: generatedAt,
+    };
+}
+
 function plantSortFixture(
     id: number,
     label: string,
@@ -755,27 +1057,36 @@ function plantSortFixture(
 }
 
 function plantFixture({
+    attributeOverrides,
     description = 'Opis biljke.',
     id = 1014,
     label = 'Rajčica',
     origin = 'Južna Amerika',
+    prices,
     storage,
 }: {
+    attributeOverrides?: EntityStandardized['attributes'];
     description?: string;
     id?: number;
     label?: string;
     origin?: string;
+    prices?: EntityStandardized['prices'];
     storage?: string;
 } = {}): EntityStandardized {
+    const information: NonNullable<EntityStandardized['information']> & {
+        origin?: string;
+        storage?: string;
+    } = {
+        label,
+        name: label,
+        description,
+        origin,
+        ...(storage ? { storage } : {}),
+    };
+
     return {
         id,
-        information: {
-            label,
-            name: label,
-            description,
-            origin,
-            ...(storage ? { storage } : {}),
-        },
+        information,
         image: { cover: { url: plantImageDataUrl } },
         attributes: {
             seedingDistance: 30,
@@ -788,7 +1099,9 @@ function plantFixture({
             yieldMax: 200,
             yieldType: 'perPlant',
             cleanHarvest: false,
+            ...attributeOverrides,
         },
+        ...(prices === undefined ? {} : { prices }),
     };
 }
 

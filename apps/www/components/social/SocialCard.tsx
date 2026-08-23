@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
+import { Card } from '@gredice/ui/Card';
 import { Navigate } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import type { ReactNode } from 'react';
@@ -21,31 +21,37 @@ export function SocialCard({
     navigateIconColor,
 }: SocialCardProps) {
     return (
-        <a href={href} target="_blank" rel="noopener noreferrer">
+        <a
+            className="group block w-full max-w-md rounded-xl ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+        >
             <Card
                 className={cx(
-                    'h-full flex flex-row rounded-xl items-center justify-between max-w-md shadow hover:shadow-xl transition-all duration-300',
+                    'grid h-full min-h-20 w-full grid-cols-[4rem_minmax(0,1fr)_4rem] items-center gap-3 rounded-xl p-3 shadow transition-shadow duration-300 group-hover:shadow-xl',
                     bgColor,
                 )}
             >
-                <CardHeader className={cx('flex flex-row gap-4 items-center')}>
-                    <div
-                        className={cx(
-                            'size-16 shrink-0 rounded-full flex items-center justify-center shadow-lg',
-                            bgIconColor,
-                        )}
-                    >
-                        {icon}
-                    </div>
-                    <CardTitle className="text-lg leading-tight font-bold text-gray-800 max-w-xs mx-auto">
-                        {ctaText}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                    <Navigate
-                        className={cx('size-8 shrink-0', navigateIconColor)}
-                    />
-                </CardContent>
+                <div
+                    aria-hidden="true"
+                    className={cx(
+                        'grid size-14 place-items-center justify-self-center rounded-full shadow-lg',
+                        bgIconColor,
+                    )}
+                >
+                    {icon}
+                </div>
+                <span className="text-center text-base leading-snug font-bold text-current sm:text-lg">
+                    {ctaText}
+                </span>
+                <Navigate
+                    aria-hidden="true"
+                    className={cx(
+                        'size-7 justify-self-center transition-transform duration-300 group-hover:translate-x-0.5',
+                        navigateIconColor,
+                    )}
+                />
             </Card>
         </a>
     );

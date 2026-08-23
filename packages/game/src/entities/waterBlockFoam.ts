@@ -6,8 +6,8 @@ import {
     getWaterBlockVerticalRange,
     type WaterBlockVerticalRange,
 } from './waterBlockHeight';
+import { isWaterBlockName } from './waterBlockNames';
 
-export const waterBlockName = 'Block_Water';
 const waterRangeOverlapEpsilon = 1e-6;
 
 function doWaterRangesOverlap(
@@ -36,7 +36,7 @@ function hasOverlappingWater(
 
         return candidate.blocks.some(
             (block) =>
-                block.name === waterBlockName &&
+                isWaterBlockName(block.name) &&
                 doWaterRangesOverlap(
                     getWaterBlockVerticalRange({
                         block,

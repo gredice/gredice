@@ -1,35 +1,32 @@
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Input } from '@gredice/ui/Input';
-import {
-    Close,
-    Delete,
-    Euro,
-    Hammer,
-    Navigate,
-    Timer,
-} from '@gredice/ui/icons';
+import { Close, Delete, Navigate, Sprout, Timer } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
-import { Popper } from '@gredice/ui/Popper';
+import { OperationImage } from '@gredice/ui/OperationImage';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
-import { type CSSProperties, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../../analytics/GameAnalyticsContext';
+import { getCartItemOutletOfferId } from '../../../hooks/shoppingCartPositionPayload';
 import { useCurrentAccount } from '../../../hooks/useCurrentAccount';
 import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useInventory } from '../../../hooks/useInventory';
+import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { useSetShoppingCartItem } from '../../../hooks/useSetShoppingCartItem';
 import {
     type ShoppingCartItemData,
     useShoppingCartQueryKey,
 } from '../../../hooks/useShoppingCart';
 import { RaisedBedWateringCalendar } from '../../raisedBed/RaisedBedWateringCalendar';
+import { OutletBadge } from '../OutletBadge';
 import { ButtonPricePickPaymentMethod } from './ButtonPricePickPaymentMethod';
+import { GreenhouseSowingToggle } from './GreenhouseSowingToggle';
 
 const outletReservationCountdownIntervalMs = 1000;
 const outletReservationRefetchBufferMs = 500;
@@ -129,6 +126,22 @@ function getCartItemScheduledDateInfo(
     };
 }
 
+function greenhouseAdditionalData(
+    additionalData: Record<string, unknown>,
+    enabled: boolean,
+) {
+    if (enabled) {
+        return {
+            ...additionalData,
+            sowingLocation: 'greenhouse',
+        };
+    }
+
+    const nextAdditionalData = { ...additionalData };
+    delete nextAdditionalData.sowingLocation;
+    return nextAdditionalData;
+}
+
 export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const { data: garden } = useCurrentGarden();
     const { data: account } = useCurrentAccount();
@@ -147,6 +160,14 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const raisedBed = hasRaisedBed
         ? garden?.raisedBeds.find((rb) => rb.id === item.raisedBedId)
         : null;
+    const targetPlantSortId =
+        item.entityTypeName === 'operation' && hasPosition
+            ? raisedBed?.fields.find(
+                  (field) => field.positionIndex === item.positionIndex,
+              )?.plantSortId
+            : null;
+    const { data: targetPlantSort } = usePlantSort(targetPlantSortId);
+    const additionalData = parseAdditionalData(item.additionalData);
     const scheduledDateInfo = getCartItemScheduledDateInfo(item);
     const scheduledDate = scheduledDateInfo.date;
     const scheduledDateLabel = formatCartDate(scheduledDate);
@@ -156,6 +177,10 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
     const hasOutletReservation = Boolean(item.outlet);
     const outletReservationExpiredFromApi = item.outlet?.expired ?? false;
     const outletHoldExpiresAtMs = outletHoldExpiresAt?.getTime() ?? null;
+    const isGreenhouseSowing =
+        item.entityTypeName === 'plantSort' &&
+        (hasOutletReservation ||
+            additionalData.sowingLocation === 'greenhouse');
     const outletReservationRemainingMs =
         outletHoldExpiresAtMs != null
             ? outletHoldExpiresAtMs - countdownNowMs
@@ -180,16 +205,21 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 },
             )}.`
           : undefined;
-    const outletReservationChipClassName = outletReservationExpired
-        ? 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100'
+    const outletReservationChipColor = outletReservationExpired
+        ? 'error'
         : (outletReservationRemainingMs ?? Number.POSITIVE_INFINITY) <=
             urgentOutletReservationThresholdMs
-          ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
-          : 'bg-muted';
+          ? 'warning'
+          : 'neutral';
     const changeCurrencyShoppingCartItem = useSetShoppingCartItem();
     const removeShoppingCartItem = useSetShoppingCartItem();
     const changeScheduledDateShoppingCartItem = useSetShoppingCartItem();
+    const changeGreenhouseSowingShoppingCartItem = useSetShoppingCartItem();
     const canChangeScheduledDate = !isProcessed && !hasOutletReservation;
+    const canChangeGreenhouseSowing =
+        item.entityTypeName === 'plantSort' &&
+        !isProcessed &&
+        !hasOutletReservation;
     const parsedOperationId = Number(item.entityId);
     const operationId =
         Number.isInteger(parsedOperationId) && parsedOperationId > 0
@@ -253,8 +283,11 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             invItem.entityTypeName === item.entityTypeName &&
             invItem.entityId === item.entityId,
     )?.amount;
+    const hasAvailableInventory = (availableFromInventory ?? 0) > 0;
 
     async function handleChangePaymentType(isSunflower: boolean) {
+        const outletOfferId = getCartItemOutletOfferId(item);
+
         track('game_cart_payment_method_changed', {
             entity_id: item.entityId,
             entity_type: item.entityTypeName,
@@ -270,6 +303,7 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             positionIndex: item.positionIndex ?? undefined,
             gardenId: item.gardenId ?? undefined,
             raisedBedId: item.raisedBedId ?? undefined,
+            outletOfferId,
         });
     }
 
@@ -301,6 +335,31 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
             entityTypeName: item.entityTypeName,
             currency: usesInventory ? 'eur' : 'inventory',
             additionalData: item.additionalData,
+            positionIndex: item.positionIndex ?? undefined,
+            gardenId: item.gardenId ?? undefined,
+            raisedBedId: item.raisedBedId ?? undefined,
+        });
+    }
+
+    async function handleToggleGreenhouseSowing(checked: boolean) {
+        const nextAdditionalData = greenhouseAdditionalData(
+            parseAdditionalData(item.additionalData),
+            checked,
+        );
+
+        track('game_cart_greenhouse_sowing_toggled', {
+            entity_id: item.entityId,
+            entity_type: item.entityTypeName,
+            item_id: item.id,
+            sow_in_greenhouse: checked,
+        });
+        await changeGreenhouseSowingShoppingCartItem.mutateAsync({
+            id: item.id,
+            amount: item.amount,
+            entityId: item.entityId,
+            entityTypeName: item.entityTypeName,
+            currency: item.currency,
+            additionalData: JSON.stringify(nextAdditionalData),
             positionIndex: item.positionIndex ?? undefined,
             gardenId: item.gardenId ?? undefined,
             raisedBedId: item.raisedBedId ?? undefined,
@@ -348,9 +407,123 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
 
     const plantSort =
         item.entityTypeName === 'plantSort' ? item.entityData : null;
-    const hasShopImage = Boolean(item.shopData.image);
-    const shouldShowOperationFallback =
-        item.entityTypeName === 'operation' && !hasShopImage;
+    function renderGreenhouseSowingControl() {
+        if (canChangeGreenhouseSowing) {
+            return (
+                <GreenhouseSowingToggle
+                    checked={isGreenhouseSowing}
+                    disabled={changeGreenhouseSowingShoppingCartItem.isPending}
+                    onCheckedChange={(checked) => {
+                        void handleToggleGreenhouseSowing(checked);
+                    }}
+                />
+            );
+        }
+
+        if (!isGreenhouseSowing) {
+            return null;
+        }
+
+        return (
+            <Chip
+                color="success"
+                size="sm"
+                startDecorator={<Sprout />}
+                variant="soft"
+            >
+                Staklenik
+            </Chip>
+        );
+    }
+
+    function renderScheduledDateControl() {
+        return canChangeScheduledDate ? (
+            <CalendarDatePicker
+                open={datePickerOpen}
+                onOpenChange={(open) => {
+                    setDatePickerOpen(open);
+                    if (open) {
+                        setDatePickerError(null);
+                    }
+                }}
+                align="start"
+                closeOnSelect={false}
+                disabled={changeScheduledDateShoppingCartItem.isPending}
+                min={formatDateInput(getTomorrowDate())}
+                name={`cartItemScheduledDate-${item.id}`}
+                onValueChange={(nextDate) => {
+                    void handleScheduledDateChange(nextDate);
+                }}
+                side="bottom"
+                trigger={
+                    <Chip
+                        startDecorator={<Timer className="size-4" />}
+                        color="neutral"
+                        disabled={changeScheduledDateShoppingCartItem.isPending}
+                        onClick={() => setDatePickerError(null)}
+                        size="sm"
+                        title={`Promijeni datum: ${scheduledDateLabel}`}
+                        variant="soft"
+                    >
+                        {scheduledDateLabel}
+                    </Chip>
+                }
+                value={formatDateInput(scheduledDate)}
+            >
+                <Stack spacing={2}>
+                    {datePickerError ? (
+                        <Typography level="body3" className="text-red-600">
+                            {datePickerError}
+                        </Typography>
+                    ) : null}
+                    {showWateringCalendar &&
+                    typeof item.gardenId === 'number' &&
+                    typeof item.raisedBedId === 'number' ? (
+                        <RaisedBedWateringCalendar
+                            className="shadow-none"
+                            gardenId={item.gardenId}
+                            operationId={operationId}
+                            raisedBedId={item.raisedBedId}
+                        />
+                    ) : null}
+                </Stack>
+            </CalendarDatePicker>
+        ) : (
+            <Chip
+                startDecorator={<Timer className="size-4" />}
+                color="neutral"
+                size="sm"
+                title={
+                    scheduledDateInfo.source === 'outlet'
+                        ? 'Datum sjetve outlet sadnice'
+                        : 'Datum'
+                }
+                variant="soft"
+            >
+                {scheduledDateLabel}
+            </Chip>
+        );
+    }
+
+    function renderOutletReservationBadges() {
+        if (!item.outlet) {
+            return null;
+        }
+
+        return (
+            <>
+                <OutletBadge>Outlet sadnica</OutletBadge>
+                <Chip
+                    color={outletReservationChipColor}
+                    size="sm"
+                    title={outletReservationTitle}
+                    variant="soft"
+                >
+                    {outletReservationText}
+                </Chip>
+            </>
+        );
+    }
 
     return (
         <Row spacing={4} alignItems="start">
@@ -362,18 +535,31 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                     alt={item.shopData.name ?? 'Nepoznato'}
                     plantSort={plantSort}
                 />
-            ) : shouldShowOperationFallback ? (
-                <div className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center">
-                    <Hammer
-                        role="img"
-                        aria-label={item.shopData.name ?? 'Nepoznato'}
-                        style={
-                            {
-                                '--imageSize': '32px',
-                            } as CSSProperties
-                        }
-                        className="size-[--imageSize] shrink-0"
+            ) : item.entityTypeName === 'operation' && targetPlantSort ? (
+                <div
+                    className="relative size-14 shrink-0"
+                    data-shopping-cart-item-media="plant"
+                >
+                    <PlantOrSortImage
+                        className="rounded-lg border overflow-hidden size-14 aspect-square"
+                        width={56}
+                        height={56}
+                        alt={targetPlantSort.information.name}
+                        plantSort={targetPlantSort}
                     />
+                    <span
+                        className="-right-1 -top-1 absolute flex size-6 items-center justify-center rounded-full border bg-background text-foreground shadow-xs"
+                        data-shopping-cart-item-operation-badge
+                    >
+                        <OperationImage operation={item.entityData} size={18} />
+                    </span>
+                </div>
+            ) : item.entityTypeName === 'operation' ? (
+                <div
+                    className="rounded-lg border overflow-hidden size-14 aspect-square shrink-0 flex items-center justify-center"
+                    data-shopping-cart-item-media="operation"
+                >
+                    <OperationImage operation={item.entityData} size={56} />
                 </div>
             ) : (
                 <PlantOrSortImage
@@ -385,38 +571,12 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                 />
             )}
             <Stack className="grow">
-                <div className="grid grid-cols-[1fr_auto] items-center">
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                     <Typography level="body1" noWrap>
                         {item.shopData.name}
                     </Typography>
-                    {!hasDiscount && (
-                        <Row spacing={2}>
-                            {!usesInventory && availableFromInventory && (
-                                <IconButton
-                                    title="Iskoristi iz ruksaka"
-                                    size="sm"
-                                    variant="solid"
-                                    onClick={handleToggleInventory}
-                                >
-                                    <BackpackIcon className="size-5 shrink-0" />
-                                </IconButton>
-                            )}
-                            <ButtonPricePickPaymentMethod
-                                price={item.shopData.price}
-                                isSunflower={item.currency === 'sunflower'}
-                                onChange={handleChangePaymentType}
-                                availableSunflowers={
-                                    account?.sunflowers.amount ?? 0
-                                }
-                                discountPrice={item.shopData.discountPrice}
-                                disabled={
-                                    changeCurrencyShoppingCartItem.isPending
-                                }
-                            />
-                        </Row>
-                    )}
-                    <Row spacing={2} className="flex-wrap justify-end">
-                        {usesInventory && (
+                    <Row spacing={2} className="justify-end">
+                        {usesInventory ? (
                             <Row spacing={1}>
                                 <BackpackIcon className="size-4 shrink-0" />
                                 <Typography level="body2">
@@ -431,50 +591,45 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                     <Close className="size-4 shrink-0" />
                                 </IconButton>
                             </Row>
+                        ) : (
+                            <>
+                                {hasAvailableInventory && (
+                                    <IconButton
+                                        title="Iskoristi iz ruksaka"
+                                        size="sm"
+                                        variant="solid"
+                                        onClick={handleToggleInventory}
+                                    >
+                                        <BackpackIcon className="size-5 shrink-0" />
+                                    </IconButton>
+                                )}
+                                <ButtonPricePickPaymentMethod
+                                    price={item.shopData.price}
+                                    isSunflower={item.currency === 'sunflower'}
+                                    onChange={handleChangePaymentType}
+                                    availableSunflowers={
+                                        account?.sunflowers.amount ?? 0
+                                    }
+                                    discountPrice={item.shopData.discountPrice}
+                                    disabled={
+                                        changeCurrencyShoppingCartItem.isPending
+                                    }
+                                />
+                            </>
                         )}
                     </Row>
                 </div>
                 {hasDiscount &&
                     typeof item.shopData.discountPrice === 'number' &&
                     typeof item.shopData.price === 'number' && (
-                        <Row justifyContent="space-between" spacing={2}>
-                            <Typography
-                                level="body3"
-                                secondary
-                                className="text-green-600"
-                            >
-                                {`Popust: ${(100 - (item.shopData.discountPrice / item.shopData.price) * 100).toFixed(0)}% - ${item.shopData.discountDescription}`}
-                            </Typography>
-                            <Row spacing={1}>
-                                <Typography
-                                    level="body1"
-                                    bold
-                                    className="text-green-600"
-                                >
-                                    {item.shopData.discountPrice?.toFixed(2) ??
-                                        'Nevaljan iznos'}
-                                </Typography>
-                                <Euro className="size-4 stroke-green-600" />
-                            </Row>
-                        </Row>
-                    )}
-                {item.outlet && (
-                    <Row className="flex-wrap" spacing={1}>
-                        <Chip className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-100">
-                            <Typography level="body3">
-                                Outlet sadnica
-                            </Typography>
-                        </Chip>
-                        <Chip
-                            className={outletReservationChipClassName}
-                            title={outletReservationTitle}
+                        <Typography
+                            level="body3"
+                            secondary
+                            className="text-green-600"
                         >
-                            <Typography level="body3">
-                                {outletReservationText}
-                            </Typography>
-                        </Chip>
-                    </Row>
-                )}
+                            {`Popust: ${(100 - (item.shopData.discountPrice / item.shopData.price) * 100).toFixed(0)}% - ${item.shopData.discountDescription}`}
+                        </Typography>
+                    )}
                 <Row justifyContent="space-between">
                     <Stack spacing={1}>
                         <Row spacing={2}>
@@ -512,99 +667,14 @@ export function ShoppingCartItem({ item }: { item: ShoppingCartItemData }) {
                                 )}
                             </Row>
                         </Row>
-                        <Row>
-                            {canChangeScheduledDate ? (
-                                <Popper
-                                    open={datePickerOpen}
-                                    onOpenChange={(open) => {
-                                        setDatePickerOpen(open);
-                                        if (open) {
-                                            setDatePickerError(null);
-                                        }
-                                    }}
-                                    side="bottom"
-                                    align="start"
-                                    sideOffset={8}
-                                    className="w-72 p-3"
-                                    trigger={
-                                        <Chip
-                                            startDecorator={
-                                                <Timer className="size-4" />
-                                            }
-                                            className="bg-muted"
-                                            disabled={
-                                                changeScheduledDateShoppingCartItem.isPending
-                                            }
-                                            onClick={() =>
-                                                setDatePickerError(null)
-                                            }
-                                            title={`Promijeni datum: ${scheduledDateLabel}`}
-                                        >
-                                            <Typography level="body3" secondary>
-                                                {scheduledDateLabel}
-                                            </Typography>
-                                        </Chip>
-                                    }
-                                >
-                                    <Stack spacing={2}>
-                                        <Input
-                                            type="date"
-                                            label="Datum"
-                                            name={`cartItemScheduledDate-${item.id}`}
-                                            className="w-full bg-card"
-                                            value={formatDateInput(
-                                                scheduledDate,
-                                            )}
-                                            min={formatDateInput(
-                                                getTomorrowDate(),
-                                            )}
-                                            disabled={
-                                                changeScheduledDateShoppingCartItem.isPending
-                                            }
-                                            onChange={(event) => {
-                                                void handleScheduledDateChange(
-                                                    event.target.value,
-                                                );
-                                            }}
-                                            required
-                                        />
-                                        {datePickerError ? (
-                                            <Typography
-                                                level="body3"
-                                                className="text-red-600"
-                                            >
-                                                {datePickerError}
-                                            </Typography>
-                                        ) : null}
-                                        {showWateringCalendar &&
-                                        typeof item.gardenId === 'number' &&
-                                        typeof item.raisedBedId === 'number' ? (
-                                            <RaisedBedWateringCalendar
-                                                className="shadow-none"
-                                                gardenId={item.gardenId}
-                                                operationId={operationId}
-                                                raisedBedId={item.raisedBedId}
-                                            />
-                                        ) : null}
-                                    </Stack>
-                                </Popper>
-                            ) : (
-                                <Chip
-                                    startDecorator={
-                                        <Timer className="size-4" />
-                                    }
-                                    className="bg-muted"
-                                    title={
-                                        scheduledDateInfo.source === 'outlet'
-                                            ? 'Datum sjetve outlet sadnice'
-                                            : 'Datum'
-                                    }
-                                >
-                                    <Typography level="body3" secondary>
-                                        {scheduledDateLabel}
-                                    </Typography>
-                                </Chip>
-                            )}
+                        <Row
+                            spacing={1}
+                            className="flex-wrap"
+                            data-shopping-cart-item-badges
+                        >
+                            {renderOutletReservationBadges()}
+                            {renderScheduledDateControl()}
+                            {renderGreenhouseSowingControl()}
                         </Row>
                     </Stack>
                     {!isProcessed && (

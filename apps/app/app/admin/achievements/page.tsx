@@ -11,10 +11,10 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import { Chip, type ColorPaletteProp } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -34,24 +34,29 @@ const statusFilters = [
 
 type StatusFilter = (typeof statusFilters)[number]['value'];
 
+function isStatusFilter(value: string): value is StatusFilter {
+    return statusFilters.some((status) => status.value === value);
+}
+
 function resolveStatus(value: string | undefined): StatusFilter {
     if (!value) return 'pending';
     const normalized = value.toLowerCase();
-    return statusFilters.some((status) => status.value === normalized)
-        ? (normalized as StatusFilter)
-        : 'pending';
+    return isStatusFilter(normalized) ? normalized : 'pending';
 }
 
-function statusLabel(status: string) {
+function statusLabel(status: string): {
+    label: string;
+    color: ColorPaletteProp;
+} {
     switch (status) {
         case 'approved':
-            return { label: 'Odobreno', color: 'text-green-600' };
+            return { label: 'Odobreno', color: 'success' };
         case 'pending':
-            return { label: 'Na čekanju', color: 'text-yellow-600' };
+            return { label: 'Na čekanju', color: 'warning' };
         case 'denied':
-            return { label: 'Odbijeno', color: 'text-red-600' };
+            return { label: 'Odbijeno', color: 'error' };
         default:
-            return { label: status, color: 'text-muted-foreground' };
+            return { label: status, color: 'neutral' };
     }
 }
 
@@ -80,7 +85,7 @@ export default async function AchievementsPage({
                     Pregled najnovijih postignuća i ručno odobravanje nagrada.
                 </Typography>
             </Stack>
-            <Row spacing={4}>
+            <Row spacing={4} className="flex-wrap">
                 {statusFilters.map((filter) => {
                     const isActive = status === filter.value;
                     const href =
@@ -115,107 +120,138 @@ export default async function AchievementsPage({
                     </Typography>
                 </CardContent>
                 <CardOverflow>
-                    <div className="overflow-auto">
-                        <Table>
-                            <Table.Header>
-                                <Table.Row>
-                                    <Table.Head>Postignuće</Table.Head>
-                                    <Table.Head>Račun</Table.Head>
-                                    <Table.Head>Status</Table.Head>
-                                    <Table.Head>Nagrada</Table.Head>
-                                    <Table.Head>Stečeno</Table.Head>
-                                    <Table.Head>Odobreno</Table.Head>
-                                    <Table.Head>Radnja</Table.Head>
-                                </Table.Row>
-                            </Table.Header>
-                            <Table.Body>
-                                {achievements.length === 0 && (
-                                    <Table.Row>
-                                        <Table.Cell colSpan={7}>
-                                            <NoDataPlaceholder>
-                                                Nema postignuća za prikaz
-                                            </NoDataPlaceholder>
-                                        </Table.Cell>
-                                    </Table.Row>
-                                )}
-                                {achievements.map((achievement) => {
-                                    const definition =
-                                        definitionsMap.get(
-                                            achievement.achievementKey,
-                                        ) ??
-                                        getAchievementDefinition(
-                                            achievement.achievementKey,
-                                        );
-                                    const statusInfo = statusLabel(
-                                        achievement.status,
+                    {achievements.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema postignuća za prikaz
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
+                            {achievements.map((achievement) => {
+                                const definition =
+                                    definitionsMap.get(
+                                        achievement.achievementKey,
+                                    ) ??
+                                    getAchievementDefinition(
+                                        achievement.achievementKey,
                                     );
-                                    return (
-                                        <Table.Row key={achievement.id}>
-                                            <Table.Cell>
-                                                <Stack spacing={2}>
+                                const statusInfo = statusLabel(
+                                    achievement.status,
+                                );
+                                const reward =
+                                    achievement.rewardSunflowers.toLocaleString(
+                                        'hr-HR',
+                                    );
+
+                                return (
+                                    <li
+                                        key={achievement.id}
+                                        className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                            <Stack
+                                                spacing={2}
+                                                className="min-w-0 flex-1"
+                                            >
+                                                <Stack spacing={1}>
                                                     <Typography
                                                         level="body2"
+                                                        component="h3"
                                                         semiBold
+                                                        className="min-w-0 break-words"
                                                     >
                                                         {definition?.title ??
                                                             achievement.achievementKey}
                                                     </Typography>
-                                                    <Typography
-                                                        level="body3"
-                                                        secondary
-                                                    >
-                                                        {
-                                                            definition?.description
-                                                        }
-                                                    </Typography>
+                                                    {definition?.description ? (
+                                                        <Typography
+                                                            level="body3"
+                                                            secondary
+                                                            className="min-w-0 break-words"
+                                                        >
+                                                            {
+                                                                definition.description
+                                                            }
+                                                        </Typography>
+                                                    ) : null}
                                                 </Stack>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Link
-                                                    href={KnownPages.Account(
-                                                        achievement.accountId,
-                                                    )}
-                                                    className="text-primary"
-                                                >
-                                                    {achievement.accountId}
-                                                </Link>
-                                            </Table.Cell>
-                                            <Table.Cell>
                                                 <Typography
-                                                    className={statusInfo.color}
+                                                    component="div"
+                                                    level="body3"
+                                                    className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground"
                                                 >
-                                                    {statusInfo.label}
-                                                </Typography>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                🌻{' '}
-                                                {achievement.rewardSunflowers.toLocaleString(
-                                                    'hr-HR',
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <LocalDateTime>
-                                                    {achievement.earnedAt}
-                                                </LocalDateTime>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {achievement.approvedAt ? (
-                                                    <LocalDateTime>
-                                                        {achievement.approvedAt}
-                                                    </LocalDateTime>
-                                                ) : (
-                                                    <Typography
-                                                        level="body3"
-                                                        secondary
+                                                    <span>Račun</span>
+                                                    <Link
+                                                        href={KnownPages.Account(
+                                                            achievement.accountId,
+                                                        )}
+                                                        title={
+                                                            achievement.accountId
+                                                        }
+                                                        className="min-w-0 max-w-full break-all font-mono text-primary underline-offset-4 hover:underline"
                                                     >
-                                                        —
+                                                        {achievement.accountId}
+                                                    </Link>
+                                                </Typography>
+                                            </Stack>
+                                            <div className="flex min-w-0 flex-col gap-3 lg:items-end lg:text-right">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                    <Chip
+                                                        color={statusInfo.color}
+                                                        size="sm"
+                                                        variant="soft"
+                                                    >
+                                                        {statusInfo.label}
+                                                    </Chip>
+                                                    <Chip
+                                                        color="success"
+                                                        size="sm"
+                                                        variant="outlined"
+                                                    >
+                                                        Nagrada: 🌻 {reward}
+                                                    </Chip>
+                                                </div>
+                                                <div className="grid min-w-0 grid-cols-1 gap-1 sm:grid-cols-2 lg:justify-items-end">
+                                                    <Typography
+                                                        component="div"
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Stečeno:{' '}
+                                                        <span className="whitespace-nowrap text-foreground">
+                                                            <LocalDateTime>
+                                                                {
+                                                                    achievement.earnedAt
+                                                                }
+                                                            </LocalDateTime>
+                                                        </span>
                                                     </Typography>
-                                                )}
-                                            </Table.Cell>
-                                            <Table.Cell>
+                                                    <Typography
+                                                        component="div"
+                                                        level="body3"
+                                                        className="text-muted-foreground"
+                                                    >
+                                                        Odobreno:{' '}
+                                                        {achievement.approvedAt ? (
+                                                            <span className="whitespace-nowrap text-foreground">
+                                                                <LocalDateTime>
+                                                                    {
+                                                                        achievement.approvedAt
+                                                                    }
+                                                                </LocalDateTime>
+                                                            </span>
+                                                        ) : (
+                                                            <span>—</span>
+                                                        )}
+                                                    </Typography>
+                                                </div>
                                                 {achievement.status ===
                                                 'pending' ? (
-                                                    <Row spacing={2}>
+                                                    <Row
+                                                        spacing={2}
+                                                        className="flex-wrap lg:justify-end"
+                                                    >
                                                         <form
                                                             action={approveAchievementAction.bind(
                                                                 null,
@@ -250,16 +286,16 @@ export default async function AchievementsPage({
                                                         level="body3"
                                                         secondary
                                                     >
-                                                        —
+                                                        Radnja: —
                                                     </Typography>
                                                 )}
-                                            </Table.Cell>
-                                        </Table.Row>
-                                    );
-                                })}
-                            </Table.Body>
-                        </Table>
-                    </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>

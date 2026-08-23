@@ -43,6 +43,38 @@ describe('isWaterBlockTopSurfaceVisible', () => {
         );
     });
 
+    it('hides the internal top between mixed water styles', () => {
+        const water = block('water-a', 'Block_Water');
+        const currentStack = stack([
+            water,
+            block('swamp-water-b', 'Block_Swamp_Water'),
+        ]);
+
+        assert.equal(
+            isWaterBlockTopSurfaceVisible({
+                block: water,
+                stack: currentStack,
+            }),
+            false,
+        );
+    });
+
+    it('keeps the upper mixed-style water surface visible', () => {
+        const swampWater = block('swamp-water-b', 'Block_Swamp_Water');
+        const currentStack = stack([
+            block('water-a', 'Block_Water'),
+            swampWater,
+        ]);
+
+        assert.equal(
+            isWaterBlockTopSurfaceVisible({
+                block: swampWater,
+                stack: currentStack,
+            }),
+            true,
+        );
+    });
+
     it('keeps the top visible for the uppermost water block', () => {
         const water = block('water-a', 'Block_Water');
         const currentStack = stack([block('water-b', 'Block_Water'), water]);

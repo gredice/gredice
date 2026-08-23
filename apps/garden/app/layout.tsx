@@ -1,12 +1,13 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import { Montserrat } from 'next/font/google';
-import Head from 'next/head';
 import type { ReactNode } from 'react';
-import { ImpersonationBanner } from '../components/ImpersonationBanner';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
 const montserrat = Montserrat({
@@ -18,12 +19,16 @@ export function generateMetadata(): Metadata {
     return {
         title: 'Vrt | Gredice',
         description: 'Gredice vrt - vrt po tvom',
+        other: {
+            'apple-mobile-web-app-title': 'Gredice',
+        },
     };
 }
 
 export const viewport: Viewport = {
     maximumScale: 1,
     initialScale: 1,
+    themeColor: '#2e6f40',
     userScalable: false,
     width: 'device-width',
 };
@@ -33,6 +38,9 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
@@ -49,35 +57,36 @@ export default function RootLayout({
                 <ImpersonationBanner />
                 {children}
             </ClientAppProvider>
-            <Analytics />
+            {injectVercelAnalytics && <Analytics />}
             {shouldInjectToolbar && <VercelToolbar />}
         </>
     );
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
-            <Head>
-                <meta name="theme-color" content="#2e6f40" />
-                <meta name="apple-mobile-web-app-title" content="Gredice" />
-            </Head>
-            <body className={`${montserrat.variable} antialiased bg-muted`}>
-                {postHogApiKey ? (
-                    <PostHogProvider
-                        apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
-                    >
-                        <PostHogPageView />
-                        {content}
-                    </PostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className={`${montserrat.variable} antialiased bg-muted`}
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <PostHogProvider
+                            apiKey={postHogApiKey}
+                            clientOptions={{
+                                api_host: postHogApiHost,
+                                capture_exceptions: true,
+                                debug: process.env.NODE_ENV === 'development',
+                                defaults: '2026-01-30',
+                                ui_host: postHogUiHost ?? null,
+                            }}
+                        >
+                            <PostHogPageView />
+                            {content}
+                        </PostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

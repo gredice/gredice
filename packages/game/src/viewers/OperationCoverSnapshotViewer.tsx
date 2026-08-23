@@ -9,9 +9,9 @@ import { v4 as uuidv4 } from 'uuid';
 import type { GameAssetName } from '../data/models';
 import { EntityFactory } from '../entities/EntityFactory';
 import type { EntityName } from '../entities/entityNameMap';
+import { defaultGameWoodColor } from '../entities/woodPalette';
 import { GameFlagsContext } from '../GameFlagsContext';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
-import { useGeneratedLSystemSymbols } from '../generators/plant/hooks/useGeneratedLSystem';
 import { MAX_PLANT_GENERATION } from '../generators/plant/lib/plant-definition-types';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
 import { PlantGenerator } from '../generators/plant/PlantGenerator';
@@ -422,21 +422,6 @@ function OperationCoverPlantModel({ plant }: { plant: OperationCoverPlant }) {
     const generation = plant.generation ?? MAX_PLANT_GENERATION * 0.75;
     const seed = plant.seed ?? `operation-cover-${plant.plantType}`;
     const scale = normalizeOperationCoverScale(plant.scale);
-    const lSystemTask = useMemo(
-        () => ({
-            axiom: definition.axiom,
-            iterations: Math.ceil(generation),
-            rules: definition.rules,
-            seed,
-        }),
-        [definition.axiom, definition.rules, generation, seed],
-    );
-    const { symbols: lSystemSymbols } = useGeneratedLSystemSymbols(
-        lSystemTask,
-        {
-            syncInitialResult: true,
-        },
-    );
 
     return (
         <group
@@ -447,7 +432,6 @@ function OperationCoverPlantModel({ plant }: { plant: OperationCoverPlant }) {
             <PlantGenerator
                 key={`${plant.plantType}-${seed}`}
                 plantDefinition={definition}
-                lSystemSymbols={lSystemSymbols ?? []}
                 generation={generation}
                 seed={seed}
                 flowerGrowth={plant.showFlowers === false ? 0 : 1}
@@ -540,11 +524,17 @@ function OperationCoverSupportStakeModel({
         >
             <mesh position={[0, height / 2, 0]} castShadow receiveShadow>
                 <cylinderGeometry args={[radius, radius * 1.12, height, 10]} />
-                <meshStandardMaterial color="#7a4f2b" roughness={0.92} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.92}
+                />
             </mesh>
             <mesh position={[0, height + radius * 0.78, 0]} castShadow>
                 <coneGeometry args={[radius * 1.16, radius * 1.55, 10]} />
-                <meshStandardMaterial color="#6b4424" roughness={0.94} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.94}
+                />
             </mesh>
         </group>
     );
@@ -604,11 +594,13 @@ export function OperationCoverSnapshotViewer({
                 <GameFlagsContext.Provider
                     value={{
                         enableDebugHudFlag: false,
-                        enableRainWetOverlayFlag: false,
                     }}
                 >
                     <GameSceneDetailContext.Provider
-                        value={{ renderDetails: false }}
+                        value={{
+                            includePendingCartPlants: false,
+                            renderDetails: false,
+                        }}
                     >
                         <Scene
                             position={cameraPosition}

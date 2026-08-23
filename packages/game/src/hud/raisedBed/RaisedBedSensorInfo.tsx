@@ -10,7 +10,6 @@ import {
     Up,
     Warning,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Spinner } from '@gredice/ui/Spinner';
@@ -34,6 +33,7 @@ import { useRaisedBedSensors } from '../../hooks/useRaisedBedSensors';
 import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
 import { useNeighboringRaisedBeds } from './useNeighboringRaisedBeds';
 
 interface TooltipPayload {
@@ -257,7 +257,7 @@ function SensorInfoModal({
     }
 
     return (
-        <Modal
+        <GameModal
             trigger={trigger}
             title="Detalji senzora"
             className="max-w-3xl overflow-hidden"
@@ -596,7 +596,7 @@ function SensorInfoModal({
                     </div>
                 )}
             </div>
-        </Modal>
+        </GameModal>
     );
 }
 

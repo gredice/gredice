@@ -6,6 +6,7 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
+import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { KnownPages } from '../../../src/KnownPages';
 
 type PlantRelationship = NonNullable<
@@ -13,6 +14,12 @@ type PlantRelationship = NonNullable<
 >[number];
 
 export type PlantRelationships = PlantData['relationships'];
+
+type PlantRelationshipEditTarget = {
+    entityTypeName: 'plant' | 'plantSort';
+    entityId: number;
+    publicPath: string;
+};
 
 export function hasPlantRelationships(
     relationships: PlantRelationships | null | undefined,
@@ -102,8 +109,10 @@ function PlantRelationshipGroup({
 }
 
 export function PlantRelationshipsSection({
+    editTarget,
     relationships,
 }: {
+    editTarget?: PlantRelationshipEditTarget;
     relationships: PlantRelationships | null | undefined;
 }) {
     if (!hasPlantRelationships(relationships)) {
@@ -111,21 +120,38 @@ export function PlantRelationshipsSection({
     }
 
     return (
-        <Stack spacing={4}>
-            <Typography
-                level="h2"
-                className="text-2xl"
-                id={slug('Biljni susjedi')}
-            >
-                Biljni susjedi
-            </Typography>
-            <Typography level="body2" secondary>
-                Biljni susjedi su smjernice za planiranje blizine biljaka.{' '}
-                <Link className="underline" href={KnownPages.CompanionPlanting}>
-                    Saznaj kako ih čitati
-                </Link>
-                .
-            </Typography>
+        <Stack spacing={4} className="group/relationships">
+            <div className="flex items-start justify-between gap-3">
+                <Stack spacing={1}>
+                    <Typography
+                        level="h2"
+                        className="text-2xl"
+                        id={slug('Biljni susjedi')}
+                    >
+                        Biljni susjedi
+                    </Typography>
+                    <Typography level="body2" secondary>
+                        Biljni susjedi su smjernice za planiranje blizine
+                        biljaka.{' '}
+                        <Link
+                            className="underline"
+                            href={KnownPages.CompanionPlanting}
+                        >
+                            Saznaj kako ih čitati
+                        </Link>
+                        .
+                    </Typography>
+                </Stack>
+                {editTarget ? (
+                    <CommunityEditButton
+                        className="mt-1 md:opacity-0 md:transition-opacity md:group-hover/relationships:opacity-100 md:group-focus-within/relationships:opacity-100"
+                        entityTypeName={editTarget.entityTypeName}
+                        entityId={editTarget.entityId}
+                        publicPath={editTarget.publicPath}
+                        sectionKey="relationships"
+                    />
+                ) : null}
+            </div>
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <PlantRelationshipGroup
                     title="Dobri susjedi"

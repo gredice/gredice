@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
 import {
@@ -13,6 +13,9 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
+
+const checkoutInventorySourcePrefix = 'shoppingCartItem:';
+const inventoryLockTails = new Map<string, Promise<void>>();
 
 export const GARDEN_BOX_BLOCK_STACK_LIMIT = 6;
 export const GARDEN_BOX_BLOCK_STACK_SIZE = 10;
@@ -29,6 +32,25 @@ type InventoryItemFields = Pick<
     'entityTypeName' | 'entityId' | 'amount'
 >;
 
+export type CheckoutInventoryConsumption = {
+    cartItemId: number;
+    source: string;
+    entityTypeName: string;
+    entityId: string;
+    amount: number;
+};
+
+export class InventoryConsumptionSourceConflictError extends Error {
+    override name = 'InventoryConsumptionSourceConflictError';
+
+    constructor(
+        readonly source: string,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
 export class GardenBoxInventoryLimitError extends Error {
     constructor(message: string) {
         super(message);
@@ -37,6 +59,36 @@ export class GardenBoxInventoryLimitError extends Error {
 }
 
 const INVENTORY_PREFIX = 'inventory:';
+
+function isPgliteTestDatabase() {
+    return (
+        process.env.TEST_ENV === '1' &&
+        process.env.GREDICE_TEST_DB_PROVIDER === 'pglite'
+    );
+}
+
+async function withInventoryInProcessLock<T>(
+    key: string,
+    callback: () => Promise<T>,
+) {
+    const previous = inventoryLockTails.get(key) ?? Promise.resolve();
+    let release = () => {};
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    const tail = previous.then(() => current);
+    inventoryLockTails.set(key, tail);
+
+    await previous;
+    try {
+        return await callback();
+    } finally {
+        release();
+        if (inventoryLockTails.get(key) === tail) {
+            inventoryLockTails.delete(key);
+        }
+    }
+}
 
 function getInventoryAggregateId(accountId: string) {
     return `${INVENTORY_PREFIX}${accountId}`;
@@ -136,6 +188,33 @@ async function lockInventoryAggregate(aggregateId: string, db: DatabaseClient) {
     );
 }
 
+/**
+ * Run account-inventory work while holding the same aggregate lock used by
+ * checkout consumption. Acquire this lock before any cart-row locks so
+ * normalization and consumption have one stable lock order.
+ */
+export async function withInventoryAccountTransaction<T>(
+    accountId: string,
+    callback: (db: TransactionClient) => Promise<T>,
+    transaction?: TransactionClient,
+) {
+    const aggregateId = getInventoryAggregateId(accountId);
+    const runInTransaction = async (db: TransactionClient) => {
+        if (!isPgliteTestDatabase()) {
+            await lockInventoryAggregate(aggregateId, db);
+        }
+        return callback(db);
+    };
+    const run = () =>
+        transaction
+            ? runInTransaction(transaction)
+            : storage().transaction(runInTransaction);
+
+    return isPgliteTestDatabase()
+        ? withInventoryInProcessLock(aggregateId, run)
+        : run();
+}
+
 async function getInventoryForAggregateIds(
     aggregateIds: string[],
     db: DatabaseClient = storage(),
@@ -179,11 +258,212 @@ async function getInventoryForAggregateIds(
     return Array.from(totals.values()).filter((item) => item.amount > 0);
 }
 
-export async function consumeInventoryItem(
+function checkoutCartItemIdFromSource(source: string) {
+    if (!source.startsWith(checkoutInventorySourcePrefix)) {
+        return null;
+    }
+    const value = source.slice(checkoutInventorySourcePrefix.length);
+    const cartItemId = Number(value);
+    if (
+        !Number.isSafeInteger(cartItemId) ||
+        cartItemId <= 0 ||
+        value !== cartItemId.toString()
+    ) {
+        throw new InventoryConsumptionSourceConflictError(
+            source,
+            'Checkout inventory consumption source has an invalid cart item id.',
+        );
+    }
+    return cartItemId;
+}
+
+function checkoutInventoryConsumptionFromPayload(
+    payload: InventoryItemEventPayload,
+): CheckoutInventoryConsumption | null {
+    if (typeof payload.source !== 'string') {
+        return null;
+    }
+    const cartItemId = checkoutCartItemIdFromSource(payload.source);
+    if (cartItemId === null) {
+        return null;
+    }
+    if (
+        payload.entityTypeName.length === 0 ||
+        payload.entityId.length === 0 ||
+        !Number.isSafeInteger(payload.amount) ||
+        payload.amount <= 0
+    ) {
+        throw new InventoryConsumptionSourceConflictError(
+            payload.source,
+            'Checkout inventory consumption payload is malformed.',
+        );
+    }
+    return {
+        cartItemId,
+        source: payload.source,
+        entityTypeName: payload.entityTypeName,
+        entityId: payload.entityId,
+        amount: payload.amount,
+    };
+}
+
+function parseCheckoutInventoryConsumption(
+    data: unknown,
+): CheckoutInventoryConsumption | null {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return null;
+    }
+    const payload = data as Record<string, unknown>;
+    if (
+        typeof payload.source !== 'string' ||
+        !payload.source.startsWith(checkoutInventorySourcePrefix)
+    ) {
+        return null;
+    }
+    if (
+        typeof payload.entityTypeName !== 'string' ||
+        typeof payload.entityId !== 'string' ||
+        typeof payload.amount !== 'number'
+    ) {
+        throw new InventoryConsumptionSourceConflictError(
+            payload.source,
+            'Checkout inventory consumption payload is malformed.',
+        );
+    }
+    return checkoutInventoryConsumptionFromPayload({
+        source: payload.source,
+        entityTypeName: payload.entityTypeName,
+        entityId: payload.entityId,
+        amount: payload.amount,
+    });
+}
+
+function assertMatchingCheckoutInventoryConsumption(
+    existing: CheckoutInventoryConsumption,
+    expected: CheckoutInventoryConsumption,
+) {
+    if (
+        existing.cartItemId !== expected.cartItemId ||
+        existing.entityTypeName !== expected.entityTypeName ||
+        existing.entityId !== expected.entityId ||
+        existing.amount !== expected.amount
+    ) {
+        throw new InventoryConsumptionSourceConflictError(
+            expected.source,
+            'Checkout inventory consumption source has conflicting item data.',
+        );
+    }
+}
+
+async function readCheckoutInventoryConsumptions(
+    accountId: string,
+    sources: readonly string[],
+    db: DatabaseClient,
+) {
+    if (sources.length === 0) {
+        return new Map<string, CheckoutInventoryConsumption>();
+    }
+    const consumptionEvents = await db.query.events.findMany({
+        where: and(
+            eq(events.type, knownEventTypes.inventory.consume),
+            eq(events.aggregateId, getInventoryAggregateId(accountId)),
+            inArray(sql<string>`${events.data}->>'source'`, [...sources]),
+        ),
+        orderBy: (events, { asc }) => [asc(events.id)],
+    });
+    const bySource = new Map<string, CheckoutInventoryConsumption>();
+    for (const event of consumptionEvents) {
+        const consumption = parseCheckoutInventoryConsumption(event.data);
+        if (!consumption) {
+            continue;
+        }
+        const existing = bySource.get(consumption.source);
+        if (existing) {
+            assertMatchingCheckoutInventoryConsumption(existing, consumption);
+            throw new InventoryConsumptionSourceConflictError(
+                consumption.source,
+                'Checkout inventory consumption source has multiple events.',
+            );
+        }
+        bySource.set(consumption.source, consumption);
+    }
+    return bySource;
+}
+
+export async function getCheckoutInventoryConsumptions(
+    accountId: string,
+    cartItemIds: readonly number[],
+    db: DatabaseClient = storage(),
+): Promise<CheckoutInventoryConsumption[]> {
+    const requestedSources = new Set(
+        cartItemIds.map((cartItemId) => {
+            if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
+                const source = `${checkoutInventorySourcePrefix}${cartItemId.toString()}`;
+                throw new InventoryConsumptionSourceConflictError(
+                    source,
+                    'Checkout cart item id must be a positive safe integer.',
+                );
+            }
+            return `${checkoutInventorySourcePrefix}${cartItemId.toString()}`;
+        }),
+    );
+    if (requestedSources.size === 0) {
+        return [];
+    }
+
+    const consumptions = await readCheckoutInventoryConsumptions(
+        accountId,
+        [...requestedSources],
+        db,
+    );
+    return Array.from(consumptions.values()).filter((consumption) =>
+        requestedSources.has(consumption.source),
+    );
+}
+
+export async function getCheckoutInventorySnapshot(
+    accountId: string,
+    cartItemIds: readonly number[],
+) {
+    return withInventoryAccountTransaction(accountId, async (db) => {
+        // Keep these reads ordered inside the locked transaction. Under READ
+        // COMMITTED, the aggregate lock prevents checkout consumption from
+        // committing between the balance and source projections.
+        const inventory = await getInventory(accountId, db);
+        const consumptions = await getCheckoutInventoryConsumptions(
+            accountId,
+            cartItemIds,
+            db,
+        );
+        return { inventory, consumptions };
+    });
+}
+
+async function consumeInventoryItemInTransaction(
     accountId: string,
     payload: InventoryItemEventPayload,
-    db: DatabaseClient = storage(),
+    db: DatabaseClient,
 ) {
+    const expectedCheckoutConsumption =
+        checkoutInventoryConsumptionFromPayload(payload);
+    if (expectedCheckoutConsumption) {
+        const existingConsumptions = await readCheckoutInventoryConsumptions(
+            accountId,
+            [expectedCheckoutConsumption.source],
+            db,
+        );
+        const existing = existingConsumptions.get(
+            expectedCheckoutConsumption.source,
+        );
+        if (existing) {
+            assertMatchingCheckoutInventoryConsumption(
+                existing,
+                expectedCheckoutConsumption,
+            );
+            return;
+        }
+    }
+
     const inventory = await getInventoryForAggregateIds(
         [getInventoryAggregateId(accountId)],
         db,
@@ -208,8 +488,29 @@ export async function consumeInventoryItem(
     );
 }
 
-export async function getInventory(accountId: string) {
-    return getInventoryForAggregateIds([getInventoryAggregateId(accountId)]);
+export async function consumeInventoryItem(
+    accountId: string,
+    payload: InventoryItemEventPayload,
+    db?: DatabaseClient,
+) {
+    if (db) {
+        await consumeInventoryItemInTransaction(accountId, payload, db);
+        return;
+    }
+
+    await withInventoryAccountTransaction(accountId, (transaction) =>
+        consumeInventoryItemInTransaction(accountId, payload, transaction),
+    );
+}
+
+export async function getInventory(
+    accountId: string,
+    db: DatabaseClient = storage(),
+) {
+    return getInventoryForAggregateIds(
+        [getInventoryAggregateId(accountId)],
+        db,
+    );
 }
 
 export async function getGardenBoxInventory(

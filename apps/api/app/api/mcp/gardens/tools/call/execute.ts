@@ -1,10 +1,19 @@
+import type { BlockData } from '@gredice/directory-types';
 import {
     getAccountGardens,
+    getEntitiesFormatted,
     getGarden,
+    getGardenBlocks,
     getOperations,
     getRaisedBedAiHistoryEntries,
 } from '@gredice/storage';
 import { z } from 'zod';
+import { normalizeOperationNote } from '../../../../../../lib/ai/operationNotes';
+import {
+    buildGardenCompositionContext,
+    visibleOperationsForGarden,
+    visibleRaisedBedsForGarden,
+} from '../../../../../../lib/ai/suncokretGardenContext';
 
 type McpAuthContext = {
     accountId: string;
@@ -40,6 +49,26 @@ const GetGardenOperationsSchema = z.object({
     limit: z.number().int().min(1).max(100).default(20),
     offset: z.number().int().min(0).default(0),
 });
+
+type PlantSortSummary = {
+    id: number;
+    information?: { name?: string };
+};
+
+async function plantSortNamesById() {
+    try {
+        const plantSorts =
+            await getEntitiesFormatted<PlantSortSummary>('plantSort');
+        return new Map(
+            plantSorts.map((plantSort) => [
+                plantSort.id,
+                plantSort.information?.name ?? `Biljka #${plantSort.id}`,
+            ]),
+        );
+    } catch {
+        return new Map<number, string>();
+    }
+}
 
 async function getOwnedGardenOrThrow(auth: McpAuthContext, gardenId: number) {
     const garden = await getGarden(gardenId);
@@ -77,10 +106,11 @@ export async function executeGardenTool(
         case 'gardens/list-raised-beds': {
             const input = GardenScopedSchema.parse(args);
             const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
+            const visibleRaisedBeds = visibleRaisedBedsForGarden(garden);
             return {
                 gardenId: garden.id,
                 gardenName: garden.name,
-                items: garden.raisedBeds.map((bed) => ({
+                items: visibleRaisedBeds.map((bed) => ({
                     id: bed.id,
                     name: bed.name,
                     physicalId: bed.physicalId,
@@ -93,15 +123,38 @@ export async function executeGardenTool(
                 })),
             };
         }
+        case 'gardens/get-garden-composition': {
+            const input = GardenScopedSchema.parse(args);
+            const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
+            const [blocks, blockData] = await Promise.all([
+                getGardenBlocks(garden.id),
+                getEntitiesFormatted<BlockData>('block')
+                    .then((items) => items ?? [])
+                    .catch(() => []),
+            ]);
+
+            return {
+                gardenId: garden.id,
+                gardenName: garden.name,
+                isSandbox: garden.isSandbox,
+                ...buildGardenCompositionContext({
+                    blockData,
+                    blocks,
+                    isSandbox: garden.isSandbox,
+                    stacks: garden.stacks,
+                }),
+            };
+        }
         case 'gardens/get-raised-bed-fields': {
             const input = GetRaisedBedFieldsSchema.parse(args);
             const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
-            const raisedBed = garden.raisedBeds.find(
+            const raisedBed = visibleRaisedBedsForGarden(garden).find(
                 (bed) => bed.id === input.raisedBedId,
             );
             if (!raisedBed) {
                 throw new Error('Raised bed not found in garden');
             }
+            const plantSortNames = await plantSortNamesById();
 
             return {
                 gardenId: garden.id,
@@ -114,6 +167,10 @@ export async function executeGardenTool(
                     positionIndex: field.positionIndex,
                     active: field.active,
                     plantSortId: field.plantSortId,
+                    plantSortName: field.plantSortId
+                        ? (plantSortNames.get(field.plantSortId) ??
+                          `Biljka #${field.plantSortId}`)
+                        : null,
                     plantStatus: field.plantStatus,
                     plantScheduledDate: field.plantScheduledDate,
                     plantSowDate: field.plantSowDate,
@@ -127,10 +184,21 @@ export async function executeGardenTool(
         case 'gardens/list-operations': {
             const input = GetGardenOperationsSchema.parse(args);
             const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
-            const operations = await getOperations(
-                auth.accountId,
-                garden.id,
-                input.raisedBedId,
+            if (
+                input.raisedBedId &&
+                !visibleRaisedBedsForGarden(garden).some(
+                    (raisedBed) => raisedBed.id === input.raisedBedId,
+                )
+            ) {
+                throw new Error('Raised bed not found in garden');
+            }
+            const operations = visibleOperationsForGarden(
+                garden,
+                await getOperations(
+                    auth.accountId,
+                    garden.id,
+                    input.raisedBedId,
+                ),
             );
             const sliced = operations.slice(
                 input.offset,
@@ -149,6 +217,13 @@ export async function executeGardenTool(
                     scheduledDate: operation.scheduledDate,
                     completedAt: operation.completedAt,
                     createdAt: operation.createdAt,
+                    completionNotes: normalizeOperationNote(
+                        operation.completionNotes,
+                    ),
+                    blockReasonLabel: normalizeOperationNote(
+                        operation.blockReasonLabel,
+                    ),
+                    blockNote: normalizeOperationNote(operation.blockNote),
                 })),
                 total: operations.length,
                 limit: input.limit,
@@ -158,13 +233,14 @@ export async function executeGardenTool(
         case 'gardens/get-lifecycle-context': {
             const input = GardenScopedSchema.parse(args);
             const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
-            const activeFields = garden.raisedBeds
+            const visibleRaisedBeds = visibleRaisedBedsForGarden(garden);
+            const activeFields = visibleRaisedBeds
                 .flatMap((bed) => bed.fields)
                 .filter((field) => field.active && field.plantSortId);
             return {
                 gardenId: garden.id,
                 gardenName: garden.name,
-                raisedBedsCount: garden.raisedBeds.length,
+                raisedBedsCount: visibleRaisedBeds.length,
                 activePlantFieldsCount: activeFields.length,
                 hasLifecycleActivity: activeFields.length > 0,
             };
@@ -172,7 +248,7 @@ export async function executeGardenTool(
         case 'gardens/get-raised-bed-ai-history': {
             const input = GetRaisedBedAiHistorySchema.parse(args);
             const garden = await getOwnedGardenOrThrow(auth, input.gardenId);
-            const raisedBed = garden.raisedBeds.find(
+            const raisedBed = visibleRaisedBedsForGarden(garden).find(
                 (bed) => bed.id === input.raisedBedId,
             );
             if (!raisedBed) {

@@ -14,13 +14,16 @@ export type EntityStandardized = {
         instructions?: string;
 
         // Parent items
-        plant?: EntityStandardized;
+        plant?: EntityStandardized | null;
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        seedingDistanceMin?: number; // in cm
+        seedingDistanceMax?: number; // in cm
         frequency?: string;
         application?: string;
         deliverable?: boolean;
+        maxHarvestDaysBeforeDelivery?: number;
         duration?: number;
         relativeDays?: number | null;
         stage?: {

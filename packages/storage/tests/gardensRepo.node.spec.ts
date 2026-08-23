@@ -1,34 +1,53 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountHasActiveRaisedBed,
+    CannotLikeOwnGardenError,
+    countActiveRaisedBedsForGarden,
     countRaisedBedsByAccount,
     createAccount,
     createDefaultGardenForAccount,
     createEvent,
     createGardenBlock,
     createGardenStack,
+    createOperation,
     deleteGarden,
     deleteGardenBlock,
+    deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
     getAccountGardens,
     getAccountGardensMetadata,
+    getAllRaisedBedsFiltered,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
+    getGardenLikeCounts,
+    getGardenPreview,
     getGardenStack,
     getGardenStacks,
     getGardens,
+    getPublicGarden,
+    getPublicGardens,
     getRaisedBedFieldsWithEvents,
     getRaisedBedFieldsWithEventsForBeds,
     getRaisedBedMetadataByIds,
     getRaisedBeds,
+    getUserLikedGardenIds,
     knownEvents,
+    listUserGardenLikes,
+    PublicGardenLikeTargetNotFoundError,
+    RAISED_BED_PHOTO_OPERATION_ID,
+    removeGardenPreview,
+    replaceGardenPreview,
+    setGardenLike,
+    storage,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
     upsertRaisedBedField,
+    users,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
 import { gardenStacks } from '../src/schema';
@@ -39,6 +58,18 @@ import {
     ensureFarmId,
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
+
+async function createTestUser() {
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `${userId}@example.com`,
+            role: 'user',
+        });
+    return userId;
+}
 
 test('can create and retrieve a garden', async () => {
     createTestDb();
@@ -129,6 +160,7 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
     assert.strictEqual(garden.accountId, accountId);
     assert.strictEqual(garden.isDeleted, false);
     assert.strictEqual(typeof garden.isSandbox, 'boolean');
+    assert.strictEqual(typeof garden.isPublic, 'boolean');
     assert.strictEqual(typeof garden.backgroundPalette, 'string');
     assert.ok(garden.createdAt instanceof Date);
     assert.strictEqual(Object.hasOwn(garden, 'raisedBeds'), false);
@@ -139,6 +171,229 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
     assert.strictEqual(
         gardens.some((g) => g.accountId !== accountId),
         false,
+    );
+});
+
+test('gardens are private by default and public helpers only return public gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const privateGardenId = await createTestGarden({
+        name: 'Private Garden',
+        accountId,
+        farmId,
+    });
+    const publicGardenId = await createTestGarden({
+        name: 'Public Garden',
+        accountId,
+        farmId,
+    });
+
+    const privateGarden = await getGarden(privateGardenId);
+    assert.ok(privateGarden);
+    assert.strictEqual(privateGarden.isPublic, false);
+
+    await updateGarden({ id: publicGardenId, isPublic: true });
+
+    const publicGardens = await getPublicGardens();
+    assert.deepStrictEqual(
+        publicGardens.map((garden) => garden.id),
+        [publicGardenId],
+    );
+    assert.strictEqual(await getPublicGarden(privateGardenId), null);
+    const publicGarden = await getPublicGarden(publicGardenId);
+    assert.ok(publicGarden);
+    assert.strictEqual(publicGarden.name, 'Public Garden');
+});
+
+test('garden previews replace atomically and reject older captures', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, isPublic: true });
+
+    const firstRequestedAt = new Date('2026-07-11T10:00:00.000Z');
+    const first = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/first.webp',
+        pathname: `garden-previews/${gardenId.toString()}/first.webp`,
+        contentType: 'image/webp',
+        byteSize: 100,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'a'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: firstRequestedAt,
+        capturedAt: firstRequestedAt,
+    });
+    assert.equal(first.status, 'accepted');
+    assert.equal(
+        (await getGarden(gardenId))?.previewImage?.sourceRevision,
+        'a'.repeat(64),
+    );
+    assert.equal(
+        (await getPublicGarden(gardenId))?.previewImage?.url,
+        first.preview.imageUrl,
+    );
+    assert.equal(
+        (await getPublicGardens()).find((garden) => garden.id === gardenId)
+            ?.previewImage?.url,
+        first.preview.imageUrl,
+    );
+
+    const older = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/older.webp',
+        pathname: `garden-previews/${gardenId.toString()}/older.webp`,
+        contentType: 'image/webp',
+        byteSize: 101,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'b'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: new Date('2026-07-11T09:59:59.000Z'),
+        capturedAt: new Date('2026-07-11T10:00:01.000Z'),
+    });
+    assert.equal(older.status, 'rejected');
+    assert.equal(
+        (await getGardenPreview(gardenId))?.imageUrl,
+        first.preview.imageUrl,
+    );
+
+    const removed = await removeGardenPreview(gardenId);
+    assert.equal(removed?.imageUrl, first.preview.imageUrl);
+    assert.equal(await getGardenPreview(gardenId), null);
+});
+
+test('garden preview persistence rejects private gardens', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const capturedAt = new Date();
+
+    const result = await replaceGardenPreview({
+        gardenId,
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/private.webp',
+        pathname: `garden-previews/${gardenId.toString()}/private.webp`,
+        contentType: 'image/webp',
+        byteSize: 100,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'd'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: capturedAt,
+        capturedAt,
+    });
+
+    assert.equal(result.status, 'rejected');
+    if (result.status === 'rejected') {
+        assert.equal(result.reason, 'garden_unavailable');
+    }
+});
+
+test('garden likes are limited to visible gardens owned by other accounts', async () => {
+    createTestDb();
+    const ownerAccountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const userId = await createTestUser();
+    const otherUserId = await createTestUser();
+    const publicGardenId = await createTestGarden({
+        name: 'Liked Garden',
+        accountId: ownerAccountId,
+        farmId,
+    });
+    const privateGardenId = await createTestGarden({
+        name: 'Private Garden',
+        accountId: ownerAccountId,
+        farmId,
+    });
+    await updateGarden({ id: publicGardenId, isPublic: true });
+
+    await assert.rejects(
+        () =>
+            setGardenLike({
+                accountIds: [ownerAccountId],
+                gardenId: publicGardenId,
+                liked: true,
+                userId,
+            }),
+        CannotLikeOwnGardenError,
+    );
+    await assert.rejects(
+        () =>
+            setGardenLike({
+                accountIds: [otherAccountId],
+                gardenId: privateGardenId,
+                liked: true,
+                userId,
+            }),
+        PublicGardenLikeTargetNotFoundError,
+    );
+
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId,
+        }),
+        {
+            liked: true,
+            likeCount: 1,
+        },
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId,
+        }),
+        {
+            liked: true,
+            likeCount: 1,
+        },
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: true,
+            userId: otherUserId,
+        }),
+        {
+            liked: true,
+            likeCount: 2,
+        },
+    );
+
+    const likeCounts = await getGardenLikeCounts([publicGardenId]);
+    assert.strictEqual(likeCounts.get(publicGardenId), 2);
+    assert.deepStrictEqual(
+        (await listUserGardenLikes({ userId })).map((like) => like.gardenId),
+        [publicGardenId],
+    );
+    assert.deepStrictEqual(
+        Array.from(await getUserLikedGardenIds({ userId })),
+        [publicGardenId],
+    );
+    assert.deepStrictEqual(
+        await setGardenLike({
+            accountIds: [otherAccountId],
+            gardenId: publicGardenId,
+            liked: false,
+            userId,
+        }),
+        {
+            liked: false,
+            likeCount: 1,
+        },
     );
 });
 
@@ -220,6 +475,77 @@ test('accountHasActiveRaisedBed ignores active beds in soft-deleted gardens', as
     await deleteGarden(gardenId);
 
     assert.strictEqual(await accountHasActiveRaisedBed(accountId), false);
+});
+
+test('countActiveRaisedBedsForGarden counts only active beds in the requested garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const otherAccountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({
+        accountId: otherAccountId,
+        farmId,
+    });
+    const activeBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const inactiveBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const otherBlockId = await createTestBlock(otherGardenId, 'Raised_Bed');
+    const activeRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        activeBlockId,
+    );
+    await createTestRaisedBed(gardenId, accountId, inactiveBlockId);
+    const otherRaisedBedId = await createTestRaisedBed(
+        otherGardenId,
+        otherAccountId,
+        otherBlockId,
+    );
+
+    await updateRaisedBed({ id: activeRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: otherRaisedBedId, status: 'active' });
+
+    assert.strictEqual(await countActiveRaisedBedsForGarden(gardenId), 1);
+});
+
+test('deleteGardenIfNoActiveRaisedBeds blocks gardens with active raised beds', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    await updateRaisedBed({ id: raisedBedId, status: 'active' });
+
+    assert.deepStrictEqual(await deleteGardenIfNoActiveRaisedBeds(gardenId), {
+        activeRaisedBedCount: 1,
+        deleted: false,
+    });
+    assert.ok(await getGarden(gardenId));
+});
+
+test('deleteGardenIfNoActiveRaisedBeds deletes gardens with only inactive or abandoned beds', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const newBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const abandonedBlockId = await createTestBlock(gardenId, 'Raised_Bed');
+    await createTestRaisedBed(gardenId, accountId, newBlockId);
+    const abandonedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        abandonedBlockId,
+    );
+
+    await updateRaisedBed({ id: abandonedRaisedBedId, status: 'abandoned' });
+
+    assert.deepStrictEqual(await deleteGardenIfNoActiveRaisedBeds(gardenId), {
+        activeRaisedBedCount: 0,
+        deleted: true,
+    });
+    assert.strictEqual(await getGarden(gardenId), null);
 });
 
 test('accountHasActiveRaisedBed uses the garden owner instead of the raised-bed account', async () => {
@@ -318,11 +644,53 @@ test('updateGardenBlock updates block', async () => {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
-    await updateGardenBlock({ id: blockId, rotation: 1 });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'MOJ VRT',
+        rotation: 1,
+    });
+    const block = await getGardenBlock(gardenId, blockId);
+    assert.strictEqual(updated, true);
+    assert.ok(block);
+    assert.strictEqual(block?.message, 'MOJ VRT');
+    assert.strictEqual(block?.rotation, 1);
+});
+
+test('updateGardenBlock only updates a block in the selected garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+
+    const updated = await updateGardenBlock(otherGardenId, {
+        id: blockId,
+        message: 'KRIVI VRT',
+    });
+
+    assert.strictEqual(updated, false);
     const block = await getGardenBlock(gardenId, blockId);
     assert.ok(block);
-    assert.strictEqual(block?.rotation, 1);
+    assert.strictEqual(block.message, null);
+});
+
+test('updateGardenBlock does not restore or modify a deleted block', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    await deleteGardenBlock(gardenId, blockId);
+
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'NE SMIJE',
+    });
+
+    assert.strictEqual(updated, false);
+    assert.strictEqual(await getGardenBlock(gardenId, blockId), null);
 });
 
 test('deleteGardenBlock marks block as deleted', async () => {
@@ -511,17 +879,23 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     const grassBlocks = blocks.filter((b) => b.name === 'Block_Grass');
     const raisedBedBlocks = blocks.filter((b) => b.name === 'Raised_Bed');
 
-    // 12 grass blocks + 2 raised beds = 14 total blocks
+    // 12 grass blocks + one spanning raised bed = 13 total blocks
     assert.strictEqual(grassBlocks.length, 12, 'Should have 12 grass blocks');
     assert.strictEqual(
         raisedBedBlocks.length,
-        2,
-        'Should have 2 raised bed blocks',
+        1,
+        'Should have one raised bed block',
+    );
+    assert.strictEqual(
+        raisedBedBlocks[0]?.rotation,
+        1,
+        'Raised bed should span the adjacent stack',
     );
 
-    // Verify raised beds were created at (0,0) and (1,0)
+    // Verify one raised-bed record is linked to the spanning block at (0,0)
     const raisedBeds = await getRaisedBeds(gardenId);
-    assert.strictEqual(raisedBeds.length, 2, 'Should have 2 raised beds');
+    assert.strictEqual(raisedBeds.length, 1, 'Should have one raised bed');
+    assert.strictEqual(raisedBeds[0]?.blockId, raisedBedBlocks[0]?.id);
 
     // Verify specific stacks have correct blocks
     const stack00 = await getGardenStack(gardenId, { x: 0, y: 0 });
@@ -535,8 +909,122 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     );
     assert.strictEqual(
         stack10?.blocks.length,
-        2,
-        'Stack (1,0) should have 2 blocks (grass + raised bed)',
+        1,
+        'Stack (1,0) should store only its grass block',
+    );
+});
+
+test('raised-bed reads include latest images from the last photography operation', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createTestBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+
+    const olderPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const nonPhotoOperationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const newerPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    const replannedPhotoOperationId = await createOperation({
+        accountId,
+        entityId: RAISED_BED_PHOTO_OPERATION_ID,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            olderPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: ['https://cdn.gredice.com/older-photo.jpg'],
+            },
+        ),
+        createdAt: new Date('2026-06-01T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(nonPhotoOperationId.toString(), {
+            completedBy: 'test-user',
+            images: ['https://cdn.gredice.com/non-photo.jpg'],
+        }),
+        createdAt: new Date('2026-06-02T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            newerPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: [
+                    'https://cdn.gredice.com/latest-photo-1.jpg',
+                    'https://cdn.gredice.com/latest-photo-2.jpg',
+                ],
+            },
+        ),
+        createdAt: new Date('2026-06-03T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.completedV1(
+            replannedPhotoOperationId.toString(),
+            {
+                completedBy: 'test-user',
+                images: ['https://cdn.gredice.com/replanned-photo.jpg'],
+            },
+        ),
+        createdAt: new Date('2026-06-04T08:00:00.000Z'),
+    });
+    await createEvent({
+        ...knownEvents.operations.scheduledV1(
+            replannedPhotoOperationId.toString(),
+            {
+                scheduledDate: '2026-06-06T08:00:00.000Z',
+            },
+        ),
+        createdAt: new Date('2026-06-05T08:00:00.000Z'),
+    });
+
+    const [gardenRaisedBed] = await getRaisedBeds(gardenId);
+    assert.strictEqual(
+        gardenRaisedBed?.latestPhotoOperation?.id,
+        newerPhotoOperationId,
+    );
+    assert.deepStrictEqual(gardenRaisedBed?.latestPhotoOperation?.imageUrls, [
+        'https://cdn.gredice.com/latest-photo-1.jpg',
+        'https://cdn.gredice.com/latest-photo-2.jpg',
+    ]);
+
+    const listedRaisedBed = (await getAllRaisedBedsFiltered()).find(
+        (bed) => bed.id === raisedBedId,
+    );
+    assert.strictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        newerPhotoOperationId,
+    );
+    assert.notStrictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        nonPhotoOperationId,
+    );
+    assert.notStrictEqual(
+        listedRaisedBed?.latestPhotoOperation?.id,
+        replannedPhotoOperationId,
     );
 });
 

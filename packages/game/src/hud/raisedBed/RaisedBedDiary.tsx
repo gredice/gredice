@@ -3,7 +3,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { List } from '@gredice/ui/List';
 import { ListItem } from '@gredice/ui/ListItem';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -18,6 +17,7 @@ import {
     type DiaryRescheduleTarget,
     isDiaryRescheduleTargetEligible,
 } from '../../hooks/useRescheduleDiaryEntry';
+import { GameModal } from '../../shared-ui/game-modal';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import { RaisedBedDiaryCancelAction } from './RaisedBedDiaryCancelAction';
@@ -38,6 +38,11 @@ type DiaryEntryAiHistory = {
     count: number;
     latestTimestamp: Date;
     entries: DiaryEntry[];
+};
+
+type DiaryEntryActions = {
+    compactActions?: ReactNode;
+    detailAction?: ReactNode;
 };
 
 function relateAiHistory(entries: DiaryEntry[] | undefined) {
@@ -156,13 +161,16 @@ function diaryEntryActions({
         return null;
     }
 
-    return (
-        <Row spacing={2} className="flex-wrap items-center">
-            {rescheduleAction}
-            {cancelAction}
-            {aiAction}
-        </Row>
-    );
+    return {
+        compactActions:
+            rescheduleAction || cancelAction ? (
+                <>
+                    {rescheduleAction}
+                    {cancelAction}
+                </>
+            ) : undefined,
+        detailAction: aiAction,
+    };
 }
 
 function SavedAiDiaryEntryButton({
@@ -173,7 +181,7 @@ function SavedAiDiaryEntryButton({
     gardenId: number;
 }) {
     return (
-        <Modal
+        <GameModal
             title={entry.name}
             className="md:max-w-3xl"
             trigger={
@@ -202,7 +210,7 @@ function SavedAiDiaryEntryButton({
                     {entry.timestamp.toLocaleDateString('hr-HR')}
                 </Typography>
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }
 
@@ -220,7 +228,7 @@ function DiaryList({
     renderEntryAction?: (
         entry: DiaryEntry,
         aiHistory?: DiaryEntryAiHistory,
-    ) => ReactNode;
+    ) => DiaryEntryActions | null | undefined;
 }) {
     const aiHistoryByEntryId = relateAiHistory(entries);
 
@@ -253,7 +261,7 @@ function DiaryList({
             )}
             {entries?.map((entry) => {
                 const aiHistory = aiHistoryByEntryId.get(entry.id);
-                const entryAction = renderEntryAction?.(entry, aiHistory);
+                const entryActions = renderEntryAction?.(entry, aiHistory);
 
                 return (
                     <div
@@ -354,9 +362,11 @@ function DiaryList({
                                                 >
                                                     {entry.description}
                                                 </Typography>
-                                                {entryAction && (
+                                                {entryActions?.detailAction && (
                                                     <div className="mt-2 w-fit max-w-full">
-                                                        {entryAction}
+                                                        {
+                                                            entryActions.detailAction
+                                                        }
                                                     </div>
                                                 )}
                                             </Stack>
@@ -385,11 +395,21 @@ function DiaryList({
                                                     {entry.status}
                                                 </Chip>
                                             )}
-                                            <Typography level="body2" noWrap>
-                                                {entry.timestamp.toLocaleDateString(
-                                                    'hr-HR',
-                                                )}
-                                            </Typography>
+                                            <Row
+                                                spacing={1}
+                                                className="min-w-0 max-w-full flex-nowrap items-center self-start sm:self-end"
+                                            >
+                                                <Typography
+                                                    level="body2"
+                                                    noWrap
+                                                    className="min-w-0"
+                                                >
+                                                    {entry.timestamp.toLocaleDateString(
+                                                        'hr-HR',
+                                                    )}
+                                                </Typography>
+                                                {entryActions?.compactActions}
+                                            </Row>
                                         </Stack>
                                     </Row>
                                 }

@@ -18,6 +18,14 @@ export const adminPages = {
     Invoices: { href: KnownPages.Invoices, label: 'Ponude' },
     Transactions: { href: KnownPages.Transactions, label: 'Transakcije' },
     Sunflowers: { href: KnownPages.Sunflowers, label: 'Suncokreti' },
+    BillingReconciliation: {
+        href: KnownPages.BillingReconciliation,
+        label: 'Usklađenje naplate',
+    },
+    BillingPreviews: {
+        href: KnownPages.BillingPreviews,
+        label: 'Pregledi dokumenata',
+    },
     Receipts: { href: KnownPages.Receipts, label: 'Fiskalni računi' },
     Outlet: { href: KnownPages.Outlet, label: 'Outlet' },
     Users: { href: KnownPages.Users, label: 'Korisnici' },
@@ -43,6 +51,26 @@ export const adminPages = {
         href: KnownPages.SowingStatistics,
         label: 'Statistika sijanja',
     },
+    DeliveryRequestStatistics: {
+        href: KnownPages.DeliveryRequestStatistics,
+        label: 'Statistika zahtjeva za dostavu',
+    },
+    UsersStatistics: {
+        href: KnownPages.UsersStatistics,
+        label: 'Statistika korisnika',
+    },
+    OperationsStatistics: {
+        href: KnownPages.OperationsStatistics,
+        label: 'Statistika radnji',
+    },
+    RecordsStatistics: {
+        href: KnownPages.RecordsStatistics,
+        label: 'Statistika zapisa',
+    },
+    SunflowersStatistics: {
+        href: KnownPages.SunflowersStatistics,
+        label: 'Statistika suncokreta',
+    },
     DeliverySlots: {
         href: KnownPages.DeliverySlots,
         label: 'Dostava - Slotovi',
@@ -50,6 +78,14 @@ export const adminPages = {
     DeliveryRequests: {
         href: KnownPages.DeliveryRequests,
         label: 'Dostava - Zahtjevi',
+    },
+    DeliveryNotifications: {
+        href: KnownPages.DeliveryNotifications,
+        label: 'Dostava - Obavijesti',
+    },
+    DeliveryOperations: {
+        href: KnownPages.DeliveryOperations,
+        label: 'Dostava - Operacije',
     },
     CommunicationInbox: {
         href: KnownPages.CommunicationInbox,
@@ -73,6 +109,13 @@ export const adminPages = {
     },
 } as const;
 
+export const communicationMessagePageHrefs = [
+    adminPages.CommunicationInbox.href,
+    adminPages.CommunicationEmails.href,
+    adminPages.Notifications.href,
+    adminPages.Feedback.href,
+] as const;
+
 export const adminBreadcrumbPages = [
     adminPages.Dashboard,
     adminPages.Directories,
@@ -85,6 +128,8 @@ export const adminBreadcrumbPages = [
     adminPages.Invoices,
     adminPages.Transactions,
     adminPages.Sunflowers,
+    adminPages.BillingReconciliation,
+    adminPages.BillingPreviews,
     adminPages.Receipts,
     adminPages.Outlet,
     adminPages.Users,
@@ -103,8 +148,15 @@ export const adminBreadcrumbPages = [
     adminPages.Occasions,
     adminPages.Schedule,
     adminPages.SowingStatistics,
+    adminPages.DeliveryRequestStatistics,
+    adminPages.UsersStatistics,
+    adminPages.OperationsStatistics,
+    adminPages.RecordsStatistics,
+    adminPages.SunflowersStatistics,
     adminPages.DeliverySlots,
     adminPages.DeliveryRequests,
+    adminPages.DeliveryOperations,
+    adminPages.DeliveryNotifications,
     adminPages.CommunicationInbox,
     adminPages.CommunicationEmails,
     adminPages.CommunicationSlack,

@@ -1,246 +1,31 @@
 'use client';
 
 import { Button } from '@gredice/ui/Button';
-import {
-    Calendar,
-    Check,
-    Edit,
-    Navigate,
-    ShoppingCart,
-    Truck,
-} from '@gredice/ui/icons';
+import { Navigate } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import {
-    createContext,
-    type PropsWithChildren,
-    useContext,
-    useState,
-    useTransition,
-} from 'react';
-import {
-    changeDeliveryRequestSlotAction,
-    updateDeliveryRequestStatusAction,
-} from './actions';
-
-export type DeliveryRequestSlotOption = {
-    id: number;
-    startAt: Date | string;
-};
-
-type DeliveryRequest = {
-    id: string;
-    state: string;
-    mode?: 'delivery' | 'pickup';
-    operationId: number;
-    slot?: { id: number };
-};
-
-const DeliveryRequestSlotsContext = createContext<DeliveryRequestSlotOption[]>(
-    [],
-);
-
-export function DeliveryRequestSlotsProvider({
-    children,
-    slots,
-}: PropsWithChildren<{ slots: DeliveryRequestSlotOption[] }>) {
-    return (
-        <DeliveryRequestSlotsContext.Provider value={slots}>
-            {children}
-        </DeliveryRequestSlotsContext.Provider>
-    );
-}
-
-type DeliveryRequestActionButtonsProps = {
-    request: DeliveryRequest;
-};
+import { DeliveryRequestCancelButton } from './DeliveryRequestCancelButton';
+import type { DeliveryRequestActionData } from './DeliveryRequestTypes';
 
 export function DeliveryRequestActionButtons({
+    label,
     request,
-}: DeliveryRequestActionButtonsProps) {
-    const slots = useContext(DeliveryRequestSlotsContext);
-    const [loading, setLoading] = useState<string | null>(null);
-    const [showSlotForm, setShowSlotForm] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState(
-        request.slot?.id ?? undefined,
-    );
-    const [isPending, startTransition] = useTransition();
-
-    const handleStatusUpdate = async (newStatus: string) => {
-        setLoading(newStatus);
-        try {
-            const formData = new FormData();
-            formData.append('requestId', request.id);
-            formData.append('status', newStatus);
-            await updateDeliveryRequestStatusAction(null, formData);
-        } catch (error) {
-            console.error('Error updating status:', error);
-        } finally {
-            setLoading(null);
-        }
-    };
-
-    const handleConfirm = () => handleStatusUpdate('confirmed');
-    const handlePreparing = () => handleStatusUpdate('preparing');
-    const handleReady = () => handleStatusUpdate('ready');
-    const handleFulfilled = () => handleStatusUpdate('fulfilled');
-    const handleCancel = () => {
-        if (confirm('Da li ste sigurni da želite otkazati ovaj zahtjev?')) {
-            handleStatusUpdate('cancelled');
-        }
-    };
-
-    const handleSlotSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        startTransition(async () => {
-            await changeDeliveryRequestSlotAction(null, formData);
-            setShowSlotForm(false);
-        });
-    };
-
+}: {
+    label: string;
+    request: DeliveryRequestActionData;
+}) {
     return (
-        <Stack spacing={2}>
-            {request.state === 'pending' && (
-                <>
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={handleConfirm}
-                        disabled={loading === 'confirmed'}
-                        startDecorator={<Check className="size-4" />}
-                    >
-                        {loading === 'confirmed'
-                            ? 'Potvrđivanje...'
-                            : 'Potvrdi'}
-                    </Button>
-                    <Button
-                        variant="plain"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={!!loading}
-                        startDecorator={<Edit className="size-4" />}
-                    >
-                        Otkaži
-                    </Button>
-                </>
-            )}
-
-            {request.state === 'confirmed' && (
-                <>
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={handlePreparing}
-                        disabled={loading === 'preparing'}
-                        startDecorator={<ShoppingCart className="size-4" />}
-                    >
-                        {loading === 'preparing' ? 'Priprema...' : 'U pripremi'}
-                    </Button>
-                    <Button
-                        variant="plain"
-                        size="sm"
-                        onClick={handleCancel}
-                        disabled={!!loading}
-                        startDecorator={<Edit className="size-4" />}
-                    >
-                        Otkaži
-                    </Button>
-                </>
-            )}
-
-            {request.state === 'preparing' && (
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={handleReady}
-                    disabled={loading === 'ready'}
-                    startDecorator={<Truck className="size-4" />}
-                >
-                    {loading === 'ready' ? 'Označavanje...' : 'Spreman'}
-                </Button>
-            )}
-
-            {request.state === 'ready' && (
-                <Button
-                    variant="outlined"
-                    size="sm"
-                    onClick={handleFulfilled}
-                    disabled={loading === 'fulfilled'}
-                    startDecorator={<Check className="size-4" />}
-                >
-                    {loading === 'fulfilled' ? 'Završavanje...' : 'Ispunjen'}
-                </Button>
-            )}
-
-            {request.state !== 'fulfilled' &&
-                (showSlotForm ? (
-                    <form
-                        onSubmit={handleSlotSubmit}
-                        className="flex flex-col gap-1"
-                    >
-                        <input
-                            type="hidden"
-                            name="requestId"
-                            value={request.id}
-                        />
-                        <select
-                            name="slotId"
-                            value={selectedSlot}
-                            onChange={(e) =>
-                                setSelectedSlot(Number(e.target.value))
-                            }
-                            className="border rounded p-1 text-sm"
-                        >
-                            {slots.map((slot) => (
-                                <option key={slot.id} value={slot.id}>
-                                    {new Date(slot.startAt).toLocaleString(
-                                        'hr-HR',
-                                    )}
-                                </option>
-                            ))}
-                        </select>
-                        <Row spacing={2}>
-                            <Button
-                                type="submit"
-                                size="sm"
-                                variant="outlined"
-                                disabled={isPending}
-                            >
-                                Spremi
-                            </Button>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="plain"
-                                onClick={() => setShowSlotForm(false)}
-                            >
-                                Odustani
-                            </Button>
-                        </Row>
-                    </form>
-                ) : (
-                    <Button
-                        variant="outlined"
-                        size="sm"
-                        onClick={() => setShowSlotForm(true)}
-                        disabled={isPending}
-                        startDecorator={
-                            <Calendar className="size-4 shrink-0" />
-                        }
-                    >
-                        Promijeni termin
-                    </Button>
-                ))}
-
+        <Row spacing={1} className="shrink-0">
+            <DeliveryRequestCancelButton label={label} request={request} />
             <Button
                 variant="plain"
                 size="sm"
-                endDecorator={<Navigate className="size-4 shrink-0" />}
                 href={`/admin/operations/${request.operationId}`}
+                className="aspect-square px-0"
+                aria-label="Otvori povezanu radnju"
+                title="Otvori povezanu radnju"
             >
-                Radnja
+                <Navigate className="size-4 shrink-0" />
             </Button>
-        </Stack>
+        </Row>
     );
 }

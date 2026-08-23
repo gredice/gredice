@@ -1,9 +1,16 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { NewsDetail } from '../../components/NewsDetail';
-import { getBlogPost } from '../../lib/news';
+import { getBlogPost, getBlogPosts } from '../../lib/news';
+import { createNewsArticleMetadata } from '../../lib/newsArticleMetadata';
+import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+    const entries = await getBlogPosts();
+    return entries.map((entry) => ({ slug: entry.slug }));
+}
 
 export default async function BlogPostPage({
     params,
@@ -16,7 +23,12 @@ export default async function BlogPostPage({
         notFound();
     }
 
-    return <NewsDetail entry={entry} />;
+    return (
+        <NewsDetail
+            entry={entry}
+            viewTransitionName={getNewsArticleViewTransitionName('blog', slug)}
+        />
+    );
 }
 
 export async function generateMetadata({
@@ -27,24 +39,7 @@ export async function generateMetadata({
     const { slug } = await params;
     const entry = await getBlogPost(slug);
     if (!entry) {
-        return {};
+        notFound();
     }
-    const openGraphImage = entry.seoImageUrl || `${entry.path}/opengraph-image`;
-
-    return {
-        title: entry.metaTitle || entry.title,
-        description: entry.metaDescription || entry.excerpt || undefined,
-        alternates: {
-            canonical: entry.canonicalPath || entry.path,
-        },
-        robots: {
-            index: !entry.noIndex,
-        },
-        openGraph: {
-            title: entry.metaTitle || entry.title,
-            description: entry.metaDescription || entry.excerpt || undefined,
-            images: [openGraphImage],
-            url: entry.canonicalPath || entry.path,
-        },
-    };
+    return createNewsArticleMetadata(entry);
 }

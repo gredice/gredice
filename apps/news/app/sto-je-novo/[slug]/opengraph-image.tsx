@@ -9,7 +9,7 @@ import { getChangelogEntry } from '../../../lib/news';
 export const alt = 'Gredice što je novo';
 export const size = cmsOgImageSize;
 export const contentType = cmsOgImageContentType;
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default async function ChangelogOpenGraphImage({
     params,
@@ -23,6 +23,8 @@ export default async function ChangelogOpenGraphImage({
         <CmsOgImage
             imageUrl={entry?.metaImageUrl}
             kind="changelog"
+            pointOfInterestX={entry?.metaImagePoiX}
+            pointOfInterestY={entry?.metaImagePoiY}
             tags={entry?.tags ?? []}
             title={entry?.title ?? 'Što je novo'}
         />,

@@ -11,16 +11,22 @@ type FieldApprovalTarget = {
     id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
 type OperationApprovalTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
 interface BulkApproveRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldApprovalTarget[];
     operations: OperationApprovalTarget[];
     onConfirm?: () => unknown | Promise<unknown>;
@@ -28,6 +34,7 @@ interface BulkApproveRaisedBedButtonProps {
 
 export function BulkApproveRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onConfirm,
@@ -36,6 +43,9 @@ export function BulkApproveRaisedBedButton({
 
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0 || isSubmitting;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     const handleConfirm = async () => {
         if (totalItems === 0) {
@@ -43,40 +53,41 @@ export function BulkApproveRaisedBedButton({
         }
 
         if (onConfirm) {
-            await onConfirm();
-            return;
+            return onConfirm();
         }
 
         setIsSubmitting(true);
-        void Promise.all([
+        return Promise.all([
             ...fields.map((field) =>
                 acceptRaisedBedFieldAction(
                     field.raisedBedId,
                     field.positionIndex,
+                    field.expectedPlantCycleEventId,
+                    field.expectedPlantSortId,
+                    field.expectedPlantCycleVersionEventId,
                 ),
             ),
             ...operations.map((operation) =>
-                acceptOperationAction(operation.id),
+                acceptOperationAction(
+                    operation.id,
+                    operation.entityId,
+                    operation.taskVersionEventId,
+                ),
             ),
-        ])
-            .catch((error: unknown) => {
-                console.error('Failed to approve all raised bed items:', error);
-                alert('Skupna potvrda zadataka nije uspjela.');
-            })
-            .finally(() => setIsSubmitting(false));
+        ]).finally(() => setIsSubmitting(false));
     };
 
     return (
         <AcceptRequestModal
             title="Potvrda zadataka"
             header="Potvrda zadataka"
-            label={`sve zadatke (${totalItems}) za gredicu ${physicalId}`}
+            label={`sve zadatke (${totalItems}) ${targetText}`}
             onConfirm={handleConfirm}
             trigger={
                 <IconButton
                     variant="plain"
                     size="xs"
-                    title="Potvrdi sve zadatke gredice"
+                    title="Potvrdi sve zadatke"
                     disabled={disabled}
                     aria-disabled={disabled}
                     loading={isSubmitting}

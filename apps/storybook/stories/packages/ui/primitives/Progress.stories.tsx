@@ -61,6 +61,15 @@ export const BoundedValues: Story = {
     ),
 };
 
+export const CompleteAndIndeterminate: Story = {
+    render: () => (
+        <Stack className="w-80" spacing={4}>
+            <Progress aria-label="Dovršeno" value={100} />
+            <Progress aria-label="Obrada je u tijeku" value={null} />
+        </Stack>
+    ),
+};
+
 export const CustomTrack: Story = {
     render: () => (
         <div className="w-80">

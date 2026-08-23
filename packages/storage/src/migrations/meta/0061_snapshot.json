@@ -1,5 +1,5 @@
 {
-  "id": "4bc61ce3-da61-46fb-900d-9dbfcb72d537",
+  "id": "7b2de78e-4074-45ea-8ce8-5b091d52941c",
   "prevId": "a5931519-c136-47ac-8611-853af426ae15",
   "version": "7",
   "dialect": "postgresql",
@@ -4381,6 +4381,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "closes_at": {
+          "name": "closes_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -4438,6 +4444,21 @@
           "columns": [
             {
               "expression": "start_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "time_slots_closes_at_idx": {
+          "name": "time_slots_closes_at_idx",
+          "columns": [
+            {
+              "expression": "closes_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -14605,20 +14626,6 @@
           "notNull": true,
           "default": false
         },
-        "is_temporary": {
-          "name": "is_temporary",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "last_active_at": {
-          "name": "last_active_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -14639,27 +14646,6 @@
           "columns": [
             {
               "expression": "username",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "users_temporary_last_active_idx": {
-          "name": "users_temporary_last_active_idx",
-          "columns": [
-            {
-              "expression": "is_temporary",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "last_active_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

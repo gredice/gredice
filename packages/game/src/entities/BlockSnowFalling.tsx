@@ -184,6 +184,7 @@ export function BlockSnowFalling({
                 <group position={[snowArea.offsetX, 0, snowArea.offsetZ]}>
                     <Snow
                         count={particleCount}
+                        followCamera={false}
                         size={snowSize}
                         height={10}
                         heightOffset={1}

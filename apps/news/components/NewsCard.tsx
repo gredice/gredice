@@ -1,3 +1,4 @@
+import { cmsImageObjectPosition } from '@gredice/ui/cms';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { formatNewsDate } from '../lib/news';
@@ -7,8 +8,11 @@ export type NewsCardKind = 'blog' | 'changelog';
 export type NewsCardEntry = {
     category?: string | null;
     excerpt?: string | null;
+    metaImagePoiX?: number | null;
+    metaImagePoiY?: number | null;
     metaImageUrl?: string | null;
     publishedAt?: string | null;
+    slug: string;
     tags: string[];
     title: string;
 };
@@ -24,12 +28,14 @@ export function NewsCard({
     kind,
     showDate = true,
     showKindLabel = true,
+    viewTransitionName,
 }: {
     entry: NewsCardEntry;
     href: Route;
     kind: NewsCardKind;
     showDate?: boolean;
     showKindLabel?: boolean;
+    viewTransitionName?: string;
 }) {
     const dateLabel =
         showDate && entry.publishedAt
@@ -40,12 +46,13 @@ export function NewsCard({
     return (
         <article className="w-full">
             <Link
-                className={`grid overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                className={`news-card-view-transition grid overflow-hidden rounded-md border bg-card shadow-xs transition-colors hover:bg-muted/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                     entry.metaImageUrl
                         ? 'md:grid-cols-[minmax(0,1fr)_10rem]'
                         : ''
                 }`}
                 href={href}
+                style={viewTransitionName ? { viewTransitionName } : undefined}
             >
                 <div className="grid content-start gap-3 p-5">
                     {entry.tags.length > 0 ? (
@@ -91,6 +98,12 @@ export function NewsCard({
                             alt=""
                             className="h-full w-full object-cover"
                             src={entry.metaImageUrl}
+                            style={{
+                                objectPosition: cmsImageObjectPosition(
+                                    entry.metaImagePoiX,
+                                    entry.metaImagePoiY,
+                                ),
+                            }}
                         />
                     </div>
                 ) : null}

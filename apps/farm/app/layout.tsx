@@ -1,10 +1,16 @@
-import { PostHogPageView, PostHogProvider } from '@posthog/next';
-import { Analytics } from '@vercel/analytics/react';
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
+import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Head from 'next/head';
 import type { ReactNode } from 'react';
+import { FarmAnalyticsProvider } from '../components/analytics/FarmAnalyticsProvider';
+import { FarmPageViewTracker } from '../components/analytics/FarmPageViewTracker';
+import { FarmPostHogProvider } from '../components/analytics/FarmPostHogProvider';
+import { FarmWebAnalytics } from '../components/analytics/FarmWebAnalytics';
+import { FarmAppShell } from '../components/navigation/FarmAppShell';
 import { AuthAppProvider } from '../components/providers/AuthAppProvider';
 import { ClientAppProvider } from '../components/providers/ClientAppProvider';
 
@@ -17,6 +23,7 @@ export function generateMetadata(): Metadata {
 
 export const viewport: Viewport = {
     initialScale: 1,
+    viewportFit: 'cover',
     width: 'device-width',
 };
 
@@ -25,6 +32,9 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
@@ -38,9 +48,14 @@ export default function RootLayout({
     const content = (
         <>
             <ClientAppProvider>
-                <AuthAppProvider>{children}</AuthAppProvider>
+                <AuthAppProvider>
+                    <ImpersonationBanner />
+                    <FarmAnalyticsProvider>
+                        <FarmAppShell>{children}</FarmAppShell>
+                    </FarmAnalyticsProvider>
+                </AuthAppProvider>
             </ClientAppProvider>
-            <Analytics />
+            {injectVercelAnalytics && <FarmWebAnalytics />}
             {shouldInjectToolbar && <VercelToolbar />}
         </>
     );
@@ -55,24 +70,24 @@ export default function RootLayout({
                 <meta name="theme-color" content="#8b5e34" />
                 <title>Gredice Farm</title>
             </Head>
-            <body className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-muted">
-                {postHogApiKey ? (
-                    <PostHogProvider
-                        apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
-                    >
-                        <PostHogPageView />
-                        {content}
-                    </PostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-background"
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <FarmPostHogProvider
+                            apiKey={postHogApiKey}
+                            apiHost={postHogApiHost}
+                            uiHost={postHogUiHost}
+                        >
+                            <FarmPageViewTracker />
+                            {content}
+                        </FarmPostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

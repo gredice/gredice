@@ -14,19 +14,20 @@
         "dev": "email dev -p 4001"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.3",
         "@gredice/ui": "workspace:*",
-        "@react-email/ui": "6.5.0",
-        "@tailwindcss/postcss": "4.3.0",
+        "@react-email/ui": "6.6.9",
+        "@tailwindcss/postcss": "4.3.2",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
-        "tailwindcss": "4.3.0",
-        "tsx": "4.22.4",
-        "typescript": "6.0.3"
+        "@types/react": "19.2.18",
+        "tailwindcss": "4.3.2",
+        "tsx": "4.23.0",
+        "typescript": "7.0.2"
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
-        "react": "19.2.7",
-        "react-email": "6.5.0"
+        "@gredice/notifications": "workspace:*",
+        "react": "19.2.8",
+        "react-email": "6.6.9"
     }
 }

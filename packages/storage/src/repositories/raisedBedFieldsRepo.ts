@@ -3,6 +3,10 @@ import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
+    LegacyRaisedBedPlantCycleProjectionError,
+    projectLegacyRaisedBedPlantCycles,
+} from '../helpers/legacyRaisedBedPlantCycles';
+import {
     events,
     farmUsers,
     gardens,
@@ -13,20 +17,28 @@ import {
 import {
     type InsertRaisedBedField,
     raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     type SelectRaisedBedField,
 } from '../schema/gardenSchema';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
+import { scheduleTaskBlockDetailsFromEvent } from './events/scheduleTaskBlock';
 import {
     createEvent,
     getAllEvents,
     knownEvents,
     knownEventTypes,
+    type RaisedBedFieldPlantPurchase,
     type RaisedBedFieldSowingLocation,
     type RaisedBedWeedStateLevel,
     type RaisedBedWeedStateSetPayload,
     type RaisedBedWeedStateSource,
     updateEventCreatedAt,
 } from './eventsRepo';
+import {
+    acquirePlantingScheduleTaskLock,
+    type ScheduleTaskTransaction,
+} from './scheduleTaskTransactionsRepo';
 
 export type { RaisedBedWeedStateSetPayload } from './eventsRepo';
 
@@ -35,7 +47,9 @@ const PLANT_CYCLE_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
+    knownEventTypes.raisedBedFields.delete,
 ] as const;
 const PLANT_CYCLE_EVENT_TYPE_SET = new Set<string>(PLANT_CYCLE_EVENT_TYPES);
 const RAISED_BED_FIELD_EVENT_TYPES = [
@@ -44,6 +58,7 @@ const RAISED_BED_FIELD_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
     knownEventTypes.raisedBedFields.weedStateSet,
 ] as const;
@@ -52,6 +67,12 @@ type CanonicalRaisedBedField = {
     id: number;
     positionIndex: number;
 };
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
 
@@ -79,9 +100,11 @@ export type RaisedBedFieldPlantCycle = {
     endedEventId: number;
     active: boolean;
     plantStatus?: string;
+    plantStatusEventId?: number;
     plantSortId?: number;
     plantScheduledDate?: Date;
     sowingLocation: RaisedBedFieldSowingLocation;
+    purchase?: RaisedBedFieldPlantPurchase;
     plantSowDate?: Date;
     plantGrowthDate?: Date;
     plantReadyDate?: Date;
@@ -95,6 +118,14 @@ export type RaisedBedFieldPlantCycle = {
     assignedUserIds?: string[];
     assignedBy?: string | null;
     assignedAt?: Date;
+    cancellationReason?: string;
+    blockedAt?: Date;
+    blockedBy?: string;
+    blockedEventId?: number;
+    blockReasonCode?: string;
+    blockReasonLabel?: string;
+    blockNote?: string;
+    blockImageUrls?: string[];
 };
 
 export type AssignableFarmUser = {
@@ -251,6 +282,7 @@ export async function getUniqueAssignableFarmUsersByGardenIds(
 
 export async function getAssignableFarmUsersByRaisedBedFieldIds(
     raisedBedFieldIds: number[],
+    db: DatabaseClient = storage(),
 ) {
     const uniqueRaisedBedFieldIds = Array.from(new Set(raisedBedFieldIds));
     if (uniqueRaisedBedFieldIds.length === 0) {
@@ -262,7 +294,7 @@ export async function getAssignableFarmUsersByRaisedBedFieldIds(
         return emptyAssignableFarmUsersByRaisedBedFieldId;
     }
 
-    const rows = await storage()
+    const rows = await db
         .selectDistinct({
             raisedBedFieldId: raisedBedFields.id,
             farmId: farmUsers.farmId,
@@ -603,6 +635,44 @@ function parseSowingLocation(
     return value === 'direct' || value === 'greenhouse' ? value : undefined;
 }
 
+function parseNonNegativeInteger(value: unknown) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0
+        ? value
+        : undefined;
+}
+
+function parsePlantPurchase(
+    value: unknown,
+): RaisedBedFieldPlantPurchase | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    const record = value as Record<string, unknown>;
+    const cartItemId = parseNonNegativeInteger(record.cartItemId);
+    if (!cartItemId || cartItemId < 1) {
+        return undefined;
+    }
+
+    if (record.currency === 'inventory') {
+        return { cartItemId, currency: 'inventory' };
+    }
+    if (record.currency === 'sunflower') {
+        const sunflowerAmount = parseNonNegativeInteger(record.sunflowerAmount);
+        return typeof sunflowerAmount === 'number'
+            ? { cartItemId, currency: 'sunflower', sunflowerAmount }
+            : undefined;
+    }
+    if (record.currency === 'eur') {
+        const euroAmountCents = parseNonNegativeInteger(record.euroAmountCents);
+        return typeof euroAmountCents === 'number'
+            ? { cartItemId, currency: 'eur', euroAmountCents }
+            : undefined;
+    }
+
+    return undefined;
+}
+
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
         case 'none':
@@ -709,6 +779,7 @@ function summarizePlantCycle(
     let plantSortId: number | undefined;
     let plantScheduledDate: Date | undefined;
     let sowingLocation: RaisedBedFieldSowingLocation = 'direct';
+    let purchase: RaisedBedFieldPlantPurchase | undefined;
     let plantSowDate: Date | undefined;
     let plantGrowthDate: Date | undefined;
     let plantReadyDate: Date | undefined;
@@ -723,6 +794,15 @@ function summarizePlantCycle(
     let assignedUserIds: string[] | undefined;
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
+    let cancellationReason: string | undefined;
+    let plantStatusEventId: number | undefined;
+    let blockedAt: Date | undefined;
+    let blockedBy: string | undefined;
+    let blockedEventId: number | undefined;
+    let blockReasonCode: string | undefined;
+    let blockReasonLabel: string | undefined;
+    let blockNote: string | undefined;
+    let blockImageUrls: string[] | undefined;
 
     for (const plantCycleEvent of plantCycleEvents) {
         const data = plantCycleEvent.data as
@@ -739,6 +819,7 @@ function summarizePlantCycle(
             plantSortId = parsePlantSortId(data?.plantSortId);
             sowingLocation =
                 parseSowingLocation(data?.sowingLocation) ?? 'direct';
+            purchase = parsePlantPurchase(data?.purchase);
 
             if (data?.scheduledDate && typeof data.scheduledDate === 'string') {
                 plantScheduledDate = new Date(data.scheduledDate);
@@ -762,6 +843,15 @@ function summarizePlantCycle(
             assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
+            cancellationReason = undefined;
+            plantStatusEventId = undefined;
+            blockedAt = undefined;
+            blockedBy = undefined;
+            blockedEventId = undefined;
+            blockReasonCode = undefined;
+            blockReasonLabel = undefined;
+            blockNote = undefined;
+            blockImageUrls = undefined;
             continue;
         }
 
@@ -782,6 +872,26 @@ function summarizePlantCycle(
             }
             sowingLocation =
                 parseSowingLocation(data?.sowingLocation) ?? sowingLocation;
+            continue;
+        }
+
+        if (
+            plantCycleEvent.type === knownEventTypes.raisedBedFields.plantBlock
+        ) {
+            const details = scheduleTaskBlockDetailsFromEvent(plantCycleEvent);
+            plantStatus = 'blocked';
+            plantStatusEventId = plantCycleEvent.id;
+            statusChanges.push({
+                status: 'blocked',
+                occurredAt: plantCycleEvent.createdAt,
+            });
+            blockedAt = details?.blockedAt ?? plantCycleEvent.createdAt;
+            blockedBy = details?.blockedBy;
+            blockedEventId = plantCycleEvent.id;
+            blockReasonCode = details?.reasonCode;
+            blockReasonLabel = details?.reasonLabel;
+            blockNote = details?.note;
+            blockImageUrls = details?.images;
             continue;
         }
 
@@ -818,6 +928,16 @@ function summarizePlantCycle(
                 });
             }
             plantStatus = nextPlantStatus ?? plantStatus;
+            if (nextPlantStatus) {
+                plantStatusEventId = plantCycleEvent.id;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
+            }
             if (hasAssignedUserIdUpdate) {
                 const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
@@ -872,9 +992,24 @@ function summarizePlantCycle(
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantSowDate = plantSowDate ?? statusEventDate;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'sprouted') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'notSprouted') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -883,11 +1018,31 @@ function summarizePlantCycle(
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
             } else if (plantStatus === 'firstFlowers') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'firstFruitSet') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'ready') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantReadyDate = statusEventDate;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -896,6 +1051,17 @@ function summarizePlantCycle(
                 active = false;
                 stoppedDate = statusEventDate;
             }
+            continue;
+        }
+
+        if (plantCycleEvent.type === knownEventTypes.raisedBedFields.delete) {
+            const statusEventDate = plantCycleEvent.createdAt;
+            plantStatus = 'deleted';
+            active = false;
+            toBeRemoved = true;
+            stoppedDate = statusEventDate;
+            cancellationReason =
+                typeof data?.reason === 'string' ? data.reason : undefined;
         }
     }
 
@@ -913,9 +1079,11 @@ function summarizePlantCycle(
         endedEventId,
         active,
         plantStatus,
+        plantStatusEventId,
         plantSortId,
         plantScheduledDate,
         sowingLocation,
+        purchase,
         plantSowDate,
         plantGrowthDate,
         plantReadyDate,
@@ -932,6 +1100,14 @@ function summarizePlantCycle(
         assignedUserId,
         assignedBy,
         assignedAt,
+        cancellationReason,
+        blockedAt,
+        blockedBy,
+        blockedEventId,
+        blockReasonCode,
+        blockReasonLabel,
+        blockNote,
+        blockImageUrls,
     };
 }
 
@@ -940,13 +1116,69 @@ function summarizePlantCycles(
     positionIndex: number,
     plantEvents: RaisedBedFieldPlantCycleEvent[],
 ) {
-    return splitPlantCycleEvents(plantEvents)
+    const orderedPlantEvents = [...plantEvents].sort(
+        comparePlantCycleEventOrder,
+    );
+    const plantCycles = splitPlantCycleEvents(orderedPlantEvents)
         .map((plantCycleEvents) =>
             summarizePlantCycle(aggregateId, positionIndex, plantCycleEvents),
         )
         .filter((plantCycle): plantCycle is RaisedBedFieldPlantCycle =>
             Boolean(plantCycle),
         );
+
+    const permissivePlantCycles = plantCycles.map((plantCycle, index) => {
+        const nextPlantCycle = plantCycles[index + 1];
+        if (!nextPlantCycle || !plantCycle.active) {
+            return plantCycle;
+        }
+        return {
+            ...plantCycle,
+            active: false,
+            stoppedDate: nextPlantCycle.startedAt,
+        };
+    });
+
+    let authoritativeCyclesBySourceEventId: Map<
+        number,
+        ReturnType<typeof projectLegacyRaisedBedPlantCycles>[number]
+    >;
+    try {
+        authoritativeCyclesBySourceEventId = new Map(
+            projectLegacyRaisedBedPlantCycles(orderedPlantEvents).map(
+                (cycle) => [cycle.sourceEventId, cycle],
+            ),
+        );
+    } catch (error) {
+        if (!(error instanceof LegacyRaisedBedPlantCycleProjectionError)) {
+            throw error;
+        }
+        // This repository is a compatibility read model for historical field
+        // events. Keep strict projection failures in secured diagnostics while
+        // omitting aggregate IDs and event payloads. Planting/backfill callers
+        // continue to use the canonical helper strictly.
+        console.warn('Raised-bed field history used compatibility projection', {
+            code: error.code,
+            eventId: error.eventId,
+        });
+        return permissivePlantCycles;
+    }
+
+    return permissivePlantCycles.map((plantCycle) => {
+        const authoritativeCycle = authoritativeCyclesBySourceEventId.get(
+            plantCycle.plantPlaceEventId,
+        );
+        if (!authoritativeCycle) {
+            return plantCycle;
+        }
+
+        return {
+            ...plantCycle,
+            active: authoritativeCycle.isActive,
+            plantSortId: authoritativeCycle.plantSortId,
+            stoppedDate: authoritativeCycle.stoppedAt ?? undefined,
+        };
+    });
 }
 
 function eventDataRecord(event: RaisedBedFieldPlantCycleEvent) {
@@ -1023,16 +1255,19 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
     positionIndex,
     status,
     createdAt,
+    db = storage(),
 }: {
     raisedBedId: number;
     positionIndex: number;
     status: string;
     createdAt: Date;
+    db?: DatabaseClient;
 }) {
     const aggregateId = `${raisedBedId.toString()}|${positionIndex.toString()}`;
     const plantEvents = await getAllEvents(
         [...PLANT_CYCLE_EVENT_TYPES],
         [aggregateId],
+        { db },
     );
     const activePlantCycleEvents = splitPlantCycleEvents(plantEvents).find(
         (plantCycleEvents) => {
@@ -1071,7 +1306,7 @@ export async function updateActiveRaisedBedFieldPlantStatusEventCreatedAt({
         return false;
     }
 
-    await updateEventCreatedAt(targetEvent.id, createdAt);
+    await updateEventCreatedAt(targetEvent.id, createdAt, db);
     return true;
 }
 
@@ -1268,6 +1503,16 @@ function reduceRaisedBedFieldWithEvents(
     let assignedBy: string | null | undefined;
     let assignedAt: Date | undefined;
     let weedState: RaisedBedWeedState | null = null;
+    let cancellationReason: string | undefined;
+    let plantStatusEventId: number | undefined;
+    let plantStatusChangedAt: Date | undefined;
+    let blockedAt: Date | undefined;
+    let blockedBy: string | undefined;
+    let blockedEventId: number | undefined;
+    let blockReasonCode: string | undefined;
+    let blockReasonLabel: string | undefined;
+    let blockNote: string | undefined;
+    let blockImageUrls: string[] | undefined;
 
     for (const event of events) {
         const data = event.data as Record<string, unknown> | undefined;
@@ -1292,6 +1537,16 @@ function reduceRaisedBedFieldWithEvents(
             assignedUserIds = undefined;
             assignedBy = undefined;
             assignedAt = undefined;
+            cancellationReason = undefined;
+            plantStatusEventId = undefined;
+            plantStatusChangedAt = undefined;
+            blockedAt = undefined;
+            blockedBy = undefined;
+            blockedEventId = undefined;
+            blockReasonCode = undefined;
+            blockReasonLabel = undefined;
+            blockNote = undefined;
+            blockImageUrls = undefined;
 
             // Parse plant sort ID if provided
             if (typeof data?.plantSortId === 'number') {
@@ -1350,6 +1605,17 @@ function reduceRaisedBedFieldWithEvents(
                 extractAssignedUserId(data?.assignedUserId) !== undefined;
             plantStatus =
                 typeof data?.status === 'string' ? data?.status : plantStatus;
+            if (typeof data?.status === 'string') {
+                plantStatusEventId = event.id;
+                plantStatusChangedAt = statusEventDate;
+                blockedAt = undefined;
+                blockedBy = undefined;
+                blockedEventId = undefined;
+                blockReasonCode = undefined;
+                blockReasonLabel = undefined;
+                blockNote = undefined;
+                blockImageUrls = undefined;
+            }
             if (hasAssignedUserIdUpdate) {
                 const nextAssignedUserId = extractAssignedUserId(
                     data?.assignedUserId,
@@ -1403,9 +1669,24 @@ function reduceRaisedBedFieldWithEvents(
                 plantStatus === 'pendingVerification' ||
                 plantStatus === 'sowed'
             ) {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantSowDate = plantSowDate ?? statusEventDate;
+                plantGrowthDate = undefined;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'sprouted') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'notSprouted') {
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -1414,11 +1695,31 @@ function reduceRaisedBedFieldWithEvents(
                 plantDeadDate = statusEventDate;
                 stoppedDate = statusEventDate;
             } else if (plantStatus === 'firstFlowers') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'firstFruitSet') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantGrowthDate = plantGrowthDate ?? statusEventDate;
+                plantReadyDate = undefined;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'ready') {
+                active = true;
+                toBeRemoved = false;
+                stoppedDate = undefined;
                 plantReadyDate = statusEventDate;
+                plantDeadDate = undefined;
+                plantHarvestedDate = undefined;
+                plantRemovedDate = undefined;
             } else if (plantStatus === 'harvested') {
                 plantHarvestedDate = statusEventDate;
                 stoppedDate = statusEventDate;
@@ -1427,6 +1728,20 @@ function reduceRaisedBedFieldWithEvents(
                 active = false;
                 stoppedDate = statusEventDate;
             }
+        }
+        // Handle explicit task blockers without conflating them with completion.
+        else if (event.type === knownEventTypes.raisedBedFields.plantBlock) {
+            const details = scheduleTaskBlockDetailsFromEvent(event);
+            plantStatus = 'blocked';
+            plantStatusEventId = event.id;
+            blockedAt = details?.blockedAt ?? event.createdAt;
+            plantStatusChangedAt = blockedAt;
+            blockedBy = details?.blockedBy;
+            blockedEventId = event.id;
+            blockReasonCode = details?.reasonCode;
+            blockReasonLabel = details?.reasonLabel;
+            blockNote = details?.note;
+            blockImageUrls = details?.images;
         }
         // Handle plant sort replace event
         else if (
@@ -1443,9 +1758,14 @@ function reduceRaisedBedFieldWithEvents(
         // Handle field deletion event
         else if (event.type === knownEventTypes.raisedBedFields.delete) {
             plantStatus = 'deleted';
+            plantStatusChangedAt = event.createdAt;
             plantSowDate = undefined;
             plantSortId = undefined;
             plantScheduledDate = undefined;
+            active = false;
+            stoppedDate = event.createdAt;
+            cancellationReason =
+                typeof data?.reason === 'string' ? data.reason : undefined;
         } else {
             console.warn('Unhandled raised bed field event type', {
                 eventId: event.id,
@@ -1457,17 +1777,23 @@ function reduceRaisedBedFieldWithEvents(
         }
     }
 
+    const plantCycles = summarizePlantCycles(
+        aggregateId,
+        field.positionIndex,
+        events.filter((event) => PLANT_CYCLE_EVENT_TYPE_SET.has(event.type)),
+    );
+    const latestPlantCycle = plantCycles[plantCycles.length - 1];
+
     return {
         ...field,
-        plantCycles: summarizePlantCycles(
-            aggregateId,
-            field.positionIndex,
-            events.filter((event) =>
-                PLANT_CYCLE_EVENT_TYPE_SET.has(event.type),
-            ),
-        ),
+        plantCycles,
         plantStatus,
-        plantSortId,
+        plantStatusEventId,
+        plantStatusChangedAt,
+        plantSortId:
+            plantStatus === 'deleted'
+                ? undefined
+                : (latestPlantCycle?.plantSortId ?? plantSortId),
         plantScheduledDate,
         sowingLocation,
         plantSowDate,
@@ -1476,7 +1802,7 @@ function reduceRaisedBedFieldWithEvents(
         plantDeadDate,
         plantHarvestedDate,
         plantRemovedDate,
-        active,
+        active: latestPlantCycle?.active ?? active,
         toBeRemoved,
         stoppedDate,
         assignedUserIds: normalizeAssignedUserIds(
@@ -1486,7 +1812,15 @@ function reduceRaisedBedFieldWithEvents(
         assignedUserId,
         assignedBy,
         assignedAt,
+        cancellationReason,
         weedState,
+        blockedAt,
+        blockedBy,
+        blockedEventId,
+        blockReasonCode,
+        blockReasonLabel,
+        blockNote,
+        blockImageUrls,
     };
 }
 
@@ -1516,6 +1850,7 @@ function groupRaisedBedFieldEventsByAggregateId(
 
 export async function getRaisedBedFieldsWithEventsForBeds(
     raisedBedIds: number[],
+    db: DatabaseClient = storage(),
 ): Promise<Map<number, RaisedBedFieldWithEvents[]>> {
     const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
     const fieldsByRaisedBedId = new Map<number, RaisedBedFieldWithEvents[]>();
@@ -1528,7 +1863,7 @@ export async function getRaisedBedFieldsWithEventsForBeds(
         return fieldsByRaisedBedId;
     }
 
-    const fields = await storage().query.raisedBedFields.findMany({
+    const fields = await db.query.raisedBedFields.findMany({
         where: and(
             inArray(raisedBedFields.raisedBedId, uniqueRaisedBedIds),
             eq(raisedBedFields.isDeleted, false),
@@ -1547,6 +1882,7 @@ export async function getRaisedBedFieldsWithEventsForBeds(
         fieldsEvents = await getAllEvents(
             [...RAISED_BED_FIELD_EVENT_TYPES],
             fieldAggregateIds,
+            { db },
         );
     }
 
@@ -1571,9 +1907,12 @@ export async function getRaisedBedFieldsWithEventsForBeds(
 }
 
 // New: Retrieve all raised bed fields for a single raised bed, with event-sourced info
-export async function getRaisedBedFieldsWithEvents(raisedBedId: number) {
+export async function getRaisedBedFieldsWithEvents(
+    raisedBedId: number,
+    db: DatabaseClient = storage(),
+) {
     return (
-        (await getRaisedBedFieldsWithEventsForBeds([raisedBedId])).get(
+        (await getRaisedBedFieldsWithEventsForBeds([raisedBedId], db)).get(
             raisedBedId,
         ) ?? []
     );
@@ -1584,24 +1923,32 @@ export async function upsertRaisedBedField(
         InsertRaisedBedField,
         'id' | 'createdAt' | 'updatedAt' | 'isDeleted'
     >,
+    db?: DatabaseClient,
 ) {
-    await storage().transaction(async (tx) => {
-        await syncRaisedBedFieldRow(tx, field);
-    });
+    if (db) {
+        await syncRaisedBedFieldRow(db, field);
+    } else {
+        await storage().transaction(async (transaction) => {
+            await syncRaisedBedFieldRow(transaction, field);
+        });
+    }
     await bustScheduleCache();
 }
 
-export async function moveRaisedBedFieldPlantHistory({
-    raisedBedId,
-    sourcePositionIndex,
-    targetPositionIndex,
-    sourcePlantPlaceEventId,
-}: {
-    raisedBedId: number;
-    sourcePositionIndex: number;
-    targetPositionIndex: number;
-    sourcePlantPlaceEventId: number;
-}) {
+export async function moveRaisedBedFieldPlantHistory(
+    {
+        raisedBedId,
+        sourcePositionIndex,
+        targetPositionIndex,
+        sourcePlantPlaceEventId,
+    }: {
+        raisedBedId: number;
+        sourcePositionIndex: number;
+        targetPositionIndex: number;
+        sourcePlantPlaceEventId: number;
+    },
+    transaction?: ScheduleTaskTransaction,
+) {
     if (sourcePositionIndex === targetPositionIndex) {
         throw new Error('Source and target field positions must be different');
     }
@@ -1613,7 +1960,33 @@ export async function moveRaisedBedFieldPlantHistory({
     const sourceAggregateId = `${raisedBedId.toString()}|${sourcePositionIndex.toString()}`;
     const targetAggregateId = `${raisedBedId.toString()}|${targetPositionIndex.toString()}`;
 
-    const result = await storage().transaction(async (tx) => {
+    const move = async (tx: ScheduleTaskTransaction) => {
+        const lockedPositionIndexes = [
+            sourcePositionIndex,
+            targetPositionIndex,
+        ].sort((left, right) => left - right);
+        for (const positionIndex of lockedPositionIndexes) {
+            await acquirePlantingScheduleTaskLock(
+                tx,
+                raisedBedId,
+                positionIndex,
+            );
+        }
+        await tx
+            .select({ id: raisedBedFields.id })
+            .from(raisedBedFields)
+            .where(
+                and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    inArray(
+                        raisedBedFields.positionIndex,
+                        lockedPositionIndexes,
+                    ),
+                ),
+            )
+            .orderBy(asc(raisedBedFields.id))
+            .for('update');
+
         const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
             tx,
             raisedBedId,
@@ -1633,6 +2006,28 @@ export async function moveRaisedBedFieldPlantHistory({
             raisedBedId,
             positionIndex: targetPositionIndex,
         });
+
+        const [sourceCanonicalField, targetCanonicalField] = await Promise.all([
+            tx.query.raisedBedFields.findFirst({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    eq(raisedBedFields.positionIndex, sourcePositionIndex),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+                orderBy: [asc(raisedBedFields.id)],
+            }),
+            tx.query.raisedBedFields.findFirst({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    eq(raisedBedFields.positionIndex, targetPositionIndex),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+                orderBy: [asc(raisedBedFields.id)],
+            }),
+        ]);
+        if (!sourceCanonicalField || !targetCanonicalField) {
+            throw new Error('Failed to resolve canonical move fields');
+        }
 
         const [sourcePlantCycles, targetPlantCycles] = await Promise.all([
             getPlantCyclesForPosition(tx, raisedBedId, sourcePositionIndex),
@@ -1658,6 +2053,49 @@ export async function moveRaisedBedFieldPlantHistory({
             (targetPlantCycle) => targetPlantCycle.eventIds,
         );
 
+        const selectedOccupancies = await tx
+            .select({
+                raisedBedFieldId: raisedBedPlantingFields.raisedBedFieldId,
+            })
+            .from(raisedBedPlantingFields)
+            .innerJoin(
+                raisedBedPlantings,
+                eq(raisedBedPlantings.id, raisedBedPlantingFields.plantingId),
+            )
+            .where(
+                and(
+                    inArray(raisedBedPlantingFields.raisedBedFieldId, [
+                        sourceCanonicalField.id,
+                        targetCanonicalField.id,
+                    ]),
+                    eq(raisedBedPlantingFields.isDeleted, false),
+                    eq(raisedBedPlantings.isDeleted, false),
+                    eq(raisedBedPlantings.isActive, true),
+                    eq(raisedBedPlantings.configurationSource, 'selected'),
+                ),
+            );
+        const selectedOccupiedFieldIds = new Set(
+            selectedOccupancies.map((row) => row.raisedBedFieldId),
+        );
+        if (
+            sourcePlantCycle.active &&
+            selectedOccupiedFieldIds.has(targetCanonicalField.id)
+        ) {
+            throw new Error(
+                'Cannot move an active legacy plant cycle onto an active selected planting.',
+            );
+        }
+        if (
+            overlappingTargetPlantCycles.some(
+                (plantCycle) => plantCycle.active,
+            ) &&
+            selectedOccupiedFieldIds.has(sourceCanonicalField.id)
+        ) {
+            throw new Error(
+                'Cannot swap an active legacy plant cycle onto an active selected planting.',
+            );
+        }
+
         await tx
             .update(events)
             .set({
@@ -1674,21 +2112,93 @@ export async function moveRaisedBedFieldPlantHistory({
                 .where(inArray(events.id, targetPlantCycleEventIds));
         }
 
+        const sourceProjectionRows = await tx
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(
+                eq(
+                    raisedBedPlantings.legacyPlantPlaceEventId,
+                    sourcePlantCycle.plantPlaceEventId,
+                ),
+            )
+            .for('update');
+        const targetPlantPlaceEventIds = overlappingTargetPlantCycles.map(
+            (plantCycle) => plantCycle.plantPlaceEventId,
+        );
+        const targetProjectionRows =
+            targetPlantPlaceEventIds.length === 0
+                ? []
+                : await tx
+                      .select({ id: raisedBedPlantings.id })
+                      .from(raisedBedPlantings)
+                      .where(
+                          inArray(
+                              raisedBedPlantings.legacyPlantPlaceEventId,
+                              targetPlantPlaceEventIds,
+                          ),
+                      )
+                      .for('update');
+
+        const sourceProjectionIds = sourceProjectionRows.map((row) => row.id);
+        if (sourceProjectionIds.length > 0) {
+            await tx
+                .update(raisedBedPlantingFields)
+                .set({ raisedBedFieldId: targetCanonicalField.id })
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        sourceProjectionIds,
+                    ),
+                );
+            await tx
+                .update(raisedBedPlantings)
+                .set({ anchorPositionIndex: targetPositionIndex })
+                .where(inArray(raisedBedPlantings.id, sourceProjectionIds));
+        }
+
+        const targetProjectionIds = targetProjectionRows.map((row) => row.id);
+        if (targetProjectionIds.length > 0) {
+            await tx
+                .update(raisedBedPlantingFields)
+                .set({ raisedBedFieldId: sourceCanonicalField.id })
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        targetProjectionIds,
+                    ),
+                );
+            await tx
+                .update(raisedBedPlantings)
+                .set({ anchorPositionIndex: sourcePositionIndex })
+                .where(inArray(raisedBedPlantings.id, targetProjectionIds));
+        }
+
         return {
             swapped: shouldSwap,
         };
-    });
-    await bustScheduleCache();
+    };
+    const result = transaction
+        ? await move(transaction)
+        : await storage().transaction(move);
+    if (!transaction) {
+        await bustScheduleCache();
+    }
     return result;
 }
 
 export async function deleteRaisedBedField(
     raisedBedId: number,
     positionIndex: number,
+    options: { preserveHistory?: boolean; db?: DatabaseClient } = {},
 ) {
-    await storage()
+    const db = options.db ?? storage();
+    await db
         .update(raisedBedFields)
-        .set({ isDeleted: true })
+        .set(
+            options.preserveHistory
+                ? { updatedAt: new Date() }
+                : { isDeleted: true },
+        )
         .where(
             and(
                 eq(raisedBedFields.raisedBedId, raisedBedId),
@@ -1696,5 +2206,7 @@ export async function deleteRaisedBedField(
                 eq(raisedBedFields.isDeleted, false),
             ),
         );
-    await bustScheduleCache();
+    if (!options.db) {
+        await bustScheduleCache();
+    }
 }

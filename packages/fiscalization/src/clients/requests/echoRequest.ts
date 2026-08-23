@@ -1,5 +1,5 @@
 import type { UserSettings } from '../../@types/UserSettings';
-import type { String as EchoRequest } from '../../generated/1-9-0-educ/fiskalizacijaservice';
+import type { String as EchoRequest } from '../../generated/1-9-0-educ/fiskalizacijaservice/definitions/String';
 import { type FisRequest, fisClient } from '../shared';
 
 export type EchoRequestResult =

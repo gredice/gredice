@@ -12,10 +12,12 @@ import {
     UserButton,
 } from '@gredice/ui/auth';
 import { BackpackIcon } from '@gredice/ui/BackpackIcon';
+import { BarcodeValue } from '@gredice/ui/Barcode';
 import { BlockImage } from '@gredice/ui/BlockImage';
 import { BlurText } from '@gredice/ui/BlurText';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Button } from '@gredice/ui/Button';
+import { CalendarDatePicker } from '@gredice/ui/CalendarDatePicker';
 import {
     Card,
     CardActions,
@@ -25,6 +27,12 @@ import {
     CardOverflow,
     CardTitle,
 } from '@gredice/ui/Card';
+import {
+    ChatBubble,
+    ChatMarker,
+    ChatMessage,
+    ChatMessageScroller,
+} from '@gredice/ui/Chat';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { Collapse } from '@gredice/ui/Collapse';
@@ -71,6 +79,7 @@ import { ImageViewer } from '@gredice/ui/ImageViewer';
 import { Input } from '@gredice/ui/Input';
 import {
     Add,
+    AI,
     Approved,
     Calendar,
     Check,
@@ -91,6 +100,7 @@ import {
     Settings,
     Sprout,
     Store,
+    Sun,
     Truck,
     Upload,
     User,
@@ -109,6 +119,7 @@ import {
     DropdownMenuItemFragment,
     DropdownMenuLabel,
     DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuSub,
@@ -143,6 +154,7 @@ import { RaisedBedIdentifierIcon } from '@gredice/ui/RaisedBedIdentifierIcon';
 import { RaisedBedSimpleIcon } from '@gredice/ui/RaisedBedSimpleIcon';
 import { Row } from '@gredice/ui/Row';
 import { RaisedBedLabel } from '@gredice/ui/raisedBeds';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { ShovelIcon } from '@gredice/ui/ShovelIcon';
@@ -153,6 +165,11 @@ import { SplitButton } from '@gredice/ui/SplitButton';
 import { SplitView } from '@gredice/ui/SplitView';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
+import {
+    type SurveyAnswerState,
+    type SurveyAnswerValue,
+    SurveyQuestionnaire,
+} from '@gredice/ui/SurveyQuestionnaire';
 import { Switch } from '@gredice/ui/Switch';
 import { Table } from '@gredice/ui/Table';
 import {
@@ -563,8 +580,12 @@ function StatusMenu() {
                     <DropdownMenuSubContent>
                         <DropdownMenuRadioGroup value="ready">
                             <DropdownMenuItemFragment>
-                                <DropdownMenuItem>Spremno</DropdownMenuItem>
-                                <DropdownMenuItem>U tijeku</DropdownMenuItem>
+                                <DropdownMenuRadioItem value="ready">
+                                    Spremno
+                                </DropdownMenuRadioItem>
+                                <DropdownMenuRadioItem value="active">
+                                    U tijeku
+                                </DropdownMenuRadioItem>
                             </DropdownMenuItemFragment>
                         </DropdownMenuRadioGroup>
                     </DropdownMenuSubContent>
@@ -1156,6 +1177,7 @@ function PublicContentShowcase() {
                                             previewHeight={140}
                                             previewWidth={260}
                                         />
+                                        <BarcodeValue value="3858890410952" />
                                     </Stack>
                                 </CardContent>
                             </Card>
@@ -1328,6 +1350,7 @@ function PublicContentShowcase() {
 
 function GardenWorkspaceShowcase() {
     const [collapsed, setCollapsed] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState('2026-06-20');
 
     return (
         <Container className="py-8" maxWidth="xl">
@@ -1372,7 +1395,14 @@ function GardenWorkspaceShowcase() {
                         collapsed={collapsed}
                         onCollapsedChanged={setCollapsed}
                     >
-                        <Stack className="h-full overflow-auto p-4" spacing={4}>
+                        <ScrollArea
+                            className="h-full"
+                            viewportClassName="h-full"
+                            contentClassName="flex flex-col gap-4 p-4"
+                            viewportProps={{
+                                'aria-label': 'Detalji gredice A12',
+                            }}
+                        >
                             <Row justifyContent="space-between">
                                 <Typography level="h5">Gredica A12</Typography>
                                 <IconButton
@@ -1496,13 +1526,22 @@ function GardenWorkspaceShowcase() {
                                 </CardContent>
                             </Card>
 
+                            <CalendarDatePicker
+                                fullWidth
+                                helperText="Kalendar zadržava datum kao lokalnu vrijednost bez vremenskog pomaka."
+                                label="Datum sljedeće radnje"
+                                min="2026-06-19"
+                                onValueChange={setScheduledDate}
+                                value={scheduledDate}
+                            />
+
                             <EventCalendar
                                 entries={gardenCalendarEntries}
                                 referenceDate={
                                     new Date('2026-06-18T12:00:00.000Z')
                                 }
                             />
-                        </Stack>
+                        </ScrollArea>
 
                         <div className="relative h-full overflow-hidden bg-emerald-50 p-6 dark:bg-emerald-950/20">
                             <LoadingIndicator className="absolute inset-x-0 top-0" />
@@ -1570,6 +1609,71 @@ function GardenWorkspaceShowcase() {
                                     </Stack>
                                 </GentleSlide>
                             </div>
+                            <div className="absolute right-4 bottom-4 hidden h-72 w-80 flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-emerald-700 bg-background shadow-xl xl:flex dark:border-amber-900/80">
+                                <Row className="border-b border-amber-200/70 bg-amber-50/90 px-3 py-2 dark:border-amber-900/70 dark:bg-amber-950/40">
+                                    <span className="grid size-8 place-items-center rounded-full bg-background">
+                                        <Sun className="size-4 text-amber-500" />
+                                    </span>
+                                    <Stack spacing={0}>
+                                        <Typography level="body3" semiBold>
+                                            Suncokret
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Gredica A12
+                                        </Typography>
+                                    </Stack>
+                                </Row>
+                                <ChatMessageScroller
+                                    className="flex-1"
+                                    contentClassName="gap-3 px-3 py-3"
+                                    items={[
+                                        {
+                                            id: 'showcase-question',
+                                            scrollAnchor: true,
+                                            content: (
+                                                <ChatMessage align="end">
+                                                    <ChatBubble
+                                                        align="end"
+                                                        variant="sunflower"
+                                                    >
+                                                        Što prvo trebam
+                                                        napraviti?
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-status',
+                                            content: (
+                                                <ChatMarker icon={<AI />}>
+                                                    Provjereno stanje gredice
+                                                </ChatMarker>
+                                            ),
+                                        },
+                                        {
+                                            id: 'showcase-answer',
+                                            content: (
+                                                <ChatMessage
+                                                    avatar={
+                                                        <Sun className="size-4 text-amber-500" />
+                                                    }
+                                                    header="Suncokret"
+                                                >
+                                                    <ChatBubble variant="ghost">
+                                                        Kreni sa zalijevanjem
+                                                        rajčice, zatim provjeri
+                                                        mlade listove.
+                                                    </ChatBubble>
+                                                </ChatMessage>
+                                            ),
+                                        },
+                                    ]}
+                                    scrollButtonLabel="Najnovije"
+                                />
+                            </div>
                         </div>
                     </SplitView>
                 </div>
@@ -1579,6 +1683,8 @@ function GardenWorkspaceShowcase() {
 }
 
 function AccountAndStatesShowcase() {
+    const [collapseOpen, setCollapseOpen] = useState(false);
+
     return (
         <Container className="py-8" maxWidth="xl">
             <Stack spacing={8}>
@@ -1717,13 +1823,30 @@ function AccountAndStatesShowcase() {
                             <div className="grid gap-4 lg:grid-cols-2">
                                 <Card variant="secondary">
                                     <CardHeader>
-                                        <CardTitle>Collapsed state</CardTitle>
+                                        <CardTitle>
+                                            Collapse transition
+                                        </CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        <Collapse appear={false}>
+                                        <Button
+                                            aria-expanded={collapseOpen}
+                                            className="mb-3"
+                                            onClick={() =>
+                                                setCollapseOpen(
+                                                    (current) => !current,
+                                                )
+                                            }
+                                            size="sm"
+                                            variant="outlined"
+                                        >
+                                            {collapseOpen
+                                                ? 'Sakrij detalje'
+                                                : 'Prikaži detalje'}
+                                        </Button>
+                                        <Collapse appear={collapseOpen}>
                                             <Typography>
-                                                Hidden content remains in the
-                                                flow only when expanded.
+                                                Skriveni sadržaj ostaje miran i
+                                                dostupan tek kada je proširen.
                                             </Typography>
                                         </Collapse>
                                         <NoDataPlaceholder />
@@ -1781,6 +1904,76 @@ function ShowcaseSurface() {
     return <OperationsDashboardShowcase />;
 }
 
+function SurveyQuestionnaireShowcase() {
+    const [answers, setAnswers] = useState<SurveyAnswerState>({});
+
+    function setAnswer(questionId: string, value: SurveyAnswerValue) {
+        setAnswers((current) => ({ ...current, [questionId]: value }));
+    }
+
+    return (
+        <Container maxWidth="md" className="py-8">
+            <SurveyQuestionnaire
+                answers={answers}
+                introDescription="Odgovori na nekoliko kratkih pitanja."
+                introTitle="Anketa zadovoljstva"
+                questions={[
+                    {
+                        id: 'recommendation',
+                        key: 'recommendation',
+                        title: 'Koliko bi preporučio Gredice?',
+                        description: null,
+                        required: true,
+                        sortOrder: 1,
+                        type: 'opinion_scale',
+                        settings: {
+                            type: 'opinion_scale',
+                            min: 0,
+                            max: 10,
+                            step: 1,
+                            minLabel: 'Nikako',
+                            maxLabel: 'Svakako',
+                        },
+                    },
+                    {
+                        id: 'comment',
+                        key: 'comment',
+                        title: 'Što možemo poboljšati?',
+                        description: null,
+                        required: false,
+                        sortOrder: 2,
+                        type: 'long_text',
+                        settings: {
+                            type: 'long_text',
+                            maxLength: 500,
+                            placeholder: 'Napiši komentar',
+                        },
+                    },
+                    {
+                        id: 'contact',
+                        key: 'contact',
+                        title: 'Kontakt',
+                        description: 'Ostavi podatke ako želiš odgovor.',
+                        required: false,
+                        sortOrder: 3,
+                        type: 'contact_info',
+                        settings: {
+                            type: 'contact_info',
+                            fields: ['first_name', 'email'],
+                            phoneDefaultCountry: 'HR',
+                        },
+                    },
+                ]}
+                submitDisabled
+                submitLabel="Pregled — slanje isključeno"
+                surveyKey="storybook"
+                title="Anketa zadovoljstva"
+                onAnswerChange={setAnswer}
+            />
+        </Container>
+    );
+}
+
 const meta = {
     title: 'packages/ui/Showcases/ComponentShowcases',
     component: ShowcaseSurface,
@@ -1814,4 +2007,8 @@ export const GardenWorkspace: Story = {
 
 export const AccountAndStates: Story = {
     render: () => <AccountAndStatesShowcase />,
+};
+
+export const SurveyForm: Story = {
+    render: () => <SurveyQuestionnaireShowcase />,
 };

@@ -15,7 +15,6 @@ import {
     ShoppingCart,
     Sprout,
 } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -42,6 +41,7 @@ import {
     showShoppingCartTransientHub,
 } from '../hooks/useShoppingCartTransientHub';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
@@ -958,7 +958,6 @@ export function RaisedBedOnboardingModal({
                     raisedBedId: targetRaisedBed.id,
                     positionIndex: placement.positionIndex,
                     additionalData: JSON.stringify({ scheduledDate }),
-                    currency: 'eur',
                 });
             }
 
@@ -1072,7 +1071,7 @@ export function RaisedBedOnboardingModal({
     );
 
     const modal = (
-        <Modal
+        <GameModal
             title="Brzi plan gredice"
             open={open}
             onOpenChange={(nextOpen) => {
@@ -1109,10 +1108,10 @@ export function RaisedBedOnboardingModal({
             }
             disableMobile
             overlayClassName="bg-black/45 backdrop-blur-md"
-            className="!inset-0 !h-dvh !max-h-dvh !w-screen !max-w-none !translate-x-0 !translate-y-0 !overflow-hidden !rounded-none !border-0 !p-0 md:!inset-auto md:!left-1/2 md:!top-1/2 md:!h-[calc(100dvh-2rem)] md:!w-[calc(100vw-1.5rem)] md:!max-w-none md:!-translate-x-1/2 md:!-translate-y-1/2 md:!rounded-lg md:!border md:!border-green-200 md:!border-b-4 md:!border-b-green-500"
+            className="!inset-0 !h-dvh !max-h-dvh !w-screen !max-w-none !translate-x-0 !translate-y-0 !overflow-hidden !rounded-none !border-0 !p-0 [&>button:last-child]:!top-[calc(var(--game-safe-area-top,0px)+0.25rem)] [&>button:last-child]:!right-[calc(var(--game-safe-area-right,0px)+0.25rem)] md:!inset-auto md:!left-1/2 md:!top-1/2 md:!h-[calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-2rem)] md:!w-[calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1.5rem)] md:!max-w-none md:!-translate-x-1/2 md:!-translate-y-1/2 md:!rounded-lg md:!border md:!border-green-200 md:!border-b-4 md:!border-b-green-500"
         >
             <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-green-50 via-background to-white dark:from-green-950/30 dark:via-background dark:to-background">
-                <div className="flex min-h-0 flex-1 overflow-y-auto px-4 py-8 md:px-8 md:py-8">
+                <div className="flex min-h-0 flex-1 overflow-y-auto [padding-top:calc(var(--game-safe-area-top,0px)+2rem)] [padding-right:calc(var(--game-safe-area-right,0px)+1rem)] [padding-bottom:calc(var(--game-safe-area-bottom,0px)+2rem)] [padding-left:calc(var(--game-safe-area-left,0px)+1rem)] md:[padding-right:calc(var(--game-safe-area-right,0px)+2rem)] md:[padding-left:calc(var(--game-safe-area-left,0px)+2rem)]">
                     <Stack
                         spacing={6}
                         className={cx(
@@ -1133,10 +1132,7 @@ export function RaisedBedOnboardingModal({
                                         <Sprout className="size-5" />
                                         Prva gredica
                                     </span>
-                                    <Typography
-                                        level="h2"
-                                        className="text-2xl md:text-3xl"
-                                    >
+                                    <Typography level="h2" className="text-2xl">
                                         Tvoja nova personalizirana gredica
                                     </Typography>
                                     <Typography level="body2" secondary>
@@ -1500,7 +1496,7 @@ export function RaisedBedOnboardingModal({
                     </Stack>
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 
     if (showTrigger) {

@@ -48,7 +48,7 @@ export function FarmDashboardGreeting({
     }, [displayName, initialDateIso, weather.data]);
 
     return (
-        <Typography level="h4" component="h1" semiBold>
+        <Typography className="sm:text-2xl" component="h1" level="h5" semiBold>
             {greeting}
         </Typography>
     );

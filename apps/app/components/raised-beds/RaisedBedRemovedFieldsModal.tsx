@@ -25,6 +25,8 @@ export type RemovedFieldDetails = {
     plantScheduledDate?: string | null;
     plantSowDate?: string | null;
     plantGrowthDate?: string | null;
+    plantFirstFlowersDate?: string | null;
+    plantFirstFruitSetDate?: string | null;
     plantReadyDate?: string | null;
     plantHarvestedDate?: string | null;
     plantDeadDate?: string | null;
@@ -48,6 +50,8 @@ const dateEntries: {
     { key: 'plantScheduledDate', label: 'Planirano' },
     { key: 'plantSowDate', label: 'Sijano' },
     { key: 'plantGrowthDate', label: 'Proklijalo' },
+    { key: 'plantFirstFlowersDate', label: 'Prvi cvjetovi' },
+    { key: 'plantFirstFruitSetDate', label: 'Prvi plodovi' },
     { key: 'plantReadyDate', label: 'Spremno' },
     { key: 'plantHarvestedDate', label: 'Ubrano' },
     { key: 'plantDeadDate', label: 'Uginulo' },

@@ -6,41 +6,101 @@ import { FarmSchedulePlantingsSectionContent } from './FarmSchedulePlantingsSect
 import { FarmScheduleSectionSkeleton } from './FarmScheduleSectionSkeleton';
 import type {
     FarmScheduleDayData,
+    FarmScheduleOperationsDayData,
+    FarmSchedulePlantingsDayData,
     getFarmSchedulePlantSorts,
 } from './scheduleData';
+import { getFarmScheduleRaisedBedPhotoPreviewsForDay } from './scheduleData';
+import type { FarmScheduleOperationsMode } from './scheduleShared';
+
+const priorityOperationModes = [
+    'watering',
+    'harvest',
+] satisfies FarmScheduleOperationsMode[];
 
 interface FarmScheduleDayProps {
+    accountId: string;
     dayDataPromise: Promise<FarmScheduleDayData>;
+    operationsDayDataPromise: Promise<FarmScheduleOperationsDayData>;
+    plantingsDayDataPromise: Promise<FarmSchedulePlantingsDayData>;
     operationsDataPromise: ReturnType<
         typeof import('./scheduleData').getFarmScheduleOperationsData
     >;
     plantSortsPromise: ReturnType<typeof getFarmSchedulePlantSorts>;
+    groupPriorityOperations: boolean;
+    selectedDateKey: string;
+    sessionIncarnation: string;
     userId: string;
 }
 
 export function FarmScheduleDay({
+    accountId,
     dayDataPromise,
+    operationsDayDataPromise,
     operationsDataPromise,
+    plantingsDayDataPromise,
     plantSortsPromise,
+    groupPriorityOperations,
+    selectedDateKey,
+    sessionIncarnation,
     userId,
 }: FarmScheduleDayProps) {
+    const raisedBedPhotoPreviewByIdPromise =
+        getFarmScheduleRaisedBedPhotoPreviewsForDay(dayDataPromise);
+
     return (
         <Stack spacing={8}>
             <Suspense fallback={null}>
                 <FarmScheduleEmptyState dayDataPromise={dayDataPromise} />
             </Suspense>
+            {groupPriorityOperations &&
+                priorityOperationModes.map((mode) => (
+                    <Suspense
+                        key={mode}
+                        fallback={<FarmScheduleSectionSkeleton />}
+                    >
+                        <FarmScheduleOperationsSectionContent
+                            accountId={accountId}
+                            dayDataPromise={operationsDayDataPromise}
+                            plantSortsPromise={plantSortsPromise}
+                            operationsDataPromise={operationsDataPromise}
+                            raisedBedPhotoPreviewByIdPromise={
+                                raisedBedPhotoPreviewByIdPromise
+                            }
+                            mode={mode}
+                            selectedDateKey={selectedDateKey}
+                            sessionIncarnation={sessionIncarnation}
+                            userId={userId}
+                        />
+                    </Suspense>
+                ))}
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmSchedulePlantingsSectionContent
-                    dayDataPromise={dayDataPromise}
+                    dayDataPromise={plantingsDayDataPromise}
                     plantSortsPromise={plantSortsPromise}
+                    raisedBedPhotoPreviewByIdPromise={
+                        raisedBedPhotoPreviewByIdPromise
+                    }
+                    selectedDateKey={selectedDateKey}
                     userId={userId}
                 />
             </Suspense>
             <Suspense fallback={<FarmScheduleSectionSkeleton />}>
                 <FarmScheduleOperationsSectionContent
-                    dayDataPromise={dayDataPromise}
+                    accountId={accountId}
+                    dayDataPromise={operationsDayDataPromise}
                     plantSortsPromise={plantSortsPromise}
                     operationsDataPromise={operationsDataPromise}
+                    raisedBedPhotoPreviewByIdPromise={
+                        raisedBedPhotoPreviewByIdPromise
+                    }
+                    mode={
+                        groupPriorityOperations
+                            ? 'withoutGroupedOperations'
+                            : 'all'
+                    }
+                    selectedDateKey={selectedDateKey}
+                    sessionIncarnation={sessionIncarnation}
                     userId={userId}
                 />
             </Suspense>

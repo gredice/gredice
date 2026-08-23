@@ -9,6 +9,7 @@ import {
     useMemo,
     useRef,
 } from 'react';
+import { FishingBoatRegistryProvider } from '../entities/fishingBoat/FishingBoatRegistry';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 
@@ -20,6 +21,7 @@ export type BlockInteractionTarget = {
 
 export type BlockInteractionHandlers = {
     onClick?: (event: ThreeEvent<MouseEvent>) => void;
+    onPickupPointerEnter?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerDown?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerEnter?: (event: ThreeEvent<PointerEvent>) => void;
     onPointerLeave?: (event: ThreeEvent<PointerEvent>) => void;
@@ -27,6 +29,22 @@ export type BlockInteractionHandlers = {
     onRotatePointerLeave?: (event: ThreeEvent<PointerEvent>) => void;
     onRotatePointerUp?: (event: ThreeEvent<PointerEvent>) => void;
     onSelectClick?: (event: ThreeEvent<MouseEvent>) => void;
+};
+
+export type BlockInteractionHandlersRef = {
+    current: BlockInteractionHandlers;
+};
+
+export type BlockInteractionHandlerPresence = {
+    hasOnClick: boolean;
+    hasOnPickupPointerEnter: boolean;
+    hasOnPointerDown: boolean;
+    hasOnPointerEnter: boolean;
+    hasOnPointerLeave: boolean;
+    hasOnRotatePointerDown: boolean;
+    hasOnRotatePointerLeave: boolean;
+    hasOnRotatePointerUp: boolean;
+    hasOnSelectClick: boolean;
 };
 
 type RegisteredBlockInteractionTarget = BlockInteractionTarget & {
@@ -110,7 +128,9 @@ export function BlockInteractionRegistryProvider({
 
     return (
         <BlockInteractionRegistryContext.Provider value={registry}>
-            {children}
+            <FishingBoatRegistryProvider>
+                {children}
+            </FishingBoatRegistryProvider>
         </BlockInteractionRegistryContext.Provider>
     );
 }
@@ -119,18 +139,119 @@ export function useBlockInteractionRegistry() {
     return useContext(BlockInteractionRegistryContext);
 }
 
+export function createStableBlockInteractionHandlers(
+    handlersRef: BlockInteractionHandlersRef,
+    presence: BlockInteractionHandlerPresence,
+): BlockInteractionHandlers {
+    const nextHandlers: BlockInteractionHandlers = {};
+
+    if (presence.hasOnClick) {
+        nextHandlers.onClick = (event) => handlersRef.current.onClick?.(event);
+    }
+    if (presence.hasOnPickupPointerEnter) {
+        nextHandlers.onPickupPointerEnter = (event) =>
+            handlersRef.current.onPickupPointerEnter?.(event);
+    }
+    if (presence.hasOnPointerDown) {
+        nextHandlers.onPointerDown = (event) =>
+            handlersRef.current.onPointerDown?.(event);
+    }
+    if (presence.hasOnPointerEnter) {
+        nextHandlers.onPointerEnter = (event) =>
+            handlersRef.current.onPointerEnter?.(event);
+    }
+    if (presence.hasOnPointerLeave) {
+        nextHandlers.onPointerLeave = (event) =>
+            handlersRef.current.onPointerLeave?.(event);
+    }
+    if (presence.hasOnRotatePointerDown) {
+        nextHandlers.onRotatePointerDown = (event) =>
+            handlersRef.current.onRotatePointerDown?.(event);
+    }
+    if (presence.hasOnRotatePointerLeave) {
+        nextHandlers.onRotatePointerLeave = (event) =>
+            handlersRef.current.onRotatePointerLeave?.(event);
+    }
+    if (presence.hasOnRotatePointerUp) {
+        nextHandlers.onRotatePointerUp = (event) =>
+            handlersRef.current.onRotatePointerUp?.(event);
+    }
+    if (presence.hasOnSelectClick) {
+        nextHandlers.onSelectClick = (event) =>
+            handlersRef.current.onSelectClick?.(event);
+    }
+
+    return nextHandlers;
+}
+
 export function useBlockInteractionTargetRegistration(
     key: string | undefined,
     target: BlockInteractionTarget | undefined,
     handlers: BlockInteractionHandlers,
 ) {
     const registry = useBlockInteractionRegistry();
+    const targetRef = useRef(target);
+    const handlersRef = useRef(handlers);
+    const hasOnClick = Boolean(handlers.onClick);
+    const hasOnPickupPointerEnter = Boolean(handlers.onPickupPointerEnter);
+    const hasOnPointerDown = Boolean(handlers.onPointerDown);
+    const hasOnPointerEnter = Boolean(handlers.onPointerEnter);
+    const hasOnPointerLeave = Boolean(handlers.onPointerLeave);
+    const hasOnRotatePointerDown = Boolean(handlers.onRotatePointerDown);
+    const hasOnRotatePointerLeave = Boolean(handlers.onRotatePointerLeave);
+    const hasOnRotatePointerUp = Boolean(handlers.onRotatePointerUp);
+    const hasOnSelectClick = Boolean(handlers.onSelectClick);
+    const hasTarget = Boolean(target);
+    const stableTarget = useMemo<BlockInteractionTarget>(
+        () => ({
+            get block() {
+                return targetRef.current?.block as Block;
+            },
+            get blockIndex() {
+                return targetRef.current?.blockIndex ?? -1;
+            },
+            get stack() {
+                return targetRef.current?.stack as Stack;
+            },
+        }),
+        [],
+    );
+    const stableHandlers = useMemo(
+        () =>
+            createStableBlockInteractionHandlers(handlersRef, {
+                hasOnClick,
+                hasOnPickupPointerEnter,
+                hasOnPointerDown,
+                hasOnPointerEnter,
+                hasOnPointerLeave,
+                hasOnRotatePointerDown,
+                hasOnRotatePointerLeave,
+                hasOnRotatePointerUp,
+                hasOnSelectClick,
+            }),
+        [
+            hasOnClick,
+            hasOnPickupPointerEnter,
+            hasOnPointerDown,
+            hasOnPointerEnter,
+            hasOnPointerLeave,
+            hasOnRotatePointerDown,
+            hasOnRotatePointerLeave,
+            hasOnRotatePointerUp,
+            hasOnSelectClick,
+        ],
+    );
 
     useLayoutEffect(() => {
-        if (!key || !target || !registry) {
+        targetRef.current = target;
+        handlersRef.current = handlers;
+    });
+
+    useLayoutEffect(() => {
+        if (!key || !hasTarget || !registry) {
             return;
         }
 
-        return registry.register(key, target, handlers);
-    });
+        return registry.register(key, stableTarget, stableHandlers);
+    }, [key, registry, stableHandlers, stableTarget, hasTarget]);
 }

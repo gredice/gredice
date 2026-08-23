@@ -7,7 +7,7 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 ## Actors
 
 - Public visitor: browses `/outlet` and landing-page outlet highlights.
-- Customer: opens the game Outlet panel, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
+- Customer: enters the 3D Outlet garden from the game, selects a raised-bed field, adds an outlet seedling to cart, and checks out.
 - Internal admin: creates, edits, publishes, pauses, closes, and audits offers at `/admin/outlet`.
 - System cron: releases expired holds and closes expired published offers.
 - Stripe webhook: validates paid cart metadata and converts the held reservation.
@@ -15,6 +15,8 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 ## Configuration
 
 - `CRON_SECRET` protects `GET /api/internal/cron/outlet-lifecycle`.
+- `FLAGS` connects the Garden app to Vercel Flags. `FLAGS_SECRET` protects the
+  flag discovery and browser-override flow.
 - Existing Stripe, auth, database, and PostHog configuration apply through checkout and webhook code.
 - Outlet offer images are stored as public URLs in the offer row; no new upload bucket is introduced.
 
@@ -27,7 +29,7 @@ Outlet sells discounted leftover greenhouse seedlings as limited-time, limited-s
 - Payment conversion: `apps/api/lib/stripe/processCheckoutSession.ts`.
 - Lifecycle cron: `apps/api/app/api/internal/cron/outlet-lifecycle/route.ts` and `apps/api/vercel.json`.
 - Public site: `apps/www/app/outlet` and `apps/www/app/outlet/OutletLandingSection.tsx`.
-- Garden game: `packages/game/src/hud/OutletHud.tsx`, `packages/game/src/hooks/useOutletOffers.ts`, and raised-bed plant picker/cart components.
+- Garden game: `apps/garden/app/outlet`, `packages/game/src/viewers/OutletGardenViewer.tsx`, `packages/game/src/hud/OutletHud.tsx`, `packages/game/src/hooks/useOutletOffers.ts`, and raised-bed plant picker/cart components.
 - Admin: `apps/app/app/admin/outlet`.
 
 ## State model
@@ -50,12 +52,26 @@ Price, sowing date, and initial plant status are copied from the offer into the 
 ## Happy path
 
 1. Admin creates an offer with plant sort, sowing date, image URLs, outlet price, optional compare price, quantity, start/end time, and status.
-2. A published active offer appears on `/outlet`, the landing-page section, and the garden Outlet panel.
+2. A published active offer appears on `/outlet`, the landing-page section, and the 3D Outlet garden linked from the game HUD.
 3. The customer chooses a raised-bed field and adds the outlet seedling to cart.
 4. The API locks the offer row, checks active held plus converted quantity, and creates or refreshes the cart reservation.
 5. Checkout refreshes valid outlet holds before creating the Stripe session and writes outlet metadata onto Stripe products.
 6. The webhook validates metadata against the cart item reservation, converts the reservation idempotently, and creates the raised-bed plant with `sowingLocation: greenhouse`.
 7. Garden raised-bed state uses the outlet sowing date as the effective event date, so the plant age matches the real greenhouse seedling.
+
+## 3D garden browsing
+
+- `/outlet?ponuda=<offer-id>` is a guest-readable 3D view of the currently
+  active offers. Selecting a seedling updates `ponuda`; an explicit reservation
+  action is required before stock or garden state changes.
+- Devices without WebGL, renderer failures, context loss, and scene readiness
+  timeouts fall back to the same semantic offer browser without losing the
+  selected offer.
+- Customers can switch to the list explicitly. That preference lasts for the
+  browser session and can be reversed from the list.
+- The public Outlet cards and the game HUD link directly to the 3D route. The
+  experience handles field selection, reservation, cart, and checkout for all
+  users, prompting guests to sign in when they start a reservation.
 
 ## Failure handling
 
@@ -70,6 +86,10 @@ Price, sowing date, and initial plant status are copied from the offer into the 
 
 - Outlet lifecycle cron returns released reservation and closed offer counts.
 - Payment conversion emits a PostHog `outlet_reservation_converted` event.
+- The 3D browser records scene readiness duration, renderer failures, list
+  fallback use, offer selection, and exits. Failure events use finite reason
+  values and device/input classes; they do not include garden contents or
+  customer-entered text.
 - Checkout and webhook failures use existing API logging paths and should avoid logging private payment payloads or secrets.
 
 ## Validation
@@ -98,6 +118,9 @@ Manual smoke checks before release:
 
 - Create a draft offer in `/admin/outlet`, publish it, pause it, republish it, then close it.
 - Confirm active offers show on `/outlet`, on the landing page, and in the garden Outlet panel.
+- Confirm the public Outlet card and in-game teleport open the 3D route, a
+  selected offer survives switching to the list, and disabling WebGL yields the
+  list without loading a canvas.
 - Add an outlet seedling to cart from a raised-bed field and verify stock remaining, cart price, hold expiry, and checkout eligibility.
 - Complete checkout in a test Stripe flow and confirm the reservation becomes converted and the raised-bed plant appears as greenhouse-grown.
 - Let or force a hold expire, run the outlet lifecycle cron with `CRON_SECRET`, and verify stock is returned.

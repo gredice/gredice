@@ -2,6 +2,12 @@ export {
     GameAnalyticsProvider,
     useGameAnalytics,
 } from './analytics/GameAnalyticsContext';
+export type {
+    GardenAvatarPresenceState,
+    GardenVisitorPresence,
+    GardenVisitorPresenceController,
+} from './entities/avatar/gardenVisitorPresence';
+export type { GameFeatureFlags } from './GameFlagsContext';
 export type { GameSceneProps } from './GameScene';
 export { GameSceneDynamic as GameScene } from './GameSceneDynamic';
 export { PlantEditor } from './generators/plant/editor/PlantEditor';
@@ -9,17 +15,6 @@ export {
     requestTemporaryAccountUpgrade,
     temporaryAccountUpgradeRequiredEvent,
 } from './hooks/useCheckout';
-export type {
-    GardenVisitSummaryDisplayItem,
-    GardenVisitSummaryFact,
-    GardenVisitSummarySource,
-    GardenVisitSummaryTarget,
-} from './hooks/useGardenVisitSummary';
-export {
-    formatGardenVisitSummaryFacts,
-    gardenVisitSummaryQueryKey,
-    useGardenVisitSummary,
-} from './hooks/useGardenVisitSummary';
 export { useThemeManager } from './hooks/useThemeManager';
 export type { PlantStageName } from './hud/raisedBed/featuredOperations';
 export {
@@ -55,7 +50,26 @@ export {
     resolveOperationVisualRewardKind,
     resolveOperationVisualRewards,
 } from './operationVisualRewards';
+export type {
+    GameBackgroundPalette,
+    GameBackgroundPaletteKey,
+} from './scene/backgroundPalettes';
+export {
+    gameBackgroundPalettes,
+    getGameBackgroundPaletteIndexByKey,
+} from './scene/backgroundPalettes';
 export type { GameQualitySetting, GameQualityTier } from './scene/gameQuality';
+export { resolveMoonlitNightScales } from './scene/moonlight';
+export type {
+    SkyBackgroundColors,
+    SkyGradientColors,
+    SkyGradientWeather,
+} from './scene/skyGradient';
+export {
+    resolveEnvironmentSkyBackgroundColors,
+    resolveSkyBackgroundColor,
+    resolveSkyGradientColors,
+} from './scene/skyGradient';
 export { resolveSpriteAtlasAssetPaths } from './sprites/resolveSpriteAtlasAssetPaths';
 export { SpriteAtlasBillboard } from './sprites/SpriteAtlasBillboard';
 export type {
@@ -77,6 +91,8 @@ export {
 } from './viewers/EntitySandboxViewer';
 export type { EntityViewerProps } from './viewers/EntityViewer';
 export { EntityViewer } from './viewers/EntityViewer';
+export type { PlantCatalogPerformanceViewerProps } from './viewers/PlantCatalogPerformanceViewer';
+export { PlantCatalogPerformanceViewer } from './viewers/PlantCatalogPerformanceViewer';
 export type { PlantPerformanceViewerProps } from './viewers/PlantPerformanceViewer';
 export { PlantPerformanceViewer } from './viewers/PlantPerformanceViewer';
 export type { PlantViewerProps } from './viewers/PlantViewer';
@@ -87,7 +103,13 @@ export {
 } from './viewers/PlantViewer';
 export type {
     PublicGardenBlock,
+    PublicGardenCapture,
+    PublicGardenCapturePhase,
+    PublicGardenDetail,
     PublicGardenStack,
     PublicGardenViewerProps,
 } from './viewers/PublicGardenViewer';
-export { PublicGardenViewer } from './viewers/PublicGardenViewer';
+export {
+    PublicGardenViewer,
+    publicGardenStacksFromResponse,
+} from './viewers/PublicGardenViewer';

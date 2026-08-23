@@ -6,19 +6,9 @@ import {
     getNotificationsByAccount,
     getNotificationsByUser,
 } from '@gredice/storage';
-import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
-import { Row } from '@gredice/ui/Row';
-import { cx } from '@gredice/ui/utils';
-import {
-    scrollableTableCardClassName,
-    scrollableTableCardOverflowClassName,
-} from '../admin/cards/tableCardLayout';
 import { deleteNotifications } from './(actions)/notificationActions';
-import { NotificationCreateModal } from './NotificationCreateModal';
-import {
-    NotificationsTable,
-    type NotificationTableRow,
-} from './NotificationsTable';
+import type { NotificationTableRow } from './NotificationsTable';
+import { NotificationsTableCardClient } from './NotificationsTableCardClient';
 
 type NotificationTableCardProps = {
     accountId?: string;
@@ -110,6 +100,7 @@ export async function NotificationsTableCard({
                   notification.accountId
                 : null,
             blockId: notification.blockId,
+            category: notification.category,
             content: notification.content,
             createdAt: notification.createdAt.toISOString(),
             gardenId: notification.gardenId,
@@ -125,42 +116,25 @@ export async function NotificationsTableCard({
                 : null,
             readAt: notification.readAt?.toISOString() ?? null,
             timestamp: notification.timestamp.toISOString(),
+            type: notification.type,
+            primaryChannel: notification.primaryChannel,
             userId: notification.userId,
         }),
     );
 
-    const tableContent = (
-        <NotificationsTable
+    return (
+        <NotificationsTableCardClient
+            accountId={accountId}
+            accounts={accounts.map((account) => ({
+                id: account.id,
+                label: accountLabels[account.id] || account.id,
+            }))}
             deleteContext={{ accountId, userId, gardenId, raisedBedId }}
             deleteNotificationsAction={deleteNotifications}
             notifications={tableRows}
+            scroll={scroll}
             showAccountColumn={showAccountColumn}
+            showCard={showCard}
         />
-    );
-
-    if (!showCard) {
-        return tableContent;
-    }
-
-    return (
-        <Card className={scroll ? scrollableTableCardClassName : undefined}>
-            <CardHeader>
-                <Row justifyContent="space-between">
-                    <CardTitle>Obavijesti</CardTitle>
-                    <NotificationCreateModal
-                        accountId={accountId}
-                        accounts={accounts.map((account) => ({
-                            id: account.id,
-                            label: accountLabels[account.id] || account.id,
-                        }))}
-                    />
-                </Row>
-            </CardHeader>
-            <CardOverflow
-                className={cx(scroll && scrollableTableCardOverflowClassName)}
-            >
-                {tableContent}
-            </CardOverflow>
-        </Card>
     );
 }

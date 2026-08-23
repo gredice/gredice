@@ -12,6 +12,7 @@ import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import {
     type GroundDecorationSurface,
     groundDecorationAtlasBasePath,
+    swampGroundDecorationTint,
 } from './groundDecorationConfig';
 
 const compassToDirection: Record<string, number> = {
@@ -50,7 +51,10 @@ function ResolvedBlockSurfaceDecorationSprites({
 }: DirectBlockSurfaceDecorationSpritesProps) {
     const { data: garden } = useCurrentGarden();
     const gameWeather = useGameState((state) => state.weather);
-    const { data: weatherNow } = useWeatherNow();
+    const { data: weatherNow } = useWeatherNow(
+        gameWeather == null,
+        garden?.farmId,
+    );
     const placements = useMemo(
         () =>
             getBlockSurfaceDecorations({
@@ -123,6 +127,9 @@ export function PrecomputedBlockSurfaceDecorationSprites({
                 position={placement.position}
                 renderOrder={20}
                 spriteName={placement.spriteName}
+                tint={
+                    surface === 'swamp' ? swampGroundDecorationTint : undefined
+                }
                 windDirection={windDirection}
                 windSpeed={windSpeed}
             />

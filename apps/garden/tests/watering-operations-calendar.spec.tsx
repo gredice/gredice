@@ -26,10 +26,11 @@ const wateringEntries: WateringCalendarEntry[] = [
     },
 ];
 
-test('watering calendar keeps the header quiet and highlights today with watering', async ({
+test('watering calendar keeps the header quiet and gives today a contrasting dark-mode marker', async ({
     mount,
     page,
 }) => {
+    await page.evaluate(() => document.documentElement.classList.add('dark'));
     await mount(
         <WateringOperationsCalendar
             entries={wateringEntries}
@@ -58,7 +59,10 @@ test('watering calendar keeps the header quiet and highlights today with waterin
     ).toHaveCount(1);
     await expect(
         page.locator('[data-event-calendar-today-marker]'),
-    ).toHaveClass(/bg-muted/);
+    ).toHaveClass(/dark:bg-slate-200/);
+    await expect(
+        page.locator('[data-event-calendar-today-marker]'),
+    ).toHaveClass(/dark:text-slate-950/);
     await expect(
         page.locator('[data-event-calendar-marker]').first(),
     ).toHaveClass(/bg-sky-600/);
@@ -73,6 +77,37 @@ test('watering calendar keeps the header quiet and highlights today with waterin
     await expect(
         page.locator('[data-event-calendar-tone="preview"]'),
     ).toHaveClass(/bg-sky-600/);
+});
+
+test('watering calendar keeps edit selection distinct from today in dark mode', async ({
+    mount,
+    page,
+}) => {
+    await page.evaluate(() => document.documentElement.classList.add('dark'));
+    await mount(
+        <WateringOperationsCalendar
+            entries={wateringEntries}
+            maxSelectableDate={new Date('2026-06-30T12:00:00.000Z')}
+            minSelectableDate={new Date('2026-06-01T12:00:00.000Z')}
+            onDateSelect={() => undefined}
+            referenceDate={new Date('2026-06-18T12:00:00.000Z')}
+            selectedDate={new Date('2026-06-22T12:00:00.000Z')}
+        />,
+    );
+
+    const todayMarker = page.locator(
+        '[data-event-calendar-today-marker="true"]',
+    );
+    const selectedMarker = page.locator(
+        '[data-event-calendar-selected="true"] > span:last-child',
+    );
+
+    await expect(todayMarker).toHaveClass(/dark:bg-slate-200/);
+    await expect(todayMarker).toHaveClass(/dark:text-slate-950/);
+    await expect(todayMarker).not.toHaveClass(/bg-sky-600/);
+    await expect(selectedMarker).toHaveClass(/bg-sky-600/);
+    await expect(selectedMarker).toHaveClass(/text-white/);
+    await expect(selectedMarker).not.toHaveClass(/dark:bg-slate-200/);
 });
 
 test('watering calendar opens day details on mobile tap', async ({

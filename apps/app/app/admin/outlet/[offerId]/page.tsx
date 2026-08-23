@@ -325,7 +325,7 @@ export default async function OutletOfferPage({
                                 Rezervacije
                             </CardTitle>
                         </CardHeader>
-                        <CardOverflow className="overflow-x-auto">
+                        <CardOverflow>
                             {reservations.length === 0 ? (
                                 <CardContent>
                                     <Typography level="body2" secondary>
@@ -333,46 +333,70 @@ export default async function OutletOfferPage({
                                     </Typography>
                                 </CardContent>
                             ) : (
-                                <table className="w-full min-w-[860px] text-sm">
-                                    <thead className="border-b bg-muted/40 text-left text-xs uppercase text-muted-foreground">
-                                        <tr>
-                                            <th className="px-4 py-3 font-medium">
-                                                ID
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Status
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Račun
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Košarica
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Količina
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Hold do
-                                            </th>
-                                            <th className="px-4 py-3 font-medium">
-                                                Plaćeno
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {reservations.map((reservation) => {
-                                            const holdExpired =
-                                                reservation.status === 'held' &&
-                                                reservation.holdExpiresAt.getTime() <=
-                                                    now.getTime();
+                                <ul className="divide-y">
+                                    {reservations.map((reservation) => {
+                                        const holdExpired =
+                                            reservation.status === 'held' &&
+                                            reservation.holdExpiresAt.getTime() <=
+                                                now.getTime();
 
-                                            return (
-                                                <tr key={reservation.id}>
-                                                    <td className="px-4 py-3">
-                                                        #{reservation.id}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <Stack spacing={1}>
+                                        return (
+                                            <li
+                                                key={reservation.id}
+                                                className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                                            >
+                                                <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                    <Stack
+                                                        spacing={1}
+                                                        className="min-w-0"
+                                                    >
+                                                        <Typography
+                                                            level="body2"
+                                                            semiBold
+                                                        >
+                                                            Rezervacija #
+                                                            {reservation.id}
+                                                        </Typography>
+                                                        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                                                            <Typography
+                                                                component="div"
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Račun:{' '}
+                                                                <Link
+                                                                    className="break-all text-primary underline-offset-4 hover:underline"
+                                                                    href={KnownPages.Account(
+                                                                        reservation.accountId,
+                                                                    )}
+                                                                >
+                                                                    {
+                                                                        reservation.accountId
+                                                                    }
+                                                                </Link>
+                                                            </Typography>
+                                                            <Typography
+                                                                component="div"
+                                                                level="body3"
+                                                                className="text-muted-foreground"
+                                                            >
+                                                                Košarica:{' '}
+                                                                <Link
+                                                                    className="text-primary underline-offset-4 hover:underline"
+                                                                    href={KnownPages.ShoppingCart(
+                                                                        reservation.cartId,
+                                                                    )}
+                                                                >
+                                                                    #
+                                                                    {
+                                                                        reservation.cartId
+                                                                    }
+                                                                </Link>
+                                                            </Typography>
+                                                        </div>
+                                                    </Stack>
+                                                    <div className="flex min-w-0 flex-col gap-2 lg:items-end lg:text-right">
+                                                        <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
                                                             <OutletReservationStatusBadge
                                                                 status={
                                                                     reservation.status
@@ -384,51 +408,47 @@ export default async function OutletOfferPage({
                                                                     istekao
                                                                 </span>
                                                             ) : null}
-                                                        </Stack>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <Link
-                                                            className="text-primary hover:underline"
-                                                            href={KnownPages.Account(
-                                                                reservation.accountId,
-                                                            )}
-                                                        >
-                                                            {
-                                                                reservation.accountId
-                                                            }
-                                                        </Link>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <Link
-                                                            className="text-primary hover:underline"
-                                                            href={KnownPages.ShoppingCart(
-                                                                reservation.cartId,
-                                                            )}
-                                                        >
-                                                            #
-                                                            {reservation.cartId}
-                                                        </Link>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {reservation.quantity}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {formatDateTime(
-                                                            reservation.holdExpiresAt,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        {reservation.convertedAt
-                                                            ? formatDateTime(
-                                                                  reservation.convertedAt,
-                                                              )
-                                                            : '-'}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                        </div>
+                                                        <dl className="grid min-w-0 gap-x-4 gap-y-2 text-sm sm:grid-cols-3 lg:text-right">
+                                                            <div className="min-w-0">
+                                                                <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                    Količina
+                                                                </dt>
+                                                                <dd className="mt-1">
+                                                                    {
+                                                                        reservation.quantity
+                                                                    }
+                                                                </dd>
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                    Hold do
+                                                                </dt>
+                                                                <dd className="mt-1">
+                                                                    {formatDateTime(
+                                                                        reservation.holdExpiresAt,
+                                                                    )}
+                                                                </dd>
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <dt className="text-xs font-medium uppercase text-muted-foreground">
+                                                                    Plaćeno
+                                                                </dt>
+                                                                <dd className="mt-1">
+                                                                    {reservation.convertedAt
+                                                                        ? formatDateTime(
+                                                                              reservation.convertedAt,
+                                                                          )
+                                                                        : '-'}
+                                                                </dd>
+                                                            </div>
+                                                        </dl>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
                             )}
                         </CardOverflow>
                     </Card>

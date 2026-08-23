@@ -3,15 +3,18 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../components/social/WhatsAppCard';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
+import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'O nama',
     description:
         'Tvoj vrt, gdje god bio. Jer vrt ne mora biti ispred kuće da bi bio tvoj.',
-};
+    path: KnownPages.AboutUs,
+    eyebrow: 'O Gredicama',
+});
 
 function SectionHeader({
     children,

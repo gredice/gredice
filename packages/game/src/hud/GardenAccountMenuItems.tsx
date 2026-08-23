@@ -1,5 +1,13 @@
 import { IconButton } from '@gredice/ui/IconButton';
-import { Add, Check, Delete, Joystick, MapPinHouse } from '@gredice/ui/icons';
+import {
+    Add,
+    Bookmark,
+    Check,
+    Delete,
+    FileText,
+    Joystick,
+    MapPinHouse,
+} from '@gredice/ui/icons';
 import {
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -17,8 +25,12 @@ import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCreateGarden } from '../hooks/useCreateGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useDeleteSandboxGarden } from '../hooks/useDeleteSandboxGarden';
-import { useGardenAccountGroups } from '../hooks/useGardenAccountGroups';
+import {
+    gardenAccountGroupsKeys,
+    useGardenAccountGroups,
+} from '../hooks/useGardenAccountGroups';
 import { useGardens } from '../hooks/useGardens';
+import { useSetDefaultGarden } from '../hooks/useSetDefaultGarden';
 import { useSwitchGardenAccount } from '../hooks/useSwitchGardenAccount';
 import { useCurrentGardenIdParam } from '../useUrlState';
 
@@ -48,6 +60,7 @@ export function GardenAccountMenuItems({
     const { data: accountGroups, isLoading: accountGroupsLoading } =
         useGardenAccountGroups();
     const switchGardenAccount = useSwitchGardenAccount();
+    const setDefaultGarden = useSetDefaultGarden();
     const createGarden = useCreateGarden();
     const deleteSandboxGarden = useDeleteSandboxGarden();
     const fallbackGroups =
@@ -57,7 +70,10 @@ export function GardenAccountMenuItems({
                       accountId: 'current',
                       name: 'Trenutni račun',
                       isCurrent: true,
-                      gardens: currentAccountGardens,
+                      gardens: currentAccountGardens.map((garden) => ({
+                          ...garden,
+                          isDefault: false,
+                      })),
                   },
               ]
             : [];
@@ -71,6 +87,11 @@ export function GardenAccountMenuItems({
             gardens: group.gardens.filter((garden) => !garden.isSandbox),
         }))
         .filter((group) => group.gardens.length > 0);
+    const normalGardenCount = normalGardenGroups.reduce(
+        (count, group) => count + group.gardens.length,
+        0,
+    );
+    const showDefaultGardenControls = normalGardenCount > 1;
     const sandboxGardenGroups = gardenGroups
         .map((group) => ({
             ...group,
@@ -123,16 +144,64 @@ export function GardenAccountMenuItems({
                 await switchGardenAccount.mutateAsync({
                     accountId: accountGroup.accountId,
                 });
-                await queryClient.invalidateQueries();
-                await setSelectedGardenId(garden.id);
+                queryClient.setQueryData<typeof accountGroups>(
+                    gardenAccountGroupsKeys,
+                    (groups) =>
+                        groups?.map((group) => ({
+                            ...group,
+                            isCurrent:
+                                group.accountId === accountGroup.accountId,
+                        })) ?? groups,
+                );
+                await setSelectedGardenId(garden.isDefault ? null : garden.id);
+                void queryClient.invalidateQueries();
                 return;
             }
 
-            const isDefault = currentAccountGardens?.[0]?.id === garden.id;
-            await setSelectedGardenId(isDefault ? null : garden.id);
+            await setSelectedGardenId(garden.isDefault ? null : garden.id);
         } catch (error) {
             console.error('Failed to switch garden account:', error);
         }
+    }
+
+    async function handleDefaultGardenSelect(
+        garden: (typeof normalGardenGroups)[number]['gardens'][number],
+    ) {
+        if (garden.isDefault || setDefaultGarden.isPending) {
+            return;
+        }
+
+        if (selectedGardenId === null) {
+            if (!currentGarden) {
+                return;
+            }
+            try {
+                await setSelectedGardenId(currentGarden.id);
+            } catch (error) {
+                console.error(
+                    'Failed to preserve the current garden selection:',
+                    error,
+                );
+                return;
+            }
+        }
+
+        track('game_default_garden_updated', {
+            garden_id: garden.id,
+            garden_name: garden.name,
+            source: 'garden_switcher',
+        });
+
+        setDefaultGarden.mutate(
+            { gardenId: garden.id },
+            {
+                onSuccess: () => {
+                    if (currentGarden?.id === garden.id) {
+                        void setSelectedGardenId(null);
+                    }
+                },
+            },
+        );
     }
 
     async function handleCreateSandboxGarden() {
@@ -216,6 +285,10 @@ export function GardenAccountMenuItems({
                         <span>Pregled tvojih vrtovima</span>
                     </DropdownMenuItem>
                 )}
+                <DropdownMenuItem className="gap-3" href="/racun/naplata">
+                    <FileText className="size-4" />
+                    <span>Računi i plaćanja</span>
+                </DropdownMenuItem>
             </>
         );
     }
@@ -321,26 +394,79 @@ export function GardenAccountMenuItems({
                         </DropdownMenuLabel>
                     )}
                     {accountGroup.gardens.map((garden) => (
-                        <DropdownMenuItem
+                        <div
                             key={`${accountGroup.accountId}:${garden.id}`}
-                            className="gap-3"
-                            onClick={() =>
-                                handleGardenSelect(accountGroup, garden)
-                            }
+                            className="flex items-center gap-1"
                         >
-                            <Check
-                                aria-hidden={garden.id !== currentGarden?.id}
-                                className={cx(
-                                    'size-4 shrink-0 opacity-0',
-                                    garden.id === currentGarden?.id &&
-                                        'opacity-100',
-                                )}
-                            />
-                            <Typography noWrap>{garden.name}</Typography>
-                        </DropdownMenuItem>
+                            <DropdownMenuItem
+                                className="min-w-0 flex-1 gap-3"
+                                onClick={() =>
+                                    handleGardenSelect(accountGroup, garden)
+                                }
+                            >
+                                <Check
+                                    aria-hidden={
+                                        garden.id !== currentGarden?.id
+                                    }
+                                    className={cx(
+                                        'size-4 shrink-0 opacity-0',
+                                        garden.id === currentGarden?.id &&
+                                            'opacity-100',
+                                    )}
+                                />
+                                <Typography noWrap>{garden.name}</Typography>
+                            </DropdownMenuItem>
+                            {showDefaultGardenControls && (
+                                <DropdownMenuItem
+                                    aria-label={
+                                        garden.isDefault
+                                            ? `${garden.name} je zadani vrt`
+                                            : `Postavi ${garden.name} kao zadani vrt`
+                                    }
+                                    className={cx(
+                                        'size-7 shrink-0 justify-center rounded-full p-0',
+                                        garden.isDefault &&
+                                            'text-amber-600 dark:text-amber-300',
+                                    )}
+                                    disabled={
+                                        setDefaultGarden.isPending ||
+                                        garden.isDefault ||
+                                        (selectedGardenId === null &&
+                                            !currentGarden)
+                                    }
+                                    onSelect={(event) => {
+                                        event.preventDefault();
+                                        void handleDefaultGardenSelect(garden);
+                                    }}
+                                    title={
+                                        garden.isDefault
+                                            ? `${garden.name} je zadani vrt`
+                                            : `Postavi ${garden.name} kao zadani vrt`
+                                    }
+                                    data-default-garden={garden.isDefault}
+                                >
+                                    <Bookmark
+                                        aria-hidden
+                                        className={cx(
+                                            'size-4',
+                                            garden.isDefault && 'fill-current',
+                                        )}
+                                    />
+                                </DropdownMenuItem>
+                            )}
+                        </div>
                     ))}
                 </Fragment>
             ))}
+            {normalGardenGroups.length > 0 && (
+                <>
+                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuItem className="gap-3" href="/racun/naplata">
+                        <FileText className="size-4" />
+                        <span>Računi i plaćanja</span>
+                    </DropdownMenuItem>
+                </>
+            )}
             {normalGardenGroups.length > 0 && showSandboxMenu && (
                 <DropdownMenuSeparator className="my-2" />
             )}

@@ -5,9 +5,11 @@ import { cx } from '@gredice/ui/utils';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
+import { readAdvancedSowingCartItemSelectionSummary } from './advancedSowingSubmission';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
+import { RaisedBedFieldOperationsModal } from './RaisedBedFieldOperationsModal';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 import { PlantPicker } from './RaisedBedPlantPicker';
 import { ScheduledSowingDateBadge } from './ScheduledSowingDateBadge';
@@ -16,21 +18,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-function parseScheduledSowingDate(additionalData: string | null | undefined) {
+type CartPlantOptions = {
+    scheduledDate: Date | null;
+    sowingLocation: 'direct' | 'greenhouse';
+};
+
+function defaultCartPlantOptions(): CartPlantOptions {
+    return {
+        scheduledDate: null,
+        sowingLocation: 'direct',
+    };
+}
+
+function parseCartPlantOptions(
+    additionalData: string | null | undefined,
+): CartPlantOptions {
     if (!additionalData) {
-        return null;
+        return defaultCartPlantOptions();
     }
 
     try {
         const parsed: unknown = JSON.parse(additionalData);
-        if (!isRecord(parsed) || typeof parsed.scheduledDate !== 'string') {
-            return null;
+        if (!isRecord(parsed)) {
+            return defaultCartPlantOptions();
         }
 
-        const date = new Date(parsed.scheduledDate);
-        return Number.isNaN(date.getTime()) ? null : date;
+        const date =
+            typeof parsed.scheduledDate === 'string'
+                ? new Date(parsed.scheduledDate)
+                : null;
+
+        return {
+            scheduledDate: date && !Number.isNaN(date.getTime()) ? date : null,
+            sowingLocation:
+                parsed.sowingLocation === 'greenhouse'
+                    ? 'greenhouse'
+                    : 'direct',
+        };
     } catch {
-        return null;
+        return defaultCartPlantOptions();
     }
 }
 
@@ -42,6 +68,7 @@ export function RaisedBedFieldItemEmpty({
     raisedBedId,
     positionIndex,
     isDragging,
+    showOperations = true,
 }: {
     raisedBedId: number;
     gardenId: number;
@@ -50,6 +77,7 @@ export function RaisedBedFieldItemEmpty({
     plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     positionIndex: number;
     isDragging?: boolean;
+    showOperations?: boolean;
 }) {
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -62,12 +90,9 @@ export function RaisedBedFieldItemEmpty({
 
     const cartPlantSort = cartPlantItem?.entityData;
     const cartPlantId = cartPlantSort?.information?.plant?.id;
-    const scheduledDate = parseScheduledSowingDate(
+    const cartPlantOptions = parseCartPlantOptions(
         cartPlantItem?.additionalData,
     );
-    const cartPlantOptions = {
-        scheduledDate,
-    };
     const plantPickerProps = {
         gardenId,
         inShoppingCart: Boolean(cartPlantItem),
@@ -76,7 +101,13 @@ export function RaisedBedFieldItemEmpty({
         selectedPlantId: cartPlantId ?? null,
         selectedPlantOptions: cartPlantOptions,
         selectedSortId: cartPlantSortId,
+        selectedCartItemId: cartPlantItem?.id,
     };
+    const primaryPlantPickerProps = readAdvancedSowingCartItemSelectionSummary(
+        cartPlantItem,
+    )
+        ? { gardenId, positionIndex, raisedBedId }
+        : plantPickerProps;
     const visiblePlantHistory = plantHistory.slice(-2);
     const shouldShowAllPlantHistory = plantHistory.length > 2;
 
@@ -95,6 +126,7 @@ export function RaisedBedFieldItemEmpty({
             <PlantPicker
                 trigger={
                     <RaisedBedFieldItemButton
+                        aria-label={`Posij biljku na polju ${positionIndex + 1}`}
                         isLoading={isLoading}
                         positionIndex={positionIndex}
                         className={cx(
@@ -106,7 +138,7 @@ export function RaisedBedFieldItemEmpty({
                         data-raised-bed-plant-picker-trigger="true"
                     >
                         {(isLoading || !cartPlantItem) && (
-                            <PlantingSeedIcon className="size-8 text-green-800" />
+                            <PlantingSeedIcon className="size-8 text-green-800 dark:text-lime-200" />
                         )}
                         {!isLoading && cartPlantItem && (
                             <>
@@ -119,18 +151,25 @@ export function RaisedBedFieldItemEmpty({
                                     width={50}
                                     height={50}
                                 />
-                                {scheduledDate && (
+                                {cartPlantOptions.scheduledDate && (
                                     <ScheduledSowingDateBadge
-                                        date={scheduledDate}
+                                        date={cartPlantOptions.scheduledDate}
                                     />
                                 )}
                             </>
                         )}
                     </RaisedBedFieldItemButton>
                 }
-                {...plantPickerProps}
+                {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
+                {showOperations && (
+                    <RaisedBedFieldOperationsModal
+                        gardenId={gardenId}
+                        positionIndex={positionIndex}
+                        raisedBedId={raisedBedId}
+                    />
+                )}
                 {shouldShowAllPlantHistory && (
                     <RaisedBedFieldPlantHistoryModal
                         entries={plantHistory}

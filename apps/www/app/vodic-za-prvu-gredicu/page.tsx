@@ -10,24 +10,17 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../components/shared/feedback/FeedbackModal';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Vodič za prvu gredicu',
     description:
         'Korak-po-korak vodič kroz prvi plan sadnje u Gredicama: od odabira obroka do popunjavanja praznih polja.',
-    alternates: {
-        canonical: firstRaisedBedTutorialPath,
-    },
-    openGraph: {
-        title: 'Vodič za prvu gredicu',
-        description:
-            'Nauči kako odabrati prijedlog sadnje, dodati plan u košaru i urediti preostala polja u svojoj prvoj gredici.',
-        url: firstRaisedBedTutorialPath,
-    },
-};
+    path: firstRaisedBedTutorialPath,
+    eyebrow: 'Vodič',
+});
 
 export default function FirstRaisedBedGuidePage() {
     return (
@@ -56,7 +49,7 @@ export default function FirstRaisedBedGuidePage() {
                             platna. Aplikacija pita što želiš jesti i kakav
                             ritam brige želiš, predloži nekoliko rasporeda i
                             popuni 12 polja u košari. Šest polja ostaje prazno
-                            kako bi ih kasnije mogao urediti po svome.
+                            za kasnije ručno uređivanje po svome.
                         </Typography>
                         <Row className="flex-wrap" spacing={2}>
                             <Chip color="success" variant="soft">
@@ -157,7 +150,7 @@ export default function FirstRaisedBedGuidePage() {
                             Onboarding možeš preskočiti ili zatvoriti u bilo
                             kojem trenutku. Tvoj vrt ostaje dostupan, a prazna
                             polja možeš urediti ručno iz closeup prikaza gredice
-                            kada budeš spreman.
+                            kada ti bude odgovaralo.
                         </Typography>
                         <Row className="flex-wrap" spacing={3}>
                             <Button href={KnownPages.GardenApp}>

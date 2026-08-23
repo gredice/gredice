@@ -32,6 +32,7 @@ const cell = (height: number): HitboxSize => ({
 const blockHitboxes = {
     BaleHey: { width: 0.44, height: 0.36, depth: 0.82 },
     BirdHouse: { width: 0.72, height: 1.3, depth: 0.72 },
+    ChickenCoop: { width: 0.76, height: 0.86, depth: 0.97 },
     Block_Grass: cell(0.4),
     Block_Grass_Angle: cell(0.4),
     Block_Grass_Corner: cell(0.4),
@@ -40,6 +41,10 @@ const blockHitboxes = {
     Block_Ground_Angle: cell(0.4),
     Block_Ground_Corner: cell(0.4),
     Block_Ground_Reverse_Corner: cell(0.4),
+    Block_Dry_Ground: cell(0.4),
+    Block_Dry_Ground_Angle: cell(0.4),
+    Block_Dry_Ground_Corner: cell(0.4),
+    Block_Dry_Ground_Reverse_Corner: cell(0.4),
     Block_Sand: cell(0.4),
     Block_Sand_Angle: cell(0.4),
     Block_Sand_Corner: cell(0.4),
@@ -64,6 +69,9 @@ const blockHitboxes = {
     DesertStoneSmall: { width: 0.43, height: 0.2, depth: 0.31 },
     DogHouse: { width: 0.78, height: 0.72, depth: 0.86 },
     Fence: cell(0.58),
+    PolishedStoneFence: cell(0.68),
+    StoneFence: cell(0.68),
+    WhiteFence: cell(0.72),
     FireflyJar: { width: 0.5, height: 0.65, depth: 0.5 },
     GardenBox: { width: 0.96, height: 0.78, depth: 0.8 },
     GiftBox_BlueWhite: { width: 0.6, height: 0.62, depth: 0.6 },
@@ -77,6 +85,7 @@ const blockHitboxes = {
     MulchWood: { width: 0.96, height: 0.08, depth: 0.96 },
     Pine: { width: 1.12, height: 2.77, depth: 1.12 },
     PineAdvent: { width: 1.12, height: 2.77, depth: 1.12 },
+    PigletPen: { width: 0.94, height: 0.78, depth: 0.89 },
     PotBulbousNeck: { width: 0.56, height: 0.47, depth: 0.56 },
     PotHourglass: { width: 0.52, height: 0.43, depth: 0.5 },
     PotLowBowl: { width: 0.58, height: 0.22, depth: 0.58 },
@@ -94,23 +103,29 @@ const blockHitboxes = {
     StoneLarge: { width: 0.32, height: 0.28, depth: 0.35 },
     StoneMedium: { width: 0.24, height: 0.14, depth: 0.22 },
     StoneSmall: { width: 0.18, height: 0.08, depth: 0.18 },
-    Stool: { width: 0.82, height: 0.48, depth: 0.82 },
+    Stool: { width: 0.66, height: 0.39, depth: 0.66 },
     Tree: { width: 1.36, height: 2.38, depth: 1.43 },
     Tulip: { width: 0.24, height: 0.4, depth: 0.24 },
     WaterWell: { width: 1.22, height: 1.36, depth: 0.95 },
     WateringCan: { width: 1, height: 0.56, depth: 0.45 },
 } satisfies Record<string, HitboxSize>;
 
-const shapedTerrainVisualHeights = {
+const blockVisualHeights = {
     Block_Grass_Angle: 0.4,
     Block_Grass_Corner: 0.4,
     Block_Grass_Reverse_Corner: 0.4,
     Block_Ground_Angle: 0.4,
     Block_Ground_Corner: 0.4,
     Block_Ground_Reverse_Corner: 0.4,
+    Block_Dry_Ground_Angle: 0.4,
+    Block_Dry_Ground_Corner: 0.4,
+    Block_Dry_Ground_Reverse_Corner: 0.4,
     Block_Sand_Angle: 0.4,
     Block_Sand_Corner: 0.4,
     Block_Sand_Reverse_Corner: 0.4,
+    ChickenCoop: 0.86,
+    PigletPen: 0.78,
+    Stool: 0.39,
 } satisfies Record<string, number>;
 
 const hitboxDefinitionSpecs = [
@@ -250,7 +265,7 @@ async function getPublishedBlockIdsByName() {
     const blockNames = Array.from(
         new Set([
             ...Object.keys(blockHitboxes),
-            ...Object.keys(shapedTerrainVisualHeights),
+            ...Object.keys(blockVisualHeights),
         ]),
     );
     const rows = await storage()
@@ -424,9 +439,7 @@ async function main() {
         name: 'height',
     });
     let changedVisualHeightCount = 0;
-    for (const [blockName, height] of Object.entries(
-        shapedTerrainVisualHeights,
-    )) {
+    for (const [blockName, height] of Object.entries(blockVisualHeights)) {
         const entityId = blockIdsByName.get(blockName);
         if (!entityId) {
             continue;

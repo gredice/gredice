@@ -22,7 +22,10 @@ import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import Image from 'next/image';
 import { type FC, useState } from 'react';
+import { useCurrentGarden } from '../../../hooks/useCurrentGarden';
 import { useWeatherForecast } from '../../../hooks/useWeatherForecast';
+import { SuncokretChatTrigger } from '../../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../../suncokretChatContext';
 import { TimeOfDayDetails } from '../TimeOfDayDetails';
 import { RainIcon } from './icons/RainIcon';
 import { WeatherHistoryPanel } from './WeatherHistoryModal';
@@ -126,6 +129,7 @@ export function WeatherForecastDetails() {
     const [view, setView] = useState<WeatherPopoverView>('weather');
     const [showExtendedForecast, setShowExtendedForecast] = useState(false);
     const { data } = useWeatherForecast();
+    const { data: currentGarden } = useCurrentGarden();
     const hasExtendedForecast = (data?.length ?? 0) > 3;
     const forecastLimit = showExtendedForecast ? (data?.length ?? 3) : 3;
 
@@ -147,6 +151,26 @@ export function WeatherForecastDetails() {
                     {view === 'graph' ? 'Vremenske prilike' : 'Prognoza'}
                 </Typography>
                 <Row spacing={1}>
+                    <SuncokretChatTrigger
+                        title="Pitaj Suncokreta o vremenskoj prognozi"
+                        target={{
+                            conversationLabel:
+                                suncokretContextConversationLabel({
+                                    gardenName: currentGarden?.name,
+                                    uiContext: {
+                                        surface: 'weather',
+                                        view: 'forecast',
+                                    },
+                                }),
+                            gardenId: currentGarden?.id ?? null,
+                            positionIndex: null,
+                            raisedBedId: null,
+                            uiContext: {
+                                surface: 'weather',
+                                view: 'forecast',
+                            },
+                        }}
+                    />
                     {view === 'weather' && hasExtendedForecast && (
                         <ButtonGroup legend="Dani prognoze" size="xs">
                             <Button

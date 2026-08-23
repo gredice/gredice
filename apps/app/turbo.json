@@ -53,6 +53,7 @@
                 "POSTHOG_SERVER_HOST",
                 "SIGNALCO_API_KEY",
                 "SLACK_BOT_TOKEN",
+                "VERCEL",
                 "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]

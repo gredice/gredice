@@ -1,7 +1,11 @@
 import type { EntityStandardized } from '../@types/EntityStandardized';
+import {
+    createPlantStatusApprovalRequest,
+    getApprovalRequests,
+    PendingPlantStatusApprovalRequestConflictError,
+} from '../repositories/approvalRequestsRepo';
 import { getEntityFormatted } from '../repositories/entitiesRepo';
 import {
-    buildRaisedBedFieldPlantUpdatePayload,
     createEvent,
     knownEvents,
     knownEventTypes,
@@ -17,11 +21,17 @@ import {
 import {
     acceptOperation,
     createOperation,
+    createScheduledOperation,
     getFarmAcceptedOperationsByScheduleRange,
     getOperationById,
     getRaisedBedOperationsByScheduleRange,
 } from '../repositories/operationsRepo';
 import { getOutletOffers } from '../repositories/outletOffersRepo';
+import { getRaisedBedFieldsWithEvents } from '../repositories/raisedBedFieldsRepo';
+import {
+    withOperationScheduleTaskTransaction,
+    withPlantingScheduleTaskTransaction,
+} from '../repositories/scheduleTaskTransactionsRepo';
 import {
     queuePostTransplantWateringOperations,
     queueSeasonalSowingOfferOperations,
@@ -60,6 +70,8 @@ const createGreenhouseSeedlingWateringOperationsActionKey =
 const createRaisedBedOperationsActionKey = 'action.createRaisedBedOperations';
 const updateRaisedBedFieldPlantAttributesActionKey =
     'action.updateRaisedBedFieldPlantAttributes';
+const createPlantStatusApprovalRequestsActionKey =
+    'action.createPlantStatusApprovalRequests';
 const createPlantStatusRequestsFromImageAnalysisActionKey =
     'action.createPlantStatusRequestsFromImageAnalysis';
 const logActionKey = 'action.log';
@@ -146,6 +158,8 @@ export const automationModuleKeys = {
     actionCreateRaisedBedOperations: createRaisedBedOperationsActionKey,
     actionUpdateRaisedBedFieldPlantAttributes:
         updateRaisedBedFieldPlantAttributesActionKey,
+    actionCreatePlantStatusApprovalRequests:
+        createPlantStatusApprovalRequestsActionKey,
     actionCreatePlantStatusRequestsFromImageAnalysis:
         createPlantStatusRequestsFromImageAnalysisActionKey,
     actionLog: logActionKey,
@@ -171,6 +185,11 @@ function getRecord(value: unknown): AutomationJsonObject {
     return value && typeof value === 'object' && !Array.isArray(value)
         ? (value as AutomationJsonObject)
         : {};
+}
+
+function referencedEntityName(value: unknown) {
+    const information = getRecord(getRecord(value).information);
+    return getString(information, 'name');
 }
 
 function getString(config: AutomationJsonObject, key: string) {
@@ -244,6 +263,39 @@ function getTimeZoneDateParts(date: Date, timeZone: string) {
         dateKey: `${parts.year}-${parts.month}-${parts.day}`,
         periodKey: `${parts.year}-${parts.month}`,
     };
+}
+
+function getLocalDatePartsFromUtcMs(dateMs: number) {
+    const date = new Date(dateMs);
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const day = date.getUTCDate();
+    const dayOfWeek = jsDayToWeekDay[date.getUTCDay()];
+    if (!dayOfWeek) {
+        throw new Error('Unable to resolve local day of week.');
+    }
+
+    const yearPart = year.toString().padStart(4, '0');
+    const monthPart = month.toString().padStart(2, '0');
+    const dayPart = day.toString().padStart(2, '0');
+
+    return {
+        year,
+        month,
+        day,
+        dayOfWeek,
+        dateKey: `${yearPart}-${monthPart}-${dayPart}`,
+        periodKey: `${yearPart}-${monthPart}`,
+    };
+}
+
+function addLocalCalendarDays(
+    parts: ReturnType<typeof getTimeZoneDateParts>,
+    days: number,
+) {
+    return getLocalDatePartsFromUtcMs(
+        localDateUtcMs(parts) + days * millisecondsPerDay,
+    );
 }
 
 function getScheduleFrequency(
@@ -443,7 +495,10 @@ function buildScheduleOccurrence(
         return null;
     }
 
-    const parts = getTimeZoneDateParts(now, timeZone);
+    const currentParts = getTimeZoneDateParts(now, timeZone);
+    const parts = enforceDue
+        ? addLocalCalendarDays(currentParts, 1)
+        : currentParts;
     const input: AutomationJsonObject = {
         scheduleType: frequency,
         frequency,
@@ -535,6 +590,7 @@ type FarmInventoryOperationConfig = {
     entityId: number;
     entityTypeName: string;
     scheduledInDays: number;
+    requiresGreenhouseOrOutletPlants: boolean;
 };
 
 const greenhouseSeedlingPlantStatuses = new Set([
@@ -570,6 +626,25 @@ type ExistingOperationSkip = {
     scheduledDate: string;
 };
 
+type GreenhouseFieldCountsByFarmId = Map<
+    number,
+    { greenhouseRaisedBedIds: Set<number>; greenhouseFieldCount: number }
+>;
+
+type GreenhouseOrOutletPlantEligibilitySnapshot = {
+    greenhouseCountsByFarmId: GreenhouseFieldCountsByFarmId;
+    activeOutletOfferCount: number;
+    availabilityDate: Date;
+};
+
+type IneligibleFarmInventoryOperationSkip = {
+    farmId: number;
+    entityId: number;
+    entityTypeName: string;
+    scheduledDate: string;
+    reason: string;
+};
+
 function parseFarmInventoryOperationConfigs(
     value: unknown,
 ): FarmInventoryOperationConfig[] {
@@ -586,6 +661,14 @@ function parseFarmInventoryOperationConfigs(
         const entityTypeName = Reflect.get(item, 'entityTypeName');
         const scheduledInDays = Reflect.get(item, 'scheduledInDays');
         const hasScheduledInDays = Reflect.has(item, 'scheduledInDays');
+        const requiresGreenhouseOrOutletPlants = Reflect.get(
+            item,
+            'requiresGreenhouseOrOutletPlants',
+        );
+        const hasGreenhouseOrOutletRequirement = Reflect.has(
+            item,
+            'requiresGreenhouseOrOutletPlants',
+        );
         if (
             typeof entityId !== 'number' ||
             !Number.isInteger(entityId) ||
@@ -600,6 +683,12 @@ function parseFarmInventoryOperationConfigs(
         ) {
             return [];
         }
+        if (
+            hasGreenhouseOrOutletRequirement &&
+            typeof requiresGreenhouseOrOutletPlants !== 'boolean'
+        ) {
+            return [];
+        }
 
         return [
             {
@@ -611,6 +700,10 @@ function parseFarmInventoryOperationConfigs(
                         : 'operation',
                 scheduledInDays:
                     typeof scheduledInDays === 'number' ? scheduledInDays : 0,
+                requiresGreenhouseOrOutletPlants:
+                    typeof requiresGreenhouseOrOutletPlants === 'boolean'
+                        ? requiresGreenhouseOrOutletPlants
+                        : false,
             },
         ];
     });
@@ -625,7 +718,7 @@ function validateFarmInventoryOperationsConfig(config: AutomationJsonObject) {
     const validOperations = parseFarmInventoryOperationConfigs(operations);
     if (validOperations.length !== operations.length) {
         return [
-            'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays.',
+            'Each operation must include a positive integer entityId. Optional fields: entityTypeName, integer scheduledInDays, boolean requiresGreenhouseOrOutletPlants.',
         ];
     }
 
@@ -652,6 +745,7 @@ function parseSingleOperationConfig(
         entityId,
         entityTypeName: getString(config, 'entityTypeName') ?? 'operation',
         scheduledInDays: scheduledInDays ?? 0,
+        requiresGreenhouseOrOutletPlants: false,
     };
 }
 
@@ -829,7 +923,7 @@ function isCurrentlyGreenhouseSeedling(field: RaisedBedFieldForGreenhouseCare) {
     );
 }
 
-async function getGreenhouseFieldCountsByFarmId() {
+async function getGreenhouseFieldCountsByFarmId(): Promise<GreenhouseFieldCountsByFarmId> {
     const [raisedBeds, gardens] = await Promise.all([
         getAllRaisedBeds(),
         getGardens(),
@@ -871,6 +965,46 @@ async function getGreenhouseFieldCountsByFarmId() {
     }
 
     return countsByFarmId;
+}
+
+async function getGreenhouseOrOutletPlantEligibilitySnapshot(
+    availabilityDate: Date,
+): Promise<GreenhouseOrOutletPlantEligibilitySnapshot> {
+    const [greenhouseCountsByFarmId, activeOutletOffers] = await Promise.all([
+        getGreenhouseFieldCountsByFarmId(),
+        getOutletOffers({ now: availabilityDate }),
+    ]);
+
+    return {
+        greenhouseCountsByFarmId,
+        activeOutletOfferCount: activeOutletOffers.length,
+        availabilityDate,
+    };
+}
+
+function getGreenhouseOrOutletPlantEligibilityForFarm({
+    farmId,
+    snapshot,
+}: {
+    farmId: number;
+    snapshot: GreenhouseOrOutletPlantEligibilitySnapshot;
+}): GreenhouseFarmEligibility {
+    const greenhouseCounts = snapshot.greenhouseCountsByFarmId.get(farmId);
+    const greenhouseFieldCount = greenhouseCounts?.greenhouseFieldCount ?? 0;
+    const greenhouseRaisedBedCount =
+        greenhouseCounts?.greenhouseRaisedBedIds.size ?? 0;
+    const reasons = [
+        ...(greenhouseFieldCount > 0 ? ['greenhouseFields'] : []),
+        ...(snapshot.activeOutletOfferCount > 0 ? ['activeOutletStock'] : []),
+    ];
+
+    return {
+        farmId,
+        greenhouseRaisedBedCount,
+        greenhouseFieldCount,
+        activeOutletOfferCount: snapshot.activeOutletOfferCount,
+        reasons,
+    };
 }
 
 function parseRaisedBedFieldAggregateId(aggregateId: string) {
@@ -922,7 +1056,83 @@ function validateRaisedBedFieldPlantAttributesConfig(
         errors.push('targetSowingLocation must be direct or greenhouse.');
     }
 
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        errors.push('targetStatus is not a supported plant lifecycle status.');
+    }
+
     return errors;
+}
+
+const automationPlantStatusTargets = new Set([
+    'new',
+    'planned',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
+
+const plantingEvidenceStatuses = new Set([
+    'blocked',
+    'pendingVerification',
+    'sowed',
+    'sprouted',
+    'firstFlowers',
+    'firstFruitSet',
+    'notSprouted',
+    'died',
+    'ready',
+    'harvested',
+    'removed',
+]);
+
+function canAutomationUpdatePlantStatus(
+    currentStatus: string | null | undefined,
+    targetStatus: string,
+) {
+    if (!currentStatus || !automationPlantStatusTargets.has(targetStatus)) {
+        return false;
+    }
+    if (currentStatus === targetStatus) {
+        return true;
+    }
+    if (
+        plantingEvidenceStatuses.has(currentStatus) &&
+        (targetStatus === 'new' || targetStatus === 'planned')
+    ) {
+        return false;
+    }
+    if (currentStatus === 'blocked') {
+        return false;
+    }
+    return true;
+}
+
+function contextEventPlantCycle(
+    field: {
+        plantCycles: Array<{ plantPlaceEventId: number }>;
+    },
+    event: AutomationSourceEvent,
+) {
+    const sourceEventId = event.id;
+    if (!sourceEventId) {
+        return null;
+    }
+    return (
+        field.plantCycles
+            .filter(
+                (plantCycle) => plantCycle.plantPlaceEventId <= sourceEventId,
+            )
+            .sort(
+                (left, right) =>
+                    right.plantPlaceEventId - left.plantPlaceEventId,
+            )[0] ?? null
+    );
 }
 
 async function resolveOperationRaisedBedFieldTarget(
@@ -968,11 +1178,103 @@ async function resolveOperationRaisedBedFieldTarget(
         };
     }
 
+    const sourcePlantCycle = contextEventPlantCycle(field, event);
+    if (!sourcePlantCycle) {
+        return {
+            ok: false as const,
+            result: skip(
+                'Operation source event has no matching plant cycle.',
+                {
+                    operationId,
+                    raisedBedId: operation.raisedBedId,
+                    raisedBedFieldId: operation.raisedBedFieldId,
+                    sourceEventId: event.id ?? null,
+                },
+            ),
+        };
+    }
+
     return {
         ok: true as const,
         operationId,
         raisedBed,
         field,
+        sourcePlantCycleEventId: sourcePlantCycle.plantPlaceEventId,
+    };
+}
+
+async function resolveOperationRaisedBedFieldTargets(
+    event: AutomationSourceEvent | undefined,
+) {
+    if (!event) {
+        return {
+            ok: false as const,
+            result: skip('No source event is available.'),
+        };
+    }
+
+    const operationId = Number(event.aggregateId);
+    if (!Number.isInteger(operationId) || operationId <= 0) {
+        return {
+            ok: false as const,
+            result: skip('Source event aggregate is not an operation id.'),
+        };
+    }
+
+    const operation = await getOperationById(operationId);
+    if (!operation?.raisedBedId) {
+        return {
+            ok: false as const,
+            result: skip('Operation has no raised-bed target.', {
+                operationId,
+            }),
+        };
+    }
+
+    const raisedBed = await getRaisedBed(operation.raisedBedId);
+    if (!raisedBed) {
+        return {
+            ok: false as const,
+            result: skip('Operation target raised bed was not found.', {
+                operationId,
+                raisedBedId: operation.raisedBedId,
+            }),
+        };
+    }
+
+    const operationEntity = await getEntityFormatted<EntityStandardized>(
+        operation.entityId,
+    );
+    const application =
+        typeof operationEntity?.attributes?.application === 'string'
+            ? operationEntity.attributes.application
+            : null;
+    const fields = operation.raisedBedFieldId
+        ? raisedBed.fields.filter(
+              (field) =>
+                  field.id === operation.raisedBedFieldId && field.active,
+          )
+        : application === 'raisedBedFull'
+          ? raisedBed.fields.filter((field) => field.active)
+          : [];
+
+    if (fields.length === 0) {
+        return {
+            ok: false as const,
+            result: skip('Operation has no active raised-bed field targets.', {
+                operationId,
+                raisedBedId: raisedBed.id,
+                raisedBedFieldId: operation.raisedBedFieldId,
+                application,
+            }),
+        };
+    }
+
+    return {
+        ok: true as const,
+        operationId,
+        raisedBed,
+        fields,
     };
 }
 
@@ -1137,12 +1439,12 @@ const triggerScheduleModule: AutomationModule = {
     kind: 'trigger',
     title: 'Schedule',
     description:
-        'Starts an automation from a daily, weekly, biweekly, or monthly schedule.',
+        'Starts an automation one day before a daily, weekly, biweekly, or monthly schedule occurrence.',
     category: 'Schedules',
     configFields: scheduleConfigFields(),
     inputDescription:
         'A scheduled occurrence generated by the automation runner.',
-    outputDescription: 'The occurrence key and configured local date.',
+    outputDescription: 'The occurrence key and configured local work date.',
     dryRunSupported: true,
     mutatesData: false,
     retryable: false,
@@ -1156,7 +1458,7 @@ const triggerScheduleMonthlyModule: AutomationModule = {
     kind: 'trigger',
     title: 'Monthly schedule',
     description:
-        'Starts an automation once per month on the configured local day.',
+        'Starts an automation once per month on the day before the configured local day.',
     category: 'Schedules',
     configFields: [
         {
@@ -1176,7 +1478,8 @@ const triggerScheduleMonthlyModule: AutomationModule = {
     ],
     inputDescription:
         'A scheduled monthly occurrence generated by the automation runner.',
-    outputDescription: 'The monthly occurrence key and configured local date.',
+    outputDescription:
+        'The monthly occurrence key and configured local work date.',
     dryRunSupported: true,
     mutatesData: false,
     retryable: false,
@@ -1280,6 +1583,12 @@ const operationMatchesConditionModule: AutomationModule = {
             type: 'string',
             placeholder: 'plant',
         },
+        {
+            key: 'stage',
+            label: 'Operation plant stage',
+            type: 'string',
+            placeholder: 'harvest',
+        },
     ],
     dryRunSupported: true,
     mutatesData: false,
@@ -1316,7 +1625,8 @@ const operationMatchesConditionModule: AutomationModule = {
         }
 
         const expectedApplication = getString(node.config, 'application');
-        if (expectedApplication) {
+        const expectedStage = getString(node.config, 'stage');
+        if (expectedApplication || expectedStage) {
             const operationEntity =
                 await getEntityFormatted<EntityStandardized>(
                     operation.entityId,
@@ -1326,10 +1636,23 @@ const operationMatchesConditionModule: AutomationModule = {
                     ? operationEntity.attributes.application
                     : null;
 
-            if (actualApplication !== expectedApplication) {
+            if (
+                expectedApplication &&
+                actualApplication !== expectedApplication
+            ) {
                 return skip('Operation application did not match.', {
                     expected: expectedApplication,
                     actual: actualApplication,
+                });
+            }
+
+            const actualStage = referencedEntityName(
+                operationEntity?.attributes?.stage,
+            );
+            if (expectedStage && actualStage !== expectedStage) {
+                return skip('Operation plant stage did not match.', {
+                    expected: expectedStage,
+                    actual: actualStage ?? null,
                 });
             }
         }
@@ -1683,7 +2006,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
     kind: 'action',
     title: 'Create farm inventory operations',
     description:
-        'Creates configured inventory task operations for every active farm.',
+        'Creates configured inventory task operations for every active farm, with optional greenhouse/outlet plant eligibility per operation.',
     category: 'Operations',
     configFields: [
         {
@@ -1692,7 +2015,7 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             type: 'json',
             required: true,
             description:
-                'JSON array: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0}]',
+                'JSON array: [{"entityId": 123, "entityTypeName": "operation", "scheduledInDays": 0, "requiresGreenhouseOrOutletPlants": false}]',
         },
     ],
     inputDescription: 'A monthly schedule occurrence.',
@@ -1728,15 +2051,29 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
         const activeFarms = (await getFarms()).filter(
             (farm) => !farm.isDeleted,
         );
+        const requiresGreenhouseOrOutletEligibility = operationConfigs.some(
+            (operationConfig) =>
+                operationConfig.requiresGreenhouseOrOutletPlants,
+        );
+        const greenhouseOrOutletEligibilitySnapshot =
+            requiresGreenhouseOrOutletEligibility
+                ? await getGreenhouseOrOutletPlantEligibilitySnapshot(
+                      getScheduleReferenceDate(context.run.input),
+                  )
+                : null;
 
         if (activeFarms.length === 0) {
             return skip('No active farms were found.');
         }
 
         let skippedExistingCount = 0;
+        let skippedIneligibleCount = 0;
+        let eligibleOperationTargetCount = 0;
         let repairedScheduledCount = 0;
         const createdOperationIds: number[] = [];
         const repairedScheduledOperationIds: number[] = [];
+        const skippedIneligibleOperations: IneligibleFarmInventoryOperationSkip[] =
+            [];
 
         for (const farm of activeFarms) {
             const existingOperations =
@@ -1777,6 +2114,29 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     referenceDate,
                     operationConfig.scheduledInDays,
                 );
+                if (
+                    operationConfig.requiresGreenhouseOrOutletPlants &&
+                    greenhouseOrOutletEligibilitySnapshot
+                ) {
+                    const eligibility =
+                        getGreenhouseOrOutletPlantEligibilityForFarm({
+                            farmId: farm.id,
+                            snapshot: greenhouseOrOutletEligibilitySnapshot,
+                        });
+                    if (eligibility.reasons.length === 0) {
+                        skippedIneligibleCount += 1;
+                        skippedIneligibleOperations.push({
+                            farmId: farm.id,
+                            entityId: operationConfig.entityId,
+                            entityTypeName: operationConfig.entityTypeName,
+                            scheduledDate: scheduledDate.toISOString(),
+                            reason: 'No greenhouse-located plants or active outlet seedlings.',
+                        });
+                        continue;
+                    }
+                }
+
+                eligibleOperationTargetCount += 1;
                 const operationKey = farmOperationKey({
                     entityId: operationConfig.entityId,
                     entityTypeName: operationConfig.entityTypeName,
@@ -1791,20 +2151,52 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                 ) {
                     skippedExistingCount += 1;
                     if (existingOperation && !existingOperation.scheduledDate) {
-                        repairedScheduledCount += 1;
-                        if (!context.dryRun) {
-                            await createEvent(
-                                knownEvents.operations.scheduledV1(
-                                    existingOperation.id.toString(),
-                                    {
-                                        scheduledDate:
-                                            scheduledDate.toISOString(),
+                        if (context.dryRun) {
+                            if (
+                                existingOperation.status === 'new' ||
+                                existingOperation.status === 'planned'
+                            ) {
+                                repairedScheduledCount += 1;
+                            }
+                        } else {
+                            const repaired =
+                                await withOperationScheduleTaskTransaction(
+                                    existingOperation.id,
+                                    async (transaction) => {
+                                        const currentOperation =
+                                            await getOperationById(
+                                                existingOperation.id,
+                                                transaction,
+                                            );
+                                        if (
+                                            currentOperation.status !== 'new' &&
+                                            currentOperation.status !==
+                                                'planned'
+                                        ) {
+                                            return false;
+                                        }
+                                        if (currentOperation.scheduledDate) {
+                                            return false;
+                                        }
+                                        await createEvent(
+                                            knownEvents.operations.scheduledV1(
+                                                currentOperation.id.toString(),
+                                                {
+                                                    scheduledDate:
+                                                        scheduledDate.toISOString(),
+                                                },
+                                            ),
+                                            transaction,
+                                        );
+                                        return true;
                                     },
-                                ),
-                            );
-                            repairedScheduledOperationIds.push(
-                                existingOperation.id,
-                            );
+                                );
+                            if (repaired) {
+                                repairedScheduledCount += 1;
+                                repairedScheduledOperationIds.push(
+                                    existingOperation.id,
+                                );
+                            }
                         }
                     }
                     continue;
@@ -1814,17 +2206,14 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
                     continue;
                 }
 
-                const operationId = await createOperation({
-                    entityId: operationConfig.entityId,
-                    entityTypeName: operationConfig.entityTypeName,
-                    farmId: farm.id,
-                    timestamp: scheduledDate,
-                });
-                await acceptOperation(operationId);
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate: scheduledDate.toISOString(),
-                    }),
+                const operationId = await createScheduledOperation(
+                    {
+                        entityId: operationConfig.entityId,
+                        entityTypeName: operationConfig.entityTypeName,
+                        farmId: farm.id,
+                        timestamp: scheduledDate,
+                    },
+                    { accept: true, scheduledDate },
                 );
                 createdOperationIds.push(operationId);
                 existingOperationKeys.add(operationKey);
@@ -1833,18 +2222,26 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
 
         if (context.dryRun) {
             const projectedCreateCount =
-                activeFarms.length * operationConfigs.length -
-                skippedExistingCount;
+                eligibleOperationTargetCount - skippedExistingCount;
             return success({
                 dryRun: true,
                 farmCount: activeFarms.length,
                 operationCount: operationConfigs.length,
                 createdCount: projectedCreateCount,
                 projectedCreateCount,
-                skippedCount: skippedExistingCount,
+                eligibleOperationTargetCount,
+                skippedCount: skippedExistingCount + skippedIneligibleCount,
                 skippedExistingCount,
                 skippedScheduledCount: skippedExistingCount,
+                skippedIneligibleCount,
+                skippedIneligibleOperations,
                 repairedScheduledCount,
+                activeOutletOfferCount:
+                    greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                    null,
+                outletAvailabilityCheckedAt:
+                    greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                    null,
             });
         }
 
@@ -1852,16 +2249,50 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdOperationIds.length === 0 &&
             repairedScheduledOperationIds.length === 0
         ) {
+            if (eligibleOperationTargetCount === 0) {
+                return skip(
+                    'No active farms have greenhouse or outlet plants for the configured farm inventory operations.',
+                    {
+                        farmCount: activeFarms.length,
+                        operationCount: operationConfigs.length,
+                        createdCount: 0,
+                        eligibleOperationTargetCount,
+                        skippedCount:
+                            skippedExistingCount + skippedIneligibleCount,
+                        skippedExistingCount,
+                        skippedScheduledCount: skippedExistingCount,
+                        skippedIneligibleCount,
+                        skippedIneligibleOperations,
+                        repairedScheduledCount: 0,
+                        activeOutletOfferCount:
+                            greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                            null,
+                        outletAvailabilityCheckedAt:
+                            greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                            null,
+                    },
+                );
+            }
+
             return skip(
                 'All configured farm inventory operations already exist.',
                 {
                     farmCount: activeFarms.length,
                     operationCount: operationConfigs.length,
                     createdCount: 0,
-                    skippedCount: skippedExistingCount,
+                    eligibleOperationTargetCount,
+                    skippedCount: skippedExistingCount + skippedIneligibleCount,
                     skippedExistingCount,
                     skippedScheduledCount: skippedExistingCount,
+                    skippedIneligibleCount,
+                    skippedIneligibleOperations,
                     repairedScheduledCount: 0,
+                    activeOutletOfferCount:
+                        greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                        null,
+                    outletAvailabilityCheckedAt:
+                        greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                        null,
                 },
             );
         }
@@ -1871,11 +2302,20 @@ const createFarmInventoryOperationsActionModule: AutomationModule = {
             createdCount: createdOperationIds.length,
             repairedScheduledOperationIds,
             repairedScheduledCount: repairedScheduledOperationIds.length,
-            skippedCount: skippedExistingCount,
+            skippedCount: skippedExistingCount + skippedIneligibleCount,
             skippedExistingCount,
             skippedScheduledCount: skippedExistingCount,
+            skippedIneligibleCount,
+            skippedIneligibleOperations,
             farmCount: activeFarms.length,
             operationCount: operationConfigs.length,
+            eligibleOperationTargetCount,
+            activeOutletOfferCount:
+                greenhouseOrOutletEligibilitySnapshot?.activeOutletOfferCount ??
+                null,
+            outletAvailabilityCheckedAt:
+                greenhouseOrOutletEligibilitySnapshot?.availabilityDate.toISOString() ??
+                null,
         });
     },
 };
@@ -1935,37 +2375,28 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                 operationConfig.scheduledInDays,
             );
             const rangeEnd = addUtcDays(scheduledDate, 1);
-            const [activeFarms, greenhouseCountsByFarmId, activeOutletOffers] =
-                await Promise.all([
-                    getFarms().then((farms) =>
-                        farms.filter((farm) => !farm.isDeleted),
-                    ),
-                    getGreenhouseFieldCountsByFarmId(),
-                    getOutletOffers({ now: availabilityDate }),
-                ]);
+            const [activeFarms, eligibilitySnapshot] = await Promise.all([
+                getFarms().then((farms) =>
+                    farms.filter((farm) => !farm.isDeleted),
+                ),
+                getGreenhouseOrOutletPlantEligibilitySnapshot(availabilityDate),
+            ]);
 
             if (activeFarms.length === 0) {
                 return skip('No active farms were found.');
             }
 
-            const activeOutletOfferCount = activeOutletOffers.length;
             const eligibleFarms: GreenhouseFarmEligibility[] = [];
             const skippedFarms: GreenhouseFarmSkip[] = [];
 
             for (const farm of activeFarms) {
-                const greenhouseCounts = greenhouseCountsByFarmId.get(farm.id);
-                const greenhouseFieldCount =
-                    greenhouseCounts?.greenhouseFieldCount ?? 0;
-                const greenhouseRaisedBedCount =
-                    greenhouseCounts?.greenhouseRaisedBedIds.size ?? 0;
-                const reasons = [
-                    ...(greenhouseFieldCount > 0 ? ['greenhouseFields'] : []),
-                    ...(activeOutletOfferCount > 0
-                        ? ['activeOutletStock']
-                        : []),
-                ];
+                const eligibility =
+                    getGreenhouseOrOutletPlantEligibilityForFarm({
+                        farmId: farm.id,
+                        snapshot: eligibilitySnapshot,
+                    });
 
-                if (reasons.length === 0) {
+                if (eligibility.reasons.length === 0) {
                     skippedFarms.push({
                         farmId: farm.id,
                         reason: 'No greenhouse-located plants or active outlet seedlings.',
@@ -1973,13 +2404,7 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                     continue;
                 }
 
-                eligibleFarms.push({
-                    farmId: farm.id,
-                    greenhouseRaisedBedCount,
-                    greenhouseFieldCount,
-                    activeOutletOfferCount,
-                    reasons,
-                });
+                eligibleFarms.push(eligibility);
             }
 
             const existingOperationSkips: ExistingOperationSkip[] = [];
@@ -2031,17 +2456,42 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                         scheduledDate: scheduledDate.toISOString(),
                     });
                     if (!existingOperation.scheduledDate && !context.dryRun) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
+                        const repaired =
+                            await withOperationScheduleTaskTransaction(
+                                existingOperation.id,
+                                async (transaction) => {
+                                    const currentOperation =
+                                        await getOperationById(
+                                            existingOperation.id,
+                                            transaction,
+                                        );
+                                    if (
+                                        currentOperation.status !== 'new' &&
+                                        currentOperation.status !== 'planned'
+                                    ) {
+                                        return false;
+                                    }
+                                    if (currentOperation.scheduledDate) {
+                                        return false;
+                                    }
+                                    await createEvent(
+                                        knownEvents.operations.scheduledV1(
+                                            currentOperation.id.toString(),
+                                            {
+                                                scheduledDate:
+                                                    scheduledDate.toISOString(),
+                                            },
+                                        ),
+                                        transaction,
+                                    );
+                                    return true;
                                 },
-                            ),
-                        );
-                        repairedScheduledOperationIds.push(
-                            existingOperation.id,
-                        );
+                            );
+                        if (repaired) {
+                            repairedScheduledOperationIds.push(
+                                existingOperation.id,
+                            );
+                        }
                     }
                     continue;
                 }
@@ -2050,17 +2500,14 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                     continue;
                 }
 
-                const operationId = await createOperation({
-                    entityId: operationConfig.entityId,
-                    entityTypeName: operationConfig.entityTypeName,
-                    farmId: farm.farmId,
-                    timestamp: scheduledDate,
-                });
-                await acceptOperation(operationId);
-                await createEvent(
-                    knownEvents.operations.scheduledV1(operationId.toString(), {
-                        scheduledDate: scheduledDate.toISOString(),
-                    }),
+                const operationId = await createScheduledOperation(
+                    {
+                        entityId: operationConfig.entityId,
+                        entityTypeName: operationConfig.entityTypeName,
+                        farmId: farm.farmId,
+                        timestamp: scheduledDate,
+                    },
+                    { accept: true, scheduledDate },
                 );
                 createdOperationIds.push(operationId);
             }
@@ -2077,8 +2524,10 @@ const createGreenhouseSeedlingWateringOperationsActionModule: AutomationModule =
                 skippedFarmCount: skippedFarms.length,
                 existingOperationSkips,
                 existingOperationSkipCount: existingOperationSkips.length,
-                activeOutletOfferCount,
-                outletAvailabilityCheckedAt: availabilityDate.toISOString(),
+                activeOutletOfferCount:
+                    eligibilitySnapshot.activeOutletOfferCount,
+                outletAvailabilityCheckedAt:
+                    eligibilitySnapshot.availabilityDate.toISOString(),
                 projectedCreateCount:
                     eligibleFarms.length - existingOperationSkips.length,
             };
@@ -2227,19 +2676,53 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
             if (existingOperation || existingOperationKeys.has(operationKey)) {
                 skippedExistingCount += 1;
                 if (existingOperation && !context.dryRun) {
-                    if (acceptOnCreate && !existingOperation.isAccepted) {
-                        await acceptOperation(existingOperation.id);
+                    const repaired = await withOperationScheduleTaskTransaction(
+                        existingOperation.id,
+                        async (transaction) => {
+                            const currentOperation = await getOperationById(
+                                existingOperation.id,
+                                transaction,
+                            );
+                            if (
+                                currentOperation.status !== 'new' &&
+                                currentOperation.status !== 'planned'
+                            ) {
+                                return {
+                                    accepted: false,
+                                    scheduled: false,
+                                };
+                            }
+
+                            let scheduled = false;
+                            if (!currentOperation.scheduledDate) {
+                                await createEvent(
+                                    knownEvents.operations.scheduledV1(
+                                        currentOperation.id.toString(),
+                                        {
+                                            scheduledDate:
+                                                scheduledDate.toISOString(),
+                                        },
+                                    ),
+                                    transaction,
+                                );
+                                scheduled = true;
+                            }
+
+                            const accepted =
+                                acceptOnCreate && !currentOperation.isAccepted;
+                            if (accepted) {
+                                await acceptOperation(
+                                    currentOperation.id,
+                                    transaction,
+                                );
+                            }
+                            return { accepted, scheduled };
+                        },
+                    );
+                    if (repaired.accepted) {
                         repairedAcceptedOperationIds.push(existingOperation.id);
                     }
-                    if (!existingOperation.scheduledDate) {
-                        await createEvent(
-                            knownEvents.operations.scheduledV1(
-                                existingOperation.id.toString(),
-                                {
-                                    scheduledDate: scheduledDate.toISOString(),
-                                },
-                            ),
-                        );
+                    if (repaired.scheduled) {
                         repairedScheduledOperationIds.push(
                             existingOperation.id,
                         );
@@ -2252,21 +2735,16 @@ const createRaisedBedOperationsActionModule: AutomationModule = {
                 continue;
             }
 
-            const operationId = await createOperation({
-                entityId,
-                entityTypeName,
-                accountId: raisedBed.accountId,
-                gardenId: raisedBed.gardenId,
-                raisedBedId: raisedBed.id,
-                timestamp: scheduledDate,
-            });
-            if (acceptOnCreate) {
-                await acceptOperation(operationId);
-            }
-            await createEvent(
-                knownEvents.operations.scheduledV1(operationId.toString(), {
-                    scheduledDate: scheduledDate.toISOString(),
-                }),
+            const operationId = await createScheduledOperation(
+                {
+                    entityId,
+                    entityTypeName,
+                    accountId: raisedBed.accountId,
+                    gardenId: raisedBed.gardenId,
+                    raisedBedId: raisedBed.id,
+                    timestamp: scheduledDate,
+                },
+                { accept: acceptOnCreate, scheduledDate },
             );
             createdOperationIds.push(operationId);
             existingOperationKeys.add(operationKey);
@@ -2342,6 +2820,23 @@ async function updateRaisedBedFieldPlantAttributes({
         return target.result;
     }
 
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        throw new AutomationModuleExecutionError(
+            'Plant attribute action has an unsupported targetStatus.',
+            'invalid_config',
+        );
+    }
+    if (
+        targetStatus &&
+        !canAutomationUpdatePlantStatus(target.field.plantStatus, targetStatus)
+    ) {
+        return skip('Plant lifecycle transition is no longer allowed.', {
+            operationId: target.operationId,
+            previousStatus: target.field.plantStatus ?? null,
+            targetStatus,
+        });
+    }
+
     const statusChanged =
         Boolean(targetStatus) && target.field.plantStatus !== targetStatus;
     const sowingLocationChanged =
@@ -2377,30 +2872,116 @@ async function updateRaisedBedFieldPlantAttributes({
         });
     }
 
-    const aggregateId = `${target.raisedBed.id}|${target.field.positionIndex}`;
-    if (sowingLocationChanged && targetSowingLocation) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
-                scheduledDate:
-                    target.field.plantScheduledDate?.toISOString() ?? null,
-                sowingLocation: targetSowingLocation,
-            }),
-        );
-    }
-
-    if (statusChanged && targetStatus) {
-        await createEvent(
-            knownEvents.raisedBedFields.plantUpdateV1(
-                aggregateId,
-                buildRaisedBedFieldPlantUpdatePayload(
+    return withPlantingScheduleTaskTransaction(
+        target.raisedBed.id,
+        target.field.positionIndex,
+        async (transaction) => {
+            const currentField = (
+                await getRaisedBedFieldsWithEvents(
+                    target.raisedBed.id,
+                    transaction,
+                )
+            ).find(
+                (candidate) =>
+                    candidate.id === target.field.id && candidate.active,
+            );
+            if (!currentField) {
+                return skip('Operation target field is no longer active.', {
+                    operationId: target.operationId,
+                    raisedBedId: target.raisedBed.id,
+                    positionIndex: target.field.positionIndex,
+                });
+            }
+            const activePlantCycle = currentField.plantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            if (
+                activePlantCycle?.plantPlaceEventId !==
+                target.sourcePlantCycleEventId
+            ) {
+                return skip(
+                    'Operation target plant cycle changed before the action ran.',
+                    {
+                        operationId: target.operationId,
+                        raisedBedId: target.raisedBed.id,
+                        positionIndex: target.field.positionIndex,
+                        expectedPlantCycleEventId:
+                            target.sourcePlantCycleEventId,
+                        currentPlantCycleEventId:
+                            activePlantCycle?.plantPlaceEventId ?? null,
+                    },
+                );
+            }
+            if (
+                targetStatus &&
+                !canAutomationUpdatePlantStatus(
+                    currentField.plantStatus,
                     targetStatus,
-                    target.field.assignedUserIds,
-                ),
-            ),
-        );
-    }
+                )
+            ) {
+                return skip(
+                    'Plant lifecycle transition is no longer allowed.',
+                    {
+                        operationId: target.operationId,
+                        previousStatus: currentField.plantStatus ?? null,
+                        targetStatus,
+                    },
+                );
+            }
 
-    return success(output);
+            const currentStatusChanged =
+                Boolean(targetStatus) &&
+                currentField.plantStatus !== targetStatus;
+            const currentSowingLocationChanged =
+                Boolean(targetSowingLocation) &&
+                currentField.sowingLocation !== targetSowingLocation;
+            if (!currentStatusChanged && !currentSowingLocationChanged) {
+                return skip(noChangeReason, {
+                    operationId: target.operationId,
+                    targetStatus: targetStatus ?? null,
+                    targetSowingLocation: targetSowingLocation ?? null,
+                });
+            }
+
+            const currentOutput = {
+                operationId: target.operationId,
+                raisedBedId: target.raisedBed.id,
+                positionIndex: currentField.positionIndex,
+                previousStatus: currentField.plantStatus ?? null,
+                targetStatus: targetStatus ?? null,
+                previousSowingLocation: currentField.sowingLocation,
+                targetSowingLocation: targetSowingLocation ?? null,
+                updatedAttributes: [
+                    ...(currentStatusChanged ? ['plantStatus'] : []),
+                    ...(currentSowingLocationChanged ? ['sowingLocation'] : []),
+                ],
+            };
+            const aggregateId = `${target.raisedBed.id}|${currentField.positionIndex}`;
+
+            if (currentSowingLocationChanged && targetSowingLocation) {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantScheduleV1(aggregateId, {
+                        scheduledDate:
+                            currentField.plantScheduledDate?.toISOString() ??
+                            null,
+                        sowingLocation: targetSowingLocation,
+                    }),
+                    transaction,
+                );
+            }
+
+            if (currentStatusChanged && targetStatus) {
+                await createEvent(
+                    knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                        status: targetStatus,
+                    }),
+                    transaction,
+                );
+            }
+
+            return success(currentOutput);
+        },
+    );
 }
 
 const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {
@@ -2436,6 +3017,245 @@ const updateRaisedBedFieldPlantAttributesActionModule: AutomationModule = {
     validateConfig: validateRaisedBedFieldPlantAttributesConfig,
     execute: async (context, node) =>
         updateRaisedBedFieldPlantAttributes({ context, node }),
+};
+
+function validatePlantStatusApprovalRequestsConfig(
+    config: AutomationJsonObject,
+) {
+    const errors = [
+        ...requiredString(config, 'targetStatus'),
+        ...requiredString(config, 'requestedBy'),
+    ];
+    const targetStatus = getString(config, 'targetStatus');
+    if (targetStatus && !automationPlantStatusTargets.has(targetStatus)) {
+        errors.push('targetStatus is not a supported plant lifecycle status.');
+    }
+    return errors;
+}
+
+const createPlantStatusApprovalRequestsActionModule: AutomationModule = {
+    key: createPlantStatusApprovalRequestsActionKey,
+    kind: 'action',
+    title: 'Create plant-status approval requests',
+    description:
+        'Creates pending plant-status proposals for the active fields targeted by an operation.',
+    category: 'Raised-bed fields',
+    configFields: [
+        {
+            key: 'targetStatus',
+            label: 'Proposed status',
+            type: 'string',
+            required: true,
+            placeholder: 'harvested',
+        },
+        {
+            key: 'requestedBy',
+            label: 'Requested by',
+            type: 'string',
+            required: true,
+            placeholder: 'automation:operation-plant-status-review',
+        },
+        {
+            key: 'note',
+            label: 'Review note',
+            type: 'string',
+            required: false,
+        },
+    ],
+    inputDescription:
+        'An operation event targeting one field or a whole raised bed.',
+    outputDescription:
+        'Created or reused approval request ids, eligible target counts, and skipped fields.',
+    dryRunSupported: true,
+    mutatesData: true,
+    retryable: true,
+    validateConfig: validatePlantStatusApprovalRequestsConfig,
+    execute: async (context, node) => {
+        const targetStatus = getString(node.config, 'targetStatus');
+        const requestedBy = getString(node.config, 'requestedBy');
+        if (!targetStatus || !requestedBy) {
+            throw new AutomationModuleExecutionError(
+                'Plant-status approval action is missing targetStatus or requestedBy.',
+                'invalid_config',
+            );
+        }
+
+        const resolved = await resolveOperationRaisedBedFieldTargets(
+            context.event,
+        );
+        if (!resolved.ok) {
+            return resolved.result;
+        }
+
+        const pendingRequests = await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        });
+        const candidates: Array<{
+            positionIndex: number;
+            raisedBedFieldId: number;
+            plantCycleEventId: number;
+            plantCycleVersionEventId: number;
+            plantSortId: number;
+            currentStatus: string;
+            existingRequestId: string | null;
+        }> = [];
+        const skippedTargets: AutomationJsonObject[] = [];
+
+        for (const field of resolved.fields) {
+            const sourcePlantCycle = context.event
+                ? contextEventPlantCycle(field, context.event)
+                : null;
+            const activePlantCycle = field.plantCycles.find(
+                (plantCycle) => plantCycle.active,
+            );
+            if (
+                !sourcePlantCycle ||
+                !activePlantCycle ||
+                sourcePlantCycle.plantPlaceEventId !==
+                    activePlantCycle.plantPlaceEventId
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'plant_cycle_changed',
+                });
+                continue;
+            }
+
+            if (!field.plantStatus || typeof field.plantSortId !== 'number') {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'plant_snapshot_incomplete',
+                });
+                continue;
+            }
+            if (field.plantStatus === targetStatus) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'already_target_status',
+                    currentStatus: field.plantStatus,
+                });
+                continue;
+            }
+            if (
+                !canAutomationUpdatePlantStatus(field.plantStatus, targetStatus)
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'transition_not_allowed',
+                    currentStatus: field.plantStatus,
+                });
+                continue;
+            }
+
+            const existingRequest = pendingRequests.find(
+                (request) =>
+                    request.target.kind === 'raisedBedField.plantStatus' &&
+                    request.target.raisedBedId === resolved.raisedBed.id &&
+                    request.target.positionIndex === field.positionIndex &&
+                    request.target.plantCycleEventId ===
+                        activePlantCycle.plantPlaceEventId &&
+                    request.target.plantCycleVersionEventId ===
+                        activePlantCycle.endedEventId &&
+                    request.target.raisedBedFieldId === field.id &&
+                    request.target.plantSortId === field.plantSortId &&
+                    request.target.currentStatus === field.plantStatus,
+            );
+            if (
+                existingRequest?.target.kind === 'raisedBedField.plantStatus' &&
+                existingRequest.target.requestedStatus !== targetStatus
+            ) {
+                skippedTargets.push({
+                    positionIndex: field.positionIndex,
+                    reason: 'different_pending_request',
+                    pendingRequestId: existingRequest.id,
+                    pendingStatus: existingRequest.target.requestedStatus,
+                });
+                continue;
+            }
+
+            candidates.push({
+                positionIndex: field.positionIndex,
+                raisedBedFieldId: field.id,
+                plantCycleEventId: activePlantCycle.plantPlaceEventId,
+                plantCycleVersionEventId: activePlantCycle.endedEventId,
+                plantSortId: field.plantSortId,
+                currentStatus: field.plantStatus,
+                existingRequestId: existingRequest?.id ?? null,
+            });
+        }
+
+        const existingRequestIds = candidates.flatMap((candidate) =>
+            candidate.existingRequestId ? [candidate.existingRequestId] : [],
+        );
+        const output = {
+            operationId: resolved.operationId,
+            raisedBedId: resolved.raisedBed.id,
+            targetStatus,
+            targetCount: resolved.fields.length,
+            eligibleCount: candidates.length,
+            projectedCreateCount: candidates.length - existingRequestIds.length,
+            existingRequestIds,
+            skippedTargets,
+        };
+
+        if (candidates.length === 0) {
+            return skip(
+                'No operation target plants need an approval request.',
+                {
+                    ...output,
+                },
+            );
+        }
+        if (context.dryRun) {
+            return success({ dryRun: true, ...output });
+        }
+
+        const configuredNote = getString(node.config, 'note');
+        const note = `${configuredNote ?? 'Automatski prijedlog promjene stanja biljke nakon završene radnje.'} Radnja #${resolved.operationId.toString()}.`;
+        const requestIds: string[] = [];
+        for (const candidate of candidates) {
+            if (candidate.existingRequestId) {
+                requestIds.push(candidate.existingRequestId);
+                continue;
+            }
+
+            try {
+                const request = await createPlantStatusApprovalRequest({
+                    raisedBedId: resolved.raisedBed.id,
+                    positionIndex: candidate.positionIndex,
+                    raisedBedFieldId: candidate.raisedBedFieldId,
+                    plantCycleEventId: candidate.plantCycleEventId,
+                    plantCycleVersionEventId:
+                        candidate.plantCycleVersionEventId,
+                    accountId: resolved.raisedBed.accountId,
+                    gardenId: resolved.raisedBed.gardenId,
+                    plantSortId: candidate.plantSortId,
+                    currentStatus: candidate.currentStatus,
+                    requestedStatus: targetStatus,
+                    requestedBy,
+                    effectiveAt: context.event?.createdAt,
+                    note,
+                });
+                requestIds.push(request.id);
+            } catch (error) {
+                if (
+                    error instanceof
+                    PendingPlantStatusApprovalRequestConflictError
+                ) {
+                    skippedTargets.push({
+                        positionIndex: candidate.positionIndex,
+                        reason: error.code,
+                    });
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+
+        return success({ ...output, requestIds });
+    },
 };
 
 const createPlantStatusRequestsFromImageAnalysisActionModule: AutomationModule =
@@ -2584,6 +3404,7 @@ export const automationModules = [
     createGreenhouseSeedlingWateringOperationsActionModule,
     createRaisedBedOperationsActionModule,
     updateRaisedBedFieldPlantAttributesActionModule,
+    createPlantStatusApprovalRequestsActionModule,
     createPlantStatusRequestsFromImageAnalysisActionModule,
     logActionModule,
 ] as const satisfies readonly AutomationModule[];

@@ -4,6 +4,7 @@ import {
     Uint16BufferAttribute,
     type Vector4,
 } from 'three';
+import type { WaterBlockDepthSamples } from './waterBlockDepth';
 
 const waterBlockHalfSize = 0.5;
 export const defaultWaterBlockVisualHeight = 0.4;
@@ -13,7 +14,11 @@ const segmentMergeEpsilon = 1e-6;
 type WaterFoamEdge = 'x' | 'y' | 'z' | 'w';
 
 type WaterFace = {
+    depth?: number;
+    depths?: WaterBlockDepthSamples;
     normal: [number, number, number];
+    shoreDepths?: WaterBlockDepthSamples;
+    surfaceY?: number;
     vertices: [
         [number, number, number],
         [number, number, number],
@@ -29,7 +34,11 @@ type WaterBlockGeometryOptions = {
 };
 
 type WaterSideInstance = {
+    depth?: number;
+    depthSamples?: WaterBlockDepthSamples;
     position: [number, number, number];
+    shoreDepthSamples?: WaterBlockDepthSamples;
+    surfaceY?: number;
     waterHeight?: number;
 };
 
@@ -40,10 +49,18 @@ type WaterSideInstanceRange = {
 
 type WaterSideSegment = {
     axis: 'x' | 'z';
+    depth: number;
+    depthEnd: number;
+    depthStart: number;
+    hasDepthMap: boolean;
+    hasShoreDepthMap: boolean;
     line: number;
     normal: [number, number, number];
+    shoreDepthEnd: number;
+    shoreDepthStart: number;
     start: number;
     end: number;
+    surfaceY: number;
     yMax: number;
     yMin: number;
 };
@@ -127,17 +144,26 @@ function pushFace({
     indices,
     normals,
     positions,
+    waterDepths,
+    waterShoreDepths,
+    waterSurfaceYs,
 }: {
     face: WaterFace;
     indices: number[];
     normals: number[];
     positions: number[];
+    waterDepths?: number[];
+    waterShoreDepths?: number[];
+    waterSurfaceYs?: number[];
 }) {
     const startIndex = positions.length / 3;
 
-    for (const vertex of face.vertices) {
+    for (const [vertexIndex, vertex] of face.vertices.entries()) {
         positions.push(...vertex);
         normals.push(...face.normal);
+        waterDepths?.push(face.depths?.[vertexIndex] ?? face.depth ?? 0);
+        waterShoreDepths?.push(face.shoreDepths?.[vertexIndex] ?? 0);
+        waterSurfaceYs?.push(face.surfaceY ?? vertex[1]);
     }
 
     indices.push(
@@ -153,15 +179,51 @@ function pushFace({
 function createGeometryFromFaces(faces: WaterFace[]) {
     const positions: number[] = [];
     const normals: number[] = [];
+    const waterDepths: number[] = [];
+    const waterShoreDepths: number[] = [];
+    const waterSurfaceYs: number[] = [];
     const indices: number[] = [];
+    const hasDepthMap = faces.some(
+        (face) =>
+            face.depth !== undefined ||
+            face.depths !== undefined ||
+            face.surfaceY !== undefined,
+    );
+    const hasShoreDepthMap = faces.some(
+        (face) => face.shoreDepths !== undefined,
+    );
 
     for (const face of faces) {
-        pushFace({ face, positions, normals, indices });
+        pushFace({
+            face,
+            positions,
+            normals,
+            indices,
+            waterDepths: hasDepthMap ? waterDepths : undefined,
+            waterShoreDepths: hasShoreDepthMap ? waterShoreDepths : undefined,
+            waterSurfaceYs: hasDepthMap ? waterSurfaceYs : undefined,
+        });
     }
 
     const geometry = new BufferGeometry();
     geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new Float32BufferAttribute(normals, 3));
+    if (hasDepthMap) {
+        geometry.setAttribute(
+            'waterDepth',
+            new Float32BufferAttribute(waterDepths, 1),
+        );
+        geometry.setAttribute(
+            'waterSurfaceY',
+            new Float32BufferAttribute(waterSurfaceYs, 1),
+        );
+    }
+    if (hasShoreDepthMap) {
+        geometry.setAttribute(
+            'waterShoreDepth',
+            new Float32BufferAttribute(waterShoreDepths, 1),
+        );
+    }
     geometry.setIndex(new Uint16BufferAttribute(indices, 1));
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
@@ -199,6 +261,13 @@ function segmentGroupKey(segment: WaterSideSegment) {
         segment.axis,
         segment.line,
         segment.normal.join(','),
+        segment.hasDepthMap,
+        segment.depthStart,
+        segment.depthEnd,
+        segment.hasShoreDepthMap,
+        segment.shoreDepthStart,
+        segment.shoreDepthEnd,
+        segment.surfaceY,
         segment.yMin,
         segment.yMax,
     ].join('|');
@@ -209,6 +278,13 @@ function verticalSegmentGroupKey(segment: WaterSideSegment) {
         segment.axis,
         segment.line,
         segment.normal.join(','),
+        segment.hasDepthMap,
+        segment.depthStart,
+        segment.depthEnd,
+        segment.hasShoreDepthMap,
+        segment.shoreDepthStart,
+        segment.shoreDepthEnd,
+        segment.surfaceY,
         segment.start,
         segment.end,
     ].join('|');
@@ -265,6 +341,18 @@ function mergeVerticalSideSegments(segments: WaterSideSegment[]) {
     return mergedSegments;
 }
 
+function sideSegmentSamplesConnect(
+    currentSegment: WaterSideSegment,
+    nextSegment: WaterSideSegment,
+) {
+    return (
+        Math.abs(currentSegment.depthEnd - nextSegment.depthStart) <=
+            segmentMergeEpsilon &&
+        Math.abs(currentSegment.shoreDepthEnd - nextSegment.shoreDepthStart) <=
+            segmentMergeEpsilon
+    );
+}
+
 function mergeHorizontalSideSegments(segments: WaterSideSegment[]) {
     const segmentGroups = new Map<string, WaterSideSegment[]>();
 
@@ -293,9 +381,12 @@ function mergeHorizontalSideSegments(segments: WaterSideSegment[]) {
         for (const segment of sortedGroup.slice(1)) {
             if (
                 currentSegment &&
-                segment.start <= currentSegment.end + segmentMergeEpsilon
+                segment.start <= currentSegment.end + segmentMergeEpsilon &&
+                sideSegmentSamplesConnect(currentSegment, segment)
             ) {
                 currentSegment.end = Math.max(currentSegment.end, segment.end);
+                currentSegment.depthEnd = segment.depthEnd;
+                currentSegment.shoreDepthEnd = segment.shoreDepthEnd;
                 continue;
             }
 
@@ -317,12 +408,67 @@ function mergeSideSegments(segments: WaterSideSegment[]) {
     return mergeHorizontalSideSegments(mergeVerticalSideSegments(segments));
 }
 
+function segmentDepthsForFace(
+    segment: Pick<
+        WaterSideSegment,
+        | 'depthEnd'
+        | 'depthStart'
+        | 'hasDepthMap'
+        | 'hasShoreDepthMap'
+        | 'shoreDepthEnd'
+        | 'shoreDepthStart'
+    >,
+    order: 'start-first' | 'end-first',
+) {
+    const firstDepth =
+        order === 'start-first' ? segment.depthStart : segment.depthEnd;
+    const secondDepth =
+        order === 'start-first' ? segment.depthEnd : segment.depthStart;
+    const firstShoreDepth =
+        order === 'start-first'
+            ? segment.shoreDepthStart
+            : segment.shoreDepthEnd;
+    const secondShoreDepth =
+        order === 'start-first'
+            ? segment.shoreDepthEnd
+            : segment.shoreDepthStart;
+
+    return {
+        ...(segment.hasDepthMap
+            ? {
+                  depths: [
+                      firstDepth,
+                      firstDepth,
+                      secondDepth,
+                      secondDepth,
+                  ] satisfies WaterBlockDepthSamples,
+              }
+            : {}),
+        ...(segment.hasShoreDepthMap
+            ? {
+                  shoreDepths: [
+                      firstShoreDepth,
+                      firstShoreDepth,
+                      secondShoreDepth,
+                      secondShoreDepth,
+                  ] satisfies WaterBlockDepthSamples,
+              }
+            : {}),
+    };
+}
+
 function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
     const { end, line, normal, start, yMax, yMin } = segment;
 
     if (segment.axis === 'z') {
         return {
+            ...(segment.hasDepthMap ? { depth: segment.depth } : {}),
+            ...segmentDepthsForFace(
+                segment,
+                normal[2] < 0 ? 'end-first' : 'start-first',
+            ),
             normal,
+            ...(segment.hasDepthMap ? { surfaceY: segment.surfaceY } : {}),
             vertices:
                 normal[2] < 0
                     ? [
@@ -341,7 +487,13 @@ function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
     }
 
     return {
+        ...(segment.hasDepthMap ? { depth: segment.depth } : {}),
+        ...segmentDepthsForFace(
+            segment,
+            normal[0] < 0 ? 'end-first' : 'start-first',
+        ),
         normal,
+        ...(segment.hasDepthMap ? { surfaceY: segment.surfaceY } : {}),
         vertices:
             normal[0] < 0
                 ? [
@@ -361,6 +513,20 @@ function waterSideSegmentToFace(segment: WaterSideSegment): WaterFace {
 
 function getWaterSideInstanceHeight(instance: WaterSideInstance) {
     return instance.waterHeight ?? defaultWaterBlockVisualHeight;
+}
+
+function getWaterSideInstanceDepth(instance: WaterSideInstance) {
+    return instance.depth ?? 1;
+}
+
+function getWaterSideInstanceDepthSamples(instance: WaterSideInstance) {
+    const depth = getWaterSideInstanceDepth(instance);
+
+    return instance.depthSamples ?? [depth, depth, depth, depth];
+}
+
+function getWaterSideInstanceShoreDepthSamples(instance: WaterSideInstance) {
+    return instance.shoreDepthSamples ?? [0, 0, 0, 0];
 }
 
 function getWaterSideInstanceRange(instance: WaterSideInstance) {
@@ -456,24 +622,40 @@ function getVisibleWaterSideRanges({
 
 function pushVisibleWaterSideSegments({
     axis,
+    depth,
+    depthEnd,
+    depthStart,
     end,
+    hasDepthMap,
+    hasShoreDepthMap,
     line,
     normal,
     range,
     sideSegments,
+    shoreDepthEnd,
+    shoreDepthStart,
     stackGroups,
     start,
+    surfaceY,
     x,
     z,
 }: {
     axis: 'x' | 'z';
+    depth: number;
+    depthEnd: number;
+    depthStart: number;
     end: number;
+    hasDepthMap: boolean;
+    hasShoreDepthMap: boolean;
     line: number;
     normal: [number, number, number];
     range: WaterSideInstanceRange;
     sideSegments: WaterSideSegment[];
+    shoreDepthEnd: number;
+    shoreDepthStart: number;
     stackGroups: Map<string, WaterSideInstance[]>;
     start: number;
+    surfaceY: number;
     x: number;
     z: number;
 }) {
@@ -485,18 +667,31 @@ function pushVisibleWaterSideSegments({
     })) {
         sideSegments.push({
             axis,
+            depth,
+            depthEnd,
+            depthStart,
+            hasDepthMap,
+            hasShoreDepthMap,
             line,
             normal,
+            shoreDepthEnd,
+            shoreDepthStart,
             start,
             end,
+            surfaceY,
             yMin: visibleRange.min,
             yMax: visibleRange.max,
         });
     }
 }
 
-export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
-    const stackGroups = groupWaterSideInstancesByStackPosition(instances);
+export function createMergedWaterSideGeometry(
+    instances: WaterSideInstance[],
+    options: { neighborInstances?: WaterSideInstance[] } = {},
+) {
+    const stackGroups = groupWaterSideInstancesByStackPosition(
+        options.neighborInstances ?? instances,
+    );
     const sideSegments: WaterSideSegment[] = [];
 
     for (const instance of instances) {
@@ -505,55 +700,97 @@ export function createMergedWaterSideGeometry(instances: WaterSideInstance[]) {
         const yMin = y + waterBlockMinY(height);
         const yMax = y + waterBlockMaxY(height);
         const range = { min: yMin, max: yMax };
+        const hasDepthMap =
+            instance.depth !== undefined ||
+            instance.depthSamples !== undefined ||
+            instance.surfaceY !== undefined;
+        const hasShoreDepthMap = instance.shoreDepthSamples !== undefined;
+        const depth = hasDepthMap ? getWaterSideInstanceDepth(instance) : 1;
+        const depthSamples = getWaterSideInstanceDepthSamples(instance);
+        const shoreDepthSamples =
+            getWaterSideInstanceShoreDepthSamples(instance);
+        const surfaceY = hasDepthMap ? (instance.surfaceY ?? yMax) : 0;
 
         pushVisibleWaterSideSegments({
             axis: 'x',
+            depth,
+            depthStart: depthSamples[0],
+            depthEnd: depthSamples[1],
+            hasDepthMap,
+            hasShoreDepthMap,
             line: x - waterBlockHalfSize,
             normal: [-1, 0, 0],
             start: z - waterBlockHalfSize,
             end: z + waterBlockHalfSize,
             range,
             sideSegments,
+            shoreDepthStart: shoreDepthSamples[0],
+            shoreDepthEnd: shoreDepthSamples[1],
             stackGroups,
+            surfaceY,
             x: x - 1,
             z,
         });
 
         pushVisibleWaterSideSegments({
             axis: 'x',
+            depth,
+            depthStart: depthSamples[3],
+            depthEnd: depthSamples[2],
+            hasDepthMap,
+            hasShoreDepthMap,
             line: x + waterBlockHalfSize,
             normal: [1, 0, 0],
             start: z - waterBlockHalfSize,
             end: z + waterBlockHalfSize,
             range,
             sideSegments,
+            shoreDepthStart: shoreDepthSamples[3],
+            shoreDepthEnd: shoreDepthSamples[2],
             stackGroups,
+            surfaceY,
             x: x + 1,
             z,
         });
 
         pushVisibleWaterSideSegments({
             axis: 'z',
+            depth,
+            depthStart: depthSamples[0],
+            depthEnd: depthSamples[3],
+            hasDepthMap,
+            hasShoreDepthMap,
             line: z - waterBlockHalfSize,
             normal: [0, 0, -1],
             start: x - waterBlockHalfSize,
             end: x + waterBlockHalfSize,
             range,
             sideSegments,
+            shoreDepthStart: shoreDepthSamples[0],
+            shoreDepthEnd: shoreDepthSamples[3],
             stackGroups,
+            surfaceY,
             x,
             z: z - 1,
         });
 
         pushVisibleWaterSideSegments({
             axis: 'z',
+            depth,
+            depthStart: depthSamples[1],
+            depthEnd: depthSamples[2],
+            hasDepthMap,
+            hasShoreDepthMap,
             line: z + waterBlockHalfSize,
             normal: [0, 0, 1],
             start: x - waterBlockHalfSize,
             end: x + waterBlockHalfSize,
             range,
             sideSegments,
+            shoreDepthStart: shoreDepthSamples[1],
+            shoreDepthEnd: shoreDepthSamples[2],
             stackGroups,
+            surfaceY,
             x,
             z: z + 1,
         });

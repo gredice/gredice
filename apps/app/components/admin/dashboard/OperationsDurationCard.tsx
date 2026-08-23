@@ -14,6 +14,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import { formatOperationsDuration } from './operationsDuration';
 
 export type OperationsDurationPoint = {
     date: string;
@@ -78,17 +79,6 @@ function getPlannedDataKey(userId: string) {
     return `planned-${userId}`;
 }
 
-function formatTotalDuration(totalMinutes: number) {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = Math.round(totalMinutes % 60);
-
-    if (hours <= 0) {
-        return `${minutes} min`;
-    }
-
-    return `${hours} h ${minutes.toString().padStart(2, '0')} min`;
-}
-
 function formatTooltipDuration(minutes: number) {
     if (!minutes) {
         return '0 min';
@@ -151,7 +141,7 @@ export function OperationsDurationCard({
                             Ukupno trajanje radnji
                         </Typography>
                         <Typography level="h4" semiBold>
-                            {formatTotalDuration(data.totalMinutes)}
+                            {formatOperationsDuration(data.totalMinutes)}
                         </Typography>
                         <Row className="gap-4 text-xs text-muted-foreground">
                             <Row spacing={1} className="items-center">

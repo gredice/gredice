@@ -87,3 +87,27 @@ test('getUserRegistrationsByWeekday counts registrations per weekday', async () 
     assert.ok(counts[0] >= 1, 'Expected at least 1 registration on Sunday');
     assert.ok(counts[1] >= 1, 'Expected at least 1 registration on Monday');
 });
+
+test('getUserRegistrationsByWeekday uses the requested timezone', async () => {
+    createTestDb();
+    const db = storage();
+    const userId = randomUUID();
+
+    await db.insert(users).values({
+        id: userId,
+        userName: `weekday-zagreb-${userId}@test.com`,
+        displayName: 'Zagreb Monday User',
+        role: 'user',
+        createdAt: new Date('2024-01-07T23:30:00.000Z'),
+        updatedAt: new Date('2024-01-07T23:30:00.000Z'),
+    });
+
+    const counts = await getUserRegistrationsByWeekday(
+        new Date('2024-01-07T23:00:00.000Z'),
+        new Date('2024-01-08T22:59:59.999Z'),
+        'Europe/Zagreb',
+    );
+
+    assert.equal(counts[0], 0);
+    assert.equal(counts[1], 1);
+});

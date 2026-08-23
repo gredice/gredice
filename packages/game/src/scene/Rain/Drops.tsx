@@ -1,27 +1,28 @@
-import { useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameState } from '../../useGameState';
+import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
+import { normalizeRainParticleIntensity } from './rainParticles';
+import { rainFragmentShader } from './rainShaders';
 
 interface DropsProps {
     count?: number;
+    intensity: number;
 }
 
-const RAIN_ALPHA = 0.56;
-
-export const Drops = ({ count = 2000 }: DropsProps) => {
+export const Drops = ({ count = 2000, intensity }: DropsProps) => {
     const fref = useRef<THREE.Group>(null);
-    const camera = useThree((state) => state.camera);
-    const gameCamera = useGameState((state) => state.gameCamera);
+    usePrecipitationFieldPosition({ fieldRef: fref, followCamera: true });
     const timeUniform = useSceneTimeUniform();
     useSceneTimeInvalidation();
+    const rainProgressUniformRef = useRef<THREE.IUniform<number> | null>(null);
+    if (!rainProgressUniformRef.current) {
+        rainProgressUniformRef.current = {
+            value: normalizeRainParticleIntensity(intensity),
+        };
+    }
+    const rainProgressUniform = rainProgressUniformRef.current;
 
     const size = 40;
     const speed = 15;
@@ -73,30 +74,9 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
 
     useEffect(() => () => geometry.dispose(), [geometry]);
 
-    const updateRainFieldPosition = useCallback((x: number, z: number) => {
-        const group = fref.current;
-        if (!group) {
-            return;
-        }
-
-        group.position.set(x, 0, z);
-    }, []);
-
     useLayoutEffect(() => {
-        const snapshot = gameCamera?.getSnapshot();
-        updateRainFieldPosition(
-            snapshot?.target[0] ?? camera.position.x,
-            snapshot?.target[2] ?? camera.position.z,
-        );
-
-        if (!gameCamera) {
-            return;
-        }
-
-        return gameCamera.subscribe((snapshot) => {
-            updateRainFieldPosition(snapshot.target[0], snapshot.target[2]);
-        });
-    }, [camera, gameCamera, updateRainFieldPosition]);
+        rainProgressUniform.value = normalizeRainParticleIntensity(intensity);
+    }, [intensity, rainProgressUniform]);
 
     const vertexShader = useMemo(
         () => /* glsl */ `
@@ -139,69 +119,21 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
         [],
     );
 
-    const fragmentShader = useMemo(
-        () => /* glsl */ `
-        uniform float uRainProgress;
-        uniform float uRainFieldSize;
-  
-        varying vec3 vInstancePosition;
-        varying vec2 vUv;
-        varying float vRainAlpha;
-
-        float sdUnevenCapsule( vec2 p, float r1, float r2, float h ) {
-          p.x = abs(p.x);
-          float b = (r1-r2)/h;
-          float a = sqrt(1.0-b*b);
-          float k = dot(p,vec2(-b,a));
-          if( k < 0.0 ) return length(p) - r1;
-          if( k > a*h ) return length(p-vec2(0.0,h)) - r2;
-          return dot(p, vec2(a,b) ) - r1;
-        }
-  
-        float blur(float steps) {
-          vec2 coord = vUv - 0.5;
-          coord *= 10.0;
-  
-          // Get n droplets around this one and average their distance
-          float total = 0.0;
-          for (float i = 0.0; i < steps; i++) {
-            float dropletDistance = sdUnevenCapsule(coord, 0.05, 0.0, 2.0);
-            dropletDistance = 1.0 - smoothstep(0.0, 0.05, dropletDistance);
-            total += dropletDistance;
-            coord += vec2(0.0, 0.2);
-          }
-          return total / steps;
-        }
-
-        void main() {
-          float dropletDistance = blur(${size.toFixed(1)});
-          float rainProgress = smoothstep(0.0, 0.5, uRainProgress);
-          rainProgress = clamp(rainProgress, 0.0, 1.0);
-          float fieldRadius = uRainFieldSize * 0.5;
-          float fieldFade = 1.0 - smoothstep(
-            fieldRadius * 0.82,
-            fieldRadius,
-            length(vInstancePosition.xz)
-          );
-          float verticalFade =
-            smoothstep(-0.1, 1.6, vInstancePosition.y) *
-            (1.0 - smoothstep(uRainFieldSize - 3.5, uRainFieldSize, vInstancePosition.y));
-          float alpha =
-            dropletDistance * ${RAIN_ALPHA.toFixed(2)} * rainProgress * fieldFade * verticalFade * vRainAlpha;
-          gl_FragColor = vec4(vec3(0.88, 0.94, 1.0), alpha);
-        }
-      `,
-        [],
+    const material = useMemo(
+        () =>
+            createPrecipitationMaterial({
+                fragmentShader: rainFragmentShader,
+                timeUniform,
+                uniforms: {
+                    uRainFieldSize: { value: size },
+                    uRainProgress: rainProgressUniform,
+                },
+                vertexShader,
+            }),
+        [rainProgressUniform, timeUniform, vertexShader],
     );
 
-    const uniforms = useMemo(
-        () => ({
-            uTime: timeUniform,
-            uRainFieldSize: { value: size },
-            uRainProgress: { value: 1 },
-        }),
-        [timeUniform],
-    );
+    useEffect(() => () => material.dispose(), [material]);
 
     return (
         <group ref={fref} name="Weather:Rain">
@@ -211,16 +143,7 @@ export const Drops = ({ count = 2000 }: DropsProps) => {
                 frustumCulled={false}
                 renderOrder={35}
             >
-                <shaderMaterial
-                    key={vertexShader + fragmentShader}
-                    depthTest={false}
-                    depthWrite={false}
-                    vertexShader={vertexShader}
-                    fragmentShader={fragmentShader}
-                    side={THREE.DoubleSide}
-                    uniforms={uniforms}
-                    transparent
-                />
+                <primitive attach="material" object={material} />
             </instancedMesh>
         </group>
     );

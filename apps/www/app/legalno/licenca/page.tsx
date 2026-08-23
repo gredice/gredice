@@ -3,12 +3,15 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Licenca izvornog koda',
     description: 'Uvjeti korištenja izvornog koda aplikacije Gredice.',
-};
+    path: KnownPages.LegalLicense,
+    eyebrow: 'Pravni dokument',
+});
 
 export default function PolitikaPrivatnostiPage() {
     return (
@@ -25,9 +28,9 @@ export default function PolitikaPrivatnostiPage() {
                         <a href="https://github.com/gredice/gredice/blob/main/LICENSE">
                             AGPL-3.0
                         </a>
-                        . To znači da možete pregledati, preuzeti, mijenjati i
-                        distribuirati izvorni kod aplikacije pod uvjetima ove
-                        licence.
+                        . To znači da je dopušteno pregledati, preuzeti,
+                        mijenjati i distribuirati izvorni kod aplikacije pod
+                        uvjetima ove licence.
                     </p>
                     <p>
                         Izvorni kod dostupan je na{' '}
@@ -35,8 +38,8 @@ export default function PolitikaPrivatnostiPage() {
                         repozitoriju.
                     </p>
                     <p>
-                        Ukoliko imate bilo kakvih pitanja o licenci ili
-                        korištenju izvornog koda, slobodno nas kontaktirajte na{' '}
+                        Ako imaš bilo kakvih pitanja o licenci ili korištenju
+                        izvornog koda, slobodno nas kontaktiraj na{' '}
                         <a href="mailto:kontakt@gredice.com">
                             kontakt@gredice.com
                         </a>

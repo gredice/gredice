@@ -1,6 +1,7 @@
 import type { PlantData } from '@gredice/client';
 import { slug } from '@gredice/js/slug';
 import { Accordion } from '@gredice/ui/Accordion';
+import { Markdown } from '@gredice/ui/Markdown';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
@@ -34,7 +35,7 @@ export function PlantTips({
                             {tip.header}
                         </Typography>
                         <Stack spacing={4}>
-                            <Typography>{tip.content}</Typography>
+                            <Markdown>{tip.content}</Markdown>
                             <FeedbackModal
                                 className="self-end"
                                 topic="www/plants/advice"

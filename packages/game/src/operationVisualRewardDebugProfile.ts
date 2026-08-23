@@ -12,13 +12,19 @@ export const operationVisualRewardDebugNewerTimestamp =
 export const operationVisualRewardDebugOperationIds = {
     agrotextile: 9405,
     harvest: 9408,
+    insectMesh: 9409,
     mulch: 9403,
     removeAgrotextile: 9406,
+    removeInsectMesh: 9410,
     removeMulch: 9404,
     supports: 9407,
     watering: 9401,
     weeding: 9402,
 } satisfies Record<OperationVisualRewardKind, number>;
+
+export const highTargetOperationVisualOperationIds = {
+    fieldMulch: 9411,
+} as const;
 
 export type OperationVisualRewardDebugBedState = {
     label: 'Before' | 'After';
@@ -122,6 +128,36 @@ export const operationVisualRewardDebugScenarios = [
         after: {
             label: 'After',
             raisedBedId: 112,
+            state: 'Visible plants again',
+        },
+    },
+    {
+        title: 'Insect protection mesh',
+        kind: 'insectMesh',
+        operationId: operationVisualRewardDebugOperationIds.insectMesh,
+        before: {
+            label: 'Before',
+            raisedBedId: 117,
+            state: 'Exposed bed',
+        },
+        after: {
+            label: 'After',
+            raisedBedId: 118,
+            state: 'Plants visible under arched mesh',
+        },
+    },
+    {
+        title: 'Remove insect protection mesh',
+        kind: 'removeInsectMesh',
+        operationId: operationVisualRewardDebugOperationIds.removeInsectMesh,
+        before: {
+            label: 'Before',
+            raisedBedId: 119,
+            state: 'Plants visible under arched mesh',
+        },
+        after: {
+            label: 'After',
+            raisedBedId: 120,
             state: 'Visible plants again',
         },
     },
@@ -260,6 +296,20 @@ export const operationVisualRewardDebugOperationDefinitions = [
         application: 'raisedBedFull',
     }),
     debugOperation({
+        id: operationVisualRewardDebugOperationIds.insectMesh,
+        kind: 'insectMesh',
+        name: 'debugInsectMeshReward',
+        label: 'Debug insect protection mesh reward',
+        application: 'raisedBedFull',
+    }),
+    debugOperation({
+        id: operationVisualRewardDebugOperationIds.removeInsectMesh,
+        kind: 'removeInsectMesh',
+        name: 'debugRemoveInsectMeshReward',
+        label: 'Debug remove insect protection mesh reward',
+        application: 'raisedBedFull',
+    }),
+    debugOperation({
         id: operationVisualRewardDebugOperationIds.supports,
         kind: 'supports',
         name: 'debugSupportsReward',
@@ -272,6 +322,17 @@ export const operationVisualRewardDebugOperationDefinitions = [
         name: 'debugHarvestReward',
         label: 'Debug harvest reward',
         application: 'raisedBedFull',
+    }),
+] satisfies OperationVisualRewardDebugOperationData[];
+
+export const highTargetOperationVisualOperationDefinitions = [
+    ...operationVisualRewardDebugOperationDefinitions,
+    debugOperation({
+        id: highTargetOperationVisualOperationIds.fieldMulch,
+        kind: 'mulch',
+        name: 'debugPlantMulchReward',
+        label: 'Debug field mulch reward',
+        application: 'plant',
     }),
 ] satisfies OperationVisualRewardDebugOperationData[];
 

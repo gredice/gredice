@@ -1,17 +1,16 @@
 import type { OutletOfferWithAvailability } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card } from '@gredice/ui/Card';
-import { Input } from '@gredice/ui/Input';
-import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import type { EntityStandardized } from '../../../lib/@types/EntityStandardized';
 import { KnownPages } from '../../../src/KnownPages';
-import {
-    formatDateInputValue,
-    formatDateTimeInputValue,
-    formatPrice,
-} from './format';
+import { formatDateInputValue, formatDateTimeInputValue } from './format';
+import { OutletOfferFormFields } from './OutletOfferFormFields';
 import { OutletOfferImagesField } from './OutletOfferImagesField';
+import {
+    outletPlantSortFormItems,
+    priceInputValue,
+} from './outletOfferFormValues';
 
 type OutletOfferFormProps = {
     action: (formData: FormData) => void | Promise<void>;
@@ -20,41 +19,8 @@ type OutletOfferFormProps = {
     submitLabel: string;
 };
 
-const initialPlantStatusOptions = [
-    { value: 'sowed', label: 'Posijano' },
-    { value: 'sprouted', label: 'Proklijalo' },
-    { value: 'ready', label: 'Spremno za presađivanje' },
-];
-
-const offerStatusOptions = [
-    { value: 'draft', label: 'Skica' },
-    { value: 'published', label: 'Objavljeno' },
-    { value: 'paused', label: 'Pauzirano' },
-    { value: 'closed', label: 'Zatvoreno' },
-];
-
-function plantSortLabel(plantSort: EntityStandardized) {
-    return (
-        plantSort.information?.label ??
-        plantSort.information?.name ??
-        `Sorta ${plantSort.id}`
-    );
-}
-
-function priceInputValue(cents: number | null | undefined) {
-    if (typeof cents !== 'number') {
-        return '';
-    }
-
-    return (cents / 100).toFixed(2);
-}
-
-function defaultStartAt() {
-    return formatDateTimeInputValue(new Date());
-}
-
-function defaultEndAt() {
-    const date = new Date();
+function defaultEndAt(now: Date) {
+    const date = new Date(now);
     date.setDate(date.getDate() + 7);
     return formatDateTimeInputValue(date);
 }
@@ -65,128 +31,35 @@ export function OutletOfferForm({
     plantSorts,
     submitLabel,
 }: OutletOfferFormProps) {
-    const plantSortItems = plantSorts.map((plantSort) => ({
-        value: plantSort.id.toString(),
-        label: plantSortLabel(plantSort),
-    }));
+    const now = new Date();
+    const plantSortItems = outletPlantSortFormItems(plantSorts);
+    const initialValues = {
+        plantSortId: offer?.plantSortId.toString(),
+        status: offer?.status ?? 'draft',
+        outletPrice: priceInputValue(offer?.outletPriceCents),
+        comparePrice: priceInputValue(offer?.comparePriceCents),
+        comparePriceCents: offer?.comparePriceCents ?? null,
+        quantity: offer?.quantity ?? 1,
+        initialPlantStatus: offer?.initialPlantStatus ?? 'sprouted',
+        sowingDate: offer
+            ? formatDateInputValue(offer.sowingDate)
+            : formatDateInputValue(now),
+        startAt: offer
+            ? formatDateTimeInputValue(offer.startAt)
+            : formatDateTimeInputValue(now),
+        endAt: offer
+            ? formatDateTimeInputValue(offer.endAt)
+            : defaultEndAt(now),
+    };
 
     return (
         <Card className="max-w-4xl">
             <form action={action}>
                 <Stack spacing={8} className="p-6">
-                    <div className="grid gap-6 md:grid-cols-2">
-                        <SelectItems
-                            name="plantSortId"
-                            label="Sorta"
-                            placeholder="Odaberite sortu"
-                            items={plantSortItems}
-                            defaultValue={offer?.plantSortId.toString()}
-                            searchable
-                            required
-                        />
-                        <SelectItems
-                            name="status"
-                            label="Status ponude"
-                            items={offerStatusOptions}
-                            defaultValue={offer?.status ?? 'draft'}
-                            required
-                        />
-                        <Input
-                            name="outletPrice"
-                            label="Outlet cijena"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            defaultValue={priceInputValue(
-                                offer?.outletPriceCents,
-                            )}
-                            endDecorator={
-                                <span className="px-3 text-sm text-muted-foreground">
-                                    EUR
-                                </span>
-                            }
-                            required
-                            fullWidth
-                        />
-                        <Input
-                            name="comparePrice"
-                            label="Usporedna cijena"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            defaultValue={priceInputValue(
-                                offer?.comparePriceCents,
-                            )}
-                            helperText={
-                                offer?.comparePriceCents
-                                    ? `Trenutno ${formatPrice(
-                                          offer.comparePriceCents,
-                                      )}`
-                                    : 'Opcionalno za prikaz popusta.'
-                            }
-                            endDecorator={
-                                <span className="px-3 text-sm text-muted-foreground">
-                                    EUR
-                                </span>
-                            }
-                            fullWidth
-                        />
-                        <Input
-                            name="quantity"
-                            label="Ukupna količina"
-                            type="number"
-                            min="1"
-                            step="1"
-                            defaultValue={offer?.quantity ?? 1}
-                            required
-                            fullWidth
-                        />
-                        <SelectItems
-                            name="initialPlantStatus"
-                            label="Početni status sadnice"
-                            items={initialPlantStatusOptions}
-                            defaultValue={
-                                offer?.initialPlantStatus ?? 'sprouted'
-                            }
-                            required
-                        />
-                        <Input
-                            name="sowingDate"
-                            label="Datum sjetve"
-                            type="date"
-                            defaultValue={
-                                offer
-                                    ? formatDateInputValue(offer.sowingDate)
-                                    : formatDateInputValue(new Date())
-                            }
-                            required
-                            fullWidth
-                        />
-                        <Input
-                            name="startAt"
-                            label="Početak ponude"
-                            type="datetime-local"
-                            defaultValue={
-                                offer
-                                    ? formatDateTimeInputValue(offer.startAt)
-                                    : defaultStartAt()
-                            }
-                            required
-                            fullWidth
-                        />
-                        <Input
-                            name="endAt"
-                            label="Kraj ponude"
-                            type="datetime-local"
-                            defaultValue={
-                                offer
-                                    ? formatDateTimeInputValue(offer.endAt)
-                                    : defaultEndAt()
-                            }
-                            required
-                            fullWidth
-                        />
-                    </div>
+                    <OutletOfferFormFields
+                        initialValues={initialValues}
+                        plantSortItems={plantSortItems}
+                    />
 
                     <OutletOfferImagesField
                         offerId={offer?.id}

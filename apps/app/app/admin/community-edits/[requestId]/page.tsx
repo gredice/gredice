@@ -1,6 +1,8 @@
 import {
     type CommunityEditRequestStatus,
+    type CommunityEntitySuggestionValue,
     getCommunityEditRequest,
+    parseCommunityEntitySuggestionRequest,
 } from '@gredice/storage';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
@@ -36,6 +38,31 @@ type CompactTextDiff = {
     removed: string;
     added: string;
 };
+
+type CommunityOperationSuggestionBaseValue = {
+    format: 'community-operation-suggestion-v1';
+    intent: 'add' | 'remove';
+    operationMode: 'existing' | 'new';
+    operationLabel: string;
+    stageName: string;
+    stageLabel: string;
+    currentState: 'absent' | 'present';
+    note?: string;
+    source?: string;
+};
+
+type CommunityOperationSuggestionValue =
+    | (CommunityOperationSuggestionBaseValue & {
+          operationMode: 'existing';
+          operationId: number;
+      })
+    | (CommunityOperationSuggestionBaseValue & {
+          intent: 'add';
+          operationMode: 'new';
+          currentState: 'absent';
+          newOperationName: string;
+          newOperationDescription: string;
+      });
 
 function statusLabel(status: CommunityEditRequestStatus) {
     switch (status) {
@@ -76,6 +103,10 @@ function entityTypeLabel(entityTypeName: string) {
             return 'Biljka';
         case 'plantSort':
             return 'Sorta';
+        case 'plantDisease':
+            return 'Bolest';
+        case 'plantPest':
+            return 'Štetnik';
         case 'operation':
             return 'Radnja';
         case 'block':
@@ -123,6 +154,110 @@ function parseCompactTextDiff(reviewDiff: string | null) {
     }
 }
 
+function isCommunityOperationSuggestion(
+    value: unknown,
+): value is CommunityOperationSuggestionValue {
+    if (
+        typeof value !== 'object' ||
+        value === null ||
+        !('format' in value) ||
+        value.format !== 'community-operation-suggestion-v1' ||
+        !('intent' in value) ||
+        (value.intent !== 'add' && value.intent !== 'remove') ||
+        !('operationLabel' in value) ||
+        typeof value.operationLabel !== 'string' ||
+        !('stageName' in value) ||
+        typeof value.stageName !== 'string' ||
+        !('stageLabel' in value) ||
+        typeof value.stageLabel !== 'string' ||
+        !('currentState' in value) ||
+        (value.currentState !== 'absent' && value.currentState !== 'present') ||
+        ('note' in value &&
+            typeof value.note !== 'undefined' &&
+            typeof value.note !== 'string') ||
+        ('source' in value &&
+            typeof value.source !== 'undefined' &&
+            typeof value.source !== 'string')
+    ) {
+        return false;
+    }
+
+    const operationMode =
+        'operationMode' in value ? value.operationMode : 'existing';
+    if (operationMode === 'new') {
+        return (
+            value.intent === 'add' &&
+            value.currentState === 'absent' &&
+            'newOperationName' in value &&
+            typeof value.newOperationName === 'string' &&
+            'newOperationDescription' in value &&
+            typeof value.newOperationDescription === 'string'
+        );
+    }
+
+    return (
+        operationMode === 'existing' &&
+        'operationId' in value &&
+        typeof value.operationId === 'number'
+    );
+}
+
+function parseCommunityOperationSuggestion(value: string | null) {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (!isCommunityOperationSuggestion(parsed)) {
+            return null;
+        }
+
+        if (parsed.operationMode === 'new') {
+            return parsed;
+        }
+
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: parsed.format,
+            intent: parsed.intent,
+            operationMode: 'existing',
+            operationId: parsed.operationId,
+            operationLabel: parsed.operationLabel,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+            currentState: parsed.currentState,
+        };
+        if (parsed.note) {
+            suggestion.note = parsed.note;
+        }
+        if (parsed.source) {
+            suggestion.source = parsed.source;
+        }
+
+        return suggestion;
+    } catch {
+        return null;
+    }
+}
+
+function operationSuggestionIntentLabel(intent: 'add' | 'remove') {
+    switch (intent) {
+        case 'add':
+            return 'Dodaj radnju';
+        case 'remove':
+            return 'Ukloni radnju';
+    }
+}
+
+function operationSuggestionStateLabel(state: 'absent' | 'present') {
+    switch (state) {
+        case 'absent':
+            return 'Radnja nije bila povezana';
+        case 'present':
+            return 'Radnja je bila povezana';
+    }
+}
+
 function ValueBlock({ label, value }: { label: string; value: string | null }) {
     return (
         <Stack spacing={1} className="min-w-0">
@@ -137,6 +272,234 @@ function ValueBlock({ label, value }: { label: string; value: string | null }) {
                 </pre>
             )}
         </Stack>
+    );
+}
+
+function OperationSuggestionBlock({
+    suggestion,
+}: {
+    suggestion: CommunityOperationSuggestionValue;
+}) {
+    return (
+        <Stack spacing={3}>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <DetailItem label="Namjera">
+                    <Chip
+                        color={
+                            suggestion.intent === 'add' ? 'success' : 'warning'
+                        }
+                        variant="soft"
+                    >
+                        {operationSuggestionIntentLabel(suggestion.intent)}
+                    </Chip>
+                </DetailItem>
+                <DetailItem label="Stadij">
+                    <Typography>
+                        {suggestion.stageLabel} ({suggestion.stageName})
+                    </Typography>
+                </DetailItem>
+                <DetailItem label="Radnja">
+                    {suggestion.operationMode === 'new' ? (
+                        <Stack spacing={1}>
+                            <Chip color="info" variant="soft">
+                                Nova radnja
+                            </Chip>
+                            <Typography>
+                                {suggestion.newOperationName}
+                            </Typography>
+                        </Stack>
+                    ) : (
+                        <Typography>
+                            {suggestion.operationLabel} #
+                            {suggestion.operationId}
+                        </Typography>
+                    )}
+                </DetailItem>
+                <DetailItem label="Stanje pri slanju">
+                    <Typography>
+                        {operationSuggestionStateLabel(suggestion.currentState)}
+                    </Typography>
+                </DetailItem>
+            </div>
+            {suggestion.operationMode === 'new' ? (
+                <DetailItem label="Opis očekivanja">
+                    <Typography className="whitespace-pre-line break-words">
+                        {suggestion.newOperationDescription}
+                    </Typography>
+                </DetailItem>
+            ) : null}
+            {suggestion.source ? (
+                <DetailItem label="Izvor">
+                    <Typography className="whitespace-pre-line break-words">
+                        {suggestion.source}
+                    </Typography>
+                </DetailItem>
+            ) : null}
+            {suggestion.note ? (
+                <DetailItem label="Napomena">
+                    <Typography className="whitespace-pre-line">
+                        {suggestion.note}
+                    </Typography>
+                </DetailItem>
+            ) : null}
+        </Stack>
+    );
+}
+
+function operationApplicationLabel(
+    application: Extract<
+        CommunityEntitySuggestionValue,
+        { kind: 'operation' }
+    >['application'],
+) {
+    switch (application) {
+        case 'plant':
+            return 'Biljka';
+        case 'raisedBedFull':
+            return 'Cijela gredica';
+        case 'raisedBed1m':
+            return 'Gredica 1 m²';
+        case 'garden':
+            return 'Vrt';
+        case 'farm':
+            return 'Farma';
+    }
+}
+
+function entitySuggestionLabels(suggestion: CommunityEntitySuggestionValue) {
+    switch (suggestion.kind) {
+        case 'plantSort':
+            return {
+                cardTitle: 'Nova sorta biljke',
+                pageTitle: 'Prijedlog nove sorte',
+                section: 'Nova sorta',
+            };
+        case 'operation':
+            return {
+                cardTitle: 'Nova radnja',
+                pageTitle: 'Prijedlog nove radnje',
+                section: 'Nova radnja',
+            };
+        case 'disease':
+            return {
+                cardTitle: 'Nova bolest biljke',
+                pageTitle: 'Prijedlog nove bolesti',
+                section: 'Nova bolest',
+            };
+        case 'pest':
+            return {
+                cardTitle: 'Novi štetnik biljke',
+                pageTitle: 'Prijedlog novog štetnika',
+                section: 'Novi štetnik',
+            };
+    }
+}
+
+function EntitySuggestionBlock({
+    suggestion,
+}: {
+    suggestion: CommunityEntitySuggestionValue;
+}) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">
+                    {entitySuggestionLabels(suggestion).cardTitle}
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Stack spacing={4}>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <DetailItem label="Naziv">
+                            <Typography>{suggestion.name}</Typography>
+                        </DetailItem>
+                        {suggestion.kind === 'plantSort' ? (
+                            <DetailItem label="Biljka">
+                                <Typography>
+                                    {suggestion.parentPlantName} #
+                                    {suggestion.parentPlantId}
+                                </Typography>
+                            </DetailItem>
+                        ) : suggestion.kind === 'operation' ? (
+                            <>
+                                <DetailItem label="Stadij">
+                                    <Typography>
+                                        {suggestion.stageLabel} #
+                                        {suggestion.plantStageId}
+                                    </Typography>
+                                </DetailItem>
+                                <DetailItem label="Primjena">
+                                    <Typography>
+                                        {operationApplicationLabel(
+                                            suggestion.application,
+                                        )}
+                                    </Typography>
+                                </DetailItem>
+                            </>
+                        ) : (
+                            <DetailItem label="Pogođene biljke">
+                                <Typography>
+                                    {suggestion.affectedPlants
+                                        .map(
+                                            (plant) =>
+                                                `${plant.name} #${plant.id}`,
+                                        )
+                                        .join(', ')}
+                                </Typography>
+                            </DetailItem>
+                        )}
+                    </div>
+                    <DetailItem
+                        label={
+                            suggestion.kind === 'disease' ||
+                            suggestion.kind === 'pest'
+                                ? 'Kratki opis'
+                                : 'Opis prijedloga'
+                        }
+                    >
+                        <Typography className="whitespace-pre-line break-words">
+                            {suggestion.description}
+                        </Typography>
+                    </DetailItem>
+                    {suggestion.kind === 'disease' ||
+                    suggestion.kind === 'pest' ? (
+                        <>
+                            <DetailItem label="Simptomi">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.symptoms}
+                                </Typography>
+                            </DetailItem>
+                            <DetailItem label="Uvjeti pojave">
+                                <Typography className="whitespace-pre-line break-words">
+                                    {suggestion.favorableConditions}
+                                </Typography>
+                            </DetailItem>
+                            {suggestion.severity ? (
+                                <DetailItem label="Ozbiljnost">
+                                    <Typography className="whitespace-pre-line break-words">
+                                        {suggestion.severity}
+                                    </Typography>
+                                </DetailItem>
+                            ) : null}
+                        </>
+                    ) : null}
+                    {suggestion.source ? (
+                        <DetailItem label="Izvor">
+                            <Typography className="whitespace-pre-line break-words">
+                                {suggestion.source}
+                            </Typography>
+                        </DetailItem>
+                    ) : null}
+                    {suggestion.note ? (
+                        <DetailItem label="Napomena pošiljatelja">
+                            <Typography className="whitespace-pre-line break-words">
+                                {suggestion.note}
+                            </Typography>
+                        </DetailItem>
+                    ) : null}
+                </Stack>
+            </CardContent>
+        </Card>
     );
 }
 
@@ -177,6 +540,25 @@ function DiffBlock({ change }: { change: CommunityEditChange }) {
     );
 }
 
+function ChangeBody({ change }: { change: CommunityEditChange }) {
+    const operationSuggestion = parseCommunityOperationSuggestion(
+        change.proposedValue,
+    );
+    if (operationSuggestion) {
+        return <OperationSuggestionBlock suggestion={operationSuggestion} />;
+    }
+
+    return (
+        <Stack spacing={4}>
+            <div className="grid gap-4 lg:grid-cols-2">
+                <ValueBlock label="Trenutno" value={change.previousValue} />
+                <ValueBlock label="Predloženo" value={change.proposedValue} />
+            </div>
+            <DiffBlock change={change} />
+        </Stack>
+    );
+}
+
 function DetailItem({
     children,
     label,
@@ -207,7 +589,13 @@ function ReviewNote() {
     );
 }
 
-function ReviewActions({ request }: { request: CommunityEditRequest }) {
+function ReviewActions({
+    isEntitySuggestion,
+    request,
+}: {
+    isEntitySuggestion: boolean;
+    request: CommunityEditRequest;
+}) {
     const canReview =
         request.status === 'pending' || request.status === 'approved';
     if (!canReview) {
@@ -229,7 +617,9 @@ function ReviewActions({ request }: { request: CommunityEditRequest }) {
             >
                 <ReviewNote />
                 <Button color="success" type="submit">
-                    Odobri i primijeni
+                    {isEntitySuggestion
+                        ? 'Označi obrađenim'
+                        : 'Odobri i primijeni'}
                 </Button>
             </form>
             <form
@@ -272,6 +662,7 @@ export default async function CommunityEditDetailPage({
     if (!request) {
         notFound();
     }
+    const entitySuggestion = parseCommunityEntitySuggestionRequest(request);
 
     return (
         <Stack spacing={4}>
@@ -293,20 +684,27 @@ export default async function CommunityEditDetailPage({
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        {entityTypeLabel(request.entityTypeName)} #
-                        {request.entityId}
+                        {entitySuggestion
+                            ? entitySuggestionLabels(entitySuggestion).pageTitle
+                            : `${entityTypeLabel(request.entityTypeName)} #${request.entityId}`}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <DetailItem label="Admin zapis">
+                        <DetailItem
+                            label={
+                                entitySuggestion ? 'Kontekst' : 'Admin zapis'
+                            }
+                        >
                             <Link
                                 href={KnownPages.DirectoryEntity(
                                     request.entityTypeName,
                                     request.entityId,
                                 )}
                             >
-                                Otvori zapis
+                                {entitySuggestion
+                                    ? 'Otvori kontekst'
+                                    : 'Otvori zapis'}
                             </Link>
                         </DetailItem>
                         <DetailItem label="Javna stranica">
@@ -322,7 +720,10 @@ export default async function CommunityEditDetailPage({
                         </DetailItem>
                         <DetailItem label="Sekcija">
                             <Typography>
-                                {request.sectionKey ?? 'Cijela stranica'}
+                                {entitySuggestion
+                                    ? entitySuggestionLabels(entitySuggestion)
+                                          .section
+                                    : (request.sectionKey ?? 'Cijela stranica')}
                             </Typography>
                         </DetailItem>
                         <DetailItem label="Kreirano">
@@ -376,7 +777,7 @@ export default async function CommunityEditDetailPage({
                             )}
                         </DetailItem>
                     </div>
-                    {request.submitterNote ? (
+                    {request.submitterNote && !entitySuggestion ? (
                         <Stack spacing={1} className="mt-4">
                             <Typography
                                 level="body2"
@@ -411,49 +812,50 @@ export default async function CommunityEditDetailPage({
                 </CardContent>
             </Card>
 
-            <Stack spacing={3}>
-                <Typography level="h2" className="text-xl">
-                    Promjene
-                </Typography>
-                {request.changes.map((change) => (
-                    <Card key={change.id}>
-                        <CardHeader>
-                            <CardTitle className="text-lg">
-                                {change.attributeDefinition.label ??
-                                    change.fieldKey}
-                            </CardTitle>
-                            <Typography
-                                level="body3"
-                                className="text-muted-foreground"
-                            >
-                                {change.attributePath} · {change.dataType}
-                            </Typography>
-                        </CardHeader>
-                        <CardContent>
-                            <Stack spacing={4}>
-                                <div className="grid gap-4 lg:grid-cols-2">
-                                    <ValueBlock
-                                        label="Trenutno"
-                                        value={change.previousValue}
-                                    />
-                                    <ValueBlock
-                                        label="Predloženo"
-                                        value={change.proposedValue}
-                                    />
-                                </div>
-                                <DiffBlock change={change} />
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                ))}
-            </Stack>
+            {entitySuggestion ? (
+                <Stack spacing={3}>
+                    <EntitySuggestionBlock suggestion={entitySuggestion} />
+                    <Typography level="body2" className="text-muted-foreground">
+                        Nakon provjere izradi novi zapis u katalogu, a zatim
+                        označi ovaj prijedlog obrađenim.
+                    </Typography>
+                </Stack>
+            ) : (
+                <Stack spacing={3}>
+                    <Typography level="h2" className="text-xl">
+                        Promjene
+                    </Typography>
+                    {request.changes.map((change) => (
+                        <Card key={change.id}>
+                            <CardHeader>
+                                <CardTitle className="text-lg">
+                                    {change.attributeDefinition.label ??
+                                        change.fieldKey}
+                                </CardTitle>
+                                <Typography
+                                    level="body3"
+                                    className="text-muted-foreground"
+                                >
+                                    {change.attributePath} · {change.dataType}
+                                </Typography>
+                            </CardHeader>
+                            <CardContent>
+                                <ChangeBody change={change} />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </Stack>
+            )}
 
             <Card>
                 <CardHeader>
                     <CardTitle>Moderiranje</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <ReviewActions request={request} />
+                    <ReviewActions
+                        isEntitySuggestion={Boolean(entitySuggestion)}
+                        request={request}
+                    />
                 </CardContent>
             </Card>
         </Stack>

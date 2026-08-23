@@ -3,6 +3,7 @@
 import { createContext, useContext } from 'react';
 
 export const GameSceneDetailContext = createContext({
+    includePendingCartPlants: true,
     renderDetails: true,
 });
 

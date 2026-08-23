@@ -1,14 +1,17 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
+import { getInternalSceneBlockData } from '../internalSceneBlockData';
 import {
     createOptimisticBlockPlacement,
+    getPreferredBlockPlacementPosition,
     type PlacementBlockData,
     removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
 
 const blockData: PlacementBlockData[] = [
+    ...getInternalSceneBlockData(),
     {
         information: { name: 'Block_Grass' },
         attributes: { stackable: true, height: 1 },
@@ -19,11 +22,15 @@ const blockData: PlacementBlockData[] = [
     },
     {
         information: { name: 'Raised_Bed' },
-        attributes: { stackable: true, height: 1 },
+        attributes: { stackable: false, height: 1, spanDepth: 2 },
     },
     {
         information: { name: 'Shade' },
         attributes: { stackable: false, height: 1 },
+    },
+    {
+        information: { name: 'PotRoundedBowl' },
+        attributes: { stackable: false, height: 0.2 },
     },
 ];
 
@@ -122,17 +129,20 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(-1, 0, 1));
-        assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: new Vector3(-1, 0, 1),
-            blocks: [
-                {
-                    id: 'optimistic-bed',
-                    name: 'Raised_Bed',
-                    rotation: 0,
-                },
-            ],
-        });
+        assert.deepStrictEqual(placement.position, { x: -1, y: 0, z: 1 });
+        assert.equal(placement.blockId, 'optimistic-bed');
+        assert.deepStrictEqual(placement.stacks.slice(-1), [
+            {
+                position: { x: -1, y: 0, z: 1 },
+                blocks: [
+                    {
+                        id: 'optimistic-bed',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
     });
 
     it('avoids water stacks when automatically placing new blocks', () => {
@@ -157,9 +167,9 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(0, 0, -1));
+        assert.deepStrictEqual(placement.position, { x: 0, y: 0, z: -1 });
         assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: new Vector3(0, 0, -1),
+            position: { x: 0, y: 0, z: -1 },
             blocks: [
                 {
                     id: 'optimistic-shade',
@@ -190,7 +200,7 @@ describe('createOptimisticBlockPlacement', () => {
         );
 
         assert.ok(placement);
-        assert.deepStrictEqual(placement.position, new Vector3(0, 0, 0));
+        assert.deepStrictEqual(placement.position, { x: 0, y: 0, z: 0 });
         assert.deepStrictEqual(placement.stacks[0], {
             position: new Vector3(0, 0, 0),
             blocks: [
@@ -206,6 +216,142 @@ describe('createOptimisticBlockPlacement', () => {
                 },
             ],
         });
+    });
+
+    it('uses the preferred position when placing a new block', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                preferredPosition: getPreferredBlockPlacementPosition({
+                    target: [12.4, 0, -7.6],
+                }),
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, { x: 12, y: 0, z: -8 });
+        assert.deepStrictEqual(placement.stacks, [
+            {
+                position: { x: 12, y: 0, z: -8 },
+                blocks: [
+                    {
+                        id: 'optimistic-shade',
+                        name: 'Shade',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+    });
+
+    it('uses a requested position exactly for dropped HUD items', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                requestedPosition: { x: 4, y: -2 },
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.position, { x: 4, y: 0, z: -2 });
+        assert.deepStrictEqual(placement.stacks, [
+            {
+                position: { x: 4, y: 0, z: -2 },
+                blocks: [
+                    {
+                        id: 'optimistic-shade',
+                        name: 'Shade',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+    });
+
+    it('places a pot on top of the stackable display table', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(2, 0, 3),
+                        blocks: [
+                            {
+                                id: 'grass-table',
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                            {
+                                id: 'display-table',
+                                name: 'OutletDisplayTable',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'PotRoundedBowl',
+            'display-pot',
+            {
+                requestedPosition: { x: 2, y: 3 },
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.stacks[0]?.blocks, [
+            {
+                id: 'grass-table',
+                name: 'Block_Grass',
+                rotation: 0,
+            },
+            {
+                id: 'display-table',
+                name: 'OutletDisplayTable',
+                rotation: 0,
+            },
+            {
+                id: 'display-pot',
+                name: 'PotRoundedBowl',
+                rotation: 0,
+            },
+        ]);
+    });
+
+    it('does not fall back when a requested HUD drop position is invalid', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(0, 0, 0),
+                        blocks: [
+                            {
+                                id: 'water-a',
+                                name: 'Block_Water',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'Shade',
+            'optimistic-shade',
+            {
+                requestedPosition: { x: 0, y: 0 },
+            },
+        );
+
+        assert.equal(placement, null);
     });
 });
 
@@ -242,6 +388,67 @@ describe('replaceOptimisticBlockId', () => {
                     },
                 ],
             },
+        );
+    });
+
+    it('preserves stacks that do not contain the optimistic block', () => {
+        const targetBlock = {
+            id: 'optimistic-shade',
+            name: 'Shade',
+            rotation: 0,
+        };
+        const untouchedBlock = {
+            id: 'grass-a',
+            name: 'Block_Grass',
+            rotation: 0,
+        };
+        const targetStack = {
+            position: new Vector3(0, 0, 0),
+            blocks: [targetBlock],
+        };
+        const untouchedStack = {
+            position: new Vector3(1, 0, 0),
+            blocks: [untouchedBlock],
+        };
+        const garden = {
+            stacks: [targetStack, untouchedStack],
+        };
+
+        const updatedGarden = replaceOptimisticBlockId(
+            garden,
+            'optimistic-shade',
+            'shade-1',
+        );
+
+        assert.notEqual(updatedGarden, garden);
+        assert.notEqual(updatedGarden.stacks, garden.stacks);
+        assert.notEqual(updatedGarden.stacks[0], targetStack);
+        assert.notEqual(updatedGarden.stacks[0]?.blocks, targetStack.blocks);
+        assert.equal(updatedGarden.stacks[0]?.blocks[0]?.id, 'shade-1');
+        assert.equal(updatedGarden.stacks[1], untouchedStack);
+        assert.equal(updatedGarden.stacks[1]?.blocks, untouchedStack.blocks);
+        assert.equal(updatedGarden.stacks[1]?.blocks[0], untouchedBlock);
+    });
+
+    it('returns the original garden when the optimistic block is missing', () => {
+        const garden = {
+            stacks: [
+                {
+                    position: new Vector3(0, 0, 0),
+                    blocks: [
+                        {
+                            id: 'shade-1',
+                            name: 'Shade',
+                            rotation: 0,
+                        },
+                    ],
+                },
+            ],
+        };
+
+        assert.equal(
+            replaceOptimisticBlockId(garden, 'optimistic-shade', 'shade-1'),
+            garden,
         );
     });
 });

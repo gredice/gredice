@@ -13,16 +13,22 @@ export type FieldCancelTarget = {
     id?: number;
     raisedBedId: number;
     positionIndex: number;
+    expectedPlantCycleEventId: number;
+    expectedPlantCycleVersionEventId: number;
+    expectedPlantSortId: number;
     label: string;
 };
 
 export type OperationCancelTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
 interface BulkCancelRaisedBedButtonProps {
     physicalId: string;
+    targetLabel?: string;
     fields: FieldCancelTarget[];
     operations: OperationCancelTarget[];
     onSubmit?: (formData: FormData) => unknown | Promise<unknown>;
@@ -54,6 +60,15 @@ export function buildFieldCancelFormData(
     const formData = new FormData();
     formData.set('raisedBedId', field.raisedBedId.toString());
     formData.set('positionIndex', field.positionIndex.toString());
+    formData.set(
+        'expectedPlantCycleEventId',
+        field.expectedPlantCycleEventId.toString(),
+    );
+    formData.set(
+        'expectedPlantCycleVersionEventId',
+        field.expectedPlantCycleVersionEventId.toString(),
+    );
+    formData.set('expectedPlantSortId', field.expectedPlantSortId.toString());
     copyCancelOptions(source, formData);
     return formData;
 }
@@ -64,20 +79,27 @@ export function buildOperationCancelFormData(
 ) {
     const formData = new FormData();
     formData.set('operationId', operation.id.toString());
+    formData.set('expectedEntityId', operation.entityId.toString());
+    formData.set(
+        'expectedTaskVersionEventId',
+        operation.taskVersionEventId.toString(),
+    );
     copyCancelOptions(source, formData);
     return formData;
 }
 
 export function BulkCancelRaisedBedButton({
     physicalId,
+    targetLabel,
     fields,
     operations,
     onSubmit,
 }: BulkCancelRaisedBedButtonProps) {
     const totalItems = fields.length + operations.length;
     const disabled = totalItems === 0;
-    const targetLabel =
-        physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`;
+    const targetText =
+        targetLabel ??
+        (physicalId === 'dan' ? 'za dan' : `za gredicu ${physicalId}`);
 
     async function handleSubmit(formData: FormData) {
         if (totalItems === 0) {
@@ -105,7 +127,7 @@ export function BulkCancelRaisedBedButton({
 
     return (
         <CancelRequestModal
-            label={`sve zadatke (${totalItems}) ${targetLabel}`}
+            label={`sve zadatke (${totalItems}) ${targetText}`}
             onSubmit={handleSubmit}
             hiddenFields={null}
             description={`Svi odabrani zadaci (${totalItems}) bit će otkazani.`}

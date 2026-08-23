@@ -1,5 +1,9 @@
 import 'server-only';
 import {
+    ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+    getAdvancedSowingFootprintPositions,
+} from '@gredice/js/plants';
+import {
     and,
     asc,
     count,
@@ -8,6 +12,7 @@ import {
     isNotNull,
     isNull,
     or,
+    sql,
 } from 'drizzle-orm';
 import { storage } from '..';
 import {
@@ -17,8 +22,10 @@ import {
     scheduleCacheTtls,
 } from '../cache/scheduleCache';
 import { generateRaisedBedName } from '../helpers/generateRaisedBedName';
+import { RAISED_BED_PHOTO_OPERATION_ID } from '../helpers/raisedBedPhotoOperations';
 import {
     events,
+    farms,
     farmUsers,
     gardens,
     type InsertRaisedBed,
@@ -26,15 +33,19 @@ import {
     operations,
     type RaisedBedOrientation,
     raisedBeds,
+    shoppingCartItemAdvancedSowingAuthorizations,
     shoppingCartItems,
     type UpdateRaisedBed,
 } from '../schema';
 import {
     type InsertRaisedBedSensor,
     raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBedSensors,
     type UpdateRaisedBedSensor,
 } from '../schema/gardenSchema';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import {
     createEvent,
     getAllEvents,
@@ -51,15 +62,37 @@ import {
     type RaisedBedFieldWithEvents,
     type RaisedBedWeedState,
 } from './raisedBedFieldsRepo';
+import {
+    getRaisedBedPlantingsForRaisedBeds,
+    type RaisedBedPlantingWithFields,
+} from './raisedBedPlantingsRepo';
 import { processReferralRewardsForAccount } from './referralsRepo';
+import type { ScheduleTaskTransaction } from './scheduleTaskTransactionsRepo';
+import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
+export type RaisedBedLatestPhotoOperation = {
+    id: number;
+    completedAt: Date;
+    imageUrls: string[];
+};
 type RaisedBedWithFields = typeof raisedBeds.$inferSelect & {
     fields: RaisedBedFieldWithEvents[];
+    latestPhotoOperation: RaisedBedLatestPhotoOperation | null;
+    plantings: RaisedBedPlantingWithFields[];
     weedState: RaisedBedWeedState | null;
 };
+
+const raisedBedPhotoOperationStatusEventTypes = [
+    knownEventTypes.operations.schedule,
+    knownEventTypes.operations.complete,
+    knownEventTypes.operations.block,
+    knownEventTypes.operations.verify,
+    knownEventTypes.operations.fail,
+    knownEventTypes.operations.cancel,
+];
 
 function parseWeedStateLevel(value: unknown): RaisedBedWeedStateLevel | null {
     switch (value) {
@@ -120,6 +153,127 @@ function latestWeedStateFromEvents(
     }
 
     return weedState;
+}
+
+function imageUrlsFromOperationCompleteData(value: unknown) {
+    if (!value || typeof value !== 'object') {
+        return [];
+    }
+
+    const images = (value as { images?: unknown }).images;
+    return Array.isArray(images)
+        ? images.filter(
+              (imageUrl): imageUrl is string =>
+                  typeof imageUrl === 'string' && imageUrl.trim().length > 0,
+          )
+        : [];
+}
+
+async function getLatestRaisedBedPhotoOperationsByIds(
+    raisedBedIds: number[],
+): Promise<Map<number, RaisedBedLatestPhotoOperation>> {
+    const uniqueRaisedBedIds = Array.from(new Set(raisedBedIds));
+    const latestPhotoOperationsByRaisedBedId = new Map<
+        number,
+        RaisedBedLatestPhotoOperation & { eventId: number }
+    >();
+
+    if (uniqueRaisedBedIds.length === 0) {
+        return new Map();
+    }
+
+    const photoOperations = await storage().query.operations.findMany({
+        columns: {
+            id: true,
+            raisedBedId: true,
+        },
+        where: and(
+            inArray(operations.raisedBedId, uniqueRaisedBedIds),
+            eq(operations.entityId, RAISED_BED_PHOTO_OPERATION_ID),
+            eq(operations.entityTypeName, 'operation'),
+            eq(operations.isDeleted, false),
+            isNotNull(operations.raisedBedId),
+        ),
+    });
+    const raisedBedIdByOperationId = new Map<number, number>();
+    for (const operation of photoOperations) {
+        if (typeof operation.raisedBedId === 'number') {
+            raisedBedIdByOperationId.set(operation.id, operation.raisedBedId);
+        }
+    }
+
+    const operationIds = Array.from(raisedBedIdByOperationId.keys());
+    if (operationIds.length === 0) {
+        return new Map();
+    }
+
+    const operationEvents = await getAllEvents(
+        raisedBedPhotoOperationStatusEventTypes,
+        operationIds.map((operationId) => operationId.toString()),
+    );
+    const latestStatusTypeByOperationId = new Map<number, string>();
+    for (const event of operationEvents) {
+        const operationId = Number(event.aggregateId);
+        if (raisedBedIdByOperationId.has(operationId)) {
+            latestStatusTypeByOperationId.set(operationId, event.type);
+        }
+    }
+
+    for (const event of operationEvents) {
+        if (event.type !== knownEventTypes.operations.complete) {
+            continue;
+        }
+
+        const operationId = Number(event.aggregateId);
+        const latestStatusType = latestStatusTypeByOperationId.get(operationId);
+        if (
+            latestStatusType !== knownEventTypes.operations.complete &&
+            latestStatusType !== knownEventTypes.operations.verify
+        ) {
+            continue;
+        }
+
+        const raisedBedId = raisedBedIdByOperationId.get(operationId);
+        if (!raisedBedId) {
+            continue;
+        }
+
+        const imageUrls = imageUrlsFromOperationCompleteData(event.data);
+        if (imageUrls.length === 0) {
+            continue;
+        }
+
+        const current = latestPhotoOperationsByRaisedBedId.get(raisedBedId);
+        if (
+            current &&
+            (current.completedAt > event.createdAt ||
+                (current.completedAt.getTime() === event.createdAt.getTime() &&
+                    current.eventId > event.id))
+        ) {
+            continue;
+        }
+
+        latestPhotoOperationsByRaisedBedId.set(raisedBedId, {
+            id: operationId,
+            completedAt: event.createdAt,
+            imageUrls,
+            eventId: event.id,
+        });
+    }
+
+    return new Map(
+        Array.from(
+            latestPhotoOperationsByRaisedBedId,
+            ([raisedBedId, item]) => [
+                raisedBedId,
+                {
+                    id: item.id,
+                    completedAt: item.completedAt,
+                    imageUrls: item.imageUrls,
+                },
+            ],
+        ),
+    );
 }
 
 export async function createRaisedBed(
@@ -315,12 +469,18 @@ export async function getRaisedBedsForGardens(
     const beds = await storage().query.raisedBeds.findMany({
         where: and(...whereConditions),
     });
-    const weedStatesByRaisedBedId = await getRaisedBedWeedStatesByIds(
-        beds.map((bed) => bed.id),
-    );
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        beds.map((bed) => bed.id),
-    );
+    const bedIds = beds.map((bed) => bed.id);
+    const [
+        weedStatesByRaisedBedId,
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedWeedStatesByIds(bedIds),
+        getRaisedBedFieldsWithEventsForBeds(bedIds),
+        getLatestRaisedBedPhotoOperationsByIds(bedIds),
+        getRaisedBedPlantingsForRaisedBeds(bedIds),
+    ]);
 
     // For each raised bed, fetch and attach fields with event-sourced info
     for (const bed of beds) {
@@ -332,6 +492,9 @@ export async function getRaisedBedsForGardens(
         const bedWithFields = {
             ...bed,
             fields: fieldsByRaisedBedId.get(bed.id) ?? [],
+            latestPhotoOperation:
+                latestPhotoOperationsByRaisedBedId.get(bed.id) ?? null,
+            plantings: plantingsByRaisedBedId.get(bed.id) ?? [],
             weedState: weedStatesByRaisedBedId.get(bed.id) ?? null,
         };
         if (gardenBeds) {
@@ -345,7 +508,13 @@ export async function getRaisedBedsForGardens(
 }
 
 export async function getRaisedBed(raisedBedId: number) {
-    const [raisedBed, fields, weedStatesByRaisedBedId] = await Promise.all([
+    const [
+        raisedBed,
+        fields,
+        weedStatesByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
         storage().query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, raisedBedId),
@@ -354,12 +523,17 @@ export async function getRaisedBed(raisedBedId: number) {
         }),
         getRaisedBedFieldsWithEvents(raisedBedId),
         getRaisedBedWeedStatesByIds([raisedBedId]),
+        getLatestRaisedBedPhotoOperationsByIds([raisedBedId]),
+        getRaisedBedPlantingsForRaisedBeds([raisedBedId]),
     ]);
     if (!raisedBed) return null;
     // Attach raised bed fields with event-sourced info
     return {
         ...raisedBed,
         fields,
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
         weedState: weedStatesByRaisedBedId.get(raisedBed.id) ?? null,
     };
 }
@@ -444,6 +618,71 @@ export async function updateRaisedBed(raisedBed: UpdateRaisedBed) {
     }
 }
 
+export type CheckoutPlantingRaisedBedActivation =
+    | {
+          available: false;
+          reason: 'abandoned' | 'not_found' | 'status_changed';
+      }
+    | {
+          available: true;
+          activatedAccountId: string | null;
+      };
+
+/**
+ * Serializes checkout planting against abandonment on the parent raised bed.
+ * The caller must keep this in the same transaction as the planting events.
+ */
+export async function lockAndActivateRaisedBedForCheckoutPlanting(
+    raisedBedId: number,
+    transaction: ScheduleTaskTransaction,
+): Promise<CheckoutPlantingRaisedBedActivation> {
+    const [raisedBed] = await transaction
+        .select({
+            accountId: raisedBeds.accountId,
+            status: raisedBeds.status,
+        })
+        .from(raisedBeds)
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .limit(1)
+        .for('update');
+
+    if (!raisedBed) {
+        return { available: false, reason: 'not_found' };
+    }
+    if (raisedBed.status === 'abandoned') {
+        return { available: false, reason: 'abandoned' };
+    }
+    if (raisedBed.status === 'active') {
+        return { available: true, activatedAccountId: null };
+    }
+
+    const [activatedRaisedBed] = await transaction
+        .update(raisedBeds)
+        .set({ status: 'active' })
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+                eq(raisedBeds.status, raisedBed.status),
+            ),
+        )
+        .returning({ accountId: raisedBeds.accountId });
+
+    if (!activatedRaisedBed) {
+        return { available: false, reason: 'status_changed' };
+    }
+
+    return {
+        available: true,
+        activatedAccountId: activatedRaisedBed.accountId,
+    };
+}
+
 export async function abandonRaisedBed({
     accountId,
     gardenId,
@@ -497,8 +736,68 @@ export async function mergeRaisedBeds(
     }
 
     const db = storage();
+    const expectedMutableCartItems = await db
+        .select({ id: shoppingCartItems.id })
+        .from(shoppingCartItems)
+        .where(
+            and(
+                eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                eq(shoppingCartItems.isDeleted, false),
+                eq(shoppingCartItems.status, 'new'),
+            ),
+        );
+    const expectedMutableCartItemIds = expectedMutableCartItems.map(
+        (item) => item.id,
+    );
 
-    await db.transaction(async (tx) => {
+    await withCheckoutCartItemLocks(expectedMutableCartItemIds, async (tx) => {
+        const liveMutableCartItems = await tx
+            .select({ id: shoppingCartItems.id })
+            .from(shoppingCartItems)
+            .where(
+                and(
+                    eq(shoppingCartItems.raisedBedId, sourceRaisedBedId),
+                    eq(shoppingCartItems.isDeleted, false),
+                    eq(shoppingCartItems.status, 'new'),
+                ),
+            );
+        const expectedMutableCartItemIdSet = new Set(
+            expectedMutableCartItemIds,
+        );
+        if (
+            liveMutableCartItems.length !== expectedMutableCartItemIds.length ||
+            liveMutableCartItems.some(
+                (item) => !expectedMutableCartItemIdSet.has(item.id),
+            )
+        ) {
+            throw new Error(
+                'Shopping cart items changed while fencing raised bed merge.',
+            );
+        }
+        await lockAndAssertCartItemsMutable(expectedMutableCartItemIds, tx);
+
+        // Planting writers lock physical fields before the raised bed. Use the
+        // same order here so merge cannot deadlock with concurrent placement.
+        const mergeFields = await tx
+            .select()
+            .from(raisedBedFields)
+            .where(
+                inArray(raisedBedFields.raisedBedId, [
+                    targetRaisedBedId,
+                    sourceRaisedBedId,
+                ]),
+            )
+            .orderBy(asc(raisedBedFields.id))
+            .for('update');
+        await tx
+            .select({ id: raisedBeds.id })
+            .from(raisedBeds)
+            .where(
+                inArray(raisedBeds.id, [targetRaisedBedId, sourceRaisedBedId]),
+            )
+            .orderBy(asc(raisedBeds.id))
+            .for('update');
+
         const targetRaisedBed = await tx.query.raisedBeds.findFirst({
             where: and(
                 eq(raisedBeds.id, targetRaisedBedId),
@@ -523,18 +822,26 @@ export async function mergeRaisedBeds(
             throw new Error('Raised beds must belong to the same garden');
         }
 
-        const targetFields = await tx.query.raisedBedFields.findMany({
-            where: and(
-                eq(raisedBedFields.raisedBedId, targetRaisedBedId),
-                eq(raisedBedFields.isDeleted, false),
-            ),
-        });
-        const sourceFields = await tx.query.raisedBedFields.findMany({
-            where: and(
-                eq(raisedBedFields.raisedBedId, sourceRaisedBedId),
-                eq(raisedBedFields.isDeleted, false),
-            ),
-        });
+        const targetFields = mergeFields.filter(
+            (field) =>
+                field.raisedBedId === targetRaisedBedId && !field.isDeleted,
+        );
+        const allSourceFields = mergeFields.filter(
+            (field) => field.raisedBedId === sourceRaisedBedId,
+        );
+        const sourceFields = allSourceFields.filter(
+            (field) => !field.isDeleted,
+        );
+        const invalidHistoricalSourceFields = allSourceFields.filter(
+            (field) =>
+                field.positionIndex < 0 ||
+                field.positionIndex >= RAISED_BED_FIELDS_PER_BLOCK,
+        );
+        if (invalidHistoricalSourceFields.length > 0) {
+            throw new Error(
+                `Source raised bed ${sourceRaisedBedId.toString()} has historical fields outside the mergeable block.`,
+            );
+        }
 
         await normalizeRaisedBedFieldsForMerge(
             tx,
@@ -554,15 +861,82 @@ export async function mergeRaisedBeds(
                 field.positionIndex + RAISED_BED_FIELDS_PER_BLOCK,
         }));
 
-        for (const mapping of sourceFieldMappings) {
+        const lockedSourcePlantingRows = await tx
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(eq(raisedBedPlantings.raisedBedId, sourceRaisedBedId))
+            .orderBy(asc(raisedBedPlantings.id))
+            .for('update');
+        if (lockedSourcePlantingRows.length > 0) {
             await tx
-                .update(raisedBedFields)
-                .set({
-                    raisedBedId: targetRaisedBedId,
-                    positionIndex: mapping.nextPositionIndex,
-                })
-                .where(eq(raisedBedFields.id, mapping.fieldId));
+                .select({ id: raisedBedPlantingFields.id })
+                .from(raisedBedPlantingFields)
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        lockedSourcePlantingRows.map((row) => row.id),
+                    ),
+                )
+                .orderBy(asc(raisedBedPlantingFields.id))
+                .for('update');
         }
+        const sourcePlantings =
+            (
+                await getRaisedBedPlantingsForRaisedBeds(
+                    [sourceRaisedBedId],
+                    tx,
+                )
+            ).get(sourceRaisedBedId) ?? [];
+        for (const planting of sourcePlantings) {
+            if (
+                planting.configurationSource !== 'selected' ||
+                planting.isDeleted
+            ) {
+                continue;
+            }
+            const translatedAnchor =
+                planting.anchorPositionIndex + RAISED_BED_FIELDS_PER_BLOCK;
+            const expectedTranslatedPositions =
+                getAdvancedSowingFootprintPositions({
+                    anchorPositionIndex: translatedAnchor,
+                    bedFieldCount: ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+                    fieldSpanRows: planting.spanRows,
+                    fieldSpanColumns: planting.spanColumns,
+                });
+            for (const membership of planting.memberships) {
+                const expectedPosition =
+                    expectedTranslatedPositions[
+                        membership.relativeRow * planting.spanColumns +
+                            membership.relativeColumn
+                    ];
+                if (
+                    membership.raisedBedField.positionIndex +
+                        RAISED_BED_FIELDS_PER_BLOCK !==
+                    expectedPosition
+                ) {
+                    throw new Error(
+                        `Selected planting ${planting.id.toString()} cannot be translated to the merged raised-bed block.`,
+                    );
+                }
+            }
+        }
+
+        // Move every source field, including soft-deleted historical rows used
+        // by inactive legacy projections. Membership IDs remain stable.
+        await tx
+            .update(raisedBedFields)
+            .set({
+                raisedBedId: targetRaisedBedId,
+                positionIndex: sql`${raisedBedFields.positionIndex} + ${RAISED_BED_FIELDS_PER_BLOCK}`,
+            })
+            .where(eq(raisedBedFields.raisedBedId, sourceRaisedBedId));
+        await tx
+            .update(raisedBedPlantings)
+            .set({
+                raisedBedId: targetRaisedBedId,
+                anchorPositionIndex: sql`${raisedBedPlantings.anchorPositionIndex} + ${RAISED_BED_FIELDS_PER_BLOCK}`,
+            })
+            .where(eq(raisedBedPlantings.raisedBedId, sourceRaisedBedId));
 
         await tx
             .update(operations)
@@ -572,6 +946,16 @@ export async function mergeRaisedBeds(
             .update(notifications)
             .set({ raisedBedId: targetRaisedBedId })
             .where(eq(notifications.raisedBedId, sourceRaisedBedId));
+        if (expectedMutableCartItemIds.length > 0) {
+            await tx
+                .delete(shoppingCartItemAdvancedSowingAuthorizations)
+                .where(
+                    inArray(
+                        shoppingCartItemAdvancedSowingAuthorizations.cartItemId,
+                        expectedMutableCartItemIds,
+                    ),
+                );
+        }
         await tx
             .update(shoppingCartItems)
             .set({ isDeleted: true })
@@ -620,6 +1004,7 @@ export async function mergeRaisedBeds(
                             knownEventTypes.raisedBedFields.plantPlace,
                             knownEventTypes.raisedBedFields.plantSchedule,
                             knownEventTypes.raisedBedFields.plantUpdate,
+                            knownEventTypes.raisedBedFields.plantBlock,
                             knownEventTypes.raisedBedFields.plantReplaceSort,
                         ]),
                     ),
@@ -667,28 +1052,34 @@ export async function getFarmUserRaisedBeds(userId: string) {
 
 async function getFarmUserRaisedBedsUncached(userId: string) {
     const farmRaisedBeds = await storage()
-        .select({ raisedBed: raisedBeds })
+        .select({ farmId: gardens.farmId, raisedBed: raisedBeds })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .innerJoin(farms, eq(gardens.farmId, farms.id))
         .innerJoin(farmUsers, eq(gardens.farmId, farmUsers.farmId))
         .where(
             and(
                 eq(farmUsers.userId, userId),
                 eq(raisedBeds.isDeleted, false),
                 eq(gardens.isDeleted, false),
+                eq(farms.isDeleted, false),
                 // Sandbox ("play") gardens never appear in farm scheduling.
                 eq(gardens.isSandbox, false),
             ),
         )
         .orderBy(asc(raisedBeds.id));
 
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        farmRaisedBeds.map((row) => row.raisedBed.id),
-    );
+    const raisedBedIds = farmRaisedBeds.map((row) => row.raisedBed.id);
+    const [fieldsByRaisedBedId, plantingsByRaisedBedId] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
 
-    return farmRaisedBeds.map(({ raisedBed }) => ({
+    return farmRaisedBeds.map(({ farmId, raisedBed }) => ({
         ...raisedBed,
+        farmId,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -714,12 +1105,22 @@ async function getAllRaisedBedsUncached() {
         .leftJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
         .where(and(eq(raisedBeds.isDeleted, false), excludeSandboxRaisedBeds));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        allRaisedBeds.map((raisedBed) => raisedBed.id),
-    );
+    const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
+    const [
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 
@@ -741,13 +1142,23 @@ export async function getAllRaisedBedsFiltered(filters?: { status?: string }) {
         .where(and(...whereConditions));
     const allRaisedBeds = rows.map((row) => row.raisedBed);
 
-    const fieldsByRaisedBedId = await getRaisedBedFieldsWithEventsForBeds(
-        allRaisedBeds.map((raisedBed) => raisedBed.id),
-    );
+    const raisedBedIds = allRaisedBeds.map((raisedBed) => raisedBed.id);
+    const [
+        fieldsByRaisedBedId,
+        latestPhotoOperationsByRaisedBedId,
+        plantingsByRaisedBedId,
+    ] = await Promise.all([
+        getRaisedBedFieldsWithEventsForBeds(raisedBedIds),
+        getLatestRaisedBedPhotoOperationsByIds(raisedBedIds),
+        getRaisedBedPlantingsForRaisedBeds(raisedBedIds),
+    ]);
 
     return allRaisedBeds.map((raisedBed) => ({
         ...raisedBed,
         fields: fieldsByRaisedBedId.get(raisedBed.id) ?? [],
+        latestPhotoOperation:
+            latestPhotoOperationsByRaisedBedId.get(raisedBed.id) ?? null,
+        plantings: plantingsByRaisedBedId.get(raisedBed.id) ?? [],
     }));
 }
 

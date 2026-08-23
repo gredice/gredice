@@ -899,6 +899,16 @@ export async function openApiDocs(
                 metaTitle: { type: ['string', 'null'] },
                 metaDescription: { type: ['string', 'null'] },
                 metaImageUrl: { type: ['string', 'null'] },
+                metaImagePoiX: {
+                    type: ['integer', 'null'],
+                    minimum: 0,
+                    maximum: 100,
+                },
+                metaImagePoiY: {
+                    type: ['integer', 'null'],
+                    minimum: 0,
+                    maximum: 100,
+                },
                 seoImageUrl: { type: ['string', 'null'] },
                 updatedAt: { type: 'string', format: 'date-time' },
             },
@@ -1005,14 +1015,38 @@ export async function openApiDocs(
                         'json',
                         'markdown',
                         'number',
+                        'operationSuggestion',
                         'range',
                         'reference',
+                        'select',
                         'text',
                     ],
                 },
                 multiple: { type: 'boolean' },
                 publicLabel: { type: 'string' },
                 helpText: { type: 'string' },
+                options: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        required: ['value', 'label'],
+                        properties: {
+                            value: { type: 'string' },
+                            label: { type: 'string' },
+                            helpText: { type: 'string' },
+                            description: { type: 'string' },
+                            iconKey: { type: 'string' },
+                        },
+                    },
+                },
+                operationSuggestionStage: {
+                    type: 'object',
+                    required: ['name', 'label'],
+                    properties: {
+                        name: { type: 'string' },
+                        label: { type: 'string' },
+                    },
+                },
                 currentValue: { type: ['string', 'null'] },
                 baseValueHash: { type: 'string' },
             },
@@ -1039,7 +1073,7 @@ export async function openApiDocs(
                 fieldKey: { type: 'string' },
                 proposedValue: {
                     description:
-                        'Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later.',
+                        'Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for existing plant-stage operations and can also propose a new operation name and description.',
                 },
                 baseValueHash: {
                     type: ['string', 'null'],

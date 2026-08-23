@@ -10,6 +10,7 @@ import {
     type FarmerDocumentationPackage,
     type FarmerDocumentationPackageContent,
     type FarmerDocumentationPage,
+    type FarmerDocumentationPayoutPriceFarm,
     type FarmerDocumentationSection,
     formatDocumentationDateTime,
     getFarmerAppOrigin,
@@ -614,6 +615,7 @@ function drawOrganizationGuide({
         'Ako dvije stranice imaju isti naslov, zadrži redoslijed prema kodu.',
         'Kod dodavanja ili zamjene stranica novu verziju umetni na mjesto navedeno u uputama ispod.',
     ]);
+    context = drawPayoutPriceGuide(context, data, content);
 
     context = drawActionList(
         context,
@@ -636,6 +638,57 @@ function drawOrganizationGuide({
     ]);
 
     drawFooter(context.page);
+}
+
+function drawPayoutPriceGuide(
+    context: FlowContext,
+    data: FarmerDocumentationPackage,
+    content: FarmerDocumentationPackageContent,
+) {
+    if (content === 'plants') {
+        return context;
+    }
+
+    if (!data.payoutPrices.schemaAvailable) {
+        return drawSection(context, 'Cjenik isplata farmera', [
+            'Tablice za cijene radnji nisu dostupne u ovoj bazi. Nakon migracije cjenik će se moći dodati u paket dokumentacije.',
+        ]);
+    }
+
+    if (data.payoutPrices.farms.length === 0) {
+        return drawSection(context, 'Cjenik isplata farmera', [
+            'Nema farmi u sustavu.',
+        ]);
+    }
+
+    return drawMarkdownSection(context, 'Cjenik isplata farmera', [
+        payoutPricesMarkdown(data),
+    ]);
+}
+
+function payoutPricesMarkdown(data: FarmerDocumentationPackage) {
+    return [
+        `Definirano ${data.payoutPrices.configuredRows} od ${data.payoutPrices.totalRows} cijena. Cjenik prikazuje aktualno stanje na dan generiranja paketa i ne filtrira se po zadnjem ispisu.`,
+        '',
+        ...data.payoutPrices.farms.flatMap(payoutPriceFarmMarkdown),
+    ].join('\n');
+}
+
+function payoutPriceFarmMarkdown(farm: FarmerDocumentationPayoutPriceFarm) {
+    return [
+        `### ${farm.farmName}`,
+        '| Kod | Radnja | Korisnik | Trajanje | Farmer | EUR/min |',
+        '| --- | --- | --- | --- | --- | --- |',
+        ...farm.rows.map(
+            (row) =>
+                `| ${markdownTableCell(row.code)} | ${markdownTableCell(row.label)} | ${markdownTableCell(row.userFacingPriceLabel)} | ${markdownTableCell(row.durationLabel)} | ${markdownTableCell(row.farmerPriceLabel)} | ${markdownTableCell(row.farmerPricePerMinuteLabel)} |`,
+        ),
+        '',
+    ];
+}
+
+function markdownTableCell(value: string) {
+    return value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
 }
 
 function farmerDocumentationFilenameContentPart(

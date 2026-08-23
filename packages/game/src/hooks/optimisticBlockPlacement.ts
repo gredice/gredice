@@ -3,8 +3,7 @@ import {
     type GardenBlockStack,
     resolveGardenBlockPlacement,
 } from '@gredice/js/gardenBlocks';
-import { Vector3 } from 'three';
-import type { Stack } from '../types/Stack';
+import { createGardenPosition, type GardenStack } from '../types/Stack';
 
 export type PlacementBlockData = GardenBlockDataLike & {
     information?: {
@@ -13,8 +12,32 @@ export type PlacementBlockData = GardenBlockDataLike & {
 };
 
 type GardenWithStacks = {
-    stacks: Stack[];
+    stacks: GardenStack[];
 };
+
+export type BlockPlacementPosition = {
+    x: number;
+    y: number;
+};
+
+type CameraSnapshotLike = {
+    target: [x: number, y: number, z: number];
+};
+
+export function getPreferredBlockPlacementPosition(
+    snapshot: CameraSnapshotLike | null | undefined,
+): BlockPlacementPosition | undefined {
+    if (!snapshot) {
+        return undefined;
+    }
+
+    const [x, , z] = snapshot.target;
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+        return undefined;
+    }
+
+    return { x, y: z };
+}
 
 function createBlockDataByName(blockData: PlacementBlockData[]) {
     const blockDataByName = new Map<string, GardenBlockDataLike>();
@@ -27,7 +50,7 @@ function createBlockDataByName(blockData: PlacementBlockData[]) {
     return blockDataByName;
 }
 
-function createBlockNameById(stacks: Stack[]) {
+function createBlockNameById(stacks: GardenStack[]) {
     const blockNameById = new Map<string, string>();
     for (const stack of stacks) {
         for (const block of stack.blocks) {
@@ -37,7 +60,7 @@ function createBlockNameById(stacks: Stack[]) {
     return blockNameById;
 }
 
-function createBlockRotationById(stacks: Stack[]) {
+function createBlockRotationById(stacks: GardenStack[]) {
     const blockRotationById = new Map<string, number>();
     for (const stack of stacks) {
         for (const block of stack.blocks) {
@@ -47,12 +70,36 @@ function createBlockRotationById(stacks: Stack[]) {
     return blockRotationById;
 }
 
-function createPlacementStacks(stacks: Stack[]): GardenBlockStack[] {
+function createPlacementStacks(stacks: GardenStack[]): GardenBlockStack[] {
     return stacks.map((stack) => ({
         positionX: stack.position.x,
         positionY: stack.position.z,
         blocks: stack.blocks.map((block) => block.id),
     }));
+}
+
+export function resolveBlockPlacement<TGarden extends GardenWithStacks>(
+    garden: TGarden,
+    blockData: PlacementBlockData[] | null | undefined,
+    blockName: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
+    } = {},
+) {
+    if (!blockData) {
+        return null;
+    }
+
+    return resolveGardenBlockPlacement({
+        blockName,
+        stacks: createPlacementStacks(garden.stacks),
+        blockNameById: createBlockNameById(garden.stacks),
+        blockRotationById: createBlockRotationById(garden.stacks),
+        blockDataByName: createBlockDataByName(blockData),
+        preferredPosition: options.preferredPosition ?? undefined,
+        requestedPosition: options.requestedPosition ?? undefined,
+    });
 }
 
 export function createOptimisticBlockPlacement<
@@ -62,19 +109,16 @@ export function createOptimisticBlockPlacement<
     blockData: PlacementBlockData[] | null | undefined,
     blockName: string,
     blockId: string,
+    options: {
+        preferredPosition?: BlockPlacementPosition | null;
+        requestedPosition?: BlockPlacementPosition | null;
+    } = {},
 ) {
-    if (!blockData) {
-        return null;
-    }
-
-    const placement = resolveGardenBlockPlacement({
-        blockName,
-        stacks: createPlacementStacks(garden.stacks),
-        blockNameById: createBlockNameById(garden.stacks),
-        blockRotationById: createBlockRotationById(garden.stacks),
-        blockDataByName: createBlockDataByName(blockData),
+    const placement = resolveBlockPlacement(garden, blockData, blockName, {
+        preferredPosition: options.preferredPosition,
+        requestedPosition: options.requestedPosition,
     });
-    if (!placement.valid) {
+    if (!placement?.valid) {
         return null;
     }
 
@@ -99,7 +143,7 @@ export function createOptimisticBlockPlacement<
 
     if (!hasTargetStack) {
         stacks.push({
-            position: new Vector3(x, 0, y),
+            position: createGardenPosition(x, 0, y),
             blocks: [optimisticBlock],
         });
     }
@@ -107,7 +151,7 @@ export function createOptimisticBlockPlacement<
     return {
         blockId,
         existingBlocks,
-        position: new Vector3(x, 0, y),
+        position: createGardenPosition(x, 0, y),
         stacks,
     };
 }
@@ -117,19 +161,39 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
     optimisticBlockId: string,
     blockId: string,
 ): TGarden {
+    let changed = false;
+    const stacks = garden.stacks.map((stack) => {
+        let stackChanged = false;
+        const blocks = stack.blocks.map((block) => {
+            if (block.id !== optimisticBlockId) {
+                return block;
+            }
+
+            stackChanged = true;
+            return {
+                ...block,
+                id: blockId,
+            };
+        });
+
+        if (!stackChanged) {
+            return stack;
+        }
+
+        changed = true;
+        return {
+            ...stack,
+            blocks,
+        };
+    });
+
+    if (!changed) {
+        return garden;
+    }
+
     return {
         ...garden,
-        stacks: garden.stacks.map((stack) => ({
-            ...stack,
-            blocks: stack.blocks.map((block) =>
-                block.id === optimisticBlockId
-                    ? {
-                          ...block,
-                          id: blockId,
-                      }
-                    : block,
-            ),
-        })),
+        stacks,
     };
 }
 

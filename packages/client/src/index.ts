@@ -1,16 +1,19 @@
 export * from './directories-api';
 export * from './favorites';
+export * from './garden-likes';
 export * from './harvest-traces';
 export type {
     ClientMode,
     ClientOptions,
     GardenResponse,
-    GardenVisitSummaryResponse,
+    PublicGardenResponse,
+    PublicGardensResponse,
 } from './hono';
 export { client, clientAuthenticated, clientPublic } from './hono';
 export {
     type GrediceAppOrigin,
     getBrowserGrediceAppOrigin,
+    getGrediceAppOrigin,
 } from './origins';
 export {
     type BrowserPushManager,

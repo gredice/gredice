@@ -16,12 +16,15 @@
                 "NEXT_PUBLIC_GREDICE_APP_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_FARM_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_GARDEN_ORIGIN",
+                "NEXT_PUBLIC_GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY",
                 "NEXT_PUBLIC_GREDICE_WWW_ORIGIN",
                 "NEXT_PUBLIC_POSTHOG_API_HOST",
                 "NEXT_PUBLIC_POSTHOG_HOST",
                 "NEXT_PUBLIC_POSTHOG_KEY",
                 "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
                 "NEXT_PUBLIC_POSTHOG_UI_HOST",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
                 "POSTGRES_PASSWORD",
@@ -32,6 +35,8 @@
                 "POSTGRES_USER",
                 "POSTHOG_SERVER_HOST",
                 "SLACK_BOT_TOKEN",
+                "VERCEL",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

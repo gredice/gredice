@@ -1,6 +1,11 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import {
+    getAdvancedSowingLayoutOptions,
+    PLANT_STAGE_LABELS,
+    type PlantStageName,
+} from '@gredice/js/plants';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import {
     type CommunityEditableFieldDefinition,
     type CommunityEditControlType,
@@ -18,12 +23,13 @@ import {
 import { storage } from '../storage';
 import { evaluateCommunityEditAchievementsForSubmitter } from './achievementsRepo';
 import {
+    applyAdvancedSowingAttributeValueBatch,
     createAttributeValueMutationSideEffects,
     deleteAttributeValue,
     flushAttributeValueMutationSideEffects,
     upsertAttributeValue,
 } from './attributeValuesRepo';
-import { getEntityRaw } from './entitiesRepo';
+import { getEntitiesRaw, getEntityRaw } from './entitiesRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -78,6 +84,8 @@ export type CommunityEditableFieldSnapshot = {
     multiple: boolean;
     publicLabel: string;
     helpText?: string;
+    options?: CommunityEditableFieldDefinition['options'];
+    operationSuggestionStage?: CommunityEditableFieldDefinition['operationSuggestionStage'];
     currentValue: string | null;
     baseValueHash: string;
 };
@@ -97,6 +105,119 @@ export type CreateCommunityEditRequestInput = {
 };
 
 type EntityRaw = NonNullable<Awaited<ReturnType<typeof getEntityRaw>>>;
+
+export type CommunityOperationSuggestionIntent = 'add' | 'remove';
+export type CommunityOperationSuggestionMode = 'existing' | 'new';
+
+type CommunityOperationSuggestionBaseValue = {
+    format: 'community-operation-suggestion-v1';
+    intent: CommunityOperationSuggestionIntent;
+    operationMode: CommunityOperationSuggestionMode;
+    operationLabel: string;
+    stageName: PlantStageName;
+    stageLabel: string;
+    currentState: 'absent' | 'present';
+    note?: string;
+    source?: string;
+};
+
+export type CommunityOperationSuggestionValue =
+    | (CommunityOperationSuggestionBaseValue & {
+          operationMode: 'existing';
+          operationId: number;
+      })
+    | (CommunityOperationSuggestionBaseValue & {
+          intent: 'add';
+          operationMode: 'new';
+          currentState: 'absent';
+          newOperationName: string;
+          newOperationDescription: string;
+      });
+
+export type CommunityEntitySuggestionValue =
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'plantSort';
+          name: string;
+          description: string;
+          parentPlantId: number;
+          parentPlantName: string;
+          note?: string;
+          source?: string;
+      }
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'operation';
+          name: string;
+          description: string;
+          application:
+              | 'farm'
+              | 'garden'
+              | 'plant'
+              | 'raisedBed1m'
+              | 'raisedBedFull';
+          plantStageId: number;
+          stageName: string;
+          stageLabel: string;
+          note?: string;
+          source?: string;
+      }
+    | {
+          format: 'community-entity-suggestion-v1';
+          kind: 'disease' | 'pest';
+          name: string;
+          description: string;
+          symptoms: string;
+          favorableConditions: string;
+          severity?: string;
+          affectedPlants: {
+              id: number;
+              name: string;
+          }[];
+          note?: string;
+          source?: string;
+      };
+
+export type CreateCommunityEntitySuggestionInput =
+    | {
+          kind: 'plantSort';
+          parentPlantId: number;
+          name: string;
+          description: string;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      }
+    | {
+          kind: 'operation';
+          plantStageId: number;
+          application:
+              | 'farm'
+              | 'garden'
+              | 'plant'
+              | 'raisedBed1m'
+              | 'raisedBedFull';
+          name: string;
+          description: string;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      }
+    | {
+          kind: 'disease' | 'pest';
+          affectedPlantIds: number[];
+          name: string;
+          description: string;
+          symptoms: string;
+          favorableConditions: string;
+          severity?: string | null;
+          source?: string | null;
+          note?: string | null;
+          publicPath: string;
+          submitter: CommunityEditActor;
+      };
 
 type ResolvedCommunityEditChange = {
     fieldKey: string;
@@ -146,6 +267,258 @@ function stableValueHash(value: string | null) {
         .digest('hex');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isCommunitySuggestionApplication(
+    value: unknown,
+): value is Extract<
+    CommunityEntitySuggestionValue,
+    { kind: 'operation' }
+>['application'] {
+    return (
+        value === 'farm' ||
+        value === 'garden' ||
+        value === 'plant' ||
+        value === 'raisedBed1m' ||
+        value === 'raisedBedFull'
+    );
+}
+
+function parseCommunitySuggestionAffectedPlants(value: unknown) {
+    if (!Array.isArray(value) || value.length === 0) {
+        return null;
+    }
+
+    const plants: { id: number; name: string }[] = [];
+    for (const entry of value) {
+        if (
+            !isRecord(entry) ||
+            typeof entry.id !== 'number' ||
+            !Number.isInteger(entry.id) ||
+            entry.id <= 0 ||
+            typeof entry.name !== 'string'
+        ) {
+            return null;
+        }
+        plants.push({ id: entry.id, name: entry.name });
+    }
+    return plants;
+}
+
+export function parseCommunityEntitySuggestion(
+    value: string | null,
+): CommunityEntitySuggestionValue | null {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (
+            !isRecord(parsed) ||
+            parsed.format !== 'community-entity-suggestion-v1' ||
+            typeof parsed.name !== 'string' ||
+            typeof parsed.description !== 'string' ||
+            ('note' in parsed &&
+                typeof parsed.note !== 'undefined' &&
+                typeof parsed.note !== 'string') ||
+            ('source' in parsed &&
+                typeof parsed.source !== 'undefined' &&
+                typeof parsed.source !== 'string')
+        ) {
+            return null;
+        }
+
+        if (parsed.kind === 'plantSort') {
+            if (
+                typeof parsed.parentPlantId !== 'number' ||
+                !Number.isInteger(parsed.parentPlantId) ||
+                typeof parsed.parentPlantName !== 'string'
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityEntitySuggestionValue = {
+                format: parsed.format,
+                kind: parsed.kind,
+                name: parsed.name,
+                description: parsed.description,
+                parentPlantId: parsed.parentPlantId,
+                parentPlantName: parsed.parentPlantName,
+            };
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+            return suggestion;
+        }
+
+        if (parsed.kind === 'disease' || parsed.kind === 'pest') {
+            const affectedPlants = parseCommunitySuggestionAffectedPlants(
+                parsed.affectedPlants,
+            );
+            if (
+                !affectedPlants ||
+                typeof parsed.symptoms !== 'string' ||
+                typeof parsed.favorableConditions !== 'string' ||
+                ('severity' in parsed &&
+                    typeof parsed.severity !== 'undefined' &&
+                    typeof parsed.severity !== 'string')
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityEntitySuggestionValue = {
+                format: parsed.format,
+                kind: parsed.kind,
+                name: parsed.name,
+                description: parsed.description,
+                symptoms: parsed.symptoms,
+                favorableConditions: parsed.favorableConditions,
+                affectedPlants,
+            };
+            if (typeof parsed.severity === 'string') {
+                suggestion.severity = parsed.severity;
+            }
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+            return suggestion;
+        }
+
+        if (
+            parsed.kind !== 'operation' ||
+            !isCommunitySuggestionApplication(parsed.application) ||
+            typeof parsed.plantStageId !== 'number' ||
+            !Number.isInteger(parsed.plantStageId) ||
+            typeof parsed.stageName !== 'string' ||
+            typeof parsed.stageLabel !== 'string'
+        ) {
+            return null;
+        }
+
+        const suggestion: CommunityEntitySuggestionValue = {
+            format: parsed.format,
+            kind: parsed.kind,
+            name: parsed.name,
+            description: parsed.description,
+            application: parsed.application,
+            plantStageId: parsed.plantStageId,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+        };
+        if (typeof parsed.note === 'string') {
+            suggestion.note = parsed.note;
+        }
+        if (typeof parsed.source === 'string') {
+            suggestion.source = parsed.source;
+        }
+        return suggestion;
+    } catch {
+        return null;
+    }
+}
+
+export function parseCommunityEntitySuggestionRequest(request: {
+    submitterNote: string | null;
+    sectionKey: string | null;
+    entityTypeName: string;
+    entityId: number;
+    changes: readonly unknown[];
+}): CommunityEntitySuggestionValue | null {
+    if (request.changes.length !== 0) {
+        return null;
+    }
+
+    const suggestion = parseCommunityEntitySuggestion(request.submitterNote);
+    if (!suggestion) {
+        return null;
+    }
+
+    if (suggestion.kind === 'plantSort') {
+        return request.sectionKey === 'new-plant-sort' &&
+            request.entityTypeName === 'plant' &&
+            request.entityId === suggestion.parentPlantId
+            ? suggestion
+            : null;
+    }
+
+    if (suggestion.kind === 'disease' || suggestion.kind === 'pest') {
+        const contextPlant = suggestion.affectedPlants[0];
+        return contextPlant &&
+            request.sectionKey === `new-${suggestion.kind}` &&
+            request.entityTypeName === 'plant' &&
+            request.entityId === contextPlant.id
+            ? suggestion
+            : null;
+    }
+
+    if (suggestion.kind !== 'operation') {
+        return null;
+    }
+
+    return request.sectionKey === 'new-operation' &&
+        request.entityTypeName === 'plantStage' &&
+        request.entityId === suggestion.plantStageId
+        ? suggestion
+        : null;
+}
+
+function isPlantStageName(value: unknown): value is PlantStageName {
+    return typeof value === 'string' && value in PLANT_STAGE_LABELS;
+}
+
+function rawAttributeValue(entity: EntityRaw, category: string, name: string) {
+    return (
+        entity.attributes.find(
+            (attribute) =>
+                !attribute.isDeleted &&
+                attribute.attributeDefinition.category === category &&
+                attribute.attributeDefinition.name === name,
+        )?.value ?? null
+    );
+}
+
+function entityLabel(entity: EntityRaw) {
+    return (
+        rawAttributeValue(entity, 'information', 'label') ??
+        rawAttributeValue(entity, 'information', 'name') ??
+        `${entity.entityType.label} ${entity.id}`
+    );
+}
+
+function booleanAttributeValue(value: string | null) {
+    return value === 'true';
+}
+
+function operationIdsFromSerializedValue(value: string | null) {
+    if (!value) {
+        return new Set<string>();
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (!Array.isArray(parsed)) {
+            return new Set<string>();
+        }
+
+        return new Set(
+            parsed
+                .map(normalizeReferenceId)
+                .filter((entry): entry is string => Boolean(entry)),
+        );
+    } catch {
+        return new Set<string>();
+    }
+}
+
 function activeAttributeValues(
     entity: EntityRaw,
     attributeDefinitionId: number,
@@ -186,10 +559,18 @@ function controlTypeMatchesDataType(
             return dataType === 'markdown';
         case 'number':
             return dataType === 'number';
+        case 'operationSuggestion':
+            return dataType === 'ref:operation';
         case 'range':
             return dataType === 'range' || dataType.startsWith('range|');
         case 'reference':
             return dataType.startsWith('ref:');
+        case 'select':
+            return (
+                dataType === 'boolean' ||
+                dataType === 'number' ||
+                dataType === 'text'
+            );
         case 'text':
             return dataType === 'text';
     }
@@ -210,6 +591,13 @@ function assertFieldDataTypeSupported(
         throw new CommunityEditRequestError(
             'unsupported_data_type',
             `Field ${field.fieldKey} does not allow JSON submissions.`,
+        );
+    }
+
+    if (field.controlType === 'select' && !field.options?.length) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} is registered as select but has no options.`,
         );
     }
 }
@@ -239,6 +627,18 @@ function resolveFieldSnapshot(
     }
 
     assertFieldDataTypeSupported(field, definition);
+    if (field.controlType === 'select' && definition.multiple) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} cannot use select for multiple values.`,
+        );
+    }
+    if (field.controlType === 'operationSuggestion' && !definition.multiple) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} must be backed by a multiple operation reference.`,
+        );
+    }
 
     const values = activeAttributeValues(entity, definition.id);
     const currentValue = serializedCurrentValue(values, definition.multiple);
@@ -256,6 +656,8 @@ function resolveFieldSnapshot(
         multiple: definition.multiple,
         publicLabel: field.publicLabel,
         helpText: field.helpText,
+        options: field.options,
+        operationSuggestionStage: field.operationSuggestionStage,
         currentValue,
         baseValueHash: stableValueHash(currentValue),
     };
@@ -276,6 +678,174 @@ async function getCommunityEditableEntity(
     return entity;
 }
 
+async function plantStageInfoById() {
+    const stages = (await getEntitiesRaw(
+        'plantStage',
+        'published',
+    )) as EntityRaw[];
+
+    return new Map(
+        stages.map((stage) => [
+            stage.id,
+            {
+                name: rawAttributeValue(stage, 'information', 'name'),
+                label:
+                    rawAttributeValue(stage, 'information', 'label') ??
+                    rawAttributeValue(stage, 'information', 'name') ??
+                    `Stadij ${stage.id}`,
+            },
+        ]),
+    );
+}
+
+function operationStageInfo(
+    operation: EntityRaw,
+    stagesById: Awaited<ReturnType<typeof plantStageInfoById>>,
+) {
+    const stageId = normalizeReferenceId(
+        rawAttributeValue(operation, 'attributes', 'stage'),
+    );
+    if (!stageId) {
+        return null;
+    }
+
+    const stage = stagesById.get(Number.parseInt(stageId, 10));
+    return stage?.name ? stage : null;
+}
+
+async function operationSuggestionOptions(
+    field: CommunityEditableFieldDefinition,
+) {
+    if (
+        field.controlType !== 'operationSuggestion' ||
+        !field.operationSuggestionStage
+    ) {
+        return field.options;
+    }
+
+    const [operations, stagesById] = await Promise.all([
+        getEntitiesRaw('operation', 'published') as Promise<EntityRaw[]>,
+        plantStageInfoById(),
+    ]);
+
+    return operations
+        .filter((operation) => {
+            const stage = operationStageInfo(operation, stagesById);
+            return (
+                operation.entityTypeName === 'operation' &&
+                rawAttributeValue(operation, 'attributes', 'application') ===
+                    'plant' &&
+                !booleanAttributeValue(
+                    rawAttributeValue(operation, 'attributes', 'internal'),
+                ) &&
+                stage?.name === field.operationSuggestionStage?.name
+            );
+        })
+        .map((operation) => ({
+            value: String(operation.id),
+            label: entityLabel(operation),
+            helpText: field.operationSuggestionStage?.label,
+            description:
+                rawAttributeValue(
+                    operation,
+                    'information',
+                    'shortDescription',
+                ) ??
+                rawAttributeValue(operation, 'information', 'description') ??
+                undefined,
+            iconKey:
+                operationStageInfo(operation, stagesById)?.name ??
+                field.operationSuggestionStage?.name,
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label, 'hr'));
+}
+
+type CommunityEditableFieldOptions = NonNullable<
+    CommunityEditableFieldDefinition['options']
+>;
+
+function referenceEntityType(dataType: string) {
+    return dataType.startsWith('ref:') ? dataType.slice('ref:'.length) : null;
+}
+
+async function multipleReferenceOptions(
+    snapshot: CommunityEditableFieldSnapshot,
+    sourceEntity: EntityRaw,
+    optionsByEntityType: Map<string, Promise<CommunityEditableFieldOptions>>,
+) {
+    if (snapshot.controlType !== 'reference' || !snapshot.multiple) {
+        return snapshot.options;
+    }
+
+    const targetEntityType = referenceEntityType(snapshot.dataType);
+    if (!targetEntityType) {
+        return snapshot.options;
+    }
+
+    let options = optionsByEntityType.get(targetEntityType);
+    if (!options) {
+        options = getEntitiesRaw(targetEntityType, 'published').then(
+            (entities) =>
+                entities
+                    .filter(
+                        (entity) =>
+                            entity.entityTypeName === targetEntityType &&
+                            !(
+                                targetEntityType === 'operation' &&
+                                booleanAttributeValue(
+                                    rawAttributeValue(
+                                        entity,
+                                        'attributes',
+                                        'internal',
+                                    ),
+                                )
+                            ) &&
+                            !(
+                                sourceEntity.entityTypeName ===
+                                    targetEntityType &&
+                                sourceEntity.id === entity.id
+                            ),
+                    )
+                    .map((entity) => ({
+                        value: String(entity.id),
+                        label: entityLabel(entity),
+                    }))
+                    .sort((left, right) =>
+                        left.label.localeCompare(right.label, 'hr'),
+                    ),
+        );
+        optionsByEntityType.set(targetEntityType, options);
+    }
+
+    return options;
+}
+
+async function resolveFieldSnapshotForResponse(
+    entity: EntityRaw,
+    field: CommunityEditableFieldDefinition,
+    referenceOptionsByEntityType: Map<
+        string,
+        Promise<CommunityEditableFieldOptions>
+    >,
+): Promise<CommunityEditableFieldSnapshot> {
+    const snapshot = resolveFieldSnapshot(entity, field);
+    if (field.controlType === 'operationSuggestion') {
+        return {
+            ...snapshot,
+            options: await operationSuggestionOptions(field),
+        };
+    }
+
+    return {
+        ...snapshot,
+        options: await multipleReferenceOptions(
+            snapshot,
+            entity,
+            referenceOptionsByEntityType,
+        ),
+    };
+}
+
 export async function getCommunityEditableFieldsForEntity(input: {
     entityTypeName: string;
     entityId: number;
@@ -285,20 +855,33 @@ export async function getCommunityEditableFieldsForEntity(input: {
         input.entityTypeName,
         input.entityId,
     );
+    const referenceOptionsByEntityType = new Map<
+        string,
+        Promise<CommunityEditableFieldOptions>
+    >();
 
-    return getCommunityEditableFieldDefinitions(
-        input.entityTypeName,
-        input.sectionKey,
-    ).flatMap((field) => {
-        try {
-            return [resolveFieldSnapshot(entity, field)];
-        } catch (error) {
-            if (error instanceof CommunityEditRequestError) {
-                return [];
+    const fields = await Promise.all(
+        getCommunityEditableFieldDefinitions(
+            input.entityTypeName,
+            input.sectionKey,
+        ).map(async (field) => {
+            try {
+                return await resolveFieldSnapshotForResponse(
+                    entity,
+                    field,
+                    referenceOptionsByEntityType,
+                );
+            } catch (error) {
+                if (error instanceof CommunityEditRequestError) {
+                    return null;
+                }
+                throw error;
             }
-            throw error;
-        }
-    });
+        }),
+    );
+    return fields.filter(
+        (field): field is CommunityEditableFieldSnapshot => field !== null,
+    );
 }
 
 function normalizeNullableString(value: string, maxLength?: number) {
@@ -342,11 +925,18 @@ function normalizeNumberValue(
         return null;
     }
 
+    const normalizedString = typeof value === 'string' ? value.trim() : null;
+    if (normalizedString === '') {
+        return null;
+    }
     const numberValue =
         typeof value === 'number'
             ? value
-            : typeof value === 'string'
-              ? Number.parseFloat(value)
+            : normalizedString !== null &&
+                /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u.test(
+                    normalizedString,
+                )
+              ? Number(normalizedString)
               : Number.NaN;
 
     if (!Number.isFinite(numberValue)) {
@@ -357,6 +947,130 @@ function normalizeNumberValue(
     }
 
     return String(numberValue);
+}
+
+const advancedSowingAttributeNames = [
+    'seedingDistance',
+    'seedingDistanceMin',
+    'seedingDistanceMax',
+] as const;
+
+type AdvancedSowingAttributeName =
+    (typeof advancedSowingAttributeNames)[number];
+
+const advancedSowingAttributeNameSet = new Set<string>(
+    advancedSowingAttributeNames,
+);
+
+type AdvancedSowingCommunityChange = {
+    field: Pick<CommunityEditableFieldDefinition, 'category' | 'name'>;
+    proposedValue: string | null;
+};
+
+function isAdvancedSowingAttributeName(
+    value: string,
+): value is AdvancedSowingAttributeName {
+    return advancedSowingAttributeNameSet.has(value);
+}
+
+function isAdvancedSowingCommunityField(
+    field: Pick<CommunityEditableFieldDefinition, 'category' | 'name'>,
+) {
+    return (
+        field.category === 'attributes' &&
+        isAdvancedSowingAttributeName(field.name)
+    );
+}
+
+function advancedSowingValuesFromEntity(entity: EntityRaw) {
+    const values = new Map<AdvancedSowingAttributeName, string | null>();
+    for (const attribute of entity.attributes) {
+        const definition = attribute.attributeDefinition;
+        if (
+            attribute.isDeleted ||
+            definition.category !== 'attributes' ||
+            !isAdvancedSowingAttributeName(definition.name)
+        ) {
+            continue;
+        }
+        if (values.has(definition.name)) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                `Plant has multiple active values for attributes.${definition.name}.`,
+            );
+        }
+        values.set(definition.name, attribute.value);
+    }
+    return values;
+}
+
+function parseAdvancedSowingAttributeValue(
+    values: ReadonlyMap<AdvancedSowingAttributeName, string | null>,
+    name: AdvancedSowingAttributeName,
+) {
+    const value = values.get(name) ?? null;
+    if (value === null) {
+        return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field attributes.${name} must contain a finite number.`,
+        );
+    }
+    return parsed;
+}
+
+function assertProspectiveAdvancedSowingCommunityConfiguration(input: {
+    currentValues: ReadonlyMap<AdvancedSowingAttributeName, string | null>;
+    changes: readonly AdvancedSowingCommunityChange[];
+}) {
+    const relevantChanges = input.changes.filter(({ field }) =>
+        isAdvancedSowingCommunityField(field),
+    );
+    if (relevantChanges.length === 0) {
+        return;
+    }
+
+    const prospectiveValues = new Map(input.currentValues);
+    for (const { field, proposedValue } of relevantChanges) {
+        if (isAdvancedSowingAttributeName(field.name)) {
+            prospectiveValues.set(field.name, proposedValue);
+        }
+    }
+
+    const optimalDistanceCm = parseAdvancedSowingAttributeValue(
+        prospectiveValues,
+        'seedingDistance',
+    );
+    if (optimalDistanceCm === null) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Recommended sowing distance is required when editing Advanced Sowing spacing.',
+        );
+    }
+
+    try {
+        getAdvancedSowingLayoutOptions({
+            optimalDistanceCm,
+            minDistanceCm: parseAdvancedSowingAttributeValue(
+                prospectiveValues,
+                'seedingDistanceMin',
+            ),
+            maxDistanceCm: parseAdvancedSowingAttributeValue(
+                prospectiveValues,
+                'seedingDistanceMax',
+            ),
+        });
+    } catch (error) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            error instanceof Error
+                ? `Invalid Advanced Sowing spacing: ${error.message}`
+                : 'Invalid Advanced Sowing spacing.',
+        );
+    }
 }
 
 function normalizeBooleanValue(
@@ -499,7 +1213,311 @@ function normalizeJsonValue(
     return JSON.stringify(value);
 }
 
-function normalizeProposedValue(
+function normalizeOptionalSuggestionText(
+    value: unknown,
+    fieldLabel: string,
+    maxLength: number,
+) {
+    if (value === null || typeof value === 'undefined') {
+        return undefined;
+    }
+    if (typeof value !== 'string') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${fieldLabel} must be text.`,
+        );
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return undefined;
+    }
+    if (trimmed.length > maxLength) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${fieldLabel} must be ${maxLength} characters or fewer.`,
+        );
+    }
+
+    return trimmed;
+}
+
+function normalizeOperationSuggestionIntent(
+    value: unknown,
+): CommunityOperationSuggestionIntent {
+    if (value === 'add' || value === 'remove') {
+        return value;
+    }
+
+    throw new CommunityEditRequestError(
+        'invalid_value',
+        'Operation suggestion must choose add or remove.',
+    );
+}
+
+function normalizeOperationSuggestionMode(
+    value: unknown,
+): CommunityOperationSuggestionMode {
+    if (value === 'new' || value === 'existing') {
+        return value;
+    }
+    if (typeof value === 'undefined') {
+        return 'existing';
+    }
+
+    throw new CommunityEditRequestError(
+        'invalid_value',
+        'Operation suggestion must choose an existing or new operation.',
+    );
+}
+
+function normalizeOperationSuggestionOperationId(value: unknown) {
+    const normalized = normalizeReferenceId(value);
+    if (!normalized) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Operation suggestion must include an operation ID.',
+        );
+    }
+
+    return Number.parseInt(normalized, 10);
+}
+
+function normalizeRequiredSuggestionText(
+    value: unknown,
+    fieldLabel: string,
+    maxLength: number,
+) {
+    const normalized = normalizeOptionalSuggestionText(
+        value,
+        fieldLabel,
+        maxLength,
+    );
+    if (!normalized) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${fieldLabel} is required.`,
+        );
+    }
+
+    return normalized;
+}
+
+async function resolveOperationSuggestionTarget(input: {
+    operationId: number;
+    stage: NonNullable<
+        CommunityEditableFieldDefinition['operationSuggestionStage']
+    >;
+}) {
+    const operation = await getEntityRaw(input.operationId);
+    if (
+        operation?.entityTypeName !== 'operation' ||
+        operation.state !== 'published'
+    ) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Operation ${input.operationId} is not a published operation.`,
+        );
+    }
+
+    if (rawAttributeValue(operation, 'attributes', 'application') !== 'plant') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Operation suggestions can only use operations applied to a plant.',
+        );
+    }
+
+    if (
+        booleanAttributeValue(
+            rawAttributeValue(operation, 'attributes', 'internal'),
+        )
+    ) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Internal operations cannot be suggested for public plant pages.',
+        );
+    }
+
+    const stage = operationStageInfo(operation, await plantStageInfoById());
+    if (stage?.name !== input.stage.name) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Operation ${input.operationId} does not belong to the ${input.stage.label} stage.`,
+        );
+    }
+
+    return {
+        operationLabel: entityLabel(operation),
+        stageName: input.stage.name,
+        stageLabel: stage.label,
+    };
+}
+
+async function normalizeOperationSuggestionValue(
+    value: unknown,
+    field: CommunityEditableFieldDefinition,
+    snapshot: CommunityEditableFieldSnapshot,
+) {
+    if (!field.operationSuggestionStage) {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} is missing operation suggestion stage metadata.`,
+        );
+    }
+
+    if (!snapshot.multiple || snapshot.dataType !== 'ref:operation') {
+        throw new CommunityEditRequestError(
+            'unsupported_data_type',
+            `Field ${field.fieldKey} must be backed by multiple operation references.`,
+        );
+    }
+
+    if (!isRecord(value)) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field ${field.fieldKey} expects an operation suggestion.`,
+        );
+    }
+
+    const stageName =
+        typeof value.stageName === 'string'
+            ? value.stageName
+            : field.operationSuggestionStage.name;
+    if (stageName !== field.operationSuggestionStage.name) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field ${field.fieldKey} only accepts ${field.operationSuggestionStage.label} suggestions.`,
+        );
+    }
+
+    const intent = normalizeOperationSuggestionIntent(value.intent);
+    const operationMode = normalizeOperationSuggestionMode(value.operationMode);
+    const note = normalizeOptionalSuggestionText(value.note, 'Note', 1000);
+    const source = normalizeOptionalSuggestionText(value.source, 'Source', 500);
+
+    if (operationMode === 'new') {
+        if (intent !== 'add') {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'New operation suggestions can only be added.',
+            );
+        }
+
+        const newOperationName = normalizeRequiredSuggestionText(
+            value.newOperationName,
+            'New operation name',
+            160,
+        );
+        const newOperationDescription = normalizeRequiredSuggestionText(
+            value.newOperationDescription,
+            'New operation description',
+            2000,
+        );
+
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: 'community-operation-suggestion-v1',
+            intent,
+            operationMode,
+            operationLabel: newOperationName,
+            stageName: field.operationSuggestionStage.name,
+            stageLabel: field.operationSuggestionStage.label,
+            currentState: 'absent',
+            newOperationName,
+            newOperationDescription,
+        };
+        if (note) {
+            suggestion.note = note;
+        }
+        if (source) {
+            suggestion.source = source;
+        }
+
+        return JSON.stringify(suggestion);
+    }
+
+    const operationId = normalizeOperationSuggestionOperationId(
+        value.operationId,
+    );
+    const target = await resolveOperationSuggestionTarget({
+        operationId,
+        stage: field.operationSuggestionStage,
+    });
+    const currentOperationIds = operationIdsFromSerializedValue(
+        snapshot.currentValue,
+    );
+    const currentState = currentOperationIds.has(String(operationId))
+        ? 'present'
+        : 'absent';
+    if (intent === 'add' && currentState === 'present') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${target.operationLabel} is already linked to this plant.`,
+        );
+    }
+    if (intent === 'remove' && currentState === 'absent') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `${target.operationLabel} is not linked to this plant.`,
+        );
+    }
+
+    const suggestion: CommunityOperationSuggestionValue = {
+        format: 'community-operation-suggestion-v1',
+        intent,
+        operationMode,
+        operationId,
+        operationLabel: target.operationLabel,
+        stageName: target.stageName,
+        stageLabel: target.stageLabel,
+        currentState,
+    };
+    if (note) {
+        suggestion.note = note;
+    }
+    if (source) {
+        suggestion.source = source;
+    }
+
+    return JSON.stringify(suggestion);
+}
+
+function normalizeSelectValue(
+    value: unknown,
+    field: CommunityEditableFieldDefinition,
+    snapshot: CommunityEditableFieldSnapshot,
+) {
+    if (value === null || value === '') {
+        return null;
+    }
+
+    const textValue =
+        typeof value === 'boolean' || typeof value === 'number'
+            ? String(value)
+            : typeof value === 'string'
+              ? value
+              : null;
+
+    if (
+        !textValue ||
+        !field.options?.some((option) => option.value === textValue)
+    ) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Field ${field.fieldKey} expects one of the configured options.`,
+        );
+    }
+
+    switch (snapshot.dataType) {
+        case 'boolean':
+            return normalizeBooleanValue(textValue, field);
+        case 'number':
+            return normalizeNumberValue(textValue, field);
+        default:
+            return normalizeNullableString(textValue, field.maxLength);
+    }
+}
+
+async function normalizeProposedValue(
     value: unknown,
     field: CommunityEditableFieldDefinition,
     snapshot: CommunityEditableFieldSnapshot,
@@ -514,10 +1532,18 @@ function normalizeProposedValue(
             return normalizeTextValue(value, field);
         case 'number':
             return normalizeNumberValue(value, field);
+        case 'operationSuggestion':
+            return await normalizeOperationSuggestionValue(
+                value,
+                field,
+                snapshot,
+            );
         case 'range':
             return normalizeRangeValue(value, field);
         case 'reference':
             return normalizeReferenceValue(value, field, snapshot.multiple);
+        case 'select':
+            return normalizeSelectValue(value, field, snapshot);
     }
 }
 
@@ -572,6 +1598,10 @@ function createReviewDiff(
     previousValue: string | null,
     proposedValue: string | null,
 ) {
+    if (controlType === 'operationSuggestion') {
+        return proposedValue;
+    }
+
     if (controlType !== 'text' && controlType !== 'markdown') {
         return null;
     }
@@ -764,11 +1794,11 @@ function applyTextValuePatch(valuePatch: string | null, currentValue: string) {
     return patchedValue;
 }
 
-function resolveSubmittedChange(
+async function resolveSubmittedChange(
     entity: EntityRaw,
     submittedChange: CreateCommunityEditRequestInput['changes'][number],
     sectionKey?: string | null,
-): ResolvedCommunityEditChange {
+): Promise<ResolvedCommunityEditChange> {
     const field = getCommunityEditableFieldDefinition(
         entity.entityTypeName,
         submittedChange.fieldKey,
@@ -789,6 +1819,7 @@ function resolveSubmittedChange(
 
     const snapshot = resolveFieldSnapshot(entity, field);
     if (
+        field.controlType !== 'operationSuggestion' &&
         submittedChange.baseValueHash &&
         submittedChange.baseValueHash !== snapshot.baseValueHash
     ) {
@@ -798,7 +1829,7 @@ function resolveSubmittedChange(
         );
     }
 
-    const proposedValue = normalizeProposedValue(
+    const proposedValue = await normalizeProposedValue(
         submittedChange.proposedValue,
         field,
         snapshot,
@@ -834,17 +1865,38 @@ export async function createCommunityEditRequest(
         input.entityTypeName,
         input.entityId,
     );
-    const changes = input.changes
-        .map((change) =>
-            resolveSubmittedChange(entity, change, input.sectionKey),
+    const changes = (
+        await Promise.all(
+            input.changes.map((change) =>
+                resolveSubmittedChange(entity, change, input.sectionKey),
+            ),
         )
-        .filter((change) => change.previousValue !== change.proposedValue);
+    ).filter((change) => change.previousValue !== change.proposedValue);
 
     if (changes.length === 0) {
         throw new CommunityEditRequestError(
             'no_changes',
             'At least one changed field is required.',
         );
+    }
+
+    if (entity.entityTypeName === 'plant') {
+        assertProspectiveAdvancedSowingCommunityConfiguration({
+            currentValues: advancedSowingValuesFromEntity(entity),
+            changes: changes.map((change) => {
+                const field = getCommunityEditableFieldDefinition(
+                    entity.entityTypeName,
+                    change.fieldKey,
+                );
+                if (!field) {
+                    throw new CommunityEditRequestError(
+                        'invalid_field',
+                        `Field ${change.fieldKey} is not editable for ${entity.entityTypeName}.`,
+                    );
+                }
+                return { field, proposedValue: change.proposedValue };
+            }),
+        });
     }
 
     const createdRequest = await storage().transaction(async (tx) => {
@@ -888,6 +1940,188 @@ export async function createCommunityEditRequest(
         throw new CommunityEditRequestError(
             'not_found',
             'Community edit request was created but could not be loaded.',
+        );
+    }
+    return request;
+}
+
+async function getPublishedSuggestionContext(
+    entityTypeName: 'plant' | 'plantStage',
+    entityId: number,
+) {
+    const entity = await getCommunityEditableEntity(entityTypeName, entityId);
+    if (entity.state !== 'published') {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            `Entity ${entityTypeName}#${entityId} is not published.`,
+        );
+    }
+    return entity;
+}
+
+async function getPublishedSuggestionPlants(plantIds: number[]) {
+    const uniquePlantIds = Array.from(new Set(plantIds));
+    if (uniquePlantIds.length === 0) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'At least one affected plant is required.',
+        );
+    }
+
+    return await Promise.all(
+        uniquePlantIds.map(async (plantId) => {
+            const plant = await getPublishedSuggestionContext('plant', plantId);
+            return {
+                id: plant.id,
+                name: entityLabel(plant),
+            };
+        }),
+    );
+}
+
+export async function createCommunityEntitySuggestion(
+    input: CreateCommunityEntitySuggestionInput,
+) {
+    const name = normalizeRequiredSuggestionText(
+        input.name,
+        'Suggestion name',
+        200,
+    );
+    const description = normalizeRequiredSuggestionText(
+        input.description,
+        'Suggestion description',
+        2000,
+    );
+    const source = normalizeOptionalSuggestionText(input.source, 'Source', 500);
+    const note = normalizeOptionalSuggestionText(input.note, 'Note', 1000);
+    const publicPath = normalizeRequiredSuggestionText(
+        input.publicPath,
+        'Public path',
+        500,
+    );
+
+    let contextEntityTypeName: 'plant' | 'plantStage';
+    let contextEntityId: number;
+    let sectionKey:
+        | 'new-disease'
+        | 'new-operation'
+        | 'new-pest'
+        | 'new-plant-sort';
+    let suggestion: CommunityEntitySuggestionValue;
+
+    if (input.kind === 'plantSort') {
+        const plant = await getPublishedSuggestionContext(
+            'plant',
+            input.parentPlantId,
+        );
+        contextEntityTypeName = 'plant';
+        contextEntityId = plant.id;
+        sectionKey = 'new-plant-sort';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            parentPlantId: plant.id,
+            parentPlantName: entityLabel(plant),
+        };
+    } else if (input.kind === 'operation') {
+        if (!isCommunitySuggestionApplication(input.application)) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'Operation suggestion has an unsupported application.',
+            );
+        }
+        const plantStage = await getPublishedSuggestionContext(
+            'plantStage',
+            input.plantStageId,
+        );
+        contextEntityTypeName = 'plantStage';
+        contextEntityId = plantStage.id;
+        sectionKey = 'new-operation';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            application: input.application,
+            plantStageId: plantStage.id,
+            stageName:
+                rawAttributeValue(plantStage, 'information', 'name') ??
+                String(plantStage.id),
+            stageLabel: entityLabel(plantStage),
+        };
+    } else {
+        const affectedPlants = await getPublishedSuggestionPlants(
+            input.affectedPlantIds,
+        );
+        const symptoms = normalizeRequiredSuggestionText(
+            input.symptoms,
+            'Symptoms',
+            4000,
+        );
+        const favorableConditions = normalizeRequiredSuggestionText(
+            input.favorableConditions,
+            'Favorable conditions',
+            4000,
+        );
+        const severity = normalizeOptionalSuggestionText(
+            input.severity,
+            'Severity',
+            1000,
+        );
+        const contextPlant = affectedPlants[0];
+        if (!contextPlant) {
+            throw new CommunityEditRequestError(
+                'invalid_value',
+                'At least one affected plant is required.',
+            );
+        }
+
+        contextEntityTypeName = 'plant';
+        contextEntityId = contextPlant.id;
+        sectionKey = input.kind === 'disease' ? 'new-disease' : 'new-pest';
+        suggestion = {
+            format: 'community-entity-suggestion-v1',
+            kind: input.kind,
+            name,
+            description,
+            symptoms,
+            favorableConditions,
+            affectedPlants,
+        };
+        if (severity) {
+            suggestion.severity = severity;
+        }
+    }
+
+    if (note) {
+        suggestion.note = note;
+    }
+    if (source) {
+        suggestion.source = source;
+    }
+
+    const [createdRequest] = await storage()
+        .insert(communityEditRequests)
+        .values({
+            status: 'pending',
+            entityTypeName: contextEntityTypeName,
+            entityId: contextEntityId,
+            publicPath,
+            sectionKey,
+            submitterUserId: input.submitter.id,
+            submitterName: input.submitter.name,
+            submitterEmail: input.submitter.email,
+            submitterNote: JSON.stringify(suggestion),
+        })
+        .returning();
+
+    const request = await getCommunityEditRequest(createdRequest.id);
+    if (!request) {
+        throw new CommunityEditRequestError(
+            'not_found',
+            'Community entity suggestion was created but could not be loaded.',
         );
     }
     return request;
@@ -973,6 +2207,9 @@ export async function rejectCommunityEditRequest(input: {
             `Request ${input.id} was not found.`,
         );
     }
+    if (request.status === 'applied') {
+        return request;
+    }
     assertReviewableStatus(request);
 
     const [updated] = await storage()
@@ -984,10 +2221,15 @@ export async function rejectCommunityEditRequest(input: {
             reviewerNote: input.reviewerNote,
             reviewedAt: new Date(),
         })
-        .where(eq(communityEditRequests.id, input.id))
+        .where(
+            and(
+                eq(communityEditRequests.id, input.id),
+                inArray(communityEditRequests.status, ['pending', 'approved']),
+            ),
+        )
         .returning();
 
-    return updated;
+    return updated ?? getCommunityEditRequest(input.id);
 }
 
 export async function markCommunityEditRequestConflicted(input: {
@@ -1004,10 +2246,15 @@ export async function markCommunityEditRequestConflicted(input: {
             applicationFailureReason: input.reason,
             reviewedAt: new Date(),
         })
-        .where(eq(communityEditRequests.id, input.id))
+        .where(
+            and(
+                eq(communityEditRequests.id, input.id),
+                inArray(communityEditRequests.status, ['pending', 'approved']),
+            ),
+        )
         .returning();
 
-    return updated;
+    return updated ?? getCommunityEditRequest(input.id);
 }
 
 function parseMultipleProposedValue(value: string | null) {
@@ -1024,6 +2271,106 @@ function parseMultipleProposedValue(value: string | null) {
     }
 
     return parsed.map((entry) => (entry === null ? null : String(entry)));
+}
+
+function parseCommunityOperationSuggestion(
+    value: string | null,
+): CommunityOperationSuggestionValue | null {
+    if (!value) {
+        return null;
+    }
+
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (
+            !isRecord(parsed) ||
+            parsed.format !== 'community-operation-suggestion-v1' ||
+            (parsed.intent !== 'add' && parsed.intent !== 'remove') ||
+            typeof parsed.operationLabel !== 'string' ||
+            !isPlantStageName(parsed.stageName) ||
+            typeof parsed.stageLabel !== 'string' ||
+            (parsed.currentState !== 'absent' &&
+                parsed.currentState !== 'present') ||
+            ('note' in parsed &&
+                typeof parsed.note !== 'undefined' &&
+                typeof parsed.note !== 'string') ||
+            ('source' in parsed &&
+                typeof parsed.source !== 'undefined' &&
+                typeof parsed.source !== 'string')
+        ) {
+            return null;
+        }
+
+        const operationMode =
+            parsed.operationMode === 'new'
+                ? 'new'
+                : parsed.operationMode === 'existing' ||
+                    typeof parsed.operationMode === 'undefined'
+                  ? 'existing'
+                  : null;
+        if (!operationMode) {
+            return null;
+        }
+
+        if (operationMode === 'new') {
+            if (
+                parsed.intent !== 'add' ||
+                parsed.currentState !== 'absent' ||
+                typeof parsed.newOperationName !== 'string' ||
+                typeof parsed.newOperationDescription !== 'string'
+            ) {
+                return null;
+            }
+
+            const suggestion: CommunityOperationSuggestionValue = {
+                format: 'community-operation-suggestion-v1',
+                intent: parsed.intent,
+                operationMode,
+                operationLabel: parsed.operationLabel,
+                stageName: parsed.stageName,
+                stageLabel: parsed.stageLabel,
+                currentState: parsed.currentState,
+                newOperationName: parsed.newOperationName,
+                newOperationDescription: parsed.newOperationDescription,
+            };
+            if (typeof parsed.note === 'string') {
+                suggestion.note = parsed.note;
+            }
+            if (typeof parsed.source === 'string') {
+                suggestion.source = parsed.source;
+            }
+
+            return suggestion;
+        }
+
+        if (
+            typeof parsed.operationId !== 'number' ||
+            !Number.isInteger(parsed.operationId)
+        ) {
+            return null;
+        }
+
+        const suggestion: CommunityOperationSuggestionValue = {
+            format: 'community-operation-suggestion-v1',
+            intent: parsed.intent,
+            operationMode,
+            operationId: parsed.operationId,
+            operationLabel: parsed.operationLabel,
+            stageName: parsed.stageName,
+            stageLabel: parsed.stageLabel,
+            currentState: parsed.currentState,
+        };
+        if (typeof parsed.note === 'string') {
+            suggestion.note = parsed.note;
+        }
+        if (typeof parsed.source === 'string') {
+            suggestion.source = parsed.source;
+        }
+
+        return suggestion;
+    } catch {
+        return null;
+    }
 }
 
 async function getCurrentPersistedValues(
@@ -1122,6 +2469,85 @@ async function applyMultipleChange(input: {
     }
 }
 
+async function applyOperationSuggestionChange(input: {
+    db: DatabaseClient;
+    sideEffects: ReturnType<typeof createAttributeValueMutationSideEffects>;
+    entityTypeName: string;
+    entityId: number;
+    attributeDefinitionId: number;
+    proposedValue: string | null;
+    actor: CommunityEditActor;
+}) {
+    const suggestion = parseCommunityOperationSuggestion(input.proposedValue);
+    if (!suggestion) {
+        throw new CommunityEditRequestError(
+            'invalid_value',
+            'Operation suggestion change is not valid.',
+        );
+    }
+    if (suggestion.operationMode === 'new') {
+        return;
+    }
+
+    const currentValues = await getCurrentPersistedValues(
+        input.db,
+        input.entityId,
+        input.attributeDefinitionId,
+    );
+    const operationValue = String(suggestion.operationId);
+    const existingValue = currentValues.find(
+        (value) => value.value === operationValue,
+    );
+
+    if (suggestion.intent === 'add') {
+        if (existingValue) {
+            return;
+        }
+
+        await resolveOperationSuggestionTarget({
+            operationId: suggestion.operationId,
+            stage: {
+                name: suggestion.stageName,
+                label: suggestion.stageLabel,
+            },
+        });
+        await upsertAttributeValue(
+            {
+                attributeDefinitionId: input.attributeDefinitionId,
+                entityTypeName: input.entityTypeName,
+                entityId: input.entityId,
+                value: operationValue,
+                order: String(currentValues.length),
+            },
+            {
+                id: input.actor.id,
+                name: input.actor.name ?? undefined,
+            },
+            {
+                db: input.db,
+                sideEffects: input.sideEffects,
+            },
+        );
+        return;
+    }
+
+    if (!existingValue) {
+        return;
+    }
+
+    await deleteAttributeValue(
+        existingValue.id,
+        {
+            id: input.actor.id,
+            name: input.actor.name ?? undefined,
+        },
+        {
+            db: input.db,
+            sideEffects: input.sideEffects,
+        },
+    );
+}
+
 function resolveApplicableProposedValue(input: {
     field: CommunityEditableFieldDefinition;
     snapshot: CommunityEditableFieldSnapshot;
@@ -1132,6 +2558,20 @@ function resolveApplicableProposedValue(input: {
         valuePatch: string | null;
     };
 }) {
+    if (input.field.controlType === 'operationSuggestion') {
+        if (!parseCommunityOperationSuggestion(input.change.proposedValue)) {
+            return {
+                proposedValue: null,
+                conflictReason: `Field ${input.change.fieldKey} has an invalid operation suggestion payload.`,
+            };
+        }
+
+        return {
+            proposedValue: input.change.proposedValue,
+            conflictReason: null,
+        };
+    }
+
     if (input.snapshot.baseValueHash === input.change.baseValueHash) {
         return {
             proposedValue: input.change.proposedValue,
@@ -1177,6 +2617,9 @@ export async function approveCommunityEditRequest(input: {
             `Request ${input.id} was not found.`,
         );
     }
+    if (request.status === 'applied') {
+        return request;
+    }
     assertReviewableStatus(request);
 
     const entity = await getCommunityEditableEntity(
@@ -1186,7 +2629,9 @@ export async function approveCommunityEditRequest(input: {
 
     const preparedChanges: {
         change: (typeof request.changes)[number];
+        field: CommunityEditableFieldDefinition;
         attributeValueId: number | null;
+        currentValue: string | null;
         proposedValue: string | null;
     }[] = [];
     for (const change of request.changes) {
@@ -1235,14 +2680,76 @@ export async function approveCommunityEditRequest(input: {
 
         preparedChanges.push({
             change,
+            field,
             attributeValueId: snapshot.attributeValueId,
+            currentValue: snapshot.currentValue,
             proposedValue: applicationValue.proposedValue,
         });
     }
 
+    const advancedSowingPreparedChanges = preparedChanges.filter(({ field }) =>
+        isAdvancedSowingCommunityField(field),
+    );
+
     const sideEffects = createAttributeValueMutationSideEffects();
+    let appliedByThisReviewer = false;
     try {
         await storage().transaction(async (tx) => {
+            const [lockedRequest] = await tx
+                .select({ status: communityEditRequests.status })
+                .from(communityEditRequests)
+                .where(eq(communityEditRequests.id, request.id))
+                .limit(1)
+                .for('update');
+            if (!lockedRequest) {
+                throw new CommunityEditRequestError(
+                    'not_found',
+                    `Request ${request.id} was not found while applying.`,
+                );
+            }
+            if (
+                lockedRequest.status !== 'pending' &&
+                lockedRequest.status !== 'approved'
+            ) {
+                return;
+            }
+
+            if (advancedSowingPreparedChanges.length > 0) {
+                await applyAdvancedSowingAttributeValueBatch(
+                    advancedSowingPreparedChanges.map(
+                        ({
+                            change,
+                            attributeValueId,
+                            currentValue,
+                            proposedValue,
+                        }) => ({
+                            action: 'upsert' as const,
+                            attributeValue: {
+                                id: attributeValueId ?? undefined,
+                                attributeDefinitionId:
+                                    change.attributeDefinitionId,
+                                entityTypeName: request.entityTypeName,
+                                entityId: request.entityId,
+                                value: proposedValue,
+                            },
+                            expectedCurrent:
+                                attributeValueId === null
+                                    ? { state: 'absent' as const }
+                                    : {
+                                          state: 'present' as const,
+                                          attributeValueId,
+                                          value: currentValue,
+                                      },
+                        }),
+                    ),
+                    {
+                        id: input.reviewer.id,
+                        name: input.reviewer.name ?? undefined,
+                    },
+                    { db: tx, sideEffects },
+                );
+            }
+
             await tx
                 .update(communityEditRequests)
                 .set({
@@ -1257,10 +2764,24 @@ export async function approveCommunityEditRequest(input: {
 
             for (const {
                 change,
+                field,
                 attributeValueId,
                 proposedValue,
             } of preparedChanges) {
-                if (change.attributeDefinition.multiple) {
+                if (isAdvancedSowingCommunityField(field)) {
+                    continue;
+                }
+                if (field.controlType === 'operationSuggestion') {
+                    await applyOperationSuggestionChange({
+                        db: tx,
+                        sideEffects,
+                        entityTypeName: request.entityTypeName,
+                        entityId: request.entityId,
+                        attributeDefinitionId: change.attributeDefinitionId,
+                        proposedValue,
+                        actor: input.reviewer,
+                    });
+                } else if (change.attributeDefinition.multiple) {
                     await applyMultipleChange({
                         db: tx,
                         sideEffects,
@@ -1292,6 +2813,7 @@ export async function approveCommunityEditRequest(input: {
                     applicationFailureReason: null,
                 })
                 .where(eq(communityEditRequests.id, request.id));
+            appliedByThisReviewer = true;
         });
     } catch (error) {
         await markCommunityEditRequestConflicted({
@@ -1304,6 +2826,17 @@ export async function approveCommunityEditRequest(input: {
             throw error;
         }
         return conflicted;
+    }
+
+    if (!appliedByThisReviewer) {
+        const resolved = await getCommunityEditRequest(request.id);
+        if (!resolved) {
+            throw new CommunityEditRequestError(
+                'not_found',
+                `Request ${request.id} was not found after concurrent review.`,
+            );
+        }
+        return resolved;
     }
 
     await flushAttributeValueMutationSideEffects(sideEffects);

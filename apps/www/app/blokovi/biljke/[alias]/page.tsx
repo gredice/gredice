@@ -8,12 +8,13 @@ import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackModal';
 import { getPlantSortsData } from '../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../lib/plants/getPlantsData';
+import { createPublicMetadata } from '../../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../../src/KnownPages';
 import { matchesPageAlias, toPageAlias } from '../../../../src/pageAliases';
-import { resolvePlantType } from '../../plantNamesWithLSystem';
+import { resolveProceduralPlantType } from '../../plantNamesWithProceduralModels';
 import { PlantGrowthViewer } from './PlantGrowthViewer';
 
-export const revalidate = 3600;
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/blokovi/biljke/[alias]'>,
@@ -24,23 +25,26 @@ export async function generateMetadata(
     const plant = plants?.find((p) =>
         matchesPageAlias(p.information.name, alias),
     );
-    if (!plant) {
-        return {
-            title: 'Biljka nije pronađena',
-            description: 'Biljka nije pronađena.',
-        };
+    if (!plant || !resolveProceduralPlantType(plant.information.name)) {
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: `${plant.information.name} - 3D prikaz`,
         description: `Pogledaj kako ${plant.information.name} raste u 3D prikazu.`,
-    };
+        path: KnownPages.BlockPlant(plant.slug || plant.information.name),
+        category: '3D prikaz biljke',
+        imageUrl: plant.image?.cover?.url,
+        imageAlt: `Fotografija biljke ${plant.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {
     const plants = await getPlantsData();
     return (
         plants
-            ?.filter((p) => resolvePlantType(p.information.name) !== null)
+            ?.filter(
+                (p) => resolveProceduralPlantType(p.information.name) !== null,
+            )
             .map((plant) => ({
                 alias: plant.slug || toPageAlias(plant.information.name),
             })) ?? []
@@ -64,7 +68,7 @@ export default async function BlockPlantDetailPage(
     const plant = plants?.find((p) =>
         matchesPageAlias(p.information.name, alias),
     );
-    if (!plant || !resolvePlantType(plant.information.name)) {
+    if (!plant || !resolveProceduralPlantType(plant.information.name)) {
         notFound();
     }
 
@@ -101,8 +105,8 @@ export default async function BlockPlantDetailPage(
         .sort((a, b) => a.information.name.localeCompare(b.information.name));
 
     return (
-        <div className="py-8">
-            <Stack spacing={8}>
+        <div className="py-6 sm:py-8">
+            <Stack spacing={6}>
                 <Breadcrumbs
                     items={[
                         { label: 'Blokovi', href: KnownPages.Blocks },

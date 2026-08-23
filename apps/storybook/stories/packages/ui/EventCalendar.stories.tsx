@@ -52,6 +52,27 @@ const entries: EventCalendarEntry[] = [
     },
 ];
 
+const selectedTodayEntries: EventCalendarEntry[] = [
+    {
+        id: 'today-completed',
+        date: referenceDate,
+        label: 'Obavljeno zalijevanje',
+        tone: 'completed',
+    },
+    {
+        id: 'today-scheduled',
+        date: referenceDate,
+        label: 'Planirano zalijevanje',
+        tone: 'scheduled',
+    },
+    {
+        id: 'today-cart',
+        date: referenceDate,
+        label: 'Zalijevanje u košari',
+        tone: 'cart',
+    },
+];
+
 function SelectableScheduleStory(args: ComponentProps<typeof EventCalendar>) {
     const [selectedDate, setSelectedDate] = useState(
         new Date('2026-06-20T00:00:00.000Z'),
@@ -110,4 +131,14 @@ export const Timeline: Story = {
 export const SelectableSchedule: Story = {
     name: 'Selectable schedule',
     render: SelectableScheduleStory,
+};
+
+export const SelectedTodayWithEntries: Story = {
+    name: 'Selected today with entries',
+    args: {
+        entries: selectedTodayEntries,
+        selectedDate: referenceDate,
+        visibleFrom: new Date('2026-06-01T00:00:00.000Z'),
+        visibleTo: new Date('2026-06-30T23:59:59.999Z'),
+    },
 };

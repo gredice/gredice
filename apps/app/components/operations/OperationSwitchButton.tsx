@@ -13,6 +13,8 @@ import {
     type SwitchOperationEntityActionState,
     switchOperationEntityAction,
 } from '../../app/(actions)/operationActions';
+import { ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE } from '../../app/admin/operations/operationScope';
+import { canSwitchOperationTaskEntity } from '../../app/admin/schedule/scheduleShared';
 
 export type OperationSwitchOption = {
     id: number;
@@ -22,15 +24,21 @@ export type OperationSwitchOption = {
 interface OperationSwitchButtonProps {
     operationId: number;
     currentEntityId: number;
+    taskVersionEventId: number;
+    operationStatus: string;
     operationLabel: string;
     operationOptions: OperationSwitchOption[];
+    plantOperationTargetBlocked?: boolean;
 }
 
 export function OperationSwitchButton({
     operationId,
     currentEntityId,
+    taskVersionEventId,
+    operationStatus,
     operationLabel,
     operationOptions,
+    plantOperationTargetBlocked = false,
 }: OperationSwitchButtonProps) {
     const [open, setOpen] = useState(false);
     const [selectedEntityId, setSelectedEntityId] = useState(
@@ -74,8 +82,23 @@ export function OperationSwitchButton({
         }
     }
 
-    if (!hasReplacementOptions) {
+    if (
+        !hasReplacementOptions ||
+        !canSwitchOperationTaskEntity(operationStatus)
+    ) {
         return null;
+    }
+
+    if (plantOperationTargetBlocked) {
+        return (
+            <IconButton
+                variant="plain"
+                title={ADVANCED_SOWING_PLANT_OPERATION_TARGET_MESSAGE}
+                disabled
+            >
+                <Replace className="size-4 shrink-0" />
+            </IconButton>
+        );
     }
 
     return (
@@ -103,6 +126,16 @@ export function OperationSwitchButton({
                         type="hidden"
                         name="operationId"
                         value={operationId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedEntityId"
+                        value={currentEntityId}
+                    />
+                    <input
+                        type="hidden"
+                        name="expectedTaskVersionEventId"
+                        value={taskVersionEventId}
                     />
                     <input
                         type="hidden"

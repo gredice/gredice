@@ -9,10 +9,13 @@
         ".": "./src/index.ts",
         "./calendar": "./src/calendar.ts"
     },
-    "scripts": {},
+    "scripts": {
+        "typecheck": "tsc --noEmit --pretty false"
+    },
     "devDependencies": {
         "@types/node": "24.12.4",
-        "server-only": "0.0.1"
+        "server-only": "0.0.1",
+        "typescript": "7.0.2"
     },
     "dependencies": {}
 }

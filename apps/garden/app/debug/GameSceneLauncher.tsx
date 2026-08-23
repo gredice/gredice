@@ -150,6 +150,7 @@ export function GameSceneLauncher() {
     const [hud, setHud] = useState(false);
     const [debugHud, setDebugHud] = useState(false);
     const [controls, setControls] = useState(false);
+    const [avatar, setAvatar] = useState(false);
 
     const href = useMemo(() => {
         const params = new URLSearchParams();
@@ -174,9 +175,12 @@ export function GameSceneLauncher() {
         if (controls) {
             params.set('controls', '1');
         }
+        if (avatar) {
+            params.set('avatar', '1');
+        }
         const queryString = params.toString();
         return `/debug/profile/game${queryString ? `?${queryString}` : ''}`;
-    }, [mode, quality, profile, details, hud, debugHud, controls]);
+    }, [mode, quality, profile, details, hud, debugHud, controls, avatar]);
 
     return (
         <div className="flex flex-col gap-5 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
@@ -247,6 +251,12 @@ export function GameSceneLauncher() {
                         description="Allow camera pan, zoom and rotation (controls)."
                         enabled={controls}
                         onToggle={() => setControls((current) => !current)}
+                    />
+                    <ToggleButton
+                        label="Avatar"
+                        description="Spawn the walkable garden avatar (avatar)."
+                        enabled={avatar}
+                        onToggle={() => setAvatar((current) => !current)}
                     />
                 </div>
             </div>

@@ -1,7 +1,12 @@
+import { ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD } from '@gredice/js/plants';
+import { PlantingSeedIcon } from '@gredice/ui/PlantingSeedIcon';
 import { useEffect } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
-import { useRaisedBedFieldDetailsParam } from '../../useUrlState';
+import {
+    normalizeRaisedBedFieldTab,
+    useRaisedBedCloseupParams,
+} from '../../useUrlState';
 import {
     findRaisedBedOccupiedField,
     getRaisedBedFieldPlantHistory,
@@ -18,6 +23,8 @@ export function RaisedBedFieldItem({
     showPlantHistoryBadges = true,
     positionIndex,
     isDragging,
+    plantingCount = 0,
+    plantingMode = false,
 }: {
     raisedBedId: number;
     gardenId: number;
@@ -26,10 +33,13 @@ export function RaisedBedFieldItem({
     showPlantHistoryBadges?: boolean;
     positionIndex: number;
     isDragging?: boolean;
+    plantingCount?: number;
+    plantingMode?: boolean;
 }) {
     const { data: garden, isLoading: isGardenLoading } = useCurrentGarden();
-    const [fieldDetailsParam, setFieldDetailsParam] =
-        useRaisedBedFieldDetailsParam();
+    const [fieldDetailsParams, setFieldDetailsParams] =
+        useRaisedBedCloseupParams();
+    const fieldDetailsParam = fieldDetailsParams.polje;
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
 
     const field = findRaisedBedOccupiedField(raisedBed?.fields, positionIndex);
@@ -59,18 +69,24 @@ export function RaisedBedFieldItem({
             return;
         }
 
-        void setFieldDetailsParam(null);
+        void setFieldDetailsParams({
+            polje: null,
+            'polje-kartica': null,
+        });
     }, [
         focusedHistoryEntry,
         hasField,
         isFieldDetailsFocused,
         isGardenLoading,
-        setFieldDetailsParam,
+        setFieldDetailsParams,
     ]);
 
     function handleFieldDetailsOpenChange(open: boolean) {
         if (!open && isFieldDetailsFocused) {
-            void setFieldDetailsParam(null);
+            void setFieldDetailsParams({
+                polje: null,
+                'polje-kartica': null,
+            });
         }
     }
 
@@ -82,6 +98,47 @@ export function RaisedBedFieldItem({
         return (
             <RaisedBedFieldItemButton
                 isLoading={true}
+                positionIndex={positionIndex}
+            />
+        );
+    }
+
+    const plantingLimitReached =
+        plantingCount >= ADVANCED_SOWING_MAX_PLANTINGS_PER_FIELD;
+
+    if (plantingMode && !plantingLimitReached) {
+        return (
+            <RaisedBedFieldItemEmpty
+                cartPlantItem={cartPlantItem}
+                gardenId={gardenId}
+                plantHistory={visiblePlantHistory}
+                isCartPending={isCartPending}
+                raisedBedId={raisedBedId}
+                positionIndex={positionIndex}
+                isDragging={isDragging}
+                showOperations={false}
+            />
+        );
+    }
+
+    if (plantingMode && plantingLimitReached && !hasField) {
+        return (
+            <RaisedBedFieldItemButton
+                aria-label={`Polje ${positionIndex + 1} već ima dvije sadnje`}
+                disabled
+                positionIndex={positionIndex}
+                title="Polje već ima dvije sadnje"
+            >
+                <PlantingSeedIcon className="size-8 opacity-40" />
+            </RaisedBedFieldItemButton>
+        );
+    }
+
+    if (!plantingMode && plantingCount > 0 && !hasField && !cartPlantItem) {
+        return (
+            <RaisedBedFieldItemButton
+                aria-label={`Polje ${positionIndex + 1} sadrži naprednu sjetvu`}
+                disabled
                 positionIndex={positionIndex}
             />
         );
@@ -105,6 +162,9 @@ export function RaisedBedFieldItem({
                         isHistorical
                         onOpenChange={handleFieldDetailsOpenChange}
                         open
+                        requestedTab={normalizeRaisedBedFieldTab(
+                            fieldDetailsParams['polje-kartica'],
+                        )}
                         positionIndex={positionIndex}
                         raisedBedId={raisedBedId}
                         triggerOverride={null}
@@ -121,6 +181,13 @@ export function RaisedBedFieldItem({
                 isFieldDetailsFocused ? handleFieldDetailsOpenChange : undefined
             }
             open={isFieldDetailsFocused ? true : undefined}
+            requestedTab={
+                isFieldDetailsFocused
+                    ? normalizeRaisedBedFieldTab(
+                          fieldDetailsParams['polje-kartica'],
+                      )
+                    : undefined
+            }
             plantHistory={visiblePlantHistory}
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}

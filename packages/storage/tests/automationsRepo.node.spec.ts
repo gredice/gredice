@@ -13,6 +13,7 @@ import {
     claimDueAutomationRuns,
     completeAutomationRun,
     createAccount,
+    createAttributeDefinition,
     createAutomationDefinition,
     createAutomationRun,
     createEntity,
@@ -20,26 +21,35 @@ import {
     createFarm,
     createOperation,
     createOutletOffer,
+    createPlantStatusApprovalRequest,
+    deleteAttributeDefinition,
+    deleteRaisedBedField,
     enqueueAutomationRunsFromDomainEvents,
     enqueueAutomationRunsFromSchedules,
     ensureDefaultAutomationDefinitions,
     executeAutomationRun,
+    FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
     FARM_RAISED_BED_WEEDING_OPERATION_ID,
     FREE_WATERING_OPERATION_ID,
     farmRaisedBedWeedingAutomationKey,
     farmRaisedBedWeedingBiweeklyAnchorDate,
     farms,
+    getApprovalRequests,
     getAutomationDefinitionByKey,
     getAutomationEventCursor,
     getAutomationRunWithSteps,
     getEvents,
     getFarmAcceptedOperationsByScheduleRange,
     getFarms,
+    getOperationById,
     getOperations,
     getRaisedBed,
     getRaisedBedOperationsByScheduleRange,
     greenhouseSeedlingWateringAutomationGraph,
     greenhouseSeedlingWateringAutomationKey,
+    HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    harvestOperationPlantStatusReviewAutomationGraph,
+    harvestOperationPlantStatusReviewAutomationKey,
     knownEvents,
     knownEventTypes,
     listActiveRaisedBedOperationTargets,
@@ -53,7 +63,10 @@ import {
     plantRemovalOperationStatusAutomationGraph,
     plantRemovalOperationStatusAutomationKey,
     processDueAutomationRuns,
+    RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
     RAISED_BED_WATERING_50L_OPERATION_ID,
+    raisedBedDetailedInspectionAutomationGraph,
+    raisedBedDetailedInspectionAutomationKey,
     raisedBedPhotoOperationsAutomationKey,
     raisedBeds,
     recordAutomationRunStep,
@@ -67,6 +80,7 @@ import {
     updateAutomationDefinition,
     updateEntity,
     updateRaisedBed,
+    upsertAttributeValue,
     upsertEntityType,
     upsertRaisedBedField,
     validateAutomationGraph,
@@ -80,11 +94,17 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
+const harvestTestAttributeDefinitionIds = new Set<number>();
+
 afterEach(async () => {
     await storage().delete(automationRunSteps);
     await storage().delete(automationRuns);
     await storage().delete(automationDefinitions);
     await storage().delete(automationEventCursors);
+    for (const definitionId of harvestTestAttributeDefinitionIds) {
+        await deleteAttributeDefinition(definitionId);
+    }
+    harvestTestAttributeDefinitionIds.clear();
 });
 
 async function createAutomationRaisedBedContext() {
@@ -434,6 +454,61 @@ function dailyScheduleRunInput(date: Date, key: string) {
     };
 }
 
+async function createAutomationRunForMonthlyFarmInventory({
+    enqueuedAt,
+    referenceDate,
+    dryRun = false,
+}: {
+    enqueuedAt?: Date;
+    referenceDate: Date;
+    dryRun?: boolean;
+}) {
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        monthlyFarmInventoryOperationsAutomationKey,
+    );
+    assert.ok(definition);
+    const occurrenceDate = referenceDate.toISOString().slice(0, 10);
+    const input = {
+        scheduleType: 'monthly',
+        frequency: 'monthly',
+        triggerModuleKey: automationModuleKeys.triggerSchedule,
+        occurrenceKey: `test.monthly-farm-inventory-${randomUUID()}:${occurrenceDate}`,
+        occurrenceDate,
+        timeZone: 'Europe/Zagreb',
+        dayOfMonth: referenceDate.getUTCDate(),
+        enqueuedAt: (enqueuedAt ?? referenceDate).toISOString(),
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'schedule',
+        sourceEventType: automationScheduleEventType,
+        sourceAggregateId: input.occurrenceKey,
+        dryRun,
+        input,
+    });
+    assert.ok(run);
+
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+    const runWithSteps = await getAutomationRunWithSteps(startedRun.id);
+    const actionStep = runWithSteps?.steps.find(
+        (step) =>
+            step.nodeId === 'create-inventory-operations' &&
+            step.moduleKind === 'action',
+    );
+    assert.ok(actionStep);
+
+    return {
+        result,
+        actionOutput: actionStep.output,
+    };
+}
+
 async function createAutomationRunForDailyGreenhouseWatering({
     entityId,
     enqueuedAt,
@@ -504,6 +579,78 @@ async function createTestPlantSortForOutlet() {
     });
 
     return entityId;
+}
+
+async function createPublishedHarvestOperationEntity(
+    application: 'plant' | 'raisedBedFull',
+) {
+    await upsertEntityType({ name: 'plantStage', label: 'Faze biljaka' });
+    await upsertEntityType({ name: 'operation', label: 'Radnje' });
+
+    const stageNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        entityTypeName: 'plantStage',
+        dataType: 'text',
+    });
+    const operationNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Naziv',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+    const operationStageDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'stage',
+        label: 'Faza',
+        entityTypeName: 'operation',
+        dataType: 'ref:plantStage',
+    });
+    const operationApplicationDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'application',
+        label: 'Primjena',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+    harvestTestAttributeDefinitionIds.add(stageNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationNameDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationStageDefinitionId);
+    harvestTestAttributeDefinitionIds.add(operationApplicationDefinitionId);
+
+    const stageId = await createEntity('plantStage');
+    await upsertAttributeValue({
+        attributeDefinitionId: stageNameDefinitionId,
+        entityTypeName: 'plantStage',
+        entityId: stageId,
+        value: 'harvest',
+    });
+    await updateEntity({ id: stageId, state: 'published' });
+
+    const operationEntityId = await createEntity('operation');
+    await upsertAttributeValue({
+        attributeDefinitionId: operationNameDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: `testHarvest${application}`,
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: operationStageDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: stageId.toString(),
+    });
+    await upsertAttributeValue({
+        attributeDefinitionId: operationApplicationDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationEntityId,
+        value: application,
+    });
+    await updateEntity({ id: operationEntityId, state: 'published' });
+
+    return operationEntityId;
 }
 
 test('automation definitions persist graph trigger metadata and event-run idempotency', async () => {
@@ -1084,13 +1231,13 @@ test('monthly schedule automation enqueues once per configured period', async ()
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-15T08:00:00.000Z'),
+        now: new Date('2026-06-14T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-15T09:00:00.000Z'),
+        now: new Date('2026-06-14T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-16T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
@@ -1106,6 +1253,7 @@ test('monthly schedule automation enqueues once per configured period', async ()
         runs[0]?.sourceAggregateId,
         'trigger.scheduleMonthly:Europe/Zagreb:2026-06:day-15',
     );
+    assert.strictEqual(runs[0]?.input.occurrenceDate, '2026-06-15');
     for (const run of runs) {
         await completeAutomationRun({
             id: run.id,
@@ -1129,13 +1277,13 @@ test('daily schedule automation enqueues once per local day and executes', async
     });
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T21:00:00.000Z'),
+        now: new Date('2026-06-22T21:00:00.000Z'),
     });
     const nextDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-24T08:00:00.000Z'),
+        now: new Date('2026-06-23T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 3);
@@ -1155,6 +1303,13 @@ test('daily schedule automation enqueues once per local day and executes', async
         'daily',
         'daily',
     ]);
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-23', '2026-06-24'],
+    );
 
     await processDueAutomationRuns({
         limit: 10,
@@ -1183,16 +1338,16 @@ test('weekly schedule automation supports selected weekdays', async () => {
     });
 
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-22T08:00:00.000Z'),
+        now: new Date('2026-06-21T08:00:00.000Z'),
     });
     const tuesdayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     const duplicateTuesdayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T09:00:00.000Z'),
+        now: new Date('2026-06-22T09:00:00.000Z'),
     });
     const fridayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-26T08:00:00.000Z'),
+        now: new Date('2026-06-25T08:00:00.000Z'),
     });
 
     assert.strictEqual(offDayResult.enqueuedRuns, 1);
@@ -1211,6 +1366,13 @@ test('weekly schedule automation supports selected weekdays', async () => {
             .sort(),
         ['friday', 'tuesday'],
     );
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-23', '2026-06-26'],
+    );
 });
 
 test('biweekly schedule automation respects anchor week', async () => {
@@ -1228,17 +1390,17 @@ test('biweekly schedule automation respects anchor week', async () => {
     });
 
     const firstWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-02T08:00:00.000Z'),
+        now: new Date('2026-06-01T08:00:00.000Z'),
     });
     const skippedWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-09T08:00:00.000Z'),
+        now: new Date('2026-06-08T08:00:00.000Z'),
     });
     const secondOccurrenceResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-16T08:00:00.000Z'),
+        now: new Date('2026-06-15T08:00:00.000Z'),
     });
     const duplicateSecondOccurrenceResult =
         await enqueueAutomationRunsFromSchedules({
-            now: new Date('2026-06-16T09:00:00.000Z'),
+            now: new Date('2026-06-15T09:00:00.000Z'),
         });
 
     assert.strictEqual(firstWeekResult.enqueuedRuns, 3);
@@ -1256,6 +1418,13 @@ test('biweekly schedule automation respects anchor week', async () => {
             .filter((weekOffset) => typeof weekOffset === 'number')
             .sort(),
         [0, 2],
+    );
+    assert.deepStrictEqual(
+        runs
+            .map((run) => run.input.occurrenceDate)
+            .filter((occurrenceDate) => typeof occurrenceDate === 'string')
+            .sort(),
+        ['2026-06-02', '2026-06-16'],
     );
 });
 
@@ -1336,13 +1505,33 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         .where(eq(farms.id, deletedFarmId));
     const activeFarms = (await getFarms()).filter((farm) => !farm.isDeleted);
     const occurrenceDate = new Date('2026-07-01T00:00:00.000Z');
-    const enqueuedAt = new Date('2026-07-01T08:00:00.000Z');
+    const enqueuedAt = new Date('2026-06-30T08:00:00.000Z');
     const operationConfigs = monthlyFarmInventoryOperationConfigs;
+    const greenhousePlantInventoryOperationConfigs = operationConfigs.filter(
+        (operationConfig) =>
+            Reflect.get(operationConfig, 'requiresGreenhouseOrOutletPlants') ===
+            true,
+    );
+    const unconditionalOperationConfigs = operationConfigs.filter(
+        (operationConfig) =>
+            Reflect.get(operationConfig, 'requiresGreenhouseOrOutletPlants') !==
+            true,
+    );
+    assert.deepStrictEqual(
+        greenhousePlantInventoryOperationConfigs.map(
+            (operationConfig) => operationConfig.entityId,
+        ),
+        [FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID],
+    );
+    const expectedSkippedIneligibleCount =
+        activeFarms.length * greenhousePlantInventoryOperationConfigs.length;
+    const expectedCreatedCount =
+        activeFarms.length * unconditionalOperationConfigs.length - 1;
     const preexistingFarm = activeFarms[0];
     assert.ok(preexistingFarm);
     const preexistingOperationId = await createOperation({
-        entityId: operationConfigs[0].entityId,
-        entityTypeName: operationConfigs[0].entityTypeName,
+        entityId: unconditionalOperationConfigs[0].entityId,
+        entityTypeName: unconditionalOperationConfigs[0].entityTypeName,
         farmId: preexistingFarm.id,
         timestamp: occurrenceDate,
     });
@@ -1375,10 +1564,10 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         now: enqueuedAt,
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-07-01T09:00:00.000Z'),
+        now: new Date('2026-06-30T09:00:00.000Z'),
     });
     const offDayResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-07-02T08:00:00.000Z'),
+        now: new Date('2026-07-01T08:00:00.000Z'),
     });
     assert.strictEqual(enqueueResult.enqueuedRuns, 2);
     assert.strictEqual(duplicateResult.enqueuedRuns, 0);
@@ -1392,6 +1581,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         scheduledRun.sourceAggregateId,
         'trigger.schedule:Europe/Zagreb:monthly:2026-07:day-1',
     );
+    assert.strictEqual(scheduledRun.input.occurrenceDate, '2026-07-01');
+    assert.strictEqual(scheduledRun.input.enqueuedAt, enqueuedAt.toISOString());
 
     const dryRun = await createAutomationRun({
         automationDefinition: definition,
@@ -1412,9 +1603,13 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.ok(dryRunActionStep);
     assert.strictEqual(
         dryRunActionStep.output.createdCount,
-        activeFarms.length * operationConfigs.length - 1,
+        expectedCreatedCount,
     );
     assert.strictEqual(dryRunActionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(
+        dryRunActionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
+    );
     assert.strictEqual(dryRunActionStep.output.repairedScheduledCount, 1);
 
     const processResult = await processDueAutomationRuns({
@@ -1424,14 +1619,13 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.strictEqual(processResult.succeeded, 1);
     assert.strictEqual(processResult.skipped, 2);
 
-    const expectedScheduledDates = operationConfigs.map((operationConfig) =>
-        addUtcDays(
-            occurrenceDate,
-            operationConfig.scheduledInDays,
-        ).toISOString(),
+    const expectedScheduledDates = unconditionalOperationConfigs.map(
+        (operationConfig) =>
+            addUtcDays(
+                occurrenceDate,
+                operationConfig.scheduledInDays,
+            ).toISOString(),
     );
-    const expectedCreatedCount =
-        activeFarms.length * operationConfigs.length - 1;
     for (const farm of activeFarms) {
         const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
             farmId: farm.id,
@@ -1440,7 +1634,7 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
         });
         const inventoryOperations = farmOperations
             .filter((operation) =>
-                operationConfigs.some(
+                unconditionalOperationConfigs.some(
                     (operationConfig) =>
                         operationConfig.entityId === operation.entityId,
                 ),
@@ -1449,8 +1643,8 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
 
         assert.strictEqual(
             inventoryOperations.length,
-            operationConfigs.length,
-            `Expected ${operationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
+            unconditionalOperationConfigs.length,
+            `Expected ${unconditionalOperationConfigs.length} inventory operations for farm ${farm.id}, got ${JSON.stringify(
                 inventoryOperations.map((operation) => ({
                     id: operation.id,
                     entityId: operation.entityId,
@@ -1499,6 +1693,10 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.ok(actionStep);
     assert.strictEqual(actionStep.output.createdCount, expectedCreatedCount);
     assert.strictEqual(actionStep.output.skippedScheduledCount, 1);
+    assert.strictEqual(
+        actionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
+    );
     assert.strictEqual(actionStep.output.repairedScheduledCount, 1);
 
     const replayRun = await createAutomationRun({
@@ -1522,12 +1720,15 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
             to: addUtcDays(occurrenceDate, 1),
         });
         const inventoryOperations = farmOperations.filter((operation) =>
-            operationConfigs.some(
+            unconditionalOperationConfigs.some(
                 (operationConfig) =>
                     operationConfig.entityId === operation.entityId,
             ),
         );
-        assert.strictEqual(inventoryOperations.length, operationConfigs.length);
+        assert.strictEqual(
+            inventoryOperations.length,
+            unconditionalOperationConfigs.length,
+        );
     }
     const replayRunWithSteps = await getAutomationRunWithSteps(replayRun.id);
     const replayActionStep = replayRunWithSteps?.steps.find(
@@ -1537,9 +1738,164 @@ test('monthly farm inventory automation creates accepted scheduled farm tasks', 
     assert.strictEqual(replayActionStep.output.createdCount, 0);
     assert.strictEqual(
         replayActionStep.output.skippedScheduledCount,
-        activeFarms.length * operationConfigs.length,
+        activeFarms.length * unconditionalOperationConfigs.length,
+    );
+    assert.strictEqual(
+        replayActionStep.output.skippedIneligibleCount,
+        expectedSkippedIneligibleCount,
     );
     assert.strictEqual(replayActionStep.output.repairedScheduledCount, 0);
+});
+
+test('monthly farm inventory automation creates greenhouse plant inventory for farms with greenhouse fields', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await createFarm({
+        name: 'Automation Inventory Greenhouse Farm',
+        latitude: 45.8,
+        longitude: 15.9,
+    });
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Automation Inventory Garden ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `automation-inventory-block-${accountId}`,
+    );
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    const otherFarmId = await createFarm({
+        name: 'Automation Inventory No Greenhouse Farm',
+        latitude: 46.2,
+        longitude: 16.3,
+    });
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T08:00:00.000Z',
+            sowingLocation: 'greenhouse',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'sprouted',
+        }),
+    );
+
+    const { result, actionOutput } =
+        await createAutomationRunForMonthlyFarmInventory({
+            referenceDate: new Date('2026-09-01T00:00:00.000Z'),
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    const activeFarmCount = Reflect.get(actionOutput, 'farmCount');
+    if (typeof activeFarmCount !== 'number') {
+        assert.fail('Expected monthly inventory output to include farmCount.');
+    }
+    assert.strictEqual(
+        Reflect.get(actionOutput, 'skippedIneligibleCount'),
+        activeFarmCount - 1,
+    );
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 0);
+
+    const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId,
+        from: new Date('2026-09-01T00:00:00.000Z'),
+        to: new Date('2026-09-02T00:00:00.000Z'),
+    });
+    const greenhouseInventoryOperations = farmOperations.filter(
+        (operation) =>
+            operation.entityId === FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+    );
+    assert.strictEqual(greenhouseInventoryOperations.length, 1);
+    assert.strictEqual(
+        greenhouseInventoryOperations[0]?.scheduledDate?.toISOString(),
+        '2026-09-01T00:00:00.000Z',
+    );
+
+    const otherFarmOperations = await getFarmAcceptedOperationsByScheduleRange({
+        farmId: otherFarmId,
+        from: new Date('2026-09-01T00:00:00.000Z'),
+        to: new Date('2026-09-02T00:00:00.000Z'),
+    });
+    assert.strictEqual(
+        otherFarmOperations.filter(
+            (operation) =>
+                operation.entityId ===
+                FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+        ).length,
+        0,
+    );
+
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(eq(raisedBeds.id, raisedBedId));
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, farmId));
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, otherFarmId));
+});
+
+test('monthly farm inventory automation treats active outlet stock as greenhouse plant inventory eligibility', async () => {
+    createTestDb();
+    const firstFarmId = await createFarm({
+        name: 'Automation Inventory Outlet Farm A',
+        latitude: 45.9,
+        longitude: 16.0,
+    });
+    const secondFarmId = await createFarm({
+        name: 'Automation Inventory Outlet Farm B',
+        latitude: 46.0,
+        longitude: 16.1,
+    });
+    const plantSortId = await createTestPlantSortForOutlet();
+    await createOutletOffer({
+        plantSortId,
+        sowingDate: new Date('2026-08-15T00:00:00.000Z'),
+        initialPlantStatus: 'sprouted',
+        imageUrls: [],
+        outletPriceCents: 199,
+        comparePriceCents: 349,
+        quantity: 4,
+        startAt: new Date('2026-08-31T00:00:00.000Z'),
+        endAt: new Date('2026-09-02T00:00:00.000Z'),
+        status: 'published',
+        adminNotes: null,
+    });
+
+    const { result, actionOutput } =
+        await createAutomationRunForMonthlyFarmInventory({
+            referenceDate: new Date('2026-09-01T00:00:00.000Z'),
+            enqueuedAt: new Date('2026-08-31T08:00:00.000Z'),
+        });
+
+    assert.strictEqual(result.status, 'succeeded');
+    assert.strictEqual(Reflect.get(actionOutput, 'activeOutletOfferCount'), 1);
+    assert.strictEqual(Reflect.get(actionOutput, 'skippedIneligibleCount'), 0);
+
+    for (const farmId of [firstFarmId, secondFarmId]) {
+        const farmOperations = await getFarmAcceptedOperationsByScheduleRange({
+            farmId,
+            from: new Date('2026-09-01T00:00:00.000Z'),
+            to: new Date('2026-09-02T00:00:00.000Z'),
+        });
+        assert.strictEqual(
+            farmOperations.filter(
+                (operation) =>
+                    operation.entityId ===
+                    FARM_GREENHOUSE_PLANT_INVENTORY_OPERATION_ID,
+            ).length,
+            1,
+        );
+    }
 });
 
 test('default farm raised-bed weeding automation stays draft until enabled', async () => {
@@ -1627,13 +1983,13 @@ test('default farm raised-bed weeding automation filters farms and prevents dupl
     assert.strictEqual(dryRunActionStep.output.skippedCount, 0);
 
     const firstResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-05T08:00:00.000Z'),
+        now: new Date('2026-01-04T08:00:00.000Z'),
     });
     const duplicateResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-05T09:00:00.000Z'),
+        now: new Date('2026-01-04T09:00:00.000Z'),
     });
     const offWeekResult = await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-01-12T08:00:00.000Z'),
+        now: new Date('2026-01-11T08:00:00.000Z'),
     });
 
     assert.strictEqual(firstResult.enqueuedRuns, 2);
@@ -1688,6 +2044,7 @@ test('default farm raised-bed weeding automation filters farms and prevents dupl
     ).find((run) => run.source === 'schedule');
     assert.ok(firstRun);
     assert.strictEqual(firstRun.input.weekOffset, 0);
+    assert.strictEqual(firstRun.input.occurrenceDate, '2026-01-05');
 
     const replayRun = await createAutomationRun({
         automationDefinition: enabledDefinition,
@@ -1750,19 +2107,270 @@ test('default raised-bed photo automation enqueues only Tuesday and Friday occur
     assert.strictEqual(await getPhotoRunCount(), 0);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T08:00:00.000Z'),
+        now: new Date('2026-06-22T08:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-23T09:00:00.000Z'),
+        now: new Date('2026-06-22T09:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 1);
 
     await enqueueAutomationRunsFromSchedules({
-        now: new Date('2026-06-26T08:00:00.000Z'),
+        now: new Date('2026-06-25T08:00:00.000Z'),
     });
     assert.strictEqual(await getPhotoRunCount(), 2);
+});
+
+test('default raised-bed detailed inspection automation stays draft until enabled', async () => {
+    createTestDb();
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        raisedBedDetailedInspectionAutomationKey,
+    );
+
+    assert.ok(definition);
+    assert.strictEqual(definition.status, 'draft');
+    assert.strictEqual(
+        definition.triggerModuleKey,
+        automationModuleKeys.triggerSchedule,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        raisedBedDetailedInspectionAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationEntityId: RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        operationEntityName: 'detailedRaisedBedInspection',
+        operationEntityLabel: 'Detaljno pregledavanje gredice',
+        dayOfWeek: 'monday',
+        timeZone: 'Europe/Zagreb',
+        resolvedFromIssue: 3700,
+        implementsIssue: 3702,
+    });
+
+    const enabledDefinition = await updateAutomationDefinition(definition.id, {
+        status: 'enabled',
+    });
+    assert.ok(enabledDefinition);
+
+    await ensureDefaultAutomationDefinitions();
+    const preservedDefinition = await getAutomationDefinitionByKey(
+        raisedBedDetailedInspectionAutomationKey,
+    );
+    assert.ok(preservedDefinition);
+    assert.strictEqual(preservedDefinition.status, 'enabled');
+});
+
+test('default raised-bed detailed inspection automation creates one weekly operation per active raised bed', async (t) => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId,
+        name: `Raised-bed inspection ${accountId}`,
+    });
+    const blockId = await createTestBlock(
+        gardenId,
+        `raised-bed-inspection-${accountId}`,
+    );
+    const firstActiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const secondActiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const inactiveRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const abandonedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const deletedRaisedBedId = await createTestRaisedBed(
+        gardenId,
+        accountId,
+        blockId,
+    );
+    const createdRaisedBedIds = [
+        firstActiveRaisedBedId,
+        secondActiveRaisedBedId,
+        inactiveRaisedBedId,
+        abandonedRaisedBedId,
+        deletedRaisedBedId,
+    ];
+    t.after(async () => {
+        for (const raisedBedId of createdRaisedBedIds) {
+            await updateRaisedBed({ id: raisedBedId, status: 'new' }).catch(
+                () => undefined,
+            );
+        }
+    });
+    await updateRaisedBed({ id: firstActiveRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: secondActiveRaisedBedId, status: 'active' });
+    await updateRaisedBed({ id: inactiveRaisedBedId, status: 'new' });
+    await updateRaisedBed({ id: abandonedRaisedBedId, status: 'abandoned' });
+    await updateRaisedBed({ id: deletedRaisedBedId, status: 'active' });
+    await storage()
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(eq(raisedBeds.id, deletedRaisedBedId));
+    const expectedRecipientCount = (await listActiveRaisedBedOperationTargets())
+        .length;
+
+    const { raisedBedDetailedInspection } =
+        await ensureDefaultAutomationDefinitions();
+    const enabledDefinition = await updateAutomationDefinition(
+        raisedBedDetailedInspection.id,
+        { status: 'enabled' },
+    );
+    assert.ok(enabledDefinition);
+
+    const definitions = await listAutomationDefinitions({ limit: 100 });
+    for (const candidate of definitions) {
+        if (candidate.id !== enabledDefinition.id) {
+            await updateAutomationDefinition(candidate.id, {
+                status: 'disabled',
+            });
+        }
+    }
+
+    const dryRun = await executeManualAutomationRun(
+        enabledDefinition,
+        {
+            ...weeklyScheduleInput('2026-06-22', 'monday'),
+            daysOfWeek: ['monday'],
+        },
+        { dryRun: true },
+    );
+    assert.strictEqual(dryRun.result.status, 'succeeded');
+    const dryRunActionStep = dryRun.run.steps.find(
+        (step) =>
+            step.moduleKey ===
+            automationModuleKeys.actionCreateRaisedBedOperations,
+    );
+    assert.ok(dryRunActionStep);
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'recipientCount'),
+        expectedRecipientCount,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'skippedExistingCount'),
+        0,
+    );
+    assert.strictEqual(
+        Reflect.get(dryRunActionStep.output, 'projectedCreateCount'),
+        expectedRecipientCount,
+    );
+
+    const getInspectionRunCount = async () =>
+        (
+            await listAutomationRuns({
+                automationDefinitionId: enabledDefinition.id,
+            })
+        ).filter((run) => run.source === 'schedule').length;
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-21T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-21T09:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    await enqueueAutomationRunsFromSchedules({
+        now: new Date('2026-06-23T08:00:00.000Z'),
+    });
+    assert.strictEqual(await getInspectionRunCount(), 1);
+
+    const processResult = await processDueAutomationRuns({
+        limit: 10,
+        lockedBy: 'automations-test',
+    });
+    assert.strictEqual(processResult.succeeded, 1);
+
+    const scheduledRun = (
+        await listAutomationRuns({
+            automationDefinitionId: enabledDefinition.id,
+        })
+    ).find((run) => run.source === 'schedule');
+    assert.ok(scheduledRun);
+    assert.strictEqual(scheduledRun.input.occurrenceDate, '2026-06-22');
+
+    const operations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: createdRaisedBedIds,
+        from: new Date('2026-06-22T00:00:00.000Z'),
+        to: new Date('2026-06-23T00:00:00.000Z'),
+    });
+    const inspectionOperations = operations
+        .filter(
+            (operation) =>
+                operation.entityId ===
+                RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        )
+        .sort(
+            (left, right) => (left.raisedBedId ?? 0) - (right.raisedBedId ?? 0),
+        );
+
+    assert.deepStrictEqual(
+        inspectionOperations.map((operation) => operation.raisedBedId),
+        [firstActiveRaisedBedId, secondActiveRaisedBedId].sort(
+            (left, right) => left - right,
+        ),
+    );
+    assert.ok(inspectionOperations.every((operation) => operation.isAccepted));
+    assert.ok(
+        inspectionOperations.every(
+            (operation) => operation.raisedBedFieldId === null,
+        ),
+    );
+    assert.deepStrictEqual(
+        inspectionOperations.map((operation) =>
+            operation.scheduledDate?.toISOString(),
+        ),
+        ['2026-06-22T00:00:00.000Z', '2026-06-22T00:00:00.000Z'],
+    );
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: enabledDefinition,
+        source: 'replay',
+        input: scheduledRun.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'skipped');
+    const replayOperations = await getRaisedBedOperationsByScheduleRange({
+        raisedBedIds: createdRaisedBedIds,
+        from: new Date('2026-06-22T00:00:00.000Z'),
+        to: new Date('2026-06-23T00:00:00.000Z'),
+    });
+    assert.strictEqual(
+        replayOperations.filter(
+            (operation) =>
+                operation.entityId ===
+                RAISED_BED_DETAILED_INSPECTION_OPERATION_ID,
+        ).length,
+        2,
+    );
 });
 
 test('raised-bed operation automation filters inactive deleted and abandoned raised beds', async (t) => {
@@ -2063,6 +2671,23 @@ test('raised-bed operation automation repairs partial existing operations on ret
         raisedBedId: firstRaisedBedId,
         timestamp: scheduledDate,
     });
+    const completedPartialOperationId = await createOperation({
+        entityId,
+        entityTypeName: 'operation',
+        accountId,
+        gardenId,
+        raisedBedId: secondRaisedBedId,
+        timestamp: scheduledDate,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(
+            completedPartialOperationId.toString(),
+            {
+                completedBy: randomUUID(),
+                images: [],
+            },
+        ),
+    );
     const definition = await createAutomationDefinition({
         key: 'test.raised-bed-photo-repair',
         name: 'Raised-bed photo repair',
@@ -2088,11 +2713,11 @@ test('raised-bed operation automation repairs partial existing operations on ret
     );
     assert.strictEqual(
         Reflect.get(actionStep.output, 'skippedExistingCount'),
-        1,
+        2,
     );
     assert.strictEqual(
         Reflect.get(actionStep.output, 'createdCount'),
-        expectedRecipientCount - 1,
+        expectedRecipientCount - 2,
     );
     assert.deepStrictEqual(
         Reflect.get(actionStep.output, 'repairedAcceptedOperationIds'),
@@ -2122,6 +2747,12 @@ test('raised-bed operation automation repairs partial existing operations on ret
         repairedOperation.scheduledDate?.toISOString(),
         scheduledDate.toISOString(),
     );
+    const completedOperation = await getOperationById(
+        completedPartialOperationId,
+    );
+    assert.strictEqual(completedOperation.status, 'pendingVerification');
+    assert.strictEqual(completedOperation.isAccepted, false);
+    assert.strictEqual(completedOperation.scheduledDate, undefined);
 });
 
 test('default greenhouse seedling watering automation is enabled daily', async () => {
@@ -2625,6 +3256,227 @@ test('plant-attributes automation skips replay when target status already exists
     );
 });
 
+test('plant-attributes automation never rewinds completion evidence to planned', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'pendingVerification',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(field);
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: { eventType: knownEventTypes.operations.complete },
+            },
+            {
+                id: 'rewind-status',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
+                kind: 'action' as const,
+                position: { x: 280, y: 0 },
+                config: { targetStatus: 'planned' },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-rewind-status',
+                source: 'trigger',
+                target: 'rewind-status',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: `test.no-completion-rewind-${randomUUID()}`,
+        name: 'Never rewind completion evidence',
+        status: 'enabled',
+        graph,
+    });
+    const input = {
+        eventId: event.id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        data: event.data as Record<string, unknown>,
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(run);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const updatedField = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.strictEqual(updatedField?.plantStatus, 'pendingVerification');
+    const updateEvents = await getEvents(
+        knownEventTypes.raisedBedFields.plantUpdate,
+        [fieldAggregateId],
+    );
+    assert.deepStrictEqual(
+        updateEvents.map(
+            (updateEvent) =>
+                (updateEvent.data as Record<string, unknown> | null)?.status,
+        ),
+        ['pendingVerification'],
+    );
+});
+
+test('queued plant-attributes automation skips a replacement plant cycle', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    const firstPlantPlaceEvent = await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-01T08:00:00.000Z',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(field);
+    const operationId = await createOperation({
+        accountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const graph = {
+        nodes: [
+            {
+                id: 'trigger',
+                moduleKey: automationModuleKeys.triggerDomainEvent,
+                kind: 'trigger' as const,
+                position: { x: 0, y: 0 },
+                config: { eventType: knownEventTypes.operations.complete },
+            },
+            {
+                id: 'update-status',
+                moduleKey:
+                    automationModuleKeys.actionUpdateRaisedBedFieldPlantAttributes,
+                kind: 'action' as const,
+                position: { x: 280, y: 0 },
+                config: { targetStatus: 'sprouted' },
+            },
+        ],
+        edges: [
+            {
+                id: 'trigger-to-update-status',
+                source: 'trigger',
+                target: 'update-status',
+            },
+        ],
+    };
+    const definition = await createAutomationDefinition({
+        key: `test.stale-plant-cycle-${randomUUID()}`,
+        name: 'Skip replacement plant cycle',
+        status: 'enabled',
+        graph,
+    });
+    const input = {
+        eventId: event.id,
+        eventType: event.type,
+        aggregateId: event.aggregateId,
+        data: event.data as Record<string, unknown>,
+    };
+    const run = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'event',
+        sourceEvent: event,
+        input,
+    });
+    assert.ok(run);
+
+    await createEvent(knownEvents.raisedBedFields.deletedV1(fieldAggregateId));
+    await deleteRaisedBedField(raisedBedId, 0);
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    const replacementPlantPlaceEvent = await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-04-02T08:00:00.000Z',
+        }),
+    );
+    assert.notStrictEqual(
+        replacementPlantPlaceEvent.id,
+        firstPlantPlaceEvent.id,
+    );
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'skipped');
+    const updatedField = (await getRaisedBed(raisedBedId))?.fields[0];
+    const activePlantCycle = updatedField?.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
+    assert.strictEqual(
+        activePlantCycle?.plantPlaceEventId,
+        replacementPlantPlaceEvent.id,
+    );
+    assert.strictEqual(updatedField?.plantStatus, 'new');
+    assert.strictEqual(
+        (
+            await getEvents(knownEventTypes.raisedBedFields.plantUpdate, [
+                fieldAggregateId,
+            ])
+        ).length,
+        0,
+    );
+});
+
 test('generic plant-attributes automation updates status and sowing location together', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
@@ -2778,6 +3630,369 @@ test('generic plant-attributes automation updates status and sowing location tog
             ])
         ).length,
         1,
+    );
+});
+
+test('default harvest automation creates one review proposal without changing the plant state', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const raisedBed = await getRaisedBed(raisedBedId);
+    const field = raisedBed?.fields[0];
+    assert.ok(field);
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('plant');
+
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+    assert.strictEqual(
+        definition.triggerEventType,
+        knownEventTypes.operations.complete,
+    );
+    assert.deepStrictEqual(
+        definition.graph,
+        harvestOperationPlantStatusReviewAutomationGraph(),
+    );
+    assert.deepStrictEqual(definition.metadata, {
+        managedBy: 'gredice',
+        defaultAutomation: true,
+        operationStage: 'harvest',
+        targetStatus: 'harvested',
+    });
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: field.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    await createEvent(
+        knownEvents.operations.verifiedV1(operationId.toString(), {
+            verifiedBy: 'automations-test',
+        }),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 1);
+    const request = requests[0];
+    assert.ok(request);
+    assert.strictEqual(
+        request.requestedBy,
+        HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    );
+    assert.match(
+        request.note ?? '',
+        /Potvrdite zahtjev samo ako je biljka potpuno obrana/,
+    );
+    assert.strictEqual(request.target.kind, 'raisedBedField.plantStatus');
+    assert.strictEqual(request.target.raisedBedId, raisedBedId);
+    assert.strictEqual(request.target.positionIndex, 0);
+    assert.strictEqual(request.target.raisedBedFieldId, field.id);
+    assert.strictEqual(request.target.currentStatus, 'ready');
+    assert.strictEqual(request.target.requestedStatus, 'harvested');
+
+    const unchangedRaisedBed = await getRaisedBed(raisedBedId);
+    assert.strictEqual(unchangedRaisedBed?.fields[0]?.plantStatus, 'ready');
+
+    const replayRun = await createAutomationRun({
+        automationDefinition: definition,
+        source: 'replay',
+        sourceEvent: event,
+        input: run.input,
+    });
+    assert.ok(replayRun);
+    const startedReplay = await startAutomationRun(replayRun.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedReplay);
+    const replayResult = await executeAutomationRun(startedReplay);
+
+    assert.strictEqual(replayResult.status, 'succeeded');
+    assert.strictEqual(
+        (
+            await getApprovalRequests({
+                status: 'pending',
+                kind: 'raisedBedField.plantStatus',
+            })
+        ).filter(
+            (candidate) =>
+                candidate.target.kind === 'raisedBedField.plantStatus' &&
+                candidate.target.raisedBedId === raisedBedId,
+        ).length,
+        1,
+    );
+});
+
+test('plant-status approval creation serializes concurrent proposals for the same plant snapshot', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const field = (await getRaisedBed(raisedBedId))?.fields[0];
+    const plantCycle = field?.plantCycles.find((candidate) => candidate.active);
+    assert.ok(field);
+    assert.ok(plantCycle);
+
+    const input = {
+        raisedBedId,
+        positionIndex: field.positionIndex,
+        raisedBedFieldId: field.id,
+        plantCycleEventId: plantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: plantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: field.plantSortId,
+        currentStatus: field.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    };
+    const [firstRequest, secondRequest] = await Promise.all([
+        createPlantStatusApprovalRequest(input),
+        createPlantStatusApprovalRequest(input),
+    ]);
+
+    assert.strictEqual(firstRequest.id, secondRequest.id);
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 1);
+});
+
+test('harvest automation replaces stale pending snapshot reuse with a current proposal', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    const fieldAggregateId = `${raisedBedId}|0`;
+    await upsertRaisedBedField({ raisedBedId, positionIndex: 0 });
+    await createEvent(
+        knownEvents.raisedBedFields.plantPlaceV1(fieldAggregateId, {
+            plantSortId: '101',
+            scheduledDate: '2026-08-20T06:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'ready',
+        }),
+    );
+    const initialField = (await getRaisedBed(raisedBedId))?.fields[0];
+    const initialPlantCycle = initialField?.plantCycles.find(
+        (candidate) => candidate.active,
+    );
+    assert.ok(initialField);
+    assert.ok(initialPlantCycle);
+    const staleRequest = await createPlantStatusApprovalRequest({
+        raisedBedId,
+        positionIndex: initialField.positionIndex,
+        raisedBedFieldId: initialField.id,
+        plantCycleEventId: initialPlantCycle.plantPlaceEventId,
+        plantCycleVersionEventId: initialPlantCycle.endedEventId,
+        accountId,
+        gardenId,
+        plantSortId: initialField.plantSortId,
+        currentStatus: initialField.plantStatus,
+        requestedStatus: 'harvested',
+        requestedBy: HARVEST_OPERATION_PLANT_STATUS_REQUESTER,
+    });
+    await createEvent(
+        knownEvents.raisedBedFields.plantUpdateV1(fieldAggregateId, {
+            status: 'firstFlowers',
+        }),
+    );
+    const currentField = (await getRaisedBed(raisedBedId))?.fields[0];
+    assert.ok(currentField);
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('plant');
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+        raisedBedFieldId: currentField.id,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.strictEqual(requests.length, 2);
+    const currentRequest = requests.find(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.currentStatus === 'firstFlowers',
+    );
+    assert.ok(currentRequest);
+    assert.notStrictEqual(currentRequest.id, staleRequest.id);
+});
+
+test('whole-bed harvest automation proposes harvested status for every active target plant', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createAutomationRaisedBedContext();
+    for (const [positionIndex, status] of [
+        [0, 'ready'],
+        [1, 'firstFlowers'],
+    ] as const) {
+        const aggregateId = `${raisedBedId}|${positionIndex.toString()}`;
+        await upsertRaisedBedField({ raisedBedId, positionIndex });
+        await createEvent(
+            knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                plantSortId: (101 + positionIndex).toString(),
+                scheduledDate: '2026-08-20T06:00:00.000Z',
+            }),
+        );
+        await createEvent(
+            knownEvents.raisedBedFields.plantUpdateV1(aggregateId, { status }),
+        );
+    }
+    const harvestOperationEntityId =
+        await createPublishedHarvestOperationEntity('raisedBedFull');
+    await ensureDefaultAutomationDefinitions();
+    const definition = await getAutomationDefinitionByKey(
+        harvestOperationPlantStatusReviewAutomationKey,
+    );
+    assert.ok(definition);
+
+    const operationId = await createOperation({
+        accountId,
+        entityId: harvestOperationEntityId,
+        entityTypeName: 'operation',
+        gardenId,
+        raisedBedId,
+    });
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: 'automations-test',
+        }),
+    );
+    const event = await getLatestEvent(
+        knownEventTypes.operations.complete,
+        operationId.toString(),
+    );
+    const run = await getAutomationRunForEvent(definition.id, event.id);
+    const startedRun = await startAutomationRun(run.id, {
+        lockedBy: 'automations-test',
+    });
+    assert.ok(startedRun);
+
+    const result = await executeAutomationRun(startedRun);
+
+    assert.strictEqual(result.status, 'succeeded');
+    const requests = (
+        await getApprovalRequests({
+            status: 'pending',
+            kind: 'raisedBedField.plantStatus',
+        })
+    ).filter(
+        (request) =>
+            request.target.kind === 'raisedBedField.plantStatus' &&
+            request.target.raisedBedId === raisedBedId,
+    );
+    assert.deepStrictEqual(
+        requests
+            .map((request) => request.target.positionIndex)
+            .sort((left, right) => left - right),
+        [0, 1],
+    );
+    assert.ok(
+        requests.every(
+            (request) =>
+                request.target.kind === 'raisedBedField.plantStatus' &&
+                request.target.requestedStatus === 'harvested',
+        ),
     );
 });
 

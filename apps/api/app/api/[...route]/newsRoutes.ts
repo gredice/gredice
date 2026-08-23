@@ -126,6 +126,8 @@ function newsPageSummary(page: SelectCmsPage) {
         metaTitle: page.metaTitle,
         metaDescription: page.metaDescription,
         metaImageUrl: page.metaImageUrl,
+        metaImagePoiX: page.metaImagePoiX,
+        metaImagePoiY: page.metaImagePoiY,
         seoImageUrl: page.seoImageUrl,
         canonicalPath: page.canonicalPath,
         noIndex: page.noIndex,

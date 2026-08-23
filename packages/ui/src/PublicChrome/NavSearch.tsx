@@ -360,7 +360,7 @@ export function NavSearch({
         <div ref={rootRef} className={cx('relative', className)}>
             <search aria-label="Pretraga" className="hidden xl:block">
                 <form onSubmit={handleSubmit}>
-                    <div className="flex h-10 w-44 items-center rounded-full border border-muted-foreground/20 bg-background pl-3 pr-2 shadow-[0_2px_10px_rgba(38,31,24,0.10)] ring-offset-background transition-[background-color,border-color,box-shadow] duration-200 hover:border-muted-foreground/30 hover:bg-card hover:shadow-[0_8px_24px_rgba(38,31,24,0.16)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 2xl:w-72">
+                    <div className="flex h-10 w-36 items-center rounded-full border border-muted-foreground/20 bg-background pl-3 pr-2 shadow-[0_2px_10px_rgba(38,31,24,0.10)] ring-offset-background transition-[background-color,border-color,box-shadow] duration-200 hover:border-muted-foreground/30 hover:bg-card hover:shadow-[0_8px_24px_rgba(38,31,24,0.16)] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 2xl:w-72">
                         <Search className="size-4 shrink-0 text-muted-foreground" />
                         <input
                             ref={desktopInputRef}
@@ -414,7 +414,7 @@ export function NavSearch({
 
             {isOpen ? (
                 <div
-                    className="fixed left-3 right-3 top-20 z-50 overflow-hidden rounded-xl border border-muted-foreground/20 bg-popover text-popover-foreground shadow-[0_24px_70px_rgba(38,31,24,0.22)] ring-1 ring-muted-foreground/10 dark:border-muted-foreground/30 dark:bg-card dark:text-card-foreground dark:shadow-[0_28px_80px_rgba(0,0,0,0.65)] dark:ring-white/10 xl:absolute xl:left-auto xl:right-0 xl:top-12 xl:w-[28rem]"
+                    className="fixed left-3 right-3 top-20 z-50 flex max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-6rem)] flex-col overflow-hidden rounded-xl border border-muted-foreground/20 bg-popover text-popover-foreground shadow-[0_24px_70px_rgba(38,31,24,0.22)] ring-1 ring-muted-foreground/10 dark:border-muted-foreground/30 dark:bg-card dark:text-card-foreground dark:shadow-[0_28px_80px_rgba(0,0,0,0.65)] dark:ring-white/10 xl:absolute xl:left-auto xl:right-0 xl:top-12 xl:max-h-none xl:w-[28rem]"
                     role="dialog"
                     aria-label="Pretraga"
                 >
@@ -469,7 +469,7 @@ export function NavSearch({
                     <div
                         id={resultsId}
                         role="listbox"
-                        className="max-h-[min(32rem,calc(100vh-6rem))] overflow-y-auto p-2"
+                        className="min-h-0 max-h-[min(32rem,calc(100dvh-6rem))] overflow-y-auto p-2"
                     >
                         {isSearching ? (
                             <div className="flex items-center gap-3 px-3 py-5 text-sm text-muted-foreground">

@@ -957,6 +957,8 @@ export interface components {
             metaTitle?: string | null;
             metaDescription?: string | null;
             metaImageUrl?: string | null;
+            metaImagePoiX?: number | null;
+            metaImagePoiY?: number | null;
             seoImageUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
@@ -1003,10 +1005,21 @@ export interface components {
             attributePath: string;
             dataType: string;
             /** @enum {string} */
-            controlType: "boolean" | "json" | "markdown" | "number" | "range" | "reference" | "text";
+            controlType: "boolean" | "json" | "markdown" | "number" | "operationSuggestion" | "range" | "reference" | "select" | "text";
             multiple: boolean;
             publicLabel: string;
             helpText?: string;
+            options?: {
+                value: string;
+                label: string;
+                helpText?: string;
+                description?: string;
+                iconKey?: string;
+            }[];
+            operationSuggestionStage?: {
+                name: string;
+                label: string;
+            };
             currentValue: string | null;
             baseValueHash: string;
         };
@@ -1018,7 +1031,7 @@ export interface components {
         };
         "community-edit-change-submit": {
             fieldKey: string;
-            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. */
+            /** @description Serialized proposed value. Type is validated against the editable field registry. Text and markdown submissions are stored with replayable patches so non-overlapping edits on the same attribute can be approved later. Operation suggestions use a structured add/remove intent for existing plant-stage operations and can also propose a new operation name and description. */
             proposedValue: unknown;
             /** @description Hash returned by the editable fields endpoint. A stale hash is rejected at submission time; accepted text and markdown requests can later replay their stored patch over unrelated approved edits. */
             baseValueHash?: string | null;
@@ -1077,6 +1090,8 @@ export interface components {
                 operations: {
                     id: number;
                     attributes: {
+                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                        visualReward?: string;
                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                         frequency?: string;
                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1153,6 +1168,8 @@ export interface components {
                                 productUrl?: string;
                             };
                         }[];
+                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                        appliesToAllTargets?: boolean;
                     };
                     information: {
                         /** @description (puni opis operacije) */
@@ -1174,8 +1191,8 @@ export interface components {
                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                         discountDescription?: string;
                     };
-                    image?: {
-                        cover?: components["schemas"]["image"];
+                    image: {
+                        cover: components["schemas"]["image"];
                     };
                     conditions: {
                         /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1314,6 +1331,8 @@ export interface components {
                         operations: {
                             id: number;
                             attributes: {
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1390,6 +1409,8 @@ export interface components {
                                         productUrl?: string;
                                     };
                                 }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -1411,8 +1432,8 @@ export interface components {
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
                             };
-                            image?: {
-                                cover?: components["schemas"]["image"];
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1610,6 +1631,8 @@ export interface components {
                         operations: {
                             id: number;
                             attributes: {
+                                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                visualReward?: string;
                                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                 frequency?: string;
                                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1686,6 +1709,8 @@ export interface components {
                                         productUrl?: string;
                                     };
                                 }[];
+                                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                appliesToAllTargets?: boolean;
                             };
                             information: {
                                 /** @description (puni opis operacije) */
@@ -1707,8 +1732,8 @@ export interface components {
                                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                 discountDescription?: string;
                             };
-                            image?: {
-                                cover?: components["schemas"]["image"];
+                            image: {
+                                cover: components["schemas"]["image"];
                             };
                             conditions: {
                                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -1833,6 +1858,8 @@ export interface components {
                                 operations: {
                                     id: number;
                                     attributes: {
+                                        /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                                        visualReward?: string;
                                         /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                                         frequency?: string;
                                         /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -1909,6 +1936,8 @@ export interface components {
                                                 productUrl?: string;
                                             };
                                         }[];
+                                        /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                                        appliesToAllTargets?: boolean;
                                     };
                                     information: {
                                         /** @description (puni opis operacije) */
@@ -1930,8 +1959,8 @@ export interface components {
                                         /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                                         discountDescription?: string;
                                     };
-                                    image?: {
-                                        cover?: components["schemas"]["image"];
+                                    image: {
+                                        cover: components["schemas"]["image"];
                                     };
                                     conditions: {
                                         /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -2141,6 +2170,8 @@ export interface components {
             };
             slug: string;
             attributes: {
+                /** @description Controls the exact in-game visual reward a completed operation creates. Supported values: watering, weeding, mulch, removeMulch, agrotextile, removeAgrotextile, supports, harvest, photographyUpdate. */
+                visualReward?: string;
                 /** @description (jedno od: optional, once, periodic, daily, weekly, biweekly, monthly) */
                 frequency?: string;
                 /** @description (na koji stadij biljke se primjenjuje radnja) */
@@ -2217,6 +2248,8 @@ export interface components {
                         productUrl?: string;
                     };
                 }[];
+                /** @description When true, the operation applies to every target covered by its application (for example, every plant when application is plant). */
+                appliesToAllTargets?: boolean;
             };
             information: {
                 /** @description (puni opis operacije) */
@@ -2238,8 +2271,8 @@ export interface components {
                 /** @description (opis popusta npr. "Za kupnju 18 biljaka") */
                 discountDescription?: string;
             };
-            image?: {
-                cover?: components["schemas"]["image"];
+            image: {
+                cover: components["schemas"]["image"];
             };
             conditions: {
                 /** @description (da li se mogu proložiti slike za završetak radnje) */
@@ -2337,6 +2370,10 @@ export interface components {
                 label: string;
             };
             slug: string;
+            image?: {
+                /** @description Public block image generated from the in-game block name and used by admin previews, directory cards, search results, and compact block UI. */
+                cover?: components["schemas"]["image"];
+            };
             information: {
                 name: string;
                 shortDescription: string;
@@ -2360,6 +2397,8 @@ export interface components {
                 spanWidth?: number;
                 /** @description Broj vrtnih blokova koje zauzima po dubini. */
                 spanDepth?: number;
+                /** @description Dopušta postavljanje bloka izravno na vodeni blok. */
+                placeableOnWater?: boolean;
             };
             prices: {
                 sunflowers: number;

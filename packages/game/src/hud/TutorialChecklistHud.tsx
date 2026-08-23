@@ -5,7 +5,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Check, ExpandDown } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -13,9 +12,10 @@ import { cx } from '@gredice/ui/utils';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useShoppingCart } from '../hooks/useShoppingCart';
 import {
     type TutorialChecklistGroup,
     type TutorialChecklistState,
@@ -26,28 +26,21 @@ import {
     useTutorialChecklist,
 } from '../hooks/useTutorialChecklist';
 import { KnownPages } from '../knownPages';
+import { GameModal } from '../shared-ui/game-modal';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useBackpackOpenParam, useShoppingCartOpenParam } from '../useUrlState';
-import { getRaisedBedBlockIds } from '../utils/raisedBedBlocks';
-import { isRaisedBedFieldOccupied } from '../utils/raisedBedFields';
 import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
 import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
+import {
+    findFirstEmptyRaisedBedField,
+    waitForPlantPickerTrigger,
+} from './raisedBed/plantPickerNavigation';
 import styles from './TutorialChecklistHud.module.css';
 
 const tutorialTaskListIconSrc = '/assets/hud/tutorial-task-list.png';
 const completedChecklistDismissedStorageKey =
     'game:tutorial-checklist:completed-dismissed-v1';
-
-type CurrentGardenData = NonNullable<
-    ReturnType<typeof useCurrentGarden>['data']
->;
-
-type EmptyRaisedBedFieldTarget = {
-    positionIndex: number;
-    raisedBedId: number;
-    raisedBedName: string;
-};
 
 function RewardText({ task }: { task: TutorialChecklistTask }) {
     if (task.rewardLabel) {
@@ -333,87 +326,6 @@ function waitForChecklistClose() {
     });
 }
 
-function waitForPlantPickerTrigger({
-    positionIndex,
-    raisedBedId,
-}: EmptyRaisedBedFieldTarget) {
-    if (typeof document === 'undefined') {
-        return Promise.resolve(null);
-    }
-
-    const selector = [
-        'button[data-raised-bed-plant-picker-trigger="true"]',
-        `[data-raised-bed-id="${raisedBedId.toString()}"]`,
-        `[data-position-index="${positionIndex.toString()}"]`,
-    ].join('');
-
-    return new Promise<HTMLButtonElement | null>((resolve) => {
-        const deadline = Date.now() + 2500;
-
-        function check() {
-            const button = document.querySelector<HTMLButtonElement>(selector);
-            if (button) {
-                resolve(button);
-                return;
-            }
-
-            if (Date.now() >= deadline) {
-                resolve(null);
-                return;
-            }
-
-            window.requestAnimationFrame(check);
-        }
-
-        check();
-    });
-}
-
-function findFirstEmptyRaisedBedField(
-    garden: CurrentGardenData | null | undefined,
-): EmptyRaisedBedFieldTarget | null {
-    if (!garden || garden.isSandbox) {
-        return null;
-    }
-
-    for (const raisedBed of garden.raisedBeds) {
-        const raisedBedName = raisedBed.name?.trim();
-        if (
-            !raisedBedName ||
-            raisedBed.status !== 'active' ||
-            !raisedBed.isValid
-        ) {
-            continue;
-        }
-
-        const blockCount = Math.max(
-            getRaisedBedBlockIds(garden, raisedBed.id).length,
-            1,
-        );
-        const occupiedPositionIndices = new Set(
-            raisedBed.fields
-                .filter(isRaisedBedFieldOccupied)
-                .map((field) => field.positionIndex),
-        );
-
-        for (
-            let positionIndex = 0;
-            positionIndex < blockCount * 9;
-            positionIndex += 1
-        ) {
-            if (!occupiedPositionIndices.has(positionIndex)) {
-                return {
-                    positionIndex,
-                    raisedBedId: raisedBed.id,
-                    raisedBedName,
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
 function openExternalTaskTarget(task: TutorialChecklistTask) {
     switch (task.actionTarget) {
         case 'contact':
@@ -443,13 +355,14 @@ function shouldCloseChecklistBeforeOpen(task: TutorialChecklistTask) {
 
 function useOpenTaskTarget(onChecklistOpenChange: (open: boolean) => void) {
     const { data: currentGarden } = useCurrentGarden();
+    const { data: cart } = useShoppingCart();
     const [, setBackpackOpen] = useBackpackOpenParam();
     const [, setCartOpen] = useShoppingCartOpenParam();
     const [, setOverviewTab] = useQueryState('pregled', parseAsString);
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
 
     async function openFirstEmptyRaisedBedPlantPicker() {
-        const target = findFirstEmptyRaisedBedField(currentGarden);
+        const target = findFirstEmptyRaisedBedField(currentGarden, cart?.items);
         if (!target) {
             return false;
         }
@@ -640,10 +553,12 @@ function TutorialChecklistTaskRow({
 
 function TutorialChecklistContent({
     allTasksFinished,
+    animateCompletion,
     onDismissCompleted,
     onOpenChange,
 }: {
     allTasksFinished: boolean;
+    animateCompletion: boolean;
     onDismissCompleted: () => void;
     onOpenChange: (open: boolean) => void;
 }) {
@@ -736,7 +651,11 @@ function TutorialChecklistContent({
                         allTasksFinished
                             ? 'border-white/30 bg-white/15 text-white'
                             : 'bg-background text-foreground',
+                        animateCompletion && styles.completionBadge,
                     )}
+                    data-tutorial-checklist-complete-badge={
+                        allTasksFinished ? 'true' : 'false'
+                    }
                 >
                     {allTasksFinished ? (
                         <Check className="size-7" />
@@ -770,14 +689,20 @@ function TutorialChecklistContent({
                 {allTasksFinished ? (
                     <>
                         <Typography
-                            className="max-w-lg text-green-50"
+                            className={cx(
+                                'max-w-lg text-green-50',
+                                animateCompletion && styles.completionCopy,
+                            )}
                             data-tutorial-checklist-complete-text="true"
                             level="body2"
                         >
                             Svi zadaci su dovršeni.
                         </Typography>
                         <Button
-                            className="bg-white px-4 font-bold text-green-800 hover:bg-green-50 dark:bg-white dark:text-green-900 dark:hover:bg-green-50"
+                            className={cx(
+                                'bg-white px-4 font-bold text-green-800 hover:bg-green-50 dark:bg-white dark:text-green-900 dark:hover:bg-green-50',
+                                animateCompletion && styles.completionAction,
+                            )}
                             color="success"
                             data-tutorial-checklist-hide-completed="true"
                             onClick={onDismissCompleted}
@@ -905,6 +830,8 @@ function TutorialChecklistContent({
 
 export function TutorialChecklistHud() {
     const [isOpen, setIsOpen] = useState(false);
+    const [animateCompletion, setAnimateCompletion] = useState(false);
+    const previouslyObservedCompletion = useRef<boolean | null>(null);
     const queryClient = useQueryClient();
     const { data } = useTutorialChecklist();
     const { track } = useGameAnalytics();
@@ -915,6 +842,28 @@ export function TutorialChecklistHud() {
         dismiss: dismissCompletedChecklist,
         isDismissed,
     } = useCompletedChecklistDismissal(data);
+    const hasChecklist = Boolean(data);
+    const completionTransitionObserved =
+        hasChecklist &&
+        allTasksFinished &&
+        previouslyObservedCompletion.current === false;
+    const shouldAnimateCompletion =
+        animateCompletion || completionTransitionObserved;
+
+    useEffect(() => {
+        if (!hasChecklist) {
+            return;
+        }
+
+        if (completionTransitionObserved) {
+            setAnimateCompletion(true);
+        } else if (!allTasksFinished) {
+            setAnimateCompletion(false);
+        }
+
+        previouslyObservedCompletion.current = allTasksFinished;
+    }, [allTasksFinished, completionTransitionObserved, hasChecklist]);
+
     const progressLabel = useMemo(() => {
         if (!data || allTasksFinished) return null;
         const firstActiveGroup = data.groups.find(
@@ -925,6 +874,7 @@ export function TutorialChecklistHud() {
     }, [allTasksFinished, data]);
 
     const handleDismissCompleted = useCallback(() => {
+        setAnimateCompletion(false);
         dismissCompletedChecklist();
         setIsOpen(false);
         track('game_tutorial_checklist_completed_dismissed', {
@@ -945,6 +895,7 @@ export function TutorialChecklistHud() {
                 queryKey: tutorialChecklistKeys,
             });
         } else if (isOpen) {
+            setAnimateCompletion(false);
             track('game_tutorial_checklist_closed', {
                 ...checklistProgressProperties(data),
             });
@@ -964,11 +915,11 @@ export function TutorialChecklistHud() {
                     <DotIndicator color="success" size={16} />
                 </div>
             )}
-            <Modal
-                className="z-[46] border-tertiary border-b-4 md:max-w-3xl"
+            <GameModal
+                className="md:max-w-3xl"
+                hudLayer
                 onOpenChange={handleOpenChange}
                 open={isOpen}
-                overlayClassName="z-[46]"
                 title="Zadaci za novi vrt"
                 trigger={
                     <IconButton
@@ -1026,10 +977,11 @@ export function TutorialChecklistHud() {
             >
                 <TutorialChecklistContent
                     allTasksFinished={allTasksFinished}
+                    animateCompletion={shouldAnimateCompletion}
                     onDismissCompleted={handleDismissCompleted}
                     onOpenChange={handleOpenChange}
                 />
-            </Modal>
+            </GameModal>
         </HudCard>
     );
 }

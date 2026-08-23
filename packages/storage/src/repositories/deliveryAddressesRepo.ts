@@ -7,6 +7,33 @@ import {
     type UpdateDeliveryAddress,
 } from '../schema';
 import { storage } from '../storage';
+import { withDeliveryDispatchTransaction } from './deliveryDispatchRepo';
+import { assertDeliveryAddressHasNoActiveAssignment } from './deliveryRunAssignmentsRepo';
+
+export const DeliveryAddressMutationErrorCodes = {
+    NOT_FOUND_OR_FORBIDDEN: 'delivery-address-not-found',
+} as const;
+
+export type DeliveryAddressMutationErrorCode =
+    (typeof DeliveryAddressMutationErrorCodes)[keyof typeof DeliveryAddressMutationErrorCodes];
+
+export class DeliveryAddressMutationError extends Error {
+    override name = 'DeliveryAddressMutationError';
+
+    constructor(
+        readonly code: DeliveryAddressMutationErrorCode,
+        message: string,
+    ) {
+        super(message);
+    }
+}
+
+function deliveryAddressNotFound(operation: 'update' | 'delete') {
+    return new DeliveryAddressMutationError(
+        DeliveryAddressMutationErrorCodes.NOT_FOUND_OR_FORBIDDEN,
+        `Failed to ${operation} delivery address - address not found or access denied`,
+    );
+}
 
 // Get all addresses for an account (excluding soft deleted)
 export function getDeliveryAddresses(
@@ -55,30 +82,32 @@ export function getDefaultDeliveryAddress(
 export async function createDeliveryAddress(
     data: InsertDeliveryAddress,
 ): Promise<number> {
-    // If this is set as default, unset other defaults first
-    if (data.isDefault) {
-        await storage()
-            .update(deliveryAddresses)
-            .set({ isDefault: false })
-            .where(
-                and(
-                    eq(deliveryAddresses.accountId, data.accountId),
-                    eq(deliveryAddresses.isDefault, true),
-                    isNull(deliveryAddresses.deletedAt),
-                ),
-            );
-    }
+    return await withDeliveryDispatchTransaction(async (tx) => {
+        // If this is set as default, unset other defaults first
+        if (data.isDefault) {
+            await tx
+                .update(deliveryAddresses)
+                .set({ isDefault: false })
+                .where(
+                    and(
+                        eq(deliveryAddresses.accountId, data.accountId),
+                        eq(deliveryAddresses.isDefault, true),
+                        isNull(deliveryAddresses.deletedAt),
+                    ),
+                );
+        }
 
-    const result = await storage()
-        .insert(deliveryAddresses)
-        .values(data)
-        .returning({ id: deliveryAddresses.id });
+        const result = await tx
+            .insert(deliveryAddresses)
+            .values(data)
+            .returning({ id: deliveryAddresses.id });
 
-    if (!result[0]?.id) {
-        throw new Error('Failed to create delivery address');
-    }
+        if (!result[0]?.id) {
+            throw new Error('Failed to create delivery address');
+        }
 
-    return result[0].id;
+        return result[0].id;
+    });
 }
 
 // Update a delivery address
@@ -86,37 +115,50 @@ export async function updateDeliveryAddress(
     update: UpdateDeliveryAddress,
     accountId: string,
 ): Promise<void> {
-    // If setting as default, unset other defaults first
-    if (update.isDefault) {
-        await storage()
-            .update(deliveryAddresses)
-            .set({ isDefault: false })
-            .where(
-                and(
-                    eq(deliveryAddresses.accountId, accountId),
-                    eq(deliveryAddresses.isDefault, true),
-                    isNull(deliveryAddresses.deletedAt),
-                ),
-            );
-    }
-
-    const result = await storage()
-        .update(deliveryAddresses)
-        .set(update)
-        .where(
-            and(
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const ownedAddress = await tx.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
                 eq(deliveryAddresses.id, update.id),
                 eq(deliveryAddresses.accountId, accountId),
                 isNull(deliveryAddresses.deletedAt),
             ),
-        )
-        .returning({ id: deliveryAddresses.id });
+        });
+        if (!ownedAddress) {
+            throw deliveryAddressNotFound('update');
+        }
+        await assertDeliveryAddressHasNoActiveAssignment(update.id, tx);
 
-    if (!result[0]?.id) {
-        throw new Error(
-            'Failed to update delivery address - address not found or access denied',
-        );
-    }
+        // If setting as default, unset other defaults first
+        if (update.isDefault) {
+            await tx
+                .update(deliveryAddresses)
+                .set({ isDefault: false })
+                .where(
+                    and(
+                        eq(deliveryAddresses.accountId, accountId),
+                        eq(deliveryAddresses.isDefault, true),
+                        isNull(deliveryAddresses.deletedAt),
+                    ),
+                );
+        }
+
+        const result = await tx
+            .update(deliveryAddresses)
+            .set(update)
+            .where(
+                and(
+                    eq(deliveryAddresses.id, update.id),
+                    eq(deliveryAddresses.accountId, accountId),
+                    isNull(deliveryAddresses.deletedAt),
+                ),
+            )
+            .returning({ id: deliveryAddresses.id });
+
+        if (!result[0]?.id) {
+            throw deliveryAddressNotFound('update');
+        }
+    });
 }
 
 // Soft delete a delivery address
@@ -124,26 +166,39 @@ export async function deleteDeliveryAddress(
     addressId: number,
     accountId: string,
 ): Promise<void> {
-    const result = await storage()
-        .update(deliveryAddresses)
-        .set({
-            deletedAt: new Date(),
-            isDefault: false, // Can't be default if deleted
-        })
-        .where(
-            and(
+    await withDeliveryDispatchTransaction(async (tx) => {
+        const ownedAddress = await tx.query.deliveryAddresses.findFirst({
+            columns: { id: true },
+            where: and(
                 eq(deliveryAddresses.id, addressId),
                 eq(deliveryAddresses.accountId, accountId),
                 isNull(deliveryAddresses.deletedAt),
             ),
-        )
-        .returning({ id: deliveryAddresses.id });
+        });
+        if (!ownedAddress) {
+            throw deliveryAddressNotFound('delete');
+        }
+        await assertDeliveryAddressHasNoActiveAssignment(addressId, tx);
 
-    if (!result[0]?.id) {
-        throw new Error(
-            'Failed to delete delivery address - address not found or access denied',
-        );
-    }
+        const result = await tx
+            .update(deliveryAddresses)
+            .set({
+                deletedAt: new Date(),
+                isDefault: false, // Can't be default if deleted
+            })
+            .where(
+                and(
+                    eq(deliveryAddresses.id, addressId),
+                    eq(deliveryAddresses.accountId, accountId),
+                    isNull(deliveryAddresses.deletedAt),
+                ),
+            )
+            .returning({ id: deliveryAddresses.id });
+
+        if (!result[0]?.id) {
+            throw deliveryAddressNotFound('delete');
+        }
+    });
 }
 
 // Validation helper

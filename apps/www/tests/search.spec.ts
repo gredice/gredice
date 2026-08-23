@@ -439,6 +439,15 @@ test.describe('public search filters', () => {
         await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
     });
 
+    test('block search suppresses its empty state when a plant matches', async ({
+        page,
+    }) => {
+        await page.goto('/blokovi?pretraga=rajcica', { waitUntil: 'load' });
+
+        await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();
+        await expect(page.getByText('Nema rezultata pretrage.')).toBeHidden();
+    });
+
     test('plant search clear button resets input, URL and list', async ({
         page,
     }) => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
@@ -8,13 +9,12 @@ import { Markdown } from '@gredice/ui/Markdown';
 import { Modal } from '@gredice/ui/Modal';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import {
-    estimateAiAnalysisCostUsd,
-    formatAiCostUsd,
+    estimateAiAnalysisCostEur,
+    formatAiCostEur,
 } from '../../../src/ai/aiAnalyticsCost';
 import type { AiAnalyticsOperationType } from './aiAnalyticsPresentation';
 
@@ -96,6 +96,9 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
     const markdown = row.data?.markdown?.trim();
     const summary = row.data?.summary?.trim();
     const generatedContent = markdown || summary;
+    const sanitizedGeneratedContent = generatedContent
+        ? sanitizeRaisedBedAiMarkdown(generatedContent)
+        : '';
     const imageCount = row.data?.imageCount ?? images.length;
 
     return (
@@ -127,7 +130,7 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                 <Stack spacing={0}>
                     <Typography level="body3">Trošak</Typography>
                     <Typography level="body2">
-                        {formatAiCostUsd(estimateAiAnalysisCostUsd(row.data))}
+                        {formatAiCostEur(estimateAiAnalysisCostEur(row.data))}
                     </Typography>
                 </Stack>
                 <Stack spacing={0}>
@@ -176,9 +179,9 @@ function AiAnalysisDetails({ row }: { row: AiAnalyticsRow }) {
                 <Typography level="body2" semiBold>
                     Generirani sadržaj
                 </Typography>
-                {generatedContent ? (
+                {sanitizedGeneratedContent ? (
                     <Markdown className="rounded-md border bg-muted/20 p-3">
-                        {generatedContent}
+                        {sanitizedGeneratedContent}
                     </Markdown>
                 ) : (
                     <NoDataPlaceholder>Nema sadržaja</NoDataPlaceholder>
@@ -217,88 +220,95 @@ export function AiAnalyticsTable({ rows }: { rows: AiAnalyticsRow[] }) {
         <>
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Gredica | Polje</Table.Head>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Model</Table.Head>
-                                <Table.Head className="text-right">
-                                    Ulazni tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Izlazni tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Ukupno tokeni
-                                </Table.Head>
-                                <Table.Head className="text-right">
-                                    Trošak
-                                </Table.Head>
-                                <Table.Head>Datum</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {rows.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={8}>
-                                        <NoDataPlaceholder>
-                                            Nema AI operacija
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                    {rows.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema AI operacija
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {rows.map((row) => (
-                                <Table.Row
-                                    key={row.id}
-                                    role="button"
-                                    tabIndex={0}
-                                    className="cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                                    onClick={() => setSelectedRow(row)}
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' ||
-                                            event.key === ' '
-                                        ) {
-                                            event.preventDefault();
-                                            setSelectedRow(row);
-                                        }
-                                    }}
-                                >
-                                    <Table.Cell>
-                                        <RaisedBedCell row={row} />
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip size="sm">{row.typeLabel}</Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Chip size="sm">
-                                            {row.data?.model ?? '-'}
-                                        </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.data?.inputTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.data?.outputTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatTokens(row.data?.totalTokens)}
-                                    </Table.Cell>
-                                    <Table.Cell className="text-right">
-                                        {formatAiCostUsd(
-                                            estimateAiAnalysisCostUsd(row.data),
-                                        )}
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <LocalDateTime>
-                                            {row.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                </Table.Row>
+                                <li key={row.id}>
+                                    <button
+                                        type="button"
+                                        aria-label={`Otvori detalje AI analize ${row.typeLabel}`}
+                                        className="grid w-full gap-3 px-3 py-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:px-4"
+                                        onClick={() => setSelectedRow(row)}
+                                    >
+                                        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="min-w-0">
+                                                <RaisedBedCell row={row} />
+                                            </div>
+
+                                            <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+                                                <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                                                    <Chip size="sm">
+                                                        {row.typeLabel}
+                                                    </Chip>
+                                                    <Chip size="sm">
+                                                        {row.data?.model ?? '-'}
+                                                    </Chip>
+                                                </div>
+
+                                                <div className="grid min-w-0 gap-x-4 gap-y-1 text-muted-foreground sm:grid-cols-2 lg:text-right">
+                                                    <Typography level="body3">
+                                                        Ulazni:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.data
+                                                                    ?.inputTokens,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Izlazni:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.data
+                                                                    ?.outputTokens,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Ukupno:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatTokens(
+                                                                row.data
+                                                                    ?.totalTokens,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                    <Typography level="body3">
+                                                        Trošak:{' '}
+                                                        <span className="font-medium text-foreground tabular-nums">
+                                                            {formatAiCostEur(
+                                                                estimateAiAnalysisCostEur(
+                                                                    row.data,
+                                                                ),
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+                                                </div>
+
+                                                <Typography
+                                                    level="body3"
+                                                    className="text-muted-foreground lg:text-right"
+                                                >
+                                                    Datum:{' '}
+                                                    <span className="whitespace-nowrap">
+                                                        <LocalDateTime>
+                                                            {row.createdAt}
+                                                        </LocalDateTime>
+                                                    </span>
+                                                </Typography>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
 

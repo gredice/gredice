@@ -1,7 +1,9 @@
 import { useGLTF } from '@react-three/drei';
+import { useMemo } from 'react';
 import { type GameAssetName, gameAssetModels } from '../data/models';
 import type { GLTFResult } from '../models/GameAssets';
 import { useGameState } from '../useGameState';
+import { configureGameGLTFColorPaletteMaterials } from './configureGameGLTFMaterials';
 
 export function resolveGameAssetModelUrl(
     appBaseUrl: string,
@@ -21,7 +23,12 @@ export function preloadGameAssetModels(
 
 export function useGameGLTF(assetName: GameAssetName) {
     const appBaseUrl = useGameState((state) => state.appBaseUrl);
-    return useGLTF(
+    const gltf = useGLTF(
         resolveGameAssetModelUrl(appBaseUrl, assetName),
     ) as unknown as GLTFResult;
+
+    return useMemo(() => {
+        configureGameGLTFColorPaletteMaterials(gltf);
+        return gltf;
+    }, [gltf]);
 }

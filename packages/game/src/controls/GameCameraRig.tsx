@@ -3,27 +3,30 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MathUtils, OrthographicCamera, Vector2, Vector3 } from 'three';
-import {
-    defaultGameCameraPosition,
-    defaultGameCameraTarget,
-} from '../gameCamera';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
+import { useSceneCurrentGarden } from '../hooks/useSceneCurrentGarden';
+import { sceneFrameRates, useSceneTimeInvalidation } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
 import {
     findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
+    getRaisedBedFootprintSegments,
 } from '../utils/raisedBedBlocks';
+import {
+    applyCursorAnchoredZoom,
+    createCursorAnchoredZoomScratch,
+} from './cursorAnchoredZoom';
 import {
     getDragEdgeAutopanDelta,
     hasDragEdgeAutopanDelta,
 } from './dragEdgeAutopan';
 import type { GameCameraRigApi, GameCameraSnapshot } from './GameCameraRigApi';
+import { resolveGameCameraInitialView } from './gameCameraInitialView';
 
 const closeupZoom = 300;
 const animationDurationSeconds = 1;
 const focusAnimationDurationSeconds = 0.65;
 const focusStopDistance = 0.01;
-const minZoom = 50;
+const defaultMinZoom = 50;
 const maxZoom = 500;
 const cameraDragThresholdPx = 4;
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
@@ -51,6 +54,7 @@ type CameraAnimation = {
     startPosition: Vector3;
     startTarget: Vector3;
     startZoom: number;
+    onComplete?: () => void;
 };
 
 type PointerState = {
@@ -63,6 +67,24 @@ type PointerState = {
 
 type NormalCameraSnapshot = {
     position: Vector3;
+    target: Vector3;
+    zoom: number;
+};
+
+export type GameCameraCloseupFocus = {
+    mode: 'preserve-angle';
+    target?: Readonly<{
+        x: number;
+        y: number;
+        z: number;
+    }>;
+    zoom?: number;
+};
+
+type CameraCloseupTarget = {
+    key: string;
+    mode: 'preserve-angle' | 'top-down';
+    orientation?: 'vertical' | 'horizontal';
     target: Vector3;
     zoom: number;
 };
@@ -129,6 +151,27 @@ function getCloseupCameraPosition({
     );
 }
 
+export function getPreservedAngleCameraPosition({
+    cameraPosition,
+    cameraTarget,
+    focusTarget,
+}: {
+    cameraPosition: Vector3;
+    cameraTarget: Vector3;
+    focusTarget: Vector3;
+}) {
+    return focusTarget
+        .clone()
+        .add(new Vector3().subVectors(cameraPosition, cameraTarget));
+}
+
+export function resolvePreservedAngleCloseupZoom(
+    currentZoom: number,
+    requestedZoom: number,
+) {
+    return Math.max(currentZoom, requestedZoom);
+}
+
 function getPointerDistance(left: Vector2, right: Vector2) {
     return Math.max(1, left.distanceTo(right));
 }
@@ -157,28 +200,68 @@ function toSnapshot({
 }
 
 export function GameCameraRig({
+    closeupFocus,
     controlsEnabled,
+    initialPosition,
+    initialSnapshot,
+    initialTarget,
+    initialViewKey,
+    initialZoom,
+    minZoom = defaultMinZoom,
 }: {
+    closeupFocus?: GameCameraCloseupFocus;
     controlsEnabled: boolean;
+    initialPosition?: Vector3;
+    initialSnapshot?: Pick<GameCameraSnapshot, 'position' | 'target' | 'zoom'>;
+    initialTarget?: Vector3;
+    initialViewKey?: string | number | null;
+    initialZoom?: number;
+    minZoom?: number;
 }) {
-    const { camera, gl, size } = useThree();
+    const { camera, gl, invalidate, size } = useThree();
     const isOrthographicCamera = camera instanceof OrthographicCamera;
     const setGameCamera = useGameState((state) => state.setGameCamera);
     const setGameCameraSnapshot = useGameState(
         (state) => state.setGameCameraSnapshot,
     );
+    const setCloseupCameraActive = useGameState(
+        (state) => state.setCloseupCameraActive,
+    );
+    const setCloseupCameraSettled = useGameState(
+        (state) => state.setCloseupCameraSettled,
+    );
     const [isAnimating, setIsAnimating] = useState(false);
+    const [isKeyboardPanning, setIsKeyboardPanning] = useState(false);
+    const isDragging = useGameState((state) => state.isDragging);
     const setIsDragging = useGameState((state) => state.setIsDragging);
     const worldRotation = useGameState((state) => state.worldRotation);
     const worldRotate = useGameState((state) => state.worldRotate);
     const view = useGameState((state) => state.view);
+    const setView = useGameState((state) => state.setView);
     const closeupBlock = useGameState((state) => state.closeupBlock);
-    const isBlockPlacementActive = useGameState((state) =>
-        Boolean(state.pickupBlock),
+    const isBlockPlacementActive = useGameState(
+        (state) =>
+            Boolean(state.pickupBlock) || Boolean(state.hudPlacementDrag),
     );
-    const { data: garden } = useCurrentGarden();
+    const { data: gardenData } = useCurrentGarden();
+    const garden = useSceneCurrentGarden(gardenData);
+    const resolvedMinZoom = MathUtils.clamp(minZoom, 1, maxZoom);
+    useSceneTimeInvalidation(
+        isAnimating || isDragging || isKeyboardPanning,
+        sceneFrameRates.interactive,
+    );
 
-    const targetRef = useRef(new Vector3(...defaultGameCameraTarget));
+    const resolvedInitialView = useMemo(
+        () =>
+            resolveGameCameraInitialView({
+                initialPosition,
+                initialSnapshot,
+                initialTarget,
+                initialZoom,
+            }),
+        [initialPosition, initialSnapshot, initialTarget, initialZoom],
+    );
+    const targetRef = useRef(resolvedInitialView.target.clone());
     const animationRef = useRef<CameraAnimation | null>(null);
     const apiRef = useRef<GameCameraRigApi | null>(null);
     const cameraListenersRef = useRef(
@@ -192,15 +275,24 @@ export function GameCameraRig({
     const activePanDirectionRef = useRef<[number, number] | null>(null);
     const snapshotVersionRef = useRef(0);
     const snapshotDirtyRef = useRef(false);
+    const initialViewKeyRef = useRef<string | number | null | undefined>(
+        undefined,
+    );
+    const skipCloseupTransitionRef = useRef(false);
+    const closeupTransitionKeyRef = useRef<string | null>(null);
     const normalCameraRef = useRef<NormalCameraSnapshot>({
-        position: new Vector3(...defaultGameCameraPosition),
-        target: new Vector3(...defaultGameCameraTarget),
-        zoom: camera instanceof OrthographicCamera ? camera.zoom : 100,
+        position: resolvedInitialView.position.clone(),
+        target: resolvedInitialView.target.clone(),
+        zoom: resolvedInitialView.zoom,
     });
     const scratchForwardRef = useRef(new Vector3());
     const scratchRightRef = useRef(new Vector3());
+    const cursorAnchoredZoomScratch = useMemo(
+        createCursorAnchoredZoomScratch,
+        [],
+    );
 
-    const closeupTarget = useMemo(() => {
+    const closeupTarget = useMemo<CameraCloseupTarget | null>(() => {
         if (!closeupBlock || !garden) {
             return null;
         }
@@ -215,49 +307,55 @@ export function GameCameraRig({
             return null;
         }
 
+        if (closeupFocus) {
+            const target = closeupFocus.target
+                ? new Vector3(
+                      closeupFocus.target.x,
+                      closeupFocus.target.y,
+                      closeupFocus.target.z,
+                  )
+                : closeupBlockPosition.clone();
+            const zoom = closeupFocus.zoom ?? closeupZoom;
+            return {
+                key: `${closeupBlock.id}:preserve-angle:${target.x}:${target.y}:${target.z}:${zoom}`,
+                mode: closeupFocus.mode,
+                orientation: undefined,
+                target,
+                zoom,
+            };
+        }
+
         const raisedBed = findRaisedBedByBlockId(garden, closeupBlock.id);
         if (!raisedBed) {
             return {
-                key: closeupBlock.id,
+                key: `${closeupBlock.id}:top-down:${closeupBlockPosition.x}:${closeupBlockPosition.y}:${closeupBlockPosition.z}:${closeupZoom}`,
+                mode: 'top-down',
                 orientation: undefined,
                 target: closeupBlockPosition.clone(),
+                zoom: closeupZoom,
             };
         }
 
-        const raisedBedBlockIds = getRaisedBedBlockIds(garden, raisedBed.id);
-        if (raisedBedBlockIds.length !== 2) {
-            return {
-                key: closeupBlock.id,
-                orientation: raisedBed.orientation,
-                target: closeupBlockPosition.clone(),
-            };
-        }
-
-        const connectedBlockPositions = raisedBedBlockIds
-            .map((blockId) => getStackPositionByBlockId(blockId))
-            .filter((position): position is Vector3 => Boolean(position));
-
-        if (connectedBlockPositions.length !== 2) {
-            return {
-                key: closeupBlock.id,
-                orientation: raisedBed.orientation,
-                target: closeupBlockPosition.clone(),
-            };
-        }
-
+        const segments = getRaisedBedFootprintSegments(closeupBlock.rotation);
+        const target = segments.reduce(
+            (center, segment) =>
+                center.add(
+                    new Vector3(
+                        segment.offset.x / segments.length,
+                        0,
+                        segment.offset.z / segments.length,
+                    ),
+                ),
+            closeupBlockPosition.clone(),
+        );
         return {
-            key: `${raisedBedBlockIds.join('|')}:${raisedBed.orientation ?? 'vertical'}`,
+            key: `${closeupBlock.id}:top-down:${raisedBed.orientation ?? 'vertical'}:${target.x}:${target.y}:${target.z}:${closeupZoom}`,
+            mode: 'top-down',
             orientation: raisedBed.orientation,
-            target: new Vector3(
-                (connectedBlockPositions[0].x + connectedBlockPositions[1].x) /
-                    2,
-                (connectedBlockPositions[0].y + connectedBlockPositions[1].y) /
-                    2,
-                (connectedBlockPositions[0].z + connectedBlockPositions[1].z) /
-                    2,
-            ),
+            target,
+            zoom: closeupZoom,
         };
-    }, [closeupBlock, garden]);
+    }, [closeupBlock, closeupFocus, garden]);
 
     const controlsDisabled =
         !controlsEnabled ||
@@ -302,7 +400,8 @@ export function GameCameraRig({
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();
         publishSnapshot();
-    }, [camera, isOrthographicCamera, publishSnapshot]);
+        invalidate();
+    }, [camera, invalidate, isOrthographicCamera, publishSnapshot]);
 
     const saveNormalCamera = useCallback(() => {
         if (!isOrthographicCamera || view !== 'normal') {
@@ -322,11 +421,17 @@ export function GameCameraRig({
                 return;
             }
 
-            camera.zoom = MathUtils.clamp(zoom, minZoom, maxZoom);
+            camera.zoom = MathUtils.clamp(zoom, resolvedMinZoom, maxZoom);
             applyCamera();
             saveNormalCamera();
         },
-        [applyCamera, camera, isOrthographicCamera, saveNormalCamera],
+        [
+            applyCamera,
+            camera,
+            isOrthographicCamera,
+            resolvedMinZoom,
+            saveNormalCamera,
+        ],
     );
 
     const panByWorldVector = useCallback(
@@ -393,11 +498,13 @@ export function GameCameraRig({
             endPosition,
             endTarget,
             endZoom,
+            onComplete,
         }: {
             duration: number;
             endPosition: Vector3;
             endTarget: Vector3;
             endZoom: number;
+            onComplete?: () => void;
         }) => {
             if (!isOrthographicCamera) {
                 return;
@@ -408,8 +515,13 @@ export function GameCameraRig({
                 setIsAnimating(false);
                 camera.position.copy(endPosition);
                 targetRef.current.copy(endTarget);
-                camera.zoom = MathUtils.clamp(endZoom, minZoom, maxZoom);
+                camera.zoom = MathUtils.clamp(
+                    endZoom,
+                    resolvedMinZoom,
+                    maxZoom,
+                );
                 applyCamera();
+                onComplete?.();
                 return;
             }
 
@@ -418,14 +530,15 @@ export function GameCameraRig({
                 elapsed: 0,
                 endPosition: endPosition.clone(),
                 endTarget: endTarget.clone(),
-                endZoom: MathUtils.clamp(endZoom, minZoom, maxZoom),
+                endZoom: MathUtils.clamp(endZoom, resolvedMinZoom, maxZoom),
                 startPosition: camera.position.clone(),
                 startTarget: targetRef.current.clone(),
                 startZoom: camera.zoom,
+                onComplete,
             };
             setIsAnimating(true);
         },
-        [applyCamera, camera, isOrthographicCamera],
+        [applyCamera, camera, isOrthographicCamera, resolvedMinZoom],
     );
 
     const focusOnPosition = useCallback(
@@ -526,15 +639,38 @@ export function GameCameraRig({
             return;
         }
 
-        targetRef.current.set(...defaultGameCameraTarget);
-        normalCameraRef.current = {
-            position: camera.position.clone(),
-            target: targetRef.current.clone(),
-            zoom: camera.zoom,
-        };
-        initializedRef.current = true;
-        applyCamera();
-        flushSnapshot();
+        const shouldApplyInitialView =
+            !initializedRef.current ||
+            initialViewKeyRef.current !== initialViewKey;
+        if (shouldApplyInitialView) {
+            const initialViewChanged = initializedRef.current;
+            animationRef.current = null;
+            closeupTransitionKeyRef.current = null;
+            setIsAnimating(false);
+            camera.position.copy(resolvedInitialView.position);
+            camera.zoom = MathUtils.clamp(
+                resolvedInitialView.zoom,
+                resolvedMinZoom,
+                maxZoom,
+            );
+            targetRef.current.copy(resolvedInitialView.target);
+            if (initialViewChanged) {
+                skipCloseupTransitionRef.current = true;
+                previousViewRef.current = 'normal';
+                setCloseupCameraActive(false);
+                setCloseupCameraSettled(false);
+                setView({ view: 'normal' });
+            }
+            normalCameraRef.current = {
+                position: camera.position.clone(),
+                target: targetRef.current.clone(),
+                zoom: camera.zoom,
+            };
+            initializedRef.current = true;
+            initialViewKeyRef.current = initialViewKey;
+            applyCamera();
+            flushSnapshot();
+        }
         setGameCamera(apiRef.current);
         return () => {
             setGameCamera(null);
@@ -543,8 +679,14 @@ export function GameCameraRig({
         applyCamera,
         camera,
         flushSnapshot,
+        initialViewKey,
         isOrthographicCamera,
+        resolvedInitialView,
+        resolvedMinZoom,
+        setCloseupCameraActive,
+        setCloseupCameraSettled,
         setGameCamera,
+        setView,
     ]);
 
     useEffect(() => {
@@ -709,7 +851,23 @@ export function GameCameraRig({
             }
 
             event.preventDefault();
-            setCameraZoom(camera.zoom * Math.exp(-event.deltaY * 0.001));
+            const nextZoom = MathUtils.clamp(
+                camera.zoom * Math.exp(-event.deltaY * 0.001),
+                resolvedMinZoom,
+                maxZoom,
+            );
+            const changed = applyCursorAnchoredZoom({
+                camera,
+                cursor: event,
+                nextZoom,
+                scratch: cursorAnchoredZoomScratch,
+                target: targetRef.current,
+                viewport: element.getBoundingClientRect(),
+            });
+            if (changed) {
+                applyCamera();
+                saveNormalCamera();
+            }
         };
 
         element.addEventListener('pointerdown', handlePointerDown);
@@ -732,10 +890,14 @@ export function GameCameraRig({
             clearPointers();
         };
     }, [
+        applyCamera,
         camera,
         controlsDisabled,
+        cursorAnchoredZoomScratch,
         gl.domElement,
         panByScreenPixels,
+        resolvedMinZoom,
+        saveNormalCamera,
         setCameraZoom,
         setIsDragging,
     ]);
@@ -762,21 +924,41 @@ export function GameCameraRig({
             const panValue = panKeys[event.code];
             if (panValue) {
                 activePanDirectionRef.current = panValue;
+                setIsKeyboardPanning(true);
             }
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
             if (panKeys[event.code]) {
                 activePanDirectionRef.current = null;
+                setIsKeyboardPanning(false);
+            }
+        };
+
+        const clearKeyboardPan = () => {
+            activePanDirectionRef.current = null;
+            setIsKeyboardPanning(false);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                clearKeyboardPan();
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keyup', handleKeyUp);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('blur', clearKeyboardPan);
         return () => {
             document.removeEventListener('keydown', handleKeyDown);
             document.removeEventListener('keyup', handleKeyUp);
-            activePanDirectionRef.current = null;
+            document.removeEventListener(
+                'visibilitychange',
+                handleVisibilityChange,
+            );
+            window.removeEventListener('blur', clearKeyboardPan);
+            clearKeyboardPan();
         };
     }, [controlsDisabled, worldRotate]);
 
@@ -785,9 +967,24 @@ export function GameCameraRig({
             return;
         }
 
+        if (skipCloseupTransitionRef.current) {
+            skipCloseupTransitionRef.current = false;
+            previousViewRef.current = 'normal';
+            return;
+        }
+
         const previousView = previousViewRef.current;
 
         if (view === 'closeup' && closeupTarget) {
+            if (
+                previousView === 'closeup' &&
+                closeupTransitionKeyRef.current === closeupTarget.key
+            ) {
+                return;
+            }
+
+            setCloseupCameraActive(true);
+            setCloseupCameraSettled(false);
             if (previousView !== 'closeup') {
                 normalCameraRef.current = {
                     position: camera.position.clone(),
@@ -796,30 +993,68 @@ export function GameCameraRig({
                 };
             }
 
+            const endPosition =
+                closeupTarget.mode === 'preserve-angle'
+                    ? getPreservedAngleCameraPosition({
+                          cameraPosition: camera.position,
+                          cameraTarget: targetRef.current,
+                          focusTarget: closeupTarget.target,
+                      })
+                    : getCloseupCameraPosition({
+                          cameraY: camera.position.y,
+                          orientation: closeupTarget.orientation,
+                          target: closeupTarget.target,
+                      });
+            const endZoom =
+                closeupTarget.mode === 'preserve-angle'
+                    ? resolvePreservedAngleCloseupZoom(
+                          camera.zoom,
+                          closeupTarget.zoom,
+                      )
+                    : closeupTarget.zoom;
+
+            closeupTransitionKeyRef.current = closeupTarget.key;
             startAnimation({
                 duration: animationDurationSeconds,
-                endPosition: getCloseupCameraPosition({
-                    cameraY: camera.position.y,
-                    orientation: closeupTarget.orientation,
-                    target: closeupTarget.target,
-                }),
+                endPosition,
                 endTarget: closeupTarget.target,
-                endZoom: closeupZoom,
+                endZoom,
+                onComplete: () => setCloseupCameraSettled(true),
             });
             previousViewRef.current = view;
             return;
         }
 
         if (view === 'normal' && previousView === 'closeup') {
+            closeupTransitionKeyRef.current = null;
             startAnimation({
                 duration: animationDurationSeconds,
                 endPosition: normalCameraRef.current.position,
                 endTarget: normalCameraRef.current.target,
                 endZoom: normalCameraRef.current.zoom,
+                onComplete: () => {
+                    setCloseupCameraActive(false);
+                    setCloseupCameraSettled(false);
+                },
             });
         }
         previousViewRef.current = view;
-    }, [camera, closeupTarget, isOrthographicCamera, startAnimation, view]);
+    }, [
+        camera,
+        closeupTarget,
+        isOrthographicCamera,
+        setCloseupCameraActive,
+        setCloseupCameraSettled,
+        startAnimation,
+        view,
+    ]);
+
+    useEffect(() => {
+        return () => {
+            setCloseupCameraActive(false);
+            setCloseupCameraSettled(false);
+        };
+    }, [setCloseupCameraActive, setCloseupCameraSettled]);
 
     useFrame((_, delta) => {
         if (!isOrthographicCamera) {
@@ -879,6 +1114,7 @@ export function GameCameraRig({
                 setIsAnimating(false);
                 applyCamera();
                 saveNormalCamera();
+                animation.onComplete?.();
             }
             flushSnapshot();
             return;

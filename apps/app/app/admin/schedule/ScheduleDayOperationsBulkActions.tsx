@@ -12,6 +12,8 @@ import {
     BulkCancelRaisedBedButton,
     buildOperationCancelFormData,
 } from './BulkCancelRaisedBedButton';
+import { BulkPhotoOperationImportModal } from './BulkPhotoOperationImportModal';
+import type { BulkPhotoOperationTarget } from './bulkPhotoOperationImportModel';
 import {
     createOperationAssignedUsers,
     isDayBulkOperationApprovalTargetVisible,
@@ -22,26 +24,34 @@ import { useOptimisticScheduleActions } from './useOptimisticScheduleActions';
 
 type OperationApprovalTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
 type OperationAssignmentTarget = {
     id: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     farmUsers: OperationAssignableFarmUser[];
 };
 
 type OperationCancelTarget = {
     id: number;
+    entityId: number;
+    taskVersionEventId: number;
     label: string;
 };
 
 interface ScheduleDayOperationsBulkActionsProps {
+    photoOperationTargets: BulkPhotoOperationTarget[];
     operationsToApprove: OperationApprovalTarget[];
     operationsToAssign: OperationAssignmentTarget[];
     operationsToCancel: OperationCancelTarget[];
 }
 
 export function ScheduleDayOperationsBulkActions({
+    photoOperationTargets,
     operationsToApprove,
     operationsToAssign,
     operationsToCancel,
@@ -64,6 +74,7 @@ export function ScheduleDayOperationsBulkActions({
 
     return (
         <>
+            <BulkPhotoOperationImportModal targets={photoOperationTargets} />
             <BulkApproveRaisedBedButton
                 physicalId="dan"
                 fields={[]}
@@ -79,7 +90,11 @@ export function ScheduleDayOperationsBulkActions({
                         action: () =>
                             Promise.all(
                                 visibleOperationsToApprove.map((operation) =>
-                                    acceptOperationAction(operation.id),
+                                    acceptOperationAction(
+                                        operation.id,
+                                        operation.entityId,
+                                        operation.taskVersionEventId,
+                                    ),
                                 ),
                             ),
                         errorLogMessage:
@@ -121,6 +136,8 @@ export function ScheduleDayOperationsBulkActions({
                                 visibleOperationsToAssign.map((operation) =>
                                     assignOperationUserAction(
                                         operation.id,
+                                        operation.expectedEntityId,
+                                        operation.expectedTaskVersionEventId,
                                         assignedUserIds,
                                     ),
                                 ),

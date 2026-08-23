@@ -19,10 +19,10 @@
         "server-only": "0.0.1"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
-        "next": "16.2.9",
-        "typescript": "6.0.3"
+        "next": "16.3.0",
+        "typescript": "7.0.2"
     },
     "peerDependencies": {
         "next": "15.x || 16.x"

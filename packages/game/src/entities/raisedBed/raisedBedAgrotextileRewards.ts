@@ -1,52 +1,73 @@
-import type { OperationVisualReward } from '../../operationVisualRewards';
+import type {
+    OperationVisualReward,
+    OperationVisualRewardFamily,
+} from '../../operationVisualRewards';
 
-type RaisedBedAgrotextileFieldInput = {
+type RaisedBedProtectiveCoverFieldInput = {
     active?: boolean | null;
     id: number | string;
     positionIndex: number;
 };
 
-type ResolveRaisedBedAgrotextileCoverPositionsInput = {
+type ResolveRaisedBedProtectiveCoverPositionsInput = {
     blockOffset: number;
-    fields: RaisedBedAgrotextileFieldInput[];
+    fields: RaisedBedProtectiveCoverFieldInput[];
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
 
-type HasActiveRaisedBedAgrotextileCoverInput = {
+type HasActiveRaisedBedProtectiveCoverInput = {
     raisedBedId: number;
     visualRewards: OperationVisualReward[];
 };
 
-function isActiveAgrotextileReward(
+type RaisedBedCoverFamily = Extract<
+    OperationVisualRewardFamily,
+    'agrotextile' | 'insectMesh'
+>;
+
+function isActiveCoverReward(
     reward: OperationVisualReward,
     raisedBedId: number,
+    family: RaisedBedCoverFamily,
 ) {
     return (
         reward.active &&
-        reward.family === 'agrotextile' &&
+        reward.family === family &&
         reward.raisedBedId === raisedBedId
     );
 }
 
-export function hasActiveRaisedBedAgrotextileCover({
+function hasActiveRaisedBedCover({
+    family,
     raisedBedId,
     visualRewards,
-}: HasActiveRaisedBedAgrotextileCoverInput) {
+}: HasActiveRaisedBedProtectiveCoverInput & {
+    family: RaisedBedCoverFamily;
+}) {
     return visualRewards.some(
         (reward) =>
-            isActiveAgrotextileReward(reward, raisedBedId) &&
+            isActiveCoverReward(reward, raisedBedId, family) &&
             reward.scope === 'raisedBed',
     );
 }
 
-export function resolveRaisedBedAgrotextileCoverPositions({
+function resolveRaisedBedCoverPositions({
     blockOffset,
+    family,
     fields,
     raisedBedId,
     visualRewards,
-}: ResolveRaisedBedAgrotextileCoverPositionsInput) {
-    if (hasActiveRaisedBedAgrotextileCover({ raisedBedId, visualRewards })) {
+}: ResolveRaisedBedProtectiveCoverPositionsInput & {
+    family: RaisedBedCoverFamily;
+}) {
+    if (
+        hasActiveRaisedBedCover({
+            family,
+            raisedBedId,
+            visualRewards,
+        })
+    ) {
         return Array.from({ length: 9 }, (_, positionIndex) => positionIndex);
     }
 
@@ -54,7 +75,7 @@ export function resolveRaisedBedAgrotextileCoverPositions({
         visualRewards
             .filter(
                 (reward) =>
-                    isActiveAgrotextileReward(reward, raisedBedId) &&
+                    isActiveCoverReward(reward, raisedBedId, family) &&
                     reward.scope === 'field' &&
                     reward.raisedBedFieldId != null,
             )
@@ -76,3 +97,40 @@ export function resolveRaisedBedAgrotextileCoverPositions({
         ),
     ).sort((a, b) => a - b);
 }
+
+export function hasActiveRaisedBedAgrotextileCover(
+    input: HasActiveRaisedBedProtectiveCoverInput,
+) {
+    return hasActiveRaisedBedCover({ ...input, family: 'agrotextile' });
+}
+
+export function resolveRaisedBedAgrotextileCoverPositions(
+    input: ResolveRaisedBedProtectiveCoverPositionsInput,
+) {
+    return resolveRaisedBedCoverPositions({
+        ...input,
+        family: 'agrotextile',
+    });
+}
+
+export function hasActiveRaisedBedInsectMesh(
+    input: HasActiveRaisedBedProtectiveCoverInput,
+) {
+    return hasActiveRaisedBedCover({ ...input, family: 'insectMesh' });
+}
+
+export function resolveRaisedBedInsectMeshPositions(
+    input: ResolveRaisedBedProtectiveCoverPositionsInput,
+) {
+    return resolveRaisedBedCoverPositions({
+        ...input,
+        family: 'insectMesh',
+    });
+}
+
+// Keep existing consumers on agrotextile semantics. Insect mesh has its own
+// raised tunnel renderer and must not hide plants as an opaque cover.
+export const hasActiveRaisedBedProtectiveCover =
+    hasActiveRaisedBedAgrotextileCover;
+export const resolveRaisedBedProtectiveCoverPositions =
+    resolveRaisedBedAgrotextileCoverPositions;

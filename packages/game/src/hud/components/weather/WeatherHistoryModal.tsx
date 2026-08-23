@@ -5,7 +5,6 @@ import {
     getWeatherDataBounds,
     type WeatherMetricKey,
 } from '@gredice/js/weather';
-import { Modal } from '@gredice/ui/Modal';
 import {
     WeatherCharts,
     type WeatherChartsRange,
@@ -16,6 +15,7 @@ import {
     useWeatherHistory,
     useWeatherHistoryRange,
 } from '../../../hooks/useWeatherHistory';
+import { GameModal } from '../../../shared-ui/game-modal';
 
 export function WeatherHistoryPanel({
     className,
@@ -75,7 +75,7 @@ export function WeatherHistoryModal({
     }
 
     return (
-        <Modal
+        <GameModal
             trigger={trigger}
             open={isOpen}
             onOpenChange={handleOpenChange}
@@ -83,6 +83,6 @@ export function WeatherHistoryModal({
             className="w-full max-w-3xl"
         >
             <WeatherHistoryPanel className="pt-2" enabled={isOpen} />
-        </Modal>
+        </GameModal>
     );
 }

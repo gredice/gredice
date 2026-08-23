@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     },
     experimental: {
         typedEnv: true,
-        turbopackFileSystemCacheForDev: true,
+        useTypeScriptCli: true,
     },
     images: {
         remotePatterns: [

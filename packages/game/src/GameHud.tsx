@@ -4,6 +4,7 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
 import { useState } from 'react';
+import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useMarkTutorialChecklistTaskReady } from './hooks/useTutorialChecklist';
@@ -12,19 +13,19 @@ import { AdventHud } from './hud/AdventHud';
 import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
-import { DebugHud } from './hud/DebugHud';
-import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
-import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
+import { DebugHudDynamic } from './hud/DebugHudDynamic';
+import { GardenAvatarHud } from './hud/GardenAvatarHud';
+import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
 import { PaymentSuccessfulMessage } from './hud/PaymentSuccessfulMessage';
 import { RaisedBedFieldHud } from './hud/RaisedBedFieldHud';
 import { RaisedBedOnboardingModal } from './hud/RaisedBedOnboardingModal';
-import { SandboxBlockTrashDropTarget } from './hud/SandboxBlockTrashDropTarget';
 import { SandboxEnvironmentHud } from './hud/SandboxEnvironmentHud';
 import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SuncokretChatHud } from './hud/SuncokretChatHud';
+import { SuncokretChatProvider } from './hud/SuncokretChatProvider';
 import { SunflowersHud } from './hud/SunflowersHud';
 import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
@@ -33,10 +34,11 @@ import { WhatsNewWidget } from './hud/WhatsNewWidget';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
+import { WoodenSignModal } from './modals/WoodenSignModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
-    'pointer-events-none absolute bottom-0 left-0 right-0 flex flex-col items-center md:block';
+    'pointer-events-none absolute bottom-[var(--game-safe-area-bottom,0px)] left-[var(--game-safe-area-left,0px)] right-[var(--game-safe-area-right,0px)] flex flex-col items-center md:block';
 
 export const gameHudBottomControlsClassName =
     'self-start flex flex-row items-end justify-start p-2 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-out md:absolute md:bottom-0 md:left-0';
@@ -62,17 +64,15 @@ export function GameHud({
     debugHud,
     noWeather,
     suppressOpeningHud,
+    viewMode = '3d',
 }: {
     debugHud?: boolean;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
+    viewMode?: GardenViewMode;
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
-    const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
-        confirmed: boolean;
-        gardenId: number | null;
-    }>({ confirmed: false, gardenId: null });
     const [
         raisedBedOnboardingConfirmation,
         setRaisedBedOnboardingConfirmation,
@@ -81,6 +81,7 @@ export function GameHud({
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -96,42 +97,45 @@ export function GameHud({
     );
     const currentGardenId = currentGarden?.id ?? null;
     const raisedBedOnboardingAvailable = !isSandbox;
-    const visitSummaryConfirmed =
-        visitSummaryConfirmation.confirmed &&
-        visitSummaryConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingChecklistResolved =
         raisedBedOnboardingConfirmation.confirmed &&
         raisedBedOnboardingConfirmation.gardenId === currentGardenId;
-    const visitSummaryEnabled =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        !visitSummaryConfirmed &&
-        !isSandbox;
-    const visitSummaryStageComplete =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        visitSummaryStageComplete &&
+        !suppressOpeningHud &&
+        welcomeConfirmed &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
     const openingFlowComplete =
         !suppressOpeningHud &&
-        visitSummaryStageComplete &&
+        welcomeConfirmed &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
+    if (gardenAvatarView !== 'overview') {
+        // Interacting with a garden box or a sign while walking has to open its
+        // modal right away, so those keep rendering without their HUD shells.
+        return (
+            <>
+                <GardenAvatarHud />
+                {showAccountEconomy && <InventoryHud hideTrigger />}
+                <WoodenSignModal />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
+    }
+
     return (
-        <>
+        <SuncokretChatProvider>
             <div
+                data-game-hud-top-left
                 className={cx(
-                    'absolute top-2 left-2 flex flex-col items-start gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex flex-col items-start gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-left-4',
                 )}
             >
-                {!isLocalSandbox && <AccountHud />}
+                {!isLocalSandbox && <AccountHud viewMode={viewMode} />}
                 {!isLocalSandbox && raisedBedOnboardingAvailable && (
                     <RaisedBedOnboardingModal
                         autoOpen={raisedBedOnboardingEnabled}
@@ -168,8 +172,9 @@ export function GameHud({
                 )}
             </div>
             <div
+                data-game-hud-top-right
                 className={cx(
-                    'absolute top-2 right-2 flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
+                    'absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] flex items-end flex-col-reverse gap-1 md:flex-row md:gap-2',
                     gameHudEntranceClassName,
                     'motion-safe:slide-in-from-right-4',
                 )}
@@ -182,8 +187,19 @@ export function GameHud({
                     )}
                 </div>
                 {showAccountEconomy && <SunflowersHud />}
-                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
+            {!isSandbox && !isLocalSandbox && (
+                <div
+                    data-game-hud-bottom-right
+                    className={cx(
+                        'pointer-events-none absolute right-[calc(var(--game-safe-area-right,0px)+0.5rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] z-40',
+                        gameHudEntranceClassName,
+                        'motion-safe:slide-in-from-right-4',
+                    )}
+                >
+                    <SuncokretChatHud />
+                </div>
+            )}
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
@@ -195,8 +211,10 @@ export function GameHud({
                     )}
                 >
                     <CameraHud />
-                    <AudioHud />
-                    <ControlsTooltipHud />
+                    {viewMode === '3d' ? <AudioHud /> : null}
+                    {viewMode === '3d' ? (
+                        <ControlsTooltipHud isCloseup={isCloseup} />
+                    ) : null}
                     {whatsNewHudEnabled && (
                         <IconButton
                             title="Što je novo"
@@ -212,7 +230,6 @@ export function GameHud({
                         </IconButton>
                     )}
                 </div>
-                <SandboxBlockTrashDropTarget />
                 <div
                     data-game-hud-bottom-items
                     aria-hidden={isCloseup}
@@ -225,25 +242,22 @@ export function GameHud({
                     <ItemsHud />
                 </div>
             </div>
-            {!isLocalSandbox && <RaisedBedFieldHud />}
+            {!isLocalSandbox && (
+                <RaisedBedFieldHud
+                    instantTransition={viewMode === '2d'}
+                    show2DPlaceholder={viewMode === '2d'}
+                />
+            )}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
+            <WoodenSignModal />
             {!isLocalSandbox && !suppressOpeningHud && (
                 <>
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <GardenVisitSummaryModal
-                        enabled={visitSummaryEnabled}
-                        onClosed={() =>
-                            setVisitSummaryConfirmation({
-                                confirmed: true,
-                                gardenId: currentGardenId,
-                            })
-                        }
-                    />
-                    <GardenVisitSummaryHighlightHud />
+                    <GardenTargetHighlightHud />
                     <WhatsNewWidget
                         enabled={openingFlowComplete}
                         openRequestId={whatsNewOpenRequestId}
@@ -251,7 +265,7 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {debugHud && <DebugHud />}
-        </>
+            {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+        </SuncokretChatProvider>
     );
 }

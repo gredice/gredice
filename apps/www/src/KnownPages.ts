@@ -10,7 +10,13 @@ export const KnownPages = {
     Landing: '/',
 
     Delivery: '/dostava',
+    DeliveryZagreb: '/dostava-povrca-zagreb',
     DeliverySlots: '/dostava/termini',
+    Seeds: PublicDirectoryPaths.Seeds as Route,
+    Seed: (alias: string) => PublicDirectoryPaths.Seed(alias) as Route,
+    SeedBrands: PublicDirectoryPaths.SeedBrands as Route,
+    SeedBrand: (alias: string) =>
+        PublicDirectoryPaths.SeedBrand(alias) as Route,
     Plants: PublicDirectoryPaths.Plants as Route,
     Plant: (alias: string) => PublicDirectoryPaths.Plant(alias) as Route,
     PlantDiseases: PublicDirectoryPaths.PlantDiseases as Route,
@@ -26,6 +32,7 @@ export const KnownPages = {
     BlockPlants: PublicDirectoryPaths.BlockPlants as Route,
     BlockPlant: (alias: string) =>
         PublicDirectoryPaths.BlockPlant(alias) as Route,
+    BlockPets: PublicDirectoryPaths.BlockPets as Route,
     BlockPlantGenerator: '/blokovi/biljke/generator' as Route,
     Sunflowers: '/suncokreti',
     RaisedBeds: '/podignuta-gredica',
@@ -35,9 +42,8 @@ export const KnownPages = {
     Operations: PublicDirectoryPaths.Operations as Route,
     Operation: (alias: string) =>
         PublicDirectoryPaths.Operation(alias) as Route,
-    Recipes: '/recepti',
-    Recipe: (slug: string) => `/recepti/${encodeURIComponent(slug)}` as Route,
     AboutUs: '/o-nama',
+    MCP: '/mcp',
     FAQ: PublicDirectoryPaths.FAQ as Route,
     CompanionPlanting: COMPANION_PLANTING_PATH as Route,
     QualityHarvestSafety: QUALITY_HARVEST_SAFETY_PATH as Route,
@@ -47,6 +53,10 @@ export const KnownPages = {
     Referrals: '/preporuke',
     News: '/novosti',
     WhatsNew: '/novosti/sto-je-novo',
+    PublicGardens: '/vrtovi',
+    Wallpapers: '/pozadine',
+    PublicGarden: (gardenId: number) =>
+        `/vrtovi/${gardenId.toString()}` as Route,
 
     LegalPrivacy: '/legalno/politika-privatnosti',
     LegalTerms: '/legalno/uvjeti-koristenja',

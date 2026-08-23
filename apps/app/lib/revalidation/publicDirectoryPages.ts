@@ -2,11 +2,14 @@ import 'server-only';
 
 type PublicDirectoryEntityType =
     | 'block'
+    | 'brand'
     | 'plant'
     | 'plantDisease'
     | 'plantPest'
     | 'plantSort'
-    | 'operation';
+    | 'operation'
+    | 'seed'
+    | 'sunflowerPackage';
 
 const publicWwwRevalidationPath = '/api/revalidate/directories';
 
@@ -15,11 +18,14 @@ function publicDirectoryEntityType(
 ): PublicDirectoryEntityType | null {
     switch (entityTypeName) {
         case 'block':
+        case 'brand':
         case 'plant':
         case 'plantDisease':
         case 'plantPest':
         case 'plantSort':
         case 'operation':
+        case 'seed':
+        case 'sunflowerPackage':
             return entityTypeName;
         default:
             return null;

@@ -9,23 +9,43 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { unacceptOperationAction } from '../../app/(actions)/operationActions';
+import { getOperationScheduleActionFailureMessage } from '../../app/admin/schedule/operationScheduleActionResult';
+import { canUnacceptOperationTask } from '../../app/admin/schedule/scheduleShared';
 
 interface OperationUnacceptButtonProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
+    operationStatus: string;
     operationLabel: string;
 }
 
 export function OperationUnacceptButton({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
+    operationStatus,
     operationLabel,
 }: OperationUnacceptButtonProps) {
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>();
 
     async function handleConfirm() {
         try {
             setIsSubmitting(true);
-            await unacceptOperationAction(operationId);
+            setErrorMessage(undefined);
+            const result = await unacceptOperationAction(
+                operationId,
+                expectedEntityId,
+                expectedTaskVersionEventId,
+            );
+            const actionFailureMessage =
+                getOperationScheduleActionFailureMessage(result);
+            if (actionFailureMessage) {
+                setErrorMessage(actionFailureMessage);
+                return;
+            }
             setOpen(false);
         } catch (error) {
             console.error('Error unaccepting operation:', error);
@@ -37,11 +57,22 @@ export function OperationUnacceptButton({
         }
     }
 
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen) {
+            setErrorMessage(undefined);
+        }
+    }
+
+    if (!canUnacceptOperationTask(operationStatus)) {
+        return null;
+    }
+
     return (
         <Modal
             title="Poništavanje potvrde radnje"
             open={open}
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             trigger={
                 <IconButton
                     variant="plain"
@@ -58,6 +89,11 @@ export function OperationUnacceptButton({
                     Jeste li sigurni da želite poništiti potvrdu radnje:{' '}
                     <strong>{operationLabel}</strong>?
                 </Typography>
+                {errorMessage ? (
+                    <Typography level="body2" className="text-red-600">
+                        {errorMessage}
+                    </Typography>
+                ) : null}
                 <Row spacing={2} justifyContent="end">
                     <Button
                         variant="outlined"

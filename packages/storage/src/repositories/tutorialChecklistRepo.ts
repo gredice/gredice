@@ -68,6 +68,7 @@ type TutorialChecklistSignal =
     | 'favoriteAdded'
     | 'futureOperationScheduled'
     | 'gardenRenamed'
+    | 'gardenMadePublic'
     | 'hasOperationHistory'
     | 'paidOrder'
     | 'plantingAchievement10'
@@ -428,6 +429,16 @@ const taskDefinitions = [
         actionTarget: 'garden',
     },
     {
+        key: 'make-garden-public',
+        groupId: 'day-3',
+        title: 'Objavi vrt',
+        description: 'U postavkama vrta uključi javni prikaz vrta.',
+        rewardSunflowers: 500,
+        completion: 'derived',
+        signal: 'gardenMadePublic',
+        actionTarget: 'garden',
+    },
+    {
         key: 'open-plant-database',
         groupId: 'day-3',
         title: 'Otvori bazu biljaka',
@@ -576,6 +587,7 @@ function emptySignals(): TutorialChecklistSignals {
         favoriteAdded: false,
         futureOperationScheduled: false,
         gardenRenamed: false,
+        gardenMadePublic: false,
         harvestAchievement1: false,
         hasOperationHistory: false,
         paidOrder: false,
@@ -707,6 +719,7 @@ async function getTutorialChecklistSignals({
         if (!garden.isSandbox) {
             signals.secondGardenCreated ||=
                 gardens.filter((candidate) => !candidate.isSandbox).length >= 2;
+            signals.gardenMadePublic ||= garden.isPublic;
         }
         for (const raisedBed of garden.raisedBeds) {
             signals.activeRaisedBed ||=

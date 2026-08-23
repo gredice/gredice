@@ -1,0 +1,289 @@
+const MARKDOWN_LINK_DESTINATION_PATTERN = /\]\([^)]*\)/g;
+
+// ECB reference rates fluctuate daily. AI provider prices arrive in USD, so
+// this operational reference can be overridden at runtime where environment
+// configuration is available.
+export const AI_USD_TO_EUR_REFERENCE_RATE = 0.88;
+
+export function convertAiUsdToEur(
+    value: number,
+    rate = AI_USD_TO_EUR_REFERENCE_RATE,
+) {
+    return value * rate;
+}
+
+const RAW_OPERATION_URL_PATTERN =
+    /\b(?:https?:\/\/)?(?:www\.)?gredice\.com\/radnje\/[^\s)\]]+/gi;
+
+const INTERNAL_TERM_REPLACEMENTS = new Map([
+    ['allowedTargetStatuses', 'moguća stanja'],
+    ['availableOperations', 'dostupne radnje'],
+    ['blockNote', 'bilješka o blokadi'],
+    ['blockReason', 'razlog blokade'],
+    ['blockReasonLabel', 'razlog blokade'],
+    ['completionNotes', 'bilješka vrtlara'],
+    ['currentFieldWeedLevel', 'razina korova'],
+    ['currentFieldWeedState', 'stanje korova'],
+    ['currentLocation', 'trenutačna lokacija'],
+    ['daysFromDead', 'dani od propadanja'],
+    ['daysFromGrowth', 'dani od nicanja'],
+    ['daysFromHarvest', 'dani od berbe'],
+    ['daysFromReady', 'dani od spremnosti za berbu'],
+    ['daysFromSowing', 'dani od sjetve'],
+    ['deliverySlots', 'termini dostave'],
+    ['isAnalyzedField', 'označeno polje'],
+    ['isFocusField', 'označeno polje'],
+    ['isGreenhouseSeedling', 'presadnica'],
+    ['needsRemoval', 'oznaka za uklanjanje'],
+    ['operationUrlFieldIndex', 'oznaka polja za poveznicu'],
+    ['orderDeadline', 'rok za narudžbu'],
+    ['pastPlantFields', 'ranije biljke'],
+    ['photographySchedule', 'raspored fotografiranja'],
+    ['plantFieldOperationUrlTemplate', 'poveznica za radnju na polju'],
+    ['plantName', 'naziv biljke'],
+    ['plantSortId', 'biljka'],
+    ['plantStatus', 'stanje biljke'],
+    ['positionIndex', 'polje'],
+    ['positionLabel', 'polje'],
+    ['raisedBedOperationUrl', 'poveznica za radnju na gredici'],
+    ['removalRecommendation', 'preporuka za uklanjanje'],
+    ['requestedStatus', 'predloženo stanje'],
+    ['requestedWeedLevel', 'predložena razina korova'],
+    ['sowingLocation', 'mjesto sjetve'],
+    ['toBeRemoved', 'oznaka za uklanjanje'],
+    ['upcomingPhotographyDates', 'sljedeći datumi fotografiranja'],
+    ['weedProposals', 'prijedlozi za korov'],
+]);
+
+export const suncokretUiSurfaces = [
+    'garden',
+    'raised-bed',
+    'raised-bed-details',
+    'plant-details',
+    'weather',
+    'settings',
+] as const;
+
+export const suncokretRaisedBedDetailTabs = [
+    'diary',
+    'operations',
+    'info',
+] as const;
+
+export const suncokretPlantDetailTabs = [
+    'lifecycle',
+    'diary',
+    'operations',
+] as const;
+
+export const suncokretWeatherViews = ['current', 'forecast'] as const;
+
+export const suncokretSettingsSections = [
+    'generalno',
+    'postignuca',
+    'suncokreti',
+    'dostava',
+    'obavijesti',
+    'preporuke',
+    'vrt',
+    'korisnici',
+    'igra',
+    'sigurnost',
+    'zvuk',
+] as const;
+
+export type SuncokretSettingsSection =
+    (typeof suncokretSettingsSections)[number];
+
+export type SuncokretRaisedBedDetailTab =
+    (typeof suncokretRaisedBedDetailTabs)[number];
+
+export type SuncokretPlantDetailTab = (typeof suncokretPlantDetailTabs)[number];
+
+export type SuncokretWeatherView = (typeof suncokretWeatherViews)[number];
+
+export type SuncokretUiContext =
+    | { surface: 'garden' }
+    | { surface: 'raised-bed' }
+    | {
+          surface: 'raised-bed-details';
+          tab: SuncokretRaisedBedDetailTab;
+      }
+    | { surface: 'plant-details'; tab: SuncokretPlantDetailTab }
+    | { surface: 'weather'; view: SuncokretWeatherView }
+    | { surface: 'settings'; section?: SuncokretSettingsSection | null };
+
+const SUNCOKRET_TOOL_PROTOCOL_PATTERN =
+    /<\s*(?:[|｜]\s*){1,2}DSML(?:\s*[|｜]){1,2}/iu;
+const SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN =
+    /^\s*(?:Confirmed\b|I(?:'|’)ll\b|I\s+(?:can|cannot|can't|found|must|need|should|will)\b|Let me\b|The user\b|We need\b)/iu;
+const SUNCOKRET_CROATIAN_ANSWER_START_PATTERN =
+    /\b(?:Da|Evo|Gotovo|Mogu|Možeš|Nažalost|Naravno|Ne|Nisam|Prema|Radnja|Razumijem|U Gredicama|Za ovu|Za tu|Zalijevanje)\b/iu;
+const SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN =
+    /[ \t]+[—–-][ \t]*(?:radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN =
+    /\b(radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN =
+    /\bID\s+(radnje|operacije|biljke|sorte)\s*[:#-]?\s*\d+\b/giu;
+
+export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
+    'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
+
+function internalEntityNameWithoutId(value: string) {
+    switch (value.toLocaleLowerCase('hr')) {
+        case 'radnje':
+            return 'radnju';
+        case 'operacije':
+            return 'operaciju';
+        case 'biljke':
+            return 'biljku';
+        case 'sorte':
+            return 'sortu';
+        default:
+            return value;
+    }
+}
+
+function stripSuncokretInternalEntityIds(value: string) {
+    return value
+        .replace(SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN, '')
+        .replace(SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN, '$1')
+        .replace(SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN, (_match, entity) =>
+            internalEntityNameWithoutId(entity),
+        );
+}
+
+export function sanitizeSuncokretAssistantText(value: string) {
+    const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
+    const protocolSafeText =
+        protocolStart === -1
+            ? value
+            : (() => {
+                  const visibleText = value.slice(0, protocolStart).trimEnd();
+                  return visibleText
+                      ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+                      : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+              })();
+
+    const answerText = SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN.test(
+        protocolSafeText,
+    )
+        ? (() => {
+              const answerStart =
+                  SUNCOKRET_CROATIAN_ANSWER_START_PATTERN.exec(
+                      protocolSafeText,
+                  );
+
+              return answerStart?.index !== undefined
+                  ? protocolSafeText.slice(answerStart.index).trimStart()
+                  : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+          })()
+        : protocolSafeText;
+
+    return stripSuncokretInternalEntityIds(answerText);
+}
+
+function protectMarkdownLinkDestinations(value: string) {
+    const protectedSegments: string[] = [];
+    const text = value.replace(MARKDOWN_LINK_DESTINATION_PATTERN, (segment) => {
+        const token = `__GREDICE_AI_MARKDOWN_DESTINATION_${protectedSegments.length}__`;
+        protectedSegments.push(segment);
+
+        return token;
+    });
+
+    return {
+        text,
+        restore: (nextValue: string) =>
+            protectedSegments.reduce(
+                (restored, segment, index) =>
+                    restored.replace(
+                        `__GREDICE_AI_MARKDOWN_DESTINATION_${index}__`,
+                        segment,
+                    ),
+                nextValue,
+            ),
+    };
+}
+
+function fieldLabelFromPositionIndex(value: string) {
+    const positionIndex = Number.parseInt(value, 10);
+
+    return Number.isFinite(positionIndex) && positionIndex >= 0
+        ? `polje ${positionIndex + 1}`
+        : 'polje';
+}
+
+function fieldLabelFromPositionLabel(value: string) {
+    const positionLabel = Number.parseInt(value, 10);
+
+    return Number.isFinite(positionLabel) && positionLabel > 0
+        ? `polje ${positionLabel}`
+        : 'polje';
+}
+
+function replaceInternalTerms(value: string) {
+    let nextValue = value;
+
+    for (const [term, replacement] of INTERNAL_TERM_REPLACEMENTS) {
+        nextValue = nextValue.replace(
+            new RegExp(`\`?\\b${term}\\b\`?`, 'gi'),
+            replacement,
+        );
+    }
+
+    return nextValue;
+}
+
+export function sanitizeRaisedBedAiMarkdown(markdown: string) {
+    const protectedMarkdown = protectMarkdownLinkDestinations(markdown);
+    let sanitized = protectedMarkdown.text
+        .replace(RAW_OPERATION_URL_PATTERN, 'poveznica za radnju')
+        .replace(
+            /\b(polje\s+\d+)\s*,\s*`?\bpositionIndex\b`?\s*[:=]?\s*-?\d+\b`?/gi,
+            '$1',
+        )
+        .replace(
+            /`?\bpositionIndex\b`?\s*[:=]?\s*(-?\d+)\b`?/gi,
+            (_match, value: string) => fieldLabelFromPositionIndex(value),
+        )
+        .replace(
+            /`?\bpositionLabel\b`?\s*[:=]?\s*(\d+)\b`?/gi,
+            (_match, value: string) => fieldLabelFromPositionLabel(value),
+        )
+        .replace(
+            /`?\b(?:needsRemoval|toBeRemoved)\b`?\s*[:=]?\s*true\b`?/gi,
+            'označeno za uklanjanje',
+        )
+        .replace(
+            /`?\b(?:needsRemoval|toBeRemoved)\b`?\s*[:=]?\s*false\b`?/gi,
+            'nije označeno za uklanjanje',
+        )
+        .replace(
+            /`?\bremovalRecommendation\b`?\s*[:=]?\s*["'`]?označeno za uklanjanje["'`]?/gi,
+            'označeno za uklanjanje',
+        )
+        .replace(
+            /`?\bcurrentLocation\b`?\s*[:=]?\s*["'`]?greenhouse["'`]?/gi,
+            'trenutačno u stakleniku',
+        )
+        .replace(
+            /`?\bcurrentLocation\b`?\s*[:=]?\s*["'`]?raisedBed["'`]?/gi,
+            'trenutačno u gredici',
+        )
+        .replace(
+            /`?\bsowingLocation\b`?\s*[:=]?\s*["'`]?greenhouse["'`]?/gi,
+            'sijano u stakleniku',
+        )
+        .replace(
+            /`?\bsowingLocation\b`?\s*[:=]?\s*["'`]?direct["'`]?/gi,
+            'direktno sijano',
+        );
+
+    sanitized = replaceInternalTerms(sanitized)
+        .replace(/\bpolje\s+(\d+)\s*,\s*polje\s+\1\b/gi, 'polje $1')
+        .replace(/`true`/gi, 'da')
+        .replace(/`false`/gi, 'ne');
+
+    return protectedMarkdown.restore(sanitized);
+}

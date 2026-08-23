@@ -5,7 +5,6 @@ import { Card, CardActions, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Input } from '@gredice/ui/Input';
 import { Check, Copy, Edit, ExternalLink, Info } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
@@ -16,6 +15,7 @@ import { currentAccountKeys } from '../../hooks/useCurrentAccount';
 import { useReferrals } from '../../hooks/useReferrals';
 import { tutorialChecklistKeys } from '../../hooks/useTutorialChecklist';
 import { KnownPages } from '../../knownPages';
+import { GameModal } from '../../shared-ui/game-modal';
 
 async function errorMessageFromResponse(response: Response, fallback: string) {
     const payload: unknown = await response.json().catch(() => null);
@@ -295,7 +295,7 @@ export function ReferralsTab() {
                         />
                     </CardContent>
                 </Card>
-                <Modal
+                <GameModal
                     onOpenChange={setChangeCodeOpen}
                     open={changeCodeOpen}
                     title="Promijeni kod preporuke"
@@ -338,7 +338,7 @@ export function ReferralsTab() {
                             </div>
                         </Stack>
                     </form>
-                </Modal>
+                </GameModal>
                 <Card>
                     <CardContent noHeader>
                         {usedReferral ? (

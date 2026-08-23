@@ -4,6 +4,7 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { DailyRewardOverview } from '../../shared-ui/sunflowers/DailyRewardOverview';
+import { SunflowerPackagesPanel } from '../../shared-ui/sunflowers/SunflowerPackagesPanel';
 import { SunflowersList } from '../../shared-ui/sunflowers/SunflowersList';
 
 export function SunflowersTab() {
@@ -14,7 +15,10 @@ export function SunflowersTab() {
             <Typography level="h4" className="hidden md:block">
                 🌻 Suncokreti
             </Typography>
-            <Stack spacing={2} className="max-h-[calc(100dvh-12rem)]">
+            <Stack
+                spacing={3}
+                className="max-h-[calc(100dvh-12rem)] overflow-y-auto pr-1"
+            >
                 <div className="relative md:mt-0">
                     <span className="absolute text-5xl -top-12 right-6 hidden md:block">
                         <Image
@@ -42,7 +46,8 @@ export function SunflowersTab() {
                         <DailyRewardOverview />
                     </CardContent>
                 </Card>
-                <div className="overflow-y-auto max-h-[calc(100dvh-20rem)] md:max-h-[calc(100dvh-24rem)] rounded-lg text-card-foreground bg-card border shadow-xs p-4">
+                <SunflowerPackagesPanel />
+                <div className="rounded-lg text-card-foreground bg-card border shadow-xs p-4">
                     <SunflowersList />
                 </div>
             </Stack>

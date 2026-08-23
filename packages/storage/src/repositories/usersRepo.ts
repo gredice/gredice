@@ -10,6 +10,7 @@ import { createAccount, storage } from '..';
 import {
     accountUsers,
     gardens,
+    type SelectGarden,
     type UpdateUserInfo,
     userFavorites,
     userLogins,
@@ -44,6 +45,26 @@ export interface OAuthUserData {
     email: string;
     providerUserId: string;
     provider: 'google' | 'facebook';
+}
+
+export class UserDefaultGardenNotAccessibleError extends Error {
+    override name = 'UserDefaultGardenNotAccessibleError';
+
+    constructor(readonly gardenId: number) {
+        super(
+            `Garden ${gardenId.toString()} is not accessible to the user or is deleted`,
+        );
+    }
+}
+
+export class UserDefaultGardenSandboxError extends Error {
+    override name = 'UserDefaultGardenSandboxError';
+
+    constructor(readonly gardenId: number) {
+        super(
+            `Sandbox garden ${gardenId.toString()} cannot be used as the default garden`,
+        );
+    }
 }
 
 export function getUsers() {
@@ -85,6 +106,74 @@ export function updateUser(user: { id: string } & Partial<UpdateUserInfo>) {
             ...user,
         })
         .where(eq(users.id, user.id));
+}
+
+export async function getUserDefaultGarden(
+    userId: string,
+): Promise<SelectGarden | null> {
+    const [result] = await storage()
+        .select({ garden: gardens })
+        .from(users)
+        .innerJoin(gardens, eq(users.defaultGardenId, gardens.id))
+        .innerJoin(
+            accountUsers,
+            and(
+                eq(accountUsers.userId, users.id),
+                eq(accountUsers.accountId, gardens.accountId),
+            ),
+        )
+        .where(
+            and(
+                eq(users.id, userId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isSandbox, false),
+            ),
+        )
+        .limit(1);
+
+    return result?.garden ?? null;
+}
+
+export async function setUserDefaultGarden({
+    gardenId,
+    userId,
+}: {
+    gardenId: number;
+    userId: string;
+}): Promise<SelectGarden> {
+    return storage().transaction(async (tx) => {
+        const [result] = await tx
+            .select({ garden: gardens })
+            .from(gardens)
+            .innerJoin(
+                accountUsers,
+                and(
+                    eq(accountUsers.accountId, gardens.accountId),
+                    eq(accountUsers.userId, userId),
+                ),
+            )
+            .where(eq(gardens.id, gardenId))
+            .limit(1);
+        const garden = result?.garden;
+
+        if (!garden || garden.isDeleted) {
+            throw new UserDefaultGardenNotAccessibleError(gardenId);
+        }
+        if (garden.isSandbox) {
+            throw new UserDefaultGardenSandboxError(gardenId);
+        }
+
+        const [updatedUser] = await tx
+            .update(users)
+            .set({ defaultGardenId: garden.id })
+            .where(eq(users.id, userId))
+            .returning({ id: users.id });
+        if (!updatedUser) {
+            throw new UserDefaultGardenNotAccessibleError(gardenId);
+        }
+
+        return garden;
+    });
 }
 
 export function getUserWithLogins(userName: string) {

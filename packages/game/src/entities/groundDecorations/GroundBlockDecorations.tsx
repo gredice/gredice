@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
     type ActiveDragPreviewTarget,
     createActiveDragPreviewTarget,
@@ -15,23 +15,80 @@ import { getStackHeight } from '../../utils/getStackHeight';
 import {
     type GroundDecorationInstance,
     GroundDecorationInstances,
+    type GroundDecorationWeather,
 } from './GroundDecorationInstances';
 import { getBlockSurfaceDecorations } from './getBlockSurfaceDecorations';
 import { getGroundDecorationBlocks } from './groundDecorationBlocks';
+import { swampGroundDecorationTint } from './groundDecorationConfig';
 
 const blockSurfaceYOffset = 0.2;
 type GroundBlockDecorationsProps = {
     density: number;
+    farmId?: number | null;
     stacks: Stack[] | undefined;
+    weather?: GroundDecorationWeather;
 };
 
 function activeDragTargetKey(target: ActiveDragPreviewTarget) {
     return `${target.stackPosition.x}|${target.stackPosition.z}|${target.blockId}|${target.blockIndex}`;
 }
 
+function numbersEqual(left: number, right: number) {
+    return Math.abs(left - right) <= 0.0001;
+}
+
+function decorationInstancesEqual(
+    left: GroundDecorationInstance[] | undefined,
+    right: GroundDecorationInstance[],
+) {
+    if (left === right) {
+        return true;
+    }
+    if (!left || left.length !== right.length) {
+        return false;
+    }
+
+    return left.every((leftInstance, index) => {
+        const rightInstance = right[index];
+        return (
+            Boolean(rightInstance) &&
+            numbersEqual(leftInstance.alphaTest, rightInstance.alphaTest) &&
+            numbersEqual(leftInstance.height, rightInstance.height) &&
+            numbersEqual(leftInstance.opacity, rightInstance.opacity) &&
+            numbersEqual(
+                leftInstance.position[0],
+                rightInstance?.position[0] ?? Number.NaN,
+            ) &&
+            numbersEqual(
+                leftInstance.position[1],
+                rightInstance?.position[1] ?? Number.NaN,
+            ) &&
+            numbersEqual(
+                leftInstance.position[2],
+                rightInstance?.position[2] ?? Number.NaN,
+            ) &&
+            numbersEqual(leftInstance.rotationZ, rightInstance.rotationZ) &&
+            leftInstance.spriteName === rightInstance.spriteName &&
+            leftInstance.tint === rightInstance.tint
+        );
+    });
+}
+
+function useStableDecorationInstances(instances: GroundDecorationInstance[]) {
+    const previous = useRef<GroundDecorationInstance[] | undefined>(undefined);
+
+    if (!decorationInstancesEqual(previous.current, instances)) {
+        previous.current = instances;
+    }
+
+    return previous.current ?? instances;
+}
+
 export function GroundBlockDecorations({
     density,
+    farmId,
     stacks,
+    weather,
 }: GroundBlockDecorationsProps) {
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
@@ -102,7 +159,7 @@ export function GroundBlockDecorations({
         (sum, block) => sum + block.placements.length,
         0,
     );
-    const decorationInstances = useMemo(() => {
+    const computedDecorationInstances = useMemo(() => {
         const instances: GroundDecorationInstance[] = [];
 
         for (const {
@@ -110,6 +167,7 @@ export function GroundBlockDecorations({
             blockIndex,
             placements,
             stack,
+            surface,
         } of decorationBlocks) {
             const dragPreviewOffset = getActiveDragPreviewTargetPositionOffset(
                 createActiveDragPreviewTarget({
@@ -151,12 +209,19 @@ export function GroundBlockDecorations({
                     rotationZ:
                         placement.kind === 'flower' ? placement.rotation : 0,
                     spriteName: placement.spriteName,
+                    tint:
+                        placement.kind === 'sprite' && surface === 'swamp'
+                            ? swampGroundDecorationTint
+                            : undefined,
                 });
             }
         }
 
         return instances;
     }, [activeDragPreview, blockData, decorationBlocks]);
+    const decorationInstances = useStableDecorationInstances(
+        computedDecorationInstances,
+    );
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -169,5 +234,11 @@ export function GroundBlockDecorations({
         return null;
     }
 
-    return <GroundDecorationInstances instances={decorationInstances} />;
+    return (
+        <GroundDecorationInstances
+            farmId={farmId}
+            instances={decorationInstances}
+            weather={weather}
+        />
+    );
 }

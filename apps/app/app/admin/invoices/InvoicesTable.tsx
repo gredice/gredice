@@ -2,7 +2,6 @@ import { getAllInvoices } from '@gredice/storage';
 import { Chip } from '@gredice/ui/Chip';
 import { ExternalLink } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
-import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
@@ -46,6 +45,10 @@ function getStatusLabel(status: string) {
     }
 }
 
+function formatInvoiceAmount(amount: string, currency: string) {
+    return `${amount}${currency === 'eur' ? '€' : currency}`;
+}
+
 export async function InvoicesTable({
     transactionId,
 }: {
@@ -53,89 +56,119 @@ export async function InvoicesTable({
 }) {
     const invoices = await getAllInvoices({ transactionId });
 
+    if (invoices.length === 0) {
+        return (
+            <div className="p-4">
+                <NoDataPlaceholder>Nema ponuda</NoDataPlaceholder>
+            </div>
+        );
+    }
+
     return (
-        <Table>
-            <Table.Header>
-                <Table.Row>
-                    <Table.Head>Broj ponude</Table.Head>
-                    <Table.Head>Klijent</Table.Head>
-                    <Table.Head>Status</Table.Head>
-                    <Table.Head>Iznos</Table.Head>
-                    <Table.Head>Datum izdavanja</Table.Head>
-                    <Table.Head>Datum dospijeća</Table.Head>
-                    <Table.Head>Transakcija</Table.Head>
-                </Table.Row>
-            </Table.Header>
-            <Table.Body>
-                {invoices.length === 0 && (
-                    <Table.Row>
-                        <Table.Cell colSpan={7}>
-                            <NoDataPlaceholder>Nema ponuda</NoDataPlaceholder>
-                        </Table.Cell>
-                    </Table.Row>
-                )}
-                {invoices.map((invoice) => (
-                    <Table.Row key={invoice.id}>
-                        <Table.Cell>
-                            <Link href={KnownPages.Invoice(invoice.id)}>
-                                {invoice.invoiceNumber}
-                            </Link>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <div>
-                                <Typography>{invoice.billToName}</Typography>
-                                <Typography level="body2">
+        <ul className="min-w-0 divide-y">
+            {invoices.map((invoice) => (
+                <li
+                    key={invoice.id}
+                    className="px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4"
+                >
+                    <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                                <Typography
+                                    component="h3"
+                                    level="body1"
+                                    semiBold
+                                    className="min-w-0"
+                                >
+                                    <Link
+                                        href={KnownPages.Invoice(invoice.id)}
+                                        className="min-w-0 break-words text-primary underline-offset-4 hover:underline"
+                                    >
+                                        {invoice.invoiceNumber}
+                                    </Link>
+                                </Typography>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Chip
+                                        color={getStatusColor(invoice.status)}
+                                        size="sm"
+                                    >
+                                        {getStatusLabel(invoice.status)}
+                                    </Chip>
+                                    <Chip color="success" size="sm">
+                                        {formatInvoiceAmount(
+                                            invoice.totalAmount,
+                                            invoice.currency,
+                                        )}
+                                    </Chip>
+                                </div>
+                            </div>
+                            <div className="min-w-0 space-y-1">
+                                {invoice.billToName && (
+                                    <Typography
+                                        component="div"
+                                        level="body2"
+                                        className="min-w-0 break-words text-foreground"
+                                    >
+                                        {invoice.billToName}
+                                    </Typography>
+                                )}
+                                <Typography
+                                    component="div"
+                                    level="body3"
+                                    className="min-w-0 text-muted-foreground [overflow-wrap:anywhere]"
+                                >
                                     {invoice.billToEmail}
                                 </Typography>
                             </div>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Chip color={getStatusColor(invoice.status)}>
-                                {getStatusLabel(invoice.status)}
-                            </Chip>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <Chip color="success">
-                                {invoice.totalAmount}
-                                {invoice.currency === 'eur'
-                                    ? '€'
-                                    : invoice.currency}
-                            </Chip>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <LocalDateTime time={false}>
-                                {invoice.issueDate}
-                            </LocalDateTime>
-                        </Table.Cell>
-                        <Table.Cell>
-                            <LocalDateTime time={false}>
-                                {invoice.dueDate}
-                            </LocalDateTime>
-                        </Table.Cell>
-                        <Table.Cell>
-                            {invoice.transactionId ? (
-                                <Link
-                                    href={KnownPages.Transaction(
-                                        invoice.transactionId,
-                                    )}
+                        </div>
+                        <div className="flex min-w-0 flex-col gap-2 lg:items-end">
+                            <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-left lg:justify-end lg:text-right">
+                                <Typography
+                                    component="div"
+                                    level="body3"
+                                    className="whitespace-nowrap text-muted-foreground"
                                 >
+                                    Datum izdavanja:{' '}
+                                    <LocalDateTime time={false}>
+                                        {invoice.issueDate}
+                                    </LocalDateTime>
+                                </Typography>
+                                <Typography
+                                    component="div"
+                                    level="body3"
+                                    className="whitespace-nowrap text-muted-foreground"
+                                >
+                                    Datum dospijeća:{' '}
+                                    <LocalDateTime time={false}>
+                                        {invoice.dueDate}
+                                    </LocalDateTime>
+                                </Typography>
+                            </div>
+                            <div className="flex min-w-0 justify-start lg:justify-end">
+                                {invoice.transactionId ? (
                                     <Chip
+                                        href={KnownPages.Transaction(
+                                            invoice.transactionId,
+                                        )}
                                         startDecorator={
                                             <ExternalLink className="size-4 shrink-0" />
                                         }
                                     >
                                         #{invoice.transactionId}
                                     </Chip>
-                                </Link>
-                            ) : (
-                                <NoDataPlaceholder>
-                                    Nema transakcije
-                                </NoDataPlaceholder>
-                            )}
-                        </Table.Cell>
-                    </Table.Row>
-                ))}
-            </Table.Body>
-        </Table>
+                                ) : (
+                                    <NoDataPlaceholder
+                                        center={false}
+                                        className="text-left text-muted-foreground lg:text-right"
+                                    >
+                                        Nema transakcije
+                                    </NoDataPlaceholder>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            ))}
+        </ul>
     );
 }

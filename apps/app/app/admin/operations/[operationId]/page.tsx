@@ -46,8 +46,12 @@ import type { EntityStandardized } from '../../../../lib/@types/EntityStandardiz
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
 import { AcceptOperationModal } from '../../schedule/AcceptOperationModal';
+import { OperationCompletionEvidenceEditModal } from '../../schedule/OperationCompletionEvidenceEditModal';
 import { VerifyOperationModal } from '../../schedule/VerifyOperationModal';
-import { operationDefinitionMatchesTargetScope } from '../operationScope';
+import {
+    activeSelectedPlantingFieldIds,
+    operationDefinitionMatchesTargetScope,
+} from '../operationScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +65,8 @@ function operationStatusLabel(status: string) {
             return 'Čeka verifikaciju';
         case 'completed':
             return 'Završeno';
+        case 'blocked':
+            return 'Blokirano';
         case 'failed':
             return 'Neuspjelo';
         case 'canceled':
@@ -79,6 +85,8 @@ function operationStatusColor(status: string) {
             return 'warning';
         case 'planned':
             return 'info';
+        case 'blocked':
+            return 'error';
         case 'canceled':
         case 'cancelled':
             return 'neutral';
@@ -201,6 +209,13 @@ export default async function OperationDetailsPage({
         raisedBed && operation.raisedBedFieldId
             ? raisedBed.fields.find((f) => f.id === operation.raisedBedFieldId)
             : undefined;
+    const plantOperationTargetBlocked = Boolean(
+        raisedBed &&
+            operation.raisedBedFieldId &&
+            activeSelectedPlantingFieldIds(raisedBed.plantings).has(
+                operation.raisedBedFieldId,
+            ),
+    );
     const operationTitle =
         operationDetails?.information?.label ||
         operationDetails?.information?.name ||
@@ -260,6 +275,7 @@ export default async function OperationDetailsPage({
     const operationAction = {
         id: operation.id,
         entityId: operation.entityId,
+        taskVersionEventId: operation.taskVersionEventId,
         scheduledDate: operation.scheduledDate,
         status: operation.status,
     };
@@ -433,6 +449,58 @@ export default async function OperationDetailsPage({
     );
 
     const outcomeItems: EntityDetailsPropertyListItem[] = [];
+    if (operation.blockReasonLabel) {
+        outcomeItems.push({
+            id: 'block-reason',
+            label: 'Razlog blokade',
+            value: operation.blockReasonLabel,
+        });
+    }
+    if (operation.blockReasonCode) {
+        outcomeItems.push({
+            id: 'block-reason-code',
+            label: 'Kod razloga',
+            value: operation.blockReasonCode,
+            mono: true,
+        });
+    }
+    if (operation.blockedBy) {
+        outcomeItems.push({
+            id: 'blocked-by',
+            label: 'Prijavio',
+            value: (
+                <Link href={KnownPages.User(operation.blockedBy)}>
+                    {operation.blockedBy}
+                </Link>
+            ),
+            mono: true,
+        });
+    }
+    if (operation.blockedAt) {
+        outcomeItems.push({
+            id: 'blocked-at',
+            label: 'Prijavljeno',
+            value: operationDateValue(operation.blockedAt),
+        });
+    }
+    if (operation.blockNote) {
+        outcomeItems.push({
+            id: 'block-note',
+            label: 'Napomena prepreke',
+            value: (
+                <span className="whitespace-pre-wrap">
+                    {operation.blockNote}
+                </span>
+            ),
+        });
+    }
+    if (operation.blockImageUrls && operation.blockImageUrls.length > 0) {
+        outcomeItems.push({
+            id: 'block-image-count',
+            label: 'Fotografije prepreke',
+            value: operation.blockImageUrls.length,
+        });
+    }
     if (operation.completedBy) {
         outcomeItems.push({
             id: 'completed-by',
@@ -564,19 +632,47 @@ export default async function OperationDetailsPage({
                     actions={
                         <Row className="items-center" spacing={2}>
                             {operation.status === 'pendingVerification' && (
-                                <VerifyOperationModal
-                                    operationId={operation.id}
-                                    label={operationTitle}
-                                />
+                                <>
+                                    <OperationCompletionEvidenceEditModal
+                                        operationId={operation.id}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
+                                        label={operationTitle}
+                                        initialNotes={
+                                            operation.completionNotes ?? ''
+                                        }
+                                        initialImageUrls={
+                                            operation.imageUrls ?? []
+                                        }
+                                    />
+                                    <VerifyOperationModal
+                                        operationId={operation.id}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
+                                        label={operationTitle}
+                                    />
+                                </>
                             )}
                             {operation.isAccepted ? (
                                 <OperationUnacceptButton
                                     operationId={operation.id}
+                                    expectedEntityId={operation.entityId}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
+                                    operationStatus={operation.status}
                                     operationLabel={operationTitle}
                                 />
                             ) : (
                                 <AcceptOperationModal
                                     operationId={operation.id}
+                                    expectedEntityId={operation.entityId}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
+                                    operationStatus={operation.status}
                                     label={operationTitle}
                                     disabled={!operation.assignedUserId}
                                     raisedBedPhysicalId={
@@ -587,8 +683,15 @@ export default async function OperationDetailsPage({
                             <OperationSwitchButton
                                 operationId={operation.id}
                                 currentEntityId={operation.entityId}
+                                taskVersionEventId={
+                                    operation.taskVersionEventId
+                                }
+                                operationStatus={operation.status}
                                 operationLabel={operationTitle}
                                 operationOptions={operationSwitchOptions}
+                                plantOperationTargetBlocked={
+                                    plantOperationTargetBlocked
+                                }
                             />
                             <OperationRescheduleButton
                                 operation={operationAction}
@@ -676,6 +779,31 @@ export default async function OperationDetailsPage({
                                                     (url) => ({
                                                         src: url,
                                                         alt: `Slika radnje ${operation.id}`,
+                                                    }),
+                                                )}
+                                                previewWidth={200}
+                                                previewHeight={150}
+                                                previewVariant="carousel"
+                                            />
+                                        </Row>
+                                    </CardOverflow>
+                                </Card>
+                            )}
+                        {operation.blockImageUrls &&
+                            operation.blockImageUrls.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">
+                                            Fotografije prepreke
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardOverflow>
+                                        <Row className="w-full" spacing={4}>
+                                            <ImageGallery
+                                                images={operation.blockImageUrls.map(
+                                                    (url, index) => ({
+                                                        src: url,
+                                                        alt: `Fotografija prepreke ${index + 1} za radnju ${operation.id}`,
                                                     }),
                                                 )}
                                                 previewWidth={200}

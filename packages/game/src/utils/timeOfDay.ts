@@ -1,9 +1,11 @@
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import { ALWAYS_DAY_TIME } from './dayNightCycle';
 
 const sunriseValue = 0.2;
 const sunsetValue = 0.8;
 const minutesPerDay = 24 * 60;
+const fallbackSunriseHour = 6;
+const fallbackSunsetHour = 18;
 
 export const defaultGameLocation = { lat: 45.739, lon: 16.572 };
 
@@ -20,12 +22,22 @@ function dateToMinutes(date: Date) {
     return date.getHours() * 60 + date.getMinutes();
 }
 
+function createDateAtHour(date: Date, hour: number) {
+    const nextDate = new Date(date);
+    nextDate.setHours(hour, 0, 0, 0);
+    return nextDate;
+}
+
 export function getGameSunriseSunset(
     { lat, lon }: GameLocation,
     currentTime: Date,
 ) {
     const { sunrise, sunset } = SunCalc.getTimes(currentTime, lat, lon);
-    return { sunrise, sunset };
+
+    return {
+        sunrise: sunrise ?? createDateAtHour(currentTime, fallbackSunriseHour),
+        sunset: sunset ?? createDateAtHour(currentTime, fallbackSunsetHour),
+    };
 }
 
 /**
@@ -65,10 +77,11 @@ export function getGameTimeOfDay(location: GameLocation, currentTime: Date) {
 export function resolveGameTimeOfDay(
     currentTime: Date,
     dayNightCycleDisabled: boolean,
+    location: GameLocation = defaultGameLocation,
 ) {
     return dayNightCycleDisabled
         ? ALWAYS_DAY_TIME
-        : getGameTimeOfDay(defaultGameLocation, currentTime);
+        : getGameTimeOfDay(location, currentTime);
 }
 
 export function createDateForGameTimeOfDay(

@@ -1,0 +1,98 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import test from 'node:test';
+import {
+    createFeedback,
+    feedbacks,
+    storage,
+    updateFeedback,
+} from '@gredice/storage';
+import { eq } from 'drizzle-orm';
+import { createTestDb } from './testDb';
+
+test('updateFeedback changes rating and comment without creating another row', async () => {
+    createTestDb();
+    const topic = `www/test-feedback/${randomUUID()}`;
+    const id = await createFeedback({
+        topic,
+        data: { page: 'plant', userId: 'user-1' },
+        score: '1',
+        comment: null,
+    });
+
+    const updatedFeedback = await updateFeedback(id, {
+        score: '-1',
+        comment: 'Nedostaje detalja.',
+    });
+
+    assert.deepEqual(updatedFeedback, {
+        id,
+        topic,
+        score: '-1',
+    });
+
+    const rows = await storage()
+        .select({
+            id: feedbacks.id,
+            topic: feedbacks.topic,
+            score: feedbacks.score,
+            comment: feedbacks.comment,
+        })
+        .from(feedbacks)
+        .where(eq(feedbacks.topic, topic));
+
+    assert.deepEqual(rows, [
+        {
+            id,
+            topic,
+            score: '-1',
+            comment: 'Nedostaje detalja.',
+        },
+    ]);
+});
+
+test('updateFeedback returns null for an unknown feedback id', async () => {
+    createTestDb();
+
+    const updatedFeedback = await updateFeedback(randomUUID(), {
+        score: '0',
+    });
+
+    assert.equal(updatedFeedback, null);
+});
+
+test('updateFeedback preserves omitted fields', async () => {
+    createTestDb();
+    const topic = `www/test-feedback/${randomUUID()}`;
+    const id = await createFeedback({
+        topic,
+        data: { page: 'pricing' },
+        score: '1',
+        comment: 'Jasno.',
+    });
+
+    const updatedFeedback = await updateFeedback(id, {
+        score: '-1',
+    });
+
+    assert.deepEqual(updatedFeedback, {
+        id,
+        topic,
+        score: '-1',
+    });
+
+    const rows = await storage()
+        .select({
+            score: feedbacks.score,
+            comment: feedbacks.comment,
+        })
+        .from(feedbacks)
+        .where(eq(feedbacks.id, id));
+
+    assert.deepEqual(rows, [
+        {
+            score: '-1',
+            comment: 'Jasno.',
+        },
+    ]);
+});

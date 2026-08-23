@@ -1,20 +1,26 @@
 import 'server-only';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray } from 'drizzle-orm';
 import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
     gardenBlocks,
+    gardenLikes,
     gardenStacks,
     gardens,
     type InsertGarden,
     raisedBeds,
+    type SelectGardenLike,
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import {
+    removeGardenPreviewAndQueueBlobDeletionUsing,
+    toGardenPreviewImage,
+} from './gardenPreviewsRepo';
 import {
     createRaisedBed,
     getRaisedBeds,
@@ -30,6 +36,25 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
+
+export class PublicGardenLikeTargetNotFoundError extends Error {
+    constructor(gardenId: number) {
+        super(`Public garden was not found: ${gardenId.toString()}`);
+        this.name = 'PublicGardenLikeTargetNotFoundError';
+    }
+}
+
+export class CannotLikeOwnGardenError extends Error {
+    constructor(gardenId: number) {
+        super(`Cannot like own garden: ${gardenId.toString()}`);
+        this.name = 'CannotLikeOwnGardenError';
+    }
+}
+
+export type GardenLikeState = {
+    liked: boolean;
+    likeCount: number;
+};
 
 export async function createGarden(garden: InsertGarden) {
     const createdGarden = (
@@ -76,9 +101,9 @@ export async function createDefaultGardenForAccount({
         name: trimmedName || 'Moj vrt',
     });
 
-    // Assign 4x3 grid of grass blocks with origin-centered coordinates and two raised beds near the center
+    // Assign a 4x3 grass grid and one 1x2 raised bed near the center.
     // Grid: x = -1..2, y = -1..1
-    // Raised beds are placed at coordinates (0,0) and (1,0)
+    // The raised bed is anchored at (0,0) and rotated across (1,0).
     for (let x = -1; x < 3; x++) {
         for (let y = -1; y < 2; y++) {
             // Create base block
@@ -88,11 +113,15 @@ export async function createDefaultGardenForAccount({
             await createGardenStack(gardenId, { x, y });
 
             const blockIds = [blockId];
-            if ((x === 0 && y === 0) || (x === 1 && y === 0)) {
+            if (x === 0 && y === 0) {
                 const raisedBedBlockId = await createGardenBlock(
                     gardenId,
                     'Raised_Bed',
                 );
+                await updateGardenBlock(gardenId, {
+                    id: raisedBedBlockId,
+                    rotation: 1,
+                });
                 await createRaisedBed({
                     accountId,
                     gardenId,
@@ -126,6 +155,21 @@ export async function getGardens() {
     });
 }
 
+export async function getPublicGardens() {
+    const publicGardens = await storage().query.gardens.findMany({
+        where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
+        orderBy: desc(gardens.updatedAt),
+        with: {
+            preview: true,
+        },
+    });
+
+    return publicGardens.map(({ preview, ...garden }) => ({
+        ...garden,
+        previewImage: toGardenPreviewImage(preview),
+    }));
+}
+
 export async function getAccountGardensMetadata(accountId: string) {
     return storage().query.gardens.findMany({
         where: and(
@@ -135,8 +179,11 @@ export async function getAccountGardensMetadata(accountId: string) {
     });
 }
 
-export async function accountHasActiveRaisedBed(accountId: string) {
-    const result = await storage()
+export async function accountHasActiveRaisedBed(
+    accountId: string,
+    db: DatabaseClient = storage(),
+) {
+    const result = await db
         .select({ count: count() })
         .from(raisedBeds)
         .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
@@ -150,6 +197,26 @@ export async function accountHasActiveRaisedBed(accountId: string) {
         );
 
     return (result[0]?.count ?? 0) > 0;
+}
+
+export async function countActiveRaisedBedsForGarden(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    const result = await db
+        .select({ count: count() })
+        .from(raisedBeds)
+        .innerJoin(gardens, eq(raisedBeds.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardens.id, gardenId),
+                eq(gardens.isDeleted, false),
+                eq(raisedBeds.status, 'active'),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        );
+
+    return result[0]?.count ?? 0;
 }
 
 export async function getAccountGardens(
@@ -181,6 +248,7 @@ export async function getGarden(gardenId: number) {
             where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
             with: {
                 farm: true,
+                preview: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
@@ -191,18 +259,208 @@ export async function getGarden(gardenId: number) {
     if (!garden) {
         return null;
     }
+    const { preview, ...gardenData } = garden;
+
     // Attach raised beds with event-sourced info
     return {
-        ...garden,
+        ...gardenData,
+        previewImage: toGardenPreviewImage(preview),
         raisedBeds,
     };
 }
 
-export async function updateGarden(garden: UpdateGarden) {
+export async function getPublicGarden(gardenId: number) {
+    const [garden, raisedBeds] = await Promise.all([
+        storage().query.gardens.findFirst({
+            where: and(
+                eq(gardens.id, gardenId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+            with: {
+                farm: true,
+                preview: true,
+                stacks: {
+                    where: eq(gardenStacks.isDeleted, false),
+                },
+            },
+        }),
+        getRaisedBeds(gardenId),
+    ]);
+    if (!garden) {
+        return null;
+    }
+
+    const { preview, ...gardenData } = garden;
+
+    return {
+        ...gardenData,
+        previewImage: toGardenPreviewImage(preview),
+        raisedBeds,
+    };
+}
+
+export async function listUserGardenLikes({
+    userId,
+}: {
+    userId: string;
+}): Promise<SelectGardenLike[]> {
+    return storage()
+        .select({
+            id: gardenLikes.id,
+            userId: gardenLikes.userId,
+            gardenId: gardenLikes.gardenId,
+            createdAt: gardenLikes.createdAt,
+            updatedAt: gardenLikes.updatedAt,
+        })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                eq(gardenLikes.userId, userId),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        )
+        .orderBy(
+            desc(gardenLikes.updatedAt),
+            desc(gardenLikes.createdAt),
+            desc(gardenLikes.id),
+        );
+}
+
+export async function getUserLikedGardenIds({
+    gardenIds,
+    userId,
+}: {
+    gardenIds?: number[];
+    userId: string;
+}) {
+    const filters = [eq(gardenLikes.userId, userId)];
+    if (gardenIds) {
+        if (gardenIds.length === 0) {
+            return new Set<number>();
+        }
+        filters.push(inArray(gardenLikes.gardenId, gardenIds));
+    }
+
+    const likes = await storage()
+        .select({ gardenId: gardenLikes.gardenId })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                ...filters,
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        );
+
+    return new Set(likes.map((like) => like.gardenId));
+}
+
+export async function getGardenLikeCounts(gardenIds: number[]) {
+    if (gardenIds.length === 0) {
+        return new Map<number, number>();
+    }
+
+    const rows = await storage()
+        .select({
+            gardenId: gardenLikes.gardenId,
+            count: count(),
+        })
+        .from(gardenLikes)
+        .innerJoin(gardens, eq(gardenLikes.gardenId, gardens.id))
+        .where(
+            and(
+                inArray(gardenLikes.gardenId, gardenIds),
+                eq(gardens.isDeleted, false),
+                eq(gardens.isPublic, true),
+            ),
+        )
+        .groupBy(gardenLikes.gardenId);
+
+    return new Map(rows.map((row) => [row.gardenId, row.count]));
+}
+
+export async function setGardenLike({
+    accountIds,
+    gardenId,
+    liked,
+    userId,
+}: {
+    accountIds: string[];
+    gardenId: number;
+    liked: boolean;
+    userId: string;
+}): Promise<GardenLikeState> {
+    const publicGarden = await storage().query.gardens.findFirst({
+        where: and(
+            eq(gardens.id, gardenId),
+            eq(gardens.isDeleted, false),
+            eq(gardens.isPublic, true),
+        ),
+    });
+
+    if (!publicGarden) {
+        throw new PublicGardenLikeTargetNotFoundError(gardenId);
+    }
+
+    if (accountIds.includes(publicGarden.accountId)) {
+        throw new CannotLikeOwnGardenError(gardenId);
+    }
+
+    if (!liked) {
+        await storage()
+            .delete(gardenLikes)
+            .where(
+                and(
+                    eq(gardenLikes.userId, userId),
+                    eq(gardenLikes.gardenId, gardenId),
+                ),
+            );
+
+        const likeCounts = await getGardenLikeCounts([gardenId]);
+        return {
+            liked: false,
+            likeCount: likeCounts.get(gardenId) ?? 0,
+        };
+    }
+
+    const now = new Date();
     await storage()
-        .update(gardens)
-        .set(garden)
-        .where(eq(gardens.id, garden.id));
+        .insert(gardenLikes)
+        .values({
+            gardenId,
+            userId,
+            updatedAt: now,
+        })
+        .onConflictDoUpdate({
+            target: [gardenLikes.userId, gardenLikes.gardenId],
+            set: {
+                updatedAt: now,
+            },
+        });
+
+    const likeCounts = await getGardenLikeCounts([gardenId]);
+    return {
+        liked: true,
+        likeCount: likeCounts.get(gardenId) ?? 0,
+    };
+}
+
+export async function updateGarden(garden: UpdateGarden) {
+    await storage().transaction(async (tx) => {
+        await tx.update(gardens).set(garden).where(eq(gardens.id, garden.id));
+
+        if (garden.isPublic === false) {
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                garden.id,
+                'garden_unpublished',
+            );
+        }
+    });
 
     if (garden.name) {
         await createEvent(
@@ -215,12 +473,65 @@ export async function updateGarden(garden: UpdateGarden) {
 }
 
 export async function deleteGarden(gardenId: number) {
-    await storage()
-        .update(gardens)
-        .set({ isDeleted: true })
-        .where(eq(gardens.id, gardenId));
+    await storage().transaction(async (tx) => {
+        await tx
+            .update(gardens)
+            .set({ isDeleted: true })
+            .where(eq(gardens.id, gardenId));
+        await removeGardenPreviewAndQueueBlobDeletionUsing(
+            tx,
+            gardenId,
+            'garden_deleted',
+        );
+    });
     await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()));
     await bustScheduleCache();
+}
+
+export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
+    let deleted = false;
+    const activeRaisedBedCount = await storage().transaction(async (tx) => {
+        const activeCount = await countActiveRaisedBedsForGarden(gardenId, tx);
+        if (activeCount > 0) {
+            return activeCount;
+        }
+
+        const [updatedGarden] = await tx
+            .update(gardens)
+            .set({ isDeleted: true })
+            .where(and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)))
+            .returning({ id: gardens.id });
+
+        if (updatedGarden) {
+            deleted = true;
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                gardenId,
+                'garden_deleted',
+            );
+            await createEvent(
+                knownEvents.gardens.deletedV1(gardenId.toString()),
+                tx,
+            );
+        } else {
+            await removeGardenPreviewAndQueueBlobDeletionUsing(
+                tx,
+                gardenId,
+                'garden_deleted',
+            );
+        }
+
+        return 0;
+    });
+
+    if (deleted) {
+        await bustScheduleCache();
+    }
+
+    return {
+        activeRaisedBedCount,
+        deleted,
+    };
 }
 
 export async function getGardenBlocks(gardenId: number) {
@@ -291,13 +602,26 @@ export async function createGardenBlock(
     return blockId;
 }
 
-export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
-    await storage()
+export async function updateGardenBlock(
+    gardenId: number,
+    { id, ...values }: UpdateGardenBlock,
+    db: DatabaseClient = storage(),
+) {
+    const updatedBlocks = await db
         .update(gardenBlocks)
         .set({
             ...values,
         })
-        .where(eq(gardenBlocks.id, id));
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, id),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+
+    return updatedBlocks.length > 0;
 }
 
 export async function deleteGardenBlock(

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { KnownPages } from '../../../../src/KnownPages';
 import { PlantEditorDynamic } from './PlantEditorDynamic';
 
 export const metadata: Metadata = {
@@ -9,9 +10,12 @@ export const metadata: Metadata = {
         'generator',
         '3D',
         'modeliranje',
-        'lsystem',
+        'razvojni model biljke',
         'proceduralno generiranje',
     ],
+    alternates: {
+        canonical: KnownPages.BlockPlantGenerator,
+    },
 };
 
 export default async function BlockPlantGeneratorPage(props: {

@@ -1,7 +1,8 @@
+import { Accordion } from '@gredice/ui/Accordion';
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Add } from '@gredice/ui/icons';
+import { Add, Warning } from '@gredice/ui/icons';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,7 +20,11 @@ import { useGardens } from '../../hooks/useGardens';
 import { GardenAccountMenuItems } from '../../hud/GardenAccountMenuItems';
 import { useCurrentGardenIdParam } from '../../useUrlState';
 import { CreateGardenModal } from './CreateGardenModal';
+import { GardenDangerCard } from './GardenDangerCard';
+import { GardenHomeCameraCard } from './GardenHomeCameraCard';
 import { GardenNameCard } from './GardenNameCard';
+import { GardenVisibilityCard } from './GardenVisibilityCard';
+import { RaisedBedAbandonCard } from './RaisedBedAbandonCard';
 
 function NoGardensCard() {
     const [createGardenModalOpen, setCreateGardenModalOpen] = useState(false);
@@ -65,7 +70,7 @@ function GardensSelector() {
     const selectedGarden =
         gardens?.find((g) => g.id === selectedGardenId) ??
         currentGarden ??
-        gardens?.[0];
+        gardens?.find((garden) => !garden.isSandbox);
 
     return (
         <>
@@ -117,9 +122,10 @@ export function GardenTab() {
     } = useGardens();
     const { data: accountGroups, isLoading: accountGroupsLoading } =
         useGardenAccountGroups();
-    const [selectedGardenId] = useCurrentGardenIdParam();
-    const selectedGarden =
-        gardens?.find((g) => g.id === selectedGardenId) ?? gardens?.[0];
+    const { data: currentGarden } = useCurrentGarden();
+    const selectedGarden = gardens?.find(
+        (garden) => garden.id === currentGarden?.id,
+    );
     const hasAnyGarden =
         (gardens?.length ?? 0) > 0 ||
         (accountGroups?.some((group) => group.gardens.length > 0) ?? false);
@@ -137,11 +143,57 @@ export function GardenTab() {
                     <>
                         <GardensSelector />
                         {selectedGarden && (
-                            <GardenNameCard
-                                gardenId={selectedGarden.id}
-                                gardenName={selectedGarden.name}
-                                gardenCreatedAt={selectedGarden.createdAt}
-                            />
+                            <>
+                                <GardenNameCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    gardenCreatedAt={selectedGarden.createdAt}
+                                />
+                                <GardenHomeCameraCard
+                                    gardenId={selectedGarden.id}
+                                    hasHomeCamera={Boolean(
+                                        selectedGarden.homeCamera,
+                                    )}
+                                />
+                                <GardenVisibilityCard
+                                    gardenId={selectedGarden.id}
+                                    gardenName={selectedGarden.name}
+                                    isPublic={selectedGarden.isPublic}
+                                />
+                                <Accordion
+                                    className="[&>div:first-child>button]:rounded-lg [&>div:first-child>button]:border [&>div:first-child>button]:border-red-200 [&>div:first-child>button]:bg-red-50/80 [&>div:first-child>button]:p-4 [&>div:first-child>button]:shadow-xs [&>div:first-child>button]:hover:bg-red-100/80 dark:[&>div:first-child>button]:border-red-900/60 dark:[&>div:first-child>button]:bg-red-950/80 dark:[&>div:first-child>button]:hover:bg-red-950"
+                                    unmountOnExit
+                                    variant="plain"
+                                >
+                                    <Row
+                                        alignItems="start"
+                                        className="min-w-0"
+                                        spacing={4}
+                                    >
+                                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700 ring-4 ring-red-200/70 dark:bg-red-900/70 dark:text-red-100 dark:ring-red-800/70">
+                                            <Warning className="size-5 shrink-0" />
+                                        </div>
+                                        <Stack className="min-w-0" spacing={1}>
+                                            <Typography level="body1" semiBold>
+                                                Zona opasnosti
+                                            </Typography>
+                                            <Typography level="body2">
+                                                Napuštanje gredice i brisanje
+                                                vrta
+                                            </Typography>
+                                        </Stack>
+                                    </Row>
+                                    <Stack spacing={2}>
+                                        <RaisedBedAbandonCard
+                                            gardenId={selectedGarden.id}
+                                        />
+                                        <GardenDangerCard
+                                            gardenId={selectedGarden.id}
+                                            gardenName={selectedGarden.name}
+                                        />
+                                    </Stack>
+                                </Accordion>
+                            </>
                         )}
                     </>
                 ) : (

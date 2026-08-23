@@ -45,6 +45,11 @@ Implementation spans the admin actions in
 `apps/api/app/api/[...route]/deliveryRoutes.ts` as well as checkout automation in
 `apps/api/lib/stripe/processCheckoutSession.ts`.
 
+Customer-facing run progress uses the separate, preference-aware contract in
+[Delivery notification lifecycle](./delivery-notification-lifecycle.md). This
+contract defines safe events and idempotency before channel templates are wired;
+the Slack workflow above remains unchanged.
+
 ## User registration
 
 Whenever a new account is created—either through the email/password registration

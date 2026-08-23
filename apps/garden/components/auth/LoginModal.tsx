@@ -3,6 +3,7 @@
 import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import {
+    authCurrentUserQueryKeys,
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
@@ -17,6 +18,10 @@ import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import {
+    type GardenOAuthProvider,
+    getGardenOAuthStartUrl,
+} from '../../lib/auth/gardenAuthContinuation';
 import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
@@ -25,24 +30,35 @@ type RegistrationSuccessHref =
     | '/prijava/registracija-uspijesna'
     | '/prijava/registracija-uspijesna?upgrade=1';
 
-type LoginModalProps = {
+export type LoginModalProps = {
     defaultTab?: AuthTab;
     description?: ReactNode;
     dismissible?: boolean;
+    onAuthenticated?: () => void;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
     registrationSuccessHref?: RegistrationSuccessHref;
+    returnTo?: string;
     showBanner?: boolean;
     title?: string;
+};
+
+const authContentTransitionClassName =
+    'w-full animate-in fade-in-0 duration-200 ease-out motion-reduce:duration-[120ms]';
+const authContentDirectionClassNames = {
+    email: 'motion-safe:slide-in-from-bottom-2',
+    providers: 'motion-safe:slide-in-from-top-2',
 };
 
 export default function LoginModal({
     defaultTab = 'login',
     description,
     dismissible = false,
+    onAuthenticated,
     onOpenChange,
     open = true,
     registrationSuccessHref = '/prijava/registracija-uspijesna',
+    returnTo = '/',
     showBanner = true,
     title = 'Prijava',
 }: LoginModalProps = {}) {
@@ -52,6 +68,8 @@ export default function LoginModal({
     const [error, setError] = useState<string>();
     const [activeTab, setActiveTab] = useState<AuthTab>(defaultTab);
     const [emailExpanded, setEmailExpanded] = useState(false);
+    const [shouldAnimateAuthContent, setShouldAnimateAuthContent] =
+        useState(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
@@ -66,6 +84,7 @@ export default function LoginModal({
         setActiveTab(defaultTab);
         setEmailExpanded(false);
         setError(undefined);
+        setShouldAnimateAuthContent(false);
     }, [defaultTab, open]);
 
     const handleLogin = async (email: string, password: string) => {
@@ -83,9 +102,14 @@ export default function LoginModal({
 
         if (response.status === 200) {
             await response.json();
-            await queryClient.invalidateQueries();
-            router.refresh();
-            onOpenChange?.(false);
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: authCurrentUserQueryKeys,
+                }),
+                queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
+            ]);
+            handleOpenChange(false);
+            onAuthenticated?.();
             return;
         } else {
             const json = await response.json();
@@ -174,41 +198,55 @@ export default function LoginModal({
         router.push(registrationSuccessHref);
     };
 
-    const handleOAuthLogin = (provider: 'google' | 'facebook') => {
+    const handleOAuthLogin = (provider: GardenOAuthProvider) => {
         posthog?.capture('user_oauth_started', {
             provider,
             surface: 'garden',
         });
-        const authUrl = new URL(
-            `/api/auth/${provider}`,
-            getBrowserGrediceAppOrigin('api'),
-        );
-        window.location.href = authUrl.toString();
+        window.location.href = getGardenOAuthStartUrl({
+            apiOrigin: getBrowserGrediceAppOrigin('api'),
+            gardenOrigin: window.location.origin,
+            provider,
+            returnTo,
+        });
     };
+
+    function handleOpenChange(nextOpen: boolean) {
+        if (!nextOpen) {
+            setActiveTab(defaultTab);
+            setEmailExpanded(false);
+            setError(undefined);
+            setShouldAnimateAuthContent(false);
+        }
+        onOpenChange?.(nextOpen);
+    }
 
     const handleTabChange = (value: string) => {
         if (value === 'login' || value === 'register') {
+            setShouldAnimateAuthContent(emailExpanded);
             setActiveTab(value);
             setEmailExpanded(false);
             setError(undefined);
         }
     };
 
-    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
+    const handleEmailExpand = () => {
+        setShouldAnimateAuthContent(true);
+        setEmailExpanded(true);
+    };
 
-    if (!open) {
-        return null;
-    }
+    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
+    const authContent = emailExpanded ? 'email' : 'providers';
 
     return (
         <>
-            {showBanner && <LoginBanner />}
+            {open && showBanner ? <LoginBanner /> : null}
             <Modal
                 open={open}
                 title={title}
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
                 dismissible={dismissible}
-                onOpenChange={onOpenChange}
+                onOpenChange={handleOpenChange}
             >
                 <Tabs
                     value={activeTab}
@@ -232,69 +270,99 @@ export default function LoginModal({
                         </Typography>
                     )}
                     <Stack spacing={4} className="mt-4">
-                        {!emailExpanded && (
-                            <Stack spacing={2}>
-                                <GoogleLoginButton
-                                    onClick={() => handleOAuthLogin('google')}
-                                    lastUsed={lastLoginProvider === 'google'}
-                                >
-                                    Google {authActionLabel}
-                                </GoogleLoginButton>
-                                <FacebookLoginButton
-                                    onClick={() => handleOAuthLogin('facebook')}
-                                    lastUsed={lastLoginProvider === 'facebook'}
-                                >
-                                    Facebook {authActionLabel}
-                                </FacebookLoginButton>
-                                <Button
-                                    type="button"
-                                    variant="outlined"
-                                    color="neutral"
-                                    fullWidth
-                                    startDecorator={
-                                        <Mail className="h-4 w-4 shrink-0" />
-                                    }
-                                    onClick={() => setEmailExpanded(true)}
-                                >
-                                    Email {authActionLabel}
-                                </Button>
-                            </Stack>
-                        )}
-                        {emailExpanded && (
-                            <>
-                                <TabsContent value="login" className="mt-0">
-                                    <div className="px-1">
-                                        <Stack spacing={4}>
-                                            <EmailPasswordForm
-                                                onSubmit={handleLogin}
-                                                submitText="Prijava"
-                                            />
-                                            {error && (
-                                                <Alert color="danger">
-                                                    {error}
-                                                </Alert>
-                                            )}
-                                        </Stack>
-                                    </div>
-                                </TabsContent>
-                                <TabsContent value="register" className="mt-0">
-                                    <div className="px-1">
-                                        <Stack spacing={4}>
-                                            <EmailPasswordForm
-                                                onSubmit={handleRegister}
-                                                submitText="Registriraj se"
-                                                registration
-                                            />
-                                            {error && (
-                                                <Alert color="danger">
-                                                    {error}
-                                                </Alert>
-                                            )}
-                                        </Stack>
-                                    </div>
-                                </TabsContent>
-                            </>
-                        )}
+                        <div className="w-full">
+                            <div
+                                key={authContent}
+                                className={
+                                    shouldAnimateAuthContent
+                                        ? `${authContentTransitionClassName} ${authContentDirectionClassNames[authContent]}`
+                                        : 'w-full'
+                                }
+                                data-auth-content={authContent}
+                                data-testid="auth-content-transition"
+                            >
+                                {!emailExpanded ? (
+                                    <Stack spacing={2}>
+                                        <GoogleLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('google')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'google'
+                                            }
+                                        >
+                                            Google {authActionLabel}
+                                        </GoogleLoginButton>
+                                        <FacebookLoginButton
+                                            onClick={() =>
+                                                handleOAuthLogin('facebook')
+                                            }
+                                            lastUsed={
+                                                lastLoginProvider === 'facebook'
+                                            }
+                                        >
+                                            Facebook {authActionLabel}
+                                        </FacebookLoginButton>
+                                        <Button
+                                            type="button"
+                                            variant="outlined"
+                                            color="neutral"
+                                            fullWidth
+                                            startDecorator={
+                                                <Mail className="h-4 w-4 shrink-0" />
+                                            }
+                                            onClick={handleEmailExpand}
+                                        >
+                                            Email {authActionLabel}
+                                        </Button>
+                                    </Stack>
+                                ) : (
+                                    <>
+                                        <TabsContent
+                                            value="login"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={handleLogin}
+                                                        submitText="Prijava"
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                        <TabsContent
+                                            value="register"
+                                            className="mt-0"
+                                        >
+                                            <div className="px-1">
+                                                <Stack spacing={4}>
+                                                    <EmailPasswordForm
+                                                        autoFocusEmail
+                                                        onSubmit={
+                                                            handleRegister
+                                                        }
+                                                        submitText="Registriraj se"
+                                                        registration
+                                                    />
+                                                    {error && (
+                                                        <Alert color="danger">
+                                                            {error}
+                                                        </Alert>
+                                                    )}
+                                                </Stack>
+                                            </div>
+                                        </TabsContent>
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     </Stack>
                 </Tabs>
             </Modal>

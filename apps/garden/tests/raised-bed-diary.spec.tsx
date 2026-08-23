@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
-import { getMinimumDiaryRescheduleDateInput } from '../../../packages/game/src/hooks/useRescheduleDiaryEntry';
 import { RaisedBedDiaryOverflowStory } from './RaisedBedDiaryStory';
 
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
@@ -102,12 +101,12 @@ function expectBaseSchedulingPayload(
     expect(payload).toMatchObject({
         amount: 1,
         cartId: 1,
-        currency: 'eur',
         entityId,
         entityTypeName: 'operation',
         gardenId: TEST_GARDEN_ID,
         raisedBedId: TEST_RAISED_BED_ID,
     });
+    expect(payload.currency).toBeUndefined();
     expect(parseScheduledDate(payload)).toBe(
         new Date(selectedDate).toISOString(),
     );
@@ -132,6 +131,17 @@ function defaultScheduleDateInput() {
     );
 }
 
+function futureScheduleDateInput(daysFromToday: number) {
+    const today = new Date();
+    return formatDateInput(
+        new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() + daysFromToday,
+        ),
+    );
+}
+
 async function expectCalendarDatePicker(scheduleDialog: Locator) {
     await expect(scheduleDialog.locator('[data-event-calendar]')).toBeVisible();
     await expect(scheduleDialog.getByLabel('Željeni datum radnje')).toHaveCount(
@@ -148,6 +158,23 @@ async function expectNoHorizontalOverflow(locator: Locator) {
     }));
 
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+}
+
+async function expectSameControlRow(
+    leftControl: Locator,
+    rightControl: Locator,
+) {
+    const leftBox = await leftControl.boundingBox();
+    const rightBox = await rightControl.boundingBox();
+
+    if (!leftBox || !rightBox) {
+        throw new Error('Expected both controls to be visible');
+    }
+
+    const leftCenterY = leftBox.y + leftBox.height / 2;
+    const rightCenterY = rightBox.y + rightBox.height / 2;
+
+    expect(Math.abs(leftCenterY - rightCenterY)).toBeLessThanOrEqual(8);
 }
 
 async function openSavedAiDiaryEntry(page: Page) {
@@ -230,12 +257,14 @@ test('future planned diary entries expose the in-game reschedule action', async 
 
     await rescheduleButtons.first().click();
 
-    const dateInput = page.getByLabel('Novi datum');
-    await expect(dateInput).toBeVisible();
-    await expect(dateInput).toHaveAttribute(
-        'min',
-        getMinimumDiaryRescheduleDateInput(),
-    );
+    const dateButton = page.getByRole('button', { name: /Novi datum:/ });
+    await expect(dateButton).toBeVisible();
+    await dateButton.click();
+
+    const calendar = page.getByRole('group', { name: 'Kalendar' }).last();
+    await expect(
+        calendar.locator('[data-calendar-date][aria-pressed="true"]'),
+    ).toHaveCount(1);
 });
 
 test('future planned diary entries expose cancel confirmation', async ({
@@ -249,6 +278,12 @@ test('future planned diary entries expose cancel confirmation', async ({
         name: 'Otkaži',
     });
     await expect(cancelButtons).toHaveCount(1);
+
+    const firstEntry = page.locator('[data-diary-entry]').first();
+    await expectSameControlRow(
+        firstEntry.getByRole('button', { name: 'Prerasporedi' }),
+        firstEntry.getByRole('button', { name: 'Otkaži' }),
+    );
 
     await cancelButtons.first().click();
 
@@ -291,7 +326,8 @@ test('saved AI operation links render as scheduling chips', async ({
         scheduleDialog.getByText('Malčiranje gredice', { exact: true }),
     ).toBeVisible();
 
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(2);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {
@@ -319,7 +355,8 @@ test('saved AI plant operation chip schedules the targeted field', async ({
     const scheduleDialog = page.getByRole('dialog', {
         name: 'Zakaži radnju: Zalijevanje biljke',
     });
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(3);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {
@@ -351,7 +388,8 @@ test('saved AI operation scheduling failures stay recoverable', async ({
     const scheduleDialog = page.getByRole('dialog', {
         name: 'Zakaži radnju: Malčiranje gredice',
     });
-    const selectedDate = await expectCalendarDatePicker(scheduleDialog);
+    await expectCalendarDatePicker(scheduleDialog);
+    const selectedDate = futureScheduleDateInput(2);
     await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
 
     expectBaseSchedulingPayload(await scheduledPayload, {

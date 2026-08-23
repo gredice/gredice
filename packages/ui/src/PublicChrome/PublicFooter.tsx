@@ -60,6 +60,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Dostava povrća u Zagrebu',
+                            href: publicChromeHref(
+                                PublicPagePaths.DeliveryZagreb,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Cjenik',
                             href: publicChromeHref(
                                 PublicPagePaths.Pricing,
@@ -111,7 +118,7 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                     ],
                 },
                 {
-                    header: 'Aplikacija',
+                    header: 'Stranice',
                     ctas: [
                         {
                             label: 'Podignuta gredica',
@@ -128,9 +135,51 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             ),
                         },
                         {
+                            label: 'Vrtovi',
+                            href: publicChromeHref(
+                                PublicPagePaths.PublicGardens,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Pozadine',
+                            href: publicChromeHref(
+                                PublicPagePaths.Wallpapers,
+                                linkMode,
+                            ),
+                        },
+                        {
                             label: 'Biljke',
                             href: publicChromeHref(
                                 PublicPagePaths.Plants,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Sjeme',
+                            href: publicChromeHref(
+                                PublicPagePaths.Seeds,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Brendovi sjemena',
+                            href: publicChromeHref(
+                                PublicPagePaths.SeedBrands,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Bolesti',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantDiseases,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'Štetnici',
+                            href: publicChromeHref(
+                                PublicPagePaths.PlantPests,
                                 linkMode,
                             ),
                         },
@@ -218,6 +267,13 @@ function sectionsData(linkMode: PublicChromeLinkMode): SectionData[] {
                             label: 'Natječaji',
                             href: publicChromeHref(
                                 PublicPagePaths.LegalOccasions,
+                                linkMode,
+                            ),
+                        },
+                        {
+                            label: 'AI integracije',
+                            href: publicChromeHref(
+                                PublicPagePaths.MCP,
                                 linkMode,
                             ),
                         },

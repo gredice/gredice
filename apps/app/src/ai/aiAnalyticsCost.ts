@@ -1,3 +1,5 @@
+import { convertAiUsdToEur } from '@gredice/js/ai';
+
 type AiAnalysisUsage = {
     model?: string | null;
     inputTokens?: number | null;
@@ -21,6 +23,15 @@ type AiModelPricing = {
 const TOKENS_PER_MILLION = 1_000_000;
 
 const AI_MODEL_PRICING_USD: Record<string, AiModelPricing> = {
+    'gpt-5.6-terra': {
+        inputUsdPerMillionTokens: 2.5,
+        outputUsdPerMillionTokens: 15,
+        longContext: {
+            inputTokenThreshold: 272_000,
+            inputRateMultiplier: 2,
+            outputRateMultiplier: 1.5,
+        },
+    },
     'gpt-5.5': {
         inputUsdPerMillionTokens: 5,
         outputUsdPerMillionTokens: 30,
@@ -52,7 +63,7 @@ function finiteTokenCount(value: number | null | undefined) {
         : 0;
 }
 
-export function estimateAiAnalysisCostUsd(usage?: AiAnalysisUsage | null) {
+export function estimateAiAnalysisCostEur(usage?: AiAnalysisUsage | null) {
     const model = normalizedOpenAiModel(usage?.model);
     if (!model) return null;
 
@@ -74,25 +85,26 @@ export function estimateAiAnalysisCostUsd(usage?: AiAnalysisUsage | null) {
         pricing.outputUsdPerMillionTokens *
         (longContext?.outputRateMultiplier ?? 1);
 
-    return (
+    const costUsd =
         (inputTokens / TOKENS_PER_MILLION) * inputRate +
-        (outputTokens / TOKENS_PER_MILLION) * outputRate
-    );
+        (outputTokens / TOKENS_PER_MILLION) * outputRate;
+
+    return convertAiUsdToEur(costUsd);
 }
 
-export function sumAiAnalysisCostUsd(events: AiAnalysisEvent[]) {
+export function sumAiAnalysisCostEur(events: AiAnalysisEvent[]) {
     return events.reduce(
-        (sum, event) => sum + (estimateAiAnalysisCostUsd(event.data) ?? 0),
+        (sum, event) => sum + (estimateAiAnalysisCostEur(event.data) ?? 0),
         0,
     );
 }
 
-export function formatAiCostUsd(value: number | null | undefined) {
+export function formatAiCostEur(value: number | null | undefined) {
     if (value == null) return '-';
 
     return new Intl.NumberFormat('hr-HR', {
         style: 'currency',
-        currency: 'USD',
+        currency: 'EUR',
         minimumFractionDigits: 2,
         maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
     }).format(value);

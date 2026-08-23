@@ -98,6 +98,10 @@ async function copyDesktopShellFiles(stageDir, desktopApp) {
         resolve(stageDir, 'main.cjs'),
     );
     await fs.copyFile(
+        resolve(desktopRoot, 'electron/oauth-redirect.cjs'),
+        resolve(stageDir, 'oauth-redirect.cjs'),
+    );
+    await fs.copyFile(
         resolve(desktopRoot, 'electron/preload.cjs'),
         resolve(stageDir, 'preload.cjs'),
     );
@@ -184,6 +188,7 @@ async function writeBuilderConfig(stageDir, desktopApp, electronVersion) {
             'favicon.ico',
             'icon.png',
             'main.cjs',
+            'oauth-redirect.cjs',
             'package.json',
             'preload.cjs',
         ],

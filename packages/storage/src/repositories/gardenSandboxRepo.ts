@@ -8,19 +8,31 @@ import {
     gardens,
     notifications,
     operations,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     raisedBeds,
     shoppingCartItems,
     transactions,
 } from '../schema';
 import { raisedBedFields, raisedBedSensors } from '../schema/gardenSchema';
 import { storage } from '../storage';
+import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
 import { createEvent, knownEvents, knownEventTypes } from './eventsRepo';
 import { getFarms } from './farmsRepo';
+import { removeGardenPreviewAndQueueBlobDeletionUsing } from './gardenPreviewsRepo';
 import {
     createGarden,
     deleteRaisedBedField,
     upsertRaisedBedField,
 } from './gardensRepo';
+import { createLegacyRaisedBedPlantPlaceWithProjection } from './raisedBedPlantingsRepo';
+import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 type CreateDefaultGardenOptions = {
     accountId: string;
@@ -90,6 +102,7 @@ const RAISED_BED_FIELD_EVENT_TYPES = [
     knownEventTypes.raisedBedFields.plantPlace,
     knownEventTypes.raisedBedFields.plantSchedule,
     knownEventTypes.raisedBedFields.plantUpdate,
+    knownEventTypes.raisedBedFields.plantBlock,
     knownEventTypes.raisedBedFields.plantReplaceSort,
 ] as const;
 
@@ -100,8 +113,11 @@ const RAISED_BED_FIELD_EVENT_TYPES = [
  * from a clean slate. This guarantees a single plant cycle and avoids the
  * backdated sow date sorting a replant behind a previous (younger) plant.
  */
-async function deleteRaisedBedFieldEvents(aggregateId: string) {
-    await storage()
+async function deleteRaisedBedFieldEvents(
+    aggregateId: string,
+    db: DatabaseClient = storage(),
+) {
+    await db
         .delete(events)
         .where(
             and(
@@ -109,6 +125,41 @@ async function deleteRaisedBedFieldEvents(aggregateId: string) {
                 inArray(events.type, [...RAISED_BED_FIELD_EVENT_TYPES]),
             ),
         );
+}
+
+async function deleteSandboxPlantingsForField(
+    raisedBedId: number,
+    positionIndex: number,
+    db: DatabaseClient,
+) {
+    const plantingRows = await db
+        .select({ id: raisedBedPlantings.id })
+        .from(raisedBedPlantings)
+        .innerJoin(
+            raisedBedPlantingFields,
+            eq(raisedBedPlantingFields.plantingId, raisedBedPlantings.id),
+        )
+        .innerJoin(
+            raisedBedFields,
+            eq(raisedBedFields.id, raisedBedPlantingFields.raisedBedFieldId),
+        )
+        .where(
+            and(
+                eq(raisedBedFields.raisedBedId, raisedBedId),
+                eq(raisedBedFields.positionIndex, positionIndex),
+            ),
+        );
+    const plantingIds = Array.from(new Set(plantingRows.map((row) => row.id)));
+    if (plantingIds.length === 0) {
+        return;
+    }
+
+    await db
+        .delete(raisedBedPlantingFields)
+        .where(inArray(raisedBedPlantingFields.plantingId, plantingIds));
+    await db
+        .delete(raisedBedPlantings)
+        .where(inArray(raisedBedPlantings.id, plantingIds));
 }
 
 export async function sowSandboxField({
@@ -126,33 +177,65 @@ export async function sowSandboxField({
 }) {
     const aggregateId = `${raisedBedId}|${positionIndex}`;
 
-    await upsertRaisedBedField({ raisedBedId, positionIndex });
-    // Start from a clean slate so the new plant is always the current cycle,
-    // regardless of how far its (backdated) sow date is in the past.
-    await deleteRaisedBedFieldEvents(aggregateId);
-    await createEvent({
-        ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
-            plantSortId: plantSortId.toString(),
-            scheduledDate: null,
-        }),
-        createdAt: sowDate,
+    await storage().transaction(async (tx) => {
+        await upsertRaisedBedField({ raisedBedId, positionIndex }, tx);
+        // Sandbox history is intentionally disposable. Remove its projection
+        // before deleting the source event so reads can never observe an
+        // orphaned legacy planting.
+        await deleteSandboxPlantingsForField(raisedBedId, positionIndex, tx);
+        // Start from a clean slate so the new plant is always the current cycle,
+        // regardless of how far its (backdated) sow date is in the past.
+        await deleteRaisedBedFieldEvents(aggregateId, tx);
+        const [field] = await tx
+            .select({ id: raisedBedFields.id })
+            .from(raisedBedFields)
+            .where(
+                and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    eq(raisedBedFields.positionIndex, positionIndex),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+            )
+            .limit(1);
+        if (!field) {
+            throw new Error('Sandbox raised-bed field was not created.');
+        }
+        await createLegacyRaisedBedPlantPlaceWithProjection(
+            {
+                event: {
+                    ...knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
+                        plantSortId: plantSortId.toString(),
+                        scheduledDate: null,
+                    }),
+                    createdAt: sowDate,
+                },
+                raisedBedFieldId: field.id,
+            },
+            tx,
+        );
+        // A `sowed` status update is what makes the derivation set `plantSowDate`,
+        // which drives the rendered plant age/generation.
+        await createEvent(
+            {
+                ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                    status: 'sowed',
+                }),
+                createdAt: sowDate,
+            },
+            tx,
+        );
+        if (status && status !== 'sowed') {
+            await createEvent(
+                {
+                    ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
+                        status,
+                    }),
+                    createdAt: sowDate,
+                },
+                tx,
+            );
+        }
     });
-    // A `sowed` status update is what makes the derivation set `plantSowDate`,
-    // which drives the rendered plant age/generation.
-    await createEvent({
-        ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-            status: 'sowed',
-        }),
-        createdAt: sowDate,
-    });
-    if (status && status !== 'sowed') {
-        await createEvent({
-            ...knownEvents.raisedBedFields.plantUpdateV1(aggregateId, {
-                status,
-            }),
-            createdAt: sowDate,
-        });
-    }
     await bustScheduleCache();
 }
 
@@ -164,8 +247,11 @@ export async function clearSandboxField(
     raisedBedId: number,
     positionIndex: number,
 ) {
-    await deleteRaisedBedField(raisedBedId, positionIndex);
-    await deleteRaisedBedFieldEvents(`${raisedBedId}|${positionIndex}`);
+    await storage().transaction(async (tx) => {
+        await deleteSandboxPlantingsForField(raisedBedId, positionIndex, tx);
+        await deleteRaisedBedField(raisedBedId, positionIndex, { db: tx });
+        await deleteRaisedBedFieldEvents(`${raisedBedId}|${positionIndex}`, tx);
+    });
     await bustScheduleCache();
 }
 
@@ -294,14 +380,13 @@ async function deleteSandboxShoppingCartItemBatch({
         .where(eq(shoppingCartItems.gardenId, gardenId))
         .limit(batchSize);
     if (byGarden.length > 0) {
-        await storage()
-            .delete(shoppingCartItems)
-            .where(
-                inArray(
-                    shoppingCartItems.id,
-                    byGarden.map((row) => row.id),
-                ),
-            );
+        const itemIds = byGarden.map((row) => row.id);
+        await withCheckoutCartItemLocks(itemIds, async (db) => {
+            await lockAndAssertCartItemsMutable(itemIds, db);
+            await db
+                .delete(shoppingCartItems)
+                .where(inArray(shoppingCartItems.id, itemIds));
+        });
         return byGarden.length;
     }
 
@@ -318,14 +403,13 @@ async function deleteSandboxShoppingCartItemBatch({
         return 0;
     }
 
-    await storage()
-        .delete(shoppingCartItems)
-        .where(
-            inArray(
-                shoppingCartItems.id,
-                byRaisedBed.map((row) => row.id),
-            ),
-        );
+    const itemIds = byRaisedBed.map((row) => row.id);
+    await withCheckoutCartItemLocks(itemIds, async (db) => {
+        await lockAndAssertCartItemsMutable(itemIds, db);
+        await db
+            .delete(shoppingCartItems)
+            .where(inArray(shoppingCartItems.id, itemIds));
+    });
     return byRaisedBed.length;
 }
 
@@ -652,6 +736,54 @@ async function deleteSandboxGardenBlockBatch(
     return rows.length;
 }
 
+async function deleteSandboxRaisedBedPlantingBatch(
+    raisedBedIds: number[],
+    batchSize: number,
+) {
+    if (raisedBedIds.length === 0) {
+        return 0;
+    }
+
+    const membershipRows = await storage()
+        .select({ id: raisedBedPlantingFields.id })
+        .from(raisedBedPlantingFields)
+        .innerJoin(
+            raisedBedPlantings,
+            eq(raisedBedPlantings.id, raisedBedPlantingFields.plantingId),
+        )
+        .where(inArray(raisedBedPlantings.raisedBedId, raisedBedIds))
+        .limit(batchSize);
+    if (membershipRows.length > 0) {
+        await storage()
+            .delete(raisedBedPlantingFields)
+            .where(
+                inArray(
+                    raisedBedPlantingFields.id,
+                    membershipRows.map((row) => row.id),
+                ),
+            );
+        return membershipRows.length;
+    }
+
+    const plantingRows = await storage()
+        .select({ id: raisedBedPlantings.id })
+        .from(raisedBedPlantings)
+        .where(inArray(raisedBedPlantings.raisedBedId, raisedBedIds))
+        .limit(batchSize);
+    if (plantingRows.length === 0) {
+        return 0;
+    }
+    await storage()
+        .delete(raisedBedPlantings)
+        .where(
+            inArray(
+                raisedBedPlantings.id,
+                plantingRows.map((row) => row.id),
+            ),
+        );
+    return plantingRows.length;
+}
+
 async function deleteNextSandboxGardenDependencyBatch(
     garden: typeof gardens.$inferSelect,
     batchSize: number,
@@ -706,6 +838,17 @@ async function deleteNextSandboxGardenDependencyBatch(
     });
     if (inventoryEventRows > 0) {
         return inventoryEventRows;
+    }
+
+    // Planting projections reference both source events and physical fields.
+    // Remove memberships first, then planting rows, before either source is
+    // hard-deleted by the subsequent batches.
+    const plantingRows = await deleteSandboxRaisedBedPlantingBatch(
+        raisedBedIds,
+        batchSize,
+    );
+    if (plantingRows > 0) {
+        return plantingRows;
     }
 
     const fieldEventRows = await deleteSandboxRaisedBedFieldEventBatch(
@@ -800,12 +943,19 @@ export async function deleteSandboxGardenCompletely(
     let batches = 0;
     let deletedRows = 0;
 
-    if (!garden.isDeleted) {
-        await storage()
-            .update(gardens)
-            .set({ isDeleted: true })
-            .where(eq(gardens.id, garden.id));
-    }
+    await storage().transaction(async (tx) => {
+        if (!garden.isDeleted) {
+            await tx
+                .update(gardens)
+                .set({ isDeleted: true })
+                .where(eq(gardens.id, garden.id));
+        }
+        await removeGardenPreviewAndQueueBlobDeletionUsing(
+            tx,
+            garden.id,
+            'garden_deleted',
+        );
+    });
 
     while (batches < maxBatches && Date.now() - startedAt < maxDurationMs) {
         const deletedBatchRows = await deleteNextSandboxGardenDependencyBatch(

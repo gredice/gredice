@@ -21,6 +21,7 @@ import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useNotifications } from '../hooks/useNotifications';
 import { useSetNotificationRead } from '../hooks/useSetNotificationRead';
 import { NoNotificationsPlaceholder } from '../shared-ui/NoNotificationsPlaceholder';
+import { navigateNotificationLink } from './notificationNavigation';
 
 interface NotificationProps {
     read?: boolean;
@@ -79,6 +80,9 @@ function NotificationListItem({
     }, [linkUrl, raisedBed]);
 
     const isRead = Boolean(readAt);
+    const readToggleLabel = isRead
+        ? 'Označi kao nepročitano'
+        : 'Označi kao pročitano';
 
     function handleSetNotificationRead() {
         track('game_notification_read_toggled', {
@@ -111,7 +115,12 @@ function NotificationListItem({
         }
 
         if (computedLinkUrl !== '#') {
-            router.push(computedLinkUrl as Route);
+            navigateNotificationLink({
+                assign: (url) => window.location.assign(url),
+                currentOrigin: window.location.origin,
+                href: computedLinkUrl,
+                push: (url) => router.push(url as Route),
+            });
         }
 
         onNotificationSelected?.();
@@ -164,11 +173,10 @@ function NotificationListItem({
             />
             <button
                 type="button"
-                title={
-                    isRead ? 'Označi kao nepročitano' : 'Označi kao pročitano'
-                }
+                aria-label={readToggleLabel}
+                title={readToggleLabel}
                 className={cx(
-                    'size-4 rounded-full hover:outline outline-offset-2 outline-2 absolute top-2.5 right-2 group',
+                    "absolute top-2.5 right-2 size-4 rounded-full outline-2 outline-offset-2 hover:outline focus-visible:outline group before:absolute before:-inset-3 before:rounded-full before:content-['']",
                     isRead ? 'border' : 'bg-green-600',
                 )}
                 onClick={handleSetNotificationRead}

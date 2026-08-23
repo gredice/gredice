@@ -1,0 +1,98 @@
+diff --git a/dist/lib/ts.mjs b/dist/lib/ts.mjs
+index 8fa9e94..740fb25 100644
+--- a/dist/lib/ts.mjs
++++ b/dist/lib/ts.mjs
+@@ -2 +2 @@ import { parseRef } from '@redocly/openapi-core/lib/ref-utils.js';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/lib/utils.mjs b/dist/lib/utils.mjs
+index c44709d..98bb7e1 100644
+--- a/dist/lib/utils.mjs
++++ b/dist/lib/utils.mjs
+@@ -5 +5 @@ import supportsColor from 'supports-color';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/components-object.mjs b/dist/transform/components-object.mjs
+index da850f3..8ec34f9 100644
+--- a/dist/transform/components-object.mjs
++++ b/dist/transform/components-object.mjs
+@@ -3 +3 @@ import * as changeCase from 'change-case';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/header-object.mjs b/dist/transform/header-object.mjs
+index cfd4204..e5bff75 100644
+--- a/dist/transform/header-object.mjs
++++ b/dist/transform/header-object.mjs
+@@ -2 +2 @@ import { escapePointer } from '@redocly/openapi-core/lib/ref-utils.js';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/index.mjs b/dist/transform/index.mjs
+index e08b18f..32d9a8d 100644
+--- a/dist/transform/index.mjs
++++ b/dist/transform/index.mjs
+@@ -2 +2 @@ import { performance } from 'node:perf_hooks';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/operation-object.mjs b/dist/transform/operation-object.mjs
+index b141847..37b44f7 100644
+--- a/dist/transform/operation-object.mjs
++++ b/dist/transform/operation-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/parameters-array.mjs b/dist/transform/parameters-array.mjs
+index dc20775..072dc1b 100644
+--- a/dist/transform/parameters-array.mjs
++++ b/dist/transform/parameters-array.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/path-item-object.mjs b/dist/transform/path-item-object.mjs
+index 1c449b5..6b4c25a 100644
+--- a/dist/transform/path-item-object.mjs
++++ b/dist/transform/path-item-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/paths-object.mjs b/dist/transform/paths-object.mjs
+index 5e898c3..7fb877e 100644
+--- a/dist/transform/paths-object.mjs
++++ b/dist/transform/paths-object.mjs
+@@ -2 +2 @@ import { performance } from 'node:perf_hooks';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/request-body-object.mjs b/dist/transform/request-body-object.mjs
+index 0f6583f..d8e60c2 100644
+--- a/dist/transform/request-body-object.mjs
++++ b/dist/transform/request-body-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/response-object.mjs b/dist/transform/response-object.mjs
+index 000851a..d315538 100644
+--- a/dist/transform/response-object.mjs
++++ b/dist/transform/response-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/responses-object.mjs b/dist/transform/responses-object.mjs
+index dafb268..3290138 100644
+--- a/dist/transform/responses-object.mjs
++++ b/dist/transform/responses-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/schema-object.mjs b/dist/transform/schema-object.mjs
+index dc20a5c..64752b5 100644
+--- a/dist/transform/schema-object.mjs
++++ b/dist/transform/schema-object.mjs
+@@ -2 +2 @@ import { parseRef } from '@redocly/openapi-core/lib/ref-utils.js';
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';
+diff --git a/dist/transform/webhooks-object.mjs b/dist/transform/webhooks-object.mjs
+index f48a576..02d3c47 100644
+--- a/dist/transform/webhooks-object.mjs
++++ b/dist/transform/webhooks-object.mjs
+@@ -1 +1 @@
+-import ts from 'typescript';
++import ts from '@typescript/typescript6';

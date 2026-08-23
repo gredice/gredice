@@ -3,39 +3,74 @@ import {
     type RaisedBedFieldAssignableFarmUser,
 } from '@gredice/storage';
 import { FarmSchedulePlantingsSection } from './FarmSchedulePlantingsSection';
-import type { FarmScheduleDayData } from './scheduleData';
+import type { FarmSchedulePlantingsDayData } from './scheduleData';
 
 interface FarmSchedulePlantingsSectionContentProps {
-    dayDataPromise: Promise<FarmScheduleDayData>;
+    dayDataPromise: Promise<FarmSchedulePlantingsDayData>;
     plantSortsPromise: ReturnType<
         typeof import('./scheduleData').getFarmSchedulePlantSorts
     >;
+    raisedBedPhotoPreviewByIdPromise: ReturnType<
+        typeof import('./scheduleData').getFarmScheduleRaisedBedPhotoPreviewsForDay
+    >;
+    selectedDateKey: string;
     userId: string;
 }
 
 export async function FarmSchedulePlantingsSectionContent({
     dayDataPromise,
     plantSortsPromise,
+    raisedBedPhotoPreviewByIdPromise,
+    selectedDateKey,
     userId,
 }: FarmSchedulePlantingsSectionContentProps) {
-    const { raisedBeds, scheduledFields } = await dayDataPromise;
+    const { raisedBeds, scheduledFields, scheduledSelectedPlantings } =
+        await dayDataPromise;
 
-    if (scheduledFields.length === 0) {
+    if (
+        scheduledFields.length === 0 &&
+        scheduledSelectedPlantings.length === 0
+    ) {
         return null;
     }
 
-    const [plantSorts, assignableFarmUsersByRaisedBedFieldId] =
-        await Promise.all([
-            plantSortsPromise,
-            getAssignableFarmUsersByRaisedBedFieldIds(
-                scheduledFields.map((field) => field.id),
-            ),
-        ]);
+    const assignedUserByFieldIdPromise =
+        getAssignedUserByFieldId(scheduledFields);
+    const plantSorts = await plantSortsPromise;
+
+    return (
+        <FarmSchedulePlantingsSection
+            raisedBeds={raisedBeds}
+            scheduledFields={scheduledFields}
+            scheduledSelectedPlantings={scheduledSelectedPlantings}
+            plantSorts={plantSorts}
+            userId={userId}
+            assignedUserByFieldIdPromise={assignedUserByFieldIdPromise}
+            raisedBedPhotoPreviewByIdPromise={raisedBedPhotoPreviewByIdPromise}
+            selectedDateKey={selectedDateKey}
+        />
+    );
+}
+
+async function getAssignedUserByFieldId(
+    scheduledFields: FarmSchedulePlantingsDayData['scheduledFields'],
+) {
+    const assignedFields = scheduledFields.filter(
+        (field) => field.assignedUserId,
+    );
+    if (assignedFields.length === 0) {
+        return new Map<number, RaisedBedFieldAssignableFarmUser>();
+    }
+
+    const assignableFarmUsersByRaisedBedFieldId =
+        await getAssignableFarmUsersByRaisedBedFieldIds(
+            assignedFields.map((field) => field.id),
+        );
     const assignedUserByFieldId = new Map<
         number,
         RaisedBedFieldAssignableFarmUser
     >();
-    for (const field of scheduledFields) {
+    for (const field of assignedFields) {
         if (!field.assignedUserId) {
             continue;
         }
@@ -47,13 +82,5 @@ export async function FarmSchedulePlantingsSectionContent({
         }
     }
 
-    return (
-        <FarmSchedulePlantingsSection
-            raisedBeds={raisedBeds}
-            scheduledFields={scheduledFields}
-            plantSorts={plantSorts}
-            userId={userId}
-            assignedUserByFieldId={assignedUserByFieldId}
-        />
-    );
+    return assignedUserByFieldId;
 }

@@ -1,22 +1,22 @@
 import { Alert } from '@gredice/ui/Alert';
+import { BlockImage } from '@gredice/ui/BlockImage';
 import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Camera, Navigate } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useMemo } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
-import { useOperations } from '../../hooks/useOperations';
+import { useOperationDefinitions } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
-import { ButtonGreen } from '../../shared-ui/ButtonGreen';
-import { sortNewestFirst } from '../GardenOperationsHud';
+import { GameModal } from '../../shared-ui/game-modal';
+import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
 import {
     buildFieldPositionById,
@@ -31,7 +31,7 @@ type RaisedBedPhotosModalProps = {
     raisedBedId: number;
     subjectName: string;
     positionIndex?: number;
-    triggerPlacement?: 'hud' | 'header';
+    triggerPlacement?: 'hud' | 'header' | 'cover';
     hideWhenEmpty?: boolean;
     className?: string;
 };
@@ -69,6 +69,44 @@ function isGenericPhotoOperationName(name: string) {
     return /^fotografiranje\b/iu.test(name.trim());
 }
 
+function RaisedBedPhotoThumbnail({
+    fallback,
+    imageUrl,
+}: {
+    fallback?: ReactNode;
+    imageUrl: string | undefined;
+}) {
+    return (
+        <span className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit]">
+            {imageUrl ? (
+                <>
+                    {/** biome-ignore lint/performance/noImgElement: Operation photos come from runtime data and can use external blob hosts. */}
+                    <img
+                        src={imageUrl}
+                        alt=""
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+                        data-raised-bed-photo-media
+                        loading="lazy"
+                    />
+                </>
+            ) : (
+                <span
+                    className="flex size-full items-center justify-center transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+                    data-raised-bed-photo-media
+                >
+                    {fallback ?? (
+                        <Camera className="size-5 text-muted-foreground" />
+                    )}
+                </span>
+            )}
+            <span
+                className="pointer-events-none absolute inset-0 bg-white/30 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                data-raised-bed-photo-hover-overlay
+            />
+        </span>
+    );
+}
+
 export function RaisedBedPhotosModal({
     gardenId,
     raisedBedId,
@@ -79,7 +117,7 @@ export function RaisedBedPhotosModal({
     className,
 }: RaisedBedPhotosModalProps) {
     const { data: currentGarden } = useCurrentGarden();
-    const { data: operationsData } = useOperations();
+    const { data: operationsData } = useOperationDefinitions();
     const history = useGardenOperations({
         includeCompleted: true,
         pageSize: PHOTO_PAGE_SIZE,
@@ -107,7 +145,7 @@ export function RaisedBedPhotosModal({
     );
     const photoOperations = useMemo(
         () =>
-            sortNewestFirst(
+            sortOperationTasksNewestFirst(
                 history.data?.pages
                     .flatMap((page) => page.items)
                     .filter((operation) => operation.imageUrls.length > 0) ??
@@ -122,6 +160,7 @@ export function RaisedBedPhotosModal({
     const latestImageUrls = Array.from(
         new Set(photoOperations.flatMap((operation) => operation.imageUrls)),
     ).slice(0, 3);
+    const latestImageUrl = latestImageUrls[0];
     const isFieldScoped = typeof positionIndex === 'number';
     const triggerLabel = isFieldScoped
         ? `Fotografije biljke ${subjectName}`
@@ -129,8 +168,10 @@ export function RaisedBedPhotosModal({
     const modalTitle = isFieldScoped
         ? 'Fotografije biljke'
         : 'Fotografije gredice';
+    const shouldSearchOlderPhotos =
+        hideWhenEmpty || triggerPlacement === 'cover';
     const shouldFetchOlderPhotos =
-        hideWhenEmpty &&
+        shouldSearchOlderPhotos &&
         photoCount === 0 &&
         !history.isLoading &&
         !history.isError &&
@@ -149,8 +190,11 @@ export function RaisedBedPhotosModal({
         return null;
     }
 
-    const thumbnail = (
-        <span className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit] bg-card">
+    const stackedThumbnail = (
+        <span
+            className="relative flex size-full items-center justify-center overflow-hidden rounded-[inherit] bg-card transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+            data-raised-bed-photo-media
+        >
             {latestImageUrls.length > 0 ? (
                 latestImageUrls.map((imageUrl, index) => (
                     <span
@@ -180,47 +224,77 @@ export function RaisedBedPhotosModal({
         </span>
     );
 
-    const photoCountBadge =
-        photoCount > 0 ? (
-            <span className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm">
-                {photoCount}
-            </span>
-        ) : null;
     const trigger =
-        triggerPlacement === 'hud' ? (
-            <ButtonGreen
-                variant="plain"
+        triggerPlacement === 'cover' ? (
+            <button
+                type="button"
                 className={cx(
-                    'size-10 rounded-xl p-1 shadow-lg ring-1 ring-black/10',
+                    'group relative inline-flex size-20 shrink-0 items-center justify-center rounded-xl p-0 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2 hover:cursor-zoom-in',
+                    latestImageUrl
+                        ? 'overflow-hidden shadow-sm ring-1 ring-black/10 hover:shadow-md'
+                        : 'overflow-visible',
                     className,
                 )}
                 aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
                 title={triggerLabel}
             >
-                <span className="relative block size-full rounded-[inherit]">
-                    {thumbnail}
-                    {photoCountBadge}
-                </span>
-            </ButtonGreen>
+                <RaisedBedPhotoThumbnail
+                    imageUrl={latestImageUrl}
+                    fallback={
+                        <BlockImage
+                            blockName="Raised_Bed"
+                            width={80}
+                            height={80}
+                            className="size-full"
+                        />
+                    }
+                />
+            </button>
+        ) : triggerPlacement === 'hud' ? (
+            <button
+                type="button"
+                className={cx(
+                    'group relative inline-flex size-10 min-h-10 shrink-0 items-center justify-center overflow-hidden rounded-xl p-0 shadow-sm ring-1 ring-black/10 transition hover:cursor-zoom-in hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    className,
+                )}
+                aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
+                title={triggerLabel}
+            >
+                <RaisedBedPhotoThumbnail imageUrl={latestImageUrl} />
+            </button>
         ) : (
             <button
                 type="button"
                 className={cx(
-                    'relative inline-flex size-14 shrink-0 items-center justify-center rounded-2xl border bg-card p-1 shadow-xs transition hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
+                    'group relative inline-flex size-14 shrink-0 items-center justify-center rounded-2xl border bg-card p-1 shadow-xs transition hover:cursor-zoom-in hover:bg-accent hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2',
                     className,
                 )}
                 aria-label={triggerLabel}
+                data-raised-bed-photo-trigger={triggerPlacement}
                 title={triggerLabel}
             >
-                {thumbnail}
-                {photoCountBadge}
+                {stackedThumbnail}
+                <span
+                    className="pointer-events-none absolute inset-1 rounded-[inherit] bg-white/30 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+                    data-raised-bed-photo-hover-overlay
+                />
+                {photoCount > 0 && (
+                    <span
+                        className="absolute -bottom-1 -right-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground shadow-sm"
+                        data-raised-bed-photo-count
+                    >
+                        {photoCount}
+                    </span>
+                )}
             </button>
         );
 
     return (
-        <Modal
+        <GameModal
             title={modalTitle}
-            className="overflow-x-hidden md:max-w-5xl md:border-tertiary md:border-b-4"
+            className="overflow-x-hidden md:max-w-5xl"
             trigger={trigger}
         >
             <Stack
@@ -399,6 +473,6 @@ export function RaisedBedPhotosModal({
                     </Button>
                 )}
             </Stack>
-        </Modal>
+        </GameModal>
     );
 }

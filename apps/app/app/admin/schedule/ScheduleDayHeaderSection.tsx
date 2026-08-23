@@ -20,11 +20,18 @@ export async function ScheduleDayHeaderSection({
     isToday,
     date,
 }: ScheduleDayHeaderSectionProps) {
-    const [{ scheduledFields, scheduledOperations }, operationsData] =
-        await Promise.all([
-            getScheduleDayData(date.toISOString(), isToday),
-            getScheduleOperationsData(),
-        ]);
+    const [
+        {
+            dateKey,
+            scheduledFields,
+            scheduledOperations,
+            scheduledSelectedPlantings,
+        },
+        operationsData,
+    ] = await Promise.all([
+        getScheduleDayData(date, isToday),
+        getScheduleOperationsData(),
+    ]);
 
     const operationDataById = new Map<number, EntityStandardized>();
     if (operationsData) {
@@ -33,7 +40,10 @@ export async function ScheduleDayHeaderSection({
         }
     }
 
-    const totalTasksCount = scheduledFields.length + scheduledOperations.length;
+    const totalTasksCount =
+        scheduledFields.length +
+        scheduledSelectedPlantings.length +
+        scheduledOperations.length;
     let approvedTasksCount = 0;
     let completedTasksCount = 0;
     let totalDuration = 0;
@@ -49,6 +59,18 @@ export async function ScheduleDayHeaderSection({
             approvedTasksCount += 1;
         }
         if (completed) {
+            completedDuration += PLANTING_TASK_DURATION_MINUTES;
+            completedTasksCount += 1;
+        }
+    }
+
+    for (const { planting } of scheduledSelectedPlantings) {
+        totalDuration += PLANTING_TASK_DURATION_MINUTES;
+        if (planting.selectedTask?.status === 'planned') {
+            approvedDuration += PLANTING_TASK_DURATION_MINUTES;
+            approvedTasksCount += 1;
+        }
+        if (planting.selectedTask?.status === 'completed') {
             completedDuration += PLANTING_TASK_DURATION_MINUTES;
             completedTasksCount += 1;
         }
@@ -77,7 +99,8 @@ export async function ScheduleDayHeaderSection({
     const summaryCopyText = [
         `Sažetak za ${new Intl.DateTimeFormat('hr-HR', {
             dateStyle: 'full',
-        }).format(date)}`,
+            timeZone: 'UTC',
+        }).format(new Date(`${dateKey}T00:00:00.000Z`))}`,
         `Odobreni zadaci: ${approvedTasksCount}`,
         `Odobreno vrijeme: ${formatMinutes(approvedDuration)}`,
     ].join('\n');

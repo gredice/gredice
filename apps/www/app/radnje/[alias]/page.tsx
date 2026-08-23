@@ -11,18 +11,21 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
+import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
+import { getOperationImageViewTransitionName } from '../operationViewTransition';
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
@@ -34,15 +37,18 @@ export async function generateMetadata(
         matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
-        return {
-            title: 'Radnja nije pronađena',
-            description: 'Radnja koju tražiš nije pronađena.',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: operation.information.label,
         description: operation.information.shortDescription,
-    };
+        path: KnownPages.Operation(
+            operation.slug || operation.information.label,
+        ),
+        category: 'Vrtlarska radnja',
+        imageUrl: operation.image?.cover?.url,
+        imageAlt: `Prikaz radnje ${operation.information.label}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -74,32 +80,39 @@ export default async function OperationPage(
     const operationPath = KnownPages.Operation(
         operation.slug || operation.information.label,
     );
+    const priceAvailability = getOperationPriceAvailability(operation);
 
     return (
         <div className="operation-page py-8">
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
-                    '@type': 'Product',
+                    '@type': 'Service',
                     name: operation.information.label,
                     description:
                         operation.information.shortDescription ??
                         operation.information.description,
-                    category: 'Radnja',
+                    serviceType: 'Vrtlarska radnja',
                     image: operation.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
+                    provider: {
+                        '@type': 'Organization',
                         name: 'Gredice',
                     },
                     url: `https://www.gredice.com${operationPath}`,
-                    offers: {
-                        '@type': 'Offer',
-                        price: operation.prices.perOperation.toFixed(2),
-                        priceCurrency: 'EUR',
-                        availability: 'https://schema.org/InStock',
-                        url: `https://www.gredice.com${operationPath}`,
-                        hasMerchantReturnPolicy: merchantReturnPolicy,
-                    },
+                    ...(priceAvailability === 'available'
+                        ? {
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: operation.prices.perOperation.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability: 'https://schema.org/InStock',
+                                  url: `https://www.gredice.com${operationPath}`,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
+                          }
+                        : {}),
                 }}
             />
             <Stack spacing={8}>
@@ -110,7 +123,19 @@ export default async function OperationPage(
                     ]}
                 />
                 <PageHeader
-                    visual={<OperationImage operation={operation} size={192} />}
+                    visual={
+                        <span
+                            className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                            style={{
+                                viewTransitionName:
+                                    getOperationImageViewTransitionName(
+                                        operation.id,
+                                    ),
+                            }}
+                        >
+                            <OperationImage operation={operation} size={192} />
+                        </span>
+                    }
                     header={operation.information.label}
                     subHeader={operation.information.shortDescription}
                 >
@@ -120,10 +145,13 @@ export default async function OperationPage(
                         </Typography>
                         <Stack spacing={2}>
                             <div className="grid grid-cols-2 gap-2">
-                                <AttributeCard
+                                <PriceAttributeCard
                                     icon={<Euro />}
                                     header="Cijena"
-                                    value={`${operation.prices.perOperation.toFixed(2)}€`}
+                                    entityId={operation.id}
+                                    entityTypeName="operation"
+                                    currentPrice={operation.prices.perOperation}
+                                    availability={priceAvailability}
                                 />
                             </div>
                             <Row spacing={1} className="self-end">
@@ -142,16 +170,18 @@ export default async function OperationPage(
                                     }}
                                 />
                             </Row>
-                            <Typography level="body2" secondary>
-                                Nisi zadovoljan uslugom? Dostupan je{' '}
-                                <Link
-                                    className="underline"
-                                    href={KnownPages.Refunds}
-                                >
-                                    povrat novca do 30 dana
-                                </Link>
-                                .
-                            </Typography>
+                            {priceAvailability === 'available' && (
+                                <Typography level="body2" secondary>
+                                    Nisi zadovoljan uslugom? Dostupan je{' '}
+                                    <Link
+                                        className="underline"
+                                        href={KnownPages.Refunds}
+                                    >
+                                        povrat novca do 30 dana
+                                    </Link>
+                                    .
+                                </Typography>
+                            )}
                             {harvestPlantRemovalDescription && (
                                 <Typography level="body2" secondary>
                                     {harvestPlantRemovalDescription}

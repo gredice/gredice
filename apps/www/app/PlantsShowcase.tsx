@@ -34,6 +34,7 @@ export async function PlantsShowcase() {
                     >
                         <PlantsGalleryItem
                             key={plant.information.name}
+                            id={plant.id.toString()}
                             information={plant.information}
                             attributes={plant.attributes}
                             image={plant.image}

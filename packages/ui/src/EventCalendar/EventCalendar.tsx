@@ -77,6 +77,8 @@ const minimumMarkerSize = 18;
 const defaultMarkerSize = 22;
 const maximumMarkerSize = 30;
 const fallbackEntryWeight = 1;
+const todayClassName =
+    'bg-muted font-semibold dark:bg-slate-200 dark:text-slate-950';
 
 const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
     month: 'long',
@@ -458,7 +460,7 @@ function EventCalendarDayView({
                 <span
                     className={cx(
                         'relative grid size-6 place-items-center rounded-full',
-                        isToday && 'bg-muted',
+                        isToday && todayClassName,
                     )}
                     data-event-calendar-today-marker={
                         isToday ? true : undefined
@@ -494,7 +496,7 @@ function EventCalendarDayView({
             {visibleEntries.length > 0 ? (
                 <span
                     aria-hidden
-                    className="absolute top-0.5 left-1/2 flex -translate-x-1/2 gap-0.5"
+                    className="absolute top-0.5 left-1/2 z-20 flex -translate-x-1/2 gap-0.5"
                     data-event-calendar-markers
                 >
                     {visibleEntries.map((entry) => {
@@ -516,7 +518,7 @@ function EventCalendarDayView({
             <span
                 className={cx(
                     'relative z-10 grid size-6 place-items-center rounded-full',
-                    isToday && !isSelected && 'bg-muted',
+                    isToday && !isSelected && todayClassName,
                     isSelected && [
                         'ring-2 ring-offset-2',
                         accentClassNames[accent].selected,

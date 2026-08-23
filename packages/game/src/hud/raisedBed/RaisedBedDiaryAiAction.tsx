@@ -1,6 +1,5 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Modal } from '@gredice/ui/Modal';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -10,8 +9,11 @@ import { AiAnalysisRequestError } from '../../hooks/aiAnalysisError';
 import { useRaisedBedAiAnalysis } from '../../hooks/useRaisedBedAiAnalysis';
 import { useRaisedBedFieldAiAnalysis } from '../../hooks/useRaisedBedFieldAiAnalysis';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
+import { GameModal } from '../../shared-ui/game-modal';
+import { useSuncokretChat } from '../SuncokretChatProvider';
 import { RaisedBedAiOperationMarkdown } from './RaisedBedAiOperationMarkdown';
 import styles from './RaisedBedDiaryAiAction.module.css';
+import { buildRaisedBedAnalysisChatSeed } from './raisedBedAnalysisChatSeed';
 
 type RaisedBedDiaryAiActionProps = {
     gardenId: number;
@@ -57,6 +59,8 @@ export function RaisedBedDiaryAiAction({
         null,
     );
     const requestIdRef = useRef(0);
+    const triggerElementRef = useRef<HTMLElement | null>(null);
+    const chat = useSuncokretChat();
     const raisedBedAnalysis = useRaisedBedAiAnalysis();
     const raisedBedFieldAnalysis = useRaisedBedFieldAiAnalysis();
     const activeMutation =
@@ -196,6 +200,35 @@ export function RaisedBedDiaryAiAction({
         setAnalysisCompletedAt(null);
     }
 
+    function startFollowUpChat() {
+        const anchorElement = triggerElementRef.current;
+        if (!chat || !anchorElement || !visibleMarkdown) {
+            return;
+        }
+
+        setOpen(false);
+        resetPresentation();
+        chat.openChat(
+            {
+                conversationLabel: 'AI analizu fotografija',
+                gardenId,
+                positionIndex: positionIndex ?? null,
+                raisedBedId,
+                seed: buildRaisedBedAnalysisChatSeed({
+                    analysisMarkdown: visibleMarkdown,
+                    id: `raised-bed-analysis-${raisedBedId.toString()}-${Date.now().toString(36)}`,
+                    positionIndex,
+                    referenceDate,
+                }),
+                uiContext:
+                    typeof positionIndex === 'number'
+                        ? { surface: 'plant-details', tab: 'diary' }
+                        : { surface: 'raised-bed-details', tab: 'diary' },
+            },
+            anchorElement,
+        );
+    }
+
     function handleOpenChange(nextOpen: boolean) {
         setOpen(nextOpen);
 
@@ -254,15 +287,18 @@ export function RaisedBedDiaryAiAction({
     const canAnalyzeEntry =
         !latestCompleteHistoryEntry &&
         (phase === 'idle' || (phase === 'error' && errorStatus !== 429));
+    const canContinueInChat =
+        Boolean(chat) && phase === 'done' && visibleMarkdown.length > 0;
 
     return (
         <>
             <Stack spacing={2} className="items-end">
                 <ButtonGreen
                     size="sm"
-                    className="w-fit self-end px-3"
+                    className="w-fit self-end px-3 dark:from-green-700 dark:to-green-800 dark:text-white dark:hover:from-green-600 dark:hover:to-green-700 dark:hover:text-white"
                     onClick={(event) => {
                         event.stopPropagation();
+                        triggerElementRef.current = event.currentTarget;
                         handlePrimaryAction();
                     }}
                     startDecorator={
@@ -279,7 +315,7 @@ export function RaisedBedDiaryAiAction({
                         : 'Pitaj suncokret za savjete'}
                 </ButtonGreen>
             </Stack>
-            <Modal
+            <GameModal
                 open={open}
                 onOpenChange={handleOpenChange}
                 title="AI analiza fotografije"
@@ -466,20 +502,40 @@ export function RaisedBedDiaryAiAction({
                             >
                                 {`Fotografija ${Math.max(imageUrls.indexOf(selectedImageUrl), 0) + 1} od ${imageUrls.length}`}
                             </Typography>
-                            {canAnalyzeEntry && (
-                                <Button
-                                    size="sm"
-                                    variant="outlined"
-                                    loading={activeMutation.isPending}
-                                    onClick={beginAnalysis}
-                                >
-                                    Pokušaj ponovno
-                                </Button>
-                            )}
+                            <Row spacing={2} className="flex-wrap">
+                                {canContinueInChat && (
+                                    <ButtonGreen
+                                        size="sm"
+                                        className="px-3"
+                                        startDecorator={
+                                            <Image
+                                                src="https://cdn.gredice.com/sunflower-large.svg"
+                                                alt=""
+                                                aria-hidden="true"
+                                                width={16}
+                                                height={16}
+                                            />
+                                        }
+                                        onClick={startFollowUpChat}
+                                    >
+                                        Nastavi razgovor
+                                    </ButtonGreen>
+                                )}
+                                {canAnalyzeEntry && (
+                                    <Button
+                                        size="sm"
+                                        variant="outlined"
+                                        loading={activeMutation.isPending}
+                                        onClick={beginAnalysis}
+                                    >
+                                        Pokušaj ponovno
+                                    </Button>
+                                )}
+                            </Row>
                         </Row>
                     </Stack>
                 </div>
-            </Modal>
+            </GameModal>
         </>
     );
 }

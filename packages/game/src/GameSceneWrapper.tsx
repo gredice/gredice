@@ -1,15 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
-import { GameFlagsContext } from './GameFlagsContext';
+import { resetPlacementAnimationProfileMetrics } from './entities/placementAnimationProfileMetrics';
+import { GameRuntimeProvider } from './GameRuntimeProvider';
 import { GameScene, type GameSceneProps } from './GameScene';
-import {
-    createGameState,
-    GameStateContext,
-    type GameStateStore,
-    useDisposeGameStateStore,
-} from './useGameState';
+import { GameProfileController } from './scene/GameProfileController';
 import { preloadGameAssetModels } from './utils/useGameGLTF';
 
 export function GameSceneWrapper({
@@ -19,6 +15,7 @@ export function GameSceneWrapper({
     freezeTime,
     dayNightCycleDisabled,
     initialQualitySetting,
+    enableGameProfileController,
     mockGarden,
     mockGardenProfile,
     localSandboxStorageKey,
@@ -26,44 +23,9 @@ export function GameSceneWrapper({
     winterMode,
     ...rest
 }: GameSceneProps) {
-    const storeRef = useRef<GameStateStore>(null);
-    if (!storeRef.current) {
-        storeRef.current = createGameState({
-            appBaseUrl: appBaseUrl || '',
-            spriteBaseUrl,
-            dayNightCycleDisabled,
-            freezeTime: freezeTime || null,
-            initialQualitySetting,
-            isMock: mockGarden || false,
-            localSandboxStorageKey,
-            localSandboxInitialStacks,
-            mockGardenProfile,
-            winterMode: winterMode ?? 'summer',
-        });
-    }
-    useDisposeGameStateStore(storeRef.current);
-
-    // Sync winterMode prop changes to the store
     useEffect(() => {
-        if (storeRef.current) {
-            storeRef.current.getState().setWinterMode(winterMode ?? 'summer');
-        }
-    }, [winterMode]);
-
-    // Sync freezeTime prop changes to the store
-    useEffect(() => {
-        if (storeRef.current) {
-            storeRef.current.getState().setFreezeTime(freezeTime ?? null);
-        }
-    }, [freezeTime]);
-
-    useEffect(() => {
-        if (initialQualitySetting && storeRef.current) {
-            storeRef.current.setState({
-                gameQualitySetting: initialQualitySetting,
-            });
-        }
-    }, [initialQualitySetting]);
+        resetPlacementAnimationProfileMetrics();
+    }, []);
 
     const resolvedAppBaseUrl = appBaseUrl ?? '';
     preloadGameAssetModels(resolvedAppBaseUrl, groundGameAssetNames);
@@ -78,10 +40,25 @@ export function GameSceneWrapper({
     }, [resolvedAppBaseUrl]);
 
     return (
-        <GameStateContext.Provider value={storeRef.current}>
-            <GameFlagsContext.Provider value={flags ?? {}}>
-                <GameScene flags={flags} {...rest} />
-            </GameFlagsContext.Provider>
-        </GameStateContext.Provider>
+        <GameRuntimeProvider
+            appBaseUrl={appBaseUrl}
+            dayNightCycleDisabled={dayNightCycleDisabled}
+            flags={flags}
+            freezeTime={freezeTime}
+            initialQualitySetting={initialQualitySetting}
+            localSandboxInitialStacks={localSandboxInitialStacks}
+            localSandboxStorageKey={localSandboxStorageKey}
+            mockGarden={mockGarden}
+            mockGardenProfile={mockGardenProfile}
+            spriteBaseUrl={spriteBaseUrl}
+            winterMode={winterMode}
+        >
+            <GameScene
+                enableGameProfileController={enableGameProfileController}
+                flags={flags}
+                {...rest}
+            />
+            {enableGameProfileController ? <GameProfileController /> : null}
+        </GameRuntimeProvider>
     );
 }

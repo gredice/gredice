@@ -15,8 +15,10 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { sortFavoritesFirst, useFavoriteIds } from '../../hooks/useFavorites';
+import type { OutletOfferData } from '../../hooks/useOutletOffers';
 import { usePlants } from '../../hooks/usePlants';
 import { KnownPages } from '../../knownPages';
+import { OutletBadge } from '../components/OutletBadge';
 import { FavoriteToggleButton } from './FavoriteToggleButton';
 import { PlantListItemSkeleton } from './PlantListItemSkeleton';
 import {
@@ -61,6 +63,19 @@ function formatNeighborPlantNames(names: string[]) {
         : visibleNames.join(', ');
 }
 
+const outletCurrencyFormatter = new Intl.NumberFormat('hr-HR', {
+    style: 'currency',
+    currency: 'EUR',
+});
+
+function outletOfferBadgeLabel(outletOffers: OutletOfferData[]) {
+    if (outletOffers.length === 1) {
+        return `Outlet ${outletCurrencyFormatter.format(outletOffers[0].outletPrice)}`;
+    }
+
+    return `Outlet ${outletOffers.length} ponude`;
+}
+
 export function PlantRelationshipSignalChips({
     signal,
 }: {
@@ -101,10 +116,12 @@ export function PlantRelationshipSignalChips({
 export function PlantsList({
     neighborPlants = [],
     onChange,
+    outletOffersByPlantId,
     search,
 }: {
     neighborPlants?: NeighborPlantSummary[];
     onChange: (plant: PlantData) => void;
+    outletOffersByPlantId?: Map<number, OutletOfferData[]>;
     search: string;
 }) {
     const { track } = useGameAnalytics();
@@ -181,6 +198,7 @@ export function PlantsList({
                         <PlantListItemSkeleton key={index} />
                     ))}
                 {sortedPlants?.map((plant) => {
+                    const outletOffers = outletOffersByPlantId?.get(plant.id);
                     const relationshipSignal =
                         relationshipSignalsByPlantId.get(plant.id) ??
                         getPlantRelationshipSignal({
@@ -189,6 +207,7 @@ export function PlantsList({
                         });
                     const { totalPlants } = calculatePlantsPerField(
                         plant.attributes?.seedingDistance,
+                        plant.information.name,
                     );
                     const price = plant.prices?.perPlant
                         ? plant.prices.perPlant.toFixed(2)
@@ -264,6 +283,11 @@ export function PlantsList({
                                 {plant.isRecommended && (
                                     <SeedTimeInformationBadge size="sm" />
                                 )}
+                                {outletOffers?.length ? (
+                                    <OutletBadge>
+                                        {outletOfferBadgeLabel(outletOffers)}
+                                    </OutletBadge>
+                                ) : null}
                                 <PlantRelationshipSignalChips
                                     signal={relationshipSignal}
                                 />

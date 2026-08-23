@@ -27,6 +27,17 @@ import {
 
 // import { signalcoClient } from '@gredice/signalco';
 
+async function getCachedBjelovarForecast() {
+    return grediceCached(
+        grediceCacheKeys.forecastBjelovar,
+        getBjelovarForecast,
+        60 * 60,
+    ).catch((error) => {
+        console.warn('Weather forecast unavailable', { error });
+        return [];
+    });
+}
+
 const app = new Hono()
     .get(
         '/',
@@ -34,11 +45,7 @@ const app = new Hono()
             description: 'Get weather forecast',
         }),
         async (context) => {
-            const forecast = await grediceCached(
-                grediceCacheKeys.forecastBjelovar,
-                getBjelovarForecast,
-                60 * 60,
-            );
+            const forecast = await getCachedBjelovarForecast();
             setCacheControl(context, cacheControlPresets.weatherShortTerm);
             return context.json(forecast ?? []);
         },
@@ -49,11 +56,7 @@ const app = new Hono()
             description: 'Get current weather',
         }),
         async (context) => {
-            const forecast = await grediceCached(
-                grediceCacheKeys.forecastBjelovar,
-                getBjelovarForecast,
-                60 * 60,
-            );
+            const forecast = await getCachedBjelovarForecast();
 
             // const measurements = await grediceCached(grediceCacheKeys.airSensorOpgIb, async () => {
             //     const airSensorData = await signalcoClient().GET('/entity/{id}', { params: { path: { id: '565c2653-b3eb-4a7e-9399-bf5734128e03' } } });

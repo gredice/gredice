@@ -1,7 +1,26 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 
 test.describe.configure({ mode: 'default' });
+
+async function expectPillBorderRadius(locator: Locator) {
+    await expect
+        .poll(async () =>
+            locator.evaluate((element) => {
+                const styles = window.getComputedStyle(element);
+                const radii = [
+                    styles.borderTopLeftRadius,
+                    styles.borderTopRightRadius,
+                    styles.borderBottomRightRadius,
+                    styles.borderBottomLeftRadius,
+                ].map((radius) => Number.parseFloat(radius));
+                const { height } = element.getBoundingClientRect();
+
+                return Math.min(...radii) - height / 2;
+            }),
+        )
+        .toBeGreaterThanOrEqual(0);
+}
 
 async function expectMobileNavActionsDoNotOverlap(page: Page) {
     const cta = page.getByRole('link', { name: 'Moj novi vrt' });
@@ -36,6 +55,58 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
         )
         .toBeLessThanOrEqual(56);
 }
+
+test('public chrome stays inside mobile safe areas', async ({ page }) => {
+    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
+    await page.setViewportSize({ height: 844, width: 390 });
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeArea.bottom,
+            bottomMax: safeArea.bottom,
+            left: safeArea.left,
+            leftMax: safeArea.left,
+            right: safeArea.right,
+            rightMax: safeArea.right,
+            top: safeArea.top,
+            topMax: safeArea.top,
+        },
+    });
+
+    await page.goto('/kontakt', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
+        'content',
+        /viewport-fit=cover/u,
+    );
+
+    const headerBounds = await page.locator('header').boundingBox();
+    expect(headerBounds).not.toBeNull();
+    expect(headerBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(headerBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (headerBounds?.x ?? 0) + (headerBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+
+    await page.getByRole('button', { name: 'Pretraga' }).click();
+    const searchBounds = await page
+        .getByRole('dialog', { name: 'Pretraga' })
+        .boundingBox();
+    expect(searchBounds).not.toBeNull();
+    expect(searchBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(searchBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+    expect(
+        (searchBounds?.x ?? 0) + (searchBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(
+        (searchBounds?.y ?? 0) + (searchBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+
+    await expect(page.locator('.site-footer').locator('..')).toHaveCSS(
+        'padding-bottom',
+        `${safeArea.bottom}px`,
+    );
+});
 
 test('has title', async ({ page }) => {
     // The first `/` hit in a shard pays the Next.js SSR cold-start cost,
@@ -139,6 +210,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
                     const profile = (
                         window as Window & {
                             __grediceGameProfile?: {
+                                adaptiveHighEnabled?: boolean;
                                 dprCap?: number;
                                 qualityTier?: string;
                             };
@@ -146,13 +218,21 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
                     ).__grediceGameProfile;
 
                     return {
-                        dprCap: profile?.dprCap,
+                        adaptiveHighEnabled: profile?.adaptiveHighEnabled,
+                        dprCapIsSupported:
+                            typeof profile?.dprCap === 'number' &&
+                            profile.dprCap >= 1 &&
+                            profile.dprCap <= 2,
                         qualityTier: profile?.qualityTier,
                     };
                 }),
             { timeout: 15_000 },
         )
-        .toEqual({ dprCap: 2, qualityTier: 'high' });
+        .toEqual({
+            adaptiveHighEnabled: true,
+            dprCapIsSupported: true,
+            qualityTier: 'high',
+        });
 
     const canvas = page.locator('canvas');
     const countVisibleCanvasPixels = async () => {
@@ -192,7 +272,7 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toBeGreaterThan(10);
 
     await page.evaluate(() => window.scrollTo(0, 160));
-    await expect(header).toHaveCSS('border-radius', '16px');
+    await expectPillBorderRadius(header);
     await expect(header).toHaveCSS('border-bottom-width', '1px');
     await expectMobileNavActionsDoNotOverlap(page);
 
@@ -210,13 +290,41 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toBeGreaterThanOrEqual(7);
 });
 
-test('desktop floating navbar keeps container width', async ({ page }) => {
+test('desktop floating navbar keeps its width and balanced CTA spacing', async ({
+    page,
+}) => {
+    test.slow();
+
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/');
 
     const header = page.locator('header');
+    const gardenCta = page.getByRole('link', { name: 'Moj novi vrt' });
+    const gardenCtaIcon = gardenCta.locator('svg:visible').last();
+
+    await expect
+        .poll(
+            async () => {
+                const [buttonBox, iconBox] = await Promise.all([
+                    gardenCta.boundingBox(),
+                    gardenCtaIcon.boundingBox(),
+                ]);
+                if (!buttonBox || !iconBox) {
+                    return Number.POSITIVE_INFINITY;
+                }
+
+                const trailingSpace =
+                    buttonBox.x + buttonBox.width - (iconBox.x + iconBox.width);
+                const verticalSpace = (buttonBox.height - iconBox.height) / 2;
+
+                return Math.abs(trailingSpace - verticalSpace);
+            },
+            { timeout: 15_000 },
+        )
+        .toBeLessThanOrEqual(0.5);
+
     await page.evaluate(() => window.scrollTo(0, 160));
-    await expect(header).toHaveCSS('border-radius', '16px');
+    await expectPillBorderRadius(header);
 
     const headerBox = await header.boundingBox();
     expect(headerBox).not.toBeNull();
@@ -232,6 +340,21 @@ test('logged-in landing game morphs into full screen in place', async ({
     page,
 }) => {
     test.slow();
+
+    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
+    const session = await page.context().newCDPSession(page);
+    await session.send('Emulation.setSafeAreaInsetsOverride', {
+        insets: {
+            bottom: safeArea.bottom,
+            bottomMax: safeArea.bottom,
+            left: safeArea.left,
+            leftMax: safeArea.left,
+            right: safeArea.right,
+            rightMax: safeArea.right,
+            top: safeArea.top,
+            topMax: safeArea.top,
+        },
+    });
 
     await page.unroute('**/api/gredice/api/auth/current-claims**');
     await page.route(
@@ -274,4 +397,39 @@ test('logged-in landing game morphs into full screen in place', async ({
     expect(expandedBox.y).toBeLessThanOrEqual(1);
     expect(expandedBox.width).toBeGreaterThanOrEqual(389);
     expect(expandedBox.height).toBeGreaterThanOrEqual(843);
+
+    const topLeftBounds = await scene
+        .locator('[data-game-hud-top-left]')
+        .boundingBox();
+    expect(topLeftBounds).not.toBeNull();
+    expect(topLeftBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
+    expect(topLeftBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+
+    const topRightBounds = await scene
+        .locator('[data-game-hud-top-right]')
+        .boundingBox();
+    expect(topRightBounds).not.toBeNull();
+    expect(
+        (topRightBounds?.x ?? 0) + (topRightBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(topRightBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
+
+    const bottomControlsBounds = await scene
+        .locator('[data-game-hud-bottom-controls]')
+        .boundingBox();
+    expect(bottomControlsBounds).not.toBeNull();
+    expect(
+        (bottomControlsBounds?.y ?? 0) + (bottomControlsBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+
+    const closeBounds = await page
+        .getByRole('button', { name: 'Zatvori prikaz' })
+        .boundingBox();
+    expect(closeBounds).not.toBeNull();
+    expect(
+        (closeBounds?.x ?? 0) + (closeBounds?.width ?? 0),
+    ).toBeLessThanOrEqual(390 - safeArea.right);
+    expect(
+        (closeBounds?.y ?? 0) + (closeBounds?.height ?? 0),
+    ).toBeLessThanOrEqual(844 - safeArea.bottom);
 });

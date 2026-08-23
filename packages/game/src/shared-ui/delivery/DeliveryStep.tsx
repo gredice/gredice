@@ -1,33 +1,23 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { Card, CardContent } from '@gredice/ui/Card';
 import { IconButton } from '@gredice/ui/IconButton';
-import {
-    Edit,
-    Map as MapIcon,
-    Navigate,
-    ShoppingCart,
-    Truck,
-} from '@gredice/ui/icons';
+import { Edit, Info, Navigate } from '@gredice/ui/icons';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Skeleton } from '@gredice/ui/Skeleton';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
-import { useEffect, useState } from 'react';
-import type { useCheckout } from '../../hooks/useCheckout';
+import { useEffect, useMemo, useState } from 'react';
 import { useDeliveryAddresses } from '../../hooks/useDeliveryAddresses';
 import { usePickupLocations } from '../../hooks/usePickupLocations';
-import { useShoppingCart } from '../../hooks/useShoppingCart';
-import { type TimeSlotData, useTimeSlots } from '../../hooks/useTimeSlots';
-import { ButtonConfirmPayment } from '../../hud/components/shopping-cart/ButtonConfirmPayment';
-import { KnownPages } from '../../knownPages';
+import { useTimeSlots } from '../../hooks/useTimeSlots';
+import { DeliveryAddressesSection } from './DeliveryAddressesSection';
 import {
-    AddressCard,
-    DeliveryAddressesSection,
-} from './DeliveryAddressesSection';
+    DeliverySlotPicker,
+    type DeliverySlotPickerSlot,
+} from './DeliverySlotPicker';
+import { isDeliverySlotAvailable } from './deliverySlotAvailability';
 
 export interface DeliverySelectionData {
     mode: 'delivery' | 'pickup';
@@ -37,112 +27,188 @@ export interface DeliverySelectionData {
     notes?: string;
 }
 
+export interface DeliveryStepSummary {
+    mode: 'delivery' | 'pickup';
+    startAt: string;
+    endAt: string;
+    destinationLabel: string;
+}
+
 interface DeliveryStepProps {
+    initialSelection?: DeliverySelectionData | null;
     onSelectionChange: (selection: DeliverySelectionData | null) => void;
     onBack: () => void;
-    onProceed: () => void;
-    checkout: ReturnType<typeof useCheckout>;
+    onProceed: (summary: DeliveryStepSummary) => void;
     isValid: boolean;
 }
 
 export function DeliveryStep({
+    initialSelection,
     onSelectionChange,
     onBack,
-    checkout,
     onProceed,
     isValid,
 }: DeliveryStepProps) {
-    const [selection, setSelection] = useState<DeliverySelectionData>({
-        mode: 'delivery',
-    });
+    const [selection, setSelection] = useState<DeliverySelectionData>(
+        initialSelection ?? {
+            mode: 'delivery',
+        },
+    );
     const [manageAddresses, setManageAddresses] = useState(false);
-    const { data: cart } = useShoppingCart();
+    const [slotRange] = useState(() => {
+        const referenceDate = new Date();
+        const from = new Date(referenceDate);
+        const daysFromMonday = (from.getDay() + 6) % 7;
+        from.setDate(from.getDate() - daysFromMonday);
+        from.setHours(0, 0, 0, 0);
 
+        const to = new Date(referenceDate);
+        to.setMonth(to.getMonth() + 1);
+
+        return {
+            from: from.toISOString(),
+            referenceDate: referenceDate.toISOString(),
+            to: to.toISOString(),
+        };
+    });
     const { data: addresses, isLoading: isLoadingAddresses } =
         useDeliveryAddresses();
-    const { data: pickupLocations } = usePickupLocations();
-
-    // Get available slots based on current selection
+    const {
+        data: pickupLocations,
+        isError: pickupLocationsError,
+        isFetching: pickupLocationsFetching,
+        isPending: pickupLocationsPending,
+        refetch: refetchPickupLocations,
+    } = usePickupLocations();
     const { data: timeSlots, isLoading: slotsLoading } = useTimeSlots({
-        type: selection.mode,
-        locationId:
-            selection.mode === 'pickup' ? selection.locationId : undefined,
-        from: new Date().toISOString(),
-        to: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // Next 14 days
+        from: slotRange.from,
+        includeArchived: true,
+        includeClosed: true,
+        to: slotRange.to,
     });
+    const pickerSlots = useMemo<DeliverySlotPickerSlot[]>(
+        () =>
+            (timeSlots ?? []).flatMap((slot) => {
+                if (slot.type !== 'delivery' && slot.type !== 'pickup') {
+                    return [];
+                }
+
+                return [
+                    {
+                        id: slot.id,
+                        startAt: slot.startAt,
+                        endAt: slot.endAt,
+                        fulfillment: slot.type,
+                        disabled: !isDeliverySlotAvailable(
+                            slot,
+                            slotRange.referenceDate,
+                        ),
+                    },
+                ];
+            }),
+        [slotRange.referenceDate, timeSlots],
+    );
+    const selectedTimeSlot = timeSlots?.find(
+        (slot) => slot.id === selection.slotId,
+    );
+    const selectedAddress = addresses?.find(
+        (address) => address.id === selection.addressId,
+    );
+    const selectedPickupLocation = pickupLocations?.find(
+        (location) =>
+            location.id === selection.locationId &&
+            location.id === selectedTimeSlot?.locationId,
+    );
+    const selectedSlotAvailable =
+        selectedTimeSlot !== undefined &&
+        (selectedTimeSlot.type === 'delivery' ||
+            selectedTimeSlot.type === 'pickup') &&
+        isDeliverySlotAvailable(selectedTimeSlot, slotRange.referenceDate);
+    const canProceed =
+        isValid &&
+        selectedSlotAvailable &&
+        selection.mode === selectedTimeSlot.type &&
+        (selectedTimeSlot.type === 'delivery'
+            ? selectedAddress !== undefined
+            : selectedPickupLocation !== undefined);
+    const pickupDestinationLabel = selectedPickupLocation
+        ? `${selectedPickupLocation.name} — ${selectedPickupLocation.street1}, ${selectedPickupLocation.postalCode} ${selectedPickupLocation.city}`
+        : 'odabranoj lokaciji';
 
     useEffect(() => {
         if (
-            !isLoadingAddresses &&
-            addresses &&
-            addresses.length > 0 &&
-            !selection.addressId
+            selectedTimeSlot?.type !== 'delivery' ||
+            isLoadingAddresses ||
+            !addresses?.length ||
+            addresses.some((address) => address.id === selection.addressId)
         ) {
-            const defaultAddress =
-                addresses.find((a) => a.isDefault) || addresses[0];
-            setSelection((prev) => ({
-                ...prev,
-                addressId: defaultAddress.id,
-            }));
+            return;
         }
-    }, [addresses, isLoadingAddresses, selection.addressId]);
 
-    // Update parent component when selection changes
+        const defaultAddress =
+            addresses.find((address) => address.isDefault) ?? addresses[0];
+
+        setSelection((previous) => ({
+            ...previous,
+            addressId: defaultAddress.id,
+        }));
+    }, [
+        addresses,
+        isLoadingAddresses,
+        selectedTimeSlot?.type,
+        selection.addressId,
+    ]);
+
     useEffect(() => {
         const isComplete =
-            selection.slotId &&
+            typeof selection.slotId === 'number' &&
             (selection.mode === 'delivery'
-                ? selection.addressId
-                : selection.locationId);
+                ? typeof selection.addressId === 'number'
+                : typeof selection.locationId === 'number');
 
         onSelectionChange(isComplete ? selection : null);
     }, [selection, onSelectionChange]);
 
-    const handleModeChange = (mode: 'delivery' | 'pickup') => {
-        setSelection({
-            mode,
-            // Reset mode-specific selections
-            addressId: undefined,
+    function handleSlotChange(slotId: number | undefined) {
+        if (slotId === undefined) {
+            setSelection((previous) => ({
+                ...previous,
+                slotId: undefined,
+            }));
+            return;
+        }
+
+        const slot = timeSlots?.find((candidate) => candidate.id === slotId);
+
+        if (!slot || (slot.type !== 'delivery' && slot.type !== 'pickup')) {
+            return;
+        }
+
+        setSelection((previous) =>
+            slot.type === 'delivery'
+                ? {
+                      ...previous,
+                      mode: 'delivery',
+                      slotId,
+                      locationId: undefined,
+                  }
+                : {
+                      ...previous,
+                      mode: 'pickup',
+                      slotId,
+                      addressId: undefined,
+                      locationId: slot.locationId,
+                  },
+        );
+    }
+
+    function handleAddressChange(addressId: number) {
+        setSelection((previous) => ({
+            ...previous,
+            addressId,
             locationId: undefined,
-            slotId: undefined,
-            notes: selection.notes,
-        });
-    };
-
-    const handleAddressChange = (addressId: number) => {
-        setSelection((prev) => ({ ...prev, addressId, locationId: undefined }));
-    };
-
-    const handleLocationChange = (locationId: number) => {
-        setSelection((prev) => ({ ...prev, locationId, addressId: undefined }));
-    };
-
-    const handleSlotChange = (slotId: number) => {
-        setSelection((prev) => ({ ...prev, slotId }));
-    };
-
-    const formatSlotTime = (slot: TimeSlotData) => {
-        const start = new Date(slot.startAt);
-        const end = new Date(slot.endAt);
-
-        const dayOfWeek = start.toLocaleDateString('hr-HR', {
-            weekday: 'long',
-        });
-        const capitalizedDayOfWeek =
-            dayOfWeek.charAt(0).toUpperCase() + dayOfWeek.slice(1);
-
-        const datePart = start.toLocaleDateString('hr-HR');
-        const timePartStart = start.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-        const timePartEnd = end.toLocaleTimeString('hr-HR', {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-
-        return `${capitalizedDayOfWeek}, ${datePart} ${timePartStart} - ${timePartEnd}`;
-    };
+        }));
+    }
 
     if (manageAddresses) {
         return (
@@ -153,263 +219,153 @@ export function DeliveryStep({
                         variant="plain"
                         onClick={() => setManageAddresses(false)}
                     >
-                        <Navigate className="size-5 rotate-180 shrink-0" />
+                        <Navigate className="size-5 shrink-0 rotate-180" />
                     </IconButton>
                     <Typography level="h3">Upravljanje adresama</Typography>
                 </Row>
-                <div className="overflow-y-auto max-h-[50vh]">
+                <div className="max-h-[50vh] overflow-y-auto">
                     <DeliveryAddressesSection />
                 </div>
             </Stack>
         );
     }
 
-    const selectedAddress = addresses?.find(
-        (a) => a.id === selection.addressId,
-    );
-
     return (
-        <Stack spacing={4}>
-            <Typography level="h3">Način dostave</Typography>
+        <Stack spacing={6}>
+            <DeliverySlotPicker
+                description="Odaberi termin dostave ili osobnog preuzimanja."
+                emptyMessage="Trenutno nema dostupnih termina dostave ili osobnog preuzimanja."
+                label={null}
+                loading={slotsLoading}
+                referenceDate={slotRange.referenceDate}
+                slots={pickerSlots}
+                value={selection.slotId}
+                onValueChange={handleSlotChange}
+            />
 
-            <Alert color="info">
-                Tvoja košara sadrži radnje koje zahtijevaju dostavu ili
-                preuzimanje.
-            </Alert>
-
-            {/* Mode Selection */}
-            <Stack spacing={4}>
-                <Tabs
-                    value={selection.mode}
-                    onValueChange={(value: string) =>
-                        handleModeChange(value as 'delivery' | 'pickup')
-                    }
+            {selectedTimeSlot?.type === 'pickup' && selectedPickupLocation ? (
+                <Alert
+                    color="warning"
+                    startDecorator={<Info className="size-5 shrink-0" />}
                 >
-                    <TabsList className="grid w-full grid-cols-2 border">
-                        <TabsTrigger
-                            value="delivery"
-                            className="flex items-center gap-2"
-                        >
-                            <Truck className="size-4" />
-                            Dostava
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="pickup"
-                            className="flex items-center gap-2"
-                        >
-                            <ShoppingCart className="size-4" />
-                            Preuzimanje
-                        </TabsTrigger>
-                    </TabsList>
+                    <strong>Odabrano je osobno preuzimanje.</strong> Narudžbu
+                    preuzimaš na {pickupDestinationLabel}; neće biti dostavljena
+                    na tvoju adresu.
+                </Alert>
+            ) : null}
 
-                    <TabsContent value="delivery" className="mt-4">
-                        <Stack spacing={6}>
-                            <Stack spacing={4}>
-                                <Stack spacing={2}>
-                                    <Row spacing={2}>
-                                        {isLoadingAddresses ? (
-                                            <Skeleton className="h-10 w-full rounded-md" />
-                                        ) : addresses &&
-                                          addresses.length > 0 ? (
-                                            <SelectItems
-                                                label="Adresa za dostavu"
-                                                placeholder="Odaberi adresu..."
-                                                className="w-full"
-                                                defaultValue={
-                                                    addresses
-                                                        .find(
-                                                            (a) => a.isDefault,
-                                                        )
-                                                        ?.id.toString() || ''
-                                                }
-                                                value={
-                                                    selection.addressId?.toString() ||
-                                                    ''
-                                                }
-                                                onValueChange={(
-                                                    value: string,
-                                                ) =>
-                                                    handleAddressChange(
-                                                        parseInt(value, 10),
-                                                    )
-                                                }
-                                                items={addresses.map(
-                                                    (address) => ({
-                                                        label: `${address.label} - ${address.street1}, ${address.city}`,
-                                                        value: address.id.toString(),
-                                                    }),
-                                                )}
-                                            />
-                                        ) : (
-                                            <NoDataPlaceholder className="grow">
-                                                Dodajte adresu za dostavu da
-                                                biste nastavili s dostavom...
-                                            </NoDataPlaceholder>
-                                        )}
-                                        <Button
-                                            variant={
-                                                !isLoadingAddresses &&
-                                                !addresses?.length
-                                                    ? 'solid'
-                                                    : 'outlined'
-                                            }
-                                            size="sm"
-                                            onClick={() =>
-                                                setManageAddresses(true)
-                                            }
-                                            className="h-10 whitespace-nowrap self-end"
-                                            startDecorator={
-                                                <Edit className="size-4 shrink-0" />
-                                            }
-                                        >
-                                            Moje adrese
-                                        </Button>
-                                    </Row>
-                                </Stack>
-                                {/* Show selected address details */}
-                                {selectedAddress && (
-                                    <AddressCard
-                                        address={selectedAddress}
-                                        key={selection.addressId}
-                                        readonly
-                                    />
-                                )}
-                            </Stack>
-                        </Stack>
-                    </TabsContent>
-                    <TabsContent value="pickup" className="mt-4">
-                        <Stack spacing={6}>
-                            {pickupLocations && pickupLocations.length > 0 ? (
-                                <Stack spacing={4}>
-                                    <SelectItems
-                                        label="Lokacija dostave"
-                                        placeholder="Odaberi lokaciju za preuzimanje..."
-                                        value={
-                                            selection.locationId?.toString() ||
-                                            ''
-                                        }
-                                        onValueChange={(value: string) =>
-                                            handleLocationChange(
-                                                parseInt(value, 10),
-                                            )
-                                        }
-                                        items={pickupLocations.map(
-                                            (location) => ({
-                                                label: `${location.name} - ${location.street1}, ${location.city}`,
-                                                value: location.id.toString(),
-                                            }),
-                                        )}
-                                    />
-                                    {/* Show selected location details */}
-                                    {selection.locationId &&
-                                        pickupLocations.map(
-                                            (location) =>
-                                                selection.locationId ===
-                                                    location.id && (
-                                                    <Card
-                                                        key={location.id}
-                                                        className="bg-background/50"
-                                                    >
-                                                        <CardContent className="p-3">
-                                                            <Row
-                                                                spacing={4}
-                                                                justifyContent="space-between"
-                                                            >
-                                                                <Stack
-                                                                    spacing={2}
-                                                                >
-                                                                    <Typography
-                                                                        level="body1"
-                                                                        bold
-                                                                    >
-                                                                        {
-                                                                            location.name
-                                                                        }
-                                                                    </Typography>
-                                                                    <Typography
-                                                                        level="body3"
-                                                                        secondary
-                                                                    >
-                                                                        {
-                                                                            location.street1
-                                                                        }
-                                                                        {location.street2 &&
-                                                                            `, ${location.street2}`}
-                                                                        <br />
-                                                                        {
-                                                                            location.postalCode
-                                                                        }{' '}
-                                                                        {
-                                                                            location.city
-                                                                        }
-                                                                    </Typography>
-                                                                </Stack>
-                                                                <a
-                                                                    href={
-                                                                        KnownPages.GoogleMapsGrediceHQ
-                                                                    }
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                >
-                                                                    <MapIcon className="size-6 shrink-0" />
-                                                                </a>
-                                                            </Row>
-                                                        </CardContent>
-                                                    </Card>
-                                                ),
-                                        )}
-                                </Stack>
-                            ) : (
-                                <NoDataPlaceholder>
-                                    Trenutno nema dostupnih lokacija za
-                                    preuzimanje
-                                </NoDataPlaceholder>
-                            )}
-                        </Stack>
-                    </TabsContent>
-                </Tabs>
-            </Stack>
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsPending ? (
+                <div
+                    aria-label="Učitavanje lokacije za osobno preuzimanje"
+                    role="status"
+                >
+                    <Skeleton className="h-16 w-full rounded-md" />
+                </div>
+            ) : null}
 
-            {/* Time Slot Selection */}
-            {(selection.addressId || selection.locationId) && (
-                <Stack spacing={6}>
-                    {slotsLoading ? (
-                        <Typography>Učitavanje termina...</Typography>
-                    ) : timeSlots && timeSlots.length > 0 ? (
-                        <Stack spacing={4}>
-                            <SelectItems
-                                label="Termin dostave"
-                                placeholder="Odaberi termin dostave..."
-                                value={selection.slotId?.toString() || ''}
-                                onValueChange={(value: string) =>
-                                    handleSlotChange(parseInt(value, 10))
-                                }
-                                items={timeSlots.map((slot) => ({
-                                    label: formatSlotTime(slot),
-                                    value: slot.id.toString(),
-                                }))}
-                            />
-                        </Stack>
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            pickupLocationsError ? (
+                <Stack spacing={3}>
+                    <Alert color="danger">
+                        Nije moguće učitati lokaciju za osobno preuzimanje.
+                        Pokušaj ponovno ili odaberi drugi termin.
+                    </Alert>
+                    <Row justifyContent="end">
+                        <Button
+                            loading={pickupLocationsFetching}
+                            variant="outlined"
+                            onClick={() => refetchPickupLocations()}
+                        >
+                            Pokušaj ponovno
+                        </Button>
+                    </Row>
+                </Stack>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'pickup' &&
+            !selectedPickupLocation &&
+            !pickupLocationsPending &&
+            !pickupLocationsError ? (
+                <Alert color="danger">
+                    Lokacija za odabrani termin osobnog preuzimanja više nije
+                    dostupna. Odaberi drugi termin.
+                </Alert>
+            ) : null}
+
+            {selectedTimeSlot?.type === 'delivery' && (
+                <Row alignItems="end" className="min-w-0" spacing={2}>
+                    {isLoadingAddresses ? (
+                        <Skeleton className="h-10 min-w-0 flex-1 rounded-md" />
+                    ) : addresses?.length ? (
+                        <SelectItems
+                            className="min-w-0 flex-1"
+                            items={addresses.map((address) => ({
+                                label: `${address.label} - ${address.street1}, ${address.city}`,
+                                value: address.id.toString(),
+                            }))}
+                            label="Adresa za dostavu"
+                            placeholder="Odaberi adresu..."
+                            value={selection.addressId?.toString() ?? ''}
+                            onValueChange={(value) =>
+                                handleAddressChange(Number.parseInt(value, 10))
+                            }
+                        />
                     ) : (
-                        <NoDataPlaceholder className="mb-4">
-                            Trenutno nema dostupnih termina za odabrani način
-                            dostave
+                        <NoDataPlaceholder className="min-w-0 flex-1">
+                            Dodaj adresu za dostavu kako bi mogao/la nastaviti.
                         </NoDataPlaceholder>
                     )}
-                </Stack>
+                    <Button
+                        className="shrink-0"
+                        onClick={() => setManageAddresses(true)}
+                        startDecorator={<Edit className="size-4 shrink-0" />}
+                        variant={addresses?.length ? 'outlined' : 'solid'}
+                    >
+                        Moje adrese
+                    </Button>
+                </Row>
             )}
 
-            {/* Action Buttons */}
             <Row spacing={4} justifyContent="end">
                 <Button variant="outlined" onClick={onBack}>
                     Natrag
                 </Button>
-                <ButtonConfirmPayment
-                    onConfirm={onProceed}
-                    checkout={checkout}
-                    cart={cart}
-                    disabled={!isValid}
-                />
+                <Button
+                    variant="solid"
+                    disabled={!canProceed}
+                    endDecorator={<Navigate className="size-5 shrink-0" />}
+                    onClick={() => {
+                        if (
+                            !canProceed ||
+                            !selectedTimeSlot ||
+                            (selectedTimeSlot.type !== 'delivery' &&
+                                selectedTimeSlot.type !== 'pickup')
+                        ) {
+                            return;
+                        }
+
+                        onProceed({
+                            mode: selectedTimeSlot.type,
+                            startAt: new Date(
+                                selectedTimeSlot.startAt,
+                            ).toISOString(),
+                            endAt: new Date(
+                                selectedTimeSlot.endAt,
+                            ).toISOString(),
+                            destinationLabel:
+                                selectedTimeSlot.type === 'pickup'
+                                    ? pickupDestinationLabel
+                                    : selectedAddress
+                                      ? `${selectedAddress.label} — ${selectedAddress.street1}, ${selectedAddress.city}`
+                                      : 'Adresa za dostavu',
+                        });
+                    }}
+                >
+                    Nastavi
+                </Button>
             </Row>
         </Stack>
     );

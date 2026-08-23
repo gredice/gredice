@@ -1,0 +1,7 @@
+diff --git a/src/util.js b/src/util.js
+index 1d696da..e341d5a 100644
+--- a/src/util.js
++++ b/src/util.js
+@@ -37 +37 @@ export async function loadTS() {
+-		return import('typescript').then((m) => m.default);
++		return import('@typescript/typescript6').then((m) => m.default);

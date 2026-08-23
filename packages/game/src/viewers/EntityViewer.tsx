@@ -26,6 +26,8 @@ const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
+    /** Optional per-placement message used by editable sign previews. */
+    message?: string | null;
     appBaseUrl?: string;
     className?: string;
     noControl?: boolean;
@@ -55,15 +57,29 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      */
     cameraPosition?: [number, number, number];
     cameraTarget?: [number, number, number];
+    /** Sets a stable screen-up direction for vertical and near-vertical views. */
+    cameraUp?: [number, number, number];
+    /** Optional deterministic scene time for visual verification captures. */
+    freezeTime?: Date;
 };
 
-function CameraLookAt({ target }: { target: [number, number, number] }) {
+const defaultEntityViewerFreezeTime = new Date(2024, 5, 21, 12, 0, 0);
+
+function CameraLookAt({
+    target,
+    up,
+}: {
+    target: [number, number, number];
+    up?: [number, number, number];
+}) {
     const camera = useThree((state) => state.camera);
 
     useEffect(() => {
+        const resolvedUp = up ?? [0, 1, 0];
+        camera.up.set(resolvedUp[0], resolvedUp[1], resolvedUp[2]);
         camera.lookAt(target[0], target[1], target[2]);
         camera.updateProjectionMatrix();
-    }, [camera, target]);
+    }, [camera, target, up]);
 
     return null;
 }
@@ -71,6 +87,7 @@ function CameraLookAt({ target }: { target: [number, number, number] }) {
 export function EntityViewer({
     appBaseUrl,
     entityName,
+    message,
     zoom,
     itemPosition,
     className,
@@ -83,6 +100,8 @@ export function EntityViewer({
     quality,
     cameraPosition,
     cameraTarget,
+    cameraUp,
+    freezeTime = defaultEntityViewerFreezeTime,
     ...rest
 }: EntityViewerProps) {
     const storeRef = useRef<GameStateStore>(null);
@@ -90,12 +109,16 @@ export function EntityViewer({
         storeRef.current = createGameState({
             appBaseUrl: appBaseUrl || '',
             dayNightCycleDisabled: false,
-            freezeTime: new Date(2024, 5, 21, 12, 0, 0),
+            freezeTime,
             isMock: true,
             winterMode: 'summer',
         });
     }
     useDisposeGameStateStore(storeRef.current);
+
+    useEffect(() => {
+        storeRef.current?.getState().setFreezeTime(freezeTime);
+    }, [freezeTime]);
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
@@ -106,6 +129,7 @@ export function EntityViewer({
     const block: Block = {
         id: uuidv4(),
         name: entityName,
+        message,
         rotation: normalizedRotation,
         variant: variant,
     };
@@ -123,7 +147,9 @@ export function EntityViewer({
             ) : (
                 <Environment noBackground={!showBackground} noSound noWeather />
             )}
-            {cameraTarget && <CameraLookAt target={cameraTarget} />}
+            {cameraTarget && (
+                <CameraLookAt target={cameraTarget} up={cameraUp} />
+            )}
             <EntityFactory
                 name={entityName}
                 stack={stack}
@@ -155,10 +181,14 @@ export function EntityViewer({
                 <GameFlagsContext.Provider
                     value={{
                         enableDebugHudFlag: debugHud,
-                        enableRainWetOverlayFlag: debugHud,
                     }}
                 >
-                    <GameSceneDetailContext.Provider value={{ renderDetails }}>
+                    <GameSceneDetailContext.Provider
+                        value={{
+                            includePendingCartPlants: false,
+                            renderDetails,
+                        }}
+                    >
                         <Scene
                             debugStats={debugHud}
                             position={cameraPosition ?? 100}

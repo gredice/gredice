@@ -1,5 +1,9 @@
 import { clientAuthenticated } from '@gredice/client';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+    usePaymentStatusParam,
+    useShoppingCartOpenParam,
+} from '../useUrlState';
 
 export const temporaryAccountUpgradeRequiredEvent =
     'gredice:temporary-account-upgrade-required';
@@ -13,12 +17,51 @@ export interface CheckoutData {
         locationId?: number;
         notes?: string;
     };
+    harvestDates?: Array<{
+        cartItemId: number;
+        scheduledDate: string;
+    }>;
 }
+
+type CheckoutResult =
+    | { kind: 'completed-in-app' }
+    | { kind: 'upgrade-required' }
+    | { kind: 'stripe'; url: string };
+
+async function getCheckoutError(response: Response) {
+    try {
+        const responseData: unknown = await response.json();
+        if (responseData && typeof responseData === 'object') {
+            const errorCode =
+                'errorCode' in responseData &&
+                typeof responseData.errorCode === 'string'
+                    ? responseData.errorCode
+                    : undefined;
+            const message =
+                'error' in responseData &&
+                typeof responseData.error === 'string' &&
+                responseData.error.trim()
+                    ? responseData.error
+                    : undefined;
+
+            return { errorCode, message };
+        }
+    } catch {
+        // The fallback also covers non-JSON gateway responses.
+    }
+
+    return {};
+}
+
+const defaultCheckoutErrorMessage =
+    'Nije moguće pokrenuti plaćanje. Provjeri košaricu i pokušaj ponovno.';
 
 // Type guard to check if delivery selection is complete
 export function isCompleteDeliverySelection(
-    // biome-ignore lint/suspicious/noExplicitAny: Valid for validation
-    selection: any,
+    selection:
+        | Partial<NonNullable<CheckoutData['deliveryInfo']>>
+        | null
+        | undefined,
 ): selection is CheckoutData['deliveryInfo'] {
     return (
         Boolean(selection) &&
@@ -32,15 +75,6 @@ export function isCompleteDeliverySelection(
     );
 }
 
-function isUpgradeRequiredError(value: unknown) {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        'errorCode' in value &&
-        value.errorCode === 'upgrade_required'
-    );
-}
-
 export function requestTemporaryAccountUpgrade() {
     if (typeof window === 'undefined') {
         return;
@@ -50,53 +84,66 @@ export function requestTemporaryAccountUpgrade() {
 }
 
 export function useCheckout() {
+    const queryClient = useQueryClient();
+    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
+    const [, setPaymentStatus] = usePaymentStatusParam();
+
     return useMutation({
-        mutationFn: async (data: CheckoutData) => {
+        mutationFn: async (data: CheckoutData): Promise<CheckoutResult> => {
             const response =
                 await clientAuthenticated().api.checkout.checkout.$post({
                     json: data,
                 });
             if (!response.ok) {
-                let body: unknown;
-                try {
-                    body = await response.json();
-                } catch {
-                    body = null;
-                }
-
-                if (isUpgradeRequiredError(body)) {
+                const checkoutError = await getCheckoutError(response);
+                if (checkoutError.errorCode === 'upgrade_required') {
                     requestTemporaryAccountUpgrade();
-                    return;
+                    return { kind: 'upgrade-required' };
                 }
 
-                console.error(
-                    'Failed to create checkout session:',
-                    response.statusText,
+                throw new Error(
+                    checkoutError.message ?? defaultCheckoutErrorMessage,
                 );
-                // TODO: Show notification to user
-                return;
             }
 
             const responseData = await response.json();
             if (!responseData) {
-                console.error('Failed to create checkout session');
-                return;
+                throw new Error(
+                    'Poslužitelj nije vratio podatke za pokretanje plaćanja.',
+                );
             }
 
             if ('success' in responseData) {
-                window.location.href = '/?placanje=uspijesno';
+                return { kind: 'completed-in-app' };
+            }
+
+            if (!('url' in responseData) || !responseData.url) {
+                throw new Error(
+                    'Poslužitelj nije vratio poveznicu za plaćanje.',
+                );
+            }
+
+            return { kind: 'stripe', url: responseData.url };
+        },
+        onSuccess: (result) => {
+            if (result.kind === 'upgrade-required') {
                 return;
             }
 
-            const { url } = responseData;
-            if (!url) {
-                console.error('No URL returned from checkout session');
-                // TODO: Show notification to user
+            if (result.kind === 'stripe') {
+                window.location.href = result.url;
                 return;
             }
 
-            // If a URL is provided, redirect the user to that URL
-            window.location.href = url;
+            setShoppingCartOpen(false);
+            setPaymentStatus('uspjesno');
+            void queryClient.invalidateQueries();
+        },
+        onError: () => {
+            // A direct checkout can fail after durable payment or fulfillment
+            // work. Keep the cart open, but reconcile every active checkout-
+            // affected view before the user retries.
+            void queryClient.invalidateQueries();
         },
         // Prevent the mutation from being run in parallel
         scope: {

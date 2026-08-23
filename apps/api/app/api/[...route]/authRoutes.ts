@@ -45,6 +45,15 @@ import {
     generateAuthUrl,
 } from '../../../lib/auth/oauth';
 import {
+    createOAuthCallbackErrorRedirect,
+    type OAuthCallbackProvider,
+    oauthRedirectCookieName,
+    oauthStateCookieName,
+    oauthTimeZoneCookieName,
+    resolveOAuthCallback,
+    sanitizeOAuthCallbackUrl,
+} from '../../../lib/auth/oauthCallbackContract';
+import {
     clearRefreshCookie,
     setRefreshCookie,
 } from '../../../lib/auth/refreshCookies';
@@ -222,61 +231,12 @@ async function createOAuthStateFromSession(context: Context): Promise<string> {
     return randomUUID().toString().replace('-', '');
 }
 
-const defaultWebAppOrigin = 'https://vrt.gredice.com';
-const oauthRedirectCookieName = 'oauth_redirect';
-const oauthTimeZoneCookieName = 'oauth_timezone';
-const allowedDesktopRedirectProtocols = new Set([
-    'gredice-admin:',
-    'gredice-farm:',
-    'gredice-garden:',
-]);
-const allowedLocalRedirectHosts = new Set([
-    'localhost',
-    '127.0.0.1',
-    'app.gredice.test',
-    'vrt.gredice.test',
-    'farma.gredice.test',
-]);
-
-function sanitizeRedirectUrl(redirectUrl?: string) {
-    if (!redirectUrl) {
-        return undefined;
-    }
-
-    try {
-        const parsed = new URL(redirectUrl);
-        if (
-            allowedDesktopRedirectProtocols.has(parsed.protocol) &&
-            parsed.hostname === 'auth-callback'
-        ) {
-            return parsed.toString();
-        }
-
-        const hostname = parsed.hostname.toLowerCase();
-        const isSecureProtocol =
-            parsed.protocol === 'https:' ||
-            (parsed.protocol === 'http:' &&
-                allowedLocalRedirectHosts.has(hostname));
-        if (!isSecureProtocol) {
-            return undefined;
-        }
-
-        if (
-            hostname === 'gredice.com' ||
-            hostname.endsWith('.gredice.com') ||
-            allowedLocalRedirectHosts.has(hostname)
-        ) {
-            return parsed.toString();
-        }
-    } catch {
-        return undefined;
-    }
-
-    return undefined;
-}
-
-function storeRedirectCookie(context: Context, redirectUrl?: string) {
-    const sanitized = sanitizeRedirectUrl(redirectUrl);
+function storeRedirectCookie(
+    context: Context,
+    provider: OAuthCallbackProvider,
+    redirectUrl?: string,
+) {
+    const sanitized = sanitizeOAuthCallbackUrl(provider, redirectUrl);
     if (!sanitized) {
         deleteContextCookie(context, oauthRedirectCookieName);
         return;
@@ -308,30 +268,26 @@ function storeTimeZoneCookie(context: Context, timeZone?: string) {
     });
 }
 
-function getTimeZoneCookie(context: Context): string | undefined {
+function prepareOAuthCallback(
+    context: Context,
+    provider: OAuthCallbackProvider,
+) {
     const timeZone = getCookie(context, oauthTimeZoneCookieName);
-    deleteContextCookie(context, oauthTimeZoneCookieName);
-    return timeZone;
-}
+    const decision = resolveOAuthCallback({
+        provider,
+        code: context.req.query('code'),
+        state: context.req.query('state'),
+        storedState: getCookie(context, oauthStateCookieName),
+        storedRedirect: getCookie(context, oauthRedirectCookieName),
+        providerError: context.req.query('error'),
+        providerErrorReason: context.req.query('error_reason'),
+    });
 
-function resolveRedirectUrl(context: Context, fallbackPath: string) {
-    const fallbackUrl = new URL(fallbackPath, defaultWebAppOrigin);
-    const stored = getCookie(context, oauthRedirectCookieName);
-    if (!stored) {
-        return fallbackUrl;
+    for (const cookieName of decision.clearCookieNames) {
+        deleteContextCookie(context, cookieName);
     }
 
-    deleteContextCookie(context, oauthRedirectCookieName);
-    const sanitized = sanitizeRedirectUrl(stored);
-    if (!sanitized) {
-        return fallbackUrl;
-    }
-
-    try {
-        return new URL(sanitized);
-    } catch {
-        return fallbackUrl;
-    }
+    return { decision, timeZone };
 }
 
 type AuthProvider = 'password' | 'google' | 'facebook';
@@ -677,12 +633,12 @@ const app = new Hono()
         async (context) => {
             const query = context.req.valid('query');
             const state = await createOAuthStateFromSession(context);
-            storeRedirectCookie(context, query?.redirect);
+            storeRedirectCookie(context, 'google', query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
             const authUrl = generateAuthUrl('google', state);
 
             // Store state in cookie for verification
-            setContextCookie(context, 'oauth_state', state, {
+            setContextCookie(context, oauthStateCookieName, state, {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'Lax',
@@ -698,27 +654,24 @@ const app = new Hono()
             description: 'Google OAuth callback',
         }),
         async (context) => {
-            try {
-                const code = context.req.query('code');
-                const state = context.req.query('state');
-                if (!code || !state) {
-                    return context.json(
-                        { message: 'Missing code or state' },
-                        400,
-                    );
-                }
+            const { decision, timeZone } = prepareOAuthCallback(
+                context,
+                'google',
+            );
+            if (decision.kind === 'redirect') {
+                return context.redirect(decision.redirectUrl);
+            }
 
+            try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(state);
+                    const { result, error } = await verifyJwt(decision.state);
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
                     currentUserId = result.payload.sub;
                     console.debug(
-                        'User authenticated',
-                        currentUserId,
-                        'proceeding with OAuth flow and existing user assignment',
+                        'Authenticated user is adding an OAuth login method.',
                     );
                 } catch {
                     // Note: this means user is not authenticated, and we can proceed with
@@ -728,12 +681,14 @@ const app = new Hono()
                     );
                 }
 
-                const tokenData = await exchangeCodeForToken('google', code);
+                const tokenData = await exchangeCodeForToken(
+                    'google',
+                    decision.code,
+                );
                 const userInfo = await fetchUserInfo(
                     'google',
                     tokenData.access_token,
                 );
-                const timeZone = getTimeZoneCookie(context);
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
                         name: userInfo.name,
@@ -798,27 +753,23 @@ const app = new Hono()
                     });
                 }
 
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/google-prijava/povratak',
-                );
+                const redirectUrl = new URL(decision.callbackUrl);
                 // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
                 redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
                 return context.redirect(redirectUrl.toString());
-            } catch (error) {
+            } catch {
                 console.error('Google OAuth callback failed', {
-                    error,
-                    hasCode: Boolean(context.req.query('code')),
-                    hasState: Boolean(context.req.query('state')),
+                    provider: 'google',
+                    reason: 'callback_error',
                 });
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/google-prijava/povratak',
+                const redirectUrl = createOAuthCallbackErrorRedirect(
+                    'google',
+                    decision.callbackUrl,
+                    'callback_error',
                 );
-                redirectUrl.searchParams.set('error', 'oauth_error');
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(redirectUrl);
             }
         },
     )
@@ -840,9 +791,9 @@ const app = new Hono()
             const authUrl = generateAuthUrl('facebook', state);
 
             // Store state in cookie for verification
-            storeRedirectCookie(context, query?.redirect);
+            storeRedirectCookie(context, 'facebook', query?.redirect);
             storeTimeZoneCookie(context, query?.timeZone);
-            setContextCookie(context, 'oauth_state', state, {
+            setContextCookie(context, oauthStateCookieName, state, {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'Lax',
@@ -858,27 +809,24 @@ const app = new Hono()
             description: 'Facebook OAuth callback',
         }),
         async (context) => {
-            try {
-                const code = context.req.query('code');
-                const state = context.req.query('state');
-                if (!code || !state) {
-                    return context.json(
-                        { message: 'Missing code or state' },
-                        400,
-                    );
-                }
+            const { decision, timeZone } = prepareOAuthCallback(
+                context,
+                'facebook',
+            );
+            if (decision.kind === 'redirect') {
+                return context.redirect(decision.redirectUrl);
+            }
 
+            try {
                 let currentUserId: string | undefined;
                 try {
-                    const { result, error } = await verifyJwt(state);
+                    const { result, error } = await verifyJwt(decision.state);
                     if (error || !result?.payload.sub) {
                         throw new Error('Invalid state token');
                     }
                     currentUserId = result.payload.sub;
                     console.debug(
-                        'User authenticated',
-                        currentUserId,
-                        'proceeding with OAuth flow and existing user assignment',
+                        'Authenticated user is adding an OAuth login method.',
                     );
                 } catch {
                     // Note: this means user is not authenticated, and we can proceed with
@@ -888,12 +836,14 @@ const app = new Hono()
                     );
                 }
 
-                const tokenData = await exchangeCodeForToken('facebook', code);
+                const tokenData = await exchangeCodeForToken(
+                    'facebook',
+                    decision.code,
+                );
                 const userInfo = await fetchUserInfo(
                     'facebook',
                     tokenData.access_token,
                 );
-                const timeZone = getTimeZoneCookie(context);
                 const oauthResult = await createOrUpdateUserWithOauth(
                     {
                         name: userInfo.name,
@@ -958,27 +908,23 @@ const app = new Hono()
                     });
                 }
 
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/facebook-prijava/povratak',
-                );
+                const redirectUrl = new URL(decision.callbackUrl);
                 // Pass tokens to frontend via URL fragment (hash) so they don't appear in logs/referrer
                 redirectUrl.hash = `token=${encodeURIComponent(accessToken)}&refreshToken=${encodeURIComponent(refreshToken)}`;
 
                 return context.redirect(redirectUrl.toString());
-            } catch (error) {
+            } catch {
                 console.error('Facebook OAuth callback failed', {
-                    error,
-                    hasCode: Boolean(context.req.query('code')),
-                    hasState: Boolean(context.req.query('state')),
+                    provider: 'facebook',
+                    reason: 'callback_error',
                 });
-                const redirectUrl = resolveRedirectUrl(
-                    context,
-                    '/prijava/facebook-prijava/povratak',
+                const redirectUrl = createOAuthCallbackErrorRedirect(
+                    'facebook',
+                    decision.callbackUrl,
+                    'callback_error',
                 );
-                redirectUrl.searchParams.set('error', 'oauth_error');
 
-                return context.redirect(redirectUrl.toString());
+                return context.redirect(redirectUrl);
             }
         },
     )

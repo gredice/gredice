@@ -16,6 +16,11 @@ marks the targeted raised-bed field plant status as `removed`, which closes the
 plant cycle and frees the field for future planting. Plant field changes are
 available as configurable action modules so new operation-driven plant-state
 automations can be created from the admin graph editor without adding code. A
+completed operation in the `harvest` plant stage creates a pending proposal to
+change every active targeted plant to `harvested`; whole-raised-bed harvests
+expand to the active fields in that bed. Reviewers approve the proposal only
+when that plant is fully harvested and reject it when another harvest is
+expected, so the completion event never changes plant state directly. A
 managed weekly schedule also creates `Fotografiranje gredice` operations every
 Tuesday and Friday for active raised beds, reusing the existing operation
 completion image flow and `photographyUpdate` visual reward handling.
@@ -63,8 +68,9 @@ attempts, scheduled runs, and periodic queue execution.
 bounded phases:
 
 1. Ensure default automation definitions exist.
-2. Enqueue due scheduled automation runs, using deterministic occurrence keys so
-   repeated cron ticks do not duplicate the same period.
+2. Enqueue due scheduled automation runs one local calendar day before the
+   configured occurrence, using deterministic occurrence keys so repeated cron
+   ticks do not duplicate the same period.
 3. Read new domain events after the cursor and enqueue matching enabled
    automation runs.
 4. Recover stale running jobs.
@@ -87,7 +93,7 @@ The API cron route is protected with `CRON_SECRET` and is registered in
 { "path": "/api/internal/cron/automations", "schedule": "* * * * *" }
 ```
 
-The cron remains bounded and idempotent: it enqueues missed schedule/event runs,
+The cron remains bounded and idempotent: it enqueues due schedule/event runs,
 recovers stale locks, and claims limited batches of due queued/retrying runs.
 The API cron currently allows up to 10 processing batches, with a 45-second
 processing budget and a 5-second safety margin. This lets fast skipped/no-op
@@ -106,14 +112,16 @@ MVP modules:
 - `trigger.domainEvent`: starts from a stored domain event and filters by event
   type.
 - `trigger.schedule`: starts on a daily, weekly, biweekly, or monthly cadence.
-  Weekly and biweekly schedules can target one weekday or a JSON array of
-  selected weekdays. Biweekly schedules require an anchor date so alternating
+  The cron creates the run on the previous local calendar day, while
+  `occurrenceDate` remains the configured work date used by task-creating
+  actions. Weekly and biweekly schedules can target one weekday or a JSON array
+  of selected weekdays. Biweekly schedules require an anchor date so alternating
   week parity stays explicit.
 - `trigger.scheduleMonthly`: legacy monthly trigger that starts once per month
-  on the configured local day.
+  on the day before the configured local day.
 - `condition.eventDataEquals`: compares a value in event data.
 - `condition.operationMatches`: checks operation status, entity id, or
-  operation application.
+  operation application or plant stage.
 - `condition.plantStatusEquals`: checks current raised-bed field plant status.
 - `action.queueSeasonalSowingOfferOperations`: queues seasonal free watering
   operations.
@@ -124,7 +132,12 @@ MVP modules:
 - `action.createOperation`: creates an operation for the event context.
 - `action.createFarmInventoryOperations`: creates accepted, scheduled farm-level
   operations for every active farm from a JSON list in the automation
-  definition.
+  definition. Individual entries can set
+  `requiresGreenhouseOrOutletPlants: true` to create that operation only for
+  farms with current greenhouse-located raised-bed fields, or when central
+  outlet stock has active published non-expired offers with remaining quantity.
+  Because outlet offers are not farm-scoped in storage, active outlet stock makes
+  every active farm eligible for that conditional inventory operation.
 - `action.createGreenhouseSeedlingWateringOperations`: creates at most one
   accepted, scheduled farm-level `Zalijevanje presadnica u stakleniku`
   operation per active farm and local schedule date. A farm is eligible when it
@@ -140,6 +153,10 @@ MVP modules:
 - `action.updateRaisedBedFieldPlantAttributes`: writes plant status and/or
   sowing location events for the operation target field. Use this for new
   no-code plant-state automations.
+- `action.createPlantStatusApprovalRequests`: creates pending plant-status
+  proposals without mutating the plant. A field-targeted operation creates one
+  proposal, while a whole-raised-bed operation expands to every active field;
+  pending proposals are reused on retries.
 - `action.createPlantStatusRequestsFromImageAnalysis`: reviews hosted
   raised-bed images from operation completion or raised-bed AI analysis events,
   then creates pending plant-status approval requests and field-level weed-state
@@ -148,10 +165,11 @@ MVP modules:
 - `action.log`: records a no-op step for diagnostics.
 
 The managed default `default.monthly-farm-inventory-operations` uses the shared
-monthly `trigger.schedule` on day 1 in `Europe/Zagreb` and creates the published
-internal farm inventory operation set (`inventoryRaisedBedBoards` through
-`inventoryPlasticDeliveryBags`, operation entity ids 554-565) for each active
-farm.
+monthly `trigger.schedule` on day 1 in `Europe/Zagreb`; the run is queued on the
+previous local day and creates the published internal farm inventory operation
+set (`inventoryRaisedBedBoards` through `inventoryPlasticDeliveryBags`,
+operation entity ids 554-565) for each active farm on the configured occurrence
+date.
 
 When adding a module, define metadata, config validation, dry-run behavior, and
 the executor function in the registry. Prefer idempotent repository functions for
@@ -167,10 +185,24 @@ remain idempotent because replays and retries can run the same graph again.
 The managed raised-bed photo automation uses `trigger.schedule` with
 `daysOfWeek: ["tuesday", "friday"]` in the `Europe/Zagreb` time zone and
 `action.createRaisedBedOperations` with operation entity `301`
-(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Duplicate prevention is
-scoped to the raised bed, operation entity, and weekday occurrence date; existing
+(`raisedBedFullPhoto`, label `Fotografiranje gredice`). Tuesday work is created
+on Monday and Friday work is created on Thursday. Duplicate prevention is scoped
+to the raised bed, operation entity, and weekday occurrence date; existing
 non-canceled/non-failed operations for the same day are counted as existing
 skips.
+
+The same Tuesday/Friday cadence is mirrored in the AI context by
+`RAISED_BED_PHOTOGRAPHY_WEEKDAYS` in
+`apps/api/lib/ai/raisedBedPhotographySchedule.ts`, so the raised-bed image
+analysis and the Suncokret chat can tell customers when the next photos arrive.
+Change both when the photo schedule changes.
+
+The managed raised-bed detailed inspection automation is seeded as draft under
+`default.raised-bed-detailed-inspection`. When enabled, it uses the weekly
+schedule on Mondays and `action.createRaisedBedOperations` with draft operation
+entity `652` (`detailedRaisedBedInspection`, label `Detaljno pregledavanje
+gredice`) to create one accepted raised-bed-scoped inspection per active raised
+bed and occurrence day.
 
 ## Graph Validation
 

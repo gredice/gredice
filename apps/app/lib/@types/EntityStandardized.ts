@@ -11,8 +11,21 @@ export type EntityStandardized = {
     };
     attributes?: {
         seedingDistance?: number; // in cm
+        seedingDistanceMin?: number; // in cm
+        seedingDistanceMax?: number; // in cm
         duration?: number | string;
         application?: string; // farm, garden, raisedBedFull, raisedBed1m, plant
+        visualReward?: string;
+        category?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
+        stage?: {
+            information?: {
+                name?: string | null;
+            } | null;
+        } | null;
     };
     images?: {
         cover?: { url?: string };
@@ -27,6 +40,7 @@ export type EntityStandardized = {
     prices?: {
         perPlant?: number;
         perOperation?: number;
+        materialCost?: number;
     };
     conditions?: {
         completionAttachImages?: boolean;

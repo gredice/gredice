@@ -103,7 +103,7 @@ export function PageNav({
     };
 
     return (
-        <div className="pointer-events-none fixed inset-x-0 top-0 z-40">
+        <div className="pointer-events-none fixed inset-x-0 top-0 z-40 [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)] [padding-top:env(safe-area-inset-top,0px)]">
             <Container
                 padded={false}
                 className={cx(
@@ -117,7 +117,7 @@ export function PageNav({
                     className={cx(
                         'pointer-events-auto relative flex h-16 items-center border-transparent bg-background/75 backdrop-blur-md transition-[height,border-color,background-color,box-shadow] duration-300 ease-out',
                         isFloating &&
-                            'h-14 rounded-2xl border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl',
+                            'h-14 rounded-full border border-border/70 bg-background/80 shadow-lg shadow-foreground/10 backdrop-blur-xl',
                     )}
                 >
                     <div className="relative flex h-full w-full min-w-0 items-center justify-between gap-1 px-2 sm:gap-2 sm:px-3 md:px-4">

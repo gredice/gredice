@@ -4,6 +4,7 @@ import {
     isGameBackgroundPaletteKey,
 } from '@gredice/js/gameBackground';
 
+export type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
 export { defaultGameBackgroundPaletteKey } from '@gredice/js/gameBackground';
 
 export type GameBackgroundPalette =

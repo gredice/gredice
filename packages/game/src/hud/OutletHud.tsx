@@ -1,160 +1,72 @@
-import { Button } from '@gredice/ui/Button';
-import { Discount } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
-import { Row } from '@gredice/ui/Row';
-import { Stack } from '@gredice/ui/Stack';
-import { Typography } from '@gredice/ui/Typography';
+import { IconButton } from '@gredice/ui/IconButton';
 import { cx } from '@gredice/ui/utils';
+import Image from 'next/image';
+import { useMemo } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useOutletOffers } from '../hooks/useOutletOffers';
-import { useOutletOpenParam } from '../useUrlState';
 import { HudCard } from './components/HudCard';
 
-const currencyFormatter = new Intl.NumberFormat('hr-HR', {
-    style: 'currency',
-    currency: 'EUR',
-});
-
-const dateFormatter = new Intl.DateTimeFormat('hr-HR', {
-    day: 'numeric',
-    month: 'short',
-});
-
-function offerImageUrl(offer: {
-    imageUrls: string[];
-    plantSort: { imageUrl: string | null };
-}) {
-    return offer.imageUrls[0] ?? offer.plantSort.imageUrl;
-}
+const outletIconSrc = '/assets/hud/outlet-seedling-price-tag.webp';
 
 export function OutletHud() {
-    const { data: offers, isLoading, isError } = useOutletOffers();
-    const [outletParam, setOutletParam] = useOutletOpenParam();
+    const { data: offers, isLoading } = useOutletOffers();
     const { track } = useGameAnalytics();
-    const isOpen = outletParam !== null;
-    const highlightedOfferId =
-        outletParam && outletParam !== '1'
-            ? Number.parseInt(outletParam, 10)
-            : null;
+    const availableItemsCount = useMemo(
+        () =>
+            offers?.reduce(
+                (total, offer) => total + offer.remainingQuantity,
+                0,
+            ) ?? 0,
+        [offers],
+    );
 
-    if (!isLoading && !offers?.length && !isOpen) {
+    if (!isLoading && (!offers || offers.length === 0)) {
         return null;
     }
 
     return (
-        <HudCard open position="floating" className="static p-0.5">
-            <Modal
-                open={isOpen}
-                onOpenChange={(open) => {
-                    setOutletParam(open ? '1' : null);
-                    if (open) {
-                        track('game_outlet_opened', {
-                            outlet_offer_count: offers?.length ?? 0,
-                        });
-                    }
-                }}
+        <HudCard
+            open
+            position="floating"
+            className="static size-12 p-0.5"
+            data-outlet-hud-shell="true"
+        >
+            <IconButton
+                aria-label="Outlet sadnica"
                 title="Outlet sadnica"
-                className="z-[46] border-tertiary border-b-4 md:max-w-2xl"
-                overlayClassName="z-[46]"
-                trigger={
-                    <Button
-                        title="Outlet sadnica"
-                        variant="plain"
-                        className="relative rounded-full p-2 gap-2"
-                    >
-                        <Discount className="size-6 shrink-0" />
-                        <Typography
-                            level="body2"
-                            semiBold
-                            className="text-foreground"
-                        >
-                            Outlet
-                        </Typography>
-                    </Button>
+                variant="plain"
+                className="relative size-10 overflow-visible rounded-full"
+                href="/outlet"
+                onClick={() =>
+                    track('game_outlet_garden_entry_clicked', {
+                        outlet_offer_count: offers?.length ?? 0,
+                    })
                 }
             >
-                <Stack spacing={4}>
-                    <Typography level="body2" secondary>
-                        Odaberi prazno polje u gredici i u popisu sorti uključi
-                        Outlet cijenu za dostupnu presadnicu.
-                    </Typography>
-                    {isLoading ? (
-                        <Typography level="body2">Učitavanje...</Typography>
-                    ) : null}
-                    {isError ? (
-                        <Typography level="body2">
-                            Greška prilikom učitavanja outlet ponuda.
-                        </Typography>
-                    ) : null}
-                    {!isLoading && !isError && !offers?.length ? (
-                        <Typography level="body2" secondary>
-                            Trenutno nema aktivnih outlet ponuda.
-                        </Typography>
-                    ) : null}
-                    <div className="grid gap-3">
-                        {offers?.map((offer) => {
-                            const imageUrl = offerImageUrl(offer);
-                            const highlighted = highlightedOfferId === offer.id;
-
-                            return (
-                                <button
-                                    key={offer.id}
-                                    type="button"
-                                    className={cx(
-                                        'grid grid-cols-[72px_1fr] gap-3 rounded-lg border bg-card p-2 text-left transition-colors hover:bg-muted',
-                                        highlighted
-                                            ? 'border-green-500'
-                                            : 'border-tertiary',
-                                    )}
-                                    onClick={() => {
-                                        setOutletParam(offer.id.toString());
-                                        track('game_outlet_offer_viewed', {
-                                            outlet_offer_id: offer.id,
-                                            plant_sort_id: offer.plantSort.id,
-                                        });
-                                    }}
-                                >
-                                    <div className="aspect-square overflow-hidden rounded-md bg-muted">
-                                        {imageUrl ? (
-                                            <>
-                                                {/** biome-ignore lint/performance/noImgElement: Offer images come from API data and may use configured external origins. */}
-                                                <img
-                                                    alt={offer.plantSort.name}
-                                                    className="h-full w-full object-cover"
-                                                    src={imageUrl}
-                                                />
-                                            </>
-                                        ) : null}
-                                    </div>
-                                    <Stack spacing={1}>
-                                        <Row justifyContent="space-between">
-                                            <Typography level="body1" semiBold>
-                                                {offer.plantSort.name}
-                                            </Typography>
-                                            <Typography level="body1" bold>
-                                                {currencyFormatter.format(
-                                                    offer.outletPrice,
-                                                )}
-                                            </Typography>
-                                        </Row>
-                                        <Typography level="body3" secondary>
-                                            Sjetva{' '}
-                                            {dateFormatter.format(
-                                                new Date(offer.sowingDate),
-                                            )}{' '}
-                                            · preostalo{' '}
-                                            {offer.remainingQuantity} · do{' '}
-                                            {dateFormatter.format(
-                                                new Date(offer.endAt),
-                                            )}
-                                        </Typography>
-                                    </Stack>
-                                </button>
-                            );
-                        })}
+                <Image
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-1/2 top-0 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-2.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                    data-outlet-trigger-icon="true"
+                    height={44}
+                    loading="eager"
+                    src={outletIconSrc}
+                    unoptimized
+                    width={48}
+                />
+                {availableItemsCount > 0 ? (
+                    <div
+                        aria-hidden="true"
+                        className={cx(
+                            'pointer-events-none absolute -top-4 -right-4 z-20 flex size-6 items-center justify-center rounded-full border border-tertiary-foreground/30 bg-tertiary px-1.5 text-sm font-semibold leading-none text-tertiary-foreground shadow-md',
+                            availableItemsCount > 99 && 'text-[10px]',
+                        )}
+                        data-outlet-availability-badge
+                    >
+                        {availableItemsCount > 99 ? '99+' : availableItemsCount}
                     </div>
-                </Stack>
-            </Modal>
+                ) : null}
+            </IconButton>
         </HudCard>
     );
 }

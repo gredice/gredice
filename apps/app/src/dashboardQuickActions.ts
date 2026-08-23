@@ -173,6 +173,11 @@ const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
         href: KnownPages.SowingStatistics,
     },
     {
+        key: 'delivery-request-statistics',
+        label: 'Statistika zahtjeva za dostavu',
+        href: KnownPages.DeliveryRequestStatistics,
+    },
+    {
         key: 'delivery-slots',
         label: 'Dostava - Slotovi',
         href: KnownPages.DeliverySlots,
@@ -196,6 +201,11 @@ const DASHBOARD_BUILTIN_QUICK_ACTIONS = [
         key: 'notifications',
         label: 'Obavijesti',
         href: KnownPages.Notifications,
+    },
+    {
+        key: 'surveys',
+        label: 'Ankete',
+        href: KnownPages.Surveys,
     },
     {
         key: 'feedback',

@@ -5,7 +5,9 @@ import { useGameState } from '../useGameState';
 export function PlacementGrid() {
     const isPlacementActive = useGameState(
         (state) =>
-            Boolean(state.pickupBlock) || Boolean(state.activeDragPreview),
+            Boolean(state.pickupBlock) ||
+            Boolean(state.activeDragPreview) ||
+            Boolean(state.hudPlacementDrag),
     );
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const isDay = timeOfDay > 0.2 && timeOfDay < 0.8;

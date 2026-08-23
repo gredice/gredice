@@ -6,12 +6,13 @@ import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { EventCalendar } from '@gredice/ui/EventCalendar';
 import { Calendar } from '@gredice/ui/icons';
-import { Modal } from '@gredice/ui/Modal';
 import { OperationImage } from '@gredice/ui/OperationImage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
+import { useLiveTime } from '../../../hooks/useLiveTime';
+import { GameModal } from '../../../shared-ui/game-modal';
 import { formatLocalDate } from '../RaisedBedPlantPicker';
 import {
     isWateringOperation,
@@ -31,6 +32,7 @@ function parseLocalDateInput(value: string) {
 
 export function OperationScheduleModal({
     gardenId,
+    initialScheduledDate,
     operation,
     onConfirm,
     positionIndex,
@@ -39,6 +41,7 @@ export function OperationScheduleModal({
     trigger,
 }: {
     gardenId: number;
+    initialScheduledDate?: string;
     operation: OperationData;
     onConfirm: (date: Date) => Promise<void>;
     positionIndex?: number;
@@ -53,7 +56,7 @@ export function OperationScheduleModal({
         null,
     );
 
-    const today = new Date();
+    const today = useLiveTime();
     const tomorrow = new Date(
         today.getFullYear(),
         today.getMonth(),
@@ -64,7 +67,15 @@ export function OperationScheduleModal({
         tomorrow.getMonth() + 3,
         tomorrow.getDate(),
     );
-    const operationDefaultDate = formatLocalDate(tomorrow);
+    const parsedInitialScheduledDate = initialScheduledDate
+        ? parseLocalDateInput(initialScheduledDate)
+        : null;
+    const operationDefaultDate =
+        parsedInitialScheduledDate &&
+        parsedInitialScheduledDate >= tomorrow &&
+        parsedInitialScheduledDate <= threeMonthsFromTomorrow
+            ? formatLocalDate(parsedInitialScheduledDate)
+            : formatLocalDate(tomorrow);
     const selectedDateInput = scheduledDateInput ?? operationDefaultDate;
     const selectedDate = parseLocalDateInput(selectedDateInput);
     const showWateringCalendar =
@@ -103,8 +114,7 @@ export function OperationScheduleModal({
     };
 
     return (
-        <Modal
-            className="border border-tertiary border-b-4"
+        <GameModal
             trigger={trigger}
             title={`Zakaži radnju: ${operation.information.label}`}
             open={open}
@@ -174,6 +184,7 @@ export function OperationScheduleModal({
                             previewDate={selectedDate}
                             previewOperation={operation}
                             raisedBedId={raisedBedId}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
@@ -190,6 +201,7 @@ export function OperationScheduleModal({
                             positionIndex={positionIndex}
                             previewDate={selectedDate}
                             raisedBedId={raisedBedId}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
@@ -203,6 +215,7 @@ export function OperationScheduleModal({
                             maxSelectableDate={threeMonthsFromTomorrow}
                             minSelectableDate={tomorrow}
                             onDateSelect={handleDateSelect}
+                            referenceDate={today}
                             selectedDate={selectedDate}
                             visibleFrom={tomorrow}
                             visibleTo={threeMonthsFromTomorrow}
@@ -230,6 +243,6 @@ export function OperationScheduleModal({
                     </Row>
                 </Stack>
             </form>
-        </Modal>
+        </GameModal>
     );
 }

@@ -1,41 +1,17 @@
 'use client';
 
-import { Button } from '@gredice/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Row } from '@gredice/ui/Row';
 import { Spinner } from '@gredice/ui/Spinner';
-import { Stack } from '@gredice/ui/Stack';
+import {
+    hasSurveyContactValue,
+    type SurveyAnswerState,
+    type SurveyAnswerValue,
+    SurveyQuestionnaire,
+    type SurveyQuestionnaireQuestion,
+    SurveyStateCard,
+} from '@gredice/ui/SurveyQuestionnaire';
 import { Typography } from '@gredice/ui/Typography';
 import { useEffect, useMemo, useState } from 'react';
-
-type QuestionSettings =
-    | {
-          max: number;
-          min: number;
-          step?: number;
-          type: 'opinion_scale';
-      }
-    | {
-          maxLength?: number;
-          placeholder?: string | null;
-          type: 'long_text';
-      }
-    | {
-          fields: Array<'first_name' | 'last_name' | 'phone' | 'email'>;
-          phoneDefaultCountry?: string | null;
-          type: 'contact_info';
-      };
-
-type SurveyQuestion = {
-    description: string | null;
-    id: string;
-    key: string;
-    required: boolean;
-    settings: QuestionSettings;
-    sortOrder: number;
-    title: string;
-    type: 'opinion_scale' | 'long_text' | 'contact_info';
-};
 
 type SurveyRuntime = {
     assignment: {
@@ -43,9 +19,10 @@ type SurveyRuntime = {
         id: string;
         status: 'pending' | 'started' | 'submitted' | 'expired' | 'canceled';
     };
-    questions: SurveyQuestion[];
+    questions: SurveyQuestionnaireQuestion[];
     response: { id: string } | null;
     survey: {
+        key: string;
         title: string;
     };
     version: {
@@ -57,15 +34,6 @@ type SurveyRuntime = {
     };
 };
 
-type ContactValue = {
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-    phone?: string;
-};
-
-type AnswerState = Record<string, number | string | ContactValue | undefined>;
-
 function assignmentUrl(assignmentId: string) {
     return `/api/gredice/api/surveys/assignments/${encodeURIComponent(
         assignmentId,
@@ -76,29 +44,15 @@ async function readJson<T>(response: Response) {
     return (await response.json()) as T;
 }
 
-function hasContactValue(value: ContactValue | undefined) {
-    if (!value) return false;
-    return Boolean(
-        value.firstName || value.lastName || value.phone || value.email,
-    );
-}
-
-function contactFieldLabel(field: string) {
+function isLegacyDeliveryContactQuestion(
+    surveyKey: string,
+    question: SurveyQuestionnaireQuestion,
+) {
     return (
-        {
-            email: 'Email',
-            first_name: 'Ime',
-            last_name: 'Prezime',
-            phone: 'Telefon',
-        }[field] ?? field
+        surveyKey === 'delivery_satisfaction' &&
+        question.type === 'contact_info' &&
+        question.key === 'contact_info'
     );
-}
-
-function contactFieldKey(field: string): keyof ContactValue {
-    if (field === 'first_name') return 'firstName';
-    if (field === 'last_name') return 'lastName';
-    if (field === 'phone') return 'phone';
-    return 'email';
 }
 
 export function SurveyResponseClient({
@@ -107,7 +61,7 @@ export function SurveyResponseClient({
     assignmentId: string;
 }) {
     const [runtime, setRuntime] = useState<SurveyRuntime | null>(null);
-    const [answers, setAnswers] = useState<AnswerState>({});
+    const [answers, setAnswers] = useState<SurveyAnswerState>({});
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -159,15 +113,21 @@ export function SurveyResponseClient({
         };
     }, [assignmentId]);
 
-    const questions = useMemo(
-        () =>
-            runtime?.questions
-                .slice()
-                .sort((left, right) => left.sortOrder - right.sortOrder) ?? [],
-        [runtime?.questions],
-    );
+    const questions = useMemo(() => {
+        if (!runtime) return [];
+        return runtime.questions
+            .filter(
+                (question) =>
+                    !isLegacyDeliveryContactQuestion(
+                        runtime.survey.key,
+                        question,
+                    ),
+            )
+            .slice()
+            .sort((left, right) => left.sortOrder - right.sortOrder);
+    }, [runtime]);
 
-    function setAnswer(questionId: string, value: AnswerState[string]) {
+    function setAnswer(questionId: string, value: SurveyAnswerValue) {
         setAnswers((current) => ({ ...current, [questionId]: value }));
         setFieldErrors((current) => {
             const next = { ...current };
@@ -188,7 +148,7 @@ export function SurveyResponseClient({
                     questionKey: question.key,
                     value:
                         question.type === 'contact_info' &&
-                        !hasContactValue(answers[question.id] as ContactValue)
+                        !hasSurveyContactValue(answers[question.id])
                             ? null
                             : (answers[question.id] ?? null),
                 })),
@@ -240,6 +200,8 @@ export function SurveyResponseClient({
     if (error && !runtime) {
         return (
             <SurveyStateCard
+                backHref="/"
+                backLabel="Natrag u vrt"
                 title="Anketa nije dostupna"
                 description="Provjeri poveznicu ili otvori anketu iz obavijesti u svom Gredice računu."
             />
@@ -257,6 +219,8 @@ export function SurveyResponseClient({
     ) {
         return (
             <SurveyStateCard
+                backHref="/"
+                backLabel="Natrag u vrt"
                 title={runtime.version.thankYouTitle ?? 'Hvala ti!'}
                 description={
                     runtime.version.thankYouDescription ??
@@ -272,6 +236,8 @@ export function SurveyResponseClient({
     ) {
         return (
             <SurveyStateCard
+                backHref="/"
+                backLabel="Natrag u vrt"
                 title="Anketa više nije aktivna"
                 description="Ova poveznica je istekla ili više nije dostupna."
             />
@@ -279,231 +245,18 @@ export function SurveyResponseClient({
     }
 
     return (
-        <Card className="mx-auto max-w-2xl bg-background">
-            <CardHeader>
-                <Stack spacing={2}>
-                    <Typography level="body3" className="text-muted-foreground">
-                        Gredice anketa
-                    </Typography>
-                    <CardTitle>
-                        {runtime.version.introTitle ?? runtime.version.title}
-                    </CardTitle>
-                    {runtime.version.introDescription ? (
-                        <Typography className="text-muted-foreground">
-                            {runtime.version.introDescription}
-                        </Typography>
-                    ) : null}
-                </Stack>
-            </CardHeader>
-            <CardContent>
-                <Stack spacing={5}>
-                    {questions.map((question, index) => (
-                        <QuestionBlock
-                            answer={answers[question.id]}
-                            error={
-                                fieldErrors[question.key] ??
-                                fieldErrors[question.id]
-                            }
-                            index={index}
-                            key={question.id}
-                            question={question}
-                            setAnswer={(value) => setAnswer(question.id, value)}
-                        />
-                    ))}
-
-                    {error ? (
-                        <Typography className="text-red-700">
-                            {error}
-                        </Typography>
-                    ) : null}
-
-                    <Button
-                        type="button"
-                        fullWidth
-                        loading={submitting}
-                        disabled={submitting}
-                        onClick={handleSubmit}
-                    >
-                        Pošalji odgovor
-                    </Button>
-                </Stack>
-            </CardContent>
-        </Card>
-    );
-}
-
-function SurveyStateCard({
-    description,
-    title,
-}: {
-    description: string;
-    title: string;
-}) {
-    return (
-        <Card className="mx-auto max-w-lg bg-background">
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Stack spacing={4}>
-                    <Typography className="text-muted-foreground">
-                        {description}
-                    </Typography>
-                    <Button href="/" variant="outlined">
-                        Natrag u vrt
-                    </Button>
-                </Stack>
-            </CardContent>
-        </Card>
-    );
-}
-
-function QuestionBlock({
-    answer,
-    error,
-    index,
-    question,
-    setAnswer,
-}: {
-    answer: AnswerState[string];
-    error?: string;
-    index: number;
-    question: SurveyQuestion;
-    setAnswer: (value: AnswerState[string]) => void;
-}) {
-    return (
-        <fieldset className="space-y-3">
-            <legend className="min-w-0">
-                <Typography level="h6">
-                    {index + 1}. {question.title}
-                    {question.required ? ' *' : ''}
-                </Typography>
-            </legend>
-            {question.description ? (
-                <Typography level="body2" className="text-muted-foreground">
-                    {question.description}
-                </Typography>
-            ) : null}
-
-            {question.type === 'opinion_scale' &&
-            question.settings.type === 'opinion_scale' ? (
-                <OpinionScale
-                    max={question.settings.max}
-                    min={question.settings.min}
-                    value={typeof answer === 'number' ? answer : undefined}
-                    onChange={setAnswer}
-                />
-            ) : null}
-
-            {question.type === 'long_text' ? (
-                <textarea
-                    className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
-                    maxLength={
-                        question.settings.type === 'long_text'
-                            ? question.settings.maxLength
-                            : undefined
-                    }
-                    placeholder={
-                        question.settings.type === 'long_text'
-                            ? (question.settings.placeholder ?? undefined)
-                            : undefined
-                    }
-                    value={typeof answer === 'string' ? answer : ''}
-                    onChange={(event) => setAnswer(event.target.value)}
-                />
-            ) : null}
-
-            {question.type === 'contact_info' &&
-            question.settings.type === 'contact_info' ? (
-                <ContactFields
-                    fields={question.settings.fields}
-                    value={
-                        typeof answer === 'object' && !Array.isArray(answer)
-                            ? (answer as ContactValue)
-                            : {}
-                    }
-                    onChange={setAnswer}
-                />
-            ) : null}
-
-            {error ? (
-                <Typography level="body2" className="text-red-700">
-                    {error}
-                </Typography>
-            ) : null}
-        </fieldset>
-    );
-}
-
-function OpinionScale({
-    max,
-    min,
-    onChange,
-    value,
-}: {
-    max: number;
-    min: number;
-    onChange: (value: number) => void;
-    value?: number;
-}) {
-    const values = [];
-    for (let current = min; current <= max; current += 1) {
-        values.push(current);
-    }
-
-    return (
-        <div className="grid grid-cols-6 gap-2 sm:grid-cols-11">
-            {values.map((item) => (
-                <button
-                    aria-pressed={value === item}
-                    className={
-                        value === item
-                            ? 'h-11 rounded-md bg-primary text-primary-foreground text-sm font-semibold'
-                            : 'h-11 rounded-md border bg-background text-sm font-semibold hover:bg-muted'
-                    }
-                    key={item}
-                    type="button"
-                    onClick={() => onChange(item)}
-                >
-                    {item}
-                </button>
-            ))}
-        </div>
-    );
-}
-
-function ContactFields({
-    fields,
-    onChange,
-    value,
-}: {
-    fields: Array<'first_name' | 'last_name' | 'phone' | 'email'>;
-    onChange: (value: ContactValue) => void;
-    value: ContactValue;
-}) {
-    return (
-        <div className="grid gap-3 sm:grid-cols-2">
-            {fields.map((field) => {
-                const key = contactFieldKey(field);
-                return (
-                    <label className="space-y-1" key={field}>
-                        <span className="block text-sm font-medium text-foreground">
-                            {contactFieldLabel(field)}
-                        </span>
-                        <input
-                            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-hidden focus:border-ring focus:ring-2 focus:ring-ring/30"
-                            type={field === 'email' ? 'email' : 'text'}
-                            value={value[key] ?? ''}
-                            onChange={(event) =>
-                                onChange({
-                                    ...value,
-                                    [key]: event.target.value,
-                                })
-                            }
-                        />
-                    </label>
-                );
-            })}
-        </div>
+        <SurveyQuestionnaire
+            answers={answers}
+            error={error}
+            fieldErrors={fieldErrors}
+            introDescription={runtime.version.introDescription}
+            introTitle={runtime.version.introTitle}
+            questions={runtime.questions}
+            submitting={submitting}
+            surveyKey={runtime.survey.key}
+            title={runtime.version.title}
+            onAnswerChange={setAnswer}
+            onSubmit={handleSubmit}
+        />
     );
 }

@@ -1,21 +1,51 @@
+import type {
+    RaisedBedPlantingWithFields,
+    SelectedRaisedBedPlantingTaskReadModel,
+} from '@gredice/storage';
 import {
     FIELD_STATUSES_TO_INCLUDE,
+    isFieldBlocked,
     isFieldPendingVerification,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
     OPERATION_STATUSES_TO_INCLUDE,
 } from './scheduleShared';
-import type { DeliveryRequest, Operation, RaisedBed } from './types';
+import { getScheduleDateKey } from './scheduleTimeZone';
+import type {
+    DeliveryRequest,
+    Operation,
+    RaisedBed,
+    ScheduledSelectedPlanting,
+} from './types';
+
+type SelectedPlantingFilterTask = Pick<
+    SelectedRaisedBedPlantingTaskReadModel,
+    'block' | 'completion' | 'scheduledDate' | 'status'
+>;
+
+export type SelectedPlantingScheduleFilterSource = Pick<
+    RaisedBedPlantingWithFields,
+    'configurationSource'
+> & {
+    selectedTask: SelectedPlantingFilterTask | null;
+};
+
+type SelectedPlantingFilterRaisedBed<
+    TPlanting extends SelectedPlantingScheduleFilterSource,
+> = {
+    id: number;
+    physicalId?: string | null;
+    plantings?: readonly TPlanting[];
+};
 
 export function getScheduledFieldsForDay(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     raisedBeds: RaisedBed[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-
     return raisedBeds
         .filter((raisedBed) => Boolean(raisedBed.physicalId))
         .flatMap((raisedBed) => raisedBed.fields)
@@ -30,45 +60,139 @@ export function getScheduledFieldsForDay(
                 return false;
             }
 
+            if (isFieldBlocked(field.plantStatus)) {
+                if (!field.blockedAt) {
+                    return isToday;
+                }
+
+                const blockedDateKey = getScheduleDateKey(
+                    new Date(field.blockedAt),
+                    timeZone,
+                );
+                return (
+                    blockedDateKey === dateKey ||
+                    (isToday && blockedDateKey < dateKey)
+                );
+            }
+
             if (isFieldPendingVerification(field.plantStatus)) {
                 if (!field.plantSowDate) {
                     return isToday;
                 }
 
-                const sowDate = new Date(field.plantSowDate);
+                const sowDateKey = getScheduleDateKey(
+                    new Date(field.plantSowDate),
+                    timeZone,
+                );
                 return (
-                    sowDate.toDateString() === normalizedDate.toDateString() ||
-                    (isToday && normalizedDate > sowDate)
+                    sowDateKey === dateKey || (isToday && sowDateKey < dateKey)
                 );
             }
 
             if (field.plantStatus === 'sowed' && field.plantSowDate) {
-                const sowDate = new Date(field.plantSowDate);
-                return sowDate.toDateString() === normalizedDate.toDateString();
+                return (
+                    getScheduleDateKey(
+                        new Date(field.plantSowDate),
+                        timeZone,
+                    ) === dateKey
+                );
             }
 
             if (!field.plantScheduledDate) {
                 return isToday;
             }
 
-            const scheduledDate = new Date(field.plantScheduledDate);
+            const scheduledDateKey = getScheduleDateKey(
+                new Date(field.plantScheduledDate),
+                timeZone,
+            );
 
             return (
-                normalizedDate.toDateString() ===
-                    scheduledDate.toDateString() ||
-                (isToday && normalizedDate > scheduledDate)
+                scheduledDateKey === dateKey ||
+                (isToday && scheduledDateKey < dateKey)
             );
         });
 }
 
+export function getScheduledSelectedPlantingsForDay<
+    TPlanting extends SelectedPlantingScheduleFilterSource,
+>(
+    isToday: boolean,
+    dateKey: string,
+    raisedBeds: readonly SelectedPlantingFilterRaisedBed<TPlanting>[],
+    timeZone: string,
+): ScheduledSelectedPlanting<TPlanting>[] {
+    return raisedBeds
+        .filter((raisedBed) => Boolean(raisedBed.physicalId))
+        .flatMap((raisedBed) =>
+            (raisedBed.plantings ?? []).flatMap((planting) => {
+                const task = planting.selectedTask;
+                if (
+                    planting.configurationSource !== 'selected' ||
+                    !task ||
+                    task.status === 'cancelled'
+                ) {
+                    return [];
+                }
+
+                let visible = false;
+                if (task.status === 'blocked') {
+                    const blockedDateKey = task.block?.blockedAt
+                        ? getScheduleDateKey(task.block.blockedAt, timeZone)
+                        : task.scheduledDate
+                          ? getScheduleDateKey(
+                                new Date(task.scheduledDate),
+                                timeZone,
+                            )
+                          : undefined;
+                    visible = Boolean(
+                        blockedDateKey === dateKey ||
+                            (isToday &&
+                                blockedDateKey &&
+                                blockedDateKey < dateKey),
+                    );
+                } else if (task.status === 'pendingVerification') {
+                    const completedDateKey = task.completion?.completedAt
+                        ? getScheduleDateKey(
+                              task.completion.completedAt,
+                              timeZone,
+                          )
+                        : undefined;
+                    visible = completedDateKey
+                        ? completedDateKey === dateKey ||
+                          (isToday && completedDateKey < dateKey)
+                        : isToday;
+                } else if (task.status === 'completed') {
+                    visible = task.completion?.completedAt
+                        ? getScheduleDateKey(
+                              task.completion.completedAt,
+                              timeZone,
+                          ) === dateKey
+                        : false;
+                } else {
+                    const scheduledDateKey = task.scheduledDate
+                        ? getScheduleDateKey(
+                              new Date(task.scheduledDate),
+                              timeZone,
+                          )
+                        : undefined;
+                    visible = scheduledDateKey
+                        ? scheduledDateKey === dateKey ||
+                          (isToday && scheduledDateKey < dateKey)
+                        : isToday;
+                }
+
+                return visible ? [{ planting, raisedBedId: raisedBed.id }] : [];
+            }),
+        );
+}
+
 export function getScheduledOperationsForDay(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     operations: Operation[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-
     return operations.filter((operation) => {
         if (!OPERATION_STATUSES_TO_INCLUDE.has(operation.status)) {
             return false;
@@ -81,37 +205,55 @@ export function getScheduledOperationsForDay(
             return false;
         }
 
+        if (isOperationBlocked(operation.status)) {
+            if (!operation.blockedAt) {
+                return isToday;
+            }
+
+            const blockedDateKey = getScheduleDateKey(
+                new Date(operation.blockedAt),
+                timeZone,
+            );
+            return (
+                blockedDateKey === dateKey ||
+                (isToday && blockedDateKey < dateKey)
+            );
+        }
+
         if (isOperationPendingVerification(operation.status)) {
             if (!operation.completedAt) {
                 return isToday;
             }
 
-            const completedDate = new Date(operation.completedAt);
+            const completedDateKey = getScheduleDateKey(
+                new Date(operation.completedAt),
+                timeZone,
+            );
             return (
-                completedDate.toDateString() ===
-                    normalizedDate.toDateString() ||
-                (isToday && normalizedDate > completedDate)
+                completedDateKey === dateKey ||
+                (isToday && completedDateKey < dateKey)
             );
         }
 
         if (isOperationCompleted(operation.status) && operation.completedAt) {
-            const completedDate = new Date(operation.completedAt);
             return (
-                completedDate.toDateString() === normalizedDate.toDateString()
+                getScheduleDateKey(
+                    new Date(operation.completedAt),
+                    timeZone,
+                ) === dateKey
             );
         }
 
-        const scheduledDate = operation.scheduledDate
-            ? new Date(operation.scheduledDate)
+        const scheduledDateKey = operation.scheduledDate
+            ? getScheduleDateKey(new Date(operation.scheduledDate), timeZone)
             : undefined;
         const sameDay =
-            scheduledDate !== undefined &&
-            normalizedDate.toDateString() === scheduledDate.toDateString();
-        const isUnscheduledToday = scheduledDate === undefined && isToday;
+            scheduledDateKey !== undefined && scheduledDateKey === dateKey;
+        const isUnscheduledToday = scheduledDateKey === undefined && isToday;
         const isOverdueToday =
-            scheduledDate !== undefined &&
+            scheduledDateKey !== undefined &&
             isToday &&
-            normalizedDate > scheduledDate &&
+            scheduledDateKey < dateKey &&
             !isOperationCompleted(operation.status) &&
             !isOperationPendingVerification(operation.status) &&
             !isOperationCancelled(operation.status);
@@ -122,13 +264,10 @@ export function getScheduledOperationsForDay(
 
 export function getDayDeliveryRequests(
     isToday: boolean,
-    date: Date,
+    dateKey: string,
     deliveryRequests: DeliveryRequest[],
+    timeZone: string,
 ) {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const dateString = normalizedDate.toDateString();
-
     return deliveryRequests
         .filter((request) => {
             const slotStart = request.slot?.startAt
@@ -136,10 +275,11 @@ export function getDayDeliveryRequests(
                 : undefined;
 
             if (slotStart) {
-                const sameDay = slotStart.toDateString() === dateString;
+                const slotDateKey = getScheduleDateKey(slotStart, timeZone);
+                const sameDay = slotDateKey === dateKey;
                 const overdueToday =
                     isToday &&
-                    slotStart < normalizedDate &&
+                    slotDateKey < dateKey &&
                     request.state !== 'fulfilled' &&
                     request.state !== 'cancelled';
                 return sameDay || overdueToday;

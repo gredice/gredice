@@ -3,7 +3,7 @@ import { useAnimations } from '@react-three/drei';
 import { type ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationAction, Group, Material, Object3D } from 'three';
-import { MathUtils, Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { MathUtils, type Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
@@ -14,19 +14,45 @@ import {
     type AnimalPresenceEntry,
     type GameState,
     useGameState,
+    useGameStateStore,
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
+import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
 import {
     type AnimalDebugPathPoint,
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import { AnimalPetHearts } from '../animals/AnimalPetHearts';
+import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { dogSpeechMessages } from '../animals/actorSpeechMessages';
+import {
+    animalAvatarFollowRepathSeconds,
+    animalAvatarFollowSeconds,
+    getAnimalAvatarFollowPosition,
+    isFreshGardenAvatarPresence,
+} from '../animals/animalAvatarFollowing';
+import {
+    type AnimalMovementSurface,
+    canAnimalSettleAt,
+    createAnimalBlockedCells,
+    createAnimalMovementSurfaces,
+    getAnimalMovementYAt,
+    isAnimalGroundBlockName,
+    isAnimalSwimmingAt,
+    isAnimalWaterBlockName,
+} from '../animals/animalMovementTerrain';
 import {
     animalPresencePosition,
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
 } from '../animals/animalPresence';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type DogBehavior,
     type DogWeather,
@@ -54,7 +80,7 @@ type DogTarget = {
     walkPosition?: Vector3;
 };
 
-type DogGroundSurface = DogPathSurface;
+type DogGroundSurface = AnimalMovementSurface;
 
 type DogHabitat = {
     id: string;
@@ -134,11 +160,11 @@ const clearDogWeather = {
 } satisfies DogWeather;
 
 const dogScale = 0.46;
+const dogSpeechBubbleOffsetY = 1.13;
 const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
 const dogHouseNightRestInset = 0.42;
-const dogGroundSurfaceHalfSize = 0.5;
-const dogGroundSurfaceEpsilon = 0.001;
+const dogSwimDepth = 0.16;
 const dogWalkSpeedBlocksPerSecond = 0.9;
 const dogWalkCycleDistance = 0.82;
 const dogWalkAnimationFallbackDuration = 32 / 24;
@@ -158,17 +184,6 @@ const dogDarkFurColor = '#3c2115';
 const dogSoftDarkFurColor = '#7b4d2c';
 
 const dogHouseBlockNames = new Set(['DogHouse']);
-const groundBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-]);
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
 
 const lowEntityYOffsets: Record<string, number> = {
@@ -190,7 +205,7 @@ const lowEntityYOffsets: Record<string, number> = {
     PotWideLippedCup: 0.49,
     StoneMedium: 0.35,
     StoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
 };
 
 function hashString(value: string) {
@@ -225,21 +240,7 @@ function getDogWalkYAt(
     position: Pick<Vector3, 'x' | 'z'>,
     groundSurfaces: DogGroundSurface[],
 ) {
-    let surfaceY: number | null = null;
-
-    for (const surface of groundSurfaces) {
-        const insideSurface =
-            Math.abs(position.x - surface.x) <=
-                dogGroundSurfaceHalfSize + dogGroundSurfaceEpsilon &&
-            Math.abs(position.z - surface.z) <=
-                dogGroundSurfaceHalfSize + dogGroundSurfaceEpsilon;
-
-        if (insideSurface && (surfaceY === null || surface.y > surfaceY)) {
-            surfaceY = surface.y;
-        }
-    }
-
-    return surfaceY ?? 0;
+    return getAnimalMovementYAt(position, groundSurfaces);
 }
 
 function getTargetWalkPosition(target: DogTarget) {
@@ -306,10 +307,6 @@ function isDogHouseBlockName(name: string) {
     return dogHouseBlockNames.has(name);
 }
 
-function isGroundBlockName(name: string) {
-    return groundBlockNames.has(name);
-}
-
 function isTreeBlockName(name: string) {
     return treeBlockNames.has(name);
 }
@@ -339,65 +336,6 @@ function getLowEntityYOffset(
     }
 
     return null;
-}
-
-function getGroundSurfaceY(
-    blockData: BlockData[] | null | undefined,
-    stack: Stack,
-) {
-    let height = 0;
-    let hasGroundBlock = false;
-
-    for (const block of stack.blocks) {
-        if (!isGroundBlockName(block.name)) {
-            break;
-        }
-
-        hasGroundBlock = true;
-        height += getBlockHeight(blockData, block.name) ?? 0;
-    }
-
-    return hasGroundBlock ? getDogGroundYFromHeight(height) : null;
-}
-
-function createDogGroundSurfaces(
-    stacks: Stack[] | undefined,
-    blockData: BlockData[] | null | undefined,
-) {
-    const surfaces: DogGroundSurface[] = [];
-
-    for (const stack of stacks ?? []) {
-        const y = getGroundSurfaceY(blockData, stack);
-        if (y === null) {
-            continue;
-        }
-
-        surfaces.push({
-            x: stack.position.x,
-            y,
-            z: stack.position.z,
-        });
-    }
-
-    return surfaces;
-}
-
-function createDogBlockedCells(stacks: Stack[] | undefined) {
-    const blockedCells: DogPathCell[] = [];
-
-    for (const stack of stacks ?? []) {
-        const topBlock = stack.blocks.at(-1);
-        if (!topBlock || isGroundBlockName(topBlock.name)) {
-            continue;
-        }
-
-        blockedCells.push({
-            x: Math.round(stack.position.x),
-            z: Math.round(stack.position.z),
-        });
-    }
-
-    return blockedCells;
 }
 
 function targetForDogHouseBlock({
@@ -513,8 +451,13 @@ function createDogHabitats(
     stacks: Stack[] | undefined,
     blockData: BlockData[] | null | undefined,
 ) {
-    const blockedCells = createDogBlockedCells(stacks);
-    const groundSurfaces = createDogGroundSurfaces(stacks, blockData);
+    const blockedCells = createAnimalBlockedCells(stacks);
+    const groundSurfaces = createAnimalMovementSurfaces({
+        blockData,
+        groundLift: dogGroundLift,
+        stacks,
+        swimDepth: dogSwimDepth,
+    });
     const dogHouses: DogTarget[] = [];
     const covers: DogTarget[] = [];
     const lowEntities: DogTarget[] = [];
@@ -541,14 +484,18 @@ function createDogHabitats(
             continue;
         }
 
-        if (stack.blocks.length === 1 && isGroundBlockName(topBlock.name)) {
+        if (
+            stack.blocks.length === 1 &&
+            isAnimalGroundBlockName(topBlock.name)
+        ) {
             roamAnchors.push(targetForGroundStack(stack, blockData));
             continue;
         }
 
         if (
             !isDogHouseBlockName(topBlock.name) &&
-            !isGroundBlockName(topBlock.name)
+            !isAnimalGroundBlockName(topBlock.name) &&
+            !isAnimalWaterBlockName(topBlock.name)
         ) {
             const yOffset = getLowEntityYOffset(blockData, topBlock.name);
             if (yOffset !== null) {
@@ -714,6 +661,9 @@ function createRoamTarget({
         anchorWalkPosition.y,
         anchorWalkPosition.z + Math.sin(angle) * radius,
     );
+    if (!canAnimalSettleAt(position, habitat.groundSurfaces)) {
+        position.copy(anchorWalkPosition);
+    }
 
     return {
         behavior: 'roam',
@@ -772,6 +722,9 @@ function createChaseBirdTarget({
 
     const position = birdPosition.clone().add(approach);
     position.y = getDogWalkYAt(position, habitat.groundSurfaces);
+    if (!canAnimalSettleAt(position, habitat.groundSurfaces)) {
+        return null;
+    }
 
     return {
         behavior: 'chase-bird',
@@ -835,6 +788,9 @@ function createInteractCatTarget({
 
     const position = catPosition.clone().add(approach);
     position.y = getDogWalkYAt(position, habitat.groundSurfaces);
+    if (!canAnimalSettleAt(position, habitat.groundSurfaces)) {
+        return null;
+    }
 
     return {
         behavior: 'interact-cat',
@@ -1149,6 +1105,10 @@ function makeMovingState({
         surfaces: resolvedGroundSurfaces,
         to: walkTo,
     });
+    if (pathfinding.status === 'unreachable') {
+        return null;
+    }
+
     const path = vectorPathFromResult(pathfinding);
     const pathDistance = Math.max(
         pathfinding.distance,
@@ -1227,12 +1187,12 @@ function getDogAnimationName(runtime: DogRuntimeState): DogAnimationName {
     return 'Dog_Idle';
 }
 
-function isMesh(object: Object3D): object is Mesh {
-    return object instanceof Mesh;
-}
-
-function getDogDebugActivity(runtime: DogRuntimeState) {
+function getDogDebugActivity(runtime: DogRuntimeState, swimming: boolean) {
     if (runtime.phase === 'moving') {
+        if (swimming) {
+            return `swimming to ${runtime.target.behavior}`;
+        }
+
         return `walking to ${runtime.target.behavior}`;
     }
 
@@ -1308,7 +1268,10 @@ function createDogDebugEntry({
         label: habitat.dogHouse.id.replace(/^doghouse-/, ''),
         phase: runtime.phase,
         behavior: runtime.target.behavior,
-        activity: getDogDebugActivity(runtime),
+        activity: getDogDebugActivity(
+            runtime,
+            isAnimalSwimmingAt(group.position, habitat.groundSurfaces),
+        ),
         targetId: runtime.target.id,
         debugBehaviors: dogDebugBehaviors,
         pathfinding:
@@ -1356,7 +1319,6 @@ function cloneDogMaterial(material: Material) {
 }
 
 function prepareDogMesh(object: Mesh) {
-    object.castShadow = true;
     object.frustumCulled = false;
     object.receiveShadow = true;
     object.material = Array.isArray(object.material)
@@ -1484,6 +1446,7 @@ function Dog({
     const gltf = useGameGLTF('Dog');
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
+    const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
@@ -1491,6 +1454,9 @@ function Dog({
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
+    const lastPetRequestSequenceRef = useRef(0);
+    const followAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
+    const nextFollowAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
     const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<DogAnimationName>('Dog_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
@@ -1498,6 +1464,8 @@ function Dog({
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(dogSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalPathfindingDebugVisible = useGameState(
         (state) => state.animalPathfindingDebugVisible,
@@ -1523,17 +1491,22 @@ function Dog({
 
     const dogModel = useMemo(() => {
         const clone = gltf.scene.clone(true);
-        clone.traverse((object) => {
-            if (isMesh(object)) {
-                prepareDogMesh(object);
-            }
-        });
+        const { primaryCasterCount } = configureActorMeshShadows(
+            clone,
+            prepareDogMesh,
+        );
         return {
+            primaryCasterCount,
             rig: createDogRig(clone),
             scene: clone,
         };
     }, [gltf.scene]);
     const { actions } = useAnimations(gltf.animations, dogModel.scene);
+    const updateActorGroundingShadow = useActorGroundingShadow({
+        id: `dog:${habitat.id}`,
+        primaryCasterCount: dogModel.primaryCasterCount,
+        species: 'dog',
+    });
 
     useEffect(() => {
         const action = actions[activeAnimation];
@@ -1552,14 +1525,12 @@ function Dog({
     }, [actions, activeAnimation]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.dogHouse.position);
-            if (habitat.dogHouse.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.dogHouse.facingYaw;
-            }
-        }
-    }, [habitat.dogHouse.facingYaw, habitat.dogHouse.position]);
+        initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.dogHouse,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+    }, [habitat.dogHouse]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
@@ -1615,6 +1586,11 @@ function Dog({
         event.stopPropagation();
     }
 
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
+    }
+
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
 
@@ -1651,7 +1627,7 @@ function Dog({
             return;
         }
 
-        runtimeRef.current = makeMovingState({
+        const movingState = makeMovingState({
             blockedCells: habitat.blockedCells,
             from: group.position.clone(),
             fromTarget:
@@ -1660,6 +1636,9 @@ function Dog({
             now,
             target,
         });
+        if (movingState) {
+            runtimeRef.current = movingState;
+        }
     }
 
     useFrame(({ clock }, delta) => {
@@ -1704,6 +1683,66 @@ function Dog({
             }
         }
 
+        const { gardenAvatarAnimalPetRequest, gardenAvatarPresence } =
+            gameStateStore.getState();
+        if (
+            gardenAvatarAnimalPetRequest &&
+            gardenAvatarAnimalPetRequest.sequence !==
+                lastPetRequestSequenceRef.current
+        ) {
+            lastPetRequestSequenceRef.current =
+                gardenAvatarAnimalPetRequest.sequence;
+            if (
+                gardenAvatarAnimalPetRequest.species === 'Dog' &&
+                gardenAvatarAnimalPetRequest.targetId === habitat.id
+            ) {
+                followAvatarUntilRef.current = now + animalAvatarFollowSeconds;
+                nextFollowAvatarRepathAtRef.current = Number.NEGATIVE_INFINITY;
+            }
+        }
+
+        if (
+            now < followAvatarUntilRef.current &&
+            isFreshGardenAvatarPresence(gardenAvatarPresence, now) &&
+            now >= nextFollowAvatarRepathAtRef.current
+        ) {
+            const followPosition =
+                getAnimalAvatarFollowPosition(gardenAvatarPresence);
+            const lookAtPosition = new Vector3(
+                gardenAvatarPresence.position.x,
+                gardenAvatarPresence.position.y + 0.85,
+                gardenAvatarPresence.position.z,
+            );
+            const target = {
+                behavior: 'follow-avatar',
+                id: `avatar-follow:${habitat.id}`,
+                lookAtPosition,
+                position: followPosition,
+            } satisfies DogTarget;
+            const movingState = makeMovingState({
+                blockedCells: habitat.blockedCells,
+                from: group.position.clone(),
+                groundSurfaces: habitat.groundSurfaces,
+                now,
+                target,
+            });
+            runtime =
+                movingState ??
+                makeSettledState({
+                    now,
+                    random,
+                    target: {
+                        ...target,
+                        position: group.position.clone(),
+                    },
+                    timeOfDay,
+                    weather,
+                });
+            runtimeRef.current = runtime;
+            nextFollowAvatarRepathAtRef.current =
+                now + animalAvatarFollowRepathSeconds;
+        }
+
         if (
             animalDebugCommand &&
             animalDebugCommand.sequence !==
@@ -1728,30 +1767,37 @@ function Dog({
                 });
 
                 if (target) {
-                    runtime =
+                    if (
                         isDogSettledAtNightDogHouse(
                             runtime,
                             target,
                             timeOfDay,
-                        ) || group.position.distanceTo(target.position) < 0.08
-                            ? makeSettledState({
-                                  now,
-                                  random,
-                                  target,
-                                  timeOfDay,
-                                  weather,
-                              })
-                            : makeMovingState({
-                                  blockedCells: habitat.blockedCells,
-                                  from: group.position.clone(),
-                                  fromTarget:
-                                      runtime.phase === 'settled'
-                                          ? runtime.target
-                                          : undefined,
-                                  groundSurfaces: habitat.groundSurfaces,
-                                  now,
-                                  target,
-                              });
+                        ) ||
+                        group.position.distanceTo(target.position) < 0.08
+                    ) {
+                        runtime = makeSettledState({
+                            now,
+                            random,
+                            target,
+                            timeOfDay,
+                            weather,
+                        });
+                    } else {
+                        const movingState = makeMovingState({
+                            blockedCells: habitat.blockedCells,
+                            from: group.position.clone(),
+                            fromTarget:
+                                runtime.phase === 'settled'
+                                    ? runtime.target
+                                    : undefined,
+                            groundSurfaces: habitat.groundSurfaces,
+                            now,
+                            target,
+                        });
+                        if (movingState) {
+                            runtime = movingState;
+                        }
+                    }
                     runtimeRef.current = runtime;
                 }
             }
@@ -1864,20 +1910,42 @@ function Dog({
             return;
         }
 
-        runtimeRef.current = makeMovingState({
-            blockedCells: habitat.blockedCells,
-            from: group.position.clone(),
-            fromTarget: runtime.target,
-            groundSurfaces: habitat.groundSurfaces,
-            now,
-            target,
-        });
+        runtimeRef.current =
+            makeMovingState({
+                blockedCells: habitat.blockedCells,
+                from: group.position.clone(),
+                fromTarget: runtime.target,
+                groundSurfaces: habitat.groundSurfaces,
+                now,
+                target,
+            }) ??
+            makeSettledState({
+                now,
+                random,
+                target: runtime.target,
+                timeOfDay,
+                weather,
+            });
     });
 
     useFrame(({ clock }) => {
         const runtime = runtimeRef.current;
         const group = groupRef.current;
         const now = clock.elapsedTime;
+
+        if (group && updateActorGroundingShadow) {
+            updateActorGroundingShadow({
+                actorY: group.position.y,
+                receiverY: getDogWalkYAt(
+                    group.position,
+                    habitat.groundSurfaces,
+                ),
+                visible: group.visible && dogModel.scene.visible,
+                x: group.position.x,
+                yaw: group.rotation.y,
+                z: group.position.z,
+            });
+        }
 
         if (
             runtime &&
@@ -1916,11 +1984,24 @@ function Dog({
                 scale={dogScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <group rotation={[0, dogVisualYawOffset, 0]}>
                     <primitive object={dogModel.scene} />
                 </group>
             </group>
+            <AnimalPetHearts
+                actorRef={groupRef}
+                offsetY={0.9}
+                targetId={habitat.id}
+            />
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={dogSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
                 color="#f59e0b"
@@ -1958,10 +2039,12 @@ function resolveDogWeather({
 }
 
 export function Dogs({
+    farmId,
     stacks,
     weather,
     weatherDisabled = false,
 }: {
+    farmId?: number | null;
     stacks: Stack[] | undefined;
     weather?: DogWeatherOverride;
     weatherDisabled?: boolean;
@@ -1986,7 +2069,10 @@ export function Dogs({
         () => animalPresenceEntries.filter((entry) => entry.species === 'Cat'),
         [animalPresenceEntries],
     );
-    const { data: weatherNow } = useWeatherNow(!weatherDisabled && !weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
     const dogWeather = resolveDogWeather({
         gameWeather,
         weatherDisabled,

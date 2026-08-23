@@ -1,19 +1,39 @@
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
+import {
+    gardenPreviewContentType,
+    gardenPreviewHeight,
+    gardenPreviewMaxSizeBytes,
+    gardenPreviewRendererVersion,
+    gardenPreviewRendererVersionHeader,
+    gardenPreviewSourceRevisionHeader,
+    gardenPreviewWidth,
+} from '@gredice/js/gardenPreviews';
+import { detailedRaisedBedInspectionNotificationType } from '@gredice/js/notifications';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDON_OPERATION_ENTITY_ID,
     RAISED_BED_OPERATION_ENTITY_TYPE_NAME,
 } from '@gredice/js/raisedBeds';
+import {
+    isValidWoodenSignMessage,
+    normalizeWoodenSignMessage,
+    woodenSignBlockName,
+    woodenSignMessageMaxGraphemesPerLine,
+} from '@gredice/js/woodenSign';
 import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
+    acquireGardenPreviewCaptureLease,
     addGardenBoxInventoryItem,
-    buildRaisedBedFieldPlantUpdatePayload,
+    CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
+    cancelSelectedRaisedBedPlantingTaskForOwner,
+    claimGardenPreviewBlobDeletion,
     clearSandboxField,
+    completeGardenPreviewBlobDeletions,
     countAiRequestEventsSince,
     countRaisedBedsByAccount,
     createDefaultGardenForAccount,
@@ -21,45 +41,72 @@ import {
     createGardenBlock,
     createGardenStack,
     createSandboxGarden,
+    deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
     deleteSandboxGardenCompletely,
-    type EntityStandardized,
     GardenBoxInventoryLimitError,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
+    type GardenPreviewBlobDeletionReason,
+    type GardenPreviewImage,
     getAccount,
     getAccountGardensMetadata,
     getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
-    getEntitiesFormatted,
     getGarden,
+    getGardenBlock,
     getGardenBlocks,
+    getGardenLikeCounts,
+    getGardenPreview,
     getGardenStack,
     getGardenStackForUpdate,
-    getGardenVisitState,
+    getNotification,
+    getOperationsByIds,
     getOperationsPage,
+    getPreviousPlantStatusChangedAtForUpdate,
+    getPublicGarden,
+    getPublicGardens,
     getRaisedBed,
     getRaisedBedAiHistoryEntries,
     getRaisedBedDiaryEntries,
     getRaisedBedFieldDiaryEntries,
+    getRaisedBedFieldsWithEvents,
     getRaisedBedIdsByAccount,
+    getRaisedBedPlanting,
     getRaisedBedSensors,
+    getRaisedBedsForGardens,
     getSandboxGardenDeletionCandidate,
+    getUnreadNotificationsByType,
+    getUnreadRaisedBedImageNotificationIdsForGarden,
+    getUnreadRaisedBedNotificationsForGarden,
+    getUserLikedGardenIds,
+    isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
-    markGardenVisitSummarySeen,
+    maxNotificationReadBatchSize,
+    PublicGardenLikeTargetNotFoundError,
+    queueGardenPreviewBlobDeletion,
+    recordGardenPreviewBlobDeletionFailures,
+    releaseGardenPreviewCaptureLease,
+    replaceGardenPreview,
     rescheduleGardenDiaryOperation,
     rescheduleGardenDiaryRaisedBedField,
+    rescheduleSelectedRaisedBedPlantingTaskForOwner,
+    ScheduleTaskSubmissionError,
+    setAllNotificationsRead,
+    setGardenLike,
     sowSandboxField,
     spendSunflowers,
     storage,
     deleteGardenBlock as storageDeleteGardenBlock,
+    toGardenPreviewImage,
     updateGarden,
     updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
-    upsertGardenOpenedAt,
+    withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
+import { del, put } from '@vercel/blob';
 import { type Context, Hono } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -71,13 +118,36 @@ import {
     serializeAppliedRaisedBedOperation,
 } from '../../../lib/garden/appliedRaisedBedOperations';
 import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
-import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
-import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import {
-    generateGardenVisitSummaryFacts,
-    hashGardenVisitSummaryFacts,
-} from '../../../lib/garden/gardenVisitSummaryService';
+    buildDetailedRaisedBedInspectionReports,
+    detailedInspectionOperationId,
+} from '../../../lib/garden/detailedRaisedBedInspectionReports';
+import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
+import {
+    canAccessGardenPreviewSource,
+    createGardenPreviewSourceRevision,
+    getGardenPreviewUploadDecision,
+    readWebpDimensions,
+} from '../../../lib/garden/gardenPreview';
+import {
+    getGardenPreviewBlobDeletionRetryAt,
+    processGardenPreviewBlobDeletions,
+} from '../../../lib/garden/gardenPreviewBlobDeletion';
+import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
+import {
+    countPublicGardenActivePlants,
+    serializePublicRaisedBedField,
+    serializeRaisedBedPlantingsForGardenView,
+} from '../../../lib/garden/publicGardenSerialization';
+import {
+    publicGardenVisitorClientAddress,
+    publicGardenVisitorPresenceBodySchema,
+    publicGardenVisitorRateLimitAllows,
+    removePublicGardenVisitorPresence,
+    updatePublicGardenVisitorPresence,
+} from '../../../lib/garden/publicGardenVisitorPresence';
 import { purchaseGardenBlock } from '../../../lib/garden/purchaseGardenBlockService';
 import {
     AI_REQUEST_QUOTAS,
@@ -89,10 +159,9 @@ import {
     streamRaisedBedImageAnalysis,
     validateImageUrls,
 } from '../../../lib/garden/raisedBedAiAnalysisService';
+import { serializeRaisedBedGardenNotification } from '../../../lib/garden/raisedBedNotifications';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
-    validateConnectedRaisedBedMove,
-    validateRaisedBedPlacement,
     validateSpanningBlockMove,
     validateStackPlacement,
 } from '../../../lib/garden/stacksPatchValidation';
@@ -105,6 +174,47 @@ import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
+
+const gardenLikeBodySchema = z
+    .object({
+        liked: z.boolean(),
+    })
+    .strict();
+
+const woodenSignMessageSchema = z
+    .union([z.string(), z.null()])
+    .refine(isValidWoodenSignMessage, {
+        message: `Sign message must contain at most ${woodenSignMessageMaxGraphemesPerLine.toString()} characters per row across one or two rows and no control characters`,
+    })
+    .transform((message) =>
+        message === null ? null : normalizeWoodenSignMessage(message),
+    );
+
+const updateGardenBlockBodySchema = z
+    .object({
+        rotation: z.number().nullable().optional(),
+        variant: z.number().nullable().optional(),
+        message: woodenSignMessageSchema.optional(),
+    })
+    .strict()
+    .refine((body) => Object.keys(body).length > 0, {
+        message: 'At least one block field is required',
+    });
+
+const detailedInspectionReportsSeenBodySchema = z
+    .object({
+        notificationIds: z
+            .array(z.string().min(1))
+            .min(1)
+            .max(maxNotificationReadBatchSize),
+    })
+    .strict();
+
+const raisedBedNotificationDismissBodySchema = z
+    .object({
+        scope: z.enum(['selected', 'raised_bed_images']),
+    })
+    .strict();
 
 const analyzeImageBodySchema = z
     .object({
@@ -127,13 +237,64 @@ const storeBlockInGardenBoxBodySchema = z.object({
     blockIndex: z.number().int().min(0),
 });
 
-const rescheduleDiaryItemBodySchema = z.object({
-    scheduledDate: z.string().trim().min(1),
+const operationDiaryIdentityBodySchema = z.object({
+    expectedEntityId: z.number().int().positive(),
+    expectedTaskVersionEventId: z.number().int().nonnegative(),
 });
 
-const visitSummarySeenBodySchema = z.object({
-    factsHash: z.string().trim().min(1).max(128).nullable().optional(),
+const plantingDiaryIdentityBodySchema = z.object({
+    expectedPlantCycleEventId: z.number().int().positive(),
+    expectedPlantSortId: z.number().int().positive(),
 });
+
+const plantingDiaryAttemptIdentityBodySchema =
+    plantingDiaryIdentityBodySchema.extend({
+        expectedPlantCycleVersionEventId: z.number().int().positive(),
+    });
+
+const rescheduleOperationDiaryItemBodySchema =
+    operationDiaryIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+    });
+
+const reschedulePlantingDiaryItemBodySchema =
+    plantingDiaryAttemptIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+    });
+
+const selectedPlantingOwnerIdentityBodySchema = z
+    .object({
+        commandId: z.uuid(),
+        expectedLifecycleVersionEventId: z.number().int().positive(),
+        expectedPlantSortId: z.number().int().positive(),
+    })
+    .strict();
+
+const rescheduleSelectedPlantingBodySchema =
+    selectedPlantingOwnerIdentityBodySchema.extend({
+        scheduledDate: z.string().trim().min(1),
+        sowingLocation: z.enum(['direct', 'greenhouse']),
+    });
+
+const cancelSelectedPlantingBodySchema =
+    selectedPlantingOwnerIdentityBodySchema.extend({
+        effectiveAt: z.iso.datetime().optional(),
+        reason: z.string().trim().min(1).max(2000),
+    });
+
+const gardenCameraVectorSchema = z.tuple([
+    z.number().finite(),
+    z.number().finite(),
+    z.number().finite(),
+]);
+
+const gardenHomeCameraSchema = z
+    .object({
+        position: gardenCameraVectorSchema,
+        target: gardenCameraVectorSchema,
+        zoom: z.number().finite().min(50).max(500),
+    })
+    .strict();
 
 function normalizeAnalysisImageUrls(body: AnalyzeImageBody) {
     const imageUrls = body.imageUrls?.length
@@ -175,6 +336,59 @@ function diaryCancelErrorResponse(
         case 409:
             return context.json({ error: error.message }, 409);
     }
+}
+
+function selectedPlantingOwnerErrorResponse(
+    context: Context,
+    error: ScheduleTaskSubmissionError,
+) {
+    switch (error.code) {
+        case 'invalid_input':
+            return context.json(
+                { code: error.code, error: error.message },
+                400,
+            );
+        case 'not_found':
+        case 'not_authorized':
+            return context.json(
+                { code: 'not_found', error: 'Planting not found' },
+                404,
+            );
+        case 'assignment_changed':
+        case 'task_changed':
+        case 'invalid_status':
+        case 'submission_conflict':
+            return context.json(
+                { code: error.code, error: error.message },
+                409,
+            );
+    }
+}
+
+async function selectedPlantingMatchesGardenRoute({
+    accountId,
+    gardenId,
+    plantingId,
+    raisedBedId,
+}: {
+    accountId: string;
+    gardenId: number;
+    plantingId: number;
+    raisedBedId: number;
+}) {
+    const planting = await getRaisedBedPlanting(plantingId);
+    if (
+        planting?.configurationSource !== 'selected' ||
+        planting.raisedBedId !== raisedBedId
+    ) {
+        return false;
+    }
+    const raisedBed = await getRaisedBed(raisedBedId);
+    return Boolean(
+        raisedBed &&
+            raisedBed.accountId === accountId &&
+            raisedBed.gardenId === gardenId,
+    );
 }
 
 const aiTextStreamResponseInit = {
@@ -334,6 +548,7 @@ function serializeGardenOperation(
         : isAssigned
           ? 'assigned'
           : operation.status;
+    const evidence = serializeGardenOperationEvidence(operation);
 
     const statusHistory = [
         {
@@ -366,6 +581,12 @@ function serializeGardenOperation(
                       operation.createdAt.toISOString(),
               }
             : null,
+        operation.blockedAt
+            ? {
+                  status: 'blocked',
+                  changedAt: operation.blockedAt.toISOString(),
+              }
+            : null,
         operation.completedAt
             ? {
                   status: 'pendingVerification',
@@ -389,6 +610,7 @@ function serializeGardenOperation(
     return {
         id: operation.id,
         entityId: operation.entityId,
+        taskVersionEventId: operation.taskVersionEventId,
         raisedBedId: operation.raisedBedId,
         raisedBedFieldId: operation.raisedBedFieldId,
         status: timelineStatus,
@@ -398,8 +620,13 @@ function serializeGardenOperation(
         completedAt: operation.completedAt?.toISOString() ?? null,
         verifiedAt: operation.verifiedAt?.toISOString() ?? null,
         canceledAt: operation.canceledAt?.toISOString() ?? null,
-        imageUrls: operation.imageUrls ?? [],
-        completionNotes: operation.completionNotes ?? null,
+        cancellationReason: operation.cancelReason ?? null,
+        blockedAt: operation.blockedAt?.toISOString() ?? null,
+        blockReasonLabel: operation.blockReasonLabel ?? null,
+        blockNote: operation.blockNote ?? null,
+        blockImageUrls: operation.blockImageUrls ?? [],
+        imageUrls: evidence.imageUrls,
+        completionNotes: evidence.completionNotes,
         targetLabel:
             (operation.raisedBedFieldId
                 ? targetsByRaisedBedFieldId.get(operation.raisedBedFieldId)
@@ -412,35 +639,36 @@ function serializeGardenOperation(
     };
 }
 
-function serializeGardenVisitState(
-    state: Awaited<ReturnType<typeof getGardenVisitState>>,
-) {
-    if (!state) {
-        return null;
-    }
-
-    return {
-        userId: state.userId,
-        accountId: state.accountId,
-        gardenId: state.gardenId,
-        lastOpenedAt: state.lastOpenedAt?.toISOString() ?? null,
-        lastSummarySeenAt: state.lastSummarySeenAt?.toISOString() ?? null,
-        lastSummaryFactsHash: state.lastSummaryFactsHash ?? null,
-        createdAt: state.createdAt.toISOString(),
-        updatedAt: state.updatedAt.toISOString(),
-    };
-}
-
-function serializeGardenVisitSummaryWindow(input: {
-    firstVisit: boolean;
-    since: Date | null;
-    until: Date;
+async function loadDetailedRaisedBedInspectionReports({
+    accountId,
+    garden,
+    userId,
+}: {
+    accountId: string;
+    garden: NonNullable<Awaited<ReturnType<typeof getGarden>>>;
+    userId: string;
 }) {
-    return {
-        firstVisit: input.firstVisit,
-        since: input.since?.toISOString() ?? null,
-        until: input.until.toISOString(),
-    };
+    const notifications = await getUnreadNotificationsByType({
+        accountId,
+        gardenId: garden.id,
+        type: detailedRaisedBedInspectionNotificationType,
+        userId,
+    });
+    const operationIds = notifications.flatMap((notification) => {
+        const operationId = detailedInspectionOperationId(
+            notification.metadata,
+        );
+        return operationId === null ? [] : [operationId];
+    });
+    const operations = await getOperationsByIds(operationIds);
+
+    return buildDetailedRaisedBedInspectionReports({
+        accountId,
+        gardenId: garden.id,
+        notifications,
+        operations,
+        raisedBeds: garden.raisedBeds,
+    });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -453,6 +681,335 @@ function getAbandonReason(data: unknown) {
     }
 
     return data.reason;
+}
+
+function serializePublicGardenPreviewImage(
+    previewImage: GardenPreviewImage | null,
+) {
+    if (!previewImage) {
+        return null;
+    }
+
+    return {
+        url: previewImage.url,
+        width: previewImage.width,
+        height: previewImage.height,
+        capturedAt: previewImage.capturedAt,
+    };
+}
+
+type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
+type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
+type AppliedGardenOperations = Awaited<
+    ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
+>;
+
+function serializeGardenStacks(garden: GardenDetail, blocks: GardenBlocks) {
+    const blocksById = new Map(blocks.map((block) => [block.id, block]));
+
+    return garden.stacks.reduce(
+        (acc, stack) => {
+            if (!acc[stack.positionX]) {
+                acc[stack.positionX] = {};
+            }
+            acc[stack.positionX][stack.positionY] = stack.blocks
+                .map((blockId) => {
+                    const block = blocksById.get(blockId);
+                    if (!block) return null;
+
+                    return {
+                        id: blockId,
+                        message: block.message,
+                        name: block.name,
+                        rotation: block.rotation ?? 0,
+                        variant: block.variant,
+                    };
+                })
+                .filter(Boolean) as {
+                id: string;
+                message?: string | null;
+                name: string;
+                rotation?: number | null;
+                variant?: number | null;
+            }[];
+            return acc;
+        },
+        {} as Record<
+            string,
+            Record<
+                string,
+                {
+                    id: string;
+                    message?: string | null;
+                    name: string;
+                    rotation?: number | null;
+                    variant?: number | null;
+                }[]
+            >
+        >,
+    );
+}
+
+function createGardenOperationTargetMaps(garden: GardenDetail) {
+    return {
+        targetsByRaisedBedId: new Map(
+            garden.raisedBeds.map((raisedBed) => [
+                raisedBed.id,
+                `Gredica: ${raisedBed.name}`,
+            ]),
+        ),
+        targetsByRaisedBedFieldId: new Map(
+            garden.raisedBeds.flatMap((raisedBed) =>
+                raisedBed.fields.map((field) => [
+                    field.id,
+                    `Polje ${field.positionIndex + 1} • ${raisedBed.name}`,
+                ]),
+            ),
+        ),
+    };
+}
+
+async function serializeGardenDetails(
+    garden: GardenDetail,
+    blocks: GardenBlocks,
+    operations: AppliedGardenOperations,
+    options: { publicView?: boolean } = {},
+) {
+    const blockNameById = new Map(
+        blocks.map((block) => [block.id, block.name] as const),
+    );
+    const raisedBedsById = new Map(
+        garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
+    );
+    const abandonedRaisedBedAggregateIds = garden.raisedBeds
+        .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
+        .map((raisedBed) => raisedBed.id.toString());
+    const raisedBedAbandonEvents =
+        abandonedRaisedBedAggregateIds.length > 0
+            ? await getAllEvents(
+                  knownEventTypes.raisedBeds.abandon,
+                  abandonedRaisedBedAggregateIds,
+              )
+            : [];
+    const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
+        (acc, event) => {
+            const raisedBedId = Number(event.aggregateId);
+            if (!Number.isInteger(raisedBedId)) {
+                return acc;
+            }
+
+            acc.set(raisedBedId, getAbandonReason(event.data));
+            return acc;
+        },
+        new Map<number, string | null>(),
+    );
+    const appliedOperationsByRaisedBedId = operations.reduce(
+        (acc, operation) => {
+            if (
+                !operation.raisedBedId ||
+                !isAppliedRaisedBedOperationStatus(operation.status)
+            ) {
+                return acc;
+            }
+
+            const raisedBed = raisedBedsById.get(operation.raisedBedId);
+            if (
+                !raisedBed ||
+                !isAppliedOperationCurrentForRaisedBedFields(
+                    operation,
+                    raisedBed.fields,
+                )
+            ) {
+                return acc;
+            }
+
+            const existing = acc.get(operation.raisedBedId) ?? [];
+            existing.push(serializeAppliedRaisedBedOperation(operation));
+            acc.set(operation.raisedBedId, existing);
+            return acc;
+        },
+        new Map<
+            number,
+            ReturnType<typeof serializeAppliedRaisedBedOperation>[]
+        >(),
+    );
+    const validityMap = calculateRaisedBedsValidity(
+        garden.raisedBeds,
+        garden.stacks,
+        blockNameById,
+    );
+
+    return {
+        id: garden.id,
+        name: garden.name,
+        isSandbox: garden.isSandbox,
+        isPublic: garden.isPublic,
+        backgroundPalette: garden.backgroundPalette,
+        homeCamera: garden.homeCamera ?? null,
+        previewImage: garden.previewImage,
+        farmId: garden.farmId,
+        latitude: garden.farm.latitude,
+        longitude: garden.farm.longitude,
+        stacks: serializeGardenStacks(garden, blocks),
+        raisedBeds: garden.raisedBeds.map((raisedBed) => ({
+            id: raisedBed.id,
+            name: raisedBed.name,
+            physicalId: raisedBed.physicalId,
+            blockId: raisedBed.blockId,
+            status: raisedBed.status,
+            weedState: raisedBed.weedState,
+            abandonReason: abandonReasonByRaisedBedId.get(raisedBed.id) ?? null,
+            orientation: raisedBed.orientation,
+            fields: options.publicView
+                ? raisedBed.fields.map(serializePublicRaisedBedField)
+                : raisedBed.fields,
+            ...serializeRaisedBedPlantingsForGardenView(
+                raisedBed.plantings,
+                options,
+            ),
+            appliedOperations:
+                appliedOperationsByRaisedBedId.get(raisedBed.id) ?? [],
+            createdAt: raisedBed.createdAt,
+            updatedAt: raisedBed.updatedAt,
+            isValid: validityMap.get(raisedBed.id) ?? false,
+        })),
+        createdAt: garden.createdAt,
+        updatedAt: garden.updatedAt,
+    };
+}
+
+const gardenPreviewRevisionPattern = /^[a-f0-9]{64}$/;
+const gardenPreviewCacheMaxAgeSeconds = 365 * 24 * 60 * 60;
+const gardenPreviewCaptureLeaseDurationMs = 60_000;
+const gardenPreviewBlobDeletionClaimDurationMs = 60_000;
+
+async function getAuthorizedGardenPreviewSource(
+    gardenId: number,
+    {
+        accountId,
+        role,
+    }: {
+        accountId: string;
+        role: string;
+    },
+) {
+    const garden = await getGarden(gardenId);
+    if (
+        !garden ||
+        !canAccessGardenPreviewSource({
+            gardenAccountId: garden.accountId,
+            gardenIsPublic: garden.isPublic,
+            requestAccountId: accountId,
+            requestRole: role,
+        })
+    ) {
+        return null;
+    }
+
+    const [blocks, operations] = await Promise.all([
+        getGardenBlocks(gardenId),
+        getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
+    ]);
+
+    const details = await serializeGardenDetails(garden, blocks, operations);
+    return {
+        details,
+        garden,
+        sourceRevision: createGardenPreviewSourceRevision(details),
+    };
+}
+
+async function deleteGardenPreviewBlob({
+    gardenId,
+    imageUrl,
+    pathname,
+    reason,
+}: {
+    gardenId: number;
+    imageUrl: string;
+    pathname: string;
+    reason: GardenPreviewBlobDeletionReason;
+}) {
+    const claimId = globalThis.crypto.randomUUID();
+    const attemptedAt = new Date();
+
+    try {
+        await queueGardenPreviewBlobDeletion({ imageUrl, pathname, reason });
+        const deletion = await claimGardenPreviewBlobDeletion({
+            claimId,
+            expiresAt: new Date(
+                attemptedAt.getTime() +
+                    gardenPreviewBlobDeletionClaimDurationMs,
+            ),
+            now: attemptedAt,
+            pathname,
+        });
+        if (!deletion) {
+            return;
+        }
+
+        const result = await processGardenPreviewBlobDeletions({
+            concurrency: 1,
+            deleteBlob: async (url) => del(url),
+            deletions: [deletion],
+        });
+        if (result.completedIds.length > 0) {
+            const completed = await completeGardenPreviewBlobDeletions({
+                claimId,
+                ids: result.completedIds,
+            });
+            if (completed !== result.completedIds.length) {
+                throw new Error(
+                    'Garden preview Blob deletion completion claim was lost',
+                );
+            }
+        }
+        if (result.failures.length > 0) {
+            const failed = await recordGardenPreviewBlobDeletionFailures({
+                attemptedAt,
+                claimId,
+                failures: result.failures.map((failure) => ({
+                    ...failure,
+                    retryAt: getGardenPreviewBlobDeletionRetryAt({
+                        attempts: deletion.attempts,
+                        now: attemptedAt,
+                    }),
+                })),
+            });
+            if (failed !== result.failures.length) {
+                throw new Error(
+                    'Garden preview Blob deletion failure claim was lost',
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Failed to delete garden preview blob', {
+            error,
+            gardenId,
+            imageUrl,
+            pathname,
+            reason,
+        });
+    }
+}
+
+async function getGardenQueuedTasks(garden: GardenDetail) {
+    const operationsPage = await getOperationsPage({
+        accountId: garden.accountId,
+        gardenId: garden.id,
+        includeCompleted: false,
+        limit: 50,
+    });
+    const { targetsByRaisedBedFieldId, targetsByRaisedBedId } =
+        createGardenOperationTargetMaps(garden);
+
+    return operationsPage.items.map((operation) =>
+        serializeGardenOperation(
+            operation,
+            targetsByRaisedBedFieldId,
+            targetsByRaisedBedId,
+        ),
+    );
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
@@ -470,7 +1027,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     id: garden.id,
                     name: garden.name,
                     isSandbox: garden.isSandbox,
+                    isPublic: garden.isPublic,
                     backgroundPalette: garden.backgroundPalette,
+                    homeCamera: garden.homeCamera ?? null,
                     createdAt: garden.createdAt,
                 })),
             );
@@ -503,6 +1062,111 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 isSandbox,
             });
             return context.json({ id: gardenId }, 201);
+        },
+    )
+    .get(
+        '/public',
+        describeRoute({
+            description: 'Get public gardens visible on the public website',
+            security: publicSecurity,
+        }),
+        async (context) => {
+            const publicGardens = await getPublicGardens();
+            const publicGardenIds = publicGardens.map((garden) => garden.id);
+            const raisedBedsByGardenId =
+                await getRaisedBedsForGardens(publicGardenIds);
+            const likeCounts = await getGardenLikeCounts(publicGardenIds);
+
+            return context.json({
+                items: publicGardens.map((garden) => {
+                    const raisedBeds =
+                        raisedBedsByGardenId.get(garden.id) ?? [];
+
+                    return {
+                        id: garden.id,
+                        name: garden.name,
+                        isSandbox: garden.isSandbox,
+                        backgroundPalette: garden.backgroundPalette,
+                        homeCamera: garden.homeCamera ?? null,
+                        previewImage: serializePublicGardenPreviewImage(
+                            garden.previewImage,
+                        ),
+                        activePlantCount:
+                            countPublicGardenActivePlants(raisedBeds),
+                        likeCount: likeCounts.get(garden.id) ?? 0,
+                        createdAt: garden.createdAt,
+                        updatedAt: garden.updatedAt,
+                    };
+                }),
+            });
+        },
+    )
+    .get(
+        '/likes',
+        describeRoute({
+            description:
+                'List visible gardens liked by the current authenticated user.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const likedGardenIds = await getUserLikedGardenIds({ userId });
+
+            return context.json(
+                {
+                    gardenIds: Array.from(likedGardenIds),
+                },
+                200,
+            );
+        },
+    )
+    .put(
+        '/:gardenId/like',
+        describeRoute({
+            description:
+                'Set the like state for a visible garden for the current authenticated user.',
+            security: authSecurity,
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', gardenLikeBodySchema),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { liked } = context.req.valid('json');
+            const { user, userId } = context.get('authContext');
+
+            try {
+                return context.json(
+                    await setGardenLike({
+                        accountIds: user.accountIds,
+                        gardenId: gardenIdNumber,
+                        liked,
+                        userId,
+                    }),
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof PublicGardenLikeTargetNotFoundError) {
+                    return context.json({ error: error.message }, 404);
+                }
+
+                if (error instanceof CannotLikeOwnGardenError) {
+                    return context.json({ error: error.message }, 403);
+                }
+
+                throw error;
+            }
         },
     )
     .get(
@@ -630,6 +1294,238 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
         },
     )
+    .get(
+        '/:gardenId/raised-bed-notifications',
+        describeRoute({
+            description:
+                'Get up to 500 unread raised-bed notifications for the current user in an owned garden, ordered by visual suitability, priority, and recency.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const notifications =
+                await getUnreadRaisedBedNotificationsForGarden({
+                    accountId,
+                    gardenId: gardenIdNumber,
+                    userId,
+                });
+
+            return context.json(
+                {
+                    notifications: notifications.map(
+                        serializeRaisedBedGardenNotification,
+                    ),
+                },
+                200,
+            );
+        },
+    )
+    .put(
+        '/:gardenId/raised-bed-notifications/:notificationId/dismiss',
+        describeRoute({
+            description:
+                'Dismiss one unread raised-bed notification, or every unread image notification for the same raised bed, for the current user in an owned garden.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                notificationId: z.string().min(1),
+            }),
+        ),
+        zValidator('json', raisedBedNotificationDismissBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, notificationId } = context.req.valid('param');
+            const { scope } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const notification = await getNotification(notificationId);
+            if (
+                !notification ||
+                notification.accountId !== accountId ||
+                (notification.userId !== null &&
+                    notification.userId !== userId) ||
+                notification.gardenId !== gardenIdNumber ||
+                notification.raisedBedId === null ||
+                notification.type ===
+                    detailedRaisedBedInspectionNotificationType
+            ) {
+                return context.json(
+                    { error: 'Raised-bed notification not found' },
+                    404,
+                );
+            }
+
+            const dismissedNotificationIds: string[] = [];
+            const dismissBatch = async (notificationIds: string[]) => {
+                await setAllNotificationsRead(
+                    accountId,
+                    userId,
+                    notificationIds,
+                    true,
+                    'game_raised_bed_bubble',
+                );
+                dismissedNotificationIds.push(...notificationIds);
+                return notificationIds.length;
+            };
+
+            if (
+                scope === 'raised_bed_images' &&
+                notification.imageUrl?.trim()
+            ) {
+                while (true) {
+                    const notificationIds =
+                        await getUnreadRaisedBedImageNotificationIdsForGarden({
+                            accountId,
+                            gardenId: gardenIdNumber,
+                            limit: maxNotificationReadBatchSize,
+                            raisedBedId: notification.raisedBedId,
+                            userId,
+                        });
+                    if (notificationIds.length === 0) {
+                        break;
+                    }
+
+                    const dismissedCount = await dismissBatch(notificationIds);
+                    if (
+                        dismissedCount === 0 ||
+                        notificationIds.length < maxNotificationReadBatchSize
+                    ) {
+                        break;
+                    }
+                }
+            } else {
+                await dismissBatch([notification.id]);
+            }
+
+            return context.json(
+                {
+                    dismissedNotificationIds: [
+                        ...new Set(dismissedNotificationIds),
+                    ],
+                },
+                200,
+            );
+        },
+    )
+    .get(
+        '/:gardenId/detailed-inspection-reports',
+        describeRoute({
+            description:
+                'Get unread detailed raised bed inspection reports for the current account and garden.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const reports = await loadDetailedRaisedBedInspectionReports({
+                accountId,
+                garden,
+                userId,
+            });
+            return context.json({ reports }, 200);
+        },
+    )
+    .post(
+        '/:gardenId/detailed-inspection-reports/seen',
+        describeRoute({
+            description:
+                'Dismiss detailed raised bed inspection reports after the current user views the farmer notes.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', detailedInspectionReportsSeenBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const { notificationIds } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            if (Number.isNaN(gardenIdNumber)) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            const garden = await getGarden(gardenIdNumber);
+            if (!garden || garden.accountId !== accountId) {
+                return context.json({ error: 'Garden not found' }, 404);
+            }
+
+            const reports = await loadDetailedRaisedBedInspectionReports({
+                accountId,
+                garden,
+                userId,
+            });
+            const unreadReportIds = new Set(
+                reports.map((report) => report.notificationId),
+            );
+            const dismissedNotificationIds = [
+                ...new Set(notificationIds),
+            ].filter((notificationId) => unreadReportIds.has(notificationId));
+
+            if (dismissedNotificationIds.length > 0) {
+                await setAllNotificationsRead(
+                    accountId,
+                    userId,
+                    dismissedNotificationIds,
+                    true,
+                    'game_detailed_inspection_farmer',
+                );
+            }
+
+            return context.json({ dismissedNotificationIds }, 200);
+        },
+    )
     .post(
         '/:gardenId/operations/:operationId/reschedule',
         describeRoute({
@@ -643,11 +1539,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operationId: z.string(),
             }),
         ),
-        zValidator('json', rescheduleDiaryItemBodySchema),
+        zValidator('json', rescheduleOperationDiaryItemBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, operationId } = context.req.valid('param');
-            const { scheduledDate } = context.req.valid('json');
+            const {
+                expectedEntityId,
+                expectedTaskVersionEventId,
+                scheduledDate,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const operationIdNumber = Number.parseInt(operationId, 10);
 
@@ -663,6 +1563,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const result = await rescheduleGardenDiaryOperation({
                     accountId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
                     gardenId: gardenIdNumber,
                     operationId: operationIdNumber,
                     scheduledDate,
@@ -708,9 +1610,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operationId: z.string(),
             }),
         ),
+        zValidator('json', operationDiaryIdentityBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, operationId } = context.req.valid('param');
+            const { expectedEntityId, expectedTaskVersionEventId } =
+                context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const operationIdNumber = Number.parseInt(operationId, 10);
 
@@ -727,6 +1632,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const result = await cancelGardenDiaryOperation({
                     accountId,
                     canceledBy: userId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
                     gardenId: gardenIdNumber,
                     operationId: operationIdNumber,
                 });
@@ -756,11 +1663,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
         },
     )
-    .get(
-        '/:gardenId/visit-state',
+    .put(
+        '/:gardenId/preview',
         describeRoute({
             description:
-                'Get the current user garden visit marker without advancing it.',
+                'Upload a current 3D preview for a public garden. Owners may capture their own public gardens; administrators may backfill any public garden.',
             security: authSecurity,
         }),
         zValidator(
@@ -772,178 +1679,355 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
+            const sourceRevision = context.req
+                .header(gardenPreviewSourceRevisionHeader)
+                ?.trim();
+            if (
+                !sourceRevision ||
+                !gardenPreviewRevisionPattern.test(sourceRevision)
+            ) {
+                return context.json(
+                    { error: 'Invalid garden preview source revision' },
+                    400,
+                );
+            }
+
+            const rendererVersion = context.req
+                .header(gardenPreviewRendererVersionHeader)
+                ?.trim();
+            if (rendererVersion !== gardenPreviewRendererVersion) {
+                return context.json(
+                    { error: 'Unsupported garden preview renderer version' },
+                    409,
+                );
+            }
+
+            const contentType = context.req
+                .header('Content-Type')
+                ?.split(';', 1)[0]
+                ?.trim()
+                .toLowerCase();
+            if (contentType !== gardenPreviewContentType) {
+                return context.json(
+                    { error: 'Garden preview must be a WebP image' },
+                    415,
+                );
+            }
+
+            const contentLengthHeader = context.req.header('Content-Length');
+            if (contentLengthHeader) {
+                const contentLength = Number.parseInt(contentLengthHeader, 10);
+                if (
+                    !Number.isFinite(contentLength) ||
+                    contentLength < 1 ||
+                    contentLength > gardenPreviewMaxSizeBytes
+                ) {
+                    return context.json(
+                        { error: 'Garden preview is too large' },
+                        413,
+                    );
+                }
+            }
+
+            const { accountId, user } = context.get('authContext');
+            const source = await getAuthorizedGardenPreviewSource(
+                gardenIdNumber,
+                { accountId, role: user.role },
+            );
+            if (!source) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
-
-            const state = await getGardenVisitState({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
-        },
-    )
-    .get(
-        '/:gardenId/visit-summary',
-        describeRoute({
-            description:
-                'Generate reliable current-user garden facts since the previous visit marker.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
+            if (!source.garden.isPublic) {
+                return context.json(
+                    {
+                        error: 'Garden must be public before uploading a preview',
+                    },
+                    409,
+                );
+            }
+            if (source.sourceRevision !== sourceRevision) {
+                return context.json(
+                    {
+                        error: 'Garden changed before preview upload',
+                        previewSourceRevision: source.sourceRevision,
+                    },
+                    409,
+                );
             }
 
-            const { accountId, userId } = context.get('authContext');
-            const [garden, visitState] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getGardenVisitState({
-                    userId,
-                    accountId,
+            const currentPreview = source.garden.previewImage;
+            const uploadDecision = getGardenPreviewUploadDecision({
+                currentPreview,
+                height: gardenPreviewHeight,
+                rendererVersion,
+                sourceRevision,
+                width: gardenPreviewWidth,
+            });
+            if (uploadDecision.status === 'unchanged') {
+                return context.json(
+                    { previewImage: uploadDecision.preview },
+                    200,
+                );
+            }
+            if (uploadDecision.status === 'rate-limited') {
+                context.header(
+                    'Retry-After',
+                    uploadDecision.retryAfterSeconds.toString(),
+                );
+                return context.json(
+                    { error: 'Garden preview was updated too recently' },
+                    429,
+                );
+            }
+
+            const imageBytes = new Uint8Array(
+                await context.req.raw.arrayBuffer(),
+            );
+            if (
+                imageBytes.byteLength < 1 ||
+                imageBytes.byteLength > gardenPreviewMaxSizeBytes
+            ) {
+                return context.json(
+                    { error: 'Garden preview is too large' },
+                    413,
+                );
+            }
+
+            const dimensions = readWebpDimensions(imageBytes);
+            if (
+                !dimensions ||
+                dimensions.width !== gardenPreviewWidth ||
+                dimensions.height !== gardenPreviewHeight
+            ) {
+                return context.json(
+                    {
+                        error: `Garden preview must be ${gardenPreviewWidth.toString()}x${gardenPreviewHeight.toString()} WebP`,
+                    },
+                    422,
+                );
+            }
+
+            const captureRequestId = globalThis.crypto.randomUUID();
+            let lease: Awaited<
+                ReturnType<typeof acquireGardenPreviewCaptureLease>
+            >;
+            try {
+                const now = new Date();
+                lease = await acquireGardenPreviewCaptureLease({
+                    expiresAt: new Date(
+                        now.getTime() + gardenPreviewCaptureLeaseDurationMs,
+                    ),
                     gardenId: gardenIdNumber,
-                }),
-            ]);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const until = new Date();
-            const since = visitState?.lastOpenedAt ?? null;
-            const window = serializeGardenVisitSummaryWindow({
-                firstVisit: !since,
-                since,
-                until,
-            });
-
-            if (!since) {
-                return context.json({
-                    window,
-                    facts: [],
-                    factsHash: null,
-                    state: serializeGardenVisitState(visitState),
+                    leaseId: captureRequestId,
+                    now,
                 });
+            } catch (error) {
+                console.error(
+                    'Failed to acquire garden preview capture lease',
+                    {
+                        error,
+                        gardenId: gardenIdNumber,
+                    },
+                );
+                return context.json(
+                    { error: 'Failed to reserve garden preview capture' },
+                    503,
+                );
+            }
+            if (!lease) {
+                context.header('Retry-After', '5');
+                return context.json(
+                    { error: 'Garden preview capture is already in progress' },
+                    429,
+                );
             }
 
-            const [operations, plantSorts] = await Promise.all([
-                getAppliedRaisedBedOperationsForGarden(
-                    accountId,
+            try {
+                const leasedSource = await getAuthorizedGardenPreviewSource(
                     gardenIdNumber,
-                ),
-                getEntitiesFormatted<EntityStandardized>('plantSort'),
-            ]);
-            const facts = generateGardenVisitSummaryFacts({
-                garden,
-                operations,
-                plantSorts,
-                window: { since, until },
-            });
+                    { accountId, role: user.role },
+                );
+                if (
+                    !leasedSource?.garden.isPublic ||
+                    leasedSource.sourceRevision !== sourceRevision
+                ) {
+                    return context.json(
+                        {
+                            error: 'Garden changed before preview upload',
+                            previewSourceRevision:
+                                leasedSource?.sourceRevision ?? null,
+                        },
+                        409,
+                    );
+                }
 
-            return context.json({
-                window,
-                facts,
-                factsHash: hashGardenVisitSummaryFacts(facts),
-                state: serializeGardenVisitState(visitState),
-            });
-        },
-    )
-    .post(
-        '/:gardenId/visit-state/opened',
-        describeRoute({
-            description:
-                'Advance the current user garden opened marker after the opening flow is complete.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
+                const leasedUploadDecision = getGardenPreviewUploadDecision({
+                    currentPreview: leasedSource.garden.previewImage,
+                    height: gardenPreviewHeight,
+                    rendererVersion,
+                    sourceRevision,
+                    width: gardenPreviewWidth,
+                });
+                if (leasedUploadDecision.status === 'unchanged') {
+                    return context.json(
+                        { previewImage: leasedUploadDecision.preview },
+                        200,
+                    );
+                }
+                if (leasedUploadDecision.status === 'rate-limited') {
+                    context.header(
+                        'Retry-After',
+                        leasedUploadDecision.retryAfterSeconds.toString(),
+                    );
+                    return context.json(
+                        { error: 'Garden preview was updated too recently' },
+                        429,
+                    );
+                }
+
+                const captureRequestedAt = new Date();
+                const pathname = `garden-previews/${gardenIdNumber.toString()}/${captureRequestId}.webp`;
+                let uploadedPreview: Awaited<ReturnType<typeof put>>;
+
+                try {
+                    uploadedPreview = await put(
+                        pathname,
+                        Buffer.from(imageBytes),
+                        {
+                            access: 'public',
+                            addRandomSuffix: false,
+                            allowOverwrite: false,
+                            cacheControlMaxAge: gardenPreviewCacheMaxAgeSeconds,
+                            contentType: gardenPreviewContentType,
+                            maximumSizeInBytes: gardenPreviewMaxSizeBytes,
+                        },
+                    );
+                } catch (error) {
+                    console.error('Failed to upload garden preview blob', {
+                        error,
+                        gardenId: gardenIdNumber,
+                    });
+                    return context.json(
+                        { error: 'Failed to upload garden preview' },
+                        502,
+                    );
+                }
+
+                const latestSource = await getAuthorizedGardenPreviewSource(
+                    gardenIdNumber,
+                    { accountId, role: user.role },
+                );
+                if (
+                    !latestSource?.garden.isPublic ||
+                    latestSource.sourceRevision !== sourceRevision
+                ) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    return context.json(
+                        {
+                            error: 'Garden changed during preview upload',
+                            previewSourceRevision:
+                                latestSource?.sourceRevision ?? null,
+                        },
+                        409,
+                    );
+                }
+
+                let replacement: Awaited<
+                    ReturnType<typeof replaceGardenPreview>
+                >;
+                try {
+                    replacement = await replaceGardenPreview({
+                        gardenId: gardenIdNumber,
+                        captureRequestId,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        contentType: gardenPreviewContentType,
+                        byteSize: imageBytes.byteLength,
+                        width: dimensions.width,
+                        height: dimensions.height,
+                        sourceRevision,
+                        rendererVersion,
+                        captureRequestedAt,
+                        capturedAt: new Date(),
+                    });
+                } catch (error) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    console.error('Failed to persist garden preview', {
+                        error,
+                        gardenId: gardenIdNumber,
+                    });
+                    return context.json(
+                        { error: 'Failed to save garden preview' },
+                        500,
+                    );
+                }
+
+                if (replacement.status === 'rejected') {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: uploadedPreview.url,
+                        pathname: uploadedPreview.pathname,
+                        reason: 'orphaned',
+                    });
+                    return context.json(
+                        { error: 'A newer garden preview already exists' },
+                        409,
+                    );
+                }
+
+                if (
+                    replacement.previousPreview &&
+                    replacement.previousPreview.imageUrl !== uploadedPreview.url
+                ) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: replacement.previousPreview.imageUrl,
+                        pathname: replacement.previousPreview.pathname,
+                        reason: 'preview_replaced',
+                    });
+                }
+
+                return context.json(
+                    {
+                        previewImage: toGardenPreviewImage(replacement.preview),
+                    },
+                    201,
+                );
+            } finally {
+                try {
+                    await releaseGardenPreviewCaptureLease({
+                        gardenId: gardenIdNumber,
+                        leaseId: captureRequestId,
+                    });
+                } catch (error) {
+                    console.error(
+                        'Failed to release garden preview capture lease',
+                        { error, gardenId: gardenIdNumber },
+                    );
+                }
             }
-
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const state = await upsertGardenOpenedAt({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
-        },
-    )
-    .post(
-        '/:gardenId/visit-summary/seen',
-        describeRoute({
-            description:
-                'Mark the current user garden visit summary as seen and advance the visit marker.',
-            security: authSecurity,
-        }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        zValidator('json', visitSummarySeenBodySchema),
-        authValidator(['user', 'admin']),
-        async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const { factsHash } = context.req.valid('json');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
-
-            const { accountId, userId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const state = await markGardenVisitSummarySeen({
-                userId,
-                accountId,
-                gardenId: gardenIdNumber,
-                factsHash,
-            });
-
-            return context.json({ state: serializeGardenVisitState(state) });
         },
     )
     .get(
         '/:gardenId',
         describeRoute({
-            description: 'Get garden information',
+            description:
+                'Get garden information for its owner, or for an administrator backfilling a public garden preview.',
         }),
         zValidator(
             'param',
@@ -959,160 +2043,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            const { accountId } = context.get('authContext');
-            const [garden, /*blockPlaceEventsRaw,*/ blocks, operations] =
-                await Promise.all([
-                    getGarden(gardenIdNumber),
-                    getGardenBlocks(gardenIdNumber),
-                    getAppliedRaisedBedOperationsForGarden(
-                        accountId,
-                        gardenIdNumber,
-                    ),
-                ]);
-            if (!garden || garden.accountId !== accountId) {
+            const { accountId, user } = context.get('authContext');
+            const source = await getAuthorizedGardenPreviewSource(
+                gardenIdNumber,
+                { accountId, role: user.role },
+            );
+            if (!source) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const blocksById = new Map(
-                blocks.map((block) => [block.id, block]),
-            );
-            const blockNameById = new Map(
-                blocks.map((block) => [block.id, block.name] as const),
-            );
-            const raisedBedsById = new Map(
-                garden.raisedBeds.map((raisedBed) => [raisedBed.id, raisedBed]),
-            );
-            const abandonedRaisedBedAggregateIds = garden.raisedBeds
-                .filter((raisedBed) => isRaisedBedAbandoned(raisedBed.status))
-                .map((raisedBed) => raisedBed.id.toString());
-            const raisedBedAbandonEvents =
-                abandonedRaisedBedAggregateIds.length > 0
-                    ? await getAllEvents(
-                          knownEventTypes.raisedBeds.abandon,
-                          abandonedRaisedBedAggregateIds,
-                      )
-                    : [];
-            const abandonReasonByRaisedBedId = raisedBedAbandonEvents.reduce(
-                (acc, event) => {
-                    const raisedBedId = Number(event.aggregateId);
-                    if (!Number.isInteger(raisedBedId)) {
-                        return acc;
-                    }
-
-                    acc.set(raisedBedId, getAbandonReason(event.data));
-                    return acc;
-                },
-                new Map<number, string | null>(),
-            );
-            const appliedOperationsByRaisedBedId = operations.reduce(
-                (acc, operation) => {
-                    if (
-                        !operation.raisedBedId ||
-                        !isAppliedRaisedBedOperationStatus(operation.status)
-                    ) {
-                        return acc;
-                    }
-
-                    const raisedBed = raisedBedsById.get(operation.raisedBedId);
-                    if (
-                        !raisedBed ||
-                        !isAppliedOperationCurrentForRaisedBedFields(
-                            operation,
-                            raisedBed.fields,
-                        )
-                    ) {
-                        return acc;
-                    }
-
-                    const existing = acc.get(operation.raisedBedId) ?? [];
-                    existing.push(
-                        serializeAppliedRaisedBedOperation(operation),
-                    );
-                    acc.set(operation.raisedBedId, existing);
-                    return acc;
-                },
-                new Map<
-                    number,
-                    ReturnType<typeof serializeAppliedRaisedBedOperation>[]
-                >(),
-            );
-
-            // Stacks: group by x then by y
-            const stacks = garden.stacks.reduce(
-                (acc, stack) => {
-                    if (!acc[stack.positionX]) {
-                        acc[stack.positionX] = {};
-                    }
-                    acc[stack.positionX][stack.positionY] = stack.blocks
-                        .map((blockId) => {
-                            const block = blocksById.get(blockId);
-                            if (!block) return null;
-
-                            return {
-                                id: blockId,
-                                name: block?.name ?? 'unknown',
-                                rotation: block?.rotation ?? 0,
-                                variant: block?.variant,
-                            };
-                        })
-                        .filter(Boolean) as {
-                        id: string;
-                        name: string;
-                        rotation?: number | null;
-                        variant?: number | null;
-                    }[];
-                    return acc;
-                },
-                {} as Record<
-                    string,
-                    Record<
-                        string,
-                        {
-                            id: string;
-                            name: string;
-                            rotation?: number | null;
-                            variant?: number | null;
-                        }[]
-                    >
-                >,
-            );
-
             return context.json({
-                id: garden.id,
-                name: garden.name,
-                isSandbox: garden.isSandbox,
-                backgroundPalette: garden.backgroundPalette,
-                farmId: garden.farmId,
-                latitude: garden.farm.latitude,
-                longitude: garden.farm.longitude,
-                stacks,
-                raisedBeds: (() => {
-                    const validityMap = calculateRaisedBedsValidity(
-                        garden.raisedBeds,
-                        garden.stacks,
-                        blockNameById,
-                    );
-                    return garden.raisedBeds.map((raisedBed) => ({
-                        id: raisedBed.id,
-                        name: raisedBed.name,
-                        physicalId: raisedBed.physicalId,
-                        blockId: raisedBed.blockId,
-                        status: raisedBed.status,
-                        weedState: raisedBed.weedState,
-                        abandonReason:
-                            abandonReasonByRaisedBedId.get(raisedBed.id) ??
-                            null,
-                        orientation: raisedBed.orientation,
-                        fields: raisedBed.fields,
-                        appliedOperations:
-                            appliedOperationsByRaisedBedId.get(raisedBed.id) ??
-                            [],
-                        createdAt: raisedBed.createdAt,
-                        updatedAt: raisedBed.updatedAt,
-                        isValid: validityMap.get(raisedBed.id) ?? false,
-                    }));
-                })(),
-                createdAt: garden.createdAt,
+                ...source.details,
+                previewSourceRevision: source.sourceRevision,
             });
         },
     )
@@ -1135,69 +2077,108 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            // TODO: Refactor to use a single function for public and non-public garden retrieval
-            const [garden, blockPlaceEventsRaw, blocks] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getAllEvents(knownEventTypes.gardens.blockPlace, [gardenId]),
+            const [garden, blocks] = await Promise.all([
+                getPublicGarden(gardenIdNumber),
                 getGardenBlocks(gardenIdNumber),
             ]);
             if (!garden) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            // TODO: Check visibility
-
-            const blockPlaceEvents = blockPlaceEventsRaw.map((event) => ({
-                ...event,
-                data: event.data as { id: string; name: string },
-            }));
-            const blockNamesById = new Map(
-                blockPlaceEvents.map((event) => [
-                    event.data.id,
-                    event.data.name,
-                ]),
+            const [operations, queuedTasks] = await Promise.all([
+                getAppliedRaisedBedOperationsForGarden(
+                    garden.accountId,
+                    gardenIdNumber,
+                ),
+                getGardenQueuedTasks(garden),
+            ]);
+            const gardenDetails = await serializeGardenDetails(
+                garden,
+                blocks,
+                operations,
+                { publicView: true },
             );
-            const blocksById = new Map(
-                blocks.map((block) => [block.id, block]),
-            );
-
-            // Stacks: group by x then by y
-            const stacks = garden.stacks.reduce(
-                (acc, stack) => {
-                    if (!acc[stack.positionX]) {
-                        acc[stack.positionX] = {};
-                    }
-                    acc[stack.positionX][stack.positionY] = stack.blocks.map(
-                        (blockId) => ({
-                            id: blockId,
-                            name: blockNamesById.get(blockId) ?? 'unknown',
-                            rotation: blocksById.get(blockId)?.rotation ?? 0,
-                            variant: blocksById.get(blockId)?.variant,
-                        }),
-                    );
-                    return acc;
-                },
-                {} as Record<
-                    string,
-                    Record<
-                        string,
-                        {
-                            id: string;
-                            name: string;
-                            rotation?: number | null;
-                            variant?: number | null;
-                        }[]
-                    >
-                >,
-            );
+            const { previewImage: ownerPreviewImage, ...publicGardenDetails } =
+                gardenDetails;
+            const likeCounts = await getGardenLikeCounts([garden.id]);
 
             return context.json({
-                id: garden.id,
-                name: garden.name,
-                latitude: garden.farm.latitude,
-                longitude: garden.farm.longitude,
-                stacks,
-                createdAt: garden.createdAt,
+                ...publicGardenDetails,
+                previewImage:
+                    serializePublicGardenPreviewImage(ownerPreviewImage),
+                likeCount: likeCounts.get(garden.id) ?? 0,
+                queuedTasks,
+            });
+        },
+    )
+    .post(
+        '/:gardenId/public/visitors',
+        describeRoute({
+            description:
+                'Publish an anonymous visitor position and read other live visitors',
+            security: publicSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+            }),
+        ),
+        zValidator('json', publicGardenVisitorPresenceBodySchema),
+        async (context) => {
+            const { gardenId } = context.req.valid('param');
+            const gardenIdNumber = parseInt(gardenId, 10);
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
+                return context.json({ error: 'Invalid garden ID' }, 400);
+            }
+
+            const withinRateLimit = await publicGardenVisitorRateLimitAllows(
+                publicGardenVisitorClientAddress(context.req.raw.headers),
+            );
+            if (!withinRateLimit) {
+                context.header('Retry-After', '1');
+                return context.json(
+                    { error: 'Too many visitor presence requests' },
+                    429,
+                );
+            }
+
+            const body = context.req.valid('json');
+            if (body.action === 'leave') {
+                const result = await removePublicGardenVisitorPresence({
+                    gardenId: gardenIdNumber,
+                    visitorCapability: body.visitorCapability,
+                    visitorId: body.visitorId,
+                });
+                if (result.status === 'unauthorized') {
+                    return context.json(
+                        { error: 'Invalid visitor capability' },
+                        403,
+                    );
+                }
+                return context.json({
+                    live: result.status === 'removed',
+                    visitors: [],
+                });
+            }
+
+            const result = await updatePublicGardenVisitorPresence({
+                gardenId: gardenIdNumber,
+                presence: body,
+            });
+            if (result.status === 'unauthorized') {
+                return context.json(
+                    { error: 'Invalid visitor capability' },
+                    403,
+                );
+            }
+            if (result.status === 'unavailable') {
+                return context.json({ live: false, visitors: [] });
+            }
+            return context.json({
+                live: result.live,
+                visitorCapability: result.visitorCapability,
+                visitors: result.visitors,
             });
         },
     )
@@ -1218,12 +2199,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 name: z.string().min(1).optional(),
                 backgroundPalette: z.enum(gameBackgroundPaletteKeys).optional(),
+                homeCamera: gardenHomeCameraSchema.nullable().optional(),
+                isPublic: z.boolean().optional(),
             }),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const { backgroundPalette, name } = context.req.valid('json');
+            const { backgroundPalette, homeCamera, isPublic, name } =
+                context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber)) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
@@ -1236,11 +2220,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             // Update garden with provided fields
-            const updateData: {
-                backgroundPalette?: string;
-                id: number;
-                name?: string;
-            } = {
+            const updateData: Parameters<typeof updateGarden>[0] = {
                 id: gardenIdNumber,
             };
             if (name !== undefined) {
@@ -1249,8 +2229,26 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (backgroundPalette !== undefined) {
                 updateData.backgroundPalette = backgroundPalette;
             }
+            if (homeCamera !== undefined) {
+                updateData.homeCamera = homeCamera;
+            }
+            if (isPublic !== undefined) {
+                updateData.isPublic = isPublic;
+            }
 
+            const existingPreview =
+                isPublic === false
+                    ? await getGardenPreview(gardenIdNumber)
+                    : null;
             await updateGarden(updateData);
+            if (existingPreview) {
+                await deleteGardenPreviewBlob({
+                    gardenId: gardenIdNumber,
+                    imageUrl: existingPreview.imageUrl,
+                    pathname: existingPreview.pathname,
+                    reason: 'garden_unpublished',
+                });
+            }
 
             return context.json({ success: true });
         },
@@ -1259,7 +2257,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description:
-                'Delete a sandbox garden accessible to the current user, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens cannot be deleted from this endpoint. Large deletions may return 202 and should be retried until complete.',
+                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds. Large sandbox deletions may return 202 and should be retried until complete.',
             security: authSecurity,
         }),
         zValidator(
@@ -1288,15 +2286,49 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user.accountIds.includes(garden.accountId)) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
+            const existingPreview = await getGardenPreview(gardenIdNumber);
 
             if (!garden.isSandbox) {
+                const result =
+                    await deleteGardenIfNoActiveRaisedBeds(gardenIdNumber);
+                if (result.activeRaisedBedCount > 0) {
+                    return context.json(
+                        {
+                            error: 'Garden cannot be deleted while it has active raised beds',
+                            activeRaisedBedCount: result.activeRaisedBedCount,
+                        },
+                        409,
+                    );
+                }
+
+                if (existingPreview) {
+                    await deleteGardenPreviewBlob({
+                        gardenId: gardenIdNumber,
+                        imageUrl: existingPreview.imageUrl,
+                        pathname: existingPreview.pathname,
+                        reason: 'garden_deleted',
+                    });
+                }
+
                 return context.json(
-                    { error: 'Only sandbox gardens can be deleted' },
-                    400,
+                    {
+                        success: true,
+                        complete: true,
+                        deletedRows: result.deleted ? 1 : 0,
+                    },
+                    200,
                 );
             }
 
             const result = await deleteSandboxGardenCompletely(gardenIdNumber);
+            if (existingPreview) {
+                await deleteGardenPreviewBlob({
+                    gardenId: gardenIdNumber,
+                    imageUrl: existingPreview.imageUrl,
+                    pathname: existingPreview.pathname,
+                    reason: 'garden_deleted',
+                });
+            }
 
             return context.json(
                 { success: true, ...result },
@@ -1442,11 +2474,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return await getGardenStack(gardenIdNumber, parsePath(path));
             }
 
-            async function addStack(
-                path: string,
-                value: string | string[],
-                options?: { skipRaisedBedPlacementValidation?: boolean },
-            ) {
+            async function addStack(path: string, value: string | string[]) {
                 const stackPosition = parsePath(path);
 
                 console.debug(
@@ -1464,40 +2492,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 if (stackPosition.index === undefined) {
-                    if (
-                        typeof value === 'string' &&
-                        !options?.skipRaisedBedPlacementValidation
-                    ) {
-                        const blockName = blockNameById.get(value);
-                        if (blockName === 'Raised_Bed') {
-                            const gardenState = await getGarden(gardenIdNumber);
-                            if (!gardenState) {
-                                return context.json(
-                                    { error: 'Garden not found' },
-                                    404,
-                                );
-                            }
-
-                            const targetIndex = stackPosition.append
-                                ? (existing?.blocks.length ?? 0)
-                                : 0;
-                            const placementValidation =
-                                validateRaisedBedPlacement({
-                                    stacks: gardenState.stacks,
-                                    x: stackPosition.x,
-                                    y: stackPosition.y,
-                                    index: targetIndex,
-                                    blockNameById,
-                                });
-                            if (!placementValidation.valid) {
-                                return context.json(
-                                    { error: placementValidation.error },
-                                    400,
-                                );
-                            }
-                        }
-                    }
-
                     const nextBlocks = Array.isArray(value)
                         ? stackPosition.append
                             ? [...(existing?.blocks ?? []), ...value]
@@ -1526,37 +2520,6 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         });
                     }
                 } else {
-                    if (
-                        typeof value === 'string' &&
-                        !options?.skipRaisedBedPlacementValidation
-                    ) {
-                        const blockName = blockNameById.get(value);
-                        if (blockName === 'Raised_Bed') {
-                            const gardenState = await getGarden(gardenIdNumber);
-                            if (!gardenState) {
-                                return context.json(
-                                    { error: 'Garden not found' },
-                                    404,
-                                );
-                            }
-
-                            const placementValidation =
-                                validateRaisedBedPlacement({
-                                    stacks: gardenState.stacks,
-                                    x: stackPosition.x,
-                                    y: stackPosition.y,
-                                    index: stackPosition.index,
-                                    blockNameById,
-                                });
-                            if (!placementValidation.valid) {
-                                return context.json(
-                                    { error: placementValidation.error },
-                                    400,
-                                );
-                            }
-                        }
-                    }
-
                     if (
                         !existing ||
                         (existing?.blocks.length ?? 0) < stackPosition.index ||
@@ -1799,27 +2762,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                                 400,
                             );
                         }
-
-                        const validation = validateConnectedRaisedBedMove({
-                            stacks: initialGardenState.stacks,
-                            fromPath: from,
-                            toPath: path,
-                            movedBlockId: fromValue,
-                            blockNameById,
-                            blockDataByName,
-                            parsePath,
-                        });
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
                     }
 
-                    let resp = await addStack(path, fromValue, {
-                        skipRaisedBedPlacementValidation: true,
-                    });
+                    let resp = await addStack(path, fromValue);
                     if (resp) {
                         return resp;
                     }
@@ -1912,6 +2857,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             if (!block) {
                 return context.json({ error: 'Block not found' }, 404);
+            }
+
+            if (block.name === woodenSignBlockName && block.message) {
+                return context.json(
+                    {
+                        error: 'Prije spremanja ploče u vrtnu kutiju obriši njezin natpis.',
+                    },
+                    400,
+                );
             }
 
             const gardenBox = gardenBlocks.find(
@@ -2261,13 +3215,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockId: z.string(),
             }),
         ),
-        zValidator(
-            'json',
-            z.object({
-                rotation: z.number().nullable().optional(),
-                variant: z.number().nullable().optional(),
-            }),
-        ),
+        zValidator('json', updateGardenBlockBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
@@ -2288,13 +3236,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { rotation, variant } = context.req.valid('json');
+            const block = await getGardenBlock(gardenIdNumber, blockId);
+            if (!block) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
 
-            await updateGardenBlock({
+            const { message, rotation, variant } = context.req.valid('json');
+            if (message !== undefined && block.name !== woodenSignBlockName) {
+                return context.json(
+                    { error: 'Only wooden signs can have a message' },
+                    400,
+                );
+            }
+
+            const updated = await updateGardenBlock(gardenIdNumber, {
                 id: blockId,
+                message,
                 rotation,
                 variant,
             });
+
+            if (!updated) {
+                return context.json({ error: 'Block not found' }, 404);
+            }
 
             return context.json(null, 200);
         },
@@ -2541,6 +3505,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     409,
                 );
             }
+            if (raisedBed.status !== 'active') {
+                return context.json(
+                    { error: 'Only active raised beds can be abandoned' },
+                    409,
+                );
+            }
 
             const operationId = await abandonRaisedBed({
                 accountId,
@@ -2588,8 +3558,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Raised bed not found' }, 404);
             }
 
-            const diaryEntries =
-                await getRaisedBedDiaryEntries(raisedBedIdNumber);
+            const diaryEntries = await getRaisedBedDiaryEntries(
+                raisedBedIdNumber,
+                { includeUnverifiedOperationEvidence: false },
+            );
             return context.json(diaryEntries);
         },
     )
@@ -2920,6 +3892,191 @@ const app = new Hono<{ Variables: AuthVariables }>()
         },
     )
     .post(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/reschedule',
+        describeRoute({
+            description:
+                'Reschedule one selected Advanced Sowing planting for the current garden owner',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                plantingId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator('json', rescheduleSelectedPlantingBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, plantingId, raisedBedId } =
+                context.req.valid('param');
+            const {
+                commandId,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                scheduledDate,
+                sowingLocation,
+            } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const plantingIdNumber = Number.parseInt(plantingId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            if (
+                !Number.isSafeInteger(gardenIdNumber) ||
+                gardenIdNumber <= 0 ||
+                !Number.isSafeInteger(plantingIdNumber) ||
+                plantingIdNumber <= 0 ||
+                !Number.isSafeInteger(raisedBedIdNumber) ||
+                raisedBedIdNumber <= 0
+            ) {
+                return context.json({ error: 'Invalid planting target' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            try {
+                if (
+                    !(await selectedPlantingMatchesGardenRoute({
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        plantingId: plantingIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    }))
+                ) {
+                    return context.json({ error: 'Planting not found' }, 404);
+                }
+                const result =
+                    await rescheduleSelectedRaisedBedPlantingTaskForOwner({
+                        commandId,
+                        expectedLifecycleVersionEventId,
+                        expectedPlantSortId,
+                        kind: 'selected',
+                        owner: { accountId, userId },
+                        plantingId: plantingIdNumber,
+                        scheduledDate,
+                        sowingLocation,
+                    });
+                return context.json(
+                    {
+                        created: result.created,
+                        scheduledDate: result.task.scheduledDate,
+                        sowingLocation: result.task.sowingLocation,
+                        status: result.task.status,
+                    },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError) {
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                }
+                console.error('Failed to reschedule selected planting', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    plantingId: plantingIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to reschedule planting' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
+        '/:gardenId/raised-beds/:raisedBedId/plantings/:plantingId/cancel',
+        describeRoute({
+            description:
+                'Cancel one future selected Advanced Sowing planting for the current garden owner',
+            security: authSecurity,
+        }),
+        zValidator(
+            'param',
+            z.object({
+                gardenId: z.string(),
+                plantingId: z.string(),
+                raisedBedId: z.string(),
+            }),
+        ),
+        zValidator('json', cancelSelectedPlantingBodySchema),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { gardenId, plantingId, raisedBedId } =
+                context.req.valid('param');
+            const {
+                commandId,
+                effectiveAt,
+                expectedLifecycleVersionEventId,
+                expectedPlantSortId,
+                reason,
+            } = context.req.valid('json');
+            const gardenIdNumber = Number.parseInt(gardenId, 10);
+            const plantingIdNumber = Number.parseInt(plantingId, 10);
+            const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
+            if (
+                !Number.isSafeInteger(gardenIdNumber) ||
+                gardenIdNumber <= 0 ||
+                !Number.isSafeInteger(plantingIdNumber) ||
+                plantingIdNumber <= 0 ||
+                !Number.isSafeInteger(raisedBedIdNumber) ||
+                raisedBedIdNumber <= 0
+            ) {
+                return context.json({ error: 'Invalid planting target' }, 400);
+            }
+
+            const { accountId, userId } = context.get('authContext');
+            try {
+                if (
+                    !(await selectedPlantingMatchesGardenRoute({
+                        accountId,
+                        gardenId: gardenIdNumber,
+                        plantingId: plantingIdNumber,
+                        raisedBedId: raisedBedIdNumber,
+                    }))
+                ) {
+                    return context.json({ error: 'Planting not found' }, 404);
+                }
+                const result =
+                    await cancelSelectedRaisedBedPlantingTaskForOwner({
+                        commandId,
+                        ...(effectiveAt ? { effectiveAt } : {}),
+                        expectedLifecycleVersionEventId,
+                        expectedPlantSortId,
+                        kind: 'selected',
+                        owner: { accountId, userId },
+                        plantingId: plantingIdNumber,
+                        reason,
+                    });
+                return context.json(
+                    {
+                        created: result.created,
+                        isActive: result.isActive,
+                        lifecycleStatus: result.lifecycleStatus,
+                        refundAmount:
+                            result.task.cancellation?.refundSunflowerAmount ??
+                            0,
+                        status: result.task.status,
+                    },
+                    200,
+                );
+            } catch (error) {
+                if (error instanceof ScheduleTaskSubmissionError) {
+                    return selectedPlantingOwnerErrorResponse(context, error);
+                }
+                console.error('Failed to cancel selected planting', {
+                    accountId,
+                    error,
+                    gardenId: gardenIdNumber,
+                    plantingId: plantingIdNumber,
+                    raisedBedId: raisedBedIdNumber,
+                });
+                return context.json(
+                    { error: 'Failed to cancel planting' },
+                    500,
+                );
+            }
+        },
+    )
+    .post(
         '/:gardenId/raised-beds/:raisedBedId/fields/:positionIndex/reschedule',
         describeRoute({
             description:
@@ -2933,12 +4090,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
-        zValidator('json', rescheduleDiaryItemBodySchema),
+        zValidator('json', reschedulePlantingDiaryItemBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { scheduledDate } = context.req.valid('json');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+                scheduledDate,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
             const positionIndexNumber = Number.parseInt(positionIndex, 10);
@@ -2958,6 +4120,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
             try {
                 const result = await rescheduleGardenDiaryRaisedBedField({
                     accountId,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     gardenId: gardenIdNumber,
                     raisedBedId: raisedBedIdNumber,
                     positionIndex: positionIndexNumber,
@@ -3002,10 +4167,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 positionIndex: z.string(),
             }),
         ),
+        zValidator('json', plantingDiaryAttemptIdentityBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+            } = context.req.valid('json');
             const gardenIdNumber = Number.parseInt(gardenId, 10);
             const raisedBedIdNumber = Number.parseInt(raisedBedId, 10);
             const positionIndexNumber = Number.parseInt(positionIndex, 10);
@@ -3026,6 +4197,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 const result = await cancelGardenDiaryRaisedBedField({
                     accountId,
                     canceledBy: userId,
+                    expectedPlantCycleEventId,
+                    expectedPlantCycleVersionEventId,
+                    expectedPlantSortId,
                     gardenId: gardenIdNumber,
                     raisedBedId: raisedBedIdNumber,
                     positionIndex: positionIndexNumber,
@@ -3067,7 +4241,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         zValidator(
             'json',
-            z.object({
+            plantingDiaryAttemptIdentityBodySchema.extend({
                 status: z.string(),
                 timestamp: z.string().datetime().optional(),
             }),
@@ -3076,7 +4250,13 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId, raisedBedId, positionIndex } =
                 context.req.valid('param');
-            const { status, timestamp } = context.req.valid('json');
+            const {
+                expectedPlantCycleEventId,
+                expectedPlantCycleVersionEventId,
+                expectedPlantSortId,
+                status,
+                timestamp,
+            } = context.req.valid('json');
 
             // Build reverse lookup: target status → allowed source statuses
             const allowedTargetStatuses = new Set([
@@ -3103,98 +4283,153 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid position index' }, 400);
             }
 
-            // Verify the raised bed exists and belongs to the user
             const { accountId } = context.get('authContext');
-            const raisedBed = await getRaisedBed(raisedBedIdNumber);
-            if (
-                !raisedBed ||
-                raisedBed.gardenId !== gardenIdNumber ||
-                raisedBed.accountId !== accountId
-            ) {
-                return context.json({ error: 'Raised bed not found' }, 404);
-            }
-            if (isRaisedBedAbandoned(raisedBed.status)) {
-                return context.json({ error: 'Raised bed is abandoned' }, 409);
-            }
-
-            // Find the field to validate it exists and can be updated
-            const field = raisedBed.fields.find(
-                (field) =>
-                    field.positionIndex === positionIndexNumber && field.active,
-            );
-            if (!field) {
-                return context.json(
-                    { error: 'Field not found or not active' },
-                    404,
-                );
-            }
-
-            // For removal status, check if the plant can be removed (toBeRemoved should be true)
-            if (status === 'removed' && !field.toBeRemoved) {
-                return context.json(
-                    {
-                        error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
-                    },
-                    400,
-                );
-            }
-
-            // Validate state transition for user-allowed statuses
-            // Find allowed source states by looking up which current statuses can transition to the target
             const allowedFromStates = Object.entries(
                 userAllowedPlantStatusTransitions,
             )
                 .filter(([, targets]) => targets.includes(status))
                 .map(([source]) => source);
-            if (
-                allowedFromStates.length > 0 &&
-                (!field.plantStatus ||
-                    !allowedFromStates.includes(field.plantStatus))
-            ) {
-                return context.json(
-                    {
-                        error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
-                    },
-                    400,
-                );
-            }
-
-            // Validate timestamp if provided
             let createdAt: Date | undefined;
             if (timestamp) {
                 createdAt = new Date(timestamp);
                 if (Number.isNaN(createdAt.getTime())) {
                     return context.json({ error: 'Invalid timestamp' }, 400);
                 }
-                const activePlantCycle = field.plantCycles.find(
-                    (plantCycle) => plantCycle.active,
-                );
-                if (activePlantCycle && createdAt < activePlantCycle.endedAt) {
-                    return context.json(
-                        {
-                            error: 'Timestamp cannot be earlier than the latest field lifecycle event',
-                        },
-                        400,
-                    );
-                }
             }
 
-            // Call the storage function to create the event and update the plant status
             try {
-                const event = knownEvents.raisedBedFields.plantUpdateV1(
-                    `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
-                    buildRaisedBedFieldPlantUpdatePayload(
-                        status,
-                        field.assignedUserIds,
-                    ),
+                return await withPlantingScheduleTaskTransaction(
+                    raisedBedIdNumber,
+                    positionIndexNumber,
+                    async (transaction) => {
+                        const raisedBed =
+                            await transaction.query.raisedBeds.findFirst({
+                                where: (table, { and, eq }) =>
+                                    and(
+                                        eq(table.id, raisedBedIdNumber),
+                                        eq(table.isDeleted, false),
+                                    ),
+                            });
+                        if (
+                            !raisedBed ||
+                            raisedBed.gardenId !== gardenIdNumber ||
+                            raisedBed.accountId !== accountId
+                        ) {
+                            return context.json(
+                                { error: 'Raised bed not found' },
+                                404,
+                            );
+                        }
+                        if (isRaisedBedAbandoned(raisedBed.status)) {
+                            return context.json(
+                                { error: 'Raised bed is abandoned' },
+                                409,
+                            );
+                        }
+
+                        const field = (
+                            await getRaisedBedFieldsWithEvents(
+                                raisedBedIdNumber,
+                                transaction,
+                            )
+                        ).find(
+                            (candidate) =>
+                                candidate.positionIndex ===
+                                    positionIndexNumber && candidate.active,
+                        );
+                        if (!field) {
+                            return context.json(
+                                { error: 'Field not found or not active' },
+                                404,
+                            );
+                        }
+                        const activePlantCycle = field.plantCycles.find(
+                            (plantCycle) => plantCycle.active,
+                        );
+                        if (
+                            activePlantCycle?.plantPlaceEventId !==
+                                expectedPlantCycleEventId ||
+                            activePlantCycle?.endedEventId !==
+                                expectedPlantCycleVersionEventId ||
+                            field.plantSortId !== expectedPlantSortId
+                        ) {
+                            return context.json(
+                                {
+                                    error: 'Planting changed. Refresh the garden and try again.',
+                                },
+                                409,
+                            );
+                        }
+                        if (status === 'removed' && !field.toBeRemoved) {
+                            return context.json(
+                                {
+                                    error: 'Plant cannot be removed at this time. Only plants that are dead, harvested, or failed to sprout can be removed.',
+                                },
+                                400,
+                            );
+                        }
+                        if (
+                            allowedFromStates.length > 0 &&
+                            (!field.plantStatus ||
+                                !allowedFromStates.includes(field.plantStatus))
+                        ) {
+                            return context.json(
+                                {
+                                    error: `Cannot change from '${field.plantStatus}' to '${status}'. Allowed source states: ${allowedFromStates.join(', ')}`,
+                                },
+                                400,
+                            );
+                        }
+                        if (activePlantCycle) {
+                            const currentDate = new Date();
+                            if (
+                                !isPlantStatusEffectiveDateAllowed({
+                                    currentDate,
+                                    effectiveDate: createdAt ?? currentDate,
+                                    plantCycleStartedAt:
+                                        activePlantCycle.startedAt,
+                                    previousStatusChangedAt:
+                                        getPreviousPlantStatusChangedAtForUpdate(
+                                            {
+                                                currentStatus:
+                                                    field.plantStatus,
+                                                latestStatusChangedAt:
+                                                    field.plantStatusChangedAt,
+                                                nextStatus: status,
+                                                statusChanges:
+                                                    activePlantCycle.statusChanges,
+                                            },
+                                        ),
+                                })
+                            ) {
+                                return context.json(
+                                    {
+                                        error: 'Timestamp must be between the latest field lifecycle date and today',
+                                    },
+                                    400,
+                                );
+                            }
+                        }
+
+                        await createEvent(
+                            knownEvents.raisedBedFields.plantUpdateV1(
+                                `${raisedBedIdNumber.toString()}|${positionIndexNumber.toString()}`,
+                                {
+                                    status,
+                                    ...(createdAt
+                                        ? {
+                                              effectiveDate:
+                                                  createdAt.toISOString(),
+                                          }
+                                        : {}),
+                                },
+                            ),
+                            transaction,
+                        );
+
+                        return context.json({ success: true }, 200);
+                    },
                 );
-
-                await createEvent({
-                    ...event,
-                    ...(createdAt && { createdAt }),
-                });
-
-                return context.json({ success: true }, 200);
             } catch (error) {
                 console.error('Error updating field plant status:', error);
                 return context.json(
@@ -3510,6 +4745,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const diaryEntries = await getRaisedBedFieldDiaryEntries(
                 raisedBedIdNumber,
                 positionIndexNumber,
+                { includeUnverifiedOperationEvidence: false },
             );
             return context.json(diaryEntries);
         },

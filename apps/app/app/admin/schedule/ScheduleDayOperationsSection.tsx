@@ -1,10 +1,15 @@
 import {
     getAssignableFarmUsersByOperationIds,
     getFarms,
+    RAISED_BED_PHOTO_OPERATION_NAME,
 } from '@gredice/storage';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import {
+    type BulkPhotoOperationTarget,
+    isRaisedBedPhotoOperationInformation,
+} from './bulkPhotoOperationImportModel';
 import { FarmOperationsScheduleSection } from './FarmOperationsScheduleSection';
 import { RaisedBedOperationsScheduleSection } from './RaisedBedOperationsScheduleSection';
 import { ScheduleDayOperationsBulkActions } from './ScheduleDayOperationsBulkActions';
@@ -14,7 +19,9 @@ import {
     getSchedulePlantSorts,
 } from './scheduleData';
 import {
+    canAcceptOperationTask,
     groupRaisedBedsForSchedule,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -30,12 +37,15 @@ export async function ScheduleDayOperationsSection({
     isToday,
     date,
 }: ScheduleDayOperationsSectionProps) {
-    const [{ raisedBeds, scheduledOperations }, plantSorts, operationsData] =
-        await Promise.all([
-            getScheduleDayData(date.toISOString(), isToday),
-            getSchedulePlantSorts(),
-            getScheduleOperationsData(),
-        ]);
+    const [
+        { dateKey, raisedBeds, scheduledOperations, timeZone },
+        plantSorts,
+        operationsData,
+    ] = await Promise.all([
+        getScheduleDayData(date, isToday),
+        getSchedulePlantSorts(),
+        getScheduleOperationsData(),
+    ]);
     if (scheduledOperations.length === 0) {
         return null;
     }
@@ -72,16 +82,62 @@ export async function ScheduleDayOperationsSection({
         .filter((farm) => operationFarmIds.has(farm.id))
         .map((farm) => ({ id: farm.id, name: farm.name }));
 
+    const photoOperationEntityIds = new Set(
+        (operationsData ?? [])
+            .filter((operationData) =>
+                isRaisedBedPhotoOperationInformation(
+                    operationData.information,
+                    RAISED_BED_PHOTO_OPERATION_NAME,
+                ),
+            )
+            .map((operationData) => operationData.id),
+    );
+    const raisedBedPhysicalIdById = new Map<number, string>();
+    for (const raisedBed of raisedBeds) {
+        if (raisedBed.physicalId) {
+            raisedBedPhysicalIdById.set(raisedBed.id, raisedBed.physicalId);
+        }
+    }
+    const photoOperationTargets = scheduledOperations
+        .flatMap((operation): BulkPhotoOperationTarget[] => {
+            const physicalId = operation.raisedBedId
+                ? raisedBedPhysicalIdById.get(operation.raisedBedId)
+                : undefined;
+            if (
+                !physicalId ||
+                !photoOperationEntityIds.has(operation.entityId) ||
+                !operation.isAccepted ||
+                (operation.status !== 'new' && operation.status !== 'planned')
+            ) {
+                return [];
+            }
+
+            return [
+                {
+                    operationId: operation.id,
+                    expectedEntityId: operation.entityId,
+                    expectedTaskVersionEventId: operation.taskVersionEventId,
+                    physicalId,
+                },
+            ];
+        })
+        .sort((left, right) =>
+            left.physicalId.localeCompare(right.physicalId, undefined, {
+                numeric: true,
+            }),
+        );
+
     const dayOperationsToApprove = scheduledOperations
         .filter(
             (operation) =>
                 !operation.isAccepted &&
-                !isOperationCompleted(operation.status) &&
-                !isOperationCancelled(operation.status) &&
+                canAcceptOperationTask(operation.status) &&
                 !!operation.assignedUserId,
         )
         .map((operation) => ({
             id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
             label: operation.entityId.toString(),
         }));
 
@@ -89,17 +145,21 @@ export async function ScheduleDayOperationsSection({
         .filter(
             (operation) =>
                 !operation.assignedUserId &&
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status),
         )
         .map((operation) => ({
             id: operation.id,
+            expectedEntityId: operation.entityId,
+            expectedTaskVersionEventId: operation.taskVersionEventId,
             farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
         }));
     const dayOperationsToCancel = scheduledOperations
         .filter(
             (operation) =>
+                !isOperationBlocked(operation.status) &&
                 !isOperationCompleted(operation.status) &&
                 !isOperationPendingVerification(operation.status) &&
                 !isOperationCancelled(operation.status) &&
@@ -107,6 +167,8 @@ export async function ScheduleDayOperationsSection({
         )
         .map((operation) => ({
             id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
             label: operation.entityId.toString(),
         }));
 
@@ -119,6 +181,7 @@ export async function ScheduleDayOperationsSection({
                     </Typography>
                     <Row spacing={1} className="ml-auto shrink-0">
                         <ScheduleDayOperationsBulkActions
+                            photoOperationTargets={photoOperationTargets}
                             operationsToApprove={dayOperationsToApprove}
                             operationsToAssign={dayOperationsToAssign}
                             operationsToCancel={dayOperationsToCancel}
@@ -130,7 +193,8 @@ export async function ScheduleDayOperationsSection({
                         return (
                             <RaisedBedOperationsScheduleSection
                                 key={key}
-                                date={date}
+                                dateKey={dateKey}
+                                timeZone={timeZone}
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledOperations={scheduledOperations}
@@ -146,7 +210,8 @@ export async function ScheduleDayOperationsSection({
                 {operationFarms.map((farm) => (
                     <FarmOperationsScheduleSection
                         key={farm.id}
-                        date={date}
+                        dateKey={dateKey}
+                        timeZone={timeZone}
                         farm={farm}
                         scheduledOperations={scheduledOperations}
                         operationsData={operationsData}

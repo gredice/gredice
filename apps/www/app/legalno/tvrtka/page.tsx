@@ -3,12 +3,15 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Tvrtka',
     description: 'Službeni podaci o društvu Gredice d.o.o.',
-};
+    path: KnownPages.LegalCompany,
+    eyebrow: 'Pravni dokument',
+});
 
 export default function UvjetiKoristenjaPage() {
     return (
@@ -61,10 +64,9 @@ export default function UvjetiKoristenjaPage() {
                         IBAN: <span>HR5223400091111312385</span>
                         <br />
                         <small>
-                            Molimo vas da ne uplaćujete na gore navedeni račun
-                            bez prethodne najave i dogovora s našim prodajnim
-                            timom. Ovaj podatak je ovdje isključivo u zakonske
-                            svrhe.
+                            Molimo te da ne uplaćuješ na gore navedeni račun bez
+                            prethodne najave i dogovora s našim prodajnim timom.
+                            Ovaj podatak je ovdje isključivo u zakonske svrhe.
                         </small>
                     </p>
 

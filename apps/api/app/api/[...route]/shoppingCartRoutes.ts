@@ -1,35 +1,160 @@
 import {
+    type AdvancedSowingCartAuthorizationV1,
+    advancedSowingSelectionRequestKind,
+} from '@gredice/js/plants';
+import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
 import {
+    AdvancedSowingCartAuthorizationPersistenceError,
+    AdvancedSowingCartItemExplicitIdentityRequiredError,
+    CheckoutCartItemFulfillmentStartedError,
     cartContainsDeliverableItems,
     deleteShoppingCart,
+    type EntityStandardized,
+    getBlockingPlantOperationsForRaisedBedFootprint,
+    getEntityFormatted,
+    getEntityRaw,
+    getGarden,
+    getGardenBlocks,
+    getHarvestScheduleForCart,
     getOrCreateShoppingCart,
     getOutletOffer,
+    getOutletOfferReservationForCartItem,
     getRaisedBed,
+    getRaisedBedPlantingsForRaisedBed,
     getShoppingCart,
+    getShoppingCartItemAdvancedSowingAuthorizations,
     getSunflowers,
+    HarvestScheduleConflictError,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    OutletCartTargetUnavailableError,
     OutletOfferUnavailableError,
     OutletReservationUnavailableError,
     releaseOutletReservationForCartItem,
+    StripeCheckoutAttemptInProgressError,
     upsertOrRemoveCartItem,
+    upsertOrRemoveCartItemWithAdvancedSowingAuthorization,
     upsertOrRemoveCartItemWithOutletReservation,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
+import {
+    assertAdvancedSowingPlanAvailable,
+    assertLegacySowingTargetAvailable,
+    getLegacySowingCartMutationTarget,
+    LegacySowingSelectedPlantingConflictError,
+} from '../../../lib/checkout/advancedSowingAvailability';
+import { buildAdvancedSowingLegacyDensitySnapshots } from '../../../lib/checkout/advancedSowingLegacyDensity';
+import {
+    AdvancedSowingPlanBoundaryError,
+    assertNoReservedAdvancedSowingAdditionalData,
+    authorizeAdvancedSowingCartSelection,
+    buildAdvancedSowingSupportedCartTarget,
+    readAdvancedSowingCatalogueDistanceRange,
+} from '../../../lib/checkout/advancedSowingPlan';
 import { getCartInfo } from '../../../lib/checkout/cartInfo';
+import {
+    assertOutletCartTargetAvailable,
+    OutletCartMutationConflictError,
+    outletCartMutationConflictCodes,
+    requireOutletCartTarget,
+    resolveOutletCartCurrency,
+} from '../../../lib/checkout/outletCartTarget';
+import { serializeShoppingCartItemForClient } from '../../../lib/checkout/shoppingCartClientSerialization';
+import { getDefaultCartItemCurrency } from '../../../lib/checkout/sunflowerCalculations';
+import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
+async function loadLegacyDensitySnapshots(
+    plantings: Awaited<ReturnType<typeof getRaisedBedPlantingsForRaisedBed>>,
+) {
+    const legacyPlantSortIds = Array.from(
+        new Set(
+            plantings.flatMap((planting) =>
+                planting.configurationSource === 'legacy' &&
+                planting.isActive &&
+                !planting.isDeleted
+                    ? [planting.plantSortId]
+                    : [],
+            ),
+        ),
+    );
+    const seedingDistanceByPlantSortId = new Map<
+        number,
+        number | null | undefined
+    >();
+    await Promise.all(
+        legacyPlantSortIds.map(async (plantSortId) => {
+            const plantSort =
+                await getEntityFormatted<EntityStandardized>(plantSortId);
+            if (plantSort) {
+                seedingDistanceByPlantSortId.set(
+                    plantSortId,
+                    plantSort.information?.plant?.attributes?.seedingDistance,
+                );
+            }
+        }),
+    );
+    return buildAdvancedSowingLegacyDensitySnapshots({
+        plantings,
+        seedingDistanceByPlantSortId,
+    });
+}
+
 const app = new Hono<{ Variables: AuthVariables }>()
+    .get(
+        '/harvest-schedule',
+        describeRoute({
+            description:
+                'Preview allowed harvest dates for the current cart and delivery slot',
+        }),
+        authValidator(['user', 'admin']),
+        zValidator(
+            'query',
+            z.object({
+                slotId: z.coerce.number().int().positive(),
+            }),
+        ),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const { slotId } = context.req.valid('query');
+            const cart = await getOrCreateShoppingCart(accountId, 'new');
+            if (!cart) {
+                return context.json({ error: 'Cart not found' }, 404);
+            }
+
+            try {
+                const schedule = await getHarvestScheduleForCart({
+                    accountId,
+                    cartId: cart.id,
+                    deliverySlotId: slotId,
+                });
+                return context.json(schedule);
+            } catch (error) {
+                if (error instanceof HarvestScheduleConflictError) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: error.code,
+                            details: error.details,
+                        },
+                        error.statusCode,
+                    );
+                }
+
+                throw error;
+            }
+        },
+    )
     .get(
         '/',
         describeRoute({
@@ -59,6 +184,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             // Calculate total amount of items in the cart (exclude paid items)
             const cartInfo = await getCartInfo(normalizedCart.items, accountId);
+            const advancedSowingAuthorizationsByCartItemId =
+                await getShoppingCartItemAdvancedSowingAuthorizations(
+                    normalizedCart.items.map((item) => item.id),
+                );
             const total = cartInfo.items
                 .filter(
                     (item) => item.status !== 'paid' && item.currency === 'eur',
@@ -103,7 +232,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...normalizedCart,
-                items: cartInfo.items,
+                items: cartInfo.items.map((item) =>
+                    serializeShoppingCartItemForClient(
+                        item,
+                        advancedSowingAuthorizationsByCartItemId.get(item.id),
+                    ),
+                ),
                 total,
                 totalSunflowers,
                 hasDeliverableItems,
@@ -117,13 +251,22 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/',
         describeRoute({
-            description: 'Add or update an item in the shopping cart',
+            description:
+                'Add or update an item in the shopping cart. New items without an explicit currency use sunflowers when the current balance covers all sunflower commitments in the cart. Outlet additions require an owned, available garden field and return stable conflict codes when the offer or target is unavailable.',
         }),
         authValidator(['user', 'admin']),
         zValidator(
             'json',
             z.object({
                 id: z.number().optional(),
+                advancedSowingSelection: z
+                    .object({
+                        kind: z.literal(advancedSowingSelectionRequestKind),
+                        selectedDistanceCm: z.number().positive(),
+                        version: z.literal(1),
+                    })
+                    .strict()
+                    .optional(),
                 cartId: z.number(),
                 entityId: z.string(),
                 entityTypeName: z.string(),
@@ -139,6 +282,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         async (context) => {
             const {
+                advancedSowingSelection,
                 id,
                 cartId,
                 entityId,
@@ -153,6 +297,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 forceCreate,
             } = context.req.valid('json');
             const { accountId } = context.get('authContext');
+            try {
+                assertNoReservedAdvancedSowingAdditionalData(additionalData);
+            } catch (error) {
+                if (error instanceof AdvancedSowingPlanBoundaryError) {
+                    return context.json(
+                        {
+                            code: 'ADVANCED_SOWING_RESERVED_DATA',
+                            error: error.message,
+                        },
+                        400,
+                    );
+                }
+                throw error;
+            }
             const cart = await getShoppingCart(cartId);
             if (!cart || cart.accountId !== accountId) {
                 return context.json({ error: 'Cart not found' }, 404);
@@ -164,23 +322,56 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json({ error: 'Cart item not found' }, 404);
             }
+            const existingItem =
+                typeof id === 'number'
+                    ? cart.items.find((item) => item.id === id)
+                    : undefined;
+            let outletMutationCurrency = currency;
             if (outletOfferId && entityTypeName !== 'plantSort') {
                 return context.json(
                     { error: 'Outlet offers can only be used for plant sorts' },
                     400,
                 );
             }
-            if (outletOfferId && currency && currency !== 'eur') {
+            if (advancedSowingSelection && outletOfferId) {
                 return context.json(
-                    { error: 'Outlet offers can only be paid in euros' },
+                    {
+                        error: 'Advanced Sowing cannot use an outlet offer',
+                        code: 'ADVANCED_SOWING_OUTLET_UNSUPPORTED',
+                    },
+                    400,
+                );
+            }
+            if (
+                outletOfferId &&
+                currency &&
+                currency !== 'eur' &&
+                currency !== 'sunflower'
+            ) {
+                return context.json(
+                    {
+                        error: 'Outlet offers can only be paid in euros or sunflowers',
+                    },
                     400,
                 );
             }
             if (outletOfferId && amount > 0) {
+                if (amount !== 1) {
+                    return context.json(
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
+                        409,
+                    );
+                }
                 const offer = await getOutletOffer(outletOfferId);
                 if (!offer) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
                         409,
                     );
                 }
@@ -190,16 +381,70 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     offer.status !== 'published' ||
                     offer.startAt.getTime() > now ||
                     offer.endAt.getTime() <= now ||
-                    offer.remainingQuantity < amount ||
                     offer.plantSortId.toString() !== entityId
                 ) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
                         409,
                     );
                 }
+
+                try {
+                    const target = requireOutletCartTarget({
+                        gardenId,
+                        positionIndex,
+                        raisedBedId,
+                    });
+                    const [garden, blocks] = await Promise.all([
+                        getGarden(target.gardenId),
+                        getGardenBlocks(target.gardenId),
+                    ]);
+                    const validityMap = garden
+                        ? calculateRaisedBedsValidity(
+                              garden.raisedBeds,
+                              garden.stacks,
+                              new Map(
+                                  blocks.map((block) => [block.id, block.name]),
+                              ),
+                          )
+                        : new Map<number, boolean>();
+                    assertOutletCartTargetAvailable({
+                        accountId,
+                        garden,
+                        isRaisedBedValid:
+                            validityMap.get(target.raisedBedId) ?? false,
+                        positionIndex: target.positionIndex,
+                        raisedBedId: target.raisedBedId,
+                    });
+                } catch (error) {
+                    if (error instanceof OutletCartMutationConflictError) {
+                        return context.json(
+                            { error: error.message, code: error.code },
+                            409,
+                        );
+                    }
+                    throw error;
+                }
+                const existingOutletTargetItem =
+                    existingItem ??
+                    cart.items.find(
+                        (item) =>
+                            item.status === 'new' &&
+                            item.amount > 0 &&
+                            item.entityTypeName === 'plantSort' &&
+                            item.gardenId === gardenId &&
+                            item.raisedBedId === raisedBedId &&
+                            item.positionIndex === positionIndex,
+                    );
+                outletMutationCurrency = resolveOutletCartCurrency(
+                    currency,
+                    existingOutletTargetItem?.currency,
+                );
             }
-            if (amount > 0 && raisedBedId) {
+            if (amount > 0 && raisedBedId && !outletOfferId) {
                 const raisedBed = await getRaisedBed(raisedBedId);
                 if (!raisedBed || raisedBed.accountId !== accountId) {
                     return context.json({ error: 'Raised bed not found' }, 404);
@@ -214,25 +459,238 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
             }
-            try {
-                if (outletOfferId && amount > 0) {
-                    await upsertOrRemoveCartItemWithOutletReservation({
-                        id,
-                        cartId,
-                        entityId,
-                        entityTypeName,
-                        amount,
-                        gardenId,
-                        raisedBedId,
-                        positionIndex,
-                        additionalData,
-                        currency,
-                        forceCreate,
-                        outletOfferId,
-                        accountId,
+            const existingAdvancedSowingAuthorization = existingItem
+                ? (
+                      await getShoppingCartItemAdvancedSowingAuthorizations([
+                          existingItem.id,
+                      ])
+                  ).get(existingItem.id)
+                : undefined;
+            const legacySowingTarget = getLegacySowingCartMutationTarget({
+                existingItem,
+                mutation: {
+                    amount,
+                    entityId,
+                    entityTypeName,
+                    gardenId,
+                    hasAdvancedSowingSelection: Boolean(
+                        advancedSowingSelection,
+                    ),
+                    hasExistingAdvancedSowingAuthorization: Boolean(
+                        existingAdvancedSowingAuthorization,
+                    ),
+                    outletOfferId,
+                    positionIndex,
+                    raisedBedId,
+                },
+            });
+            if (legacySowingTarget) {
+                try {
+                    assertLegacySowingTargetAvailable({
+                        plantings: await getRaisedBedPlantingsForRaisedBed(
+                            legacySowingTarget.raisedBedId,
+                        ),
+                        positionIndex: legacySowingTarget.positionIndex,
+                        raisedBedId: legacySowingTarget.raisedBedId,
                     });
+                } catch (error) {
+                    if (
+                        error instanceof
+                        LegacySowingSelectedPlantingConflictError
+                    ) {
+                        return context.json(
+                            {
+                                code: 'LEGACY_SOWING_SELECTED_PLANTING_CONFLICT',
+                                error: error.message,
+                            },
+                            409,
+                        );
+                    }
+                    throw error;
+                }
+            }
+            let advancedSowingAuthorization: AdvancedSowingCartAuthorizationV1 | null =
+                null;
+            if (advancedSowingSelection) {
+                if (
+                    entityTypeName !== 'plantSort' ||
+                    amount !== 1 ||
+                    gardenId === undefined ||
+                    raisedBedId === undefined ||
+                    positionIndex === undefined ||
+                    (!existingItem && !forceCreate) ||
+                    (existingItem !== undefined &&
+                        (existingItem.entityId !== entityId ||
+                            existingItem.entityTypeName !== entityTypeName ||
+                            existingItem.gardenId !== gardenId ||
+                            existingItem.raisedBedId !== raisedBedId ||
+                            existingItem.positionIndex !== positionIndex))
+                ) {
+                    return context.json(
+                        {
+                            error: 'Advanced Sowing requires one explicitly identified plant-sort target',
+                            code: 'ADVANCED_SOWING_TARGET_INVALID',
+                        },
+                        400,
+                    );
+                }
+                if (
+                    existingItem &&
+                    (await getOutletOfferReservationForCartItem(
+                        existingItem.id,
+                    ))
+                ) {
+                    return context.json(
+                        {
+                            error: 'Advanced Sowing cannot replace an outlet-reserved cart item',
+                            code: 'ADVANCED_SOWING_OUTLET_RESERVATION_CONFLICT',
+                        },
+                        409,
+                    );
+                }
+
+                const [raisedBed, garden, rawPlantSort, plantSort] =
+                    await Promise.all([
+                        getRaisedBed(raisedBedId),
+                        getGarden(gardenId),
+                        Number.isSafeInteger(Number(entityId)) &&
+                        Number(entityId) > 0
+                            ? getEntityRaw(Number(entityId))
+                            : null,
+                        Number.isSafeInteger(Number(entityId)) &&
+                        Number(entityId) > 0
+                            ? getEntityFormatted<EntityStandardized>(
+                                  Number(entityId),
+                              )
+                            : null,
+                    ]);
+                if (
+                    !raisedBed ||
+                    raisedBed.accountId !== accountId ||
+                    raisedBed.gardenId !== gardenId ||
+                    isRaisedBedAbandoned(raisedBed.status) ||
+                    !garden ||
+                    garden.accountId !== accountId ||
+                    garden.isSandbox ||
+                    rawPlantSort?.state !== 'published' ||
+                    rawPlantSort.entityType?.name !== 'plantSort' ||
+                    !plantSort
+                ) {
+                    return context.json(
+                        {
+                            error: 'Advanced Sowing target is not available',
+                            code: 'ADVANCED_SOWING_TARGET_UNAVAILABLE',
+                        },
+                        409,
+                    );
+                }
+
+                try {
+                    const authorizedSelection =
+                        authorizeAdvancedSowingCartSelection({
+                            catalogueDistanceRange:
+                                readAdvancedSowingCatalogueDistanceRange(
+                                    plantSort.information?.plant?.attributes,
+                                ),
+                            clientAdditionalData: additionalData,
+                            selectionRequest: advancedSowingSelection,
+                            target: buildAdvancedSowingSupportedCartTarget(
+                                positionIndex,
+                            ),
+                        }).authorization;
+                    if (!authorizedSelection) {
+                        throw new AdvancedSowingPlanBoundaryError(
+                            'invalid_request',
+                        );
+                    }
+                    const [
+                        blockingPlantOperations,
+                        plantings,
+                        pendingAuthorizations,
+                    ] = await Promise.all([
+                        getBlockingPlantOperationsForRaisedBedFootprint({
+                            positionIndices:
+                                authorizedSelection.plan
+                                    .occupiedPositionIndices,
+                            raisedBedId,
+                        }),
+                        getRaisedBedPlantingsForRaisedBed(raisedBedId),
+                        getShoppingCartItemAdvancedSowingAuthorizations(
+                            cart.items.map((item) => item.id),
+                        ),
+                    ]);
+                    const legacyDensitySnapshots =
+                        await loadLegacyDensitySnapshots(plantings);
+                    advancedSowingAuthorization = {
+                        ...authorizedSelection,
+                        ...(legacyDensitySnapshots.length > 0
+                            ? { legacyDensitySnapshots }
+                            : {}),
+                    };
+                    assertAdvancedSowingPlanAvailable({
+                        authorizationsByCartItemId: pendingAuthorizations,
+                        blockingPlantOperations,
+                        cartItems: cart.items,
+                        excludedCartItemId: id,
+                        gardenId,
+                        legacyDensitySnapshots,
+                        plan: authorizedSelection.plan,
+                        plantings,
+                        raisedBedId,
+                    });
+                } catch (error) {
+                    if (error instanceof AdvancedSowingPlanBoundaryError) {
+                        return context.json(
+                            {
+                                code: `ADVANCED_SOWING_${error.reasonCode.toUpperCase()}`,
+                                error: error.message,
+                            },
+                            409,
+                        );
+                    }
+                    throw error;
+                }
+            }
+            let appliedCurrency = outletMutationCurrency ?? undefined;
+            try {
+                let cartItemId: number | null = null;
+                if (outletOfferId && amount > 0) {
+                    cartItemId =
+                        await upsertOrRemoveCartItemWithOutletReservation({
+                            id,
+                            cartId,
+                            entityId,
+                            entityTypeName,
+                            amount,
+                            gardenId,
+                            raisedBedId,
+                            positionIndex,
+                            additionalData,
+                            currency: outletMutationCurrency,
+                            forceCreate,
+                            outletOfferId,
+                            accountId,
+                        });
+                } else if (advancedSowingAuthorization) {
+                    cartItemId =
+                        await upsertOrRemoveCartItemWithAdvancedSowingAuthorization(
+                            {
+                                additionalData,
+                                amount,
+                                authorization: advancedSowingAuthorization,
+                                cartId,
+                                currency,
+                                entityId,
+                                entityTypeName,
+                                forceCreate,
+                                gardenId,
+                                id,
+                                positionIndex,
+                                raisedBedId,
+                            },
+                        );
                 } else {
-                    const cartItemId = await upsertOrRemoveCartItem(
+                    cartItemId = await upsertOrRemoveCartItem(
                         id,
                         cartId,
                         entityId,
@@ -249,13 +707,87 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         await releaseOutletReservationForCartItem(cartItemId);
                     }
                 }
+
+                const isNewCartItem =
+                    cartItemId !== null &&
+                    !cart.items.some((item) => item.id === cartItemId);
+                if (
+                    amount > 0 &&
+                    cartItemId !== null &&
+                    currency == null &&
+                    isNewCartItem
+                ) {
+                    const updatedCart = await getShoppingCart(cartId);
+                    if (updatedCart) {
+                        const cartInfo = await getCartInfo(
+                            updatedCart.items,
+                            accountId,
+                        );
+                        appliedCurrency = getDefaultCartItemCurrency({
+                            availableSunflowers: await getSunflowers(accountId),
+                            items: cartInfo.items,
+                            newCartItemId: cartItemId,
+                        });
+
+                        if (appliedCurrency === 'sunflower') {
+                            await upsertOrRemoveCartItem(
+                                cartItemId,
+                                cartId,
+                                entityId,
+                                entityTypeName,
+                                amount,
+                                gardenId,
+                                raisedBedId,
+                                positionIndex,
+                                additionalData,
+                                appliedCurrency,
+                            );
+                        }
+                    }
+                }
             } catch (error) {
+                if (
+                    error instanceof
+                    AdvancedSowingCartAuthorizationPersistenceError
+                ) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: 'ADVANCED_SOWING_AUTHORIZATION_CONFLICT',
+                        },
+                        409,
+                    );
+                }
+                if (
+                    error instanceof
+                    AdvancedSowingCartItemExplicitIdentityRequiredError
+                ) {
+                    return context.json(
+                        {
+                            error: error.message,
+                            code: 'ADVANCED_SOWING_EXPLICIT_ITEM_REQUIRED',
+                        },
+                        409,
+                    );
+                }
                 if (
                     error instanceof OutletOfferUnavailableError ||
                     error instanceof OutletReservationUnavailableError
                 ) {
                     return context.json(
-                        { error: 'Outlet offer is not available' },
+                        {
+                            error: 'Outlet offer is not available',
+                            code: outletCartMutationConflictCodes.offerUnavailable,
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof OutletCartTargetUnavailableError) {
+                    return context.json(
+                        {
+                            error: 'Outlet target is not available',
+                            code: outletCartMutationConflictCodes.targetUnavailable,
+                        },
                         409,
                     );
                 }
@@ -269,6 +801,24 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         400,
                     );
                 }
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this item',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije izmjene košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
+                        },
+                        409,
+                    );
+                }
 
                 throw error;
             }
@@ -280,7 +830,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     entity_id: entityId,
                     entity_type: entityTypeName,
                     amount,
-                    currency: currency ?? undefined,
+                    currency: appliedCurrency,
                     outlet_offer_id: outletOfferId,
                 },
             });
@@ -295,7 +845,29 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { accountId } = context.get('authContext');
-            await deleteShoppingCart(accountId);
+            try {
+                await deleteShoppingCart(accountId);
+            } catch (error) {
+                if (error instanceof CheckoutCartItemFulfillmentStartedError) {
+                    return context.json(
+                        {
+                            error: 'Checkout fulfillment is already processing for this cart',
+                            code: 'CHECKOUT_FULFILLMENT_STARTED',
+                        },
+                        409,
+                    );
+                }
+                if (error instanceof StripeCheckoutAttemptInProgressError) {
+                    return context.json(
+                        {
+                            error: 'Plaćanje za ovu košaricu je u tijeku. Dovrši ili otkaži plaćanje prije brisanja košarice.',
+                            code: 'CHECKOUT_IN_PROGRESS',
+                        },
+                        409,
+                    );
+                }
+                throw error;
+            }
             return context.json({ success: true });
         },
     );

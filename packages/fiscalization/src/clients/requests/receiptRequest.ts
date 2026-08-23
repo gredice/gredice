@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { PosSettings } from '../../@types/PosSettings';
 import type { PosUser } from '../../@types/PosUser';
 import type { UserSettings } from '../../@types/UserSettings';
-import type { RacunZahtjev } from '../../generated/1-9-0-educ/fiskalizacijaservice';
+import type { RacunZahtjev } from '../../generated/1-9-0-educ/fiskalizacijaservice/definitions/RacunZahtjev';
 import { generateZki } from '../generateZki';
 import { soapDateTime } from '../helpers/soapDateTime';
 import { type FisRequest, fisClient, prepareXml } from '../shared';

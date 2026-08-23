@@ -1,4 +1,5 @@
 import type { OperationData } from '@gredice/client';
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import { Chip } from '@gredice/ui/Chip';
 import { Calendar } from '@gredice/ui/icons';
 import { Children, isValidElement, type ReactNode, useMemo } from 'react';
@@ -136,7 +137,7 @@ function DisabledOperationChip({
     );
 }
 
-function RaisedBedAiOperationChip({
+export function RaisedBedAiOperationChip({
     gardenId,
     label,
     target,
@@ -169,6 +170,7 @@ function RaisedBedAiOperationChip({
     return (
         <OperationScheduleModal
             gardenId={gardenId}
+            initialScheduledDate={target.scheduledDate}
             operation={operation}
             onConfirm={async (scheduledDate) => {
                 await setShoppingCartItem.mutateAsync({
@@ -181,7 +183,6 @@ function RaisedBedAiOperationChip({
                     additionalData: JSON.stringify({
                         scheduledDate: scheduledDate.toISOString(),
                     }),
-                    currency: 'eur',
                 });
             }}
             positionIndex={targetPositionIndex}
@@ -212,6 +213,10 @@ export function RaisedBedAiOperationMarkdown({
     children: string;
     gardenId: number;
 }) {
+    const sanitizedMarkdown = useMemo(
+        () => sanitizeRaisedBedAiMarkdown(children),
+        [children],
+    );
     const components = useMemo<Components>(
         () => ({
             a: ({ children: linkChildren, href, ...props }) => {
@@ -241,5 +246,9 @@ export function RaisedBedAiOperationMarkdown({
         [gardenId],
     );
 
-    return <ReactMarkdown components={components}>{children}</ReactMarkdown>;
+    return (
+        <ReactMarkdown components={components}>
+            {sanitizedMarkdown}
+        </ReactMarkdown>
+    );
 }

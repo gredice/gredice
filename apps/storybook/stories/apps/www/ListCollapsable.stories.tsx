@@ -42,7 +42,10 @@ const meta = {
     },
     beforeEach: () => {
         createNavigation({});
-        useRouter.mockImplementation(getRouter);
+        useRouter.mockImplementation(() => ({
+            ...getRouter(),
+            bfcacheId: 'storybook',
+        }));
     },
     args: {
         items,

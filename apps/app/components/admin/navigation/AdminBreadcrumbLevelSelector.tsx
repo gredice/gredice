@@ -10,6 +10,7 @@ import {
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Home,
     Inbox,
@@ -26,6 +27,7 @@ import {
     Tally3,
     Truck,
     User,
+    Warning,
 } from '@gredice/ui/icons';
 import {
     DropdownMenu,
@@ -126,6 +128,10 @@ const breadcrumbSections: {
                 icon: <Euro className="size-4" />,
             },
             { ...adminPages.Sunflowers, icon: <Success className="size-4" /> },
+            {
+                ...adminPages.BillingReconciliation,
+                icon: <Warning className="size-4" />,
+            },
             { ...adminPages.Receipts, icon: <File className="size-4" /> },
             { ...adminPages.Outlet, icon: <Discount className="size-4" /> },
         ],
@@ -173,6 +179,43 @@ const breadcrumbSections: {
             {
                 ...adminPages.DeliveryRequests,
                 icon: <Truck className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryOperations,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryNotifications,
+                icon: <Graph className="size-4" />,
+            },
+        ],
+    },
+    {
+        title: 'Izvještaji',
+        pages: [
+            {
+                ...adminPages.SowingStatistics,
+                icon: <Tally3 className="size-4" />,
+            },
+            {
+                ...adminPages.DeliveryRequestStatistics,
+                icon: <Graph className="size-4" />,
+            },
+            {
+                ...adminPages.UsersStatistics,
+                icon: <User className="size-4" />,
+            },
+            {
+                ...adminPages.OperationsStatistics,
+                icon: <Hammer className="size-4" />,
+            },
+            {
+                ...adminPages.RecordsStatistics,
+                icon: <File className="size-4" />,
+            },
+            {
+                ...adminPages.SunflowersStatistics,
+                icon: <Success className="size-4" />,
             },
         ],
     },

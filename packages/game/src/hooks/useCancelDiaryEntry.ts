@@ -107,6 +107,10 @@ async function cancelOperation({
             gardenId: gardenId.toString(),
             operationId: target.operationId.toString(),
         },
+        json: {
+            expectedEntityId: target.expectedEntityId,
+            expectedTaskVersionEventId: target.expectedTaskVersionEventId,
+        },
     });
 
     if (response.status !== 200) {
@@ -128,6 +132,12 @@ async function cancelRaisedBedFieldPlant({
             gardenId: gardenId.toString(),
             raisedBedId: target.raisedBedId.toString(),
             positionIndex: target.positionIndex.toString(),
+        },
+        json: {
+            expectedPlantCycleEventId: target.expectedPlantCycleEventId,
+            expectedPlantCycleVersionEventId:
+                target.expectedPlantCycleVersionEventId,
+            expectedPlantSortId: target.expectedPlantSortId,
         },
     });
 

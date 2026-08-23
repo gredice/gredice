@@ -31,6 +31,13 @@
     ],
     "minimumReleaseAge": "5 days",
     "prHourlyLimit": 6,
+    "env": {
+        "PNPM_MAX_WORKERS": "1",
+        "PNPM_WORKERS": "1"
+    },
+    "toolSettings": {
+        "nodeMaxMemory": 1536
+    },
     "platformAutomerge": true,
     "platformCommit": "enabled"
 }

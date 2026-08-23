@@ -1,0 +1,237 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import { getGameTimeOfDay } from '../utils/timeOfDay';
+import { getPublicGardenRaisedBedInteractionTargets } from './PublicGardenRaisedBedInteractions';
+import {
+    getPublicGardenCaptureInitialView,
+    getPublicGardenCapturePhaseDate,
+    getPublicGardenInitialView,
+    getPublicGardenRaisedBedsWithBlocks,
+    getPublicGardenStacksCenter,
+    normalizePublicGardenStacks,
+    type PublicGardenCapturePhase,
+    type PublicGardenStack,
+    shouldRenderPublicGardenGroundDecorations,
+} from './PublicGardenViewer';
+
+describe('shouldRenderPublicGardenGroundDecorations', () => {
+    it('keeps the normal detail default while allowing an isolated foliage override', () => {
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(true, undefined),
+            true,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(false, undefined),
+            false,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(false, true),
+            true,
+        );
+        assert.equal(
+            shouldRenderPublicGardenGroundDecorations(true, false),
+            false,
+        );
+    });
+});
+
+describe('getPublicGardenCapturePhaseDate', () => {
+    it('resolves stable renderer times for every wallpaper phase', () => {
+        const location = { lat: 45.739, lon: 16.572 };
+        const phases: Array<readonly [PublicGardenCapturePhase, number]> = [
+            ['morning', 0.22],
+            ['day', 0.5],
+            ['evening', 0.79],
+            ['night', 0.94],
+        ];
+
+        for (const [phase, expectedTimeOfDay] of phases) {
+            const date = getPublicGardenCapturePhaseDate(phase, location);
+            const actualTimeOfDay = getGameTimeOfDay(location, date);
+
+            assert.ok(Math.abs(actualTimeOfDay - expectedTimeOfDay) < 0.002);
+        }
+    });
+});
+
+describe('getPublicGardenRaisedBedsWithBlocks', () => {
+    it('excludes raised beds that cannot be selected in the rendered garden', () => {
+        const stacks = normalizePublicGardenStacks([
+            {
+                x: 2,
+                y: 5,
+                blocks: [
+                    {
+                        id: 'raised-bed-1',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+
+        const raisedBeds = getPublicGardenRaisedBedsWithBlocks(
+            [
+                { id: 1, blockId: 'raised-bed-1' },
+                { id: 2, blockId: 'removed-raised-bed' },
+                { id: 3, blockId: null },
+            ],
+            stacks,
+        );
+
+        assert.deepEqual(
+            raisedBeds.map((raisedBed) => raisedBed.id),
+            [1],
+        );
+    });
+});
+
+describe('normalizePublicGardenStacks', () => {
+    it('maps public garden rows onto the game z axis', () => {
+        const publicStacks: PublicGardenStack[] = [
+            {
+                x: 2,
+                y: 5,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block_Grass',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ];
+
+        const [stack] = normalizePublicGardenStacks(publicStacks);
+
+        assert.ok(stack);
+        assert.equal(stack.position.x, 2);
+        assert.equal(stack.position.y, 0);
+        assert.equal(stack.position.z, 5);
+    });
+});
+
+describe('getPublicGardenStacksCenter', () => {
+    it('centers the camera target across public garden x and z bounds', () => {
+        const stacks = normalizePublicGardenStacks([
+            { x: 0, y: 4, blocks: [] },
+            { x: 6, y: 10, blocks: [] },
+        ]);
+
+        const center = getPublicGardenStacksCenter(stacks);
+
+        assert.equal(center.x, 3);
+        assert.equal(center.y, 0);
+        assert.equal(center.z, 7);
+    });
+});
+
+describe('getPublicGardenInitialView', () => {
+    it('uses the saved public garden home camera when available', () => {
+        const view = getPublicGardenInitialView({
+            homeCamera: {
+                position: [12, 80, -18],
+                target: [4, 0, -6],
+                zoom: 140,
+            },
+            stacks: normalizePublicGardenStacks([
+                { x: 0, y: 4, blocks: [] },
+                { x: 6, y: 10, blocks: [] },
+            ]),
+        });
+
+        assert.equal(view.cameraPosition.x, 12);
+        assert.equal(view.cameraPosition.y, 80);
+        assert.equal(view.cameraPosition.z, -18);
+        assert.equal(view.cameraTarget.x, 4);
+        assert.equal(view.cameraTarget.y, 0);
+        assert.equal(view.cameraTarget.z, -6);
+        assert.equal(view.cameraZoom, 140);
+    });
+
+    it('falls back to centering the garden bounds', () => {
+        const view = getPublicGardenInitialView({
+            stacks: normalizePublicGardenStacks([
+                { x: 0, y: 4, blocks: [] },
+                { x: 6, y: 10, blocks: [] },
+            ]),
+        });
+
+        assert.equal(view.cameraPosition.x, -97);
+        assert.equal(view.cameraPosition.y, 100);
+        assert.equal(view.cameraPosition.z, -93);
+        assert.equal(view.cameraTarget.x, 3);
+        assert.equal(view.cameraTarget.y, 0);
+        assert.equal(view.cameraTarget.z, 7);
+        assert.equal(view.cameraZoom, 90);
+    });
+});
+
+describe('getPublicGardenCaptureInitialView', () => {
+    it('fits compact and elongated gardens inside an ultrawide capture', () => {
+        const compact = getPublicGardenCaptureInitialView({
+            stacks: normalizePublicGardenStacks([{ x: 0, y: 0, blocks: [] }]),
+            viewport: { height: 1440, width: 3440 },
+        });
+        const elongated = getPublicGardenCaptureInitialView({
+            stacks: normalizePublicGardenStacks(
+                Array.from({ length: 24 }, (_, index) => ({
+                    x: index,
+                    y: 0,
+                    blocks: [],
+                })),
+            ),
+            viewport: { height: 1440, width: 3440 },
+        });
+
+        assert.ok(compact.cameraZoom > 150);
+        assert.ok(compact.cameraZoom <= 180);
+        assert.ok(elongated.cameraZoom < compact.cameraZoom);
+        assert.ok(elongated.cameraZoom >= 24);
+    });
+
+    it('supports a lower outlet-only floor for a large phone viewport scene', () => {
+        const view = getPublicGardenCaptureInitialView({
+            minimumZoom: 18,
+            stacks: normalizePublicGardenStacks(
+                Array.from({ length: 50 }, (_, index) => ({
+                    x: index,
+                    y: 0,
+                    blocks: [],
+                })),
+            ),
+            viewport: { height: 456, width: 390 },
+        });
+
+        assert.equal(view.cameraZoom, 18);
+    });
+});
+
+describe('getPublicGardenRaisedBedInteractionTargets', () => {
+    it('registers only raised-bed blocks for public selection', () => {
+        const stacks = normalizePublicGardenStacks([
+            {
+                x: 2,
+                y: 5,
+                blocks: [
+                    {
+                        id: 'raised-bed-1',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                    {
+                        id: 'decoration-1',
+                        name: 'Bucket',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
+
+        const targets = getPublicGardenRaisedBedInteractionTargets(stacks);
+
+        assert.equal(targets.length, 1);
+        assert.equal(targets[0]?.block.id, 'raised-bed-1');
+        assert.equal(targets[0]?.blockIndex, 0);
+    });
+});

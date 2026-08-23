@@ -103,9 +103,11 @@ function getCurrentDateKey(status?: string | null) {
         case 'sowed':
             return 'plantSowDate';
         case 'sprouted':
-        case 'firstFlowers':
-        case 'firstFruitSet':
             return 'plantGrowthDate';
+        case 'firstFlowers':
+            return 'plantFirstFlowersDate';
+        case 'firstFruitSet':
+            return 'plantFirstFruitSetDate';
         case 'ready':
             return 'plantReadyDate';
         case 'harvested':
@@ -132,6 +134,21 @@ function normalizeDate(value?: Date | string | null) {
     }
 
     return value;
+}
+
+function getPlantStatusDate(
+    plantCycle: RaisedBedFieldPlantCycle | undefined,
+    status: string,
+) {
+    const statusChanges = plantCycle?.statusChanges ?? [];
+    for (let index = statusChanges.length - 1; index >= 0; index -= 1) {
+        const statusChange = statusChanges[index];
+        if (statusChange?.status === status) {
+            return statusChange.occurredAt;
+        }
+    }
+
+    return null;
 }
 
 interface RaisedBedFieldsTableProps {
@@ -260,6 +277,18 @@ export async function RaisedBedFieldsTable({
                                 plantGrowthDate: normalizeDate(
                                     plantCycle.plantGrowthDate,
                                 ),
+                                plantFirstFlowersDate: normalizeDate(
+                                    getPlantStatusDate(
+                                        plantCycle,
+                                        'firstFlowers',
+                                    ),
+                                ),
+                                plantFirstFruitSetDate: normalizeDate(
+                                    getPlantStatusDate(
+                                        plantCycle,
+                                        'firstFruitSet',
+                                    ),
+                                ),
                                 plantReadyDate: normalizeDate(
                                     plantCycle.plantReadyDate,
                                 ),
@@ -358,6 +387,22 @@ function RaisedBedFieldTile({
             current: currentDateKey === 'plantGrowthDate',
         },
         {
+            key: 'plantFirstFlowersDate',
+            label: 'Prvi cvjetovi',
+            value: normalizeDate(
+                getPlantStatusDate(activePlantCycle, 'firstFlowers'),
+            ),
+            current: currentDateKey === 'plantFirstFlowersDate',
+        },
+        {
+            key: 'plantFirstFruitSetDate',
+            label: 'Prvi plodovi',
+            value: normalizeDate(
+                getPlantStatusDate(activePlantCycle, 'firstFruitSet'),
+            ),
+            current: currentDateKey === 'plantFirstFruitSetDate',
+        },
+        {
             key: 'plantReadyDate',
             label: 'Spremno',
             value: normalizeDate(field?.plantReadyDate),
@@ -394,10 +439,13 @@ function RaisedBedFieldTile({
             />
         ) : undefined;
     const locationControl =
-        field?.active && field.plantSortId ? (
+        field?.active && field.plantSortId && activePlantCycle ? (
             <RaisedBedFieldLocationSelector
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
+                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
+                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
+                expectedPlantSortId={field.plantSortId}
                 sowingLocation={field.sowingLocation}
                 currentLocation={getCurrentLocation(field)}
                 greenhouseCurrentLocationEligible={canFieldCurrentlyBeInGreenhouse(
@@ -437,17 +485,26 @@ function RaisedBedFieldTile({
             positionIndex={positionIndex}
             status={field?.plantStatus ?? null}
             plantSortId={field?.plantSortId}
+            expectedPlantCycleEventId={activePlantCycle?.plantPlaceEventId}
+            expectedPlantCycleVersionEventId={activePlantCycle?.endedEventId}
             plantSorts={plantSorts}
             variant="plain"
             className={raisedBedFieldCardSelectClassName}
         />
     );
     const statusControl =
-        field?.active && field.plantStatus ? (
+        field?.active &&
+        field.plantStatus &&
+        field.plantSortId &&
+        activePlantCycle ? (
             <RaisedBedFieldStatusDateChip
                 raisedBedId={raisedBedId}
                 positionIndex={positionIndex}
                 status={field.plantStatus}
+                expectedPlantCycleEventId={activePlantCycle.plantPlaceEventId}
+                expectedPlantCycleVersionEventId={activePlantCycle.endedEventId}
+                expectedPlantSortId={field.plantSortId}
+                expectedPlantStatusEventId={field.plantStatusEventId ?? null}
                 date={dateItems.find((item) => item.current)?.value ?? null}
                 dateItems={dateItems}
                 className={raisedBedFieldCardButtonClassName}
@@ -458,8 +515,7 @@ function RaisedBedFieldTile({
             raisedBedId={raisedBedId}
             positionIndex={positionIndex}
             level={field?.weedState?.level ?? 'none'}
-            variant="plain"
-            className={raisedBedFieldCardSelectClassName}
+            className={raisedBedFieldCardChipClassName}
         />
     );
 

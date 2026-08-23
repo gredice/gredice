@@ -7,7 +7,20 @@ import {
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
 
-function createInventoryHudQueryClient() {
+type InventoryHudStoryOptions = {
+    backpackItemAmount?: number;
+    gardenBoxItemAmount?: number;
+};
+
+const mixedInventoryStoryOptions = {
+    backpackItemAmount: 3,
+    gardenBoxItemAmount: 29,
+};
+
+function createInventoryHudQueryClient({
+    backpackItemAmount = 0,
+    gardenBoxItemAmount = 2,
+}: InventoryHudStoryOptions = {}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -16,33 +29,54 @@ function createInventoryHudQueryClient() {
 
     queryClient.setQueryData(['currentUser'], { id: 'test-user' });
     queryClient.setQueryData(['inventory'], {
-        items: [],
+        items:
+            backpackItemAmount > 0
+                ? [
+                      {
+                          amount: backpackItemAmount,
+                          entityId: '2',
+                          entityTypeName: 'block',
+                          name: 'Seed bag',
+                      },
+                  ]
+                : [],
         gardenBoxes: [
             {
                 blockId: 'garden-box-1',
                 gardenId: 1,
                 gardenName: 'Test garden',
-                items: [
-                    {
-                        amount: 2,
-                        entityId: '1',
-                        entityTypeName: 'block',
-                        name: 'Bucket',
-                    },
-                ],
+                items:
+                    gardenBoxItemAmount > 0
+                        ? [
+                              {
+                                  amount: gardenBoxItemAmount,
+                                  entityId: '1',
+                                  entityTypeName: 'block',
+                                  name: 'Bucket',
+                              },
+                          ]
+                        : [],
             },
         ],
     });
     queryClient.setQueryData(['operations'], []);
+    queryClient.setQueryData(['blocks'], []);
 
     return queryClient;
 }
 
 function InventoryHudTestProviders({
     children,
+    inventoryOptions,
     searchParams,
-}: PropsWithChildren<{ searchParams?: string }>) {
-    const queryClient = useMemo(() => createInventoryHudQueryClient(), []);
+}: PropsWithChildren<{
+    inventoryOptions?: InventoryHudStoryOptions;
+    searchParams?: string;
+}>) {
+    const queryClient = useMemo(
+        () => createInventoryHudQueryClient(inventoryOptions),
+        [inventoryOptions],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -65,11 +99,34 @@ function InventoryHudTestProviders({
     );
 }
 
+export function InventoryHudClosedStory() {
+    return (
+        <InventoryHudTestProviders
+            inventoryOptions={mixedInventoryStoryOptions}
+        >
+            <div className="relative h-screen w-screen p-8">
+                <InventoryHud />
+            </div>
+        </InventoryHudTestProviders>
+    );
+}
+
 export function InventoryHudGardenBoxesOpenStory() {
     return (
         <InventoryHudTestProviders searchParams="ruksak=true&ruksak-kartica=gardenBoxes">
             <div className="relative h-screen w-screen p-8">
                 <InventoryHud />
+            </div>
+        </InventoryHudTestProviders>
+    );
+}
+
+/** Mirrors the avatar walk-through, where the modal opens without a HUD shell. */
+export function InventoryHudTriggerlessStory() {
+    return (
+        <InventoryHudTestProviders searchParams="ruksak=true&ruksak-kartica=gardenBoxes">
+            <div className="relative h-screen w-screen p-8">
+                <InventoryHud hideTrigger />
             </div>
         </InventoryHudTestProviders>
     );

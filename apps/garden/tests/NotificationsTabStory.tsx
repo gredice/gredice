@@ -1,6 +1,7 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
+import type { PushSetupStatus } from '../../../packages/game/src/hooks/usePushPermissionOnboarding';
 import { NotificationsTab } from '../../../packages/game/src/modals/components/NotificationsTab';
 import type { NotificationsFilter } from '../../../packages/game/src/notificationFilters';
 
@@ -46,13 +47,28 @@ function Providers({ children }: PropsWithChildren) {
 
 export function NotificationsTabStory({
     initialFilter,
+    premiumNotificationControlsEnabled,
+    pushSetupStatus = 'subscribed',
+    pushSubscriptionChecked = true,
 }: {
     initialFilter?: NotificationsFilter;
+    premiumNotificationControlsEnabled?: boolean;
+    pushSetupStatus?: PushSetupStatus;
+    pushSubscriptionChecked?: boolean;
 }) {
     return (
         <Providers>
             <div className="w-[520px] p-4">
-                <NotificationsTab initialFilter={initialFilter} />
+                <NotificationsTab
+                    initialFilter={initialFilter}
+                    premiumNotificationControlsEnabled={
+                        premiumNotificationControlsEnabled
+                    }
+                    pushSetupState={{
+                        status: pushSetupStatus,
+                        subscriptionChecked: pushSubscriptionChecked,
+                    }}
+                />
             </div>
         </Providers>
     );

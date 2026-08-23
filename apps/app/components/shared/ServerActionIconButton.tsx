@@ -1,9 +1,12 @@
 'use client';
 
-import { IconButton, type IconButtonProps } from '@gredice/ui/IconButton';
+import { IconButton, type IconButtonButtonProps } from '@gredice/ui/IconButton';
 import { startTransition, useState } from 'react';
 
-export type ServerActionIconButtonProps = Omit<IconButtonProps, 'onClick'> & {
+export type ServerActionIconButtonProps = Omit<
+    IconButtonButtonProps,
+    'onClick'
+> & {
     onClick?: () => Promise<void>;
 } & (
         | {

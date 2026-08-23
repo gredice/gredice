@@ -33,7 +33,7 @@ type OccupiedCell = {
     topHeight: number;
 };
 
-type Placement = Position & {
+type GardenBlockPlacement = Position & {
     index: number;
     existingBlocks: string[];
 };
@@ -48,7 +48,7 @@ type ValidationResult =
 export type GardenBlockPlacementResult =
     | {
           valid: true;
-          placement: Placement;
+          placement: GardenBlockPlacement;
       }
     | {
           valid: false;
@@ -58,6 +58,70 @@ export type GardenBlockPlacementResult =
 const CANDIDATE_BLOCK_ID = '__candidate_block__';
 const MAX_SPIRAL_STEPS = 1000;
 export const WATER_BLOCK_NAME = 'Block_Water';
+export const WATER_BLOCK_NAMES = [
+    WATER_BLOCK_NAME,
+    'Block_Swamp_Water',
+] as const;
+const GARDEN_SURFACE_COVER_BLOCK_NAMES = new Set([
+    'MulchCoconut',
+    'MulchHey',
+    'MulchWood',
+    'StoneWalkway',
+    'WoodenWalkway',
+]);
+const TERRAIN_STAIR_BLOCK_NAMES = new Set([
+    'Block_Stone_Stairs',
+    'Block_Polished_Stone_Stairs',
+    'Block_Stone_Stairs_Corner',
+    'Block_Polished_Stone_Stairs_Corner',
+    'Block_Stone_Stairs_Half',
+]);
+export const SWAMP_BLOCK_NAME = 'Block_Swamp';
+export const FISHING_BOAT_BLOCK_NAME = 'FishingBoat';
+
+export function isWaterBlockName(blockName: string) {
+    return WATER_BLOCK_NAMES.some((name) => name === blockName);
+}
+
+export function isWaterOrSwampBlockName(blockName: string) {
+    return (
+        isWaterBlockName(blockName) ||
+        blockName === SWAMP_BLOCK_NAME ||
+        blockName.startsWith(`${SWAMP_BLOCK_NAME}_`)
+    );
+}
+
+export function requiresWaterOrSwampSupport(blockName: string) {
+    return blockName === FISHING_BOAT_BLOCK_NAME;
+}
+
+export function isEdgeOrCornerTerrainBlockName(blockName: string) {
+    return (
+        blockName.startsWith('Block_') &&
+        !TERRAIN_STAIR_BLOCK_NAMES.has(blockName) &&
+        (blockName.endsWith('_Angle') || blockName.endsWith('_Corner'))
+    );
+}
+
+export function getEffectiveGardenStackBlockHeight({
+    blockHeight,
+    blockName,
+    supportBlockName,
+}: {
+    blockHeight: number;
+    blockName: string;
+    supportBlockName: string | undefined;
+}) {
+    if (
+        isWaterBlockName(blockName) &&
+        supportBlockName &&
+        isEdgeOrCornerTerrainBlockName(supportBlockName)
+    ) {
+        return 0;
+    }
+
+    return blockHeight;
+}
 
 function toPositiveGridSpan(value: number | null | undefined) {
     return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -114,6 +178,20 @@ function spiral(step: number): Position {
     }
 }
 
+function addPositions(left: Position, right: Position): Position {
+    return {
+        x: left.x + right.x,
+        y: left.y + right.y,
+    };
+}
+
+function toGridPosition(position: Position): Position {
+    return {
+        x: Math.round(position.x),
+        y: Math.round(position.y),
+    };
+}
+
 function findStackAtPosition(stacks: GardenBlockStack[], position: Position) {
     return stacks.find(
         (stack) =>
@@ -132,17 +210,29 @@ function getBlockHeight(
     return blockDataByName.get(blockName)?.attributes?.height ?? 0;
 }
 
-function getStackHeightByBlockIds(
+export function getGardenStackHeightByBlockIds(
     blockIds: string[],
     blockNameById: Map<string, string>,
     blockDataByName: Map<string, GardenBlockDataLike>,
 ) {
-    return blockIds.reduce((height, blockId) => {
+    let height = 0;
+    let supportBlockName: string | undefined;
+
+    for (const blockId of blockIds) {
         const blockName = blockNameById.get(blockId);
-        return blockName
-            ? height + getBlockHeight(blockName, blockDataByName)
-            : height;
-    }, 0);
+        if (!blockName) {
+            continue;
+        }
+
+        height += getEffectiveGardenStackBlockHeight({
+            blockHeight: getBlockHeight(blockName, blockDataByName),
+            blockName,
+            supportBlockName,
+        });
+        supportBlockName = blockName;
+    }
+
+    return height;
 }
 
 function createOccupiedCells(params: {
@@ -163,6 +253,7 @@ function createOccupiedCells(params: {
 
     for (const stack of stacks) {
         let stackHeight = 0;
+        let supportBlockName: string | undefined;
         for (const blockId of stack.blocks) {
             const blockName = blockNameById.get(blockId);
             if (!blockName) {
@@ -170,7 +261,11 @@ function createOccupiedCells(params: {
             }
 
             const blockData = blockDataByName.get(blockName);
-            const blockHeight = getBlockHeight(blockName, blockDataByName);
+            const blockHeight = getEffectiveGardenStackBlockHeight({
+                blockHeight: getBlockHeight(blockName, blockDataByName),
+                blockName,
+                supportBlockName,
+            });
             if (!movingBlockIds?.has(blockId)) {
                 for (const offset of getGardenBlockFootprintOffsets(
                     blockData,
@@ -195,9 +290,10 @@ function createOccupiedCells(params: {
                         occupiedCells.set(key, [cell]);
                     }
                 }
-            }
 
-            stackHeight += blockHeight;
+                stackHeight += blockHeight;
+                supportBlockName = blockName;
+            }
         }
     }
 
@@ -213,18 +309,19 @@ function getTopOccupiedCell(
         return null;
     }
 
+    // A collapsed water block is logically above its support at the same height.
     return cells.reduce((topCell, cell) =>
-        cell.topHeight > topCell.topHeight ? cell : topCell,
+        cell.topHeight >= topCell.topHeight ? cell : topCell,
     );
 }
 
 function isGroundBlock(blockName: string) {
-    return blockName.startsWith('Block') && blockName !== WATER_BLOCK_NAME;
+    return blockName.startsWith('Block') && !isWaterBlockName(blockName);
 }
 
 function isWaterPlacement(params: {
     blockName: string;
-    placement: Placement;
+    placement: GardenBlockPlacement;
     stacks: GardenBlockStack[];
     blockNameById: Map<string, string>;
     blockDataByName: Map<string, GardenBlockDataLike>;
@@ -239,9 +336,10 @@ function isWaterPlacement(params: {
             y: placement.y + offset.y,
         });
 
-        return stack?.blocks.some(
-            (blockId) => blockNameById.get(blockId) === WATER_BLOCK_NAME,
-        );
+        return stack?.blocks.some((blockId) => {
+            const candidateName = blockNameById.get(blockId);
+            return candidateName ? isWaterBlockName(candidateName) : false;
+        });
     });
 }
 
@@ -253,8 +351,7 @@ export function isBlockPlaceableOnWater({
     blockName: string;
 }) {
     return (
-        blockData?.attributes?.placeableOnWater ??
-        blockName === WATER_BLOCK_NAME
+        blockData?.attributes?.placeableOnWater ?? isWaterBlockName(blockName)
     );
 }
 
@@ -269,11 +366,18 @@ export function canStackBlockOnBlock({
     belowBlockData: GardenBlockDataLike | undefined;
     belowBlockName: string;
 }) {
-    if (!belowBlockData?.attributes?.stackable) {
+    if (
+        !belowBlockData?.attributes?.stackable &&
+        !GARDEN_SURFACE_COVER_BLOCK_NAMES.has(belowBlockName)
+    ) {
         return false;
     }
 
-    if (belowBlockName !== WATER_BLOCK_NAME) {
+    if (requiresWaterOrSwampSupport(aboveBlockName)) {
+        return isWaterOrSwampBlockName(belowBlockName);
+    }
+
+    if (!isWaterBlockName(belowBlockName)) {
         return true;
     }
 
@@ -289,6 +393,16 @@ export function validateStackPlacement(params: {
     blockDataByName: Map<string, GardenBlockDataLike>;
 }): ValidationResult {
     const { blockIds, blockNameById, blockDataByName } = params;
+    const bottomBlockId = blockIds[0];
+    const bottomBlockName = bottomBlockId
+        ? blockNameById.get(bottomBlockId)
+        : undefined;
+    if (bottomBlockName && requiresWaterOrSwampSupport(bottomBlockName)) {
+        return {
+            valid: false,
+            error: `Invalid stack placement: block ${bottomBlockId} requires water or swamp support`,
+        };
+    }
 
     for (let index = 1; index < blockIds.length; index++) {
         const belowBlockId = blockIds[index - 1];
@@ -336,100 +450,6 @@ export function validateStackPlacement(params: {
     return { valid: true };
 }
 
-function getRaisedBedAdjacentCount(params: {
-    stacks: GardenBlockStack[];
-    x: number;
-    y: number;
-    blockNameById: Map<string, string>;
-}) {
-    const { stacks, x, y, blockNameById } = params;
-    const neighborPositions = [
-        { x: x - 1, y },
-        { x: x + 1, y },
-        { x, y: y - 1 },
-        { x, y: y + 1 },
-    ];
-
-    return neighborPositions.filter((position) => {
-        const stack = findStackAtPosition(stacks, position);
-        if (!stack) {
-            return false;
-        }
-
-        return stack.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        );
-    }).length;
-}
-
-export function validateRaisedBedPlacement(params: {
-    stacks: GardenBlockStack[];
-    x: number;
-    y: number;
-    index: number;
-    blockNameById: Map<string, string>;
-}): ValidationResult {
-    const { stacks, x, y, blockNameById } = params;
-    const targetStack = findStackAtPosition(stacks, { x, y });
-
-    if (
-        targetStack?.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        )
-    ) {
-        return {
-            valid: false,
-            error: 'Invalid raised bed placement: cannot stack on another raised bed',
-        };
-    }
-
-    const neighborPositions = [
-        { x: x - 1, y },
-        { x: x + 1, y },
-        { x, y: y - 1 },
-        { x, y: y + 1 },
-    ].filter((position) => {
-        const stack = findStackAtPosition(stacks, position);
-        if (!stack) {
-            return false;
-        }
-
-        return stack.blocks.some(
-            (blockId) => blockNameById.get(blockId) === 'Raised_Bed',
-        );
-    });
-
-    if (neighborPositions.length > 1) {
-        return {
-            valid: false,
-            error: 'Invalid raised bed placement: cannot place next to multiple raised bed neighbors',
-        };
-    }
-
-    if (neighborPositions.length === 1) {
-        const neighborPosition = neighborPositions[0];
-        if (!neighborPosition) {
-            return { valid: true };
-        }
-
-        const { x: neighborX, y: neighborY } = neighborPosition;
-        const neighborAdjacentCount = getRaisedBedAdjacentCount({
-            stacks,
-            x: neighborX,
-            y: neighborY,
-            blockNameById,
-        });
-        if (neighborAdjacentCount > 0) {
-            return {
-                valid: false,
-                error: 'Invalid raised bed placement: cannot place next to an already attached raised bed',
-            };
-        }
-    }
-
-    return { valid: true };
-}
-
 function validatePlacementAtPosition(params: {
     blockName: string;
     position: Position;
@@ -468,6 +488,17 @@ function validatePlacementAtPosition(params: {
         );
 
         if (
+            requiresWaterOrSwampSupport(blockName) &&
+            (!topOccupiedCell ||
+                !isWaterOrSwampBlockName(topOccupiedCell.blockName))
+        ) {
+            return {
+                valid: false,
+                error: `Invalid block placement: ${blockName} requires water or swamp under every footprint cell`,
+            };
+        }
+
+        if (
             isGroundBlock(blockName) &&
             (footprintStack.length > 0 || topOccupiedCell)
         ) {
@@ -504,7 +535,7 @@ function validatePlacementAtPosition(params: {
 
         const footprintHeight =
             topOccupiedCell?.topHeight ??
-            getStackHeightByBlockIds(
+            getGardenStackHeightByBlockIds(
                 footprintStack,
                 blockNameById,
                 blockDataByName,
@@ -519,19 +550,6 @@ function validatePlacementAtPosition(params: {
         }
     }
 
-    if (blockName === 'Raised_Bed') {
-        const placementValidation = validateRaisedBedPlacement({
-            stacks,
-            x: position.x,
-            y: position.y,
-            index: existingBlocks.length,
-            blockNameById,
-        });
-        if (!placementValidation.valid) {
-            return placementValidation;
-        }
-    }
-
     return {
         valid: true,
         placement: {
@@ -543,12 +561,86 @@ function validatePlacementAtPosition(params: {
     };
 }
 
+function resolveAutomaticGardenBlockPlacement(params: {
+    blockName: string;
+    occupiedCells: Map<string, OccupiedCell[]>;
+    searchOrigin: Position;
+    stacks: GardenBlockStack[];
+    blockNameById: Map<string, string>;
+    blockDataByName: Map<string, GardenBlockDataLike>;
+}): GardenBlockPlacementResult {
+    const {
+        blockName,
+        occupiedCells,
+        searchOrigin,
+        stacks,
+        blockNameById,
+        blockDataByName,
+    } = params;
+    let waterPlacementFallback: GardenBlockPlacementResult | null = null;
+
+    const validateCandidate = (
+        candidatePosition: Position,
+    ): GardenBlockPlacementResult | null => {
+        const placement = validatePlacementAtPosition({
+            blockName,
+            occupiedCells,
+            position: candidatePosition,
+            stacks,
+            blockNameById,
+            blockDataByName,
+        });
+        if (!placement.valid) {
+            return null;
+        }
+
+        if (
+            isWaterPlacement({
+                blockName,
+                placement: placement.placement,
+                stacks,
+                blockNameById,
+                blockDataByName,
+            })
+        ) {
+            waterPlacementFallback ??= placement;
+            return null;
+        }
+
+        return placement;
+    };
+
+    const searchOriginPlacement = validateCandidate(searchOrigin);
+    if (searchOriginPlacement) {
+        return searchOriginPlacement;
+    }
+
+    for (let step = 0; step < MAX_SPIRAL_STEPS; step++) {
+        const placement = validateCandidate(
+            addPositions(searchOrigin, spiral(step)),
+        );
+        if (placement) {
+            return placement;
+        }
+    }
+
+    if (waterPlacementFallback) {
+        return waterPlacementFallback;
+    }
+
+    return {
+        valid: false,
+        error: 'No valid placement position found',
+    };
+}
+
 export function resolveGardenBlockPlacement(params: {
     blockName: string;
     stacks: GardenBlockStack[];
     blockNameById: Map<string, string>;
     blockDataByName: Map<string, GardenBlockDataLike>;
     blockRotationById?: Map<string, number | null | undefined>;
+    preferredPosition?: Position;
     requestedPosition?: Position;
 }): GardenBlockPlacementResult {
     const {
@@ -557,6 +649,7 @@ export function resolveGardenBlockPlacement(params: {
         blockNameById,
         blockDataByName,
         blockRotationById,
+        preferredPosition,
         requestedPosition,
     } = params;
     const occupiedCells = createOccupiedCells({
@@ -577,68 +670,14 @@ export function resolveGardenBlockPlacement(params: {
         });
     }
 
-    let waterPlacementFallback: GardenBlockPlacementResult | null = null;
-
-    const originPlacement = validatePlacementAtPosition({
+    return resolveAutomaticGardenBlockPlacement({
         blockName,
         occupiedCells,
-        position: { x: 0, y: 0 },
         stacks,
         blockNameById,
         blockDataByName,
+        searchOrigin: preferredPosition
+            ? toGridPosition(preferredPosition)
+            : { x: 0, y: 0 },
     });
-    if (originPlacement.valid) {
-        if (
-            isWaterPlacement({
-                blockName,
-                placement: originPlacement.placement,
-                stacks,
-                blockNameById,
-                blockDataByName,
-            })
-        ) {
-            waterPlacementFallback = originPlacement;
-        } else {
-            return originPlacement;
-        }
-    }
-
-    for (let step = 0; step < MAX_SPIRAL_STEPS; step++) {
-        const candidatePosition = spiral(step);
-        const placement = validatePlacementAtPosition({
-            blockName,
-            occupiedCells,
-            position: candidatePosition,
-            stacks,
-            blockNameById,
-            blockDataByName,
-        });
-        if (!placement.valid) {
-            continue;
-        }
-
-        if (
-            isWaterPlacement({
-                blockName,
-                placement: placement.placement,
-                stacks,
-                blockNameById,
-                blockDataByName,
-            })
-        ) {
-            waterPlacementFallback ??= placement;
-            continue;
-        }
-
-        return placement;
-    }
-
-    if (waterPlacementFallback) {
-        return waterPlacementFallback;
-    }
-
-    return {
-        valid: false,
-        error: 'No valid placement position found',
-    };
 }

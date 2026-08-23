@@ -59,17 +59,29 @@ export function isFieldMulchApplication(
     return application === 'plant';
 }
 
-function activeMulchRewards({
-    appliedOperations,
-    operations,
-    raisedBedId,
-}: ResolveRaisedBedMulchVisualRewardsInput) {
-    return resolveOperationVisualRewards({
-        appliedOperations: appliedOperations.map((operation) => ({
-            ...operation,
-            raisedBedId: operation.raisedBedId ?? raisedBedId,
-        })),
+function activeMulchRewards(
+    {
+        appliedOperations,
         operations,
+        raisedBedId,
+    }: ResolveRaisedBedMulchVisualRewardsInput,
+    isTargetApplication: (application: string | null | undefined) => boolean,
+) {
+    const targetOperations = operations.filter((operation) =>
+        isTargetApplication(operation.attributes?.application),
+    );
+    const targetOperationIds = new Set(
+        targetOperations.map((operation) => operation.id),
+    );
+
+    return resolveOperationVisualRewards({
+        appliedOperations: appliedOperations
+            .filter((operation) => targetOperationIds.has(operation.entityId))
+            .map((operation) => ({
+                ...operation,
+                raisedBedId: operation.raisedBedId ?? raisedBedId,
+            })),
+        operations: targetOperations,
     }).filter((reward) => reward.family === 'mulch' && reward.active);
 }
 
@@ -77,7 +89,7 @@ export function resolveActiveRaisedBedMulchReward(
     input: ResolveRaisedBedMulchVisualRewardsInput,
 ) {
     return (
-        activeMulchRewards(input).find(
+        activeMulchRewards(input, isBedMulchApplication).find(
             (reward) =>
                 reward.scope === 'raisedBed' &&
                 reward.raisedBedId === input.raisedBedId,
@@ -90,7 +102,7 @@ export function resolveActiveFieldMulchRewardsByFieldId(
 ) {
     const rewardsByFieldId = new Map<number, OperationVisualReward>();
 
-    for (const reward of activeMulchRewards(input)) {
+    for (const reward of activeMulchRewards(input, isFieldMulchApplication)) {
         if (
             reward.scope !== 'field' ||
             reward.raisedBedId !== input.raisedBedId ||

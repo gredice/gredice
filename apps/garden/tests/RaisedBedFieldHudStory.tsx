@@ -4,9 +4,11 @@ import * as ReactQuery from '@tanstack/react-query';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { GameAnalyticsProvider } from '../../../packages/game/src/analytics/GameAnalyticsContext';
+import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { useCurrentGarden } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { favoritesQueryKey } from '../../../packages/game/src/hooks/useFavorites';
 import { gardenOperationsQueryKey } from '../../../packages/game/src/hooks/useGardenOperations';
+import { operationDefinitionsQueryKey } from '../../../packages/game/src/hooks/useOperations';
 import { queryKeys as raisedBedAiHistoryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedAiHistory';
 import { queryKeys as raisedBedDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedDiaryEntries';
 import { queryKeys as raisedBedFieldDiaryQueryKeys } from '../../../packages/game/src/hooks/useRaisedBedFieldDiaryEntries';
@@ -15,6 +17,7 @@ import { RaisedBedField } from '../../../packages/game/src/hud/raisedBed/RaisedB
 import { RaisedBedFieldItem } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldItem';
 import { RaisedBedFieldSuggestions } from '../../../packages/game/src/hud/raisedBed/RaisedBedFieldSuggestions';
 import { RaisedBedInfo } from '../../../packages/game/src/hud/raisedBed/RaisedBedInfo';
+import { SuncokretChatProvider } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import {
     createGameState,
     GameStateContext,
@@ -47,6 +50,7 @@ function buildGarden(scenario: RaisedBedScenario) {
                 blockId: 'raised-bed-1',
                 physicalId: '1',
                 fields,
+                plantings: scenario.plantings ?? [],
                 appliedOperations: [],
                 status: scenario.raisedBedStatus ?? 'new',
                 abandonReason: scenario.raisedBedAbandonReason ?? null,
@@ -85,6 +89,10 @@ function createScenarioQueryClient(
     queryClient.setQueryData(['plants'], scenario.plants ?? allPlants);
     queryClient.setQueryData(['sorts'], scenario.sorts ?? allSorts);
     queryClient.setQueryData(['operations'], scenario.operations ?? []);
+    queryClient.setQueryData(
+        operationDefinitionsQueryKey.all,
+        scenario.operations ?? [],
+    );
     const operationHistoryItems = scenario.operationHistoryItems ?? [];
     const raisedBedOperationDiaryEntries =
         scenario.raisedBedOperationDiaryEntries ?? [];
@@ -159,14 +167,16 @@ function createScenarioQueryClient(
 }
 
 type ProvidersProps = PropsWithChildren<{
-    scenario: RaisedBedScenario;
     favorites?: FavoriteItem[];
+    scenario: RaisedBedScenario;
+    searchParams?: string;
 }>;
 
 function RaisedBedHudTestProviders({
     children,
     scenario,
     favorites = [],
+    searchParams,
 }: ProvidersProps) {
     const queryClient = useMemo(
         () => createScenarioQueryClient(scenario, favorites),
@@ -184,20 +194,30 @@ function RaisedBedHudTestProviders({
     );
 
     return (
-        <NuqsTestingAdapter>
+        <NuqsTestingAdapter hasMemory searchParams={searchParams}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <GameStateContext.Provider value={gameStore}>
-                    <GameAnalyticsProvider
-                        capture={(eventName, properties) => {
-                            window.dispatchEvent(
-                                new CustomEvent('gredice:game-analytics', {
-                                    detail: { eventName, properties },
-                                }),
-                            );
-                        }}
-                    >
-                        {children}
-                    </GameAnalyticsProvider>
+                    <GameFlagsContext.Provider value={{}}>
+                        <SuncokretChatProvider>
+                            <GameAnalyticsProvider
+                                capture={(eventName, properties) => {
+                                    window.dispatchEvent(
+                                        new CustomEvent(
+                                            'gredice:game-analytics',
+                                            {
+                                                detail: {
+                                                    eventName,
+                                                    properties,
+                                                },
+                                            },
+                                        ),
+                                    );
+                                }}
+                            >
+                                {children}
+                            </GameAnalyticsProvider>
+                        </SuncokretChatProvider>
+                    </GameFlagsContext.Provider>
                 </GameStateContext.Provider>
             </ReactQuery.QueryClientProvider>
         </NuqsTestingAdapter>
@@ -209,18 +229,24 @@ export function RaisedBedFieldHudStory({
     positionIndex,
     favorites = [],
     cellSize = 80,
+    searchParams,
 }: {
     scenario: RaisedBedScenario;
     positionIndex: number;
     favorites?: FavoriteItem[];
     cellSize?: number;
+    searchParams?: string;
 }) {
     const cartItem =
         scenario.cartItems?.find(
             (item) => item.positionIndex === positionIndex,
         ) ?? null;
     return (
-        <RaisedBedHudTestProviders scenario={scenario} favorites={favorites}>
+        <RaisedBedHudTestProviders
+            scenario={scenario}
+            favorites={favorites}
+            searchParams={searchParams}
+        >
             <div
                 data-testid="hud-cell"
                 className="relative"
@@ -300,7 +326,7 @@ function RaisedBedInfoModalStoryContent() {
             open
             title="Informacije o gredici"
             modal={false}
-            className="overflow-x-hidden md:border-tertiary md:border-b-4"
+            className="overflow-x-hidden md:max-w-4xl md:border-tertiary md:border-b-4"
         >
             <RaisedBedInfo gardenId={garden.id} raisedBed={raisedBed} />
         </Modal>
@@ -342,7 +368,7 @@ export function RaisedBedFieldDndDialogStory({
                     Test dialog
                 </div>
             )}
-            <div className="size-60">
+            <div className="ml-12 size-60">
                 <RaisedBedField
                     gardenId={TEST_GARDEN_ID}
                     raisedBedId={TEST_RAISED_BED_ID}

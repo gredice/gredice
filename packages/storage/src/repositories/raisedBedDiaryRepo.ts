@@ -2,11 +2,36 @@ import 'server-only';
 import { plantFieldStatusLabel } from '@gredice/js/plants';
 import { getEntitiesFormatted, getOperations } from '..';
 import type { EntityStandardized } from '../@types/EntityStandardized';
-import { getAllEvents, knownEventTypes } from './eventsRepo';
+import {
+    getAllEvents,
+    knownEventTypes,
+    scheduleTaskBlockDetailsFromEvent,
+} from './eventsRepo';
 import type { getRaisedBedFieldsWithEvents } from './raisedBedFieldsRepo';
 import { getRaisedBed } from './raisedBedsRepo';
 
-export async function getRaisedBedDiaryEntries(raisedBedId: number) {
+type RaisedBedDiaryEntriesOptions = {
+    includeUnverifiedOperationEvidence?: boolean;
+};
+
+function operationDiaryImageUrls(
+    operation: DiaryOperation,
+    options?: RaisedBedDiaryEntriesOptions,
+) {
+    if (
+        options?.includeUnverifiedOperationEvidence === false &&
+        operation.status !== 'completed'
+    ) {
+        return undefined;
+    }
+
+    return operation.imageUrls;
+}
+
+export async function getRaisedBedDiaryEntries(
+    raisedBedId: number,
+    options?: RaisedBedDiaryEntriesOptions,
+) {
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
         throw new Error(`Raised bed with ID ${raisedBedId} not found`);
@@ -32,6 +57,7 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
               )
             : Promise.resolve([]),
     ]);
+    const operationBlockEvents = await getOperationBlockEvents(operations);
 
     const raisedBedsEventDiaryEntries = events
         .map((event) => {
@@ -81,10 +107,12 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                       : undefined,
                 isMarkdown:
                     event.type === knownEventTypes.raisedBeds.aiAnalysis,
+                rescheduleTarget: undefined,
             };
         })
         .filter((op) => op.name);
     const operationsDiaryEntries = operations
+        .filter((operation) => operation.status !== 'blocked')
         .filter((op) => !op.raisedBedFieldId) // Filter out operations with raisedBedFieldId
         .map((op) => ({
             id: op.id,
@@ -95,27 +123,34 @@ export async function getRaisedBedDiaryEntries(raisedBedId: number) {
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
-            timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
-            imageUrls: op.imageUrls,
+            timestamp: operationDiaryTimestamp(op),
+            imageUrls: operationDiaryImageUrls(op, options),
             rescheduleTarget: operationDiaryRescheduleTarget(op),
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return [...raisedBedsEventDiaryEntries, ...operationsDiaryEntries].sort(
-        (a, b) => {
-            const aTime =
-                a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
-            const bTime =
-                b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
-            return bTime - aTime;
-        },
+    const operationBlockDiaryEntries = buildOperationBlockDiaryEntries(
+        operations.filter((operation) => !operation.raisedBedFieldId),
+        operationsData,
+        operationBlockEvents,
     );
+
+    return [
+        ...raisedBedsEventDiaryEntries,
+        ...operationsDiaryEntries,
+        ...operationBlockDiaryEntries,
+    ].sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : 0;
+        return bTime - aTime;
+    });
 }
 
 export async function getRaisedBedFieldDiaryEntries(
     raisedBedId: number,
     positionIndex: number,
+    options?: RaisedBedDiaryEntriesOptions,
 ) {
     const raisedBed = await getRaisedBed(raisedBedId);
     if (!raisedBed) {
@@ -132,6 +167,7 @@ export async function getRaisedBedFieldDiaryEntries(
                 knownEventTypes.raisedBedFields.plantPlace,
                 knownEventTypes.raisedBedFields.plantSchedule,
                 knownEventTypes.raisedBedFields.plantUpdate,
+                knownEventTypes.raisedBedFields.plantBlock,
                 knownEventTypes.raisedBedFields.plantReplaceSort,
                 knownEventTypes.raisedBedFields.aiAnalysis,
                 knownEventTypes.raisedBedFields.delete,
@@ -149,6 +185,7 @@ export async function getRaisedBedFieldDiaryEntries(
               )
             : Promise.resolve([]),
     ]);
+    const operationBlockEvents = await getOperationBlockEvents(operations);
 
     const raisedBedsEventDiaryEntries = events
         .map((event) => {
@@ -185,14 +222,36 @@ export async function getRaisedBedFieldDiaryEntries(
                     description = statusLabels.description;
                     break;
                 }
+                case knownEventTypes.raisedBedFields.plantBlock: {
+                    const reasonLabel =
+                        typeof data?.reasonLabel === 'string'
+                            ? data.reasonLabel
+                            : 'Razlog nije naveden';
+                    const note =
+                        typeof data?.note === 'string' ? data.note.trim() : '';
+                    name = 'Sijanje blokirano';
+                    description = note
+                        ? `${reasonLabel}: ${note}`
+                        : reasonLabel;
+                    break;
+                }
                 case knownEventTypes.raisedBedFields.plantReplaceSort: {
                     name = 'Zamjena sorte biljke';
                     description = 'Za biljku je zamjenjena navedena sorta.';
                     break;
                 }
                 case knownEventTypes.raisedBedFields.delete: {
-                    name = 'Polje uklonjeno';
-                    description = 'Polje je uklonjeno.';
+                    const cancellationReason =
+                        typeof data?.reason === 'string'
+                            ? data.reason.trim()
+                            : '';
+                    if (cancellationReason) {
+                        name = 'Sijanje otkazano';
+                        description = `Razlog otkazivanja: ${cancellationReason}`;
+                    } else {
+                        name = 'Polje uklonjeno';
+                        description = 'Polje je uklonjeno.';
+                    }
                     break;
                 }
                 case knownEventTypes.raisedBedFields.aiAnalysis: {
@@ -214,20 +273,26 @@ export async function getRaisedBedFieldDiaryEntries(
                 description,
                 status: null,
                 timestamp: event.createdAt,
-                imageUrls: Array.isArray(data?.imageUrls)
-                    ? data.imageUrls.filter(
+                imageUrls: Array.isArray(data?.images)
+                    ? data.images.filter(
                           (url: unknown) => typeof url === 'string',
                       )
-                    : typeof data?.imageUrl === 'string'
-                      ? [data.imageUrl]
-                      : undefined,
+                    : Array.isArray(data?.imageUrls)
+                      ? data.imageUrls.filter(
+                            (url: unknown) => typeof url === 'string',
+                        )
+                      : typeof data?.imageUrl === 'string'
+                        ? [data.imageUrl]
+                        : undefined,
                 isMarkdown:
                     event.type === knownEventTypes.raisedBedFields.aiAnalysis,
+                rescheduleTarget: undefined,
             };
         })
         .filter((event) => event.name);
 
     const operationsDiaryEntries = operations
+        .filter((operation) => operation.status !== 'blocked')
         .map((op) => ({
             id: op.id,
             name:
@@ -237,12 +302,17 @@ export async function getRaisedBedFieldDiaryEntries(
                 (opData) => opData.id === op.entityId,
             )?.information?.shortDescription,
             status: operationStatusToLabel(op.status),
-            timestamp: op.completedAt ?? op.scheduledDate ?? op.createdAt,
-            imageUrls: op.imageUrls,
+            timestamp: operationDiaryTimestamp(op),
+            imageUrls: operationDiaryImageUrls(op, options),
             rescheduleTarget: operationDiaryRescheduleTarget(op, positionIndex),
         }))
         .filter((op) => op.name)
         .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const operationBlockDiaryEntries = buildOperationBlockDiaryEntries(
+        operations,
+        operationsData,
+        operationBlockEvents,
+    );
 
     const plannedFieldDiaryEntry = fieldPlantDiaryEntry(
         raisedBedId,
@@ -253,6 +323,7 @@ export async function getRaisedBedFieldDiaryEntries(
     return [
         ...raisedBedsEventDiaryEntries,
         ...operationsDiaryEntries,
+        ...operationBlockDiaryEntries,
         ...(plannedFieldDiaryEntry ? [plannedFieldDiaryEntry] : []),
     ].sort((a, b) => {
         const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : 0;
@@ -264,6 +335,8 @@ export async function getRaisedBedFieldDiaryEntries(
 type DiaryRescheduleTarget =
     | {
           type: 'operation';
+          expectedEntityId: number;
+          expectedTaskVersionEventId: number;
           operationId: number;
           raisedBedId: number | null;
           raisedBedFieldId: number | null;
@@ -272,17 +345,83 @@ type DiaryRescheduleTarget =
       }
     | {
           type: 'raisedBedFieldPlant';
+          expectedPlantCycleEventId: number;
+          expectedPlantCycleVersionEventId: number;
+          expectedPlantSortId: number;
           raisedBedId: number;
           positionIndex: number;
           scheduledDate: string;
       };
 
 type DiaryOperation = Awaited<ReturnType<typeof getOperations>>[number];
+type DiaryOperationBlockEvent = Awaited<
+    ReturnType<typeof getAllEvents>
+>[number];
 type RaisedBedFieldWithEvents = Awaited<
     ReturnType<typeof getRaisedBedFieldsWithEvents>
 >[number];
 
 const fieldPlantRescheduleStatuses = new Set(['new', 'planned']);
+
+async function getOperationBlockEvents(operations: DiaryOperation[]) {
+    if (operations.length === 0) {
+        return [];
+    }
+
+    return getAllEvents(
+        knownEventTypes.operations.block,
+        operations.map((operation) => operation.id.toString()),
+    );
+}
+
+function buildOperationBlockDiaryEntries(
+    operations: DiaryOperation[],
+    operationsData: EntityStandardized[] | null | undefined,
+    events: DiaryOperationBlockEvent[],
+) {
+    const operationById = new Map(
+        operations.map((operation) => [operation.id, operation]),
+    );
+
+    return events.flatMap((event) => {
+        const operationId = Number(event.aggregateId);
+        const operation = operationById.get(operationId);
+        const block = scheduleTaskBlockDetailsFromEvent(event);
+        if (!operation || !block) {
+            return [];
+        }
+
+        return [
+            {
+                id: event.id,
+                name:
+                    operationsData?.find(
+                        (operationData) =>
+                            operationData.id === operation.entityId,
+                    )?.information?.label ?? 'Nepoznato',
+                description: [block.reasonLabel, block.note]
+                    .filter(Boolean)
+                    .join(': '),
+                status: 'Blokirano',
+                timestamp: block.blockedAt,
+                imageUrls: block.images,
+                isMarkdown: false,
+                rescheduleTarget: undefined,
+            },
+        ];
+    });
+}
+
+function operationDiaryTimestamp(operation: DiaryOperation) {
+    return (
+        operation.blockedAt ??
+        operation.completedAt ??
+        operation.scheduledDate ??
+        operation.verifiedAt ??
+        operation.canceledAt ??
+        operation.createdAt
+    );
+}
 
 function operationDiaryRescheduleTarget(
     operation: DiaryOperation,
@@ -294,6 +433,8 @@ function operationDiaryRescheduleTarget(
 
     return {
         type: 'operation',
+        expectedEntityId: operation.entityId,
+        expectedTaskVersionEventId: operation.taskVersionEventId,
         operationId: operation.id,
         raisedBedId: operation.raisedBedId,
         raisedBedFieldId: operation.raisedBedFieldId,
@@ -303,10 +444,14 @@ function operationDiaryRescheduleTarget(
 }
 
 function isPlannedFieldPlant(field: RaisedBedFieldWithEvents) {
+    const activePlantCycle = field.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
     return (
         field.active &&
-        Boolean(field.plantSortId) &&
-        Boolean(field.plantScheduledDate) &&
+        typeof activePlantCycle?.plantPlaceEventId === 'number' &&
+        typeof activePlantCycle.plantSortId === 'number' &&
+        Boolean(activePlantCycle.plantScheduledDate) &&
         (!field.plantStatus ||
             fieldPlantRescheduleStatuses.has(field.plantStatus))
     );
@@ -322,7 +467,16 @@ function fieldPlantDiaryEntry(
             candidate.positionIndex === positionIndex &&
             isPlannedFieldPlant(candidate),
     );
-    if (!field?.plantScheduledDate) {
+    const activePlantCycle = field?.plantCycles.find(
+        (plantCycle) => plantCycle.active,
+    );
+    if (
+        !field ||
+        !activePlantCycle?.plantScheduledDate ||
+        typeof activePlantCycle?.plantPlaceEventId !== 'number' ||
+        typeof activePlantCycle.endedEventId !== 'number' ||
+        typeof activePlantCycle.plantSortId !== 'number'
+    ) {
         return null;
     }
 
@@ -331,13 +485,16 @@ function fieldPlantDiaryEntry(
         name: 'Planirano sijanje',
         description: 'Sijanje biljke je planirano za odabrani datum.',
         status: 'Planirano',
-        timestamp: field.plantScheduledDate,
+        timestamp: activePlantCycle.plantScheduledDate,
         imageUrls: undefined,
         rescheduleTarget: {
             type: 'raisedBedFieldPlant',
+            expectedPlantCycleEventId: activePlantCycle.plantPlaceEventId,
+            expectedPlantCycleVersionEventId: activePlantCycle.endedEventId,
+            expectedPlantSortId: activePlantCycle.plantSortId,
             raisedBedId,
             positionIndex,
-            scheduledDate: field.plantScheduledDate.toISOString(),
+            scheduledDate: activePlantCycle.plantScheduledDate.toISOString(),
         } satisfies DiaryRescheduleTarget,
     };
 }
@@ -401,6 +558,8 @@ function operationStatusToLabel(status: string) {
             return 'Završeno';
         case 'planned':
             return 'Planirano';
+        case 'blocked':
+            return 'Blokirano';
         case 'canceled':
             return 'Otkazano';
         case 'failed':

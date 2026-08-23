@@ -148,7 +148,7 @@ function SunflowersCard({ pendingSunflowers }: { pendingSunflowers: number }) {
                     className="rounded-t-none"
                     onClick={() => setProfileModalOpen('suncokreti')}
                 >
-                    Prikaži sve aktivnosti
+                    Pregled i kupnja suncokreta
                 </Button>
             </Stack>
         </Stack>

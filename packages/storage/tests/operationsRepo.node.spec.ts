@@ -138,7 +138,98 @@ test('farm-targeted operations are visible and assignable for farm users', async
     );
 });
 
-test('getOperationsPage returns included history by newest status change first', async () => {
+test('farm-user reads reject operations with inconsistent raised-bed locations', async () => {
+    createTestDb();
+
+    const userId = randomUUID();
+    await storage()
+        .insert(users)
+        .values({
+            id: userId,
+            userName: `location-integrity-${userId}@example.com`,
+            displayName: 'Location Integrity User',
+            role: 'farmer',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+
+    const firstFarmId = await createFarm({
+        name: 'First Operation Farm',
+        longitude: 0,
+        latitude: 0,
+    });
+    const secondFarmId = await createFarm({
+        name: 'Second Operation Farm',
+        longitude: 0,
+        latitude: 0,
+    });
+    await assignUserToFarm(firstFarmId, userId);
+
+    const firstAccountId = await createAccount();
+    const secondAccountId = await createAccount();
+    const firstGardenId = await createTestGarden({
+        accountId: firstAccountId,
+        farmId: firstFarmId,
+    });
+    const secondGardenId = await createTestGarden({
+        accountId: secondAccountId,
+        farmId: secondFarmId,
+    });
+    const firstBlockId = await createTestBlock(
+        firstGardenId,
+        'first-operation-location',
+    );
+    const secondBlockId = await createTestBlock(
+        secondGardenId,
+        'second-operation-location',
+    );
+    const firstRaisedBedId = await createTestRaisedBed(
+        firstGardenId,
+        firstAccountId,
+        firstBlockId,
+    );
+    const secondRaisedBedId = await createTestRaisedBed(
+        secondGardenId,
+        secondAccountId,
+        secondBlockId,
+    );
+
+    const validOperationId = await createOperation({
+        accountId: firstAccountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId: firstGardenId,
+        raisedBedId: firstRaisedBedId,
+    });
+    const mismatchedOperationId = await createOperation({
+        accountId: firstAccountId,
+        entityId: 1,
+        entityTypeName: 'operation',
+        gardenId: firstGardenId,
+        raisedBedId: secondRaisedBedId,
+    });
+    await acceptOperation(validOperationId);
+    await acceptOperation(mismatchedOperationId);
+
+    const acceptedOperations = await getFarmUserAcceptedOperations(userId, {
+        from: new Date('2000-01-01T00:00:00.000Z'),
+    });
+
+    assert.ok(
+        acceptedOperations.some(
+            (operation) => operation.id === validOperationId,
+        ),
+        'Expected the valid raised-bed operation to remain visible',
+    );
+    assert.ok(
+        acceptedOperations.every(
+            (operation) => operation.id !== mismatchedOperationId,
+        ),
+        'Expected the cross-farm raised-bed mismatch to stay hidden',
+    );
+});
+
+test('getOperationsPage uses completion dates for completed operation ordering', async () => {
     createTestDb();
     const { accountId, gardenId, raisedBedId } =
         await createOperationsPageTestContext();
@@ -167,6 +258,12 @@ test('getOperationsPage returns included history by newest status change first',
         raisedBedId,
         createdAt: new Date('2026-01-15T08:00:00.000Z'),
     });
+    const completedScheduledOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-01-20T08:00:00.000Z'),
+    });
 
     await createEvent(
         knownEvents.operations.completedV1(completedOperationId.toString(), {
@@ -176,7 +273,7 @@ test('getOperationsPage returns included history by newest status change first',
     await setOperationEventCreatedAt(
         completedOperationId,
         knownEventTypes.operations.complete,
-        new Date('2026-05-01T08:00:00.000Z'),
+        new Date('2026-05-08T08:00:00.000Z'),
     );
     await createEvent(
         knownEvents.operations.scheduledV1(scheduledOperationId.toString(), {
@@ -188,19 +285,49 @@ test('getOperationsPage returns included history by newest status change first',
         knownEventTypes.operations.schedule,
         new Date('2026-05-03T08:00:00.000Z'),
     );
+    await createEvent(
+        knownEvents.operations.scheduledV1(
+            completedScheduledOperationId.toString(),
+            {
+                scheduledDate: '2026-05-12T08:00:00.000Z',
+            },
+        ),
+    );
+    await setOperationEventCreatedAt(
+        completedScheduledOperationId,
+        knownEventTypes.operations.schedule,
+        new Date('2026-05-01T08:00:00.000Z'),
+    );
+    await createEvent(
+        knownEvents.operations.completedV1(
+            completedScheduledOperationId.toString(),
+            {
+                completedBy: 'test-user',
+            },
+        ),
+    );
+    await setOperationEventCreatedAt(
+        completedScheduledOperationId,
+        knownEventTypes.operations.complete,
+        new Date('2026-05-07T08:00:00.000Z'),
+    );
 
     const firstPage = await getOperationsPage({
         accountId,
         gardenId,
         includeCompleted: true,
-        limit: 2,
+        limit: 3,
     });
 
     assert.deepStrictEqual(
         firstPage.items.map((operation) => operation.id),
-        [scheduledOperationId, completedOperationId],
+        [
+            scheduledOperationId,
+            completedOperationId,
+            completedScheduledOperationId,
+        ],
     );
-    assert.strictEqual(firstPage.nextCursor, 2);
+    assert.strictEqual(firstPage.nextCursor, 3);
 
     const secondPage = await getOperationsPage({
         accountId,
@@ -215,6 +342,66 @@ test('getOperationsPage returns included history by newest status change first',
         [createdOperationId, oldOperationId],
     );
     assert.strictEqual(secondPage.nextCursor, null);
+});
+
+test('getOperationsPage returns active operations by newest scheduled date first', async () => {
+    createTestDb();
+    const { accountId, gardenId, raisedBedId } =
+        await createOperationsPageTestContext();
+
+    const soonerOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-01T08:00:00.000Z'),
+    });
+    const laterOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-02T08:00:00.000Z'),
+    });
+    const canceledOperationId = await createDatedOperation({
+        accountId,
+        gardenId,
+        raisedBedId,
+        createdAt: new Date('2026-06-03T08:00:00.000Z'),
+    });
+
+    await createEvent(
+        knownEvents.operations.scheduledV1(soonerOperationId.toString(), {
+            scheduledDate: '2026-06-10T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(laterOperationId.toString(), {
+            scheduledDate: '2026-06-12T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.scheduledV1(canceledOperationId.toString(), {
+            scheduledDate: '2026-06-30T08:00:00.000Z',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.canceledV1(canceledOperationId.toString(), {
+            canceledBy: 'test-user',
+            reason: 'test-cancel',
+        }),
+    );
+
+    const page = await getOperationsPage({
+        accountId,
+        gardenId,
+        includeCompleted: false,
+        limit: 2,
+    });
+
+    assert.deepStrictEqual(
+        page.items.map((operation) => operation.id),
+        [laterOperationId, soonerOperationId],
+    );
+    assert.strictEqual(page.total, 2);
 });
 
 test('completed operations expose completion notes and image URLs', async () => {
@@ -244,6 +431,83 @@ test('completed operations expose completion notes and image URLs', async () => 
         'https://cdn.gredice.com/operation-complete.jpg',
     ]);
     assert.strictEqual(operation.completionNotes, 'Zaliveno nakon berbe.');
+});
+
+test('pending operation completion evidence updates replace notes and images', async () => {
+    createTestDb();
+
+    const completedBy = randomUUID();
+    const updatedBy = randomUUID();
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    await acceptOperation(operationId);
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy,
+            images: ['https://cdn.gredice.com/original.jpg'],
+            notes: 'Original note.',
+        }),
+    );
+    const initialOperation = await getOperationById(operationId);
+
+    await createEvent(
+        knownEvents.operations.completionEvidenceUpdatedV1(
+            operationId.toString(),
+            {
+                updatedBy,
+                images: ['https://cdn.gredice.com/reviewed.jpg'],
+                notes: 'Reviewed note.',
+            },
+        ),
+    );
+
+    const operation = await getOperationById(operationId);
+
+    assert.strictEqual(operation.status, 'pendingVerification');
+    assert.strictEqual(operation.completedBy, completedBy);
+    assert.deepStrictEqual(operation.imageUrls, [
+        'https://cdn.gredice.com/reviewed.jpg',
+    ]);
+    assert.strictEqual(operation.completionNotes, 'Reviewed note.');
+    assert.deepStrictEqual(operation.completedAt, initialOperation.completedAt);
+});
+
+test('pending operation completion evidence updates can clear notes and images', async () => {
+    createTestDb();
+
+    const operationId = await createOperation({
+        entityId: 1,
+        entityTypeName: 'operation',
+        accountId: randomUUID(),
+    });
+    await acceptOperation(operationId);
+
+    await createEvent(
+        knownEvents.operations.completedV1(operationId.toString(), {
+            completedBy: randomUUID(),
+            images: ['https://cdn.gredice.com/original.jpg'],
+            notes: 'Original note.',
+        }),
+    );
+    await createEvent(
+        knownEvents.operations.completionEvidenceUpdatedV1(
+            operationId.toString(),
+            {
+                updatedBy: randomUUID(),
+                images: [],
+                notes: '',
+            },
+        ),
+    );
+
+    const operation = await getOperationById(operationId);
+
+    assert.deepStrictEqual(operation.imageUrls, []);
+    assert.strictEqual(operation.completionNotes, '');
 });
 
 test('switchOperationEntity changes only the selected operation entity', async () => {

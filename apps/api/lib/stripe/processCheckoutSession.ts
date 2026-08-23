@@ -1,121 +1,270 @@
 import {
+    fiscalizeReceipt,
+    issueReceiptForPaidInvoice,
+} from '@gredice/fiscalization/server';
+import {
+    ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+    type AdvancedSowingCartAuthorizationV1,
+} from '@gredice/js/plants';
+import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
+import { notifyCheckoutFulfillmentIncident } from '@gredice/notifications';
 import {
-    notifyDeliveryRequestEvent,
-    notifyOperationUpdate,
-    notifyPurchase,
-} from '@gredice/notifications';
-import {
+    acquirePlantingScheduleTaskLock,
+    bindStripeCheckoutAttempt,
+    type CheckoutPlantingRaisedBedActivation,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
     createEvent,
-    createOperation,
+    createLegacyRaisedBedPlantPlaceWithProjection,
+    createNotificationWithStatus,
+    createRaisedBedPlanting,
     createTransaction,
+    deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
+    ensureInvoiceForTransaction,
+    ensureLegacyRaisedBedPlantingProjection,
+    ensureStripePaymentCompletionOutputs,
+    fingerprintStripeCheckoutValue,
+    getAccountUsers,
+    getCheckoutFulfillmentStartedCartItemIds,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
     getCompletedTransactionByStripePaymentId,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
+    getOrCreateCheckoutOperation,
+    getOrCreateDeliveryRequest,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
     getRaisedBedFieldsWithEvents,
+    getRaisedBedPlantingByEventAggregateId,
     getShoppingCart,
+    getStripeCheckoutAttempt,
+    getStripePaymentCompletionOutputs,
+    getSunflowerPackageByCode,
+    getUser,
+    hasMatchingCheckoutPlantingPurchase,
+    type InvoiceForTransactionLineItem,
     isCartItemDeliverable,
     knownEvents,
+    lockAndActivateRaisedBedForCheckoutPlanting,
+    lockShoppingCartForCheckout,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    processReferralRewardsForAccount,
+    RaisedBedPlantingError,
+    releaseStripeCheckoutAttempt,
+    type ScheduleTaskTransaction,
+    type StripeCheckoutAttempt,
+    StripeCheckoutAttemptConflictError,
+    StripePaymentCompletionOutputConflictError,
+    type StripePaymentProcessingClaimControl,
+    StripePaymentProcessingClaimLostError,
+    StripePaymentProcessingDeferredError,
+    StripePaymentProcessingPermanentError,
+    StripePaymentProcessingUnavailableError,
+    StripeTransactionIdentityConflictError,
+    SunflowerPackageAlreadyPurchasedError,
     setCartItemPaid,
-    spendSunflowers,
-    updateRaisedBed,
+    spendSunflowersBatch,
+    sunflowerPackageEntityTypeName,
+    sunflowerPackageRoles,
+    topUpSunflowerPackage,
     upsertRaisedBedField,
+    verifyStripeCheckoutAttemptLiveCart,
+    withCheckoutCartItemLock,
+    withCheckoutCartItemLocks,
+    withCheckoutCartItemProcessingLock,
+    withCheckoutCartItemProcessingLocks,
+    withInventoryAccountTransaction,
+    withPlantingScheduleTaskFootprintTransaction,
+    withPlantingScheduleTaskTransaction,
     withStripePaymentProcessingLock,
 } from '@gredice/storage';
-import { getStripeCheckoutSession } from '@gredice/stripe/server';
+import {
+    getStripeCheckoutSession,
+    getStripeCheckoutSessionForReconciliation,
+} from '@gredice/stripe/server';
+import { isBillingAutomationEnabled } from '../billing/automationFlag';
+import { notifyBillingDocumentsEmail } from '../billing/billingDocumentEmail';
+import {
+    buildCheckoutInvoiceBillingSnapshot,
+    buildCheckoutInvoiceLineItem,
+} from '../billing/checkoutInvoiceDraft';
+import {
+    buildSelectedPlantingFromPaidCheckout,
+    selectedPlantingAggregateIdForCartItem,
+} from '../checkout/advancedSowingFulfillment';
 import {
     getCartInfo,
     type ShoppingCartItemWithShopData,
 } from '../checkout/cartInfo';
-import { calculateSunflowerAmount } from '../checkout/sunflowerCalculations';
-import { notifyDeliveryScheduled } from '../delivery/emailNotifications';
-import { notifyScheduledDeliveryEmailOnce } from '../delivery/scheduledEmailDeduper';
+import { assertCheckoutCartItemSnapshot } from '../checkout/checkoutRecovery';
+import {
+    decodeExpectedNonStripeCartItemIdsMetadata,
+    decodeHarvestDatesMetadata,
+} from '../checkout/harvestCheckout';
+import {
+    buildOrderConfirmationItems,
+    ORDER_CONFIRMATION_MANAGE_URL,
+} from '../checkout/orderConfirmationEmail';
+import {
+    assertStripeSessionMatchesCheckoutAttempt,
+    buildVerifiedStripeCheckoutAdditionalData,
+    decodeStripeCheckoutAttemptMetadata,
+    getStripeCheckoutSnapshotAdvancedSowingAuthorizations,
+    getStripeCheckoutSnapshotHarvestDates,
+    getStripeCheckoutSnapshotNonStripeAmounts,
+    getStripeCheckoutSnapshotNonStripePaymentKinds,
+} from '../checkout/stripeCheckoutSnapshot';
+import {
+    calculateSunflowerAmount,
+    calculateSunflowerReplayAmount,
+} from '../checkout/sunflowerCalculations';
 import { getPostHogClient } from '../posthog-server';
 
 export type ProcessCheckoutSessionDependencies = {
+    acquirePlantingScheduleTaskLock: typeof acquirePlantingScheduleTaskLock;
     isRaisedBedAbandoned: typeof isRaisedBedAbandoned;
-    notifyDeliveryRequestEvent: typeof notifyDeliveryRequestEvent;
-    notifyOperationUpdate: typeof notifyOperationUpdate;
-    notifyPurchase: typeof notifyPurchase;
+    notifyCheckoutFulfillmentIncident: typeof notifyCheckoutFulfillmentIncident;
     consumeInventoryItem: typeof consumeInventoryItem;
     convertOutletReservationForCartItem: typeof convertOutletReservationForCartItem;
-    createDeliveryRequest: typeof createDeliveryRequest;
+    bindStripeCheckoutAttempt: typeof bindStripeCheckoutAttempt;
+    getOrCreateDeliveryRequest: typeof getOrCreateDeliveryRequest;
     createEvent: typeof createEvent;
-    createOperation: typeof createOperation;
+    createLegacyRaisedBedPlantPlaceWithProjection: typeof createLegacyRaisedBedPlantPlaceWithProjection;
+    createRaisedBedPlanting: typeof createRaisedBedPlanting;
+    createNotificationWithStatus: typeof createNotificationWithStatus;
+    getOrCreateCheckoutOperation: typeof getOrCreateCheckoutOperation;
     createTransaction: typeof createTransaction;
+    deliverNotificationOperatorAlert: typeof deliverNotificationOperatorAlert;
     earnSunflowersForPayment: typeof earnSunflowersForPayment;
+    ensureStripePaymentCompletionOutputs: typeof ensureStripePaymentCompletionOutputs;
+    ensureLegacyRaisedBedPlantingProjection: typeof ensureLegacyRaisedBedPlantingProjection;
+    ensureInvoiceForTransaction: typeof ensureInvoiceForTransaction;
+    getSunflowerPackageByCode: typeof getSunflowerPackageByCode;
     getCompletedTransactionByStripePaymentId: typeof getCompletedTransactionByStripePaymentId;
+    getStripePaymentCompletionOutputs: typeof getStripePaymentCompletionOutputs;
+    getCheckoutFulfillmentStartedCartItemIds: typeof getCheckoutFulfillmentStartedCartItemIds;
+    getCheckoutOperationMapping: typeof getCheckoutOperationMapping;
+    getCheckoutOperationMappings: typeof getCheckoutOperationMappings;
+    hasMatchingCheckoutPlantingPurchase: typeof hasMatchingCheckoutPlantingPurchase;
     getDefaultShoppingCartScheduledDate: typeof getDefaultShoppingCartScheduledDate;
-    getInventory: typeof getInventory;
     getOutletOfferReservationForCartItem: typeof getOutletOfferReservationForCartItem;
     getRaisedBed: typeof getRaisedBed;
+    getRaisedBedPlantingByEventAggregateId: typeof getRaisedBedPlantingByEventAggregateId;
     getRaisedBedFieldsWithEvents: typeof getRaisedBedFieldsWithEvents;
     getShoppingCart: typeof getShoppingCart;
+    getStripeCheckoutAttempt: typeof getStripeCheckoutAttempt;
+    getAccountUsers: typeof getAccountUsers;
+    getUser: typeof getUser;
     isCartItemDeliverable: typeof isCartItemDeliverable;
     knownEvents: typeof knownEvents;
+    lockAndActivateRaisedBedForCheckoutPlanting: typeof lockAndActivateRaisedBedForCheckoutPlanting;
+    lockShoppingCartForCheckout: typeof lockShoppingCartForCheckout;
     markCartPaidIfAllItemsPaid: typeof markCartPaidIfAllItemsPaid;
     normalizeShoppingCartInventoryUsage: typeof normalizeShoppingCartInventoryUsage;
     normalizeShoppingCartScheduledDates: typeof normalizeShoppingCartScheduledDates;
+    processReferralRewardsForAccount: typeof processReferralRewardsForAccount;
     setCartItemPaid: typeof setCartItemPaid;
-    spendSunflowers: typeof spendSunflowers;
-    updateRaisedBed: typeof updateRaisedBed;
+    releaseStripeCheckoutAttempt: typeof releaseStripeCheckoutAttempt;
+    spendSunflowersBatch: typeof spendSunflowersBatch;
+    topUpSunflowerPackage: typeof topUpSunflowerPackage;
     upsertRaisedBedField: typeof upsertRaisedBedField;
+    withPlantingScheduleTaskFootprintTransaction: typeof withPlantingScheduleTaskFootprintTransaction;
+    withPlantingScheduleTaskTransaction: typeof withPlantingScheduleTaskTransaction;
+    withCheckoutCartItemLock: typeof withCheckoutCartItemLock;
+    withCheckoutCartItemLocks: typeof withCheckoutCartItemLocks;
+    withCheckoutCartItemProcessingLock: typeof withCheckoutCartItemProcessingLock;
+    withCheckoutCartItemProcessingLocks: typeof withCheckoutCartItemProcessingLocks;
+    withInventoryAccountTransaction: typeof withInventoryAccountTransaction;
     withStripePaymentProcessingLock: typeof withStripePaymentProcessingLock;
+    verifyStripeCheckoutAttemptLiveCart: typeof verifyStripeCheckoutAttemptLiveCart;
     getStripeCheckoutSession: typeof getStripeCheckoutSession;
+    isBillingAutomationEnabled: typeof isBillingAutomationEnabled;
+    buildCheckoutInvoiceBillingSnapshot: typeof buildCheckoutInvoiceBillingSnapshot;
+    buildCheckoutInvoiceLineItem: typeof buildCheckoutInvoiceLineItem;
     getCartInfo: typeof getCartInfo;
     calculateSunflowerAmount: typeof calculateSunflowerAmount;
-    notifyDeliveryScheduled: typeof notifyDeliveryScheduled;
-    notifyScheduledDeliveryEmailOnce: typeof notifyScheduledDeliveryEmailOnce;
+    buildOrderConfirmationItems: typeof buildOrderConfirmationItems;
     getPostHogClient: typeof getPostHogClient;
+    issueReceiptForPaidInvoice: typeof issueReceiptForPaidInvoice;
+    fiscalizeReceipt: typeof fiscalizeReceipt;
+    notifyBillingDocumentsEmail: typeof notifyBillingDocumentsEmail;
 };
 
 const realDependencies: ProcessCheckoutSessionDependencies = {
+    acquirePlantingScheduleTaskLock,
     isRaisedBedAbandoned,
-    notifyDeliveryRequestEvent,
-    notifyOperationUpdate,
-    notifyPurchase,
+    notifyCheckoutFulfillmentIncident,
     consumeInventoryItem,
     convertOutletReservationForCartItem,
-    createDeliveryRequest,
+    bindStripeCheckoutAttempt,
+    getOrCreateDeliveryRequest,
     createEvent,
-    createOperation,
+    createLegacyRaisedBedPlantPlaceWithProjection,
+    createRaisedBedPlanting,
+    createNotificationWithStatus,
+    getOrCreateCheckoutOperation,
     createTransaction,
+    deliverNotificationOperatorAlert,
     earnSunflowersForPayment,
+    ensureLegacyRaisedBedPlantingProjection,
+    ensureStripePaymentCompletionOutputs,
+    ensureInvoiceForTransaction,
+    getSunflowerPackageByCode,
     getCompletedTransactionByStripePaymentId,
+    getStripePaymentCompletionOutputs,
+    getCheckoutFulfillmentStartedCartItemIds,
+    getCheckoutOperationMapping,
+    getCheckoutOperationMappings,
+    hasMatchingCheckoutPlantingPurchase,
     getDefaultShoppingCartScheduledDate,
-    getInventory,
     getOutletOfferReservationForCartItem,
     getRaisedBed,
+    getRaisedBedPlantingByEventAggregateId,
     getRaisedBedFieldsWithEvents,
     getShoppingCart,
+    getStripeCheckoutAttempt,
+    getAccountUsers,
+    getUser,
     isCartItemDeliverable,
     knownEvents,
+    lockAndActivateRaisedBedForCheckoutPlanting,
+    lockShoppingCartForCheckout,
     markCartPaidIfAllItemsPaid,
     normalizeShoppingCartInventoryUsage,
     normalizeShoppingCartScheduledDates,
+    processReferralRewardsForAccount,
     setCartItemPaid,
-    spendSunflowers,
-    updateRaisedBed,
+    releaseStripeCheckoutAttempt,
+    spendSunflowersBatch,
+    topUpSunflowerPackage,
     upsertRaisedBedField,
+    withPlantingScheduleTaskFootprintTransaction,
+    withPlantingScheduleTaskTransaction,
+    withCheckoutCartItemLock,
+    withCheckoutCartItemLocks,
+    withCheckoutCartItemProcessingLock,
+    withCheckoutCartItemProcessingLocks,
+    withInventoryAccountTransaction,
     withStripePaymentProcessingLock,
+    verifyStripeCheckoutAttemptLiveCart,
     getStripeCheckoutSession,
+    isBillingAutomationEnabled,
+    buildCheckoutInvoiceBillingSnapshot,
+    buildCheckoutInvoiceLineItem,
     getCartInfo,
     calculateSunflowerAmount,
-    notifyDeliveryScheduled,
-    notifyScheduledDeliveryEmailOnce,
+    buildOrderConfirmationItems,
     getPostHogClient,
+    issueReceiptForPaidInvoice,
+    fiscalizeReceipt,
+    notifyBillingDocumentsEmail,
 };
 
 /**
@@ -137,113 +286,777 @@ function sortObjectKeys(obj: unknown): unknown {
         }, {});
 }
 
+function parseShoppingCartItemAdditionalData(
+    value: string | null | undefined,
+): object {
+    if (!value) {
+        return {};
+    }
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('Shopping cart item additional data must be an object');
+    }
+    return parsed;
+}
+
+type CheckoutDeliveryInfo = {
+    addressId?: number;
+    locationId?: number;
+    mode: 'delivery' | 'pickup';
+    notes?: string;
+    slotId: number;
+};
+
+function checkoutDeliveryInfoFromAdditionalData(
+    additionalData: unknown,
+): CheckoutDeliveryInfo | null {
+    if (
+        !additionalData ||
+        typeof additionalData !== 'object' ||
+        !('delivery' in additionalData)
+    ) {
+        return null;
+    }
+    const delivery = additionalData.delivery;
+    if (!delivery || typeof delivery !== 'object') {
+        return null;
+    }
+    const value = delivery as Record<string, unknown>;
+    if (
+        typeof value.slotId !== 'number' ||
+        !Number.isSafeInteger(value.slotId) ||
+        (value.mode !== 'delivery' && value.mode !== 'pickup') ||
+        (value.addressId !== undefined &&
+            !Number.isSafeInteger(value.addressId)) ||
+        (value.locationId !== undefined &&
+            !Number.isSafeInteger(value.locationId)) ||
+        (value.notes !== undefined && typeof value.notes !== 'string')
+    ) {
+        return null;
+    }
+    return {
+        addressId:
+            typeof value.addressId === 'number' ? value.addressId : undefined,
+        locationId:
+            typeof value.locationId === 'number' ? value.locationId : undefined,
+        mode: value.mode,
+        notes: typeof value.notes === 'string' ? value.notes : undefined,
+        slotId: value.slotId,
+    };
+}
+
+function checkoutDeliveryProvenance(deliveryInfo: CheckoutDeliveryInfo | null) {
+    return deliveryInfo
+        ? {
+              addressId: deliveryInfo.addressId ?? null,
+              locationId: deliveryInfo.locationId ?? null,
+              mode: deliveryInfo.mode,
+              notes: deliveryInfo.notes ?? null,
+              slotId: deliveryInfo.slotId,
+          }
+        : null;
+}
+
+function checkoutDeliveryInfoFromProvenance(
+    provenance: NonNullable<
+        NonNullable<
+            Awaited<ReturnType<typeof getCheckoutOperationMapping>>
+        >['delivery']
+    > | null,
+): CheckoutDeliveryInfo | null {
+    return provenance
+        ? {
+              addressId: provenance.addressId ?? undefined,
+              locationId: provenance.locationId ?? undefined,
+              mode: provenance.mode,
+              notes: provenance.notes ?? undefined,
+              slotId: provenance.slotId,
+          }
+        : null;
+}
+
+type PaidCheckoutSession = NonNullable<
+    Awaited<ReturnType<typeof getStripeCheckoutSession>>
+>;
+type StripeCheckoutLineItem = PaidCheckoutSession['lineItems']['data'][number];
+
+type SunflowerPackageCheckoutLineItem = {
+    lineItemId: string;
+    productName: string | null;
+    amountTotal: number;
+    quantity: number;
+    accountId: string;
+    userId: string;
+    entityId: number;
+    entityTypeName: string;
+    packageCode: string;
+    packageRole: string;
+    sunflowers: number;
+    baseSunflowers: number;
+    bonusSunflowers: number;
+    priceCents: number;
+    currency: string;
+};
+
+function readMetadataString(
+    metadata: Record<string, unknown> | undefined,
+    key: string,
+) {
+    const value = metadata?.[key];
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : null;
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value);
+    }
+    return null;
+}
+
+function readMetadataInteger(
+    metadata: Record<string, unknown> | undefined,
+    key: string,
+) {
+    const value = metadata?.[key];
+    if (typeof value === 'number' && Number.isInteger(value)) {
+        return value;
+    }
+    if (typeof value === 'string' && /^\d+$/u.test(value.trim())) {
+        return Number.parseInt(value.trim(), 10);
+    }
+    return null;
+}
+
+function parseSunflowerPackageCheckoutLineItem(
+    item: StripeCheckoutLineItem,
+): SunflowerPackageCheckoutLineItem | null {
+    const product = item.price?.product;
+    if (typeof product === 'string' || product?.deleted) {
+        return null;
+    }
+
+    const metadata = product?.metadata;
+    if (metadata?.kind !== 'sunflowerPackage') {
+        return null;
+    }
+
+    const accountId = readMetadataString(metadata, 'accountId');
+    const userId = readMetadataString(metadata, 'userId');
+    const entityTypeName = readMetadataString(metadata, 'entityTypeName');
+    const packageCode = readMetadataString(metadata, 'packageCode');
+    const packageRole = readMetadataString(metadata, 'packageRole');
+    const currency = readMetadataString(metadata, 'currency');
+    const entityId = readMetadataInteger(metadata, 'entityId');
+    const sunflowers = readMetadataInteger(metadata, 'sunflowers');
+    const baseSunflowers = readMetadataInteger(metadata, 'baseSunflowers');
+    const bonusSunflowers = readMetadataInteger(metadata, 'bonusSunflowers');
+    const priceCents = readMetadataInteger(metadata, 'priceCents');
+
+    if (
+        !accountId ||
+        !userId ||
+        !entityTypeName ||
+        !packageCode ||
+        !packageRole ||
+        !currency ||
+        entityId === null ||
+        sunflowers === null ||
+        baseSunflowers === null ||
+        bonusSunflowers === null ||
+        priceCents === null ||
+        typeof item.amount_total !== 'number'
+    ) {
+        return null;
+    }
+
+    return {
+        lineItemId: item.id,
+        productName: typeof product?.name === 'string' ? product.name : null,
+        amountTotal: item.amount_total,
+        quantity: item.quantity ?? 1,
+        accountId,
+        userId,
+        entityId,
+        entityTypeName,
+        packageCode,
+        packageRole,
+        sunflowers,
+        baseSunflowers,
+        bonusSunflowers,
+        priceCents,
+        currency,
+    };
+}
+
+function hasSunflowerPackageCheckoutMetadata(item: StripeCheckoutLineItem) {
+    const product = item.price?.product;
+    if (typeof product === 'string' || product?.deleted) {
+        return false;
+    }
+    return product?.metadata?.kind === 'sunflowerPackage';
+}
+
+function getSunflowerPackageCheckoutLineItems(session: PaidCheckoutSession) {
+    const packageLineItems = (session.lineItems?.data ?? []).filter(
+        hasSunflowerPackageCheckoutMetadata,
+    );
+    const items = packageLineItems
+        .map(parseSunflowerPackageCheckoutLineItem)
+        .filter((item) => item !== null);
+    return {
+        items,
+        malformedCount: packageLineItems.length - items.length,
+    };
+}
+
+function getSunflowerPackageSnapshotMismatches(
+    item: SunflowerPackageCheckoutLineItem,
+) {
+    return [
+        item.entityTypeName === sunflowerPackageEntityTypeName
+            ? null
+            : 'entity_type',
+        Number.isSafeInteger(item.entityId) && item.entityId > 0
+            ? null
+            : 'entity_id',
+        sunflowerPackageRoles.some((role) => role === item.packageRole)
+            ? null
+            : 'role',
+        item.currency === 'eur' ? null : 'currency',
+        Number.isSafeInteger(item.quantity) && item.quantity === 1
+            ? null
+            : 'quantity',
+        Number.isSafeInteger(item.priceCents) && item.priceCents > 0
+            ? null
+            : 'price_cents',
+        Number.isSafeInteger(item.amountTotal) &&
+        item.amountTotal > 0 &&
+        item.amountTotal <= item.priceCents
+            ? null
+            : 'line_amount',
+        Number.isSafeInteger(item.sunflowers) && item.sunflowers > 0
+            ? null
+            : 'sunflowers',
+        Number.isSafeInteger(item.baseSunflowers) && item.baseSunflowers > 0
+            ? null
+            : 'base_sunflowers',
+        Number.isSafeInteger(item.bonusSunflowers) && item.bonusSunflowers >= 0
+            ? null
+            : 'bonus_sunflowers',
+        item.sunflowers === item.baseSunflowers + item.bonusSunflowers
+            ? null
+            : 'sunflower_total',
+    ].filter((mismatch) => mismatch !== null);
+}
+
+type StripePaymentCompletionItem = {
+    amountSubtotal?: number | null;
+    currency?: string | null;
+    name?: string | null;
+    quantity?: number | null;
+};
+
+async function ensureCheckoutCompletionOutputs({
+    accountId,
+    cartId,
+    claimControl,
+    customerEmail,
+    dependencies,
+    items,
+    session,
+}: {
+    accountId: string | null;
+    cartId: number | null;
+    claimControl: StripePaymentProcessingClaimControl;
+    customerEmail?: string | null;
+    dependencies: ProcessCheckoutSessionDependencies;
+    items: StripePaymentCompletionItem[];
+    session: PaidCheckoutSession;
+}) {
+    const recipient = customerEmail?.trim();
+    if (!recipient?.includes('@')) {
+        throw new StripePaymentProcessingPermanentError(
+            'completion_recipient_missing',
+        );
+    }
+    await claimControl.assertOwned();
+    const result = await dependencies.ensureStripePaymentCompletionOutputs({
+        claimToken: claimControl.claimToken,
+        stripePaymentId: session.id,
+        orderConfirmation: {
+            cartId,
+            currency: 'eur',
+            items,
+            manageUrl: ORDER_CONFIRMATION_MANAGE_URL,
+            to: recipient,
+            totalAmountCents: session.amountTotal ?? null,
+        },
+        purchaseNotification: {
+            accountId,
+            amountTotal: session.amountTotal ?? null,
+            checkoutSessionId: session.id,
+            currency: 'eur',
+            customerEmail: recipient,
+            items: items.map(({ amountSubtotal, name, quantity }) => ({
+                amountSubtotal,
+                name,
+                quantity,
+            })),
+        },
+    });
+    if (result.status === 'claim_lost') {
+        throw new StripePaymentProcessingClaimLostError(session.id);
+    }
+    return result;
+}
+
+function normalizeStripePaymentProcessingError(error: unknown) {
+    if (
+        error instanceof StripePaymentProcessingPermanentError ||
+        error instanceof StripePaymentProcessingClaimLostError
+    ) {
+        return error;
+    }
+    if (error instanceof StripeCheckoutAttemptConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            `checkout_attempt_${error.category}`,
+        );
+    }
+    if (error instanceof StripeTransactionIdentityConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            'transaction_identity_conflict',
+        );
+    }
+    if (error instanceof StripePaymentCompletionOutputConflictError) {
+        return new StripePaymentProcessingPermanentError(
+            `completion_output_${error.outputKind}_conflict`,
+        );
+    }
+    return error;
+}
+
+function isStripeCheckoutSessionMissingError(error: unknown) {
+    if (!error || typeof error !== 'object') return false;
+    const value = error as {
+        code?: unknown;
+        status?: unknown;
+        statusCode?: unknown;
+    };
+    return (
+        value.code === 'resource_missing' ||
+        value.status === 404 ||
+        value.statusCode === 404
+    );
+}
+
 async function processNonStripeCartItems(
     cartId: number,
     accountId: string,
     deliveryInfo?: unknown,
-    scheduledDeliveryEmailKeys?: Set<string>,
+    harvestDateByCartItemId = new Map<number, string>(),
+    expectedNonStripeCartItemIds: ReadonlySet<number> | null = null,
     checkoutSessionId?: string | null,
+    claimControl?: StripePaymentProcessingClaimControl,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
-): Promise<ShoppingCartItemWithShopData[]> {
+    checkoutSnapshot?: {
+        additionalDataByCartItemId: ReadonlyMap<number, unknown>;
+        advancedSowingAuthorizationsByCartItemId: ReadonlyMap<
+            number,
+            AdvancedSowingCartAuthorizationV1
+        >;
+        paymentKindByCartItemId: ReadonlyMap<number, 'inventory' | 'sunflower'>;
+        sunflowerAmountsByCartItemId: ReadonlyMap<number, number>;
+    },
+): Promise<{
+    confirmationItems: ShoppingCartItemWithShopData[];
+    processedItems: ShoppingCartItemWithShopData[];
+    resolvedSunflowerAmountsByCartItemId: Map<number, number>;
+    satisfiedExpectedItemIds: Set<number>;
+}> {
+    await claimControl?.assertOwned();
+    let confirmationItems: ShoppingCartItemWithShopData[] = [];
+    const processedItems: ShoppingCartItemWithShopData[] = [];
+    const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
+    const satisfiedExpectedItemIds = new Set<number>();
     const inventoryNormalizedCart =
         await dependencies.normalizeShoppingCartInventoryUsage(cartId);
     if (!inventoryNormalizedCart) {
-        console.warn(
-            `No cart found for ID ${cartId} when processing non-stripe items.`,
-        );
-        return [];
+        const message = `No cart found for ID ${cartId} when processing non-stripe items.`;
+        if (expectedNonStripeCartItemIds !== null) {
+            throw new Error(message);
+        }
+        console.warn(message);
+        return {
+            confirmationItems,
+            processedItems,
+            resolvedSunflowerAmountsByCartItemId,
+            satisfiedExpectedItemIds,
+        };
     }
+    const checkoutOperationMappings =
+        await dependencies.getCheckoutOperationMappings(
+            inventoryNormalizedCart.items
+                .filter(
+                    (item) =>
+                        item.status !== 'paid' &&
+                        item.entityTypeName === 'operation',
+                )
+                .map((item) => item.id),
+        );
     const cart =
         (await dependencies.normalizeShoppingCartScheduledDates(
             inventoryNormalizedCart.id,
             {
+                checkoutOperationMappings,
                 defaultMissingScheduledDates: true,
             },
         )) ?? inventoryNormalizedCart;
 
-    const cartInfo = await dependencies.getCartInfo(cart.items, accountId);
-    if (!cartInfo.allowPurchase) {
-        console.warn(
-            `Cart ${cartId} failed validation when processing non-stripe items: ${cartInfo.notes.join('; ')}`,
+    const isExpectedNonStripeItem = (item: { id: number }) =>
+        expectedNonStripeCartItemIds === null ||
+        expectedNonStripeCartItemIds.has(item.id);
+    const hasSnapshotPaymentKind = (
+        item: { id: number },
+        paymentKind: 'inventory' | 'sunflower',
+    ) =>
+        checkoutSnapshot
+            ? checkoutSnapshot.paymentKindByCartItemId.get(item.id) ===
+              paymentKind
+            : null;
+    const isSunflowerItem = (item: ShoppingCartItemWithShopData) =>
+        hasSnapshotPaymentKind(item, 'sunflower') ??
+        item.currency === 'sunflower';
+    const isInventoryItem = (item: ShoppingCartItemWithShopData) =>
+        hasSnapshotPaymentKind(item, 'inventory') ??
+        (item.currency === 'inventory' || item.usesInventory === true);
+    const isDirectNonStripeItem = (item: ShoppingCartItemWithShopData) =>
+        isSunflowerItem(item) || isInventoryItem(item);
+    for (const item of cart.items) {
+        if (
+            item.status === 'paid' &&
+            expectedNonStripeCartItemIds?.has(item.id)
+        ) {
+            satisfiedExpectedItemIds.add(item.id);
+        }
+    }
+
+    let cartInfo = await dependencies.getCartInfo(cart.items, accountId, {
+        checkoutOperationMappings,
+    });
+    // Snapshot-backed checkouts already passed cart validation before Stripe
+    // opened. Do not let a later catalog price/minimum-order change strand the
+    // captured payment; inventory and fulfillment availability are still
+    // checked explicitly below before their respective effects.
+    if (!checkoutSnapshot && !cartInfo.allowPurchase) {
+        const pendingDirectItems = cart.items.filter(
+            (item) =>
+                item.status !== 'paid' &&
+                item.currency !== 'eur' &&
+                isExpectedNonStripeItem(item),
         );
-        return [];
-    }
-
-    const sunflowerCartItemsWithShopData = cartInfo.items.filter(
-        (item) => item.status !== 'paid' && item.currency === 'sunflower',
-    );
-
-    // Precompute sunflower amounts and total required, so we can spend in a single operation
-    const sunflowerAmountsByItem = new Map<number, number>();
-    let totalSunflowersToSpend = 0;
-
-    for (const item of sunflowerCartItemsWithShopData) {
-        const sunflowerAmount = dependencies.calculateSunflowerAmount(item);
-        sunflowerAmountsByItem.set(item.id, sunflowerAmount);
-        totalSunflowersToSpend += sunflowerAmount;
-    }
-
-    let didSpendSunflowersForCart = false;
-    if (totalSunflowersToSpend > 0) {
-        try {
-            // Spend all sunflowers in a single transaction for the entire cart
-            // to prevent race conditions. Reference format: shoppingCart:${cartId}
-            // (Note: This differs from immediate processing which uses shoppingCartItem:${item.id})
-            await dependencies.spendSunflowers(
-                accountId,
-                totalSunflowersToSpend,
-                `shoppingCart:${cartId}`,
-            );
-            didSpendSunflowersForCart = true;
-        } catch (error) {
-            console.error('Error spending sunflowers during cart processing', {
-                error,
-                accountId,
-                totalSunflowersToSpend,
-                cartId,
+        const resumableDirectCartItemIds =
+            pendingDirectItems.length > 0
+                ? await dependencies.getCheckoutFulfillmentStartedCartItemIds(
+                      accountId,
+                      pendingDirectItems,
+                  )
+                : new Set<number>();
+        if (resumableDirectCartItemIds.size > 0) {
+            cartInfo = await dependencies.getCartInfo(cart.items, accountId, {
+                checkoutOperationMappings,
+                resumableCartItemIds: resumableDirectCartItemIds,
             });
         }
     }
-
-    if (didSpendSunflowersForCart) {
-        for (const item of sunflowerCartItemsWithShopData) {
-            const sunflowerAmount = sunflowerAmountsByItem.get(item.id) ?? 0;
-            const baseAdditionalData = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const additionalData = {
-                ...baseAdditionalData,
-                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-            };
-
-            await Promise.all([
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: sunflowerAmount,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
+    confirmationItems = cartInfo.items.filter(
+        (item) => isExpectedNonStripeItem(item) && isDirectNonStripeItem(item),
+    );
+    if (!checkoutSnapshot && !cartInfo.allowPurchase) {
+        const pendingExpectedItem = cart.items.find(
+            (item) => item.status !== 'paid' && isExpectedNonStripeItem(item),
+        );
+        if (pendingExpectedItem) {
+            throw new Error(
+                `Cart ${cartId} failed validation when processing expected non-stripe item ${pendingExpectedItem.id.toString()}: ${cartInfo.notes.join('; ')}`,
+            );
         }
+        console.warn(
+            `Cart ${cartId} failed validation after all expected non-stripe items were already paid: ${cartInfo.notes.join('; ')}`,
+        );
+    }
+    for (const item of cartInfo.items) {
+        if (
+            expectedNonStripeCartItemIds?.has(item.id) &&
+            item.status !== 'paid' &&
+            item.entityTypeName === 'operation' &&
+            item.entityData.attributes?.deliverable === true &&
+            item.entityData.attributes.stage?.information.name === 'harvest' &&
+            !harvestDateByCartItemId.has(item.id)
+        ) {
+            throw new Error(
+                `Missing canonical harvest date for non-Stripe cart item ${item.id.toString()}`,
+            );
+        }
+    }
+
+    const checkoutAdditionalDataByCartItemId = new Map<number, unknown>(
+        cartInfo.items
+            .filter(
+                (item) =>
+                    item.status !== 'paid' && isExpectedNonStripeItem(item),
+            )
+            .map((item) => [
+                item.id,
+                {
+                    ...parseShoppingCartItemAdditionalData(item.additionalData),
+                    ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
+                    ...(harvestDateByCartItemId.has(item.id)
+                        ? {
+                              scheduledDate: harvestDateByCartItemId.get(
+                                  item.id,
+                              ),
+                          }
+                        : {}),
+                },
+            ]),
+    );
+    for (const [
+        cartItemId,
+        additionalData,
+    ] of checkoutSnapshot?.additionalDataByCartItemId ?? []) {
+        checkoutAdditionalDataByCartItemId.set(cartItemId, additionalData);
+    }
+
+    const expectedSunflowerCartItemsWithShopData = cartInfo.items.filter(
+        (item) => isSunflowerItem(item) && isExpectedNonStripeItem(item),
+    );
+    // Precompute sunflower amounts so the durable batch debit can be retried
+    // without charging an already-processed item again.
+    const sunflowerAmountsByItem = new Map<number, number>();
+
+    for (const item of expectedSunflowerCartItemsWithShopData) {
+        const snapshotAmount =
+            checkoutSnapshot?.sunflowerAmountsByCartItemId.get(item.id);
+        const sunflowerAmount =
+            snapshotAmount ??
+            (item.status === 'paid'
+                ? calculateSunflowerReplayAmount(item)
+                : dependencies.calculateSunflowerAmount(item));
+        if (
+            checkoutSnapshot &&
+            (!Number.isSafeInteger(snapshotAmount) ||
+                (snapshotAmount ?? 0) <= 0)
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'snapshot_sunflower_amount_missing',
+            );
+        }
+        sunflowerAmountsByItem.set(item.id, sunflowerAmount);
+    }
+
+    if (expectedSunflowerCartItemsWithShopData.length > 0) {
+        await dependencies.withCheckoutCartItemProcessingLocks(
+            expectedSunflowerCartItemsWithShopData.map((item) => item.id),
+            async () => {
+                const { pendingItems, resolvedAmountsByItemId } =
+                    await dependencies.withCheckoutCartItemLocks(
+                        expectedSunflowerCartItemsWithShopData.map(
+                            (item) => item.id,
+                        ),
+                        async (db) => {
+                            const lockedCart =
+                                await dependencies.lockShoppingCartForCheckout(
+                                    cartId,
+                                    db,
+                                );
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} disappeared before sunflower fulfillment.`,
+                                );
+                            }
+                            if (lockedCart.accountId !== accountId) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} account changed before sunflower fulfillment.`,
+                                );
+                            }
+                            const paymentStatesByCartItemId = new Map<
+                                number,
+                                'paid' | 'pending'
+                            >();
+                            for (const item of expectedSunflowerCartItemsWithShopData) {
+                                const state = assertCheckoutCartItemSnapshot(
+                                    lockedCart.items.find(
+                                        (lockedItem) =>
+                                            lockedItem.id === item.id,
+                                    ),
+                                    item,
+                                );
+                                paymentStatesByCartItemId.set(item.id, state);
+                                if (
+                                    state === 'paid' &&
+                                    expectedNonStripeCartItemIds?.has(item.id)
+                                ) {
+                                    satisfiedExpectedItemIds.add(item.id);
+                                }
+                            }
+                            const lockedPendingItems =
+                                expectedSunflowerCartItemsWithShopData.filter(
+                                    (item) =>
+                                        paymentStatesByCartItemId.get(
+                                            item.id,
+                                        ) === 'pending',
+                                );
+                            try {
+                                await claimControl?.assertOwned(db);
+                                const spendResult =
+                                    await dependencies.spendSunflowersBatch(
+                                        accountId,
+                                        lockedPendingItems.map((item) => ({
+                                            amount:
+                                                sunflowerAmountsByItem.get(
+                                                    item.id,
+                                                ) ?? 0,
+                                            reason: `shoppingCartItem:${item.id.toString()}`,
+                                        })),
+                                        db,
+                                        {
+                                            existingCheckoutItemAmountsAreAuthoritative: true,
+                                            legacyCartSpend: {
+                                                reason: `shoppingCart:${cartId.toString()}`,
+                                                coveredItems:
+                                                    expectedSunflowerCartItemsWithShopData.map(
+                                                        (item) => {
+                                                            const paymentState =
+                                                                paymentStatesByCartItemId.get(
+                                                                    item.id,
+                                                                );
+                                                            if (!paymentState) {
+                                                                throw new Error(
+                                                                    `Sunflower cart item ${item.id.toString()} lost its payment state.`,
+                                                                );
+                                                            }
+                                                            return {
+                                                                amount:
+                                                                    sunflowerAmountsByItem.get(
+                                                                        item.id,
+                                                                    ) ?? 0,
+                                                                cartItemId:
+                                                                    item.id,
+                                                                createdAt:
+                                                                    item.createdAt,
+                                                                paymentState,
+                                                                reason: `shoppingCartItem:${item.id.toString()}`,
+                                                            };
+                                                        },
+                                                    ),
+                                            },
+                                        },
+                                    );
+                                const resolvedAmountsByItemId = new Map<
+                                    number,
+                                    number
+                                >();
+                                for (const item of expectedSunflowerCartItemsWithShopData) {
+                                    const resolvedAmount =
+                                        spendResult.resolvedAmountsByReason[
+                                            `shoppingCartItem:${item.id.toString()}`
+                                        ];
+                                    if (
+                                        !Number.isSafeInteger(resolvedAmount) ||
+                                        resolvedAmount <= 0
+                                    ) {
+                                        throw new Error(
+                                            `Sunflower spend for cart item ${item.id.toString()} did not resolve a valid amount.`,
+                                        );
+                                    }
+                                    resolvedAmountsByItemId.set(
+                                        item.id,
+                                        resolvedAmount,
+                                    );
+                                    resolvedSunflowerAmountsByCartItemId.set(
+                                        item.id,
+                                        resolvedAmount,
+                                    );
+                                }
+                                return {
+                                    pendingItems: lockedPendingItems,
+                                    resolvedAmountsByItemId,
+                                };
+                            } catch (error) {
+                                console.error(
+                                    'Error spending sunflowers during cart processing',
+                                    { error, accountId, cartId },
+                                );
+                                throw error;
+                            }
+                        },
+                    );
+
+                for (const item of pendingItems) {
+                    await claimControl?.assertOwned();
+                    const sunflowerAmount = resolvedAmountsByItemId.get(
+                        item.id,
+                    );
+                    if (sunflowerAmount === undefined) {
+                        throw new Error(
+                            `Sunflower spend for cart item ${item.id.toString()} lost its resolved amount.`,
+                        );
+                    }
+                    resolvedSunflowerAmountsByCartItemId.set(
+                        item.id,
+                        sunflowerAmount,
+                    );
+                    const checkoutOperationMapping =
+                        item.entityTypeName === 'operation'
+                            ? await dependencies.getCheckoutOperationMapping(
+                                  item.id,
+                              )
+                            : undefined;
+                    const additionalData =
+                        checkoutAdditionalDataByCartItemId.get(item.id) ?? {};
+                    const fulfillment = await processItem(
+                        {
+                            accountId,
+                            cartItemId: item.id,
+                            entityId: item.entityId,
+                            entityTypeName: item.entityTypeName,
+                            cartId: item.cartId,
+                            gardenId: item.gardenId,
+                            raisedBedId: item.raisedBedId,
+                            positionIndex: item.positionIndex,
+                            currency: item.currency,
+                            amount_total: sunflowerAmount,
+                            additionalData,
+                            advancedSowingAuthorization:
+                                checkoutSnapshot?.advancedSowingAuthorizationsByCartItemId.get(
+                                    item.id,
+                                ),
+                            checkoutSessionId,
+                            checkoutOperationMapping:
+                                item.entityTypeName === 'operation'
+                                    ? checkoutOperationMapping
+                                    : undefined,
+                        },
+                        dependencies,
+                        claimControl,
+                    );
+                    assertCheckoutItemFulfilled(fulfillment);
+                    await claimControl?.assertOwned();
+                    await dependencies.setCartItemPaid(item.id);
+                    processedItems.push(item);
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedItemIds.add(item.id);
+                    }
+                }
+            },
+        );
     }
 
     const inventoryCartItems = cartInfo.items.filter(
         (item) =>
             item.status !== 'paid' &&
-            (item.currency === 'inventory' || item.usesInventory),
+            isInventoryItem(item) &&
+            isExpectedNonStripeItem(item),
     );
 
     // Helper function to generate inventory key
@@ -254,22 +1067,15 @@ async function processNonStripeCartItems(
 
     // Pre-validate that total required inventory for all items is available
     // This prevents partial processing when multiple items consume the same inventory
-    let inventoryLookup = new Map<string, number>();
     if (inventoryCartItems.length > 0) {
-        const inventory = await dependencies.getInventory(accountId);
-        inventoryLookup = new Map(
-            inventory.map((inventoryItem) => [
-                getInventoryKey(inventoryItem),
-                inventoryItem.amount,
-            ]),
-        );
-
         // Calculate total required inventory for each unique entity
         const requiredInventory = new Map<string, number>();
+        const availableInventory = new Map<string, number>();
         for (const item of inventoryCartItems) {
             const inventoryKey = getInventoryKey(item);
             const currentRequired = requiredInventory.get(inventoryKey) ?? 0;
             requiredInventory.set(inventoryKey, currentRequired + item.amount);
+            availableInventory.set(inventoryKey, item.inventoryAvailable ?? 0);
         }
 
         // Validate all required inventory is available before processing any items
@@ -277,7 +1083,7 @@ async function processNonStripeCartItems(
             inventoryKey,
             requiredAmount,
         ] of requiredInventory.entries()) {
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
+            const available = availableInventory.get(inventoryKey) ?? 0;
             if (available < requiredAmount) {
                 const errorMsg = `Insufficient inventory for key ${inventoryKey} in cart ${cartId}. Required: ${requiredAmount}, Available: ${available}. Manual intervention required to refund or fulfill this order.`;
                 console.error(errorMsg);
@@ -286,50 +1092,108 @@ async function processNonStripeCartItems(
         }
 
         for (const item of inventoryCartItems) {
-            const inventoryKey = getInventoryKey(item);
-            const available = inventoryLookup.get(inventoryKey) ?? 0;
-            const baseAdditionalData = item.additionalData
-                ? JSON.parse(item.additionalData)
-                : {};
-            const additionalData = {
-                ...baseAdditionalData,
-                ...(deliveryInfo ? { delivery: deliveryInfo } : {}),
-            };
+            await dependencies.withCheckoutCartItemProcessingLock(
+                item.id,
+                async () => {
+                    const state = await dependencies.withCheckoutCartItemLock(
+                        item.id,
+                        async (db) => {
+                            const lockedCart =
+                                await dependencies.getShoppingCart(cartId, db);
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cartId.toString()} disappeared before inventory fulfillment.`,
+                                );
+                            }
+                            const lockedState = assertCheckoutCartItemSnapshot(
+                                lockedCart.items.find(
+                                    (lockedItem) => lockedItem.id === item.id,
+                                ),
+                                item,
+                            );
+                            if (lockedState === 'pending') {
+                                await claimControl?.assertOwned(db);
+                                await dependencies.withInventoryAccountTransaction(
+                                    accountId,
+                                    (inventoryDb) =>
+                                        dependencies.consumeInventoryItem(
+                                            accountId,
+                                            {
+                                                entityTypeName:
+                                                    item.entityTypeName,
+                                                entityId: item.entityId,
+                                                amount: item.amount,
+                                                source: `shoppingCartItem:${item.id}`,
+                                            },
+                                            inventoryDb,
+                                        ),
+                                    db,
+                                );
+                            }
+                            return lockedState;
+                        },
+                    );
+                    if (state === 'paid') {
+                        if (expectedNonStripeCartItemIds?.has(item.id)) {
+                            satisfiedExpectedItemIds.add(item.id);
+                        }
+                        return;
+                    }
+                    const checkoutOperationMapping =
+                        item.entityTypeName === 'operation'
+                            ? await dependencies.getCheckoutOperationMapping(
+                                  item.id,
+                              )
+                            : undefined;
 
-            await Promise.all([
-                dependencies.consumeInventoryItem(accountId, {
-                    entityTypeName: item.entityTypeName,
-                    entityId: item.entityId,
-                    amount: item.amount,
-                    source: `shoppingCartItem:${item.id}`,
-                }),
-                dependencies.setCartItemPaid(item.id),
-                processItem(
-                    {
-                        accountId,
-                        cartItemId: item.id,
-                        entityId: item.entityId,
-                        entityTypeName: item.entityTypeName,
-                        cartId: item.cartId,
-                        gardenId: item.gardenId,
-                        raisedBedId: item.raisedBedId,
-                        positionIndex: item.positionIndex,
-                        currency: item.currency,
-                        amount_total: 0,
-                        additionalData,
-                        scheduledDeliveryEmailKeys,
-                        checkoutSessionId,
-                    },
-                    dependencies,
-                ),
-            ]);
+                    const additionalData =
+                        checkoutAdditionalDataByCartItemId.get(item.id) ?? {};
 
-            // Update the lookup to reflect consumed inventory
-            inventoryLookup.set(inventoryKey, available - item.amount);
+                    await claimControl?.assertOwned();
+                    const fulfillment = await processItem(
+                        {
+                            accountId,
+                            cartItemId: item.id,
+                            entityId: item.entityId,
+                            entityTypeName: item.entityTypeName,
+                            cartId: item.cartId,
+                            gardenId: item.gardenId,
+                            raisedBedId: item.raisedBedId,
+                            positionIndex: item.positionIndex,
+                            currency: item.currency,
+                            amount_total: 0,
+                            additionalData,
+                            advancedSowingAuthorization:
+                                checkoutSnapshot?.advancedSowingAuthorizationsByCartItemId.get(
+                                    item.id,
+                                ),
+                            checkoutSessionId,
+                            checkoutOperationMapping:
+                                item.entityTypeName === 'operation'
+                                    ? checkoutOperationMapping
+                                    : undefined,
+                        },
+                        dependencies,
+                        claimControl,
+                    );
+                    assertCheckoutItemFulfilled(fulfillment);
+                    await claimControl?.assertOwned();
+                    await dependencies.setCartItemPaid(item.id);
+                    processedItems.push(item);
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedItemIds.add(item.id);
+                    }
+                },
+            );
         }
     }
 
-    return cartInfo.items;
+    return {
+        confirmationItems,
+        processedItems,
+        resolvedSunflowerAmountsByCartItemId,
+        satisfiedExpectedItemIds,
+    };
 }
 
 export async function processCheckoutSession(
@@ -347,72 +1211,970 @@ export async function processCheckoutSession(
         console.warn(`No checkout session ID provided`);
         return;
     }
+    return dependencies.withStripePaymentProcessingLock(
+        checkoutSessionId,
+        async (claimControl) => {
+            try {
+                let session: PaidCheckoutSession | undefined;
+                try {
+                    session =
+                        await dependencies.getStripeCheckoutSession(
+                            checkoutSessionId,
+                        );
+                } catch (error) {
+                    if (isStripeCheckoutSessionMissingError(error)) {
+                        throw new StripePaymentProcessingPermanentError(
+                            'checkout_session_missing',
+                        );
+                    }
+                    throw error;
+                }
+                if (!session) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_missing',
+                    );
+                }
+                if (session.id !== checkoutSessionId) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_identity_mismatch',
+                    );
+                }
+                if (session.status !== 'complete') {
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_not_complete',
+                    );
+                }
+                let isZeroTotalSnapshotCheckout = false;
+                if (
+                    session.paymentStatus === 'no_payment_required' &&
+                    session.amountTotal === 0
+                ) {
+                    try {
+                        isZeroTotalSnapshotCheckout =
+                            decodeStripeCheckoutAttemptMetadata(
+                                session.metadata,
+                            ) !== null;
+                    } catch {
+                        throw new StripePaymentProcessingPermanentError(
+                            'checkout_snapshot_metadata_invalid',
+                        );
+                    }
+                }
+                if (
+                    session.paymentStatus !== 'paid' &&
+                    !isZeroTotalSnapshotCheckout
+                ) {
+                    if (session.paymentStatus === 'unpaid') {
+                        throw new StripePaymentProcessingDeferredError(
+                            'checkout_session_payment_pending',
+                        );
+                    }
+                    throw new StripePaymentProcessingPermanentError(
+                        'checkout_session_unpaid',
+                    );
+                }
 
-    const session =
-        await dependencies.getStripeCheckoutSession(checkoutSessionId);
-    if (!session) {
-        console.warn(`No session found for ID ${checkoutSessionId}`);
-        return;
-    }
-    if (session.status !== 'complete') {
-        console.warn(
-            `Session ${checkoutSessionId} is not complete, current status: ${session.status}`,
-        );
-        return;
-    }
-    if (session.paymentStatus !== 'paid') {
-        console.warn(
-            `Payment not completed for session ${checkoutSessionId} with status: ${session.paymentStatus}`,
-        );
-        return;
-    }
-
-    return dependencies.withStripePaymentProcessingLock(session.id, () =>
-        processPaidCheckoutSession(checkoutSessionId, session, dependencies),
+                return await processPaidCheckoutSession(
+                    checkoutSessionId,
+                    session,
+                    claimControl,
+                    dependencies,
+                );
+            } catch (error) {
+                throw normalizeStripePaymentProcessingError(error);
+            }
+        },
     );
+}
+
+export function processCheckoutSessionForReconciliation(
+    checkoutSessionId: string,
+    dependencies: ProcessCheckoutSessionDependencies = {
+        ...realDependencies,
+        getStripeCheckoutSession: getStripeCheckoutSessionForReconciliation,
+    },
+) {
+    return processCheckoutSession(checkoutSessionId, dependencies).catch(
+        (error: unknown) => {
+            if (error instanceof StripePaymentProcessingUnavailableError) {
+                console.info(
+                    'stripe_payment.reconciliation.claim_already_processing',
+                    {
+                        attempt: error.attempt,
+                        availableAt: error.availableAt?.toISOString() ?? null,
+                        claimStatus: error.claimStatus,
+                        stripePaymentId: error.stripePaymentId,
+                    },
+                );
+                return;
+            }
+            throw error;
+        },
+    );
+}
+
+async function recordSunflowerPackageFulfillmentFailure({
+    accountId,
+    claimControl,
+    checkoutSessionId,
+    dependencies,
+    packageCode,
+    reason,
+}: {
+    accountId?: string | null;
+    claimControl: StripePaymentProcessingClaimControl;
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    packageCode?: string | null;
+    reason: string;
+}): Promise<never> {
+    await claimControl.assertOwned();
+    console.warn('Sunflower package fulfillment failed', {
+        accountId,
+        checkoutSessionId,
+        packageCode,
+        reason,
+    });
+
+    if (accountId) {
+        (await dependencies.getPostHogClient()).capture({
+            distinctId: accountId,
+            event: 'sunflower_package_fulfillment_failed',
+            properties: {
+                checkout_session_id: checkoutSessionId,
+                package_code: packageCode ?? null,
+                reason,
+            },
+        });
+    }
+    throw new StripePaymentProcessingPermanentError(
+        `sunflower_package_${reason.split(':', 1)[0] ?? 'invalid'}`,
+    );
+}
+
+async function processSunflowerPackageCheckoutSession({
+    claimControl,
+    checkoutSessionId,
+    dependencies,
+    existingTransactionId,
+    packageItem,
+    session,
+}: {
+    claimControl: StripePaymentProcessingClaimControl;
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    existingTransactionId?: number;
+    packageItem: SunflowerPackageCheckoutLineItem;
+    session: PaidCheckoutSession;
+}) {
+    await claimControl.assertOwned();
+    if (session.amountTotal !== packageItem.amountTotal) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: 'session_amount_mismatch',
+        });
+        return;
+    }
+
+    const paidAmountCents = packageItem.amountTotal;
+    const snapshotMismatches =
+        getSunflowerPackageSnapshotMismatches(packageItem);
+    if (snapshotMismatches.length > 0) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: `metadata_mismatch:${snapshotMismatches.join(',')}`,
+        });
+        return;
+    }
+
+    const purchasedItems = [
+        {
+            name: packageItem.productName ?? packageItem.packageCode,
+            quantity: packageItem.quantity,
+            amountSubtotal: paidAmountCents,
+            currency: 'eur',
+        },
+    ];
+    if (existingTransactionId) {
+        const customer = await dependencies.getUser(packageItem.userId);
+        await ensureCheckoutCompletionOutputs({
+            accountId: packageItem.accountId,
+            cartId: null,
+            claimControl,
+            customerEmail: customer?.userName,
+            dependencies,
+            items: purchasedItems,
+            session,
+        });
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
+        console.info(
+            `Checkout session ${checkoutSessionId} already has transaction ${existingTransactionId}; completion outputs repaired without fulfillment replay.`,
+        );
+        return;
+    }
+
+    const packageData = await dependencies.getSunflowerPackageByCode(
+        packageItem.packageCode,
+    );
+    if (!packageData) {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: 'package_not_available',
+        });
+        return;
+    }
+
+    const mismatches = [
+        packageItem.entityTypeName === sunflowerPackageEntityTypeName
+            ? null
+            : 'entity_type',
+        packageItem.entityId === packageData.entityId ? null : 'entity_id',
+        packageItem.packageRole === packageData.role ? null : 'role',
+        packageItem.currency === packageData.currency ? null : 'currency',
+        packageItem.priceCents === packageData.priceCents
+            ? null
+            : 'price_cents',
+        paidAmountCents > 0 && paidAmountCents <= packageData.priceCents
+            ? null
+            : 'line_amount',
+        packageItem.sunflowers === packageData.sunflowers ? null : 'sunflowers',
+        packageItem.baseSunflowers === packageData.baseSunflowers
+            ? null
+            : 'base_sunflowers',
+        packageItem.bonusSunflowers === packageData.bonusSunflowers
+            ? null
+            : 'bonus_sunflowers',
+    ].filter((mismatch) => mismatch !== null);
+
+    if (mismatches.length > 0 || packageData.currency !== 'eur') {
+        await recordSunflowerPackageFulfillmentFailure({
+            accountId: packageItem.accountId,
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: packageItem.packageCode,
+            reason: `metadata_mismatch:${mismatches.join(',')}`,
+        });
+        return;
+    }
+
+    const customer = await dependencies.getUser(packageItem.userId);
+
+    try {
+        const oneTimeAccountPackage =
+            packageData.isOneTime && packageData.oneTimeScope === 'account';
+        const idempotencyKey = `stripe:${session.id}:sunflowerPackage:${packageData.code}`;
+        const ledgerMetadata = {
+            checkoutSessionId: session.id,
+            lineItemId: packageItem.lineItemId,
+            packageRole: packageData.role,
+            catalogPriceCents: packageData.priceCents,
+            paidAmountCents,
+        };
+        let creditedSunflowers = packageData.sunflowers;
+        let creditedBonusSunflowers = packageData.bonusSunflowers;
+        let duplicateOneTimePurchase = false;
+        let topUpResult: Awaited<
+            ReturnType<
+                ProcessCheckoutSessionDependencies['topUpSunflowerPackage']
+            >
+        >;
+        try {
+            await claimControl.assertOwned();
+            topUpResult = await dependencies.topUpSunflowerPackage({
+                accountId: packageItem.accountId,
+                packageCode: packageData.code,
+                packageEntityId: packageData.entityId,
+                sunflowers: packageData.sunflowers,
+                bonusSunflowers: packageData.bonusSunflowers,
+                priceCents: paidAmountCents,
+                idempotencyKey,
+                enforceOneTime: oneTimeAccountPackage,
+                sourceType: 'stripeCheckoutSession',
+                sourceId: session.id,
+                reason: `sunflowerPackage:${packageData.code}`,
+                metadata: ledgerMetadata,
+            });
+        } catch (error) {
+            if (
+                !(error instanceof SunflowerPackageAlreadyPurchasedError) ||
+                !oneTimeAccountPackage
+            ) {
+                throw error;
+            }
+            if (packageData.baseSunflowers <= 0) {
+                await recordSunflowerPackageFulfillmentFailure({
+                    accountId: packageItem.accountId,
+                    claimControl,
+                    checkoutSessionId,
+                    dependencies,
+                    packageCode: packageItem.packageCode,
+                    reason: 'already_purchased',
+                });
+                return;
+            }
+
+            console.warn(
+                'One-time sunflower package was already purchased before a paid duplicate session fulfilled; crediting paid base sunflowers without duplicate bonus.',
+                {
+                    accountId: packageItem.accountId,
+                    checkoutSessionId,
+                    packageCode: packageData.code,
+                },
+            );
+            duplicateOneTimePurchase = true;
+            creditedSunflowers = packageData.baseSunflowers;
+            creditedBonusSunflowers = 0;
+            await claimControl.assertOwned();
+            topUpResult = await dependencies.topUpSunflowerPackage({
+                accountId: packageItem.accountId,
+                packageCode: packageData.code,
+                packageEntityId: packageData.entityId,
+                sunflowers: creditedSunflowers,
+                bonusSunflowers: 0,
+                priceCents: paidAmountCents,
+                idempotencyKey: `${idempotencyKey}:duplicate_paid_base`,
+                enforceOneTime: false,
+                sourceType: 'stripeCheckoutSession',
+                sourceId: session.id,
+                reason: `sunflowerPackage:${packageData.code}:duplicatePaid`,
+                metadata: {
+                    ...ledgerMetadata,
+                    duplicateOneTimePurchase: true,
+                    originalSunflowers: packageData.sunflowers,
+                    originalBonusSunflowers: packageData.bonusSunflowers,
+                },
+            });
+        }
+
+        await claimControl.assertOwned();
+        const transactionId =
+            existingTransactionId ??
+            (await dependencies.createTransaction({
+                accountId: packageItem.accountId,
+                amount: paidAmountCents,
+                stripePaymentId: session.id,
+                status: 'completed',
+                currency: 'eur',
+            }));
+
+        await ensureCheckoutCompletionOutputs({
+            accountId: packageItem.accountId,
+            cartId: null,
+            claimControl,
+            customerEmail: customer?.userName,
+            dependencies,
+            items: purchasedItems,
+            session,
+        });
+
+        const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
+            amountTotalCents: packageItem.amountTotal,
+            entityId: packageData.entityId.toString(),
+            entityTypeName: sunflowerPackageEntityTypeName,
+            metadataName: packageData.name,
+            productName: packageItem.productName ?? packageData.name,
+            quantity: packageItem.quantity,
+        });
+
+        if (dependencies.isBillingAutomationEnabled() && invoiceLineItem) {
+            try {
+                await claimControl.assertOwned();
+                const invoiceResult =
+                    await dependencies.ensureInvoiceForTransaction({
+                        transactionId,
+                        billingSnapshot:
+                            dependencies.buildCheckoutInvoiceBillingSnapshot({
+                                customerEmail: customer?.userName,
+                                customerName: customer?.displayName,
+                            }),
+                        items: [invoiceLineItem],
+                    });
+                if (invoiceResult.status === 'skipped') {
+                    console.warn('Sunflower package invoice skipped', {
+                        checkoutSessionId,
+                        reason: invoiceResult.reason,
+                        transactionId,
+                    });
+                } else {
+                    await claimControl.assertOwned();
+                    const receiptResult =
+                        await dependencies.issueReceiptForPaidInvoice({
+                            invoiceId: invoiceResult.invoiceId,
+                            paymentReference: session.id,
+                        });
+                    if (receiptResult.status === 'skipped') {
+                        console.warn('Sunflower package receipt skipped', {
+                            checkoutSessionId,
+                            invoiceId: invoiceResult.invoiceId,
+                            reason: receiptResult.reason,
+                            transactionId,
+                        });
+                    } else {
+                        await claimControl.assertOwned();
+                        const fiscalizationResult =
+                            await dependencies.fiscalizeReceipt(
+                                receiptResult.receiptId,
+                            );
+                        const hasFiscalizedReceipt =
+                            fiscalizationResult.status === 'confirmed' ||
+                            fiscalizationResult.status === 'existing';
+                        if (fiscalizationResult.status === 'failed') {
+                            console.warn(
+                                'Sunflower package receipt fiscalization failed',
+                                {
+                                    checkoutSessionId,
+                                    reason: fiscalizationResult.reason,
+                                    receiptId: receiptResult.receiptId,
+                                    transactionId,
+                                },
+                            );
+                        } else if (fiscalizationResult.status === 'skipped') {
+                            console.warn(
+                                'Sunflower package receipt fiscalization skipped',
+                                {
+                                    checkoutSessionId,
+                                    reason: fiscalizationResult.reason,
+                                    receiptId: receiptResult.receiptId,
+                                    transactionId,
+                                },
+                            );
+                        }
+
+                        await claimControl.assertOwned();
+                        await dependencies.notifyBillingDocumentsEmail({
+                            to: customer?.userName,
+                            checkoutSessionId: session.id,
+                            invoiceId: invoiceResult.invoiceId,
+                            invoiceNumber: invoiceResult.invoiceNumber,
+                            receiptId: hasFiscalizedReceipt
+                                ? receiptResult.receiptId
+                                : null,
+                            receiptNumber: hasFiscalizedReceipt
+                                ? receiptResult.yearReceiptNumber
+                                : null,
+                        });
+                    }
+                }
+            } catch (error) {
+                if (error instanceof StripePaymentProcessingClaimLostError) {
+                    throw error;
+                }
+                console.error(
+                    'Sunflower package billing document automation failed',
+                    {
+                        checkoutSessionId,
+                        error,
+                        transactionId,
+                    },
+                );
+            }
+        }
+
+        const ledgerEntryIds = [
+            topUpResult.topUp.entry.id,
+            topUpResult.bonus?.entry.id,
+        ].filter((id) => typeof id === 'number');
+        await claimControl.assertOwned();
+        (await dependencies.getPostHogClient()).capture({
+            distinctId: packageItem.accountId,
+            event: 'sunflower_package_fulfilled',
+            properties: {
+                checkout_session_id: session.id,
+                transaction_id: transactionId,
+                package_code: packageData.code,
+                package_role: packageData.role,
+                price_cents: packageData.priceCents,
+                paid_amount_cents: paidAmountCents,
+                sunflowers: creditedSunflowers,
+                bonus_sunflowers: creditedBonusSunflowers,
+                duplicate_one_time_purchase: duplicateOneTimePurchase,
+                ledger_entry_ids: ledgerEntryIds,
+            },
+        });
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
+        });
+    } catch (error) {
+        if (error instanceof SunflowerPackageAlreadyPurchasedError) {
+            await recordSunflowerPackageFulfillmentFailure({
+                accountId: packageItem.accountId,
+                claimControl,
+                checkoutSessionId,
+                dependencies,
+                packageCode: packageItem.packageCode,
+                reason: 'already_purchased',
+            });
+            return;
+        }
+        throw error;
+    }
+}
+
+type CheckoutPlantingRaisedBedUnavailableReason = Extract<
+    CheckoutPlantingRaisedBedActivation,
+    { available: false }
+>['reason'];
+
+class CheckoutPlantingRaisedBedUnavailableError extends Error {
+    override readonly name = 'CheckoutPlantingRaisedBedUnavailableError';
+
+    constructor(readonly reason: CheckoutPlantingRaisedBedUnavailableReason) {
+        super(`Checkout planting raised bed is unavailable (${reason}).`);
+    }
+}
+
+async function reconcileStripeCheckoutAttempt(
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    dependencies: ProcessCheckoutSessionDependencies,
+): Promise<{
+    accountId: string;
+    additionalDataByCartItemId: ReadonlyMap<number, unknown>;
+    advancedSowingAuthorizationsByCartItemId: ReadonlyMap<
+        number,
+        AdvancedSowingCartAuthorizationV1
+    >;
+    attempt: StripeCheckoutAttempt;
+    userId: string;
+} | null> {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) {
+        // Sessions created before durable snapshots were deployed keep their
+        // existing recovery path. Every newly created cart session has metadata.
+        return null;
+    }
+
+    try {
+        let attempt = await dependencies.getStripeCheckoutAttempt(
+            metadata.cartId,
+            metadata.attemptId,
+        );
+        if (!attempt) {
+            throw new StripeCheckoutAttemptConflictError('attempt_missing');
+        }
+        if (attempt.releaseReason) {
+            throw new StripeCheckoutAttemptConflictError('attempt_released');
+        }
+        if (!attempt.sessionId) {
+            attempt = await dependencies.bindStripeCheckoutAttempt({
+                ...metadata,
+                sessionId: session.id,
+            });
+        } else if (attempt.sessionId !== session.id) {
+            throw new StripeCheckoutAttemptConflictError(
+                'session_binding_changed',
+            );
+        }
+        if (attempt.snapshot.cartId !== metadata.cartId) {
+            throw new StripeCheckoutAttemptConflictError(
+                'snapshot_identity_changed',
+            );
+        }
+        let metadataNonStripeItemIds: Set<number> | null;
+        try {
+            metadataNonStripeItemIds =
+                decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+        } catch {
+            throw new StripeCheckoutAttemptConflictError(
+                'non_stripe_metadata_changed',
+            );
+        }
+        if (
+            metadataNonStripeItemIds === null ||
+            metadataNonStripeItemIds.size !==
+                attempt.snapshot.expectedNonStripeCartItemIds.length ||
+            attempt.snapshot.expectedNonStripeCartItemIds.some(
+                (itemId) => !metadataNonStripeItemIds.has(itemId),
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'non_stripe_metadata_changed',
+            );
+        }
+        let metadataHarvestDates: Map<number, string>;
+        try {
+            metadataHarvestDates = decodeHarvestDatesMetadata(session.metadata);
+        } catch {
+            throw new StripeCheckoutAttemptConflictError(
+                'harvest_metadata_changed',
+            );
+        }
+        if (
+            metadataHarvestDates.size !==
+                attempt.snapshot.harvestDates.length ||
+            attempt.snapshot.harvestDates.some(
+                (selection) =>
+                    metadataHarvestDates.get(selection.cartItemId) !==
+                    selection.scheduledDate,
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'harvest_metadata_changed',
+            );
+        }
+
+        const liveCart =
+            await dependencies.verifyStripeCheckoutAttemptLiveCart(attempt);
+        const matchingAccountUsers = (
+            await dependencies.getAccountUsers(liveCart.accountId)
+        ).filter(
+            (accountUser) =>
+                fingerprintStripeCheckoutValue(accountUser.userId) ===
+                attempt.snapshot.userFingerprint,
+        );
+        if (matchingAccountUsers.length !== 1) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_user_inactive',
+            );
+        }
+        const checkoutUser = matchingAccountUsers[0];
+        if (!checkoutUser) {
+            throw new StripeCheckoutAttemptConflictError(
+                'checkout_user_inactive',
+            );
+        }
+        assertStripeSessionMatchesCheckoutAttempt(session, attempt, {
+            accountId: liveCart.accountId,
+            userId: checkoutUser.userId,
+        });
+        const additionalDataByCartItemId =
+            buildVerifiedStripeCheckoutAdditionalData({
+                attempt,
+                liveItems: liveCart.items,
+                session,
+            });
+
+        // Catalog labels and prices may legitimately change while Stripe is
+        // open. Verify every snapshotted entity still resolves, then use the
+        // immutable snapshot amounts below instead of today's catalog prices.
+        const cartInfo = await dependencies.getCartInfo(
+            liveCart.items,
+            liveCart.accountId,
+        );
+        if (
+            cartInfo.items.length !== liveCart.items.length ||
+            cartInfo.items.some(
+                (item) =>
+                    !attempt.snapshot.items.some(
+                        (snapshotItem) => snapshotItem.id === item.id,
+                    ),
+            )
+        ) {
+            throw new StripeCheckoutAttemptConflictError(
+                'catalog_entity_unavailable',
+            );
+        }
+        return {
+            accountId: liveCart.accountId,
+            additionalDataByCartItemId,
+            advancedSowingAuthorizationsByCartItemId:
+                getStripeCheckoutSnapshotAdvancedSowingAuthorizations(attempt),
+            attempt,
+            userId: checkoutUser.userId,
+        };
+    } catch (error) {
+        console.error('Stripe checkout snapshot reconciliation failed', {
+            attemptId: metadata.attemptId,
+            cartId: metadata.cartId,
+            mismatchCategory:
+                error instanceof StripeCheckoutAttemptConflictError
+                    ? error.category
+                    : 'unexpected',
+            sessionId: session.id,
+        });
+        throw error;
+    }
+}
+
+async function releaseCompletedStripeCheckoutAttempt(
+    session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    dependencies: ProcessCheckoutSessionDependencies,
+    { allowMissingAttempt = false }: { allowMissingAttempt?: boolean } = {},
+) {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) {
+        return;
+    }
+    const attempt = await dependencies.getStripeCheckoutAttempt(
+        metadata.cartId,
+        metadata.attemptId,
+    );
+    if (!attempt) {
+        if (allowMissingAttempt) {
+            return;
+        }
+        throw new StripeCheckoutAttemptConflictError('attempt_missing');
+    }
+    if (
+        attempt.releaseReason === 'completed' &&
+        attempt.sessionId === session.id
+    ) {
+        return;
+    }
+    await dependencies.releaseStripeCheckoutAttempt({
+        ...metadata,
+        reason: 'completed',
+        sessionId: session.id,
+    });
+}
+
+async function getStripeCheckoutAttemptForCompletedReplay(
+    session: PaidCheckoutSession,
+    dependencies: ProcessCheckoutSessionDependencies,
+) {
+    const metadata = decodeStripeCheckoutAttemptMetadata(session.metadata);
+    if (!metadata) return null;
+
+    let attempt = await dependencies.getStripeCheckoutAttempt(
+        metadata.cartId,
+        metadata.attemptId,
+    );
+    // Completed legacy transactions predate durable attempts in some cases.
+    // Their completion outputs can still be reconstructed from Stripe and the
+    // paid cart without fabricating attempt history.
+    if (!attempt) return null;
+    if (
+        attempt.snapshot.cartId !== metadata.cartId ||
+        attempt.snapshot.attemptId !== metadata.attemptId
+    ) {
+        throw new StripeCheckoutAttemptConflictError(
+            'snapshot_identity_changed',
+        );
+    }
+    if (attempt.sessionId && attempt.sessionId !== session.id) {
+        throw new StripeCheckoutAttemptConflictError('session_binding_changed');
+    }
+    if (
+        attempt.releaseReason &&
+        !(
+            attempt.releaseReason === 'completed' &&
+            attempt.sessionId === session.id
+        )
+    ) {
+        throw new StripeCheckoutAttemptConflictError('attempt_released');
+    }
+    if (!attempt.sessionId) {
+        attempt = await dependencies.bindStripeCheckoutAttempt({
+            ...metadata,
+            sessionId: session.id,
+        });
+    }
+    return attempt;
 }
 
 async function processPaidCheckoutSession(
     checkoutSessionId: string,
     session: NonNullable<Awaited<ReturnType<typeof getStripeCheckoutSession>>>,
+    claimControl: StripePaymentProcessingClaimControl,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
 ) {
+    await claimControl.assertOwned();
     const alreadyProcessed =
         await dependencies.getCompletedTransactionByStripePaymentId(session.id);
     if (alreadyProcessed) {
-        console.info(
-            `Checkout session ${checkoutSessionId} already processed; skipping.`,
+        const completionOutputs =
+            await dependencies.getStripePaymentCompletionOutputs(session.id);
+        if (completionOutputs) {
+            await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+                allowMissingAttempt: true,
+            });
+            console.info(
+                `Checkout session ${checkoutSessionId} already has its transaction and durable completion outputs; fulfillment replay suppressed.`,
+            );
+            return;
+        }
+    }
+    let checkoutReconciliation:
+        | Awaited<ReturnType<typeof reconcileStripeCheckoutAttempt>>
+        | undefined;
+    if (session.paymentStatus === 'no_payment_required' && !alreadyProcessed) {
+        // Zero-total sessions are accepted only for durable cart attempts. Do
+        // this before specialized fulfillment branches so metadata alone can
+        // never opt an unrelated checkout into no-payment fulfillment.
+        checkoutReconciliation = await reconcileStripeCheckoutAttempt(
+            session,
+            dependencies,
         );
+    }
+    const sunflowerPackageCheckout =
+        getSunflowerPackageCheckoutLineItems(session);
+    if (sunflowerPackageCheckout.malformedCount > 0) {
+        await recordSunflowerPackageFulfillmentFailure({
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: null,
+            reason: 'malformed_package_metadata',
+        });
+        return;
+    }
+    const sunflowerPackageLineItems = sunflowerPackageCheckout.items;
+    if (sunflowerPackageLineItems.length > 1) {
+        await recordSunflowerPackageFulfillmentFailure({
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            packageCode: null,
+            reason: 'multiple_package_line_items',
+        });
+        return;
+    }
+    const sunflowerPackageLineItem = sunflowerPackageLineItems[0];
+    if (sunflowerPackageLineItem) {
+        if (
+            alreadyProcessed &&
+            (alreadyProcessed.accountId !==
+                sunflowerPackageLineItem.accountId ||
+                alreadyProcessed.amount !==
+                    sunflowerPackageLineItem.amountTotal ||
+                alreadyProcessed.currency !== 'eur')
+        ) {
+            throw new StripePaymentProcessingPermanentError(
+                'transaction_identity_conflict',
+            );
+        }
+        await processSunflowerPackageCheckoutSession({
+            claimControl,
+            checkoutSessionId,
+            dependencies,
+            existingTransactionId: alreadyProcessed?.id,
+            packageItem: sunflowerPackageLineItem,
+            session,
+        });
         return;
     }
 
+    if (
+        !Number.isSafeInteger(session.amountTotal) ||
+        (session.amountTotal ?? -1) < 0
+    ) {
+        throw new StripePaymentProcessingPermanentError(
+            'checkout_session_amount_invalid',
+        );
+    }
+
     console.debug(
-        `Processing checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
+        `${alreadyProcessed ? 'Repairing completion outputs for' : 'Processing'} checkout session ${checkoutSessionId} with amount ${session.amountTotal} cents`,
     );
+
+    if (!alreadyProcessed) {
+        checkoutReconciliation ??= await reconcileStripeCheckoutAttempt(
+            session,
+            dependencies,
+        );
+    }
+    const checkoutAttempt = checkoutReconciliation?.attempt ?? null;
+    const completedReplayAttempt = alreadyProcessed
+        ? await getStripeCheckoutAttemptForCompletedReplay(
+              session,
+              dependencies,
+          )
+        : null;
+    const completionAttempt = checkoutAttempt ?? completedReplayAttempt;
 
     const affectedCartIds: number[] = [];
     const purchasedItems: {
         name?: string | null;
         quantity?: number | null;
         amountSubtotal?: number | null;
+        currency?: string | null;
     }[] = [];
-    const scheduledDeliveryEmailKeys = new Set<string>();
-    let accountId: string | undefined;
+    let accountId = checkoutReconciliation?.accountId;
+    let customerUserId = checkoutReconciliation?.userId;
+    const invoiceLineItems: InvoiceForTransactionLineItem[] = [];
+    const fulfillmentErrors: unknown[] = [];
+    const expectedNonStripeCartItemIds = completionAttempt
+        ? new Set(completionAttempt.snapshot.expectedNonStripeCartItemIds)
+        : decodeExpectedNonStripeCartItemIdsMetadata(session.metadata);
+    if (alreadyProcessed && completedReplayAttempt) {
+        const replayCart = await dependencies.getShoppingCart(
+            completedReplayAttempt.snapshot.cartId,
+        );
+        if (!replayCart?.accountId) {
+            throw new StripePaymentProcessingPermanentError(
+                'completion_paid_cart_missing',
+            );
+        }
+        const matchingUsers = (
+            await dependencies.getAccountUsers(replayCart.accountId)
+        ).filter(
+            (accountUser) =>
+                fingerprintStripeCheckoutValue(accountUser.userId) ===
+                completedReplayAttempt.snapshot.userFingerprint,
+        );
+        if (matchingUsers.length !== 1 || !matchingUsers[0]) {
+            throw new StripePaymentProcessingPermanentError(
+                'completion_recipient_missing',
+            );
+        }
+        accountId = replayCart.accountId;
+        customerUserId = matchingUsers[0].userId;
+        affectedCartIds.push(replayCart.id);
+    }
+    if (expectedNonStripeCartItemIds?.size) {
+        const candidateCartIds = new Set<number>();
+        for (const lineItem of session.lineItems?.data ?? []) {
+            const product = lineItem.price?.product;
+            if (typeof product === 'string' || product?.deleted) {
+                continue;
+            }
+            const cartId = Number(product?.metadata.cartId);
+            if (Number.isSafeInteger(cartId) && cartId > 0) {
+                candidateCartIds.add(cartId);
+            }
+        }
+
+        const presentExpectedItemIds = new Set<number>();
+        for (const cartId of candidateCartIds) {
+            const candidateCart = await dependencies.getShoppingCart(cartId);
+            for (const item of candidateCart?.items ?? []) {
+                if (expectedNonStripeCartItemIds.has(item.id)) {
+                    presentExpectedItemIds.add(item.id);
+                }
+            }
+        }
+        const missingExpectedItemIds = [...expectedNonStripeCartItemIds].filter(
+            (itemId) => !presentExpectedItemIds.has(itemId),
+        );
+        if (missingExpectedItemIds.length > 0) {
+            throw new Error(
+                `Expected non-Stripe cart items are missing before fulfillment: ${missingExpectedItemIds.join(', ')}`,
+            );
+        }
+    }
     for (const item of session.lineItems?.data ?? []) {
         console.debug(`Item: ${item.id} Quantity: ${item.quantity}`);
 
         const product = item.price?.product;
         if (typeof product === 'string') {
-            console.warn(
-                `Product is a string: ${product}. This is not supported.`,
+            const error = new Error(
+                `Stripe line item ${item.id} has an unexpanded product and cannot be fulfilled.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
         if (product?.deleted) {
-            console.warn(
-                `Product is deleted: ${product.id}. This is not supported.`,
+            const error = new Error(
+                `Stripe line item ${item.id} references deleted product ${product.id} and cannot be fulfilled.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
@@ -434,13 +2196,36 @@ async function processPaidCheckoutSession(
                 (item as { amount_subtotal?: number }).amount_subtotal ??
                 item.amount_total ??
                 null,
+            currency: 'eur',
         });
 
         // Extract metadata from the product
+        let additionalData: unknown;
+        try {
+            additionalData = product?.metadata.additionalData
+                ? JSON.parse(product.metadata.additionalData)
+                : undefined;
+        } catch (cause) {
+            const error = new Error(
+                `Stripe line item ${item.id} has invalid additionalData metadata.`,
+                { cause },
+            );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
+            continue;
+        }
+
+        const cartItemId = product?.metadata.cartItemId
+            ? parseInt(product.metadata.cartItemId, 10)
+            : undefined;
         const itemData = {
-            cartItemId: product?.metadata.cartItemId
-                ? parseInt(product.metadata.cartItemId, 10)
-                : undefined,
+            cartItemId,
+            advancedSowingAuthorization:
+                cartItemId === undefined
+                    ? undefined
+                    : checkoutReconciliation?.advancedSowingAuthorizationsByCartItemId.get(
+                          cartItemId,
+                      ),
             entityId: product?.metadata.entityId,
             entityTypeName: product?.metadata.entityTypeName,
             accountId: product?.metadata.accountId,
@@ -457,9 +2242,7 @@ async function processPaidCheckoutSession(
             positionIndex: product?.metadata.positionIndex
                 ? parseInt(product.metadata.positionIndex, 10)
                 : undefined,
-            additionalData: product?.metadata.additionalData
-                ? JSON.parse(product.metadata.additionalData)
-                : undefined,
+            additionalData,
             outletOfferId: product?.metadata.outletOfferId
                 ? parseInt(product.metadata.outletOfferId, 10)
                 : undefined,
@@ -475,8 +2258,7 @@ async function processPaidCheckoutSession(
             currency: 'eur',
         };
 
-        // Save accountId from metadata if not already set
-        accountId ??= itemData.accountId;
+        customerUserId ??= itemData.userId;
 
         // Validate required metadata (accountId can be derived from cart)
         if (
@@ -485,56 +2267,54 @@ async function processPaidCheckoutSession(
             !itemData.entityTypeName ||
             !itemData.cartId
         ) {
-            console.warn(
-                `Missing required metadata for item ${item.id} in session ${checkoutSessionId}`,
+            const error = new Error(
+                `Missing required metadata for item ${item.id} in session ${checkoutSessionId}.`,
             );
+            console.warn(error.message);
+            fulfillmentErrors.push(error);
             continue;
         }
 
         // Process cart item
+        let resolvedAccountId: string | undefined;
         try {
-            let resolvedAccountId: string | undefined;
             const cart = await dependencies.getShoppingCart(itemData.cartId);
             if (!cart) {
-                console.warn(
-                    `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}`,
+                throw new Error(
+                    `No cart found for ID ${itemData.cartId} in session ${checkoutSessionId}.`,
                 );
-                continue;
             }
 
-            resolvedAccountId =
-                itemData.accountId ?? cart.accountId ?? undefined;
-            if (!resolvedAccountId) {
-                console.warn(
-                    `Missing accountId for cart ${itemData.cartId} when processing session ${checkoutSessionId}`,
+            if (!cart.accountId) {
+                throw new Error(
+                    `Missing accountId for cart ${itemData.cartId} when processing session ${checkoutSessionId}.`,
                 );
-                continue;
             }
+            if (itemData.accountId && itemData.accountId !== cart.accountId) {
+                throw new Error(
+                    `Stripe metadata account does not own cart ${itemData.cartId} in session ${checkoutSessionId}.`,
+                );
+            }
+            resolvedAccountId = cart.accountId;
+            const checkoutAccountId = resolvedAccountId;
 
-            // Ensure we have an accountId for the whole session (prefer the cart value)
+            // Every line in one checkout must resolve to the same cart owner.
             if (accountId && accountId !== resolvedAccountId) {
-                console.warn(
-                    `AccountId mismatch for session ${checkoutSessionId}: metadata ${accountId} vs cart ${resolvedAccountId}. Using cart accountId.`,
+                throw new Error(
+                    `Checkout session ${checkoutSessionId} references carts owned by different accounts.`,
                 );
             }
-            accountId = resolvedAccountId;
+            accountId = checkoutAccountId;
 
             // Find cart item by cartItemId for more reliable matching
             const cartItem = cart.items.find(
                 (i) => i.id === itemData.cartItemId,
             );
 
-            if (cartItem?.status === 'paid') {
-                console.warn(
-                    `Cart item ${cartItem.id} is already paid. Skipping so we don't double process.`,
-                );
-                continue;
-            }
             if (!cartItem) {
-                console.warn(
-                    `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}`,
+                throw new Error(
+                    `No cart item found with ID ${itemData.cartItemId} in cart ${itemData.cartId} for session ${checkoutSessionId}.`,
                 );
-                continue;
             }
 
             // Additional validation: ensure the cart item matches the expected entity details
@@ -542,56 +2322,207 @@ async function processPaidCheckoutSession(
                 cartItem.entityId !== itemData.entityId ||
                 cartItem.entityTypeName !== itemData.entityTypeName
             ) {
-                console.warn(
-                    `Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}`,
+                throw new Error(
+                    `Cart item ${itemData.cartItemId} entity mismatch. Expected: ${itemData.entityId}/${itemData.entityTypeName}, Found: ${cartItem.entityId}/${cartItem.entityTypeName}.`,
                 );
-                continue;
             }
-            if (
-                !(await assertRaisedBedAllowsCheckoutItem(
-                    cartItem.raisedBedId,
-                    dependencies,
-                ))
-            ) {
-                continue;
-            }
-
-            await dependencies.setCartItemPaid(cartItem.id);
-            affectedCartIds.push(cart.id);
 
             if (typeof item.amount_total !== 'number') {
+                throw new Error(
+                    `Missing amount_total for Stripe line item ${item.id} in session ${checkoutSessionId}.`,
+                );
+            }
+
+            affectedCartIds.push(cart.id);
+            const invoiceLineItem = dependencies.buildCheckoutInvoiceLineItem({
+                amountTotalCents: item.amount_total,
+                entityId: itemData.entityId,
+                entityTypeName: itemData.entityTypeName,
+                metadataName: product?.metadata?.name ?? null,
+                outletOfferId: itemData.outletOfferId,
+                outletSowingDate: itemData.outletSowingDate,
+                productName:
+                    typeof product?.name === 'string' ? product.name : null,
+                quantity: item.quantity ?? null,
+            });
+            if (invoiceLineItem) {
+                invoiceLineItems.push(invoiceLineItem);
+            } else {
                 console.warn(
-                    `Missing amount_total for Stripe line item ${item.id} in session ${checkoutSessionId}. Skipping processing to avoid inconsistent state.`,
+                    `Missing invoice line amount for Stripe line item ${item.id} in session ${checkoutSessionId}.`,
+                );
+            }
+
+            if (cartItem.status === 'paid') {
+                console.warn(
+                    `Cart item ${cartItem.id} is already paid. Skipping fulfillment replay.`,
                 );
                 continue;
             }
+            await dependencies.withCheckoutCartItemProcessingLock(
+                cartItem.id,
+                async () => {
+                    const state = await dependencies.withCheckoutCartItemLock(
+                        cartItem.id,
+                        async (db) => {
+                            await claimControl.assertOwned(db);
+                            const lockedCart =
+                                await dependencies.getShoppingCart(cart.id, db);
+                            if (!lockedCart) {
+                                throw new Error(
+                                    `Cart ${cart.id.toString()} disappeared before Stripe fulfillment.`,
+                                );
+                            }
+                            const lockedState = assertCheckoutCartItemSnapshot(
+                                lockedCart.items.find(
+                                    (lockedItem) =>
+                                        lockedItem.id === cartItem.id,
+                                ),
+                                cartItem,
+                            );
+                            if (lockedState === 'pending') {
+                                const legacyRewardAlreadyEarned =
+                                    itemData.entityTypeName === 'plantSort' &&
+                                    typeof cartItem.positionIndex ===
+                                        'number' &&
+                                    typeof cartItem.raisedBedId === 'number' &&
+                                    (await dependencies.hasMatchingCheckoutPlantingPurchase(
+                                        {
+                                            cartItemId: cartItem.id,
+                                            euroAmountCents: item.amount_total,
+                                            plantSortId: cartItem.entityId,
+                                            positionIndex:
+                                                cartItem.positionIndex,
+                                            raisedBedId: cartItem.raisedBedId,
+                                        },
+                                        db,
+                                    ));
+                                await claimControl.assertOwned(db);
+                                await dependencies.earnSunflowersForPayment(
+                                    checkoutAccountId,
+                                    item.amount_total / 100,
+                                    `shoppingCartItem:${cartItem.id.toString()}`,
+                                    db,
+                                    { legacyRewardAlreadyEarned },
+                                );
+                            }
+                            return lockedState;
+                        },
+                    );
+                    if (state === 'paid') {
+                        console.warn(
+                            `Cart item ${cartItem.id} became paid while waiting for its fulfillment lock. Skipping replay.`,
+                        );
+                        return;
+                    }
 
-            await processItem(
-                {
-                    ...itemData,
-                    accountId: resolvedAccountId,
-                    amount_total: item.amount_total,
-                    scheduledDeliveryEmailKeys,
-                    checkoutSessionId: session.id,
+                    try {
+                        const isPlantingItem =
+                            itemData.entityTypeName === 'plantSort';
+                        const checkoutOperationMapping =
+                            itemData.entityTypeName === 'operation'
+                                ? await dependencies.getCheckoutOperationMapping(
+                                      cartItem.id,
+                                  )
+                                : undefined;
+                        if (
+                            !checkoutOperationMapping &&
+                            !(await assertRaisedBedAllowsCheckoutItem(
+                                cartItem.raisedBedId,
+                                dependencies,
+                            ))
+                        ) {
+                            if (isPlantingItem) {
+                                throw new CheckoutPlantingRaisedBedUnavailableError(
+                                    'abandoned',
+                                );
+                            }
+                            throw new CheckoutItemFulfillmentError(
+                                'raised_bed_unavailable',
+                            );
+                        }
+
+                        await claimControl.assertOwned();
+                        const fulfillment = await processItem(
+                            {
+                                ...itemData,
+                                accountId: checkoutAccountId,
+                                amount_total: item.amount_total,
+                                checkoutSessionId: session.id,
+                                paymentRewardAlreadyEnsured: true,
+                                checkoutOperationMapping,
+                            },
+                            dependencies,
+                            claimControl,
+                        );
+                        assertCheckoutItemFulfilled(fulfillment);
+                        await claimControl.assertOwned();
+                        await dependencies.setCartItemPaid(cartItem.id);
+                    } catch (error) {
+                        if (
+                            error instanceof
+                            CheckoutPlantingRaisedBedUnavailableError
+                        ) {
+                            try {
+                                await recordCheckoutPlantingRaisedBedUnavailable(
+                                    {
+                                        accountId: checkoutAccountId,
+                                        cartItemId: cartItem.id,
+                                        claimControl,
+                                        checkoutSessionId: session.id,
+                                        dependencies,
+                                        gardenId: itemData.gardenId,
+                                        positionIndex: itemData.positionIndex,
+                                        raisedBedId: itemData.raisedBedId,
+                                        reason: error.reason,
+                                    },
+                                );
+                            } catch (incidentError) {
+                                if (
+                                    incidentError instanceof
+                                    StripePaymentProcessingClaimLostError
+                                ) {
+                                    throw incidentError;
+                                }
+                                console.error(
+                                    'Failed to record checkout planting incident',
+                                    incidentError,
+                                );
+                            }
+                        }
+                        throw error;
+                    }
                 },
-                dependencies,
             );
         } catch (error) {
+            if (error instanceof StripePaymentProcessingClaimLostError) {
+                throw error;
+            }
             console.error(
                 `Error processing cart item ${itemData.cartItemId} in session ${checkoutSessionId}`,
                 error,
             );
+            fulfillmentErrors.push(error);
         }
 
-        // TODO: Send email to customer
         // TODO: Send invoice to customer
+    }
+
+    if (fulfillmentErrors.length > 0) {
+        const firstFulfillmentError = fulfillmentErrors[0];
+        if (firstFulfillmentError !== undefined) {
+            throw firstFulfillmentError;
+        }
+        throw new Error('Checkout item fulfillment failed');
     }
 
     // Extract and validate delivery info from Stripe items to use for non-Stripe items.
     // All items in a single checkout session should share the same delivery information.
     let deliveryInfo: unknown;
     const deliveryInfosFound = new Set<string>();
-    for (const item of session.lineItems?.data ?? []) {
+    for (const item of checkoutReconciliation
+        ? []
+        : (session.lineItems?.data ?? [])) {
         const product = item.price?.product;
         if (typeof product !== 'string' && !product?.deleted) {
             const additionalData = product?.metadata?.additionalData
@@ -625,41 +2556,321 @@ async function processPaidCheckoutSession(
     }
 
     const uniqueAffectedCartIds = Array.from(new Set(affectedCartIds));
+    const harvestDateByCartItemId = completionAttempt
+        ? getStripeCheckoutSnapshotHarvestDates(completionAttempt)
+        : decodeHarvestDatesMetadata(session.metadata);
+    const satisfiedExpectedNonStripeItemIds = new Set<number>();
+    const resolvedSunflowerAmountsByCartItemId = new Map<number, number>();
     if (accountId && uniqueAffectedCartIds.length > 0) {
         for (const cartId of uniqueAffectedCartIds) {
-            await processNonStripeCartItems(
+            if (alreadyProcessed) {
+                const replayCart = await dependencies.getShoppingCart(cartId);
+                if (replayCart?.status !== 'paid') {
+                    throw new StripePaymentProcessingPermanentError(
+                        'completion_paid_cart_missing',
+                    );
+                }
+                if (replayCart.accountId !== accountId) {
+                    throw new StripePaymentProcessingPermanentError(
+                        'transaction_identity_conflict',
+                    );
+                }
+                const replayCartInfo = await dependencies.getCartInfo(
+                    replayCart.items,
+                    accountId,
+                );
+                const paymentKinds = completionAttempt
+                    ? getStripeCheckoutSnapshotNonStripePaymentKinds(
+                          completionAttempt,
+                      )
+                    : null;
+                const snapshotAmounts = completionAttempt
+                    ? getStripeCheckoutSnapshotNonStripeAmounts(
+                          completionAttempt,
+                      )
+                    : null;
+                const replayItems = replayCartInfo.items.filter((item) => {
+                    if (
+                        expectedNonStripeCartItemIds !== null &&
+                        !expectedNonStripeCartItemIds.has(item.id)
+                    ) {
+                        return false;
+                    }
+                    const snapshotKind = paymentKinds?.get(item.id);
+                    return snapshotKind
+                        ? snapshotKind === 'sunflower' ||
+                              snapshotKind === 'inventory'
+                        : item.currency === 'sunflower' ||
+                              item.currency === 'inventory' ||
+                              item.usesInventory === true;
+                });
+                for (const item of replayItems) {
+                    if (item.status !== 'paid') {
+                        throw new StripePaymentProcessingPermanentError(
+                            'completion_paid_cart_missing',
+                        );
+                    }
+                    if (expectedNonStripeCartItemIds?.has(item.id)) {
+                        satisfiedExpectedNonStripeItemIds.add(item.id);
+                    }
+                    const snapshotKind = paymentKinds?.get(item.id);
+                    if (
+                        snapshotKind === 'sunflower' ||
+                        (!snapshotKind && item.currency === 'sunflower')
+                    ) {
+                        const amount =
+                            snapshotAmounts?.get(item.id) ??
+                            calculateSunflowerReplayAmount(item);
+                        if (!Number.isSafeInteger(amount) || amount <= 0) {
+                            throw new StripePaymentProcessingPermanentError(
+                                'completion_sunflower_amount_invalid',
+                            );
+                        }
+                        resolvedSunflowerAmountsByCartItemId.set(
+                            item.id,
+                            amount,
+                        );
+                    }
+                }
+                purchasedItems.push(
+                    ...dependencies.buildOrderConfirmationItems(
+                        replayItems,
+                        (item) => {
+                            const amount =
+                                resolvedSunflowerAmountsByCartItemId.get(
+                                    item.id,
+                                );
+                            if (amount === undefined) {
+                                throw new StripePaymentProcessingPermanentError(
+                                    'completion_sunflower_amount_invalid',
+                                );
+                            }
+                            return amount;
+                        },
+                    ),
+                );
+                continue;
+            }
+            const nonStripeResult = await processNonStripeCartItems(
                 cartId,
                 accountId,
                 deliveryInfo,
-                scheduledDeliveryEmailKeys,
+                harvestDateByCartItemId,
+                expectedNonStripeCartItemIds,
                 session.id,
+                claimControl,
                 dependencies,
+                completionAttempt && checkoutReconciliation
+                    ? {
+                          additionalDataByCartItemId:
+                              checkoutReconciliation.additionalDataByCartItemId,
+                          advancedSowingAuthorizationsByCartItemId:
+                              checkoutReconciliation.advancedSowingAuthorizationsByCartItemId,
+                          paymentKindByCartItemId:
+                              getStripeCheckoutSnapshotNonStripePaymentKinds(
+                                  completionAttempt,
+                              ),
+                          sunflowerAmountsByCartItemId:
+                              getStripeCheckoutSnapshotNonStripeAmounts(
+                                  completionAttempt,
+                              ),
+                      }
+                    : undefined,
+            );
+            for (const itemId of nonStripeResult.satisfiedExpectedItemIds) {
+                satisfiedExpectedNonStripeItemIds.add(itemId);
+            }
+            for (const [
+                itemId,
+                amount,
+            ] of nonStripeResult.resolvedSunflowerAmountsByCartItemId) {
+                resolvedSunflowerAmountsByCartItemId.set(itemId, amount);
+            }
+            purchasedItems.push(
+                ...dependencies.buildOrderConfirmationItems(
+                    nonStripeResult.confirmationItems,
+                    (item) => {
+                        const resolvedAmount =
+                            resolvedSunflowerAmountsByCartItemId.get(item.id);
+                        if (resolvedAmount === undefined) {
+                            throw new Error(
+                                `Sunflower confirmation amount is missing for cart item ${item.id.toString()}.`,
+                            );
+                        }
+                        return resolvedAmount;
+                    },
+                ),
+            );
+        }
+    }
+    if (expectedNonStripeCartItemIds !== null) {
+        const missingExpectedItemIds = [...expectedNonStripeCartItemIds].filter(
+            (itemId) => !satisfiedExpectedNonStripeItemIds.has(itemId),
+        );
+        if (missingExpectedItemIds.length > 0) {
+            throw new Error(
+                `Expected non-Stripe cart items were not fulfilled: ${missingExpectedItemIds.join(', ')}`,
             );
         }
     }
 
+    const customer = customerUserId
+        ? await dependencies.getUser(customerUserId)
+        : null;
+
+    if (!accountId) {
+        throw new StripePaymentProcessingPermanentError(
+            'checkout_account_missing',
+        );
+    }
+    if (
+        alreadyProcessed &&
+        (alreadyProcessed.accountId !== accountId ||
+            alreadyProcessed.amount !== session.amountTotal ||
+            alreadyProcessed.currency !== 'eur')
+    ) {
+        throw new StripePaymentProcessingPermanentError(
+            'transaction_identity_conflict',
+        );
+    }
+
     // Update all affected carts to mark them as paid if all items are paid
-    await Promise.all([
-        ...uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
-        accountId && session.amountTotal
-            ? dependencies.createTransaction({
+    if (!alreadyProcessed) {
+        await claimControl.assertOwned();
+        await Promise.all(
+            uniqueAffectedCartIds.map(dependencies.markCartPaidIfAllItemsPaid),
+        );
+    }
+
+    await claimControl.assertOwned();
+    const transactionId =
+        alreadyProcessed?.id ??
+        (typeof session.amountTotal === 'number'
+            ? await dependencies.createTransaction({
                   accountId,
                   amount: session.amountTotal,
                   stripePaymentId: session.id,
                   status: 'completed',
                   currency: 'eur',
               })
-            : undefined,
-    ]);
+            : undefined);
 
-    await dependencies.notifyPurchase({
+    const completedCartIds: number[] = [];
+    for (const cartId of uniqueAffectedCartIds) {
+        const completedCart = await dependencies.getShoppingCart(cartId);
+        if (completedCart?.status === 'paid') {
+            completedCartIds.push(completedCart.id);
+        }
+    }
+
+    if (completedCartIds.length === 0) {
+        throw new StripePaymentProcessingPermanentError(
+            'completion_paid_cart_missing',
+        );
+    }
+
+    await ensureCheckoutCompletionOutputs({
         accountId,
-        amountTotal: session.amountTotal ?? null,
-        checkoutSessionId: session.id ?? null,
+        cartId: completedCartIds.length === 1 ? completedCartIds[0] : null,
+        claimControl,
+        customerEmail: customer?.userName,
+        dependencies,
         items: purchasedItems,
+        session,
     });
 
-    if (accountId) {
+    if (
+        transactionId &&
+        !alreadyProcessed &&
+        dependencies.isBillingAutomationEnabled()
+    ) {
+        try {
+            await claimControl.assertOwned();
+            const invoiceResult =
+                await dependencies.ensureInvoiceForTransaction({
+                    transactionId,
+                    billingSnapshot:
+                        dependencies.buildCheckoutInvoiceBillingSnapshot({
+                            customerEmail: customer?.userName,
+                            customerName: customer?.displayName,
+                        }),
+                    items: invoiceLineItems,
+                });
+            if (invoiceResult.status === 'skipped') {
+                console.warn('Checkout invoice generation skipped', {
+                    checkoutSessionId,
+                    reason: invoiceResult.reason,
+                    transactionId,
+                });
+            } else {
+                await claimControl.assertOwned();
+                const receiptResult =
+                    await dependencies.issueReceiptForPaidInvoice({
+                        invoiceId: invoiceResult.invoiceId,
+                        paymentReference: session.id,
+                    });
+                if (receiptResult.status === 'skipped') {
+                    console.warn('Checkout receipt issuing skipped', {
+                        checkoutSessionId,
+                        invoiceId: invoiceResult.invoiceId,
+                        reason: receiptResult.reason,
+                        transactionId,
+                    });
+                } else {
+                    await claimControl.assertOwned();
+                    const fiscalizationResult =
+                        await dependencies.fiscalizeReceipt(
+                            receiptResult.receiptId,
+                        );
+                    const hasFiscalizedReceipt =
+                        fiscalizationResult.status === 'confirmed' ||
+                        fiscalizationResult.status === 'existing';
+                    if (fiscalizationResult.status === 'failed') {
+                        console.warn('Checkout receipt fiscalization failed', {
+                            checkoutSessionId,
+                            reason: fiscalizationResult.reason,
+                            receiptId: receiptResult.receiptId,
+                            transactionId,
+                        });
+                    } else if (fiscalizationResult.status === 'skipped') {
+                        console.warn('Checkout receipt fiscalization skipped', {
+                            checkoutSessionId,
+                            reason: fiscalizationResult.reason,
+                            receiptId: receiptResult.receiptId,
+                            transactionId,
+                        });
+                    }
+
+                    await claimControl.assertOwned();
+                    await dependencies.notifyBillingDocumentsEmail({
+                        to: customer?.userName,
+                        cartIds: uniqueAffectedCartIds,
+                        checkoutSessionId: session.id,
+                        invoiceId: invoiceResult.invoiceId,
+                        invoiceNumber: invoiceResult.invoiceNumber,
+                        receiptId: hasFiscalizedReceipt
+                            ? receiptResult.receiptId
+                            : null,
+                        receiptNumber: hasFiscalizedReceipt
+                            ? receiptResult.yearReceiptNumber
+                            : null,
+                    });
+                }
+            }
+        } catch (error) {
+            if (error instanceof StripePaymentProcessingClaimLostError) {
+                throw error;
+            }
+            console.error('Checkout billing document automation failed', {
+                checkoutSessionId,
+                error,
+                transactionId,
+            });
+        }
+    }
+
+    if (!alreadyProcessed) {
+        await claimControl.assertOwned();
         (await dependencies.getPostHogClient()).capture({
             distinctId: accountId,
             event: 'purchase_completed',
@@ -669,6 +2880,14 @@ async function processPaidCheckoutSession(
                 item_count: purchasedItems.length,
                 checkout_session_id: session.id,
             },
+        });
+    }
+
+    if (checkoutAttempt) {
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies);
+    } else if (alreadyProcessed) {
+        await releaseCompletedStripeCheckoutAttempt(session, dependencies, {
+            allowMissingAttempt: true,
         });
     }
 }
@@ -682,7 +2901,13 @@ async function assertRaisedBedAllowsCheckoutItem(
     }
 
     const raisedBed = await dependencies.getRaisedBed(raisedBedId);
-    if (raisedBed && dependencies.isRaisedBedAbandoned(raisedBed.status)) {
+    if (!raisedBed) {
+        console.warn('Checkout raised bed is no longer available.', {
+            raisedBedId,
+        });
+        return false;
+    }
+    if (dependencies.isRaisedBedAbandoned(raisedBed.status)) {
         console.warn(
             `${RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE} ${RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE}`,
             { raisedBedId },
@@ -691,6 +2916,171 @@ async function assertRaisedBedAllowsCheckoutItem(
     }
 
     return true;
+}
+
+async function resolveCheckoutOperationFieldId({
+    claimControl,
+    dependencies,
+    fulfillmentTransaction,
+    positionIndex,
+    raisedBedId,
+}: {
+    claimControl?: StripePaymentProcessingClaimControl;
+    dependencies: ProcessCheckoutSessionDependencies;
+    fulfillmentTransaction?: ScheduleTaskTransaction;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+}) {
+    if (
+        typeof raisedBedId !== 'number' ||
+        typeof positionIndex !== 'number' ||
+        !Number.isSafeInteger(positionIndex) ||
+        positionIndex < 0 ||
+        positionIndex >= ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT
+    ) {
+        return undefined;
+    }
+
+    return dependencies.withPlantingScheduleTaskTransaction(
+        raisedBedId,
+        positionIndex,
+        async (transaction) => {
+            await claimControl?.assertOwned(transaction);
+            await dependencies.upsertRaisedBedField(
+                { raisedBedId, positionIndex },
+                transaction,
+            );
+            const fields = await dependencies.getRaisedBedFieldsWithEvents(
+                raisedBedId,
+                transaction,
+            );
+            const targetField = fields.find(
+                (field) => field.positionIndex === positionIndex,
+            );
+            if (!targetField) {
+                throw new Error(
+                    'Checkout operation target field was not created.',
+                );
+            }
+            return targetField.id;
+        },
+        fulfillmentTransaction,
+    );
+}
+
+async function recordCheckoutPlantingRaisedBedUnavailable({
+    accountId,
+    cartItemId,
+    claimControl,
+    checkoutSessionId,
+    dependencies,
+    gardenId,
+    positionIndex,
+    raisedBedId,
+    reason,
+}: {
+    accountId: string;
+    cartItemId: number;
+    claimControl: StripePaymentProcessingClaimControl;
+    checkoutSessionId: string;
+    dependencies: ProcessCheckoutSessionDependencies;
+    gardenId?: number | null;
+    positionIndex?: number | null;
+    raisedBedId?: number | null;
+    reason: CheckoutPlantingRaisedBedUnavailableReason;
+}) {
+    await claimControl.assertOwned();
+    const incident = await dependencies.createNotificationWithStatus(
+        {
+            accountId,
+            gardenId,
+            raisedBedId,
+            header: 'Plaćena sadnja čeka provjeru',
+            content:
+                'Plaćenu sadnju nismo postavili jer je odabrana gredica napuštena ili više nije dostupna. Zadatak ostaje otvoren za ponovni pokušaj, ručno postavljanje ili povrat sredstava.',
+            category: 'checkout_fulfillment',
+            type: 'checkout_planting_raised_bed_unavailable',
+            primaryChannel: 'in_app',
+            priority: 'critical',
+            metadata: {
+                cartItemId,
+                checkoutSessionId,
+                fulfillmentStatus: 'open',
+                operatorOwner: 'farm_operations',
+                recovery: 'stripe_retry_then_manual_placement_or_refund',
+                positionIndex: positionIndex ?? null,
+                raisedBedId: raisedBedId ?? null,
+                reason,
+            },
+            timestamp: new Date(),
+        },
+        {
+            idempotencyKey: `checkout-planting-raised-bed-unavailable:${checkoutSessionId}:${cartItemId.toString()}`,
+            routeDelivery: false,
+        },
+    );
+
+    if (typeof raisedBedId === 'number' && typeof positionIndex === 'number') {
+        await claimControl.assertOwned();
+        const operatorAlert =
+            await dependencies.deliverNotificationOperatorAlert(
+                incident.notificationId,
+                async () => {
+                    await claimControl.assertOwned();
+                    await dependencies.notifyCheckoutFulfillmentIncident({
+                        accountId,
+                        cartItemId,
+                        checkoutSessionId,
+                        incidentId: incident.notificationId,
+                        positionIndex,
+                        raisedBedId,
+                    });
+                },
+            );
+        if (
+            operatorAlert.status === 'failed' &&
+            operatorAlert.error instanceof StripePaymentProcessingClaimLostError
+        ) {
+            throw operatorAlert.error;
+        }
+        if (operatorAlert.status === 'failed') {
+            console.error(
+                'Checkout raised-bed fulfillment incident operator alert failed and will be retried',
+                {
+                    cartItemId,
+                    checkoutSessionId,
+                    error: operatorAlert.error,
+                    incidentId: incident.notificationId,
+                },
+            );
+        }
+    } else {
+        console.error(
+            'Checkout raised-bed fulfillment incident is missing placement metadata for an operator alert',
+            {
+                cartItemId,
+                checkoutSessionId,
+                incidentId: incident.notificationId,
+                positionIndex,
+                raisedBedId,
+            },
+        );
+    }
+
+    const postHog = await dependencies.getPostHogClient();
+    await claimControl.assertOwned();
+    postHog.capture({
+        distinctId: accountId,
+        event: 'checkout_planting_raised_bed_unavailable',
+        properties: {
+            $insert_id: `checkout-planting-raised-bed-unavailable:${checkoutSessionId}:${cartItemId.toString()}`,
+            cart_item_id: cartItemId,
+            checkout_session_id: checkoutSessionId,
+            position_index: positionIndex ?? null,
+            raised_bed_id: raisedBedId ?? null,
+            reason,
+        },
+    });
 }
 
 async function outletReservationForCheckout(
@@ -741,7 +3131,6 @@ async function outletReservationForCheckout(
         );
     }
 
-    await dependencies.convertOutletReservationForCartItem(itemData.cartItemId);
     return reservation;
 }
 
@@ -779,6 +3168,16 @@ function scheduledDateFromAdditionalData(additionalData: unknown) {
         : scheduledDate;
 }
 
+function greenhouseSowingLocationFromAdditionalData(additionalData: unknown) {
+    const parsedAdditionalData = parseAdditionalDataValue(additionalData);
+    return typeof parsedAdditionalData === 'object' &&
+        parsedAdditionalData != null &&
+        'sowingLocation' in parsedAdditionalData &&
+        parsedAdditionalData.sowingLocation === 'greenhouse'
+        ? 'greenhouse'
+        : undefined;
+}
+
 function checkoutScheduledDateFromAdditionalData(
     additionalData: unknown,
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
@@ -787,6 +3186,109 @@ function checkoutScheduledDateFromAdditionalData(
         scheduledDateFromAdditionalData(additionalData) ??
         dependencies.getDefaultShoppingCartScheduledDate()
     );
+}
+
+function plantingPurchaseFromCheckoutItem(itemData: {
+    amount_total: number;
+    cartItemId?: number | null;
+    currency: string | null;
+}) {
+    if (!itemData.cartItemId) {
+        return undefined;
+    }
+
+    if (itemData.currency === 'sunflower') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'sunflower' as const,
+            sunflowerAmount: itemData.amount_total,
+        };
+    }
+    if (itemData.currency === 'eur') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'eur' as const,
+            euroAmountCents: itemData.amount_total,
+        };
+    }
+    if (itemData.currency === 'inventory') {
+        return {
+            cartItemId: itemData.cartItemId,
+            currency: 'inventory' as const,
+        };
+    }
+
+    return undefined;
+}
+
+function isSameCheckoutPlanting(
+    plantCycle: Awaited<
+        ReturnType<typeof getRaisedBedFieldsWithEvents>
+    >[number]['plantCycles'][number],
+    purchase: ReturnType<typeof plantingPurchaseFromCheckoutItem>,
+) {
+    return (
+        purchase !== undefined &&
+        plantCycle.purchase?.cartItemId === purchase.cartItemId
+    );
+}
+
+class CheckoutPlantingTargetConflictError extends Error {
+    override readonly name = 'CheckoutPlantingTargetConflictError';
+}
+
+function advancedSowingCheckoutConflictCode(error: unknown) {
+    if (
+        error instanceof RaisedBedPlantingError &&
+        (error.code === 'layout_collision' ||
+            error.code === 'legacy_layout_unknown' ||
+            error.code === 'plant_operation_conflict' ||
+            error.code === 'planting_limit')
+    ) {
+        return error.code;
+    }
+    return null;
+}
+
+function isCheckoutPlantingTargetConflict(error: unknown) {
+    return (
+        error instanceof CheckoutPlantingTargetConflictError ||
+        advancedSowingCheckoutConflictCode(error) !== null
+    );
+}
+
+export type ProcessItemFulfillmentResult =
+    | { status: 'fulfilled' }
+    | {
+          reason:
+              | 'delivery_configuration_missing'
+              | 'delivery_request_failed'
+              | 'invalid_entity_id'
+              | 'missing_metadata'
+              | 'raised_bed_unavailable'
+              | 'unsupported_item';
+          status: 'not_fulfilled';
+      };
+
+type CheckoutItemFulfillmentFailureReason = Extract<
+    ProcessItemFulfillmentResult,
+    { status: 'not_fulfilled' }
+>['reason'];
+
+export class CheckoutItemFulfillmentError extends Error {
+    override readonly name = 'CheckoutItemFulfillmentError';
+
+    constructor(readonly reason: CheckoutItemFulfillmentFailureReason) {
+        super(`Checkout item fulfillment was not confirmed (${reason})`);
+    }
+}
+
+export function assertCheckoutItemFulfilled(
+    result: ProcessItemFulfillmentResult,
+): asserts result is { status: 'fulfilled' } {
+    if (result.status !== 'fulfilled') {
+        throw new CheckoutItemFulfillmentError(result.reason);
+    }
 }
 
 export async function processItem(
@@ -800,6 +3302,7 @@ export async function processItem(
         raisedBedId: number | null | undefined;
         positionIndex: number | null | undefined;
         additionalData: unknown | null | undefined;
+        advancedSowingAuthorization?: AdvancedSowingCartAuthorizationV1;
         outletOfferId?: number | null;
         outletReservationId?: number | null;
         outletSowingDate?: string | null;
@@ -807,22 +3310,35 @@ export async function processItem(
         outletPriceCents?: number | null;
         currency: string | null;
         amount_total: number; // Amount in cents or sunflowers
-        scheduledDeliveryEmailKeys?: Set<string>;
         checkoutSessionId?: string | null;
+        paymentRewardAlreadyEnsured?: boolean;
+        fulfillmentTransaction?: ScheduleTaskTransaction;
+        checkoutOperationMapping?: Awaited<
+            ReturnType<typeof getCheckoutOperationMapping>
+        >;
     },
     dependencies: ProcessCheckoutSessionDependencies = realDependencies,
-) {
+    claimControl?: StripePaymentProcessingClaimControl,
+): Promise<ProcessItemFulfillmentResult> {
     console.debug(
         `Processing item with entityId ${itemData.entityId} and entityTypeName ${itemData.entityTypeName} for account ${itemData.accountId} in total amount ${itemData.amount_total}`,
     );
 
-    const earnSunflowersFunc = () =>
-        itemData.accountId && itemData.currency === 'eur'
-            ? dependencies.earnSunflowersForPayment(
-                  itemData.accountId,
-                  itemData.amount_total / 100,
-              )
-            : Promise.resolve();
+    const earnSunflowersFunc = async () => {
+        if (
+            itemData.accountId &&
+            itemData.cartItemId &&
+            itemData.currency === 'eur' &&
+            itemData.paymentRewardAlreadyEnsured !== true
+        ) {
+            await claimControl?.assertOwned();
+            await dependencies.earnSunflowersForPayment(
+                itemData.accountId,
+                itemData.amount_total / 100,
+                `shoppingCartItem:${itemData.cartItemId.toString()}`,
+            );
+        }
+    };
 
     // TODO: Move this logic to a separate function
     if (itemData.entityTypeName === 'operation') {
@@ -832,6 +3348,7 @@ export async function processItem(
         // Validate item data
         if (
             !itemData.accountId ||
+            !itemData.cartItemId ||
             !itemData.entityId ||
             !itemData.entityTypeName
         ) {
@@ -839,7 +3356,7 @@ export async function processItem(
                 `Missing required metadata for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'missing_metadata' };
         }
         const entityIdNumber = parseInt(itemData.entityId, 10);
         if (Number.isNaN(entityIdNumber)) {
@@ -847,32 +3364,53 @@ export async function processItem(
                 `Invalid entityId ${itemData.entityId} for operation item in order.`,
                 itemData,
             );
-            return;
+            return { status: 'not_fulfilled', reason: 'invalid_entity_id' };
         }
+        const paymentCurrency = itemData.currency;
         if (
+            paymentCurrency !== 'eur' &&
+            paymentCurrency !== 'inventory' &&
+            paymentCurrency !== 'sunflower'
+        ) {
+            console.error(
+                `Invalid payment currency for operation item in order.`,
+                itemData,
+            );
+            return { status: 'not_fulfilled', reason: 'unsupported_item' };
+        }
+        const checkoutOperationMapping =
+            itemData.checkoutOperationMapping === undefined
+                ? await dependencies.getCheckoutOperationMapping(
+                      itemData.cartItemId,
+                  )
+                : itemData.checkoutOperationMapping;
+        if (
+            !checkoutOperationMapping &&
             !(await assertRaisedBedAllowsCheckoutItem(
                 itemData.raisedBedId,
                 dependencies,
             ))
         ) {
-            return;
+            return {
+                status: 'not_fulfilled',
+                reason: 'raised_bed_unavailable',
+            };
         }
 
-        // Try to resolve field ID from position index (only active fields)
+        // New operations target the stable field position, including before a
+        // plant is placed. Retries keep the field captured in the durable
+        // mapping even if the plant at this position changes later.
         let fieldId: number | undefined;
-        if (
-            typeof itemData.positionIndex === 'number' &&
-            itemData.raisedBedId
-        ) {
-            const raisedBedFields =
-                await dependencies.getRaisedBedFieldsWithEvents(
-                    itemData.raisedBedId,
-                );
-            fieldId = raisedBedFields.find(
-                (field) =>
-                    field.positionIndex === itemData.positionIndex &&
-                    field.active,
-            )?.id;
+        if (checkoutOperationMapping) {
+            fieldId = checkoutOperationMapping.raisedBedFieldId ?? undefined;
+        } else {
+            fieldId = await resolveCheckoutOperationFieldId({
+                claimControl,
+                dependencies,
+                fulfillmentTransaction: itemData.fulfillmentTransaction,
+                positionIndex: itemData.positionIndex,
+                raisedBedId: itemData.raisedBedId,
+            });
         }
 
         let additionalData = itemData.additionalData;
@@ -895,50 +3433,41 @@ export async function processItem(
             additionalData,
             dependencies,
         );
+        const operationScheduledDate =
+            checkoutOperationMapping?.scheduledDate ?? scheduledDate;
+        const requestedDeliveryInfo =
+            checkoutDeliveryInfoFromAdditionalData(additionalData);
+        const deliveryProvenance = checkoutOperationMapping
+            ? checkoutOperationMapping.delivery
+            : checkoutDeliveryProvenance(requestedDeliveryInfo);
+        const deliveryInfo =
+            checkoutDeliveryInfoFromProvenance(deliveryProvenance);
 
-        const operationId = await dependencies.createOperation({
-            accountId: itemData.accountId,
-            entityId: entityIdNumber,
-            entityTypeName: itemData.entityTypeName,
-            gardenId: itemData.gardenId,
-            raisedBedId: itemData.raisedBedId,
-            raisedBedFieldId: fieldId,
-        });
-
-        try {
-            await earnSunflowersFunc();
-        } catch (error) {
-            console.error(
-                `Failed to award sunflowers for operation item in order.`,
-                error,
+        // Credit the captured-payment reward first. Its cart-item key makes a
+        // replay a no-op if operation creation or later fulfillment fails.
+        await earnSunflowersFunc();
+        await claimControl?.assertOwned();
+        const { created, operationId } =
+            await dependencies.getOrCreateCheckoutOperation(
+                itemData.cartItemId,
+                {
+                    accountId: itemData.accountId,
+                    entityId: entityIdNumber,
+                    entityTypeName: itemData.entityTypeName,
+                    gardenId: itemData.gardenId,
+                    raisedBedId: itemData.raisedBedId,
+                    raisedBedFieldId: fieldId,
+                },
+                {
+                    delivery: deliveryProvenance,
+                    paymentCurrency,
+                    scheduledDate: new Date(operationScheduledDate),
+                },
             );
-        }
+
         console.debug(
-            `Created operation ${itemData.entityId} of type ${itemData.entityTypeName} for account ${itemData.accountId} in garden ${itemData.gardenId ?? 'N/A'} with raised bed ${itemData.raisedBedId ?? 'N/A'} and field ${fieldId ?? 'N/A'}.`,
+            `${created ? 'Created' : 'Reused'} scheduled operation ${operationId.toString()} for cart item ${itemData.cartItemId.toString()}.`,
         );
-
-        // Every purchased operation is scheduled; missing dates default to tomorrow.
-        try {
-            await dependencies.createEvent(
-                dependencies.knownEvents.operations.scheduledV1(
-                    operationId.toString(),
-                    {
-                        scheduledDate,
-                    },
-                ),
-            );
-            console.debug(
-                `Scheduled operation ${operationId} for date ${scheduledDate}.`,
-            );
-        } catch (error) {
-            console.error(
-                `Failed to create scheduled event for operation ${operationId}:`,
-                error,
-            );
-        }
-        await dependencies.notifyOperationUpdate(operationId, 'scheduled', {
-            scheduledDate: new Date(scheduledDate).toISOString(),
-        });
 
         // Check if this operation/entity is deliverable and create delivery request if needed
         if (itemData.cartId) {
@@ -950,63 +3479,46 @@ export async function processItem(
                     `Operation ${operationId} is deliverable - checking for delivery configuration in metadata`,
                 );
 
-                // Check if delivery information was stored in additionalData
-                let deliveryInfo: {
-                    slotId?: number;
-                    mode?: 'delivery' | 'pickup';
-                    addressId?: number;
-                    locationId?: number;
-                    notes?: string;
-                } | null = null;
-                if (
-                    typeof additionalData === 'object' &&
-                    additionalData !== null &&
-                    'delivery' in additionalData
-                ) {
-                    deliveryInfo = (additionalData as Record<string, unknown>)
-                        .delivery as {
-                        slotId?: number;
-                        mode?: 'delivery' | 'pickup';
-                        addressId?: number;
-                        locationId?: number;
-                        notes?: string;
-                    };
-                }
-
-                if (deliveryInfo?.slotId && deliveryInfo.mode) {
+                if (deliveryInfo) {
                     try {
-                        const deliveryRequestId =
-                            await dependencies.createDeliveryRequest({
-                                operationId,
-                                slotId: deliveryInfo.slotId,
-                                mode: deliveryInfo.mode,
-                                addressId: deliveryInfo.addressId,
-                                locationId: deliveryInfo.locationId,
-                                notes: deliveryInfo.notes,
-                                accountId: itemData.accountId,
-                            });
+                        await claimControl?.assertOwned();
+                        const deliveryRequest =
+                            await dependencies.getOrCreateDeliveryRequest(
+                                {
+                                    operationId,
+                                    slotId: deliveryInfo.slotId,
+                                    mode: deliveryInfo.mode,
+                                    addressId: deliveryInfo.addressId,
+                                    locationId: deliveryInfo.locationId,
+                                    notes: deliveryInfo.notes,
+                                    accountId: itemData.accountId,
+                                },
+                                {
+                                    checkoutNotificationScope:
+                                        itemData.checkoutSessionId
+                                            ? `session:${itemData.checkoutSessionId}`
+                                            : `cart:${itemData.cartId.toString()}`,
+                                },
+                            );
                         console.debug(
-                            `Created delivery request ${deliveryRequestId} for operation ${operationId}`,
+                            `${deliveryRequest.created ? 'Created' : 'Reused'} delivery request ${deliveryRequest.requestId} for operation ${operationId.toString()}`,
                         );
-                        await dependencies.notifyDeliveryRequestEvent(
-                            deliveryRequestId,
-                            'created',
-                        );
-                        await dependencies.notifyScheduledDeliveryEmailOnce({
-                            requestId: deliveryRequestId,
-                            accountId: itemData.accountId,
-                            deliveryInfo,
-                            notifiedKeys: itemData.scheduledDeliveryEmailKeys,
-                            notify: dependencies.notifyDeliveryScheduled,
-                        });
                     } catch (error) {
+                        if (
+                            error instanceof
+                            StripePaymentProcessingClaimLostError
+                        ) {
+                            throw error;
+                        }
                         console.error(
                             `Failed to create delivery request for operation ${operationId}:`,
                             error,
                         );
                         // Payment already captured -- do not re-throw. Surface the failure so ops
                         // can reconcile the paid-but-undelivered order.
-                        (await dependencies.getPostHogClient()).capture({
+                        const postHog = await dependencies.getPostHogClient();
+                        await claimControl?.assertOwned();
+                        postHog.capture({
                             distinctId: itemData.accountId,
                             event: 'delivery_request_creation_failed',
                             properties: {
@@ -1018,100 +3530,466 @@ export async function processItem(
                                     itemData.checkoutSessionId ?? null,
                             },
                         });
+                        return {
+                            status: 'not_fulfilled',
+                            reason: 'delivery_request_failed',
+                        };
                     }
                 } else {
                     console.warn(
                         `Operation ${operationId} is deliverable but no delivery information found in metadata`,
                     );
+                    return {
+                        status: 'not_fulfilled',
+                        reason: 'delivery_configuration_missing',
+                    };
                 }
             }
         }
+        return { status: 'fulfilled' };
     } else if (
         itemData.entityId &&
         itemData.entityTypeName === 'plantSort' &&
         itemData.raisedBedId &&
         typeof itemData.positionIndex === 'number'
     ) {
-        if (
-            !(await assertRaisedBedAllowsCheckoutItem(
-                itemData.raisedBedId,
-                dependencies,
-            ))
-        ) {
-            return;
-        }
-
+        const plantSortId = itemData.entityId;
+        const positionIndex = itemData.positionIndex;
+        const raisedBedId = itemData.raisedBedId;
         const outletReservation = await outletReservationForCheckout(
             itemData,
             dependencies,
         );
-        const aggregateId = `${itemData.raisedBedId}|${itemData.positionIndex}`;
-
-        await dependencies.upsertRaisedBedField({
-            positionIndex: itemData.positionIndex,
-            raisedBedId: itemData.raisedBedId,
-        });
-        await dependencies.createEvent(
-            dependencies.knownEvents.raisedBedFields.plantPlaceV1(aggregateId, {
-                plantSortId: itemData.entityId,
-                scheduledDate: outletReservation
-                    ? null
-                    : checkoutScheduledDateFromAdditionalData(
-                          itemData.additionalData,
-                          dependencies,
-                      ),
-                sowingLocation: outletReservation ? 'greenhouse' : undefined,
-            }),
-        );
-        if (outletReservation) {
-            await dependencies.createEvent(
-                dependencies.knownEvents.raisedBedFields.plantUpdateV1(
-                    aggregateId,
-                    {
-                        status: 'sowed',
-                        effectiveDate:
-                            outletReservation.heldSowingDate.toISOString(),
-                    },
-                ),
-            );
-
-            if (outletReservation.heldInitialPlantStatus !== 'sowed') {
-                await dependencies.createEvent(
-                    dependencies.knownEvents.raisedBedFields.plantUpdateV1(
-                        aggregateId,
-                        {
-                            status: outletReservation.heldInitialPlantStatus,
-                        },
-                    ),
+        const outletCartItemId = (() => {
+            if (!outletReservation) return undefined;
+            if (!itemData.cartItemId) {
+                throw new Error(
+                    'Outlet checkout planting requires a cart item ID.',
                 );
             }
+            return itemData.cartItemId;
+        })();
+        const aggregateId = `${raisedBedId}|${positionIndex}`;
+        const purchase = plantingPurchaseFromCheckoutItem(itemData);
+        const advancedSowingAuthorization =
+            itemData.advancedSowingAuthorization;
+        if (advancedSowingAuthorization && outletReservation) {
+            throw new Error(
+                'Advanced Sowing checkout cannot use an outlet reservation.',
+            );
         }
+        const advancedSowingOccupiedPositionIndices =
+            advancedSowingAuthorization?.plan.occupiedPositionIndices
+                .slice()
+                .sort((left, right) => left - right);
+        const plantingTransactionPositionIndex =
+            advancedSowingOccupiedPositionIndices?.[0] ?? positionIndex;
 
-        await Promise.all([
-            dependencies.updateRaisedBed({
-                id: itemData.raisedBedId,
-                status: 'active',
-            }),
-            earnSunflowersFunc(),
-        ]);
+        await earnSunflowersFunc();
+        await claimControl?.assertOwned();
+        let placementResult: 'already-placed' | 'placed';
+        try {
+            const placePlanting = async (
+                transaction: ScheduleTaskTransaction,
+            ): Promise<'already-placed' | 'placed'> => {
+                await claimControl?.assertOwned(transaction);
+                if (advancedSowingAuthorization) {
+                    if (!itemData.cartItemId || !purchase) {
+                        throw new Error(
+                            'Advanced Sowing checkout requires an immutable paid cart-item identity.',
+                        );
+                    }
+                    const selectedCartItemId = itemData.cartItemId;
+                    const selectedPlantSortId = Number(plantSortId);
+                    const selectedAggregateId =
+                        selectedPlantingAggregateIdForCartItem(
+                            selectedCartItemId,
+                        );
+                    const scheduledDate =
+                        checkoutScheduledDateFromAdditionalData(
+                            itemData.additionalData,
+                            dependencies,
+                        );
+                    const sowingLocation =
+                        greenhouseSowingLocationFromAdditionalData(
+                            itemData.additionalData,
+                        ) ?? 'direct';
+                    const buildSelectedPlantingInput = (
+                        fields: readonly {
+                            id: number;
+                            positionIndex: number;
+                        }[],
+                    ) =>
+                        buildSelectedPlantingFromPaidCheckout({
+                            authorization: advancedSowingAuthorization,
+                            bedFieldCount:
+                                ADVANCED_SOWING_DEFAULT_BED_FIELD_COUNT,
+                            cartItemId: selectedCartItemId,
+                            fields,
+                            plantSortId: selectedPlantSortId,
+                            positionIndex,
+                            purchase,
+                            raisedBedId,
+                            scheduledDate,
+                            sowingLocation,
+                        });
+
+                    const existingPlanting =
+                        await dependencies.getRaisedBedPlantingByEventAggregateId(
+                            selectedAggregateId,
+                            transaction,
+                        );
+                    if (existingPlanting) {
+                        const result =
+                            await dependencies.createRaisedBedPlanting(
+                                buildSelectedPlantingInput(
+                                    existingPlanting.memberships.map(
+                                        (membership) =>
+                                            membership.raisedBedField,
+                                    ),
+                                ),
+                                transaction,
+                            );
+                        return result.created ? 'placed' : 'already-placed';
+                    }
+
+                    for (const occupiedPositionIndex of advancedSowingOccupiedPositionIndices ??
+                        []) {
+                        await claimControl?.assertOwned(transaction);
+                        await dependencies.upsertRaisedBedField(
+                            {
+                                positionIndex: occupiedPositionIndex,
+                                raisedBedId,
+                            },
+                            transaction,
+                        );
+                    }
+                    const fields =
+                        await dependencies.getRaisedBedFieldsWithEvents(
+                            raisedBedId,
+                            transaction,
+                        );
+                    const selectedPlanting =
+                        await dependencies.createRaisedBedPlanting(
+                            buildSelectedPlantingInput(fields),
+                            transaction,
+                        );
+                    if (!selectedPlanting.created) {
+                        return 'already-placed';
+                    }
+
+                    const raisedBedActivation =
+                        await dependencies.lockAndActivateRaisedBedForCheckoutPlanting(
+                            raisedBedId,
+                            transaction,
+                        );
+                    if (!raisedBedActivation.available) {
+                        throw new CheckoutPlantingRaisedBedUnavailableError(
+                            raisedBedActivation.reason,
+                        );
+                    }
+                    if (raisedBedActivation.activatedAccountId) {
+                        await claimControl?.assertOwned(transaction);
+                        await dependencies.processReferralRewardsForAccount(
+                            raisedBedActivation.activatedAccountId,
+                            transaction,
+                        );
+                    }
+                    return 'placed';
+                }
+
+                const raisedBedActivation =
+                    await dependencies.lockAndActivateRaisedBedForCheckoutPlanting(
+                        raisedBedId,
+                        transaction,
+                    );
+                if (!raisedBedActivation.available) {
+                    throw new CheckoutPlantingRaisedBedUnavailableError(
+                        raisedBedActivation.reason,
+                    );
+                }
+                if (raisedBedActivation.activatedAccountId) {
+                    await claimControl?.assertOwned(transaction);
+                    await dependencies.processReferralRewardsForAccount(
+                        raisedBedActivation.activatedAccountId,
+                        transaction,
+                    );
+                }
+
+                await claimControl?.assertOwned(transaction);
+                await dependencies.upsertRaisedBedField(
+                    {
+                        positionIndex,
+                        raisedBedId,
+                    },
+                    transaction,
+                );
+                const fields = await dependencies.getRaisedBedFieldsWithEvents(
+                    raisedBedId,
+                    transaction,
+                );
+                const targetField = fields.find(
+                    (field) => field.positionIndex === positionIndex,
+                );
+                const existingCheckoutPlanting = fields
+                    .flatMap((field) =>
+                        field.plantCycles.map((plantCycle) => ({
+                            field,
+                            plantCycle,
+                        })),
+                    )
+                    .find(({ plantCycle }) =>
+                        isSameCheckoutPlanting(plantCycle, purchase),
+                    );
+                if (existingCheckoutPlanting) {
+                    await dependencies.ensureLegacyRaisedBedPlantingProjection(
+                        existingCheckoutPlanting.plantCycle.plantPlaceEventId,
+                        existingCheckoutPlanting.field.id,
+                        transaction,
+                    );
+                    if (outletCartItemId) {
+                        await claimControl?.assertOwned(transaction);
+                        await dependencies.convertOutletReservationForCartItem(
+                            outletCartItemId,
+                            new Date(),
+                            transaction,
+                        );
+                    }
+                    return 'already-placed';
+                }
+
+                const activePlantCycle = targetField?.plantCycles.find(
+                    (plantCycle) => plantCycle.active,
+                );
+                if (activePlantCycle) {
+                    throw new CheckoutPlantingTargetConflictError(
+                        'Checkout planting target has an active plant cycle.',
+                    );
+                }
+
+                if (outletCartItemId) {
+                    await claimControl?.assertOwned(transaction);
+                    await dependencies.convertOutletReservationForCartItem(
+                        outletCartItemId,
+                        new Date(),
+                        transaction,
+                    );
+                }
+
+                await claimControl?.assertOwned(transaction);
+                if (!targetField) {
+                    throw new Error(
+                        'Checkout planting target field was not created.',
+                    );
+                }
+                await dependencies.createLegacyRaisedBedPlantPlaceWithProjection(
+                    {
+                        event: dependencies.knownEvents.raisedBedFields.plantPlaceV1(
+                            aggregateId,
+                            {
+                                plantSortId,
+                                scheduledDate: outletReservation
+                                    ? null
+                                    : checkoutScheduledDateFromAdditionalData(
+                                          itemData.additionalData,
+                                          dependencies,
+                                      ),
+                                sowingLocation: outletReservation
+                                    ? 'greenhouse'
+                                    : greenhouseSowingLocationFromAdditionalData(
+                                          itemData.additionalData,
+                                      ),
+                                ...(purchase ? { purchase } : {}),
+                            },
+                        ),
+                        raisedBedFieldId: targetField.id,
+                    },
+                    transaction,
+                );
+                if (outletReservation) {
+                    await claimControl?.assertOwned(transaction);
+                    await dependencies.createEvent(
+                        dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                            aggregateId,
+                            {
+                                status: 'sowed',
+                                effectiveDate:
+                                    outletReservation.heldSowingDate.toISOString(),
+                            },
+                        ),
+                        transaction,
+                    );
+
+                    if (outletReservation.heldInitialPlantStatus !== 'sowed') {
+                        await claimControl?.assertOwned(transaction);
+                        await dependencies.createEvent(
+                            dependencies.knownEvents.raisedBedFields.plantUpdateV1(
+                                aggregateId,
+                                {
+                                    status: outletReservation.heldInitialPlantStatus,
+                                },
+                            ),
+                            transaction,
+                        );
+                    }
+                }
+                return 'placed';
+            };
+            placementResult = advancedSowingAuthorization
+                ? await dependencies.withPlantingScheduleTaskFootprintTransaction(
+                      raisedBedId,
+                      advancedSowingOccupiedPositionIndices ?? [],
+                      placePlanting,
+                      itemData.fulfillmentTransaction,
+                  )
+                : await dependencies.withPlantingScheduleTaskTransaction(
+                      raisedBedId,
+                      plantingTransactionPositionIndex,
+                      placePlanting,
+                  );
+        } catch (error) {
+            if (isCheckoutPlantingTargetConflict(error)) {
+                const advancedSowingConflictCode =
+                    advancedSowingCheckoutConflictCode(error);
+                console.error('Checkout planting target is occupied', {
+                    accountId: itemData.accountId,
+                    cartItemId: itemData.cartItemId,
+                    checkoutSessionId: itemData.checkoutSessionId,
+                    error,
+                    positionIndex,
+                    raisedBedId,
+                });
+                if (
+                    itemData.accountId &&
+                    itemData.cartItemId &&
+                    itemData.checkoutSessionId
+                ) {
+                    const accountId = itemData.accountId;
+                    const cartItemId = itemData.cartItemId;
+                    const checkoutSessionId = itemData.checkoutSessionId;
+                    await claimControl?.assertOwned();
+                    const incident =
+                        await dependencies.createNotificationWithStatus(
+                            {
+                                accountId,
+                                gardenId: itemData.gardenId,
+                                raisedBedId,
+                                header: 'Plaćena sadnja čeka provjeru',
+                                content:
+                                    'Plaćenu sadnju nismo postavili jer je odabrano polje u međuvremenu zauzeto. Zadatak je evidentiran za ponovni pokušaj i pregled tima farme.',
+                                category: 'checkout_fulfillment',
+                                type: 'checkout_planting_target_conflict',
+                                primaryChannel: 'in_app',
+                                priority: 'critical',
+                                metadata: {
+                                    cartItemId,
+                                    checkoutSessionId,
+                                    fulfillmentStatus: 'open',
+                                    operatorOwner: 'farm_operations',
+                                    recovery:
+                                        'stripe_retry_then_manual_placement_or_refund',
+                                    positionIndex,
+                                    raisedBedId,
+                                },
+                                timestamp: new Date(),
+                            },
+                            {
+                                idempotencyKey: `checkout-planting-target-conflict:${checkoutSessionId}:${cartItemId.toString()}`,
+                                routeDelivery: false,
+                            },
+                        );
+                    await claimControl?.assertOwned();
+                    const operatorAlert =
+                        await dependencies.deliverNotificationOperatorAlert(
+                            incident.notificationId,
+                            async () => {
+                                await claimControl?.assertOwned();
+                                await dependencies.notifyCheckoutFulfillmentIncident(
+                                    {
+                                        accountId,
+                                        cartItemId,
+                                        checkoutSessionId,
+                                        incidentId: incident.notificationId,
+                                        positionIndex,
+                                        raisedBedId,
+                                    },
+                                );
+                            },
+                        );
+                    if (
+                        operatorAlert.status === 'failed' &&
+                        operatorAlert.error instanceof
+                            StripePaymentProcessingClaimLostError
+                    ) {
+                        throw operatorAlert.error;
+                    }
+                    if (operatorAlert.status === 'failed') {
+                        console.error(
+                            'Checkout fulfillment incident operator alert failed and will be retried',
+                            {
+                                cartItemId,
+                                checkoutSessionId,
+                                error: operatorAlert.error,
+                                incidentId: incident.notificationId,
+                            },
+                        );
+                    }
+                }
+                if (advancedSowingConflictCode) {
+                    const postHog = await dependencies.getPostHogClient();
+                    await claimControl?.assertOwned();
+                    postHog.capture({
+                        distinctId: 'advanced-sowing-checkout',
+                        event: 'advanced_sowing_checkout_conflict',
+                        properties: {
+                            reason_code: advancedSowingConflictCode,
+                        },
+                    });
+                } else if (itemData.accountId) {
+                    const postHog = await dependencies.getPostHogClient();
+                    await claimControl?.assertOwned();
+                    postHog.capture({
+                        distinctId: itemData.accountId,
+                        event: 'checkout_planting_target_conflict',
+                        properties: {
+                            $insert_id: `checkout-planting-target-conflict:${itemData.checkoutSessionId ?? 'unknown'}:${itemData.cartItemId?.toString() ?? 'unknown'}`,
+                            cart_item_id: itemData.cartItemId ?? null,
+                            checkout_session_id:
+                                itemData.checkoutSessionId ?? null,
+                            position_index: positionIndex,
+                            raised_bed_id: raisedBedId,
+                        },
+                    });
+                }
+            }
+            throw error;
+        }
         console.debug(
-            `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
+            placementResult === 'already-placed'
+                ? `Plant sort ${itemData.entityId} was already placed in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`
+                : `Placed plant sort ${itemData.entityId} in raised bed ${itemData.raisedBedId} at position ${itemData.positionIndex}.`,
         );
         if (outletReservation && itemData.accountId) {
-            (await dependencies.getPostHogClient()).capture({
+            const postHog = await dependencies.getPostHogClient();
+            await claimControl?.assertOwned();
+            postHog.capture({
                 distinctId: itemData.accountId,
                 event: 'outlet_reservation_converted',
                 properties: {
+                    $insert_id: `outlet-reservation-converted:${itemData.cartItemId?.toString() ?? outletReservation.id.toString()}`,
+                    checkout_session_id: itemData.checkoutSessionId ?? null,
                     outlet_offer_id: outletReservation.outletOfferId,
                     outlet_reservation_id: outletReservation.id,
                     cart_item_id: itemData.cartItemId,
                 },
             });
         }
+        return { status: 'fulfilled' };
     } else {
         console.error(
             `Unsupported item type for entityId ${itemData.entityId} in order.`,
             itemData,
         );
+        return { status: 'not_fulfilled', reason: 'unsupported_item' };
     }
 }

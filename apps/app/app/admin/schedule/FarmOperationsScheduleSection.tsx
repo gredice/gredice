@@ -4,7 +4,7 @@ import type { OperationAssignableFarmUser } from '@gredice/storage';
 import { Checkbox } from '@gredice/ui/Checkbox';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Calendar, Close } from '@gredice/ui/icons';
+import { Calendar, Close, Edit } from '@gredice/ui/icons';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
@@ -23,20 +23,31 @@ import {
 } from '../../(actions)/operationActions';
 import { AcceptOperationModal } from './AcceptOperationModal';
 import { AssignOperationModal } from './AssignOperationModal';
+import { BulkApproveRaisedBedButton } from './BulkApproveRaisedBedButton';
+import { BulkAssignRaisedBedButton } from './BulkAssignRaisedBedButton';
+import {
+    BulkCancelRaisedBedButton,
+    buildOperationCancelFormData,
+} from './BulkCancelRaisedBedButton';
+import { BulkRescheduleRaisedBedButton } from './BulkRescheduleRaisedBedButton';
 import { CancelOperationModal } from './CancelOperationModal';
 import { CompleteOperationModal } from './CompleteOperationModal';
 import { OperationCompletionAttachments } from './OperationCompletionAttachments';
+import { OperationCompletionEvidenceEditModal } from './OperationCompletionEvidenceEditModal';
 import { OperationRequirementIcons } from './OperationRequirementIcons';
 import { RescheduleOperationModal } from './RescheduleOperationModal';
 import { ScheduleOperationVisual } from './ScheduleTaskVisual';
+import { getScheduleOperationHref } from './scheduleOperationLinks';
 import {
     createOperationAssignedUsers,
     parseScheduledDateInput,
 } from './scheduleOptimisticHelpers';
 import {
+    canAcceptOperationTask,
     formatMinutes,
     getOperationDurationMinutes,
     getScheduleTaskRowClassName,
+    isOperationBlocked,
     isOperationCancelled,
     isOperationCompleted,
     isOperationPendingVerification,
@@ -52,7 +63,8 @@ type FarmSummary = {
 };
 
 interface FarmOperationsScheduleSectionProps {
-    date: Date;
+    dateKey: string;
+    timeZone: string;
     farm: FarmSummary;
     scheduledOperations: Operation[];
     operationsData: EntityStandardized[] | null | undefined;
@@ -75,7 +87,8 @@ function getOperationLabel(
 }
 
 export function FarmOperationsScheduleSection({
-    date,
+    dateKey,
+    timeZone,
     farm,
     scheduledOperations,
     operationsData,
@@ -112,6 +125,65 @@ export function FarmOperationsScheduleSection({
         return null;
     }
 
+    const operationById = new Map(
+        dayOperations.map((operation) => [operation.id, operation]),
+    );
+    const farmTargetLabel = `za farmu ${farm.name}`;
+    const operationsToApprove = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                canAcceptOperationTask(operation.status) &&
+                !!operation.assignedUserId,
+        )
+        .map((operation) => ({
+            id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+            label: getOperationLabel(operation, operationDataById),
+        }));
+    const operationsToReschedule = dayOperations
+        .filter(
+            (operation) =>
+                !operation.isAccepted &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+        }));
+    const operationsToAssign = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationBlocked(operation.status) &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status),
+        )
+        .map((operation) => ({
+            id: operation.id,
+            expectedEntityId: operation.entityId,
+            expectedTaskVersionEventId: operation.taskVersionEventId,
+            farmUsers: assignableFarmUsersByOperationId[operation.id] ?? [],
+        }));
+    const operationsToCancel = dayOperations
+        .filter(
+            (operation) =>
+                !isOperationBlocked(operation.status) &&
+                !isOperationCompleted(operation.status) &&
+                !isOperationPendingVerification(operation.status) &&
+                !isOperationCancelled(operation.status) &&
+                operation.status !== 'failed',
+        )
+        .map((operation) => ({
+            id: operation.id,
+            entityId: operation.entityId,
+            taskVersionEventId: operation.taskVersionEventId,
+            label: getOperationLabel(operation, operationDataById),
+        }));
+
     const totalDuration = dayOperations.reduce(
         (sum, operation) =>
             sum +
@@ -124,17 +196,189 @@ export function FarmOperationsScheduleSection({
     return (
         <Stack spacing={2}>
             <Row spacing={2} className="w-full items-center flex-wrap gap-y-1">
-                <Link href={KnownPages.Farm(farm.id)}>
-                    <Typography semiBold>{farm.name}</Typography>
-                </Link>
-                <Typography level="body2" className="text-muted-foreground">
-                    {dayOperations.length} zadataka
-                </Typography>
-                {totalDuration > 0 && (
+                <Row
+                    spacing={2}
+                    className="min-w-0 grow items-center flex-wrap gap-y-1"
+                >
+                    <Link href={KnownPages.Farm(farm.id)}>
+                        <Typography semiBold>{farm.name}</Typography>
+                    </Link>
                     <Typography level="body2" className="text-muted-foreground">
-                        Vrijeme: {formatMinutes(totalDuration)}
+                        {dayOperations.length} zadataka
                     </Typography>
-                )}
+                    {totalDuration > 0 && (
+                        <Typography
+                            level="body2"
+                            className="text-muted-foreground"
+                        >
+                            Vrijeme: {formatMinutes(totalDuration)}
+                        </Typography>
+                    )}
+                </Row>
+                <Row spacing={1} className="ml-auto shrink-0 items-center">
+                    <BulkApproveRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToApprove}
+                        onConfirm={() =>
+                            runOptimisticAction({
+                                operationPatches: operationsToApprove.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { isAccepted: true },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToApprove.map((operation) =>
+                                            acceptOperationAction(
+                                                operation.id,
+                                                operation.entityId,
+                                                operation.taskVersionEventId,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to approve all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupna potvrda radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkAssignRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToAssign}
+                        onSubmit={(assignedUserIds) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToAssign.map(
+                                    (operation) => {
+                                        const currentOperation =
+                                            operationById.get(operation.id);
+                                        const assignedUsers =
+                                            createOperationAssignedUsers(
+                                                assignedUserIds,
+                                                operation.farmUsers,
+                                                currentOperation?.assignedUsers,
+                                            );
+
+                                        return {
+                                            id: operation.id,
+                                            patch: {
+                                                assignedUser:
+                                                    assignedUsers[0] ?? null,
+                                                assignedUserId:
+                                                    assignedUserIds[0] ?? null,
+                                                assignedUserIds,
+                                                assignedUsers,
+                                            },
+                                        };
+                                    },
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToAssign.map((operation) =>
+                                            assignOperationUserAction(
+                                                operation.id,
+                                                operation.expectedEntityId,
+                                                operation.expectedTaskVersionEventId,
+                                                assignedUserIds,
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to assign users for all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupna dodjela radnji nije uspjela. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkRescheduleRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToReschedule}
+                        onSubmit={(scheduledDate) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToReschedule.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: {
+                                            scheduledDate:
+                                                parseScheduledDateInput(
+                                                    scheduledDate,
+                                                ),
+                                        },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToReschedule.map(
+                                            (operation) => {
+                                                const formData = new FormData();
+                                                formData.set(
+                                                    'operationId',
+                                                    operation.id.toString(),
+                                                );
+                                                formData.set(
+                                                    'expectedEntityId',
+                                                    operation.entityId.toString(),
+                                                );
+                                                formData.set(
+                                                    'expectedTaskVersionEventId',
+                                                    operation.taskVersionEventId.toString(),
+                                                );
+                                                formData.set(
+                                                    'scheduledDate',
+                                                    scheduledDate,
+                                                );
+                                                return rescheduleOperationAction(
+                                                    formData,
+                                                );
+                                            },
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to reschedule all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupno zakazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                    <BulkCancelRaisedBedButton
+                        physicalId={farm.id.toString()}
+                        targetLabel={farmTargetLabel}
+                        fields={[]}
+                        operations={operationsToCancel}
+                        onSubmit={(formData) =>
+                            runOptimisticAction({
+                                operationPatches: operationsToCancel.map(
+                                    (operation) => ({
+                                        id: operation.id,
+                                        patch: { status: 'canceled' },
+                                    }),
+                                ),
+                                action: () =>
+                                    Promise.all(
+                                        operationsToCancel.map((operation) =>
+                                            cancelOperationAction(
+                                                buildOperationCancelFormData(
+                                                    operation,
+                                                    formData,
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                errorLogMessage:
+                                    'Failed to cancel all farm operation items:',
+                                errorAlertMessage:
+                                    'Skupno otkazivanje radnji nije uspjelo. Promjena je vraćena.',
+                            })
+                        }
+                    />
+                </Row>
             </Row>
             <Stack spacing={0}>
                 {dayOperations.map((operation) => {
@@ -147,7 +391,11 @@ export function FarmOperationsScheduleSection({
                     );
                     const operationPendingVerification =
                         isOperationPendingVerification(operation.status);
+                    const operationBlocked = isOperationBlocked(
+                        operation.status,
+                    );
                     const operationLocked =
+                        operationBlocked ||
                         isOperationCancelled(operation.status) ||
                         isOperationCompleted(operation.status) ||
                         operationPendingVerification;
@@ -180,27 +428,35 @@ export function FarmOperationsScheduleSection({
                         operation.status,
                     )
                         ? 'Otkazano'
-                        : operationPendingVerification
-                          ? 'Čeka verifikaciju'
-                          : isOperationCompleted(operation.status)
-                            ? null
-                            : operation.isAccepted
+                        : operationBlocked
+                          ? 'Blokirano'
+                          : operationPendingVerification
+                            ? 'Čeka verifikaciju'
+                            : isOperationCompleted(operation.status)
                               ? null
-                              : 'Nije potvrđeno';
+                              : operation.isAccepted
+                                ? null
+                                : 'Nije potvrđeno';
                     const operationStatusClassName = isOperationCancelled(
                         operation.status,
                     )
                         ? 'text-muted-foreground'
-                        : operationPendingVerification
-                          ? 'text-amber-600'
-                          : isOperationCompleted(operation.status)
-                            ? 'text-green-600'
-                            : operation.isAccepted
+                        : operationBlocked
+                          ? 'text-red-700 dark:text-red-300'
+                          : operationPendingVerification
+                            ? 'text-amber-600'
+                            : isOperationCompleted(operation.status)
                               ? 'text-green-600'
-                              : 'text-muted-foreground';
+                              : operation.isAccepted
+                                ? 'text-green-600'
+                                : 'text-muted-foreground';
                     const showScheduledDate =
                         !!operation.scheduledDate &&
-                        !isSameScheduleDay(operation.scheduledDate, date);
+                        !isSameScheduleDay(
+                            operation.scheduledDate,
+                            dateKey,
+                            timeZone,
+                        );
 
                     return (
                         <Row
@@ -217,6 +473,9 @@ export function FarmOperationsScheduleSection({
                                 ) : operationPendingVerification ? (
                                     <VerifyOperationModal
                                         operationId={operation.id}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
                                         label={operationLabel}
                                         onConfirm={() =>
                                             runOptimisticAction({
@@ -231,6 +490,7 @@ export function FarmOperationsScheduleSection({
                                                 action: () =>
                                                     verifyOperationAction(
                                                         operation.id,
+                                                        operation.taskVersionEventId,
                                                     ),
                                                 errorLogMessage:
                                                     'Error verifying operation:',
@@ -244,6 +504,10 @@ export function FarmOperationsScheduleSection({
                                 ) : operation.isAccepted ? (
                                     <CompleteOperationModal
                                         operationId={operation.id}
+                                        expectedEntityId={operation.entityId}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
                                         label={operationLabel}
                                         conditions={operationData?.conditions}
                                         onConfirm={(imageUrls, notes) =>
@@ -263,11 +527,15 @@ export function FarmOperationsScheduleSection({
                                                     imageUrls
                                                         ? completeOperationWithImageUrls(
                                                               operation.id,
+                                                              operation.entityId,
+                                                              operation.taskVersionEventId,
                                                               imageUrls,
                                                               notes,
                                                           )
                                                         : completeOperation(
                                                               operation.id,
+                                                              operation.entityId,
+                                                              operation.taskVersionEventId,
                                                               undefined,
                                                               notes,
                                                           ),
@@ -281,6 +549,11 @@ export function FarmOperationsScheduleSection({
                                 ) : (
                                     <AcceptOperationModal
                                         operationId={operation.id}
+                                        expectedEntityId={operation.entityId}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
+                                        operationStatus={operation.status}
                                         label={operationLabel}
                                         disabled={!operation.assignedUserId}
                                         onConfirm={() =>
@@ -296,6 +569,8 @@ export function FarmOperationsScheduleSection({
                                                 action: () =>
                                                     acceptOperationAction(
                                                         operation.id,
+                                                        operation.entityId,
+                                                        operation.taskVersionEventId,
                                                     ),
                                                 errorLogMessage:
                                                     'Error accepting operation:',
@@ -309,18 +584,11 @@ export function FarmOperationsScheduleSection({
                                     operation={operationData}
                                     label={operationLabel}
                                 />
-                                <a
+                                <Link
                                     className="min-w-0 flex-1"
-                                    href={
-                                        operationData?.information?.label
-                                            ? KnownPages.GrediceOperation(
-                                                  operationData.information
-                                                      .label,
-                                              )
-                                            : KnownPages.GrediceOperations
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                    href={getScheduleOperationHref(
+                                        operation.id,
+                                    )}
                                 >
                                     <Typography
                                         level="body1"
@@ -333,11 +601,16 @@ export function FarmOperationsScheduleSection({
                                     >
                                         {operationLabel}
                                     </Typography>
-                                </a>
+                                </Link>
                                 {operationStatusText && (
                                     <Typography
                                         level="body2"
                                         className={`shrink-0 italic ${operationStatusClassName}`}
+                                        title={
+                                            operationBlocked
+                                                ? operation.blockReasonLabel
+                                                : undefined
+                                        }
                                     >
                                         {operationStatusText}
                                     </Typography>
@@ -350,7 +623,15 @@ export function FarmOperationsScheduleSection({
                                         className="shrink-0 select-none"
                                     >
                                         {showScheduledDate ? (
-                                            <LocalDateTime time={false}>
+                                            <LocalDateTime
+                                                time={false}
+                                                format={{
+                                                    year: 'numeric',
+                                                    month: 'numeric',
+                                                    day: 'numeric',
+                                                    timeZone,
+                                                }}
+                                            >
                                                 {operation.scheduledDate}
                                             </LocalDateTime>
                                         ) : (
@@ -366,7 +647,8 @@ export function FarmOperationsScheduleSection({
                                 )}
                             </Row>
                             <Row spacing={0} className="ml-auto shrink-0">
-                                {!isOperationCompleted(operation.status) &&
+                                {!operationBlocked &&
+                                    !isOperationCompleted(operation.status) &&
                                     !operationPendingVerification && (
                                         <OperationRequirementIcons
                                             attachImages={attachImages}
@@ -387,8 +669,37 @@ export function FarmOperationsScheduleSection({
                                         imageUrls={operation.imageUrls}
                                     />
                                 )}
+                                {operationPendingVerification && (
+                                    <OperationCompletionEvidenceEditModal
+                                        operationId={operation.id}
+                                        expectedTaskVersionEventId={
+                                            operation.taskVersionEventId
+                                        }
+                                        label={operationLabel}
+                                        initialNotes={
+                                            operation.completionNotes ?? ''
+                                        }
+                                        initialImageUrls={
+                                            operation.imageUrls ?? []
+                                        }
+                                        trigger={
+                                            <IconButton
+                                                title="Uredi zapis završetka"
+                                                type="button"
+                                                size="xs"
+                                                variant="plain"
+                                            >
+                                                <Edit className="size-4 shrink-0" />
+                                            </IconButton>
+                                        }
+                                    />
+                                )}
                                 <AssignOperationModal
                                     operationId={operation.id}
+                                    expectedEntityId={operation.entityId}
+                                    expectedTaskVersionEventId={
+                                        operation.taskVersionEventId
+                                    }
                                     label={operationLabel}
                                     farmUsers={
                                         assignableFarmUsersByOperationId[
@@ -427,6 +738,8 @@ export function FarmOperationsScheduleSection({
                                             action: () =>
                                                 assignOperationUserAction(
                                                     operation.id,
+                                                    operation.entityId,
+                                                    operation.taskVersionEventId,
                                                     assignedUserIds,
                                                 ),
                                             errorLogMessage:
@@ -440,13 +753,15 @@ export function FarmOperationsScheduleSection({
                                     operation={{
                                         id: operation.id,
                                         entityId: operation.entityId,
+                                        taskVersionEventId:
+                                            operation.taskVersionEventId,
                                         scheduledDate: operation.scheduledDate,
                                     }}
                                     operationLabel={operationLabel}
                                     onSubmit={(formData) => {
                                         const scheduledDate =
                                             formData.get('scheduledDate');
-                                        runOptimisticAction({
+                                        return runOptimisticAction({
                                             operationPatches: [
                                                 {
                                                     id: operation.id,
@@ -480,7 +795,10 @@ export function FarmOperationsScheduleSection({
                                                     ? 'Prerasporedi radnju'
                                                     : 'Zakaži radnju'
                                             }
-                                            disabled={operationLocked}
+                                            disabled={
+                                                operationLocked &&
+                                                !operationBlocked
+                                            }
                                         >
                                             <Calendar className="size-4 shrink-0" />
                                         </IconButton>
@@ -490,6 +808,8 @@ export function FarmOperationsScheduleSection({
                                     operation={{
                                         id: operation.id,
                                         entityId: operation.entityId,
+                                        taskVersionEventId:
+                                            operation.taskVersionEventId,
                                         scheduledDate: operation.scheduledDate,
                                         status: operation.status,
                                     }}
@@ -517,7 +837,10 @@ export function FarmOperationsScheduleSection({
                                             variant="plain"
                                             size="xs"
                                             title="Otkaži operaciju"
-                                            disabled={operationLocked}
+                                            disabled={
+                                                operationLocked &&
+                                                !operationBlocked
+                                            }
                                         >
                                             <Close className="size-4 shrink-0" />
                                         </IconButton>

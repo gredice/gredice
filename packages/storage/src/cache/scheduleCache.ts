@@ -21,6 +21,10 @@ type DeliveryRequestsSummaryCacheInput = {
 };
 
 const CACHE_VERSION = 'v2';
+// Raised-bed payloads added planting memberships in these versions. Keep older
+// cached shapes out of Admin and Farm task reads during rollout.
+const ADMIN_RAISED_BED_PAYLOAD_VERSION = 'v3';
+const FARM_USER_RAISED_BED_PAYLOAD_VERSION = 'v4';
 
 export const scheduleCacheTtls = {
     day: 45,
@@ -72,7 +76,8 @@ function rangePart(input?: DateRangeCacheInput) {
 }
 
 export const scheduleCacheKeys = {
-    adminRaisedBeds: () => `schedule:admin:raisedBeds:${CACHE_VERSION}`,
+    adminRaisedBeds: () =>
+        `schedule:admin:raisedBeds:${ADMIN_RAISED_BED_PAYLOAD_VERSION}`,
     adminOperations: (input?: DateRangeCacheInput) =>
         `schedule:admin:operations:${rangePart(input)}:${CACHE_VERSION}`,
     adminActiveOperations: (from: Date, completedFrom: Date) =>
@@ -80,13 +85,17 @@ export const scheduleCacheKeys = {
     adminDay: (date: Date | string, isToday: boolean) =>
         `schedule:admin:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${CACHE_VERSION}`,
     farmUserRaisedBeds: (userId: string) =>
-        `schedule:farm:user:${safePart(userId)}:raisedBeds:${CACHE_VERSION}`,
+        `schedule:farm:user:${safePart(userId)}:raisedBeds:${FARM_USER_RAISED_BED_PAYLOAD_VERSION}`,
     farmUserOperations: (userId: string, input?: DateRangeCacheInput) =>
         `schedule:farm:user:${safePart(userId)}:operations:${rangePart(input)}:${CACHE_VERSION}`,
     farmUserActiveOperations: (userId: string, from: Date) =>
         `schedule:farm:user:${safePart(userId)}:operations:active:from:${dateTimePart(from)}:${CACHE_VERSION}`,
+    farmUserScheduledOperations: (userId: string, from: Date, to: Date) =>
+        `schedule:farm:user:${safePart(userId)}:operations:scheduled:from:${dateTimePart(from)}:to:${dateTimePart(to)}:${CACHE_VERSION}`,
+    farmRaisedBedPhotoPreviews: (raisedBedIds: number[]) =>
+        `schedule:farm:raisedBedPhotoPreviews:${raisedBedIds.map(safePart).join(',')}:${CACHE_VERSION}`,
     farmUserDay: (userId: string, date: Date | string, isToday: boolean) =>
-        `schedule:farm:user:${safePart(userId)}:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${CACHE_VERSION}`,
+        `schedule:farm:user:${safePart(userId)}:day:${localDateKey(date)}:today:${isToday ? '1' : '0'}:${FARM_USER_RAISED_BED_PAYLOAD_VERSION}`,
     deliveryRequestsSummary: (input: DeliveryRequestsSummaryCacheInput) =>
         [
             'delivery:requests:summary',

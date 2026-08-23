@@ -247,6 +247,7 @@ export function RaisedBedWateringCalendar({
     previewDate,
     previewOperation,
     raisedBedId,
+    referenceDate,
     selectedDate,
     visibleFrom,
     visibleTo,
@@ -260,11 +261,13 @@ export function RaisedBedWateringCalendar({
     previewDate?: Date | null;
     previewOperation?: OperationData;
     raisedBedId: number;
+    referenceDate?: Date;
     selectedDate?: Date | null;
     visibleFrom?: Date;
     visibleTo?: Date;
 }) {
-    const referenceDate = useLiveTime();
+    const liveReferenceDate = useLiveTime();
+    const resolvedReferenceDate = referenceDate ?? liveReferenceDate;
     const { data: operations, isError: isOperationsError } = useOperations();
     const { data: cart } = useShoppingCart();
     const history = useGardenOperations({
@@ -316,7 +319,7 @@ export function RaisedBedWateringCalendar({
                 gardenId,
                 operationsById,
                 raisedBedId,
-                referenceDate,
+                referenceDate: resolvedReferenceDate,
             }),
             ...buildPreviewEntry({
                 operation: previewOperation,
@@ -331,7 +334,7 @@ export function RaisedBedWateringCalendar({
             previewDate,
             previewOperation,
             raisedBedId,
-            referenceDate,
+            resolvedReferenceDate,
         ],
     );
 
@@ -352,7 +355,7 @@ export function RaisedBedWateringCalendar({
             maxSelectableDate={maxSelectableDate}
             minSelectableDate={minSelectableDate}
             onDateSelect={onDateSelect}
-            referenceDate={referenceDate}
+            referenceDate={resolvedReferenceDate}
             selectedDate={selectedDate}
             visibleFrom={visibleFrom}
             visibleTo={visibleTo}

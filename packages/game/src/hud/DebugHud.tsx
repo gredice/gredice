@@ -14,6 +14,7 @@ import {
     Ghost,
     Graph,
     Layers,
+    LayoutGrid,
     Lightning,
     MapPin,
     Moon,
@@ -28,6 +29,7 @@ import {
 import { Row } from '@gredice/ui/Row';
 import { Slider } from '@gredice/ui/Slider';
 import { Stack } from '@gredice/ui/Stack';
+import { Switch } from '@gredice/ui/Switch';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
 import type {
@@ -295,11 +297,21 @@ export function DebugHud() {
     const setEditHitboxDebugVisible = useGameState(
         (s) => s.setEditHitboxDebugVisible,
     );
+    const gardenAvatarCollisionDebugVisible = useGameState(
+        (s) => s.gardenAvatarCollisionDebugVisible,
+    );
+    const setGardenAvatarCollisionDebugVisible = useGameState(
+        (s) => s.setGardenAvatarCollisionDebugVisible,
+    );
     const entityRenderModeDebugVisible = useGameState(
         (s) => s.entityRenderModeDebugVisible,
     );
     const setEntityRenderModeDebugVisible = useGameState(
         (s) => s.setEntityRenderModeDebugVisible,
+    );
+    const wireframeDebugVisible = useGameState((s) => s.wireframeDebugVisible);
+    const setWireframeDebugVisible = useGameState(
+        (s) => s.setWireframeDebugVisible,
     );
     const animalPathfindingDebugVisible = useGameState(
         (s) => s.animalPathfindingDebugVisible,
@@ -321,7 +333,7 @@ export function DebugHud() {
 
     const { data: blockData } = useBlockData();
     const { data: garden } = useCurrentGarden();
-    const { data: weather } = useWeatherNow();
+    const { data: weather } = useWeatherNow(true, garden?.farmId);
     const specialEntityDebugEntries = useMemo(
         () =>
             getSpecialEntityDebugEntries({
@@ -735,11 +747,14 @@ export function DebugHud() {
             ? `${profileSnapshot.canvasWidth}×${profileSnapshot.canvasHeight}`
             : 'n/a';
     const shadowMapMode =
-        profileSnapshot?.shadowMapAutoUpdate === false
-            ? profileSnapshot.shadowMapDynamicRefreshMs
-                ? `cached · ${profileSnapshot.shadowMapDynamicRefreshMs}ms dynamic`
-                : 'cached'
-            : 'auto';
+        profileSnapshot?.shadowMapAutoUpdate === false ? 'cached' : 'auto';
+    const interactionResolutionCount =
+        profileSnapshot?.instancedInteractionResolutionCount ?? 0;
+    const interactionResolutionAverageMs =
+        interactionResolutionCount > 0
+            ? (profileSnapshot?.instancedInteractionResolutionTotalMs ?? 0) /
+              interactionResolutionCount
+            : undefined;
 
     return (
         <div
@@ -776,6 +791,15 @@ export function DebugHud() {
                                     icon={Desktop}
                                     label="Quality"
                                     value={`${qualityTier} · DPR ${formatMetric(profileSnapshot?.dprCap)}/${formatMetric(profileSnapshot?.reportedDpr)}`}
+                                />
+                                <InfoRow
+                                    icon={Graph}
+                                    label="Adaptive High"
+                                    value={
+                                        profileSnapshot?.adaptiveHighEnabled
+                                            ? `L${profileSnapshot.adaptiveHighLevel ?? 0} · ${formatMetric(profileSnapshot.adaptiveHighFactor)}× · DPR ${formatMetric(profileSnapshot.adaptiveHighDprCap)} · ${profileSnapshot.adaptiveHighAmbientFps ?? 0}fps/${profileSnapshot.adaptiveHighCloudUpdateMs ?? 0}ms · ${profileSnapshot.adaptiveHighSampleSource ?? 'frame'} ${formatMetric(profileSnapshot.adaptiveHighSampleMs)}/${formatMetric(profileSnapshot.adaptiveHighEwmaMs)}ms · ${profileSnapshot.adaptiveHighReason ?? 'stable'} · ${profileSnapshot.adaptiveHighTransitionCount ?? 0} transitions/${profileSnapshot.adaptiveHighOscillationCount ?? 0} oscillations`
+                                            : 'off'
+                                    }
                                 />
                                 <InfoRow
                                     icon={FullWidth}
@@ -843,14 +867,14 @@ export function DebugHud() {
                                     label="Shadows"
                                     value={
                                         profileSnapshot?.shadowsEnabled
-                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
+                                            ? `${profileSnapshot.shadowMapSize}px · ${shadowMapMode} · ${profileSnapshot.primaryShadowRefreshCount ?? 0} refreshes (${profileSnapshot.animatedCasterShadowRefreshCount ?? 0} animated) · ${profileSnapshot.shadowMapInvalidationCount ?? 0} invalidations`
                                             : 'off'
                                     }
                                 />
                                 <InfoRow
                                     icon={Cloud}
                                     label="Cloud shadows"
-                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real`}
+                                    value={`${profileSnapshot?.cloudProjectedShadowCount ?? 0} projected · ${profileSnapshot?.cloudRealShadowCasterCount ?? 0} real · ${profileSnapshot?.cloudAttenuationMaskResolution ?? 0}px/${profileSnapshot?.cloudAttenuationUpdateMs ?? 0}ms · ${profileSnapshot?.cloudAttenuationUpdateCount ?? 0} updates · ${profileSnapshot?.cloudAttenuationMaterialCount ?? 0} materials`}
                                 />
                                 <InfoRow
                                     icon={Droplets}
@@ -861,6 +885,11 @@ export function DebugHud() {
                                     icon={Layers}
                                     label="Overlays"
                                     value={`snow ${profileSnapshot?.instancedSnowOverlayCount ?? 0} · mulch ${profileSnapshot?.raisedBedMulchOverlayCount ?? 0} · decor ${profileSnapshot?.groundDecorationCount ?? 0}`}
+                                />
+                                <InfoRow
+                                    icon={Settings}
+                                    label="Block interactions"
+                                    value={`${profileSnapshot?.instancedInteractionControllerCount ?? 0} controller · ${profileSnapshot?.instancedInteractionTargetCount ?? 0} targets · ${interactionResolutionCount} resolves · avg ${formatMetric(interactionResolutionAverageMs)} ms · max ${formatMetric(profileSnapshot?.instancedInteractionResolutionMaxMs)} ms`}
                                 />
                                 <InfoRow
                                     icon={Settings}
@@ -1057,10 +1086,24 @@ export function DebugHud() {
                             )}
                         </DebugPanelSection>
                         <DebugPanelSection title="Scene" icon={Layers}>
+                            <div className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-card/60 px-2 py-1.5">
+                                <span className="inline-flex min-w-0 items-center gap-1.5 text-xs">
+                                    <LayoutGrid className="size-3.5 shrink-0 text-muted-foreground" />
+                                    <span className="truncate">
+                                        Wireframe view
+                                    </span>
+                                </span>
+                                <Switch
+                                    aria-label="Wireframe view"
+                                    checked={wireframeDebugVisible}
+                                    onCheckedChange={setWireframeDebugVisible}
+                                    size="sm"
+                                />
+                            </div>
                             <Row spacing={1} className="flex-wrap">
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Fence className="size-3.5" />
                                     }
@@ -1079,7 +1122,26 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
+                                    startDecorator={
+                                        <Custom className="size-3.5" />
+                                    }
+                                    variant={
+                                        gardenAvatarCollisionDebugVisible
+                                            ? 'solid'
+                                            : 'outlined'
+                                    }
+                                    onClick={() =>
+                                        setGardenAvatarCollisionDebugVisible(
+                                            !gardenAvatarCollisionDebugVisible,
+                                        )
+                                    }
+                                >
+                                    Walk collisions
+                                </Button>
+                                <Button
+                                    size="xs"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Layers className="size-3.5" />
                                     }
@@ -1098,7 +1160,7 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <Graph className="size-3.5" />
                                     }
@@ -1117,7 +1179,7 @@ export function DebugHud() {
                                 </Button>
                                 <Button
                                     size="xs"
-                                    className="flex-1"
+                                    className="min-w-32 flex-1"
                                     startDecorator={
                                         <MapPin className="size-3.5" />
                                     }

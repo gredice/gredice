@@ -4,9 +4,11 @@ import test from 'node:test';
 import {
     createAttributeDefinition,
     createEntity,
+    deleteAttributeDefinition,
     deleteAttributeValue,
     deleteEntity,
     generatedImageUrlDefaultValue,
+    getCommunityEditableFieldsForEntity,
     getEntitiesFormatted,
     getEntitiesRaw,
     getEntityFormatted,
@@ -31,6 +33,116 @@ type FormattedSort = {
         description?: string;
     };
 };
+
+test('raw entity loading preserves active values for retired definitions', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `retired-definition-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Retired Definition ${suffix}`,
+    });
+    const retiredDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'legacyName',
+        label: 'Legacy name',
+        entityTypeName,
+        dataType: 'text',
+    });
+    const entityId = await createEntity(entityTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: retiredDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'Legacy value',
+    });
+
+    await deleteAttributeDefinition(retiredDefinitionId);
+
+    const rawEntity = (await getEntitiesRaw(entityTypeName)).find(
+        (entity) => entity.id === entityId,
+    );
+    const retiredAttribute = rawEntity?.attributes.find(
+        (attribute) => attribute.attributeDefinitionId === retiredDefinitionId,
+    );
+
+    assert.equal(retiredAttribute?.value, 'Legacy value');
+    assert.equal(retiredAttribute?.attributeDefinition.isDeleted, true);
+    assert.equal(
+        rawEntity?.entityType.attributeDefinitions.some(
+            (definition) => definition.id === retiredDefinitionId,
+        ),
+        false,
+    );
+});
+
+test('raw entity loading preserves definitions after entity type reassignment', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const sourceTypeName = `reassigned-source-${suffix}`;
+    const targetTypeName = `reassigned-target-${suffix}`;
+
+    await upsertEntityType({
+        name: sourceTypeName,
+        label: `Reassigned Source ${suffix}`,
+    });
+    await upsertEntityType({
+        name: targetTypeName,
+        label: `Reassigned Target ${suffix}`,
+    });
+    const sourceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'legacyName',
+        label: 'Legacy name',
+        entityTypeName: sourceTypeName,
+        dataType: 'text',
+    });
+    const targetDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'currentName',
+        label: 'Current name',
+        entityTypeName: targetTypeName,
+        dataType: 'text',
+    });
+    const entityId = await createEntity(sourceTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: sourceDefinitionId,
+        entityTypeName: sourceTypeName,
+        entityId,
+        value: 'Legacy value',
+    });
+
+    await updateEntity({ id: entityId, entityTypeName: targetTypeName });
+    await updateEntity({ id: entityId, state: 'published' });
+
+    const rawEntity = (await getEntitiesRaw(targetTypeName)).find(
+        (entity) => entity.id === entityId,
+    );
+    const reassignedAttribute = rawEntity?.attributes.find(
+        (attribute) => attribute.attributeDefinitionId === sourceDefinitionId,
+    );
+
+    assert.equal(reassignedAttribute?.value, 'Legacy value');
+    assert.equal(
+        reassignedAttribute?.attributeDefinition.entityTypeName,
+        sourceTypeName,
+    );
+    assert.deepEqual(
+        rawEntity?.entityType.attributeDefinitions.map(
+            (definition) => definition.id,
+        ),
+        [targetDefinitionId],
+    );
+
+    const formattedEntity = (
+        await getEntitiesFormatted<{
+            id: number;
+            information?: { legacyName?: string };
+        }>(targetTypeName)
+    ).find((entity) => entity.id === entityId);
+    assert.equal(formattedEntity?.information?.legacyName, 'Legacy value');
+});
 
 test('CMS entity references are resolved by entity ID', async () => {
     createTestDb();
@@ -309,6 +421,232 @@ async function captureBustCacheKeys(run: () => Promise<void>) {
 
     return cacheKeys;
 }
+
+function assertFormattedCacheKeys(
+    cacheKeys: string[],
+    expectedCacheKeys: string[],
+) {
+    const formattedCacheKeys = cacheKeys.filter((cacheKey) =>
+        cacheKey.startsWith('entities:formatted:'),
+    );
+
+    assert.equal(
+        formattedCacheKeys.length,
+        new Set(formattedCacheKeys).size,
+        'formatted cache keys should only be busted once',
+    );
+    assert.deepEqual(
+        [...formattedCacheKeys].sort(),
+        [...expectedCacheKeys].sort(),
+    );
+}
+
+async function createEntityReadModelInvalidationTestData() {
+    for (const entityTypeName of [
+        'brand',
+        'operation',
+        'plant',
+        'plantSort',
+        'plantStage',
+        'seed',
+    ]) {
+        await upsertEntityType({
+            name: entityTypeName,
+            label: entityTypeName,
+        });
+    }
+
+    const plantNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'plant',
+        dataType: 'text',
+    });
+    const brandNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'brand',
+        dataType: 'text',
+    });
+    const operationNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: 'operation',
+        dataType: 'text',
+    });
+
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'plant',
+        label: 'Plant',
+        entityTypeName: 'plantSort',
+        dataType: 'ref:plant',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'plantSort',
+        label: 'Plant sort',
+        entityTypeName: 'seed',
+        dataType: 'ref:plantSort',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'brand',
+        label: 'Brand',
+        entityTypeName: 'seed',
+        dataType: 'ref:brand',
+    });
+    await createAttributeDefinition({
+        category: 'information',
+        name: 'stage',
+        label: 'Stage',
+        entityTypeName: 'operation',
+        dataType: 'ref:plantStage',
+    });
+
+    return {
+        brandNameDefinitionId,
+        operationNameDefinitionId,
+        plantNameDefinitionId,
+    };
+}
+
+test('ordinary attribute mutations bust transitive formatted read models', async () => {
+    createTestDb();
+    const {
+        brandNameDefinitionId,
+        operationNameDefinitionId,
+        plantNameDefinitionId,
+    } = await createEntityReadModelInvalidationTestData();
+    const plantId = await createEntity('plant');
+    const brandId = await createEntity('brand');
+    const operationId = await createEntity('operation');
+
+    const plantCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: plantNameDefinitionId,
+            entityTypeName: 'plant',
+            entityId: plantId,
+            value: 'Tomato',
+        });
+    });
+    assertFormattedCacheKeys(plantCacheKeys, [
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+
+    const brandCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: brandNameDefinitionId,
+            entityTypeName: 'brand',
+            entityId: brandId,
+            value: 'Seed brand',
+        });
+    });
+    assertFormattedCacheKeys(brandCacheKeys, [
+        'entities:formatted:brand:state:published:locale:default:v1',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+
+    const operationCacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: operationNameDefinitionId,
+            entityTypeName: 'operation',
+            entityId: operationId,
+            value: 'Watering',
+        });
+    });
+    assertFormattedCacheKeys(operationCacheKeys, [
+        'entities:formatted:operation:state:published:locale:default:v1',
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ]);
+});
+
+test('entity state and delete mutations bust transitive formatted read models', async () => {
+    createTestDb();
+    const { operationNameDefinitionId } =
+        await createEntityReadModelInvalidationTestData();
+    const operationId = await createEntity('operation');
+    await upsertAttributeValue({
+        attributeDefinitionId: operationNameDefinitionId,
+        entityTypeName: 'operation',
+        entityId: operationId,
+        value: 'Watering',
+    });
+    const expectedCacheKeys = [
+        'entities:formatted:operation:state:published:locale:default:v1',
+        'entities:formatted:plant:state:published:locale:default:v2',
+        'entities:formatted:plantSort:state:published:locale:default:v2',
+        'entities:formatted:seed:state:published:locale:default:v2',
+    ];
+
+    const publishedCacheKeys = await captureBustCacheKeys(async () => {
+        await updateEntity({ id: operationId, state: 'published' });
+    });
+    assertFormattedCacheKeys(publishedCacheKeys, expectedCacheKeys);
+
+    const deletedCacheKeys = await captureBustCacheKeys(async () => {
+        await deleteEntity(operationId);
+    });
+    assertFormattedCacheKeys(deletedCacheKeys, expectedCacheKeys);
+});
+
+test('retired ref definitions retain invalidation dependencies for active values', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const targetTypeName = `cache-target-${suffix}`;
+    const dependentTypeName = `cache-dependent-${suffix}`;
+    await upsertEntityType({
+        name: targetTypeName,
+        label: 'Cache target',
+    });
+    await upsertEntityType({
+        name: dependentTypeName,
+        label: 'Cache dependent',
+    });
+    const targetNameDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'name',
+        label: 'Name',
+        entityTypeName: targetTypeName,
+        dataType: 'text',
+    });
+    const retiredReferenceDefinitionId = await createAttributeDefinition({
+        category: 'information',
+        name: 'target',
+        label: 'Target',
+        entityTypeName: dependentTypeName,
+        dataType: `ref:${targetTypeName}`,
+    });
+    const targetId = await createEntity(targetTypeName);
+    const dependentId = await createEntity(dependentTypeName);
+    await upsertAttributeValue({
+        attributeDefinitionId: retiredReferenceDefinitionId,
+        entityTypeName: dependentTypeName,
+        entityId: dependentId,
+        value: String(targetId),
+    });
+    await deleteAttributeDefinition(retiredReferenceDefinitionId);
+
+    const cacheKeys = await captureBustCacheKeys(async () => {
+        await upsertAttributeValue({
+            attributeDefinitionId: targetNameDefinitionId,
+            entityTypeName: targetTypeName,
+            entityId: targetId,
+            value: 'Updated target',
+        });
+    });
+    assertFormattedCacheKeys(cacheKeys, [
+        `entities:formatted:${targetTypeName}:state:published:locale:default:v1`,
+        `entities:formatted:${dependentTypeName}:state:published:locale:default:v1`,
+    ]);
+});
 
 async function createPlantHealthTestData() {
     await upsertEntityType({ name: 'plant', label: 'Plant' });
@@ -664,7 +1002,7 @@ test('plant relationship mutations bust inherited plant sort relationships cache
 
     assert.ok(
         createdCacheKeys.includes(
-            'entities:formatted:plantSort:state:published:locale:default:v1',
+            'entities:formatted:plantSort:state:published:locale:default:v2',
         ),
     );
 
@@ -681,7 +1019,7 @@ test('plant relationship mutations bust inherited plant sort relationships cache
 
     assert.ok(
         deletedCacheKeys.includes(
-            'entities:formatted:plantSort:state:published:locale:default:v1',
+            'entities:formatted:plantSort:state:published:locale:default:v2',
         ),
     );
 });
@@ -834,6 +1172,35 @@ test('plant health read model derives diseases and pests from affected plant ref
             value: String(treatmentOperationId),
         }),
     ]);
+
+    const symptomFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'symptoms',
+    });
+    assert.equal(symptomFields[0]?.currentValue, `Disease ${suffix} symptoms`);
+
+    const relationshipFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'relationships',
+    });
+    assert.ok(
+        relationshipFields[0]?.options?.some(
+            (option) => option.value === String(tomatoId),
+        ),
+    );
+
+    const operationFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plantDisease',
+        entityId: disease.id,
+        sectionKey: 'operations',
+    });
+    assert.ok(
+        operationFields[0]?.options?.some(
+            (option) => option.value === String(preventionOperationId),
+        ),
+    );
 
     const formattedPlants =
         await getEntitiesFormatted<FormattedPlantWithHealth>('plant');
@@ -1136,6 +1503,66 @@ test('CMS generated image attributes are configured by attribute definitions', a
             url: 'https://cdn.example.test/assets/Parent%20Block.webp',
         }),
     );
+});
+
+test('CMS boolean defaults stay virtual until explicitly overridden', async () => {
+    createTestDb();
+    const suffix = randomUUID();
+    const entityTypeName = `boolean-default-${suffix}`;
+
+    await upsertEntityType({
+        name: entityTypeName,
+        label: `Boolean Default ${suffix}`,
+    });
+
+    const appliesToAllTargetsDefinitionId = await createAttributeDefinition({
+        category: 'attributes',
+        name: 'appliesToAllTargets',
+        label: 'Primjenjivo na sve ciljeve',
+        entityTypeName,
+        dataType: 'boolean',
+        defaultValue: 'false',
+        display: false,
+        required: false,
+    });
+    const entityId = await createEntity(entityTypeName);
+
+    let rawEntity = await getEntityRaw(entityId);
+    let appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.equal(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'false');
+
+    let formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, false);
+
+    await upsertAttributeValue({
+        attributeDefinitionId: appliesToAllTargetsDefinitionId,
+        entityTypeName,
+        entityId,
+        value: 'true',
+    });
+
+    rawEntity = await getEntityRaw(entityId);
+    appliesToAllTargets = rawEntity?.attributes.find(
+        (attribute) =>
+            attribute.attributeDefinitionId === appliesToAllTargetsDefinitionId,
+    );
+    assert.notEqual(appliesToAllTargets?.id, 0);
+    assert.equal(appliesToAllTargets?.value, 'true');
+
+    formattedEntity = await getEntityFormatted<{
+        attributes?: {
+            appliesToAllTargets?: boolean;
+        };
+    }>(entityId);
+    assert.equal(formattedEntity.attributes?.appliesToAllTargets, true);
 });
 
 test('CMS entity variants inherit parent attributes and allow override reset', async () => {

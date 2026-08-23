@@ -1,13 +1,16 @@
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 import { getVisualNightAmount, smoothstep } from './visualDayNight';
 
 const MOONLESS_NIGHT_LIGHT_SCALE = 0.32;
 const MOONLESS_NIGHT_SKY_SCALE = 0.6;
+const MOONLIT_NIGHT_LIGHT_SCALE = 0.78;
+const MOONLIT_NIGHT_SKY_SCALE = 0.82;
 
 const MOON_HORIZON_FADE = {
     start: -0.05,
     end: 0.18,
 };
+const degreesToRadiansScale = Math.PI / 180;
 
 function clamp01(value: number) {
     return Math.min(1, Math.max(0, value));
@@ -32,10 +35,11 @@ export function resolveMoonlitNightScales({
     const visibleMoonlight = clamp01(moonlight);
     const moonNightLightScale =
         MOONLESS_NIGHT_LIGHT_SCALE +
-        (1 - MOONLESS_NIGHT_LIGHT_SCALE) * visibleMoonlight;
+        (MOONLIT_NIGHT_LIGHT_SCALE - MOONLESS_NIGHT_LIGHT_SCALE) *
+            visibleMoonlight;
     const moonNightSkyScale =
         MOONLESS_NIGHT_SKY_SCALE +
-        (1 - MOONLESS_NIGHT_SKY_SCALE) * visibleMoonlight;
+        (MOONLIT_NIGHT_SKY_SCALE - MOONLESS_NIGHT_SKY_SCALE) * visibleMoonlight;
 
     return {
         lightScale: mix(1, moonNightLightScale, nightAmount),
@@ -57,7 +61,7 @@ export function getVisibleMoonlight({
     const horizonVisibility = smoothstep(
         MOON_HORIZON_FADE.start,
         MOON_HORIZON_FADE.end,
-        position.altitude,
+        position.altitude * degreesToRadiansScale,
     );
 
     return clamp01(illumination.fraction) * horizonVisibility;

@@ -2,28 +2,59 @@
 
 import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import SunCalc from 'suncalc';
-import { Color, Quaternion, Vector3 } from 'three';
+import {
+    type RefObject,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import * as SunCalc from 'suncalc';
+import { Color, type DirectionalLight } from 'three';
+import { PlantShaderPrewarm } from '../generators/plant/PlantShaderPrewarm';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
+import { useSyncGameTime } from '../hooks/useSyncGameTime';
 import { useWeatherNow } from '../hooks/useWeatherNow';
-import type { Stack } from '../types/Stack';
 import { type GameState, useGameState } from '../useGameState';
-import { getGameBackgroundPalette } from './backgroundPalettes';
+import { defaultGameBackgroundPaletteIndex } from './backgroundPalettes';
 import { CloudLayer } from './CloudLayer';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { enableGeneratedPlantShadowLayer } from './generatedPlantShadowLayer';
 import { getMoonlitNightScales } from './moonlight';
+import { Perseids } from './PerseidMeteorShower';
+import { getPerseidsMeteorRatePerHour, shouldRenderPerseids } from './perseids';
 import { Drops } from './Rain/Drops';
+import { resolveRainParticleState } from './Rain/rainParticles';
 import { useSceneTimeInvalidation } from './SceneTime';
 import { ShadowMapController } from './ShadowMapController';
+import { SkyGradientBackground } from './SkyGradientBackground';
 import Snow from './Snow/Snow';
+import { resolveSnowParticleCounts } from './Snow/snowParticles';
+import { SolarEclipseSceneOverlay } from './SolarEclipseSceneOverlay';
 import { Stars } from './Stars';
 import { SunMoon } from './SunMoon';
+import {
+    buildDirectionalShadowDepthSignature,
+    buildGardenShadowGeometrySignature,
+} from './shadowMapScheduling';
+import {
+    resolveEnvironmentSkyBackgroundColors,
+    resolveSkyBackgroundColor,
+    resolveSkyGradientColors,
+    resolveThemedSkyBackgroundColors,
+} from './skyGradient';
+import {
+    getSolarEclipseState,
+    getSolarEclipseVisualScales,
+    type SolarEclipseState,
+} from './solarEclipse';
+import { altAzToScenePosition, timeOfDayToDate } from './sunPosition';
 import {
     getVisualDaylightAmount,
     getVisualNightAmount,
@@ -31,28 +62,13 @@ import {
     visualDayNightTimes,
 } from './visualDayNight';
 import { resolveWaterColors } from './waterColors';
+import {
+    advanceWeatherBlend,
+    type EnvironmentWeather,
+    resolveWeatherBlendTarget,
+    type WeatherBlendState,
+} from './weatherBlend';
 
-const backgroundColorScale = chroma
-    .scale([
-        '#2D3947',
-        '#6f8cac',
-        '#BADDf6',
-        '#E7E2CC',
-        '#E7E2CC',
-        '#f8b195',
-        '#6c5b7b',
-        '#2D3947',
-    ])
-    .domain([
-        visualDayNightTimes.dawnNightEnd,
-        visualDayNightTimes.sunrise,
-        visualDayNightTimes.dayStart - 0.03,
-        visualDayNightTimes.dayStart,
-        visualDayNightTimes.lateDayStart,
-        visualDayNightTimes.sunset,
-        0.84,
-        visualDayNightTimes.nightStart,
-    ]);
 const sunTemperatureScale = chroma
     .scale([
         chroma.temperature(20000),
@@ -70,24 +86,6 @@ const sunTemperatureScale = chroma
         visualDayNightTimes.duskNightStart,
         visualDayNightTimes.nightStart,
     ]);
-const hemisphereSkyColorScale = chroma
-    .scale([
-        chroma.temperature(20000),
-        chroma.temperature(2000),
-        chroma.temperature(20000),
-        chroma.temperature(20000),
-        chroma.temperature(2000),
-        chroma.temperature(20000),
-    ])
-    .domain([
-        visualDayNightTimes.dawnNightEnd,
-        visualDayNightTimes.dawnLightEnd,
-        visualDayNightTimes.dayStart,
-        visualDayNightTimes.lateDayStart,
-        visualDayNightTimes.duskNightStart,
-        visualDayNightTimes.nightStart,
-    ]);
-
 type WeatherBlendConfig = {
     transitionSeconds: number;
 };
@@ -99,27 +97,8 @@ const DEFAULT_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
 const DEBUG_WEATHER_BLEND_CONFIG: WeatherBlendConfig = {
     transitionSeconds: 0.35,
 };
-const WEATHER_BLEND_EPSILON = 0.0005;
 const BACKGROUND_COLOR_TRANSITION_SECONDS = 0.55;
 const BACKGROUND_COLOR_EPSILON = 0.001;
-
-function dampNumber(
-    current: number,
-    target: number,
-    smoothing: number,
-    delta: number,
-) {
-    if (!Number.isFinite(current)) return target;
-    const t = 1 - Math.exp(-Math.max(0.0001, smoothing) * delta);
-    return current + (target - current) * t;
-}
-
-function isWithinBlendEpsilon(
-    current: number | null | undefined,
-    target: number | null | undefined,
-) {
-    return Math.abs((current ?? 0) - (target ?? 0)) <= WEATHER_BLEND_EPSILON;
-}
 
 function isWithinColorEpsilon(current: Color, target: Color) {
     return (
@@ -188,123 +167,66 @@ function SceneBackgroundColor({
     return null;
 }
 
+function GeneratedPlantShadowLayerBridge({
+    directionalLightRef,
+    enabled,
+}: {
+    directionalLightRef: RefObject<DirectionalLight | null>;
+    enabled: boolean;
+}) {
+    const camera = useThree((state) => state.camera);
+
+    useLayoutEffect(() => {
+        const directionalLight = directionalLightRef.current;
+        if (!enabled || !directionalLight) {
+            return;
+        }
+
+        return enableGeneratedPlantShadowLayer({
+            camera,
+            directionalLight,
+        });
+    }, [camera, directionalLightRef, enabled]);
+
+    return null;
+}
+
 function useBlendedWeather(
     weather: EnvironmentWeather | undefined,
     enabled: boolean,
     blendConfig: WeatherBlendConfig,
 ) {
-    const [blendedWeather, setBlendedWeather] = useState<
-        EnvironmentWeather | undefined
-    >(weather);
+    const [blendState, setBlendState] = useState<WeatherBlendState>(() => ({
+        isBlending: false,
+        weather,
+    }));
     const targetRef = useRef<EnvironmentWeather | undefined>(weather);
 
     useEffect(() => {
         targetRef.current = weather;
-        if (!enabled || !weather) {
-            setBlendedWeather(weather);
-        }
+        setBlendState((state) =>
+            resolveWeatherBlendTarget(state, weather, enabled),
+        );
     }, [enabled, weather]);
 
+    useSceneTimeInvalidation(blendState.isBlending);
+
     useFrame((_, delta) => {
-        if (!enabled || !targetRef.current) {
+        if (!blendState.isBlending) {
             return;
         }
 
-        const target = targetRef.current;
-        setBlendedWeather((current) => {
-            if (!current) {
-                return target;
-            }
-
-            const smoothing = 1 / blendConfig.transitionSeconds;
-            const next = {
-                ...target,
-                cloudy: dampNumber(
-                    current.cloudy ?? 0,
-                    target.cloudy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                foggy: dampNumber(
-                    current.foggy ?? 0,
-                    target.foggy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                rainy: dampNumber(
-                    current.rainy ?? 0,
-                    target.rainy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                snowy: dampNumber(
-                    current.snowy ?? 0,
-                    target.snowy ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                windSpeed: dampNumber(
-                    current.windSpeed ?? 0,
-                    target.windSpeed ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                snowAccumulation: dampNumber(
-                    current.snowAccumulation ?? 0,
-                    target.snowAccumulation ?? 0,
-                    smoothing,
-                    delta,
-                ),
-                // Keep direction and thunder discrete to preserve deterministic storm timing
-                // and prevent jitter around cardinal boundaries.
-                windDirection: target.windDirection,
-                thundery: target.thundery,
-            };
-            const changed =
-                !isWithinBlendEpsilon(current.cloudy, next.cloudy) ||
-                !isWithinBlendEpsilon(current.foggy, next.foggy) ||
-                !isWithinBlendEpsilon(current.rainy, next.rainy) ||
-                !isWithinBlendEpsilon(current.snowy, next.snowy) ||
-                !isWithinBlendEpsilon(current.windSpeed, next.windSpeed) ||
-                !isWithinBlendEpsilon(
-                    current.snowAccumulation,
-                    next.snowAccumulation,
-                ) ||
-                current.windDirection !== next.windDirection ||
-                current.thundery !== next.thundery;
-
-            return changed ? next : current;
-        });
+        setBlendState((state) =>
+            advanceWeatherBlend(
+                state,
+                targetRef.current,
+                blendConfig.transitionSeconds,
+                delta,
+            ),
+        );
     });
 
-    return blendedWeather;
-}
-
-export function timeOfDayToDate(currentTime: Date, timeOfDay: number) {
-    const hours = Math.trunc(timeOfDay * 24);
-    const minutes = Math.trunc((timeOfDay * 24 - hours) * 60);
-    return new Date(
-        currentTime.getFullYear(),
-        currentTime.getMonth(),
-        currentTime.getDate(),
-        hours,
-        minutes,
-        0,
-    );
-}
-
-// Maps astronomical altitude/azimuth into the stylized scene sky so both the
-// visible sun/moon discs and the directional light share the same trajectory.
-export function altAzToScenePosition(altitude: number, azimuth: number) {
-    const pos = new Vector3(5, 20, 0);
-    const hinge = new Quaternion();
-    const rotator = new Quaternion();
-    rotator.setFromAxisAngle(new Vector3(0, -1, 0), altitude);
-    hinge.premultiply(rotator);
-    rotator.setFromAxisAngle(new Vector3(0.8, 0, 0), azimuth);
-    hinge.premultiply(rotator);
-    pos.applyQuaternion(hinge);
-    return pos;
+    return blendState.weather;
 }
 
 function getSunPosition(
@@ -317,41 +239,20 @@ function getSunPosition(
     return altAzToScenePosition(altitude, azimuth);
 }
 
-function resolveThemedBackground({
-    backgroundPaletteIndex,
-    timeOfDay,
-}: {
-    backgroundPaletteIndex: number;
-    timeOfDay: number;
-}) {
-    const palette = getGameBackgroundPalette(backgroundPaletteIndex);
-
-    if (palette.kind === 'current') {
-        return null;
-    }
-
-    const daylight = getVisualDaylightAmount(timeOfDay);
-
-    return {
-        background: chroma
-            .mix(palette.nightColor, palette.dayColor, daylight, 'rgb')
-            .rgb(),
-        hemisphereSkyColor: chroma
-            .mix(palette.nightColor, palette.lightColor, daylight, 'rgb')
-            .rgb(),
-    };
-}
-
 export function environmentState(
     { lat, lon }: { lat: number; lon: number },
     currentTime: Date,
     timeOfDay: number,
 ) {
     const sunPosition = getSunPosition({ lat, lon }, currentTime, timeOfDay);
+    const skyBackgroundColors = resolveEnvironmentSkyBackgroundColors({
+        backgroundPaletteIndex: defaultGameBackgroundPaletteIndex,
+        timeOfDay,
+    });
     const colors = {
-        background: backgroundColorScale(timeOfDay).rgb(),
+        background: skyBackgroundColors.background,
         sunTemperature: sunTemperatureScale(timeOfDay).rgb(),
-        hemisphereSkyColor: hemisphereSkyColorScale(timeOfDay).rgb(),
+        hemisphereSkyColor: skyBackgroundColors.hemisphereSkyColor,
     };
     const intensities = {
         sun: getVisualDaylightAmount(timeOfDay),
@@ -360,22 +261,13 @@ export function environmentState(
 }
 
 export type EnvironmentProps = {
+    celestialOffsetMultiplier?: number;
+    cloudShadowUpdateMs?: number;
     noBackground?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
     quality?: GameQualityProfile;
     weather?: Partial<GameState['weather']>;
-};
-
-type EnvironmentWeather = {
-    cloudy?: number;
-    foggy?: number;
-    rainy?: number;
-    snowAccumulation?: number;
-    snowy?: number;
-    thundery?: number;
-    windDirection?: string | null;
-    windSpeed?: number;
 };
 
 const fallbackWeather = {
@@ -411,30 +303,41 @@ function useEnvironmentElements({
     backgroundPaletteIndex,
     location,
     currentTime,
+    solarEclipse,
     timeOfDay,
     weather,
 }: {
     backgroundPaletteIndex: number;
     location: { lat: number; lon: number };
     currentTime: Date;
+    solarEclipse: SolarEclipseState | null;
     timeOfDay: number;
     weather: EnvironmentWeather | null | undefined;
 }) {
     const {
         sunPosition,
-        colors: { background, sunTemperature, hemisphereSkyColor },
+        colors: { sunTemperature },
         intensities: { sun: sunIntensity },
     } = environmentState(location, currentTime, timeOfDay);
+    const solarEclipseScales = getSolarEclipseVisualScales(
+        solarEclipse?.obscuration ?? 0,
+    );
     const sceneDate = timeOfDayToDate(currentTime, timeOfDay);
     const moonlitNightScales = getMoonlitNightScales({
         date: sceneDate,
         location,
         timeOfDay,
     });
-    const themedBackground = resolveThemedBackground({
+    const themedBackground = resolveThemedSkyBackgroundColors({
         backgroundPaletteIndex,
         timeOfDay,
     });
+    const skyBackgroundColors =
+        themedBackground ??
+        resolveEnvironmentSkyBackgroundColors({
+            backgroundPaletteIndex,
+            timeOfDay,
+        });
     const hasThemedBackground = themedBackground !== null;
 
     // Directional light
@@ -451,12 +354,13 @@ function useEnvironmentElements({
             ),
         [sunTemperatureBlue, sunTemperatureGreen, sunTemperatureRed],
     );
-    const directionalLightIntensity = Math.max(
-        0,
-        sunIntensity * 5 -
-            (weather?.cloudy ?? 0) * 4 -
-            (weather?.foggy ?? 0) * 4,
-    );
+    const directionalLightIntensity =
+        Math.max(
+            0,
+            sunIntensity * 5 -
+                (weather?.cloudy ?? 0) * 4 -
+                (weather?.foggy ?? 0) * 4,
+        ) * solarEclipseScales.direct;
     const directionalLightPosition = sunPosition;
 
     // Ambient light
@@ -465,50 +369,49 @@ function useEnvironmentElements({
         (sunIntensity *
             (2 + Math.max(0, -(weather?.cloudy ?? 0) - (weather?.foggy ?? 0))) +
             ambientIntensityOffset) *
-        moonlitNightScales.lightScale;
+        moonlitNightScales.lightScale *
+        solarEclipseScales.ambient;
 
     // Background color
-    const effectiveBackground = themedBackground?.background ?? background;
-    const backgroundRed = effectiveBackground[0] / 255;
-    const backgroundGreen = effectiveBackground[1] / 255;
-    const backgroundBlue = effectiveBackground[2] / 255;
-    const cloudy = weather?.cloudy ?? 0;
-    const foggy = weather?.foggy ?? 0;
+    const effectiveBackground = skyBackgroundColors.background;
+    const backgroundRed = effectiveBackground[0];
+    const backgroundGreen = effectiveBackground[1];
+    const backgroundBlue = effectiveBackground[2];
     const backgroundColor = useMemo(() => {
-        const color = new Color().setRGB(
-            backgroundRed,
-            backgroundGreen,
-            backgroundBlue,
-            'srgb',
-        );
-        const moonlitBackground = { h: 0, s: 0, l: 0 };
-        color.getHSL(moonlitBackground);
-        color.setHSL(
-            moonlitBackground.h,
-            moonlitBackground.s,
-            moonlitBackground.l * moonlitNightScales.skyScale,
-        );
-
-        // Set background color based on weather
-        if (cloudy > 0 || foggy > 0) {
-            const rainyBackground = { h: 0, s: 0, l: 0 };
-            color.getHSL(rainyBackground);
-            color.setHSL(
-                rainyBackground.h,
-                rainyBackground.s * (1 - Math.min(0.7, cloudy + foggy)), // * (weather.cloudy > 0.5 || weather.foggy > 0.5 ? 0.3 : 0.8),
-                rainyBackground.l * (1 - Math.min(0.1, cloudy + foggy)),
-            ); // * (weather.cloudy > 0.9 ? 0.8 : (weather.cloudy > 0.4 ? 0.9 : 0.95)));
-        }
-
-        return color;
+        const color = resolveSkyBackgroundColor({
+            background: [backgroundRed, backgroundGreen, backgroundBlue],
+            moonlitSkyScale: moonlitNightScales.skyScale,
+            weather,
+        });
+        return color.multiplyScalar(solarEclipseScales.sky);
     }, [
         backgroundBlue,
         backgroundGreen,
         backgroundRed,
-        cloudy,
-        foggy,
         moonlitNightScales.skyScale,
+        solarEclipseScales.sky,
+        weather,
     ]);
+    const moonlight = moonlitNightScales.visibleMoonlight;
+    const skyLowerColor = useMemo(
+        () =>
+            resolveSkyGradientColors({
+                backgroundColor,
+                backgroundPaletteIndex,
+                moonlight,
+                solarEclipseObscuration: solarEclipse?.obscuration,
+                timeOfDay,
+                weather,
+            }).lower,
+        [
+            backgroundColor,
+            backgroundPaletteIndex,
+            moonlight,
+            solarEclipse?.obscuration,
+            timeOfDay,
+            weather,
+        ],
+    );
 
     const waterColors = resolveWaterColors({
         skyColor: backgroundColor,
@@ -516,8 +419,7 @@ function useEnvironmentElements({
         weather: weather ?? undefined,
     });
 
-    const effectiveHemisphereSkyColor =
-        themedBackground?.hemisphereSkyColor ?? hemisphereSkyColor;
+    const effectiveHemisphereSkyColor = skyBackgroundColors.hemisphereSkyColor;
     const hemisphereSkyRed = effectiveHemisphereSkyColor[0] / 255;
     const hemisphereSkyGreen = effectiveHemisphereSkyColor[1] / 255;
     const hemisphereSkyBlue = effectiveHemisphereSkyColor[2] / 255;
@@ -554,7 +456,9 @@ function useEnvironmentElements({
         return color;
     }, [backgroundColor, hasThemedBackground]);
     const hemisphereIntensity =
-        (sunIntensity * 2 + 3) * moonlitNightScales.lightScale;
+        (sunIntensity * 2 + 3) *
+        moonlitNightScales.lightScale *
+        solarEclipseScales.ambient;
 
     return {
         background: backgroundColor,
@@ -571,115 +475,50 @@ function useEnvironmentElements({
             position: directionalLightPosition,
             intensity: directionalLightIntensity,
         },
+        sky: {
+            lowerColor: skyLowerColor,
+            moonlight,
+        },
         waterColors,
     };
 }
 
 const baseCameraShadowSize = 20;
-const cloudShadowRefreshMsByMode: Record<
-    GameQualityProfile['cloudShadowMode'],
-    number
-> = {
-    hard: 96,
-    soft: 64,
-};
 const defaultLocation = { lat: 45.739, lon: 16.572 };
-
-function roundShadowSignatureValue(value: number) {
-    return Number.isFinite(value) ? value.toFixed(4) : '0';
-}
-
-function buildStackShadowSignature(stacks: Stack[] | undefined) {
-    return (stacks ?? [])
-        .map((stack) => {
-            const blocks = stack.blocks
-                .map(
-                    (block) =>
-                        `${block.id}:${block.name}:${block.rotation}:${block.variant ?? ''}`,
-                )
-                .join(',');
-
-            return `${roundShadowSignatureValue(stack.position.x)},${roundShadowSignatureValue(stack.position.y)},${roundShadowSignatureValue(stack.position.z)}:${blocks}`;
-        })
-        .join('|');
-}
-
-function buildLightShadowSignature({
-    currentTime,
-    directionalLight,
-    shadowCameraSize,
-    shadowMapSize,
-    shadowVisibility,
-    shadows,
-    timeOfDay,
-}: {
-    currentTime: Date;
-    directionalLight: {
-        color: Color;
-        intensity: number;
-        position: Vector3;
-    };
-    shadowCameraSize: number;
-    shadowMapSize: number;
-    shadowVisibility: number;
-    shadows: boolean;
-    timeOfDay: number;
-}) {
-    return [
-        shadows ? 'shadows' : 'no-shadows',
-        shadowMapSize,
-        roundShadowSignatureValue(shadowCameraSize),
-        roundShadowSignatureValue(timeOfDay),
-        currentTime.toISOString(),
-        roundShadowSignatureValue(shadowVisibility),
-        roundShadowSignatureValue(directionalLight.intensity),
-        roundShadowSignatureValue(directionalLight.position.x),
-        roundShadowSignatureValue(directionalLight.position.y),
-        roundShadowSignatureValue(directionalLight.position.z),
-        roundShadowSignatureValue(directionalLight.color.r),
-        roundShadowSignatureValue(directionalLight.color.g),
-        roundShadowSignatureValue(directionalLight.color.b),
-    ].join('|');
-}
 
 export function StaticEnvironment({
     noBackground,
     quality,
 }: Pick<EnvironmentProps, 'noBackground' | 'quality'>) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const directionalLightRef = useRef<DirectionalLight | null>(null);
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
     const setWaterColors = useGameState((state) => state.setWaterColors);
-    const { background, ambient, hemisphere, directionalLight, waterColors } =
-        useEnvironmentElements({
-            backgroundPaletteIndex,
-            location: defaultLocation,
-            currentTime,
-            timeOfDay,
-            weather: undefined,
-        });
-    const shadowInvalidationKey = useMemo(
-        () =>
-            buildLightShadowSignature({
-                currentTime,
-                directionalLight,
-                shadowCameraSize: baseCameraShadowSize,
-                shadowMapSize: qualityProfile.shadowMapSize,
-                shadowVisibility: 1,
-                shadows: qualityProfile.shadows,
-                timeOfDay,
-            }),
-        [
-            currentTime,
-            directionalLight,
-            qualityProfile.shadowMapSize,
-            qualityProfile.shadows,
-            timeOfDay,
-        ],
-    );
+    const {
+        background,
+        ambient,
+        hemisphere,
+        directionalLight,
+        sky,
+        waterColors,
+    } = useEnvironmentElements({
+        backgroundPaletteIndex,
+        location: defaultLocation,
+        currentTime,
+        solarEclipse: null,
+        timeOfDay,
+        weather: undefined,
+    });
+    const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
+        lightPosition: directionalLight.position,
+        shadowCameraSize: baseCameraShadowSize,
+        shadowMapSize: qualityProfile.shadowMapSize,
+        shadows: qualityProfile.shadows,
+    });
     const waterDeep = waterColors.deep;
     const waterFoam = waterColors.foam;
     const waterShallow = waterColors.shallow;
@@ -699,7 +538,18 @@ export function StaticEnvironment({
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <SceneBackgroundColor animate={false} color={background} />
+                <>
+                    <SceneBackgroundColor animate={false} color={background} />
+                    <SkyGradientBackground
+                        animate={false}
+                        backgroundColor={background}
+                        backgroundPaletteIndex={backgroundPaletteIndex}
+                        currentTime={currentTime}
+                        location={defaultLocation}
+                        moonlight={sky.moonlight}
+                        timeOfDay={timeOfDay}
+                    />
+                </>
             )}
             <ambientLight intensity={ambient.intensity} />
             <hemisphereLight
@@ -709,6 +559,7 @@ export function StaticEnvironment({
                 intensity={hemisphere.intensity}
             />
             <directionalLight
+                ref={directionalLightRef}
                 intensity={directionalLight.intensity}
                 color={directionalLight.color}
                 position={directionalLight.position}
@@ -729,12 +580,18 @@ export function StaticEnvironment({
                         -baseCameraShadowSize,
                     ]}
                 />
+                <GeneratedPlantShadowLayerBridge
+                    directionalLightRef={directionalLightRef}
+                    enabled={qualityProfile.shadows}
+                />
             </directionalLight>
         </>
     );
 }
 
 export function Environment({
+    celestialOffsetMultiplier,
+    cloudShadowUpdateMs,
     noBackground,
     noSound,
     noWeather,
@@ -742,26 +599,33 @@ export function Environment({
     weather,
 }: EnvironmentProps) {
     const qualityProfile = quality ?? resolveGameQualityProfile();
+    const directionalLightRef = useRef<DirectionalLight | null>(null);
 
-    const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
+    const dayNightCycleDisabled = useGameState(
+        (state) => state.dayNightCycleDisabled,
+    );
     const backgroundPaletteIndex = useGameState(
         (state) => state.backgroundPaletteIndex,
     );
     const view = useGameState((state) => state.view);
+    const closeupCameraActive = useGameState(
+        (state) => state.closeupCameraActive,
+    );
+    const closeupCameraSettled = useGameState(
+        (state) => state.closeupCameraSettled,
+    );
+    const isGroundView = view === 'closeup' || closeupCameraActive;
     const closeupBlockId = useGameState((state) => state.closeupBlock?.id);
     const pickupBlockId = useGameState((state) => state.pickupBlock?.id);
     const winterMode = useGameState((state) => state.winterMode);
-    const dropAnimationSignature = useGameState((state) =>
-        Object.entries(state.blockPlacementDropAnimations)
-            .map(
-                ([blockId, animation]) =>
-                    `${blockId}:${animation.sequence}:${animation.particlesSpawned ? 'particles' : 'pending'}`,
-            )
-            .sort()
-            .join('|'),
+    const activePlacementCount = useGameState(
+        (state) => Object.keys(state.blockPlacementDropAnimations).length,
     );
     const ambientAudioMixer = useGameState((state) => state.audio.ambient);
+    const setRainSurfaceIntensity = useGameState(
+        (state) => state.setRainSurfaceIntensity,
+    );
     const setSnowCoverage = useGameState((state) => state.setSnowCoverage);
     const setWaterColors = useGameState((state) => state.setWaterColors);
     const weatherVisualizationDisabled = useGameState(
@@ -770,15 +634,21 @@ export function Environment({
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
 
     const { data: garden } = useCurrentGarden();
-    const location = garden
-        ? {
-              lat: garden.location.lat ?? 0,
-              lon: garden.location.lon ?? 0,
-          }
-        : {
-              lat: 45.739,
-              lon: 16.572,
-          };
+    const location = useMemo(
+        () => ({
+            lat: garden?.location.lat ?? defaultLocation.lat,
+            lon: garden?.location.lon ?? defaultLocation.lon,
+        }),
+        [garden?.location.lat, garden?.location.lon],
+    );
+    const currentTime = useSyncGameTime(location);
+    const solarEclipse = useMemo(
+        () =>
+            dayNightCycleDisabled
+                ? null
+                : getSolarEclipseState(currentTime, location),
+        [currentTime, dayNightCycleDisabled, location],
+    );
     const shadowCameraSize = useMemo(() => {
         const stacks = garden?.stacks;
         if (!stacks?.length) {
@@ -798,7 +668,8 @@ export function Environment({
     const gameWeather = useGameState((state) => state.weather);
     const hasWeatherOverride = Boolean(gameWeather ?? weather);
     const { data: weatherNow } = useWeatherNow(
-        !weatherDisabled && !hasWeatherOverride,
+        !weatherDisabled && !hasWeatherOverride && garden !== undefined,
+        garden?.farmId,
     );
     const overrideWeather = weatherDisabled
         ? undefined
@@ -931,14 +802,21 @@ export function Environment({
         blendConfig,
     );
 
-    const { background, ambient, hemisphere, directionalLight, waterColors } =
-        useEnvironmentElements({
-            backgroundPaletteIndex,
-            location,
-            currentTime,
-            timeOfDay,
-            weather: blendedWeather,
-        });
+    const {
+        background,
+        ambient,
+        hemisphere,
+        directionalLight,
+        sky,
+        waterColors,
+    } = useEnvironmentElements({
+        backgroundPaletteIndex,
+        location,
+        currentTime,
+        solarEclipse,
+        timeOfDay,
+        weather: blendedWeather,
+    });
     const waterDeep = waterColors.deep;
     const waterFoam = waterColors.foam;
     const waterShallow = waterColors.shallow;
@@ -960,34 +838,45 @@ export function Environment({
 
     // Handle rain
     const rain = blendedWeather?.rainy ?? 0;
-    const baseRainParticleCount = rain < 0.4 ? 200 : rain > 0.9 ? 2000 : 600;
-    const rainParticleCount = Math.round(
-        baseRainParticleCount * qualityProfile.rainParticleMultiplier,
-    );
+    const { activeCount: rainParticleCount, intensity: rainParticleIntensity } =
+        resolveRainParticleState(rain, qualityProfile.rainParticleMultiplier);
+
+    useEffect(() => {
+        setRainSurfaceIntensity(weatherDisabled ? 0 : rain);
+    }, [rain, setRainSurfaceIntensity, weatherDisabled]);
 
     // Handle snow particles - based on current weather (snowy intensity 0-1)
     const snowParticles = blendedWeather?.snowy ?? 0;
-    const snowParticleCount = Math.round(
-        snowParticles * 5000 * qualityProfile.snowParticleMultiplier,
-    );
+    const { activeCount: snowParticleCount, capacity: snowParticleCapacity } =
+        resolveSnowParticleCounts(
+            snowParticles,
+            qualityProfile.snowParticleMultiplier,
+        );
 
     useEffect(() => {
         updateGameProfileMetadata({
             rainParticleCount:
-                !weatherDisabled && rain > 0 ? rainParticleCount : 0,
+                !weatherDisabled && rainParticleCount > 0
+                    ? rainParticleCount
+                    : 0,
             shadowMapSize: qualityProfile.shadowMapSize,
             shadowsEnabled: qualityProfile.shadows,
+            snowParticleCapacity:
+                !weatherDisabled && snowParticleCount > 0
+                    ? snowParticleCapacity
+                    : 0,
             snowParticleCount:
-                !weatherDisabled && snowParticles > 0 ? snowParticleCount : 0,
+                !weatherDisabled && snowParticleCount > 0
+                    ? snowParticleCount
+                    : 0,
             weatherDisabled,
         });
     }, [
         qualityProfile.shadowMapSize,
         qualityProfile.shadows,
-        rain,
         rainParticleCount,
+        snowParticleCapacity,
         snowParticleCount,
-        snowParticles,
         weatherDisabled,
     ]);
 
@@ -1000,6 +889,12 @@ export function Environment({
         ? 0
         : Math.max(0, 1 - cloudCover / 0.6) ** 1.5 * nightVisibility;
     const showStars = starVisibility > 0;
+    const perseidsVisibility = closeupCameraSettled ? 0 : starVisibility;
+    const perseidsMeteorRate = getPerseidsMeteorRatePerHour(currentTime);
+    const showPerseids = shouldRenderPerseids({
+        date: currentTime,
+        skyVisibility: perseidsVisibility,
+    });
     // Dense clouds or fog dim the sun/moon discs toward a small residual
     // glow. The curve drops fast so 70%+ overcast reads as "no sun" rather
     // than a dimmer but still-solid disc, but never fully hits zero — matching
@@ -1021,55 +916,26 @@ export function Environment({
         : daylightVisibility *
           smoothstep(0.08, 0.22, cloudCover) *
           (1 - smoothstep(0.5, 0.9, effectiveCloudCover));
-    const cloudShadowDynamicRefreshMs =
-        qualityProfile.shadows && cloudShadowStrength > 0
-            ? cloudShadowRefreshMsByMode[qualityProfile.cloudShadowMode]
-            : undefined;
     const gardenShadowSignature = useMemo(
-        () => buildStackShadowSignature(garden?.stacks),
+        () => buildGardenShadowGeometrySignature(garden?.stacks),
         [garden?.stacks],
     );
-    const shadowInvalidationKey = useMemo(
-        () =>
-            [
-                buildLightShadowSignature({
-                    currentTime,
-                    directionalLight,
-                    shadowCameraSize,
-                    shadowMapSize: qualityProfile.shadowMapSize,
-                    shadowVisibility,
-                    shadows: qualityProfile.shadows,
-                    timeOfDay,
-                }),
-                `cloud:${roundShadowSignatureValue(cloudShadowStrength)}:${cloudShadowDynamicRefreshMs ?? 0}`,
-                `garden:${gardenShadowSignature}`,
-                `view:${view}:${closeupBlockId ?? ''}`,
-                `pickup:${pickupBlockId ?? ''}`,
-                `drop:${dropAnimationSignature}`,
-                `winter:${winterMode}`,
-            ].join('||'),
-        [
-            closeupBlockId,
-            cloudShadowDynamicRefreshMs,
-            cloudShadowStrength,
-            currentTime,
-            directionalLight,
-            dropAnimationSignature,
-            gardenShadowSignature,
-            pickupBlockId,
-            qualityProfile.shadowMapSize,
-            qualityProfile.shadows,
-            shadowCameraSize,
-            shadowVisibility,
-            timeOfDay,
-            view,
-            winterMode,
-        ],
-    );
+    const shadowInvalidationKey = buildDirectionalShadowDepthSignature({
+        lightPosition: directionalLight.position,
+        shadowCameraSize,
+        shadowMapSize: qualityProfile.shadowMapSize,
+        shadows: qualityProfile.shadows,
+    });
+    const shadowGeometryKey = [
+        `garden:${gardenShadowSignature}`,
+        `view:${view}:${closeupBlockId ?? ''}`,
+        `pickup:${pickupBlockId ?? ''}`,
+        `winter:${winterMode}`,
+    ].join('||');
     const shadowMapSize = qualityProfile.shadows
         ? qualityProfile.shadowMapSize
         : 1;
-    const directionalLightKey = `directional-shadow:${qualityProfile.shadows ? qualityProfile.shadowMapSize : 0}:${qualityProfile.cloudShadowMode}`;
+    const directionalLightKey = `directional-shadow:${qualityProfile.shadows ? qualityProfile.shadowMapSize : 0}`;
 
     // Handle ground snow coverage - based on accumulated snow in cm
     const snowAccumulationCm = blendedWeather?.snowAccumulation ?? 0;
@@ -1170,13 +1036,39 @@ export function Environment({
 
     return (
         <>
+            <PlantShaderPrewarm
+                enabled={isGroundView}
+                variantKey={
+                    qualityProfile.shadows ? 'shadows' : 'without-shadows'
+                }
+            />
             <ShadowMapController
-                dynamicRefreshMs={cloudShadowDynamicRefreshMs}
+                activePlacementCount={activePlacementCount}
                 enabled={qualityProfile.shadows}
+                geometryKey={shadowGeometryKey}
                 invalidationKey={shadowInvalidationKey}
             />
             {!noBackground && (
-                <SceneBackgroundColor animate color={background} />
+                <>
+                    <SceneBackgroundColor
+                        animate
+                        color={isGroundView ? sky.lowerColor : background}
+                    />
+                    <SkyGradientBackground
+                        animate
+                        backgroundColor={background}
+                        backgroundPaletteIndex={backgroundPaletteIndex}
+                        currentTime={currentTime}
+                        groundView={isGroundView}
+                        hideCelestialGlow={closeupCameraSettled}
+                        location={location}
+                        moonlight={sky.moonlight}
+                        screenOffsetMultiplier={celestialOffsetMultiplier}
+                        solarEclipseObscuration={solarEclipse?.obscuration}
+                        timeOfDay={timeOfDay}
+                        weather={blendedWeather}
+                    />
+                </>
             )}
             <ambientLight
                 name="Environment:AmbientLight"
@@ -1198,6 +1090,7 @@ export function Environment({
             />
             {/* TODO: Update shadow camera position based on camera position */}
             <directionalLight
+                ref={directionalLightRef}
                 key={directionalLightKey}
                 name="Environment:SunDirectionalLight"
                 intensity={directionalLight.intensity}
@@ -1222,32 +1115,56 @@ export function Environment({
                         -shadowCameraSize,
                     ]}
                 />
+                <GeneratedPlantShadowLayerBridge
+                    directionalLightRef={directionalLightRef}
+                    enabled={qualityProfile.shadows}
+                />
             </directionalLight>
             {!weatherDisabled && blendedWeather && (
                 <CloudLayer
                     cloudy={blendedWeather.cloudy ?? 0}
                     foggy={blendedWeather.foggy ?? 0}
-                    shadowMode={qualityProfile.cloudShadowMode}
+                    quality={qualityProfile}
+                    shadowUpdateMs={cloudShadowUpdateMs}
                     shadowStrength={
                         qualityProfile.shadows ? cloudShadowStrength : 0
                     }
                     stacks={garden?.stacks}
+                    sunPosition={directionalLight.position}
                     timeOfDay={timeOfDay}
                     windDirection={windDirection}
                     windSpeed={windSpeed}
                 />
             )}
-            {showStars && <Stars visibility={starVisibility} />}
-            {!noBackground && <SunMoon visibility={bodyVisibility} />}
+            {showStars && (
+                <Stars visibility={closeupCameraSettled ? 0 : starVisibility} />
+            )}
+            {showPerseids && (
+                <Perseids
+                    meteorsPerHour={perseidsMeteorRate}
+                    visibility={perseidsVisibility}
+                />
+            )}
+            {!noBackground && (
+                <SunMoon
+                    screenOffsetMultiplier={celestialOffsetMultiplier}
+                    solarEclipse={solarEclipse}
+                    visibility={closeupCameraSettled ? 0 : bodyVisibility}
+                />
+            )}
             {!weatherDisabled && fog > 0 && (
                 <fog attach="fog" args={[fogColor, fogNear, 190]} />
             )}
-            {!weatherDisabled && rain > 0 && (
-                <Drops count={rainParticleCount} />
+            {!weatherDisabled && rainParticleCount > 0 && (
+                <Drops
+                    count={rainParticleCount}
+                    intensity={rainParticleIntensity}
+                />
             )}
-            {!weatherDisabled && snowParticles > 0 && (
+            {!weatherDisabled && snowParticleCount > 0 && (
                 <Snow
-                    count={snowParticleCount}
+                    activeCount={snowParticleCount}
+                    capacity={snowParticleCapacity}
                     windSpeed={windSpeed}
                     windDirection={windDirection}
                 />
@@ -1262,6 +1179,11 @@ export function Environment({
                     ]}
                 />
             )}
+            {(solarEclipse?.obscuration ?? 0) > 0 ? (
+                <SolarEclipseSceneOverlay
+                    obscuration={solarEclipse?.obscuration ?? 0}
+                />
+            ) : null}
         </>
     );
 }

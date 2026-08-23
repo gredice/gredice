@@ -47,6 +47,110 @@
             "objects": ["Block Sand Angle 1"]
         },
         {
+            "name": "BlockStone",
+            "source": "BlockStone.blend",
+            "output": "BlockStone.glb",
+            "version": "e0e17e7af407",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Large",
+                "Block_Stone_Mid",
+                "Block_Stone_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneAngle",
+            "source": "BlockStoneAngle.blend",
+            "output": "BlockStoneAngle.glb",
+            "version": "998e0f9fb62b",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Angle_Large",
+                "Block_Stone_Angle_Mid",
+                "Block_Stone_Angle_Dark"
+            ]
+        },
+        {
+            "name": "BlockGravel",
+            "source": "BlockGravel.blend",
+            "output": "BlockGravel.glb",
+            "version": "41cc7c79a13c",
+            "preload": "ground",
+            "objects": [
+                "Block_Gravel_Base",
+                "Block_Gravel_Pieces_Light",
+                "Block_Gravel_Pieces_Dark"
+            ]
+        },
+        {
+            "name": "BlockGravelAngle",
+            "source": "BlockGravelAngle.blend",
+            "output": "BlockGravelAngle.glb",
+            "version": "3dec8432e1b9",
+            "preload": "ground",
+            "objects": [
+                "Block_Gravel_Angle_Base",
+                "Block_Gravel_Angle_Pieces_Light",
+                "Block_Gravel_Angle_Pieces_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneStairs",
+            "source": "BlockStoneStairs.blend",
+            "output": "BlockStoneStairs.glb",
+            "version": "0590228ac5fe",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Stairs_Large",
+                "Block_Stone_Stairs_Mid",
+                "Block_Stone_Stairs_Dark"
+            ]
+        },
+        {
+            "name": "BlockStoneStairsCorner",
+            "source": "BlockStoneStairsCorner.blend",
+            "output": "BlockStoneStairsCorner.glb",
+            "version": "527837b09df4",
+            "preload": "ground",
+            "objects": [
+                "Block_Stone_Stairs_Corner_Large",
+                "Block_Stone_Stairs_Corner_Mid",
+                "Block_Stone_Stairs_Corner_Dark"
+            ]
+        },
+        {
+            "name": "BlockPolishedStone",
+            "source": "BlockPolishedStone.blend",
+            "output": "BlockPolishedStone.glb",
+            "version": "37f822173ab1",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone"]
+        },
+        {
+            "name": "BlockPolishedStoneAngle",
+            "source": "BlockPolishedStoneAngle.blend",
+            "output": "BlockPolishedStoneAngle.glb",
+            "version": "87a23acfaaa7",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Angle"]
+        },
+        {
+            "name": "BlockPolishedStoneStairs",
+            "source": "BlockPolishedStoneStairs.blend",
+            "output": "BlockPolishedStoneStairs.glb",
+            "version": "1ff582010dd2",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Stairs"]
+        },
+        {
+            "name": "BlockPolishedStoneStairsCorner",
+            "source": "BlockPolishedStoneStairsCorner.blend",
+            "output": "BlockPolishedStoneStairsCorner.glb",
+            "version": "21d38a9e4b67",
+            "preload": "ground",
+            "objects": ["Block_Polished_Stone_Stairs_Corner"]
+        },
+        {
             "name": "BlockTerrainCorner",
             "source": "BlockTerrainCorner.blend",
             "output": "BlockTerrainCorner.glb",
@@ -74,6 +178,7 @@
             "name": "RaisedBed",
             "source": "RaisedBed.blend",
             "output": "RaisedBed.glb",
+            "version": "3e80f049ce04",
             "preload": "primary",
             "objects": [
                 "Raised Bed O",
@@ -87,6 +192,7 @@
             "name": "GardenBox",
             "source": "GardenBox.blend",
             "output": "GardenBox.glb",
+            "version": "c007d6f4b671",
             "preload": "primary",
             "objects": ["GardenBox_Body_Planks", "GardenBox_Lid_HingeOrigin"]
         },
@@ -283,12 +389,7 @@
                 "Cat_Body",
                 "Cat_BellyPatch",
                 "Cat_ChestPatch",
-                "Cat_BodySpot_Top_Front",
-                "Cat_BodySpot_Top_Back",
-                "Cat_BodySpot_Side_L",
-                "Cat_BodySpot_Side_R",
                 "Cat_Head",
-                "Cat_FacePatch",
                 "Cat_Muzzle",
                 "Cat_Nose",
                 "Cat_Eye_L",
@@ -346,15 +447,167 @@
                 "Dog_Leg_RR",
                 "Dog_Paw_RR",
                 "Dog_Tail_Base",
+                "Dog_Tail_Mid",
                 "Dog_Tail_Tip",
                 "Dog_Collar",
-                "Dog_Tag"
+                "Dog_Tag",
+                "Dog_Tongue"
+            ]
+        },
+        {
+            "name": "Chicken",
+            "source": "Chicken.blend",
+            "output": "Chicken.glb",
+            "version": "2edd7673f7d5",
+            "preload": "lazy",
+            "objects": [
+                "Chicken_Root",
+                "Chicken_BodyPivot",
+                "Chicken_HeadPivot",
+                "Chicken_WingPivot_L",
+                "Chicken_WingPivot_R",
+                "Chicken_LegPivot_L",
+                "Chicken_LegPivot_R",
+                "Chicken_TailPivot",
+                "Chicken_Body",
+                "Chicken_Breast",
+                "Chicken_Head",
+                "Chicken_Beak",
+                "Chicken_Wattle",
+                "Chicken_Comb",
+                "Chicken_Eye_L",
+                "Chicken_Eye_R",
+                "Chicken_EyeGlint_L",
+                "Chicken_EyeGlint_R",
+                "Chicken_Wing_L",
+                "Chicken_Wing_R",
+                "Chicken_TailFan",
+                "Chicken_Leg_L",
+                "Chicken_Leg_R",
+                "Chicken_Foot_L",
+                "Chicken_Foot_R"
+            ]
+        },
+        {
+            "name": "Piglet",
+            "source": "Piglet.blend",
+            "output": "Piglet.glb",
+            "version": "58f584a6fa21",
+            "preload": "lazy",
+            "objects": [
+                "Piglet_Root",
+                "Piglet_BodyPivot",
+                "Piglet_HeadPivot",
+                "Piglet_EarPivot_L",
+                "Piglet_EarPivot_R",
+                "Piglet_TailPivot",
+                "Piglet_LegPivot_FL",
+                "Piglet_LegPivot_FR",
+                "Piglet_LegPivot_RL",
+                "Piglet_LegPivot_RR",
+                "Piglet_Body",
+                "Piglet_Belly",
+                "Piglet_Head",
+                "Piglet_Snout",
+                "Piglet_Nostril_L",
+                "Piglet_Nostril_R",
+                "Piglet_Eye_L",
+                "Piglet_Eye_R",
+                "Piglet_EyeGlint_L",
+                "Piglet_EyeGlint_R",
+                "Piglet_Cheek_L",
+                "Piglet_Cheek_R",
+                "Piglet_Ear_L",
+                "Piglet_Ear_R",
+                "Piglet_Leg_FL",
+                "Piglet_Leg_FR",
+                "Piglet_Leg_RL",
+                "Piglet_Leg_RR",
+                "Piglet_Hoof_FL",
+                "Piglet_Hoof_FR",
+                "Piglet_Hoof_RL",
+                "Piglet_Hoof_RR",
+                "Piglet_TailCurl",
+                "Piglet_TailTip"
+            ]
+        },
+        {
+            "name": "FarmerAvatar",
+            "source": "FarmerAvatar.blend",
+            "output": "FarmerAvatar.glb",
+            "version": "e59d91f50c94",
+            "preload": "lazy",
+            "objects": [
+                "FarmerAvatar_Root",
+                "FarmerAvatar_BodyPivot",
+                "FarmerAvatar_HeadPivot",
+                "FarmerAvatar_ArmPivot_L",
+                "FarmerAvatar_ArmPivot_R",
+                "FarmerAvatar_ElbowPivot_L",
+                "FarmerAvatar_ElbowPivot_R",
+                "FarmerAvatar_LegPivot_L",
+                "FarmerAvatar_LegPivot_R",
+                "FarmerAvatar_KneePivot_L",
+                "FarmerAvatar_KneePivot_R",
+                "FarmerAvatar_Torso",
+                "FarmerAvatar_ShirtPlaid_High",
+                "FarmerAvatar_ShirtPlaid_Low",
+                "FarmerAvatar_ShirtPlaid_Vertical",
+                "FarmerAvatar_OverallWaist",
+                "FarmerAvatar_OverallBib",
+                "FarmerAvatar_OverallPocket",
+                "FarmerAvatar_Strap_L",
+                "FarmerAvatar_Strap_R",
+                "FarmerAvatar_Buckle_L",
+                "FarmerAvatar_Buckle_R",
+                "FarmerAvatar_Neckerchief",
+                "FarmerAvatar_Neck",
+                "FarmerAvatar_SunflowerBadge",
+                "FarmerAvatar_SunflowerCenter",
+                "FarmerAvatar_Head",
+                "FarmerAvatar_HairBack",
+                "FarmerAvatar_HairSide_L",
+                "FarmerAvatar_HairSide_R",
+                "FarmerAvatar_HairFringe_L",
+                "FarmerAvatar_HairFringe_R",
+                "FarmerAvatar_Ear_L",
+                "FarmerAvatar_Ear_R",
+                "FarmerAvatar_Eye_L",
+                "FarmerAvatar_Eye_R",
+                "FarmerAvatar_EyeGlint_L",
+                "FarmerAvatar_EyeGlint_R",
+                "FarmerAvatar_Eyebrow_L",
+                "FarmerAvatar_Eyebrow_R",
+                "FarmerAvatar_Nose",
+                "FarmerAvatar_Mouth_L",
+                "FarmerAvatar_Mouth_C",
+                "FarmerAvatar_Mouth_R",
+                "FarmerAvatar_HatBrim",
+                "FarmerAvatar_HatCrown",
+                "FarmerAvatar_HatBand",
+                "FarmerAvatar_UpperArm_L",
+                "FarmerAvatar_SleeveStripe_L",
+                "FarmerAvatar_Forearm_L",
+                "FarmerAvatar_Hand_L",
+                "FarmerAvatar_UpperArm_R",
+                "FarmerAvatar_SleeveStripe_R",
+                "FarmerAvatar_Forearm_R",
+                "FarmerAvatar_Hand_R",
+                "FarmerAvatar_OverallLeg_L",
+                "FarmerAvatar_LowerLeg_L",
+                "FarmerAvatar_Boot_L",
+                "FarmerAvatar_BootSole_L",
+                "FarmerAvatar_OverallLeg_R",
+                "FarmerAvatar_LowerLeg_R",
+                "FarmerAvatar_Boot_R",
+                "FarmerAvatar_BootSole_R"
             ]
         },
         {
             "name": "Bucket",
             "source": "Bucket.blend",
             "output": "Bucket.glb",
+            "version": "651d759c9d56",
             "preload": "lazy",
             "objects": ["Bucket", "Bucket - Handle"]
         },
@@ -675,6 +928,7 @@
             "name": "WaterWell",
             "source": "WaterWell.blend",
             "output": "WaterWell.glb",
+            "version": "1f8ed0929e90",
             "preload": "lazy",
             "objects": [
                 "WaterWell_Stone_Mid",
@@ -689,6 +943,7 @@
             "name": "LemonadeStand",
             "source": "LemonadeStand.blend",
             "output": "LemonadeStand.glb",
+            "version": "a0e8b3867598",
             "preload": "lazy",
             "objects": [
                 "LemonadeStand_cart_body_cream",
@@ -846,6 +1101,7 @@
             "name": "IceCreamCart",
             "source": "IceCreamCart.blend",
             "output": "IceCreamCart.glb",
+            "version": "edae45a22248",
             "preload": "lazy",
             "objects": [
                 "IceCreamCart_cart_body_cream",
@@ -1053,6 +1309,7 @@
             "name": "BeachChair",
             "source": "BeachChair.blend",
             "output": "BeachChair.glb",
+            "version": "284262a8ca74",
             "preload": "lazy",
             "objects": [
                 "BeachChair_FrameLeft",
@@ -1069,6 +1326,42 @@
                 "BeachChair_FabricStripeCream04",
                 "BeachChair_FabricStripeBlue05",
                 "BeachChair_BackFabricEdge"
+            ]
+        },
+        {
+            "name": "WoodenBench",
+            "source": "WoodenBench.blend",
+            "output": "WoodenBench.glb",
+            "version": "238606505a28",
+            "preload": "lazy",
+            "objects": [
+                "WoodenBench_SeatSlatFront",
+                "WoodenBench_SeatSlatCenter",
+                "WoodenBench_SeatSlatBack",
+                "WoodenBench_SupportRailFront",
+                "WoodenBench_SupportRailBack",
+                "WoodenBench_EndBraceLeft",
+                "WoodenBench_EndBraceRight",
+                "WoodenBench_LegFrontLeft",
+                "WoodenBench_LegFrontRight",
+                "WoodenBench_LegBackLeft",
+                "WoodenBench_LegBackRight",
+                "WoodenBench_PinFrontLeft",
+                "WoodenBench_PinFrontRight",
+                "WoodenBench_PinBackLeft",
+                "WoodenBench_PinBackRight"
+            ]
+        },
+        {
+            "name": "OutletDisplayTable",
+            "source": "OutletDisplayTable.blend",
+            "output": "OutletDisplayTable.glb",
+            "version": "88f3aa524c7f",
+            "preload": "lazy",
+            "objects": [
+                "OutletDisplayTable_TopPlanks",
+                "OutletDisplayTable_Frame",
+                "OutletDisplayTable_LowerShelf"
             ]
         },
         {
@@ -1178,6 +1471,7 @@
             "name": "Composter",
             "source": "Composter.blend",
             "output": "Composter.glb",
+            "version": "932e7624a5c1",
             "preload": "lazy",
             "objects": ["Composter"]
         },
@@ -1185,7 +1479,7 @@
             "name": "BirdHouse",
             "source": "BirdHouse.blend",
             "output": "BirdHouse.glb",
-            "version": "20bc83690473",
+            "version": "c0de27e5a733",
             "preload": "lazy",
             "objects": [
                 "Birdhouse_Angled_Supports",
@@ -1217,15 +1511,13 @@
             "source": "CatPillow.blend",
             "output": "CatPillow.glb",
             "preload": "lazy",
-            "objects": [
-                "CatPillow_Cushion",
-                "CatPillow_Seam"
-            ]
+            "objects": ["CatPillow_Cushion", "CatPillow_Seam"]
         },
         {
             "name": "DogHouse",
             "source": "DogHouse.blend",
             "output": "DogHouse.glb",
+            "version": "bb8e47c2ddc8",
             "preload": "lazy",
             "objects": [
                 "DogHouse_Root",
@@ -1246,9 +1538,198 @@
             ]
         },
         {
+            "name": "ChickenCoop",
+            "source": "ChickenCoop.blend",
+            "output": "ChickenCoop.glb",
+            "version": "be5b3d6eab59",
+            "preload": "lazy",
+            "objects": [
+                "ChickenCoop_WoodDark",
+                "ChickenCoop_WoodLight",
+                "ChickenCoop_Roof",
+                "ChickenCoop_Trim",
+                "ChickenCoop_Entrance",
+                "ChickenCoop_Straw",
+                "ChickenCoop_Bowl",
+                "ChickenCoop_Water"
+            ]
+        },
+        {
+            "name": "PigletPen",
+            "source": "PigletPen.blend",
+            "output": "PigletPen.glb",
+            "version": "6391ab49beb5",
+            "preload": "lazy",
+            "objects": [
+                "PigletPen_Wood",
+                "PigletPen_Wattle",
+                "PigletPen_Limewash",
+                "PigletPen_Roof",
+                "PigletPen_Stone",
+                "PigletPen_Mud",
+                "PigletPen_Straw",
+                "PigletPen_Trough"
+            ]
+        },
+        {
+            "name": "SmallWoodenBridge",
+            "source": "SmallWoodenBridge.blend",
+            "output": "SmallWoodenBridge.glb",
+            "version": "3f5e5e39b5e4",
+            "preload": "lazy",
+            "objects": [
+                "SmallWoodenBridge_PlanksLight",
+                "SmallWoodenBridge_PlanksWarm",
+                "SmallWoodenBridge_Stringers",
+                "SmallWoodenBridge_Pegs"
+            ]
+        },
+        {
+            "name": "WoodenWalkway",
+            "source": "WoodenWalkway.blend",
+            "output": "WoodenWalkway.glb",
+            "version": "b4345a9a9ca1",
+            "preload": "lazy",
+            "objects": [
+                "WoodenWalkway_PlanksLight",
+                "WoodenWalkway_PlanksWarm",
+                "WoodenWalkway_Pegs"
+            ]
+        },
+        {
+            "name": "StoneWalkway",
+            "source": "StoneWalkway.blend",
+            "output": "StoneWalkway.glb",
+            "version": "075166e14408",
+            "preload": "lazy",
+            "objects": [
+                "StoneWalkway_StonesLight",
+                "StoneWalkway_StonesMid",
+                "StoneWalkway_StonesWarm"
+            ]
+        },
+        {
+            "name": "EnamelGardenLamp",
+            "source": "EnamelGardenLamp.blend",
+            "output": "EnamelGardenLamp.glb",
+            "version": "c945af2c0198",
+            "preload": "lazy",
+            "objects": [
+                "EnamelGardenLamp_WoodPost",
+                "EnamelGardenLamp_LimestoneFoot",
+                "EnamelGardenLamp_EnamelShade",
+                "EnamelGardenLamp_MetalTrim",
+                "EnamelGardenLamp_Bulb"
+            ]
+        },
+        {
+            "name": "DoubleGardenLightPole",
+            "source": "DoubleGardenLightPole.blend",
+            "output": "DoubleGardenLightPole.glb",
+            "version": "fe31962c9b22",
+            "preload": "lazy",
+            "objects": [
+                "DoubleGardenLightPole_LimestoneBase",
+                "DoubleGardenLightPole_Wood",
+                "DoubleGardenLightPole_Shades",
+                "DoubleGardenLightPole_DarkMetal",
+                "DoubleGardenLightPole_BulbLeft",
+                "DoubleGardenLightPole_BulbRight"
+            ]
+        },
+        {
+            "name": "HazelLightArch",
+            "source": "HazelLightArch.blend",
+            "output": "HazelLightArch.glb",
+            "version": "6718c29e0a75",
+            "preload": "lazy",
+            "objects": [
+                "HazelLightArch_Poles",
+                "HazelLightArch_TerracottaShades",
+                "HazelLightArch_Cords",
+                "HazelLightArch_Bulbs"
+            ]
+        },
+        {
+            "name": "RoofTileLantern",
+            "source": "RoofTileLantern.blend",
+            "output": "RoofTileLantern.glb",
+            "version": "0a51dad18321",
+            "preload": "lazy",
+            "objects": [
+                "RoofTileLantern_Tiles",
+                "RoofTileLantern_LimestoneCore",
+                "RoofTileLantern_Glow"
+            ]
+        },
+        {
+            "name": "WickerGardenLantern",
+            "source": "WickerGardenLantern.blend",
+            "output": "WickerGardenLantern.glb",
+            "version": "b7a3c7c8a4fe",
+            "preload": "lazy",
+            "objects": [
+                "WickerGardenLantern_Wicker",
+                "WickerGardenLantern_TerracottaBase",
+                "WickerGardenLantern_LimestoneBase",
+                "WickerGardenLantern_Glow"
+            ]
+        },
+        {
+            "name": "WoodenHandLantern",
+            "source": "WoodenHandLantern.blend",
+            "output": "WoodenHandLantern.glb",
+            "version": "583d3ee52834",
+            "preload": "lazy",
+            "objects": [
+                "WoodenHandLantern_Frame",
+                "WoodenHandLantern_Handle",
+                "WoodenHandLantern_Metal",
+                "WoodenHandLantern_Glass",
+                "WoodenHandLantern_Glow"
+            ]
+        },
+        {
+            "name": "MoonRainBarrel",
+            "source": "MoonRainBarrel.blend",
+            "output": "MoonRainBarrel.glb",
+            "version": "7425319b60fc",
+            "preload": "lazy",
+            "objects": [
+                "MoonRainBarrel_Staves",
+                "MoonRainBarrel_Bands",
+                "MoonRainBarrel_Tap",
+                "MoonRainBarrel_Lid",
+                "MoonRainBarrel_Water",
+                "MoonRainBarrel_Leaf",
+                "MoonRainBarrel_MoonStone",
+                "MoonRainBarrel_LimestoneFeet"
+            ]
+        },
+        {
+            "name": "FishingBoat",
+            "source": "FishingBoat.blend",
+            "output": "FishingBoat.glb",
+            "version": "ed251d920c48",
+            "preload": "lazy",
+            "objects": [
+                "FishingBoat_HullWoodDark",
+                "FishingBoat_HullWood",
+                "FishingBoat_InteriorWood",
+                "FishingBoat_Benches",
+                "FishingBoat_Oars",
+                "FishingBoat_Rope",
+                "FishingBoat_Net",
+                "FishingBoat_Floats",
+                "FishingBoat_Metal",
+                "FishingBoat_Ripples"
+            ]
+        },
+        {
             "name": "Fence",
             "source": "Fence.blend",
             "output": "Fence.glb",
+            "version": "dbd149ee3e7b",
             "preload": "lazy",
             "objects": [
                 "Fence Corner",
@@ -1256,7 +1737,92 @@
                 "Fence Middle",
                 "Fence Single",
                 "Fence Solo",
-                "Fence T"
+                "Fence T",
+                "Fence Extension"
+            ]
+        },
+        {
+            "name": "WhiteFence",
+            "source": "WhiteFence.blend",
+            "output": "WhiteFence.glb",
+            "version": "6da3db488a19",
+            "preload": "lazy",
+            "objects": [
+                "WhiteFence_Solo",
+                "WhiteFence_Single",
+                "WhiteFence_Middle",
+                "WhiteFence_Corner",
+                "WhiteFence_T",
+                "WhiteFence_Cross",
+                "WhiteFence_Pole",
+                "WhiteFence_Extension"
+            ]
+        },
+        {
+            "name": "StoneFence",
+            "source": "StoneFence.blend",
+            "output": "StoneFence.glb",
+            "version": "e8bb66423669",
+            "preload": "lazy",
+            "objects": [
+                "StoneFence_Solo",
+                "StoneFence_Single",
+                "StoneFence_Middle",
+                "StoneFence_Corner",
+                "StoneFence_T",
+                "StoneFence_Cross",
+                "StoneFence_Extension"
+            ]
+        },
+        {
+            "name": "PolishedStoneFence",
+            "source": "PolishedStoneFence.blend",
+            "output": "PolishedStoneFence.glb",
+            "version": "2c5f40e1afc5",
+            "preload": "lazy",
+            "objects": [
+                "PolishedStoneFence_Solo",
+                "PolishedStoneFence_Single",
+                "PolishedStoneFence_Middle",
+                "PolishedStoneFence_Corner",
+                "PolishedStoneFence_T",
+                "PolishedStoneFence_Cross",
+                "PolishedStoneFence_Extension"
+            ]
+        },
+        {
+            "name": "FenceGate",
+            "source": "FenceGate.blend",
+            "output": "FenceGate.glb",
+            "version": "ce707c4e9253",
+            "preload": "lazy",
+            "objects": ["FenceGate_Posts", "FenceGate_Leaf"]
+        },
+        {
+            "name": "WhiteFenceGate",
+            "source": "WhiteFenceGate.blend",
+            "output": "WhiteFenceGate.glb",
+            "version": "7b2247eff49b",
+            "preload": "lazy",
+            "objects": ["WhiteFenceGate_Posts", "WhiteFenceGate_Leaf"]
+        },
+        {
+            "name": "StoneFenceGate",
+            "source": "StoneFenceGate.blend",
+            "output": "StoneFenceGate.glb",
+            "version": "1e715ef5972d",
+            "preload": "lazy",
+            "objects": ["StoneFenceGate_Posts", "StoneFenceGate_Leaf"]
+        },
+        {
+            "name": "PolishedStoneFenceGate",
+            "source": "PolishedStoneFenceGate.blend",
+            "output": "PolishedStoneFenceGate.glb",
+            "version": "6a06de6cfa10",
+            "preload": "lazy",
+            "objects": [
+                "PolishedStoneFenceGate_Posts",
+                "PolishedStoneFenceGate_Leaf"
             ]
         },
         {
@@ -1285,6 +1851,7 @@
             "name": "Shade",
             "source": "Shade.blend",
             "output": "Shade.glb",
+            "version": "25d42a7ac385",
             "preload": "lazy",
             "objects": [
                 "Shade E",
@@ -1367,10 +1934,7 @@
             "source": "DesertStoneMedium.blend",
             "output": "DesertStoneMedium.glb",
             "preload": "lazy",
-            "objects": [
-                "DesertStoneMedium_Body",
-                "DesertStoneMedium_Crevices"
-            ]
+            "objects": ["DesertStoneMedium_Body", "DesertStoneMedium_Crevices"]
         },
         {
             "name": "DesertStoneLarge",
@@ -1383,6 +1947,7 @@
             "name": "Stool",
             "source": "Stool.blend",
             "output": "Stool.glb",
+            "version": "499ef9ac9d7b",
             "preload": "lazy",
             "objects": ["Stool"]
         },
@@ -1511,10 +2076,7 @@
             "output": "CactusPricklyPear.glb",
             "version": "20b55dc5e922",
             "preload": "lazy",
-            "objects": [
-                "Cactus_PricklyPear_Body",
-                "Cactus_PricklyPear_Spines"
-            ]
+            "objects": ["Cactus_PricklyPear_Body", "Cactus_PricklyPear_Spines"]
         },
         {
             "name": "PotLowBowl",
@@ -1566,45 +2128,34 @@
             "source": "PotNarrowFootBowl.blend",
             "output": "PotNarrowFootBowl.glb",
             "preload": "lazy",
-            "objects": [
-                "PotVariant_07_Narrow_Foot_Bowl",
-                "PotVariant_Soil_07"
-            ]
+            "objects": ["PotVariant_07_Narrow_Foot_Bowl", "PotVariant_Soil_07"]
         },
         {
             "name": "PotSquatRidged",
             "source": "PotSquatRidged.blend",
             "output": "PotSquatRidged.glb",
             "preload": "lazy",
-            "objects": [
-                "PotVariant_08_Squat_Ridged_Pot",
-                "PotVariant_Soil_08"
-            ]
+            "objects": ["PotVariant_08_Squat_Ridged_Pot", "PotVariant_Soil_08"]
         },
         {
             "name": "PotTallSlenderCone",
             "source": "PotTallSlenderCone.blend",
             "output": "PotTallSlenderCone.glb",
             "preload": "lazy",
-            "objects": [
-                "PotVariant_09_Tall_Slender_Cone",
-                "PotVariant_Soil_09"
-            ]
+            "objects": ["PotVariant_09_Tall_Slender_Cone", "PotVariant_Soil_09"]
         },
         {
             "name": "PotWideLippedCup",
             "source": "PotWideLippedCup.blend",
             "output": "PotWideLippedCup.glb",
             "preload": "lazy",
-            "objects": [
-                "PotVariant_10_Wide_Lipped_Cup",
-                "PotVariant_Soil_10"
-            ]
+            "objects": ["PotVariant_10_Wide_Lipped_Cup", "PotVariant_Soil_10"]
         },
         {
             "name": "HarvestBasket",
             "source": "HarvestBasket.blend",
             "output": "HarvestBasket.glb",
+            "version": "5361f192e361",
             "preload": "lazy",
             "objects": [
                 "HarvestBasket_Weave",
@@ -1622,6 +2173,31 @@
                 "HarvestBasket_Zucchini",
                 "HarvestBasket_Pumpkin",
                 "HarvestBasket_PumpkinStem"
+            ]
+        },
+        {
+            "name": "ArrowSign",
+            "source": "ArrowSign.blend",
+            "output": "ArrowSign.glb",
+            "version": "a7af022e88ee",
+            "preload": "lazy",
+            "objects": [
+                "ArrowSign_Post",
+                "ArrowSign_Arrow",
+                "ArrowSign_Fastener"
+            ]
+        },
+        {
+            "name": "WoodenSign",
+            "source": "WoodenSign.blend",
+            "output": "WoodenSign.glb",
+            "version": "970d78ef2f60",
+            "preload": "lazy",
+            "objects": [
+                "WoodenSign_Post",
+                "WoodenSign_Board",
+                "WoodenSign_Frame",
+                "WoodenSign_Fasteners"
             ]
         }
     ]

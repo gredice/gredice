@@ -1,15 +1,28 @@
+import { buildRaisedBedPlantingReadModels } from '@gredice/js/plants';
 import {
     isRaisedBedAbandoned,
     RAISED_BED_ABANDONED_ACTIONS_DISABLED_MESSAGE,
     RAISED_BED_ABANDONED_DUE_TO_INACTIVITY_MESSAGE,
 } from '@gredice/js/raisedBeds';
-import { getRaisedBed, getRaisedBedDiaryEntries } from '@gredice/storage';
+import {
+    type EntityStandardized,
+    getEntitiesFormatted,
+    getRaisedBed,
+    getRaisedBedDiaryEntries,
+} from '@gredice/storage';
 import { Alert } from '@gredice/ui/Alert';
 import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
-import { Card, CardHeader, CardOverflow, CardTitle } from '@gredice/ui/Card';
+import {
+    Card,
+    CardContent,
+    CardHeader,
+    CardOverflow,
+    CardTitle,
+} from '@gredice/ui/Card';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import { Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
+import { RaisedBedPlantingsReadOnly } from '@gredice/ui/raisedBeds';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
@@ -31,6 +44,7 @@ import { RaisedBedEventsTable } from '../../../../components/raised-beds/RaisedB
 import { RaisedBedFieldsTable } from '../../../../components/raised-beds/RaisedBedFieldsTable';
 import { auth } from '../../../../lib/auth/auth';
 import { KnownPages } from '../../../../src/KnownPages';
+import { parsePositiveIntegerRouteParam } from '../../../../src/routeParams';
 import { OperationsTableCard } from './OperationsTableCard';
 import { RaisedBedActionsMenu } from './RaisedBedActionsMenu';
 import { RaisedBedPhysicalIdInput } from './RaisedBedPhysicalIdInput';
@@ -82,13 +96,21 @@ export default async function RaisedBedPage({
     params,
     searchParams,
 }: {
-    params: Promise<{ raisedBedId: number }>;
+    params: Promise<{ raisedBedId: string }>;
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { raisedBedId } = await params;
+    const { raisedBedId: raisedBedIdParam } = await params;
     const resolvedSearchParams = await searchParams;
+    const raisedBedId = parsePositiveIntegerRouteParam(raisedBedIdParam);
+    if (raisedBedId === null) {
+        notFound();
+    }
+
     await auth(['admin']);
-    const raisedBed = await getRaisedBed(raisedBedId);
+    const [raisedBed, plantSorts] = await Promise.all([
+        getRaisedBed(raisedBedId),
+        getEntitiesFormatted<EntityStandardized>('plantSort'),
+    ]);
     if (!raisedBed) {
         notFound();
     }
@@ -98,6 +120,23 @@ export default async function RaisedBedPage({
     );
     const raisedBedTitle =
         raisedBed.name || `Gredica ${raisedBed.physicalId ?? raisedBed.id}`;
+    const plantSortsById = new Map(
+        (plantSorts ?? []).map((plantSort) => [plantSort.id, plantSort]),
+    );
+    const plantingItems = buildRaisedBedPlantingReadModels(
+        raisedBed.plantings,
+    ).map((planting) => {
+        const plantSort = plantSortsById.get(planting.plantSortId);
+        const plantName =
+            plantSort?.information?.name ??
+            plantSort?.information?.label ??
+            `Sorta #${planting.plantSortId.toString()}`;
+
+        return {
+            ...planting,
+            plantName: String(plantName),
+        };
+    });
     const isAbandoned = isRaisedBedAbandoned(raisedBed.status);
     const propertyItems: EntityDetailsPropertyListItem[] = [
         { id: 'id', label: 'ID', value: raisedBed.id, mono: true },
@@ -215,6 +254,14 @@ export default async function RaisedBedPage({
                             </Stack>
                         </Alert>
                     )}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Sadnje u gredici</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <RaisedBedPlantingsReadOnly items={plantingItems} />
+                        </CardContent>
+                    </Card>
                     <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
                         <Card className="min-w-0 overflow-hidden">
                             <CardHeader>

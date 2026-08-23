@@ -21,10 +21,12 @@ import {
     getGardenBlocks,
     getOrCreateSunflowerDropSpawn,
     getReferralAccountSummary,
+    getSunflowerPackageEligibilityForAccount,
     getSunflowers,
     getSunflowersHistory,
     getTutorialChecklistState,
     getUser,
+    getUserDefaultGarden,
     grediceCached,
     grediceCacheKeys,
     knownEventTypes,
@@ -40,15 +42,18 @@ import {
     redeemReferralCodeForAccount,
     SUNFLOWER_DROP_BLOCK_NAME,
     setReferralCodeForAccount,
+    setUserDefaultGarden,
     TutorialChecklistTaskNotClaimableError,
     TutorialChecklistTaskNotFoundError,
+    UserDefaultGardenNotAccessibleError,
+    UserDefaultGardenSandboxError,
     updateAccountTimeZone,
 } from '@gredice/storage';
 import AccountDeleteConfirmationTemplate from '@gredice/transactional/emails/Account/delete-confirmation';
 import { addDays, differenceInCalendarDays, startOfDay } from 'date-fns';
 import { Hono } from 'hono';
 import { setCookie as honoSetCookie } from 'hono/cookie';
-import { describeRoute, validator as zValidator } from 'hono-openapi';
+import { describeRoute, resolver, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { createJwt, verifyJwt } from '../../../lib/auth/auth';
 import {
@@ -57,19 +62,24 @@ import {
 } from '../../../lib/auth/sessionConfig';
 import { authSecurity } from '../../../lib/docs/security';
 import { sendAccountInvitation } from '../../../lib/email/transactional';
+import { getSunflowerDropSpawnChance } from '../../../lib/garden/sunflowerDropChance';
 import { isSunflowerDropWeatherEligible } from '../../../lib/garden/sunflowerDropWeather';
 import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import {
+    buildSunflowerPackageCatalogResponse,
+    sunflowerPackageCatalogResponseSchema,
+} from '../../../lib/sunflowers/packageCatalog';
 import { getBjelovarForecast } from '../../../lib/weather/forecast';
 import { populateWeatherFromSymbol } from '../../../lib/weather/populateWeatherFromSymbol';
 import { findClosestForecastEntry } from '../../../lib/weather/weatherNowContract';
+import accountBillingRoutes from './accountBillingRoutes';
 
 const dailyRewards = [5, 10, 15, 20, 25, 50];
 const DAILY_REWARD_TIME_ZONE = 'Europe/Zagreb';
-const SUNFLOWER_DROP_SPAWN_CHANCE = 0.35;
 const GARDEN_APP_URL =
     process.env.GREDICE_GARDEN_APP_URL ?? 'https://vrt.gredice.com';
 
@@ -252,6 +262,7 @@ function pickSunflowerBlock<T extends { id: string }>(blocks: T[]) {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/current/billing', accountBillingRoutes)
     .get(
         '/current',
         describeRoute({
@@ -555,6 +566,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
     )
 
     .get(
+        '/current/sunflowers/packages',
+        describeRoute({
+            description:
+                'Get active sunflower packages with eligibility for the current account',
+            security: authSecurity,
+            responses: {
+                200: {
+                    description: 'Active sunflower package catalog',
+                    content: {
+                        'application/json': {
+                            schema: resolver(
+                                sunflowerPackageCatalogResponseSchema,
+                            ),
+                        },
+                    },
+                },
+            },
+        }),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { accountId } = context.get('authContext');
+            const packages =
+                await getSunflowerPackageEligibilityForAccount(accountId);
+            return context.json(buildSunflowerPackageCatalogResponse(packages));
+        },
+    )
+    .get(
         '/current/sunflowers',
         describeRoute({
             description: 'Get the current account sunflowers',
@@ -635,7 +673,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             const result = await getOrCreateSunflowerDropSpawn({
                 accountId,
-                allowCreate: Math.random() < SUNFLOWER_DROP_SPAWN_CHANCE,
+                allowCreate:
+                    Math.random() <
+                    getSunflowerDropSpawnChance(sunflowerBlocks.length),
                 gardenId,
                 now,
                 sourceBlockId: sourceBlock.id,
@@ -1030,7 +1070,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 user,
                 userId,
             } = context.get('authContext');
-            const currentUser = await getUser(userId);
+            const [currentUser, defaultGarden] = await Promise.all([
+                getUser(userId),
+                getUserDefaultGarden(userId),
+            ]);
             const fallbackEmail = currentUser?.userName ?? 'Gredice';
             const orderedAccountIds = [
                 currentAccountId,
@@ -1055,6 +1098,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         gardens: gardens.map((garden) => ({
                             id: garden.id,
                             name: garden.name,
+                            isDefault: garden.id === defaultGarden?.id,
                             isSandbox: garden.isSandbox,
                             createdAt: garden.createdAt,
                         })),
@@ -1063,6 +1107,47 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
 
             return context.json(accountGardenGroups);
+        },
+    )
+    .put(
+        '/gardens/default',
+        describeRoute({
+            description:
+                'Set the real garden that opens by default for the current user.',
+            security: authSecurity,
+        }),
+        zValidator(
+            'json',
+            z.object({
+                gardenId: z.number().int().positive(),
+            }),
+        ),
+        authValidator(['user', 'admin']),
+        async (context) => {
+            const { userId } = context.get('authContext');
+            const { gardenId } = context.req.valid('json');
+
+            try {
+                const garden = await setUserDefaultGarden({
+                    gardenId,
+                    userId,
+                });
+                return context.json({
+                    accountId: garden.accountId,
+                    gardenId: garden.id,
+                });
+            } catch (error) {
+                if (error instanceof UserDefaultGardenSandboxError) {
+                    return context.json(
+                        { error: 'Sandbox gardens cannot be the default' },
+                        400,
+                    );
+                }
+                if (error instanceof UserDefaultGardenNotAccessibleError) {
+                    return context.json({ error: 'Garden not found' }, 404);
+                }
+                throw error;
+            }
         },
     )
     .post(

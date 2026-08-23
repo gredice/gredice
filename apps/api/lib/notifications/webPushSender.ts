@@ -1,12 +1,19 @@
 import {
     createNotification,
+    type NotificationDeliveryEventType,
     notificationDeliveryAttempts,
     notifications,
+    promoteDeferredWebPushDeliveryAttempts,
+    type QueuedWebPushDeliveryRevalidation,
     recordNotificationDeliveryEvent,
+    recordWebPushDeliveryFailure,
+    revalidateQueuedWebPushDeliveryAttempt,
     storage,
+    webPushDeliveryClaimLeaseMs,
+    webPushDeliveryClaimProviderCode,
     webPushSubscriptions,
 } from '@gredice/storage';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte, ne, or } from 'drizzle-orm';
 import webPush, {
     type PushSubscription,
     type SendResult,
@@ -50,6 +57,7 @@ export type QueuedWebPushAttempt = {
     safeLinkUrl: string | null;
     subscriptionFailCount: number;
     threadKey: string | null;
+    timestamp: Date;
     ttlSeconds: number | null;
     urgency: string | null;
     userId: string | null;
@@ -58,6 +66,10 @@ export type QueuedWebPushAttempt = {
 export type WebPushSend = (
     attempt: QueuedWebPushAttempt,
 ) => Promise<SendResult | undefined>;
+
+export type WebPushAttemptRevalidator = (
+    attempt: QueuedWebPushAttempt,
+) => Promise<QueuedWebPushDeliveryRevalidation>;
 
 export type WebPushPayloadOptions = {
     richPushEnabled?: boolean;
@@ -82,6 +94,14 @@ export type WebPushFailure = {
     statusCode: number | null;
     willRetry: boolean;
 };
+
+export function webPushFailureEventTypes(
+    failure: Pick<WebPushFailure, 'invalidSubscription'>,
+): NotificationDeliveryEventType[] {
+    return failure.invalidSubscription
+        ? ['failed', 'unsubscribed']
+        : ['failed'];
+}
 
 export type WebPushBatchResult = {
     accepted: number;
@@ -227,10 +247,25 @@ export function createWebPushSend(
             webPushSubscription(attempt),
             buildWebPushPayload(attempt, options),
             {
-                TTL: attempt.ttlSeconds ?? defaultTtlSeconds,
+                TTL: webPushTimeToLiveSeconds(attempt),
                 urgency: normalizeUrgency(attempt.urgency),
             },
         );
+}
+
+export function webPushTimeToLiveSeconds(
+    attempt: Pick<QueuedWebPushAttempt, 'timestamp' | 'ttlSeconds'>,
+    now = new Date(),
+) {
+    if (attempt.ttlSeconds === null) return defaultTtlSeconds;
+    const configuredTtlSeconds = Math.max(0, Math.floor(attempt.ttlSeconds));
+    const remainingTtlSeconds = Math.floor(
+        (attempt.timestamp.getTime() +
+            configuredTtlSeconds * 1000 -
+            now.getTime()) /
+            1000,
+    );
+    return Math.max(0, Math.min(configuredTtlSeconds, remainingTtlSeconds));
 }
 
 function normalizeWebPushError(
@@ -287,7 +322,7 @@ async function recordAcceptedAttempt(
 ) {
     const now = new Date();
     const statusCode = result?.statusCode ?? 201;
-    await storage()
+    const accepted = await storage()
         .update(notificationDeliveryAttempts)
         .set({
             acceptedAt: now,
@@ -297,7 +332,18 @@ async function recordAcceptedAttempt(
             providerResponseCode: `accepted_${statusCode}`,
             status: 'accepted',
         })
-        .where(eq(notificationDeliveryAttempts.id, attempt.attemptId));
+        .where(
+            and(
+                eq(notificationDeliveryAttempts.id, attempt.attemptId),
+                eq(notificationDeliveryAttempts.status, 'queued'),
+                eq(
+                    notificationDeliveryAttempts.providerResponseCode,
+                    webPushDeliveryClaimProviderCode,
+                ),
+            ),
+        )
+        .returning({ id: notificationDeliveryAttempts.id });
+    if (!accepted[0]) return;
     await storage()
         .update(webPushSubscriptions)
         .set({
@@ -325,46 +371,11 @@ async function recordFailedAttempt(
     attempt: QueuedWebPushAttempt,
     failure: WebPushFailure,
 ) {
-    const now = new Date();
-    const subscriptionUpdate = {
-        failCount: sql`${webPushSubscriptions.failCount} + 1`,
-        lastFailureAt: now,
-        lastFailureCode: failure.providerResponseCode,
-        lastFailureReason: failure.message.slice(0, 512),
-        updatedAt: now,
-        ...(failure.invalidSubscription
-            ? {
-                  enabled: false,
-                  revokedAt: now,
-                  revokedReason: 'web_push_endpoint_invalid',
-              }
-            : {}),
-    };
-
-    await storage()
-        .update(notificationDeliveryAttempts)
-        .set({
-            attemptedAt: now,
-            failedAt: failure.willRetry ? null : now,
-            providerResponseBody: failure.body,
-            providerResponseCode: failure.providerResponseCode,
-            status: failure.willRetry ? 'queued' : 'failed',
-        })
-        .where(eq(notificationDeliveryAttempts.id, attempt.attemptId));
-    await storage()
-        .update(webPushSubscriptions)
-        .set(subscriptionUpdate)
-        .where(eq(webPushSubscriptions.id, attempt.pushSubscriptionId));
-    await recordNotificationDeliveryEvent({
-        deliveryAttemptId: attempt.attemptId,
-        metadata: {
-            invalidSubscription: failure.invalidSubscription,
-            provider: 'web_push',
-            statusCode: failure.statusCode,
-            willRetry: failure.willRetry,
-        },
+    await recordWebPushDeliveryFailure({
+        attemptId: attempt.attemptId,
+        ...failure,
         notificationId: attempt.notificationId,
-        type: 'failed',
+        pushSubscriptionId: attempt.pushSubscriptionId,
     });
 }
 
@@ -372,11 +383,13 @@ export async function processWebPushAttempts({
     attempts,
     maxRetryFailures = defaultMaxRetryFailures,
     recorders,
+    revalidate,
     send,
 }: {
     attempts: QueuedWebPushAttempt[];
     maxRetryFailures?: number;
     recorders?: WebPushAttemptRecorders;
+    revalidate?: WebPushAttemptRevalidator;
     send: WebPushSend;
 }): Promise<WebPushBatchResult> {
     const result: WebPushBatchResult = {
@@ -388,22 +401,43 @@ export async function processWebPushAttempts({
         retried: 0,
         skipped: 0,
     };
+    const recordingFailures: unknown[] = [];
 
     for (const attempt of attempts) {
+        const revalidation = revalidate ? await revalidate(attempt) : undefined;
+        if (revalidation && revalidation.status !== 'eligible') {
+            result.skipped += 1;
+            continue;
+        }
+        let sendResult: SendResult | undefined;
         try {
-            const sendResult = await send(attempt);
-            await (recorders?.accepted ?? recordAcceptedAttempt)(
-                attempt,
-                sendResult,
-            );
-            result.accepted += 1;
+            sendResult = await send(attempt);
         } catch (error) {
             const failure = normalizeWebPushError(
                 error,
                 attempt,
                 maxRetryFailures,
             );
-            await (recorders?.failed ?? recordFailedAttempt)(attempt, failure);
+            try {
+                await (recorders?.failed ?? recordFailedAttempt)(
+                    attempt,
+                    failure,
+                );
+            } catch (recordingError) {
+                recordingFailures.push(recordingError);
+                console.warn('Web Push failure recording failed', {
+                    attemptId: attempt.attemptId,
+                    errorName:
+                        recordingError instanceof Error
+                            ? recordingError.name
+                            : 'Unknown',
+                    invalidSubscription: failure.invalidSubscription,
+                    providerResponseCode: failure.providerResponseCode,
+                    statusCode: failure.statusCode,
+                    willRetry: failure.willRetry,
+                });
+                continue;
+            }
             if (failure.invalidSubscription) {
                 result.invalidated += 1;
                 result.failed += 1;
@@ -421,7 +455,20 @@ export async function processWebPushAttempts({
                 statusCode: failure.statusCode,
                 willRetry: failure.willRetry,
             });
+            continue;
         }
+        await (recorders?.accepted ?? recordAcceptedAttempt)(
+            attempt,
+            sendResult,
+        );
+        result.accepted += 1;
+    }
+
+    if (recordingFailures.length > 0) {
+        throw new AggregateError(
+            recordingFailures,
+            'One or more Web Push failures could not be recorded.',
+        );
     }
 
     return result;
@@ -430,10 +477,13 @@ export async function processWebPushAttempts({
 export async function getQueuedWebPushAttempts({
     limit = defaultBatchLimit,
     notificationId,
+    now = new Date(),
 }: {
     limit?: number;
     notificationId?: string;
+    now?: Date;
 } = {}): Promise<QueuedWebPushAttempt[]> {
+    const claimCutoff = new Date(now.getTime() - webPushDeliveryClaimLeaseMs);
     return await storage()
         .select({
             accountId: notificationDeliveryAttempts.accountId,
@@ -457,6 +507,7 @@ export async function getQueuedWebPushAttempts({
             safeLinkUrl: notifications.safeLinkUrl,
             subscriptionFailCount: webPushSubscriptions.failCount,
             threadKey: notifications.threadKey,
+            timestamp: notifications.timestamp,
             ttlSeconds: notifications.ttlSeconds,
             urgency: notifications.urgency,
             userId: notificationDeliveryAttempts.userId,
@@ -478,18 +529,26 @@ export async function getQueuedWebPushAttempts({
                 eq(notificationDeliveryAttempts.channel, 'push'),
                 eq(notificationDeliveryAttempts.provider, webPushQueueProvider),
                 eq(notificationDeliveryAttempts.status, 'queued'),
+                or(
+                    isNull(notificationDeliveryAttempts.providerResponseCode),
+                    ne(
+                        notificationDeliveryAttempts.providerResponseCode,
+                        webPushDeliveryClaimProviderCode,
+                    ),
+                    lte(notificationDeliveryAttempts.attemptedAt, claimCutoff),
+                ),
                 notificationId
                     ? eq(
                           notificationDeliveryAttempts.notificationId,
                           notificationId,
                       )
                     : undefined,
-                eq(webPushSubscriptions.enabled, true),
-                eq(webPushSubscriptions.permissionState, 'granted'),
-                isNull(webPushSubscriptions.revokedAt),
             ),
         )
-        .orderBy(asc(notificationDeliveryAttempts.createdAt))
+        .orderBy(
+            asc(notificationDeliveryAttempts.attemptedAt),
+            asc(notificationDeliveryAttempts.createdAt),
+        )
         .limit(Math.max(1, Math.min(limit, 500)));
 }
 
@@ -497,17 +556,28 @@ export async function sendQueuedWebPushAttempts({
     limit = defaultBatchLimit,
     maxRetryFailures = defaultMaxRetryFailures,
     notificationId,
+    now,
     richPushEnabled,
     send,
 }: {
     limit?: number;
     maxRetryFailures?: number;
     notificationId?: string;
+    now?: Date;
     richPushEnabled?: boolean;
     send?: WebPushSend;
 } = {}): Promise<WebPushBatchResult> {
+    await promoteDeferredWebPushDeliveryAttempts({
+        limit,
+        notificationId,
+        now,
+    });
     const config = readWebPushVapidConfig();
-    const attempts = await getQueuedWebPushAttempts({ limit, notificationId });
+    const attempts = await getQueuedWebPushAttempts({
+        limit,
+        notificationId,
+        now,
+    });
 
     if (!config && !send) {
         return {
@@ -555,6 +625,11 @@ export async function sendQueuedWebPushAttempts({
     return await processWebPushAttempts({
         attempts,
         maxRetryFailures,
+        revalidate: async (attempt) =>
+            await revalidateQueuedWebPushDeliveryAttempt({
+                attemptId: attempt.attemptId,
+                now: now ?? new Date(),
+            }),
         send: resolvedSend,
     });
 }

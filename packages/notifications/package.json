@@ -6,21 +6,25 @@
     "type": "module",
     "license": "MIT",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./customer-delivery": "./src/customerDeliveryNotifications.ts"
     },
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "test": "node --conditions=react-server --import tsx --test ./src/**/*.node.spec.ts"
     },
     "dependencies": {
         "@gredice/directory-types": "workspace:*",
+        "@gredice/js": "workspace:*",
         "@gredice/slack": "workspace:*",
         "@gredice/storage": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
-        "typescript": "6.0.3"
+        "tsx": "4.23.0",
+        "typescript": "7.0.2"
     }
 }

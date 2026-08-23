@@ -4,7 +4,7 @@ import { Chip } from '@gredice/ui/Chip';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { auth } from '../../../lib/auth/auth';
@@ -68,64 +68,66 @@ export default async function ReceiptsPage() {
             </Row>
             <Card>
                 <CardOverflow>
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Datum izdavanja</Table.Head>
-                                <Table.Head>Račun</Table.Head>
-                                <Table.Head>CIS Status</Table.Head>
-                                <Table.Head>Iznos</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {receipts.length === 0 && (
-                                <Table.Row>
-                                    <Table.Cell colSpan={7}>
-                                        <NoDataPlaceholder>
-                                            Nema fiskalnih računa
-                                        </NoDataPlaceholder>
-                                    </Table.Cell>
-                                </Table.Row>
-                            )}
+                    {receipts.length === 0 ? (
+                        <div className="p-4">
+                            <NoDataPlaceholder>
+                                Nema fiskalnih računa
+                            </NoDataPlaceholder>
+                        </div>
+                    ) : (
+                        <ul className="divide-y">
                             {receipts.map((receipt) => (
-                                <Table.Row key={receipt.id}>
-                                    <Table.Cell>
-                                        <LocalDateTime>
-                                            {receipt.createdAt}
-                                        </LocalDateTime>
-                                    </Table.Cell>
-                                    <Table.Cell>
-                                        <Link
-                                            href={KnownPages.Receipt(
-                                                receipt.id,
-                                            )}
+                                <li
+                                    key={receipt.id}
+                                    className="flex min-w-0 flex-col gap-3 px-3 py-3 hover:bg-muted/40 sm:px-4 md:flex-row md:items-center md:justify-between"
+                                >
+                                    <Stack spacing={1} className="min-w-0">
+                                        <Typography
+                                            level="body1"
+                                            component="h3"
+                                            semiBold
+                                            className="min-w-0"
                                         >
-                                            {receipt.yearReceiptNumber}
-                                        </Link>
-                                    </Table.Cell>
-                                    <Table.Cell>
+                                            <Link
+                                                href={KnownPages.Receipt(
+                                                    receipt.id,
+                                                )}
+                                            >
+                                                {receipt.yearReceiptNumber}
+                                            </Link>
+                                        </Typography>
+                                        <Typography
+                                            level="body3"
+                                            className="text-muted-foreground"
+                                        >
+                                            Datum izdavanja:{' '}
+                                            <LocalDateTime>
+                                                {receipt.createdAt}
+                                            </LocalDateTime>
+                                        </Typography>
+                                    </Stack>
+                                    <div className="flex min-w-0 flex-wrap items-center gap-2 md:justify-end">
                                         <Chip
                                             color={getCisStatusColor(
                                                 receipt.cisStatus,
                                             )}
                                         >
+                                            CIS:{' '}
                                             {getCisStatusLabel(
                                                 receipt.cisStatus,
                                             )}
                                         </Chip>
-                                    </Table.Cell>
-                                    <Table.Cell>
                                         <Chip>
-                                            {receipt.totalAmount}
+                                            Iznos: {receipt.totalAmount}
                                             {receipt.currency === 'eur'
                                                 ? '€'
                                                 : receipt.currency || 'eur'}
                                         </Chip>
-                                    </Table.Cell>
-                                </Table.Row>
+                                    </div>
+                                </li>
                             ))}
-                        </Table.Body>
-                    </Table>
+                        </ul>
+                    )}
                 </CardOverflow>
             </Card>
         </Stack>

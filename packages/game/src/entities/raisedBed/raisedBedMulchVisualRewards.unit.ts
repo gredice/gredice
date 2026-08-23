@@ -161,6 +161,43 @@ test('nested whole-bed mulch operation inherits the current raised bed', () => {
     assert.equal(reward?.entityId, 1);
 });
 
+test('plant mulch without a field is not promoted to whole-bed mulch', () => {
+    const reward = resolveActiveRaisedBedMulchReward({
+        raisedBedId: 10,
+        operations,
+        appliedOperations: [
+            applied(260, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 3,
+                raisedBedId: 10,
+            }),
+        ],
+    });
+
+    assert.equal(reward, null);
+});
+
+test('newer plant mulch without a field does not mask whole-bed mulch', () => {
+    const reward = resolveActiveRaisedBedMulchReward({
+        raisedBedId: 10,
+        operations,
+        appliedOperations: [
+            applied(270, {
+                completedAt: '2026-06-01T08:00:00.000Z',
+                entityId: 1,
+                raisedBedId: 10,
+            }),
+            applied(271, {
+                completedAt: '2026-06-02T08:00:00.000Z',
+                entityId: 3,
+                raisedBedId: 10,
+            }),
+        ],
+    });
+
+    assert.equal(reward?.entityId, 1);
+});
+
 test('field remove-mulch reward clears only the matching field', () => {
     const rewardsByFieldId = resolveActiveFieldMulchRewardsByFieldId({
         raisedBedId: 10,

@@ -15,10 +15,15 @@ export type PushSetupStatus =
     | 'denied'
     | 'granted'
     | 'subscribed'
-    | 'prompt-dismissed';
+    | 'prompt-dismissed'
+    | 'setup-failed';
+
+export type PushSetupResult =
+    | Exclude<PushSetupStatus, 'setup-failed'>
+    | 'setup-failed';
 
 const pushPromptDismissedKey = 'farm:push:prompt-dismissed';
-const pushDeviceIdKey = 'farm:push:device-id';
+export const pushDeviceIdKey = 'farm:push:device-id';
 const pushServiceWorkerPath = '/push-notifications-sw.js';
 const webPushVapidPublicKey =
     process.env.NEXT_PUBLIC_GREDICE_WEB_PUSH_VAPID_PUBLIC_KEY;
@@ -26,6 +31,16 @@ const webPushVapidPublicKey =
 function readPromptDismissed(): boolean {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(pushPromptDismissedKey) === '1';
+}
+
+function setPromptDismissed() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(pushPromptDismissedKey, '1');
+}
+
+function clearPromptDismissed() {
+    if (typeof window === 'undefined') return;
+    window.localStorage.removeItem(pushPromptDismissedKey);
 }
 
 function readOrCreatePushDeviceId(): string | undefined {
@@ -117,64 +132,145 @@ export function usePushSubscription() {
     const [status, setStatus] = useState<PushSetupStatus>(() =>
         resolvePermissionStatus(),
     );
+    const [error, setError] = useState<string | null>(null);
+    const [isRequesting, setIsRequesting] = useState(false);
 
     useEffect(() => {
-        setStatus(resolvePermissionStatus());
+        let cancelled = false;
+
+        async function syncStatus() {
+            const permissionStatus = resolvePermissionStatus();
+            if (permissionStatus !== 'granted') {
+                setStatus(permissionStatus);
+                return;
+            }
+
+            const registration =
+                typeof navigator !== 'undefined' && 'serviceWorker' in navigator
+                    ? await navigator.serviceWorker.getRegistration(
+                          pushServiceWorkerPath,
+                      )
+                    : undefined;
+            const subscription =
+                await registration?.pushManager.getSubscription();
+            if (!cancelled) {
+                setStatus(subscription ? 'subscribed' : 'granted');
+            }
+        }
+
+        syncStatus().catch(() => {
+            if (!cancelled) {
+                setStatus(resolvePermissionStatus());
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const dismissPrompt = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem(pushPromptDismissedKey, '1');
-        }
+        setPromptDismissed();
         setStatus('prompt-dismissed');
     }, []);
 
-    const requestPermission = useCallback(async () => {
-        if (
-            typeof window === 'undefined' ||
-            !('Notification' in window) ||
-            !('PushManager' in window)
-        ) {
-            setStatus('unsupported');
-            return 'unsupported' as const;
-        }
+    const requestPermission =
+        useCallback(async (): Promise<PushSetupResult> => {
+            setError(null);
 
-        if (!webPushVapidPublicKey) {
-            setStatus('unconfigured');
-            return 'unconfigured' as const;
-        }
-
-        const permission =
-            window.Notification.permission === 'granted'
-                ? 'granted'
-                : await window.Notification.requestPermission();
-        if (permission === 'granted') {
-            const registration = await ensurePushServiceWorkerRegistered();
-            if (!registration) {
+            if (
+                typeof window === 'undefined' ||
+                !('Notification' in window) ||
+                !('PushManager' in window) ||
+                !('serviceWorker' in navigator) ||
+                typeof window.isSecureContext !== 'boolean' ||
+                !window.isSecureContext
+            ) {
                 setStatus('unsupported');
                 return 'unsupported' as const;
             }
-            await subscribePushDevice({
-                applicationServerKey: webPushVapidPublicKey,
-                metadata: pushDeviceMetadata(),
-                persistSubscription: persistPushSubscription,
-                pushManager: registration.pushManager,
-            });
-            setStatus('subscribed');
-            return 'subscribed' as const;
+
+            if (!webPushVapidPublicKey) {
+                setStatus('unconfigured');
+                return 'unconfigured' as const;
+            }
+
+            setIsRequesting(true);
+            try {
+                const permission =
+                    window.Notification.permission === 'granted'
+                        ? 'granted'
+                        : await window.Notification.requestPermission();
+                if (permission === 'granted') {
+                    const registration =
+                        await ensurePushServiceWorkerRegistered();
+                    if (!registration) {
+                        setStatus('unsupported');
+                        return 'unsupported' as const;
+                    }
+                    await subscribePushDevice({
+                        applicationServerKey: webPushVapidPublicKey,
+                        metadata: pushDeviceMetadata(),
+                        persistSubscription: persistPushSubscription,
+                        pushManager: registration.pushManager,
+                    });
+                    clearPromptDismissed();
+                    setStatus('subscribed');
+                    return 'subscribed' as const;
+                }
+
+                if (permission === 'denied') {
+                    setStatus('denied');
+                    return 'denied' as const;
+                }
+
+                setPromptDismissed();
+                setStatus('prompt-dismissed');
+                return 'prompt-dismissed' as const;
+            } catch {
+                setError('Obavijesti nisu uključene. Pokušaj ponovno.');
+                setStatus('setup-failed');
+                return 'setup-failed' as const;
+            } finally {
+                setIsRequesting(false);
+            }
+        }, []);
+
+    const revokeBrowserSubscription = useCallback(async () => {
+        setError(null);
+
+        if (
+            typeof navigator === 'undefined' ||
+            !('serviceWorker' in navigator)
+        ) {
+            setStatus(resolvePermissionStatus());
+            return false;
         }
 
-        if (permission === 'denied') {
-            setStatus('denied');
-            return 'denied' as const;
+        try {
+            const registration = await navigator.serviceWorker.getRegistration(
+                pushServiceWorkerPath,
+            );
+            const subscription =
+                await registration?.pushManager.getSubscription();
+            const unsubscribed = (await subscription?.unsubscribe()) ?? false;
+            setStatus(resolvePermissionStatus());
+            return unsubscribed;
+        } catch {
+            setError(
+                'Uređaj je uklonjen iz Gredica, ali preglednik nije potvrdio lokalno uklanjanje.',
+            );
+            setStatus(resolvePermissionStatus());
+            return false;
         }
-
-        setStatus('default');
-        return 'default' as const;
     }, []);
 
     const canPrompt = useMemo(
-        () => status === 'default' || status === 'granted',
+        () =>
+            status === 'default' ||
+            status === 'granted' ||
+            status === 'prompt-dismissed' ||
+            status === 'setup-failed',
         [status],
     );
 
@@ -182,6 +278,9 @@ export function usePushSubscription() {
         status,
         canPrompt,
         dismissPrompt,
+        error,
+        isRequesting,
         requestPermission,
+        revokeBrowserSubscription,
     };
 }

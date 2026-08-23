@@ -138,6 +138,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 getAccountGardens(primaryAccountId),
                 getAccountAchievements(primaryAccountId),
             ]);
+            const visibleGardens = gardens.filter((garden) => garden.isPublic);
 
             return context.json({
                 user: {
@@ -148,7 +149,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     avatarUrl: dbUser.avatarUrl,
                     createdAt: dbUser.createdAt,
                 },
-                gardens: gardens.map((garden) => ({
+                gardens: visibleGardens.map((garden) => ({
                     id: garden.id,
                     name: garden.name,
                     createdAt: garden.createdAt,

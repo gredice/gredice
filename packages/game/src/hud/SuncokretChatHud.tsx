@@ -2,33 +2,77 @@
 
 import { useChat } from '@ai-sdk/react';
 import { getBrowserGrediceAppOrigin } from '@gredice/client';
+import { sanitizeSuncokretAssistantText } from '@gredice/js/ai';
 import { Button } from '@gredice/ui/Button';
+import {
+    ChatBubble,
+    ChatMarker,
+    ChatMessage as ChatMessageLayout,
+    ChatMessageResponse,
+    ChatMessageScroller,
+} from '@gredice/ui/Chat';
 import { IconButton } from '@gredice/ui/IconButton';
 import {
+    Add,
     AI,
+    ArrowLeft,
     Check,
     Close,
+    History,
     LoaderSpinner,
     Send,
     Sun,
     Warning,
 } from '@gredice/ui/icons';
-import { Markdown } from '@gredice/ui/Markdown';
+import { Popper } from '@gredice/ui/Popper';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import { DefaultChatTransport, type UIMessage } from 'ai';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+    DefaultChatTransport,
+    lastAssistantMessageIsCompleteWithApprovalResponses,
+    type UIMessage,
+} from 'ai';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type FormEvent,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { useGameFlags } from '../GameFlagsContext';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useGameState } from '../useGameState';
+import { useOverviewSectionParam } from '../useUrlState';
 import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
+import { HudCard } from './components/HudCard';
+import {
+    type SuncokretChatSeed,
+    useSuncokretChat,
+} from './SuncokretChatProvider';
+import { SuncokretChatTrigger } from './SuncokretChatTrigger';
+import {
+    SuncokretConversationList,
+    type SuncokretConversationSummary,
+} from './SuncokretConversationList';
+import { SuncokretUsageButton } from './SuncokretUsageButton';
+import {
+    resolveSuncokretUiContext,
+    resolveSuncokretVisibleUsage,
+    type SuncokretUsageStatus,
+    suncokretContextSuggestions,
+    suncokretConversationLabel,
+} from './suncokretChatContext';
+import { invalidateSuncokretMutationQueries } from './suncokretChatQueryInvalidation';
 
 type SuncokretLimit = {
-    dailyLimitUsd: number;
-    remainingUsd: number;
     retryAt: string;
     blockedReason: string | null;
     trialChatDaysUsed: number;
@@ -40,6 +84,7 @@ type SuncokretStatus = {
     debugEnabled?: boolean;
     model: { id: string; label: string } | null;
     limit: SuncokretLimit;
+    usage: SuncokretUsageStatus;
 };
 
 type SuncokretModel = {
@@ -47,14 +92,174 @@ type SuncokretModel = {
     label: string;
 };
 
+type SuncokretConversationDetail = SuncokretConversationSummary & {
+    messages: UIMessage[];
+};
+
+const SuncokretRecommendationChips = dynamic(
+    () =>
+        import('./SuncokretRecommendationChips').then(
+            (module) => module.SuncokretRecommendationChips,
+        ),
+    { ssr: false },
+);
+
+const desktopChatQuery = '(min-width: 768px)';
+
+function subscribeToDesktopChatLayout(onChange: () => void) {
+    const mediaQuery = window.matchMedia(desktopChatQuery);
+    mediaQuery.addEventListener('change', onChange);
+    return () => mediaQuery.removeEventListener('change', onChange);
+}
+
+function desktopChatLayoutSnapshot() {
+    return window.matchMedia(desktopChatQuery).matches;
+}
+
+function SuncokretChatPositioner({
+    anchorElement,
+    children,
+    isCloseup,
+    onClose,
+}: {
+    anchorElement: HTMLElement | null;
+    children: ReactNode;
+    isCloseup: boolean;
+    onClose: () => void;
+}) {
+    const desktop = useSyncExternalStore(
+        subscribeToDesktopChatLayout,
+        desktopChatLayoutSnapshot,
+        () => false,
+    );
+    const virtualRef = useMemo(
+        () => (anchorElement ? { current: anchorElement } : undefined),
+        [anchorElement],
+    );
+
+    if (desktop && anchorElement && virtualRef) {
+        const anchorRect = anchorElement.getBoundingClientRect();
+        const anchorCenter = anchorRect.left + anchorRect.width / 2;
+        const side = anchorCenter < window.innerWidth / 2 ? 'right' : 'left';
+
+        return (
+            <Popper
+                align="center"
+                className="z-[60] !w-[440px] max-w-[calc(100vw-var(--game-safe-area-left,0px)-var(--game-safe-area-right,0px)-1rem)] border-0 bg-transparent p-0 shadow-none"
+                data-suncokret-placement="anchored"
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                        onClose();
+                    }
+                }}
+                open
+                side={side}
+                sideOffset={12}
+                virtualRef={virtualRef}
+            >
+                {children}
+            </Popper>
+        );
+    }
+
+    return createPortal(
+        <div
+            className={cx(
+                'pointer-events-auto fixed bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] z-[60] flex justify-center md:block',
+                isCloseup
+                    ? 'md:right-auto md:left-[calc(var(--game-safe-area-left,0px)+0.5rem)]'
+                    : 'md:right-[calc(var(--game-safe-area-right,0px)+0.5rem)] md:left-auto',
+            )}
+            data-suncokret-placement={
+                isCloseup ? 'bottom-left' : 'bottom-right'
+            }
+        >
+            {children}
+        </div>,
+        document.body,
+    );
+}
+
 function randomChatId() {
     return typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `suncokret-${Date.now().toString(36)}`;
 }
 
+function seedMessages(seed: SuncokretChatSeed): UIMessage[] {
+    return seed.messages.map((message, index) => ({
+        id: `${seed.id}-${index.toString()}`,
+        role: message.role,
+        parts: [{ type: 'text', text: message.text }],
+    }));
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNullableNumber(value: unknown): value is number | null {
+    return value === null || typeof value === 'number';
+}
+
+function isNullableString(value: unknown): value is string | null {
+    return value === null || typeof value === 'string';
+}
+
+function isSuncokretConversationSummary(
+    value: unknown,
+): value is SuncokretConversationSummary {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        isNullableString(value.title) &&
+        isNullableString(value.model) &&
+        isNullableNumber(value.gardenId) &&
+        isNullableNumber(value.raisedBedId) &&
+        typeof value.createdAt === 'string' &&
+        isNullableString(value.lastMessageAt)
+    );
+}
+
+function isUiMessage(value: unknown): value is UIMessage {
+    return (
+        isRecord(value) &&
+        typeof value.id === 'string' &&
+        ['system', 'user', 'assistant'].includes(
+            typeof value.role === 'string' ? value.role : '',
+        ) &&
+        Array.isArray(value.parts)
+    );
+}
+
+function parseConversationListPayload(value: unknown) {
+    if (!isRecord(value) || !Array.isArray(value.conversations)) {
+        return null;
+    }
+
+    return value.conversations.every(isSuncokretConversationSummary)
+        ? value.conversations
+        : null;
+}
+
+function parseConversationDetailPayload(
+    value: unknown,
+): SuncokretConversationDetail | null {
+    if (!isRecord(value) || !isRecord(value.conversation)) {
+        return null;
+    }
+
+    const conversation = value.conversation;
+    const messages = conversation.messages;
+    if (
+        !isSuncokretConversationSummary(conversation) ||
+        !Array.isArray(messages) ||
+        !messages.every(isUiMessage)
+    ) {
+        return null;
+    }
+
+    return { ...conversation, messages };
 }
 
 function textPart(part: unknown) {
@@ -100,7 +305,14 @@ function toolActivityLabel(name: string) {
         case 'listRaisedBeds':
             return 'Provjeravam gredice';
         case 'getRaisedBedFields':
+        case 'getRaisedBedDetails':
             return 'Provjeravam polja u gredici';
+        case 'getCurrentWeather':
+            return 'Provjeravam aktualno vrijeme';
+        case 'getWeatherForecast':
+            return 'Provjeravam vremensku prognozu';
+        case 'getDeliverySlots':
+            return 'Provjeravam termine dostave';
         case 'listGardenOperations':
             return 'Provjeravam radnje';
         case 'getRaisedBedAiHistory':
@@ -110,9 +322,12 @@ function toolActivityLabel(name: string) {
             return 'Pretražujem Gredice katalog';
         case 'searchProducts':
             return 'Provjeravam ponudu';
+        case 'presentRecommendations':
+            return 'Pripremam prijedloge';
         case 'getCart':
             return 'Provjeravam košaricu';
         case 'addProductToCart':
+        case 'addOperationToCart':
         case 'updateCartItem':
             return 'Pripremam košaricu';
         case 'analyzeRaisedBedImages':
@@ -176,22 +391,20 @@ function isToolRunningState(state: string) {
     );
 }
 
+function isCompletedRecommendationPart(part: Record<string, unknown>) {
+    const state = toolState(part);
+    return (
+        toolName(part) === 'presentRecommendations' &&
+        (state === 'output-available' || state === 'result')
+    );
+}
+
 function debugJson(value: unknown) {
     try {
         return JSON.stringify(value, null, 2);
     } catch {
         return String(value);
     }
-}
-
-function formatUsd(value: number | null | undefined) {
-    if (value == null) return '-';
-    return new Intl.NumberFormat('hr-HR', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: value > 0 && value < 0.01 ? 4 : 2,
-    }).format(value);
 }
 
 function formatRetryAt(value: string | null | undefined) {
@@ -204,25 +417,40 @@ function formatRetryAt(value: string | null | undefined) {
     }).format(date);
 }
 
-function suncokretFlagParams({
-    debug,
-    enabled,
-}: {
-    debug: boolean;
-    enabled: boolean;
-}) {
+function messageTextContent(message: UIMessage | undefined) {
+    if (!message) {
+        return '';
+    }
+
+    return message.parts
+        .map((part) => textPart(part) ?? '')
+        .join('')
+        .trim();
+}
+
+function suncokretFlagParams({ debug }: { debug: boolean }) {
     const params = new URLSearchParams({
-        enableSuncokretChatFlag: enabled ? 'true' : 'false',
         enableSuncokretDebugFlag: debug ? 'true' : 'false',
     });
     return params.toString();
 }
 
-function MessageText({ children }: { children: string }) {
+function MessageText({
+    children,
+    isStreaming,
+}: {
+    children: string;
+    isStreaming: boolean;
+}) {
+    const safeText = sanitizeSuncokretAssistantText(children);
+
     return (
-        <Markdown className="prose-sm max-w-none text-sm leading-relaxed [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1">
-            {children}
-        </Markdown>
+        <ChatMessageResponse
+            className="text-sm leading-relaxed"
+            isAnimating={isStreaming}
+        >
+            {safeText}
+        </ChatMessageResponse>
     );
 }
 
@@ -243,7 +471,7 @@ function ToolPart({
     const name = toolName(part);
 
     return (
-        <div className="rounded-md border bg-muted/30 p-2 text-xs">
+        <div className="rounded-xl border bg-muted/30 p-3 text-xs">
             <Row justifyContent="space-between" className="gap-2">
                 <Stack spacing={0} className="min-w-0">
                     <Typography level="body3" semiBold>
@@ -338,6 +566,7 @@ function toolActivityScope(parts: Record<string, unknown>[]) {
                 'listGardens',
                 'listRaisedBeds',
                 'getRaisedBedFields',
+                'getRaisedBedDetails',
                 'listGardenOperations',
                 'getRaisedBedAiHistory',
             ].includes(name),
@@ -345,10 +574,16 @@ function toolActivityScope(parts: Record<string, unknown>[]) {
             ? 'vrt'
             : null,
         names.some((name) =>
+            ['getCurrentWeather', 'getWeatherForecast'].includes(name),
+        )
+            ? 'vrijeme'
+            : null,
+        names.some((name) =>
             [
                 'searchDirectory',
                 'getOperationsDirectory',
                 'searchProducts',
+                'presentRecommendations',
             ].includes(name),
         )
             ? 'katalog'
@@ -357,6 +592,7 @@ function toolActivityScope(parts: Record<string, unknown>[]) {
             [
                 'getCart',
                 'addProductToCart',
+                'addOperationToCart',
                 'updateCartItem',
                 'prepareCheckout',
             ].includes(name),
@@ -421,6 +657,23 @@ function ChatMessage({
 }) {
     const isUser = message.role === 'user';
     const partKeyCounts = new Map<string, number>();
+    const keyedParts = message.parts.map((part) => {
+        const baseKey = messagePartKey(part);
+        const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
+        partKeyCounts.set(baseKey, duplicateCount + 1);
+
+        return {
+            key:
+                duplicateCount === 0 ? baseKey : `${baseKey}:${duplicateCount}`,
+            part,
+        };
+    });
+    const completedRecommendationParts = keyedParts.flatMap(({ key, part }) => {
+        const toolData = toolPart(part);
+        return toolData && isCompletedRecommendationPart(toolData)
+            ? [{ key, toolData }]
+            : [];
+    });
     const toolParts = message.parts
         .map(toolPart)
         .filter((part): part is Record<string, unknown> => Boolean(part));
@@ -451,36 +704,42 @@ function ChatMessage({
     );
 
     return (
-        <div
-            className={cx(
-                'flex w-full',
-                isUser ? 'justify-end' : 'justify-start',
-            )}
+        <ChatMessageLayout
+            align={isUser ? 'end' : 'start'}
+            avatar={
+                isUser ? undefined : (
+                    <Image
+                        src="https://cdn.gredice.com/sunflower-large.svg"
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="size-full bg-amber-50 p-1 dark:bg-amber-950"
+                    />
+                )
+            }
+            header={isUser ? undefined : 'Suncokret'}
         >
-            <Stack
-                spacing={1}
-                className={cx(
-                    'max-w-[88%] rounded-md border px-3 py-2',
-                    isUser
-                        ? 'border-primary/30 bg-primary/10'
-                        : 'border-border bg-background/95',
-                )}
+            <ChatBubble
+                align={isUser ? 'end' : 'start'}
+                className={cx('flex flex-col gap-2', !isUser && 'w-full')}
+                variant={isUser ? 'sunflower' : 'ghost'}
             >
-                {message.parts.map((part) => {
-                    const baseKey = messagePartKey(part);
-                    const duplicateCount = partKeyCounts.get(baseKey) ?? 0;
-                    partKeyCounts.set(baseKey, duplicateCount + 1);
-                    const key =
-                        duplicateCount === 0
-                            ? baseKey
-                            : `${baseKey}:${duplicateCount}`;
+                {keyedParts.map(({ key, part }) => {
                     const text = textPart(part);
                     if (text) {
-                        return <MessageText key={key}>{text}</MessageText>;
+                        return (
+                            <MessageText key={key} isStreaming={isStreaming}>
+                                {text}
+                            </MessageText>
+                        );
                     }
 
                     const toolData = toolPart(part);
                     if (toolData) {
+                        if (isCompletedRecommendationPart(toolData)) {
+                            return null;
+                        }
+
                         if (!debug && !isToolApprovalRequested(toolData)) {
                             return null;
                         }
@@ -507,32 +766,32 @@ function ChatMessage({
                     ) : null;
                 })}
                 {showToolActivity && (
-                    <Row
-                        spacing={2}
+                    <ChatMarker
                         className={cx(
-                            'rounded-md border border-dashed px-2 py-1.5 text-muted-foreground',
+                            'w-fit rounded-full bg-muted/60 px-2.5 py-1',
                             hasToolError
-                                ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                : 'bg-muted/30',
+                                ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-100'
+                                : 'text-muted-foreground',
                         )}
+                        icon={
+                            hasToolError ? (
+                                <Warning />
+                            ) : hasDeniedTool ? (
+                                <Close />
+                            ) : hasRunningTool ||
+                              (isStreaming && !hasApprovalRespondedTool) ? (
+                                <LoaderSpinner className="animate-spin" />
+                            ) : (
+                                <AI />
+                            )
+                        }
+                        role="status"
                     >
-                        {hasToolError ? (
-                            <Warning className="size-3.5 shrink-0" />
-                        ) : hasDeniedTool ? (
-                            <Close className="size-3.5 shrink-0" />
-                        ) : hasRunningTool ||
-                          (isStreaming && !hasApprovalRespondedTool) ? (
-                            <LoaderSpinner className="size-3.5 shrink-0 animate-spin" />
-                        ) : (
-                            <AI className="size-3.5 shrink-0" />
-                        )}
-                        <Typography level="body3">
-                            {toolActivitySummary({
-                                isStreaming,
-                                parts: passiveToolParts,
-                            })}
-                        </Typography>
-                    </Row>
+                        {toolActivitySummary({
+                            isStreaming,
+                            parts: passiveToolParts,
+                        })}
+                    </ChatMarker>
                 )}
                 {debug && Boolean(message.metadata) && (
                     <details>
@@ -544,102 +803,231 @@ function ChatMessage({
                         </pre>
                     </details>
                 )}
-            </Stack>
-        </div>
+                {completedRecommendationParts.map(({ key, toolData }) => (
+                    <div className="space-y-2" key={key}>
+                        <SuncokretRecommendationChips
+                            output={toolData.output ?? toolData.result}
+                        />
+                        {debug && (
+                            <ToolPart
+                                addToolApprovalResponse={
+                                    addToolApprovalResponse
+                                }
+                                debug
+                                part={toolData}
+                            />
+                        )}
+                    </div>
+                ))}
+            </ChatBubble>
+        </ChatMessageLayout>
     );
 }
 
 export function SuncokretChatHud() {
+    const queryClient = useQueryClient();
     const flags = useGameFlags();
-    const enabled = Boolean(flags.enableSuncokretChatFlag);
     const debug = Boolean(flags.enableSuncokretDebugFlag);
-    const [open, setOpen] = useState(false);
+    const chat = useSuncokretChat();
+    const open = chat?.open ?? false;
     const [input, setInput] = useState('');
     const [statusInfo, setStatusInfo] = useState<SuncokretStatus | null>(null);
     const [models, setModels] = useState<SuncokretModel[]>([]);
     const [modelId, setModelId] = useState<string | null>(null);
-    const chatId = useMemo(randomChatId, []);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [activeConversationId, setActiveConversationId] =
+        useState(randomChatId);
+    const [activeConversationTitle, setActiveConversationTitle] = useState<
+        string | null
+    >(null);
+    const [chatView, setChatView] = useState<'chat' | 'conversations'>('chat');
+    const [conversations, setConversations] = useState<
+        SuncokretConversationSummary[]
+    >([]);
+    const [conversationsLoading, setConversationsLoading] = useState(false);
+    const [conversationsError, setConversationsError] = useState<string | null>(
+        null,
+    );
+    const chatSessionId = useMemo(randomChatId, []);
     const apiOrigin = getBrowserGrediceAppOrigin('api');
     const featureFlags = useMemo(
         () => ({
-            enableSuncokretChatFlag: enabled,
             enableSuncokretDebugFlag: debug,
         }),
-        [debug, enabled],
+        [debug],
     );
     const featureFlagQuery = useMemo(
-        () => suncokretFlagParams({ debug, enabled }),
-        [debug, enabled],
+        () => suncokretFlagParams({ debug }),
+        [debug],
     );
+    const statusQuery = useMemo(() => {
+        const params = new URLSearchParams(featureFlagQuery);
+        if (debug && modelId) {
+            params.set('modelId', modelId);
+        }
+        return params.toString();
+    }, [debug, featureFlagQuery, modelId]);
     const { data: currentGarden } = useCurrentGarden();
+    const [settingsSection] = useOverviewSectionParam();
+    const view = useGameState((state) => state.view);
     const closeupBlock = useGameState((state) => state.closeupBlock);
     const raisedBed = closeupBlock
         ? findRaisedBedByBlockId(currentGarden, closeupBlock.id)
         : null;
-    const gardenId = currentGarden?.id ?? null;
-    const raisedBedId = raisedBed?.id ?? null;
+    const defaultGardenId = currentGarden?.id ?? null;
+    const defaultRaisedBedId = raisedBed?.id ?? null;
+    const defaultUiContext = useMemo(
+        () =>
+            resolveSuncokretUiContext({
+                raisedBedName: raisedBed?.name,
+                settingsSection,
+            }),
+        [raisedBed?.name, settingsSection],
+    );
+    const uiContext = chat?.target?.uiContext ?? defaultUiContext;
+    const gardenId = chat?.target ? chat.target.gardenId : defaultGardenId;
+    const contextRaisedBedId = chat?.target
+        ? chat.target.raisedBedId
+        : defaultUiContext.surface === 'raised-bed'
+          ? defaultRaisedBedId
+          : null;
+    const positionIndex = chat?.target?.positionIndex ?? null;
+    const seed = chat?.target?.seed ?? null;
+    const appliedSeedIdRef = useRef<string | null>(null);
+    const conversationLabel =
+        chat?.target?.conversationLabel ??
+        suncokretConversationLabel({
+            gardenName: currentGarden?.name,
+            raisedBedName: raisedBed?.name,
+            settingsSection,
+        });
+    const requestContextRef = useRef({
+        conversationId: activeConversationId,
+        debug,
+        featureFlags,
+        gardenId,
+        modelId,
+        positionIndex,
+        raisedBedId: contextRaisedBedId,
+        uiContext,
+    });
+    const requestRaisedBedIdRef = useRef(contextRaisedBedId);
+    requestContextRef.current = {
+        conversationId: activeConversationId,
+        debug,
+        featureFlags,
+        gardenId,
+        modelId,
+        positionIndex,
+        raisedBedId: contextRaisedBedId,
+        uiContext,
+    };
 
     const transport = useMemo(
         () =>
             new DefaultChatTransport({
                 api: `${apiOrigin}/api/ai/suncokret/chat`,
                 credentials: 'include',
-                prepareSendMessagesRequest: ({ id, messages }) => ({
-                    body: {
-                        id,
-                        conversationId: id,
-                        messages,
-                        gardenId,
-                        raisedBedId,
-                        modelId,
-                        debug,
-                        featureFlags,
-                    },
-                    credentials: 'include',
-                }),
+                prepareSendMessagesRequest: ({ id, messages }) => {
+                    const requestContext = requestContextRef.current;
+                    requestRaisedBedIdRef.current = requestContext.raisedBedId;
+                    return {
+                        body: {
+                            id,
+                            conversationId: requestContext.conversationId,
+                            messages,
+                            gardenId: requestContext.gardenId,
+                            raisedBedId: requestContext.raisedBedId,
+                            positionIndex: requestContext.positionIndex,
+                            modelId: requestContext.modelId,
+                            uiContext: requestContext.uiContext,
+                            debug: requestContext.debug,
+                            featureFlags: requestContext.featureFlags,
+                        },
+                        credentials: 'include',
+                    };
+                },
             }),
-        [apiOrigin, debug, featureFlags, gardenId, modelId, raisedBedId],
+        [apiOrigin],
     );
 
-    const { addToolApprovalResponse, error, messages, sendMessage, status } =
-        useChat({
-            id: chatId,
-            transport,
-            experimental_throttle: 80,
-        });
+    const {
+        addToolApprovalResponse,
+        clearError,
+        error,
+        messages,
+        sendMessage,
+        setMessages,
+        status,
+    } = useChat({
+        id: chatSessionId,
+        transport,
+        experimental_throttle: 80,
+        onFinish: ({ message }) => {
+            void invalidateSuncokretMutationQueries({
+                fallbackRaisedBedId: requestRaisedBedIdRef.current,
+                message,
+                queryClient,
+            });
+        },
+        sendAutomaticallyWhen:
+            lastAssistantMessageIsCompleteWithApprovalResponses,
+    });
 
     const loading = status === 'submitted' || status === 'streaming';
 
     useEffect(() => {
-        if (!enabled || !open) {
+        if (!open || status !== 'ready') {
             return;
         }
 
         let cancelled = false;
-        void Promise.all([
-            fetch(`${apiOrigin}/api/ai/suncokret/status?${featureFlagQuery}`, {
-                credentials: 'include',
-            }).then((response) => response.json() as Promise<SuncokretStatus>),
-            fetch(`${apiOrigin}/api/ai/suncokret/models?${featureFlagQuery}`, {
-                credentials: 'include',
-            }).then(
-                (response) =>
-                    response.json() as Promise<{ models?: SuncokretModel[] }>,
-            ),
-        ])
-            .then(([nextStatus, modelPayload]) => {
+        void fetch(`${apiOrigin}/api/ai/suncokret/status?${statusQuery}`, {
+            credentials: 'include',
+        })
+            .then((response) => response.json() as Promise<SuncokretStatus>)
+            .then((nextStatus) => {
                 if (cancelled) return;
                 setStatusInfo(nextStatus);
-                const nextModels = modelPayload.models ?? [];
-                setModels(nextModels);
-                setModelId(
-                    (current) => current ?? nextStatus.model?.id ?? null,
+                setModelId((current) =>
+                    debug ? (current ?? nextStatus.model?.id ?? null) : null,
                 );
             })
             .catch(() => {
                 if (!cancelled) {
                     setStatusInfo(null);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [apiOrigin, debug, open, status, statusQuery]);
+
+    useEffect(() => {
+        if (!debug) {
+            setModels([]);
+            setModelId(null);
+            return;
+        }
+        if (!open) {
+            return;
+        }
+
+        let cancelled = false;
+        void fetch(`${apiOrigin}/api/ai/suncokret/models?${featureFlagQuery}`, {
+            credentials: 'include',
+        })
+            .then(
+                (response) =>
+                    response.json() as Promise<{ models?: SuncokretModel[] }>,
+            )
+            .then((modelPayload) => {
+                if (!cancelled) {
+                    setModels(modelPayload.models ?? []);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
                     setModels([]);
                 }
             });
@@ -647,16 +1035,115 @@ export function SuncokretChatHud() {
         return () => {
             cancelled = true;
         };
-    }, [apiOrigin, enabled, featureFlagQuery, open]);
+    }, [apiOrigin, debug, featureFlagQuery, open]);
 
     useEffect(() => {
-        scrollRef.current?.scrollTo({
-            top: scrollRef.current.scrollHeight,
-            behavior: 'smooth',
-        });
-    });
+        if (!open || !seed || appliedSeedIdRef.current === seed.id) {
+            return;
+        }
 
-    if (!enabled) {
+        appliedSeedIdRef.current = seed.id;
+        clearError();
+        setInput('');
+        setMessages(seedMessages(seed));
+        setActiveConversationId(randomChatId());
+        setActiveConversationTitle(seed.title ?? null);
+        setChatView('chat');
+    }, [clearError, open, seed, setMessages]);
+
+    const showConversationList = async () => {
+        if (loading) {
+            return;
+        }
+
+        setChatView('conversations');
+        setConversationsLoading(true);
+        setConversationsError(null);
+
+        try {
+            const response = await fetch(
+                `${apiOrigin}/api/ai/suncokret/conversations?${featureFlagQuery}`,
+                { credentials: 'include' },
+            );
+            if (!response.ok) {
+                throw new Error('Conversation list request failed');
+            }
+
+            const payload: unknown = await response.json();
+            const nextConversations = parseConversationListPayload(payload);
+            if (!nextConversations) {
+                throw new Error('Invalid conversation list response');
+            }
+
+            setConversations(nextConversations);
+        } catch {
+            setConversationsError(
+                'Razgovori se trenutno ne mogu učitati. Pokušaj ponovno.',
+            );
+        } finally {
+            setConversationsLoading(false);
+        }
+    };
+
+    const selectConversation = async (conversationId: string) => {
+        if (loading) {
+            return;
+        }
+
+        setConversationsLoading(true);
+        setConversationsError(null);
+
+        try {
+            const response = await fetch(
+                `${apiOrigin}/api/ai/suncokret/conversations/${encodeURIComponent(conversationId)}?${featureFlagQuery}`,
+                { credentials: 'include' },
+            );
+            if (!response.ok) {
+                throw new Error('Conversation request failed');
+            }
+
+            const payload: unknown = await response.json();
+            const conversation = parseConversationDetailPayload(payload);
+            if (!conversation) {
+                throw new Error('Invalid conversation response');
+            }
+
+            clearError();
+            setInput('');
+            setMessages(conversation.messages);
+            setActiveConversationId(conversation.id);
+            setActiveConversationTitle(conversation.title);
+            if (
+                debug &&
+                conversation.model &&
+                models.some((model) => model.id === conversation.model)
+            ) {
+                setModelId(conversation.model);
+            }
+            setChatView('chat');
+        } catch {
+            setConversationsError(
+                'Razgovor se trenutno ne može otvoriti. Pokušaj ponovno.',
+            );
+        } finally {
+            setConversationsLoading(false);
+        }
+    };
+
+    const startFreshConversation = () => {
+        if (loading) {
+            return;
+        }
+
+        clearError();
+        setInput('');
+        setMessages([]);
+        setActiveConversationId(randomChatId());
+        setActiveConversationTitle(null);
+        setChatView('chat');
+    };
+
+    if (!chat) {
         return null;
     }
 
@@ -675,38 +1162,93 @@ export function SuncokretChatHud() {
     };
 
     const limit = statusInfo?.limit;
-    const blocked = Boolean(limit?.blockedReason);
+    const streamingMessage =
+        status === 'streaming' &&
+        messages[messages.length - 1]?.role === 'assistant'
+            ? messages[messages.length - 1]
+            : undefined;
+    const visibleUsage = resolveSuncokretVisibleUsage({
+        streamingText: messageTextContent(streamingMessage),
+        usage: statusInfo?.usage,
+    });
+    const dailyUsageExhausted = Boolean(
+        visibleUsage && visibleUsage.day.remainingPercent <= 0,
+    );
+    const weeklyUsageExhausted = Boolean(
+        visibleUsage && visibleUsage.week.remainingPercent <= 0,
+    );
+    const blocked = Boolean(
+        limit?.blockedReason || dailyUsageExhausted || weeklyUsageExhausted,
+    );
+    const contextSuggestions =
+        seed?.suggestions ?? suncokretContextSuggestions(uiContext);
+    // A seeded thread already shows the analysis, so the empty-state prompts
+    // are offered under it until the first question is asked.
+    const showSeededSuggestions =
+        chatView === 'chat' &&
+        !loading &&
+        messages.length > 0 &&
+        messages.every((message) => message.role !== 'user');
+    const isCloseup = view === 'closeup';
+    const suggestionButtons = contextSuggestions.map((suggestion, index) => (
+        <Button
+            key={suggestion.prompt}
+            fullWidth
+            size="sm"
+            variant="outlined"
+            className={cx(
+                'rounded-full',
+                index === 0 &&
+                    'border-amber-200 bg-amber-50/60 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/40 dark:hover:bg-amber-950',
+            )}
+            onClick={() => sendPrompt(suggestion.prompt)}
+        >
+            {suggestion.label}
+        </Button>
+    ));
 
     return (
         <>
-            <div className="pointer-events-auto">
-                <IconButton
-                    title="Suncokret AI"
-                    variant="plain"
-                    onClick={() => setOpen((current) => !current)}
-                    className={cx(
-                        'bg-background/90 hover:bg-muted shadow-sm',
-                        open && 'bg-muted',
-                    )}
+            {!isCloseup && (
+                <HudCard
+                    open
+                    position="floating"
+                    className="static border-amber-400 bg-amber-100 p-0 dark:border-amber-700 dark:bg-amber-950"
+                    data-suncokret-hud-trigger
                 >
-                    <Sun className="size-5 text-amber-500" />
-                </IconButton>
-            </div>
+                    <SuncokretChatTrigger
+                        action="toggle-default"
+                        title="Suncokret AI"
+                        variant="hud"
+                    />
+                </HudCard>
+            )}
             {open && (
-                <div className="pointer-events-auto fixed inset-x-2 bottom-2 z-50 flex justify-center md:inset-auto md:right-2 md:bottom-14 md:block">
-                    <div className="flex h-[min(680px,calc(100dvh-1rem))] w-full max-w-[430px] flex-col overflow-hidden rounded-md border border-tertiary border-b-4 bg-background shadow-xl md:h-[min(720px,calc(100dvh-5rem))]">
+                <SuncokretChatPositioner
+                    anchorElement={chat.anchorElement}
+                    isCloseup={isCloseup}
+                    onClose={chat.closeChat}
+                >
+                    <div
+                        aria-label="Razgovor sa Suncokretom"
+                        className="flex h-[min(680px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-1rem))] w-full max-w-[440px] flex-col overflow-hidden rounded-2xl border border-amber-200/80 border-b-4 border-b-amber-400 bg-background/98 shadow-2xl shadow-foreground/15 backdrop-blur-sm dark:border-amber-900/80 dark:border-b-amber-700 md:h-[min(720px,calc(100dvh-var(--game-safe-area-top,0px)-var(--game-safe-area-bottom,0px)-5rem))]"
+                        data-suncokret-chat
+                        role="dialog"
+                    >
                         <Row
                             justifyContent="space-between"
-                            className="border-b bg-muted/40 px-3 py-2"
+                            className="border-b border-amber-200/70 bg-amber-50/80 px-3.5 py-3 dark:border-amber-900/70 dark:bg-amber-950/30"
                         >
                             <Row spacing={2} className="min-w-0">
-                                <Image
-                                    src="https://cdn.gredice.com/sunflower-large.svg"
-                                    alt=""
-                                    width={32}
-                                    height={32}
-                                    className="size-8 shrink-0"
-                                />
+                                <span className="grid size-10 shrink-0 place-items-center rounded-full border border-amber-200 bg-white shadow-sm dark:border-amber-900 dark:bg-amber-950">
+                                    <Image
+                                        src="https://cdn.gredice.com/sunflower-large.svg"
+                                        alt=""
+                                        width={32}
+                                        height={32}
+                                        className="size-8"
+                                    />
+                                </span>
                                 <Stack spacing={0} className="min-w-0">
                                     <Typography level="body2" semiBold noWrap>
                                         Suncokret
@@ -716,200 +1258,304 @@ export function SuncokretChatHud() {
                                         className="text-muted-foreground"
                                         noWrap
                                     >
-                                        {raisedBed
-                                            ? raisedBed.name
-                                            : (currentGarden?.name ??
-                                              'Moj vrt')}
+                                        {chatView === 'chat' && (
+                                            <span className="mr-1.5 inline-block size-1.5 rounded-full bg-emerald-500 align-middle" />
+                                        )}
+                                        {chatView === 'conversations'
+                                            ? 'Prijašnji razgovori'
+                                            : (activeConversationTitle ??
+                                              `Razgovor za ${conversationLabel}`)}
                                     </Typography>
                                 </Stack>
                             </Row>
                             <Row spacing={1}>
-                                {models.length > 1 && (
-                                    <select
-                                        aria-label="AI model"
-                                        value={modelId ?? ''}
-                                        onChange={(event) =>
-                                            setModelId(
-                                                event.target.value || null,
-                                            )
-                                        }
-                                        className="h-8 max-w-36 rounded-md border bg-background px-2 text-xs"
+                                {chatView === 'conversations' ? (
+                                    <IconButton
+                                        title="Natrag na razgovor"
+                                        variant="plain"
+                                        disabled={conversationsLoading}
+                                        onClick={() => setChatView('chat')}
                                     >
-                                        {models.map((model) => (
-                                            <option
-                                                key={model.id}
-                                                value={model.id}
-                                            >
-                                                {model.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <ArrowLeft className="size-4" />
+                                    </IconButton>
+                                ) : (
+                                    <IconButton
+                                        title="Prijašnji razgovori"
+                                        variant="plain"
+                                        disabled={loading}
+                                        onClick={() => {
+                                            void showConversationList();
+                                        }}
+                                    >
+                                        <History className="size-4" />
+                                    </IconButton>
                                 )}
+                                <IconButton
+                                    title="Novi razgovor"
+                                    variant="plain"
+                                    disabled={loading}
+                                    onClick={startFreshConversation}
+                                >
+                                    <Add className="size-4" />
+                                </IconButton>
+                                {chatView === 'chat' &&
+                                    debug &&
+                                    models.length > 1 && (
+                                        <select
+                                            aria-label="AI model"
+                                            data-suncokret-model-picker
+                                            value={modelId ?? ''}
+                                            onChange={(event) =>
+                                                setModelId(
+                                                    event.target.value || null,
+                                                )
+                                            }
+                                            className="h-8 max-w-32 rounded-full border bg-background px-2.5 text-xs"
+                                        >
+                                            {models.map((model) => (
+                                                <option
+                                                    key={model.id}
+                                                    value={model.id}
+                                                >
+                                                    {model.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 <IconButton
                                     title="Zatvori"
                                     variant="plain"
-                                    onClick={() => setOpen(false)}
+                                    onClick={chat.closeChat}
                                 >
                                     <Close className="size-4" />
                                 </IconButton>
                             </Row>
                         </Row>
 
-                        <div
-                            ref={scrollRef}
-                            className="flex-1 space-y-3 overflow-y-auto px-3 py-3"
-                        >
-                            {messages.length === 0 && (
-                                <Stack spacing={3} className="items-start">
-                                    <Row spacing={2}>
-                                        <AI className="mt-0.5 size-5 shrink-0 text-primary" />
-                                        <Typography level="body2">
-                                            Pitaj za stanje vrta, gredice,
-                                            sijanje ili radnje.
-                                        </Typography>
-                                    </Row>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button
-                                            size="xs"
-                                            variant="soft"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    raisedBed
-                                                        ? 'Sažmi stanje ove gredice i predloži sljedeće korake.'
-                                                        : 'Sažmi stanje mog vrta i predloži sljedeće korake.',
-                                                )
-                                            }
+                        {chatView === 'conversations' ? (
+                            <SuncokretConversationList
+                                conversations={conversations}
+                                currentConversationId={activeConversationId}
+                                error={conversationsError}
+                                loading={conversationsLoading}
+                                onSelect={(conversationId) => {
+                                    void selectConversation(conversationId);
+                                }}
+                            />
+                        ) : (
+                            <>
+                                <ChatMessageScroller
+                                    ariaBusy={loading}
+                                    ariaLabel="Razgovor sa Suncokretom"
+                                    className="flex-1"
+                                    emptyContent={
+                                        <Stack
+                                            alignItems="center"
+                                            spacing={4}
+                                            className="w-full px-3 text-center"
                                         >
-                                            Stanje gredice
-                                        </Button>
-                                        <Button
-                                            size="xs"
-                                            variant="soft"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Koje radnje su najvažnije ovaj tjedan?',
-                                                )
-                                            }
-                                        >
-                                            Plan za tjedan
-                                        </Button>
-                                        <Button
-                                            size="xs"
-                                            variant="soft"
-                                            onClick={() =>
-                                                sendPrompt(
-                                                    'Što mogu posaditi sljedeće?',
-                                                )
-                                            }
-                                        >
-                                            Što posaditi
-                                        </Button>
-                                    </div>
-                                </Stack>
-                            )}
-                            {messages.map((message) => (
-                                <ChatMessage
-                                    key={message.id}
-                                    addToolApprovalResponse={
-                                        addToolApprovalResponse
+                                            <span className="grid size-14 place-items-center rounded-full border border-amber-200 bg-amber-50 shadow-sm dark:border-amber-900 dark:bg-amber-950">
+                                                <Sun className="size-7 text-amber-500" />
+                                            </span>
+                                            <Stack
+                                                spacing={1}
+                                                alignItems="center"
+                                            >
+                                                <Typography level="h6" semiBold>
+                                                    Kako ti mogu pomoći?
+                                                </Typography>
+                                                <Typography
+                                                    level="body3"
+                                                    className="max-w-72 text-muted-foreground"
+                                                >
+                                                    Pitaj me o stanju vrta,
+                                                    sadnji ili radnjama koje
+                                                    slijede.
+                                                </Typography>
+                                            </Stack>
+                                            <Stack
+                                                spacing={2}
+                                                className="w-full"
+                                            >
+                                                {suggestionButtons}
+                                            </Stack>
+                                        </Stack>
                                     }
-                                    debug={debug}
-                                    isStreaming={
-                                        loading &&
-                                        message.role === 'assistant' &&
-                                        message.id ===
-                                            messages[messages.length - 1]?.id
-                                    }
-                                    message={message}
+                                    items={[
+                                        ...messages.map((message) => ({
+                                            id: message.id,
+                                            scrollAnchor:
+                                                message.role === 'user',
+                                            content: (
+                                                <ChatMessage
+                                                    addToolApprovalResponse={
+                                                        addToolApprovalResponse
+                                                    }
+                                                    debug={debug}
+                                                    isStreaming={
+                                                        loading &&
+                                                        message.role ===
+                                                            'assistant' &&
+                                                        message.id ===
+                                                            messages[
+                                                                messages.length -
+                                                                    1
+                                                            ]?.id
+                                                    }
+                                                    message={message}
+                                                />
+                                            ),
+                                        })),
+                                        ...(showSeededSuggestions
+                                            ? [
+                                                  {
+                                                      id: 'suncokret-seed-suggestions',
+                                                      content: (
+                                                          <Stack
+                                                              spacing={2}
+                                                              className="w-full px-3"
+                                                          >
+                                                              <Typography
+                                                                  level="body3"
+                                                                  className="text-muted-foreground"
+                                                              >
+                                                                  Nastavi
+                                                                  razgovor
+                                                                  jednim od
+                                                                  prijedloga
+                                                                  ili pitaj
+                                                                  svoje
+                                                                  pitanje.
+                                                              </Typography>
+                                                              {
+                                                                  suggestionButtons
+                                                              }
+                                                          </Stack>
+                                                      ),
+                                                  },
+                                              ]
+                                            : []),
+                                        ...(loading
+                                            ? [
+                                                  {
+                                                      id: 'suncokret-loading',
+                                                      content: (
+                                                          <ChatMarker
+                                                              className="px-10"
+                                                              icon={
+                                                                  <LoaderSpinner className="animate-spin" />
+                                                              }
+                                                              role="status"
+                                                          >
+                                                              <span className="chat-shimmer">
+                                                                  Suncokret
+                                                                  razmišlja...
+                                                              </span>
+                                                          </ChatMarker>
+                                                      ),
+                                                  },
+                                              ]
+                                            : []),
+                                    ]}
                                 />
-                            ))}
-                            {loading && (
-                                <Row
-                                    spacing={2}
-                                    className="text-muted-foreground"
-                                >
-                                    <LoaderSpinner className="size-4 animate-spin" />
-                                    <Typography level="body3">
-                                        Suncokret razmišlja...
-                                    </Typography>
-                                </Row>
-                            )}
-                        </div>
 
-                        <Stack spacing={1} className="border-t p-2">
-                            {limit && (
-                                <Row
-                                    justifyContent="space-between"
-                                    className="text-muted-foreground"
+                                <Stack
+                                    spacing={2}
+                                    className="border-t bg-background/95 p-3"
                                 >
-                                    <Typography level="body3">
-                                        Preostalo danas
-                                    </Typography>
-                                    <Typography level="body3">
-                                        {formatUsd(limit.remainingUsd)}
-                                    </Typography>
-                                </Row>
-                            )}
-                            {blocked && (
-                                <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
-                                    Dnevni limit je iskorišten. Nastavak je
-                                    moguć {formatRetryAt(limit?.retryAt)}.
-                                </div>
-                            )}
-                            {error && (
-                                <div className="rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-900">
-                                    {error.message}
-                                </div>
-                            )}
-                            <form onSubmit={onSubmit} className="flex gap-2">
-                                <textarea
-                                    value={input}
-                                    disabled={loading || blocked}
-                                    onChange={(event) =>
-                                        setInput(event.target.value)
-                                    }
-                                    onKeyDown={(event) => {
-                                        if (
-                                            event.key === 'Enter' &&
-                                            !event.shiftKey
-                                        ) {
-                                            event.preventDefault();
-                                            sendPrompt(input);
-                                        }
-                                    }}
-                                    className="min-h-10 max-h-28 flex-1 resize-none rounded-md border bg-background px-3 py-2 text-sm outline-hidden focus:ring-2 focus:ring-ring"
-                                    placeholder="Pitaj Suncokret..."
-                                />
-                                <IconButton
-                                    title="Pošalji"
-                                    type="submit"
-                                    disabled={
-                                        loading ||
-                                        blocked ||
-                                        input.trim().length === 0
-                                    }
-                                    className="h-10 w-10 shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                                >
-                                    {loading ? (
-                                        <LoaderSpinner className="size-4 animate-spin" />
-                                    ) : (
-                                        <Send className="size-4" />
+                                    {blocked && (
+                                        <div className="rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                            {weeklyUsageExhausted
+                                                ? 'Tjedni limit je iskorišten.'
+                                                : 'Limit za zadnja 24 sata je iskorišten.'}{' '}
+                                            Nastavak je moguć{' '}
+                                            {formatRetryAt(limit?.retryAt)}.
+                                        </div>
                                     )}
-                                </IconButton>
-                            </form>
-                            {debug && statusInfo && (
-                                <details className="text-xs text-muted-foreground">
-                                    <summary className="cursor-pointer">
-                                        Debug
-                                    </summary>
-                                    <pre className="mt-1 max-h-36 overflow-auto rounded-sm bg-muted p-2">
-                                        {debugJson(statusInfo)}
-                                    </pre>
-                                </details>
-                            )}
-                        </Stack>
+                                    {error && (
+                                        <div className="rounded-xl border border-red-300 bg-red-50 p-2.5 text-xs text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+                                            {error.message}
+                                        </div>
+                                    )}
+                                    <form
+                                        onSubmit={onSubmit}
+                                        className="overflow-hidden rounded-2xl border bg-card shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-ring"
+                                    >
+                                        <textarea
+                                            aria-label="Pitaj Suncokret"
+                                            value={input}
+                                            disabled={loading || blocked}
+                                            onChange={(event) =>
+                                                setInput(event.target.value)
+                                            }
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    event.key === 'Enter' &&
+                                                    !event.shiftKey
+                                                ) {
+                                                    event.preventDefault();
+                                                    sendPrompt(input);
+                                                }
+                                            }}
+                                            className="min-h-14 max-h-28 w-full resize-none border-0 bg-transparent px-4 py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                                            placeholder="Pitaj Suncokret..."
+                                        />
+                                        <Row
+                                            justifyContent="space-between"
+                                            className="border-t border-border/60 px-2 py-2"
+                                        >
+                                            <span
+                                                aria-live="polite"
+                                                className="px-1 text-xs text-muted-foreground"
+                                            >
+                                                Enter šalje poruku
+                                            </span>
+                                            <Row spacing={1}>
+                                                {visibleUsage && (
+                                                    <SuncokretUsageButton
+                                                        day={visibleUsage.day}
+                                                        week={visibleUsage.week}
+                                                    />
+                                                )}
+                                                <IconButton
+                                                    title={
+                                                        loading
+                                                            ? 'Suncokret odgovara'
+                                                            : 'Pošalji'
+                                                    }
+                                                    type="submit"
+                                                    disabled={
+                                                        loading ||
+                                                        blocked ||
+                                                        input.trim().length ===
+                                                            0
+                                                    }
+                                                    className="size-9 shrink-0 rounded-full bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                                                >
+                                                    {loading ? (
+                                                        <LoaderSpinner className="size-4 animate-spin" />
+                                                    ) : (
+                                                        <Send className="size-4" />
+                                                    )}
+                                                </IconButton>
+                                            </Row>
+                                        </Row>
+                                    </form>
+                                    {debug && statusInfo && (
+                                        <details className="text-xs text-muted-foreground">
+                                            <summary className="cursor-pointer">
+                                                Debug
+                                            </summary>
+                                            <pre className="mt-1 max-h-36 overflow-auto rounded-sm bg-muted p-2">
+                                                {debugJson(statusInfo)}
+                                            </pre>
+                                        </details>
+                                    )}
+                                </Stack>
+                            </>
+                        )}
                     </div>
-                </div>
+                </SuncokretChatPositioner>
             )}
         </>
     );

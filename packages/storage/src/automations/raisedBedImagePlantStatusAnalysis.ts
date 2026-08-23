@@ -1,3 +1,4 @@
+import { sanitizeRaisedBedAiMarkdown } from '@gredice/js/ai';
 import {
     calculatePlantsPerField,
     getImageObservablePlantStatusTargets,
@@ -23,7 +24,7 @@ import type { AutomationJsonObject } from '../schema';
 import { buildPreviousPlantNames } from './raisedBedImagePlantContext';
 import type { AutomationSourceEvent } from './types';
 
-const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.5';
+const AI_MODEL = process.env.AI_GATEWAY_MODEL ?? 'openai/gpt-5.6-terra';
 const RAISED_BED_COLUMNS = 3;
 const REVIEW_REQUESTER = 'automation:raised-bed-image-status-review';
 const MAX_AI_DEBUG_TEXT_LENGTH = 8_000;
@@ -97,6 +98,8 @@ type WeedReviewProposal = PlantStatusReviewOutput['weedProposals'][number];
 type AcceptedReviewProposal = ReviewProposal & {
     positionIndex: number;
     currentStatus: string;
+    plantCycleEventId: number;
+    plantCycleVersionEventId: number;
     plantSortId: number;
     raisedBedFieldId: number;
 };
@@ -435,7 +438,13 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                     : undefined;
             const seedingDistance = plantSeedingDistance(plantSort);
             const plantsPerField = field.plantSortId
-                ? calculatePlantsPerField(seedingDistance)
+                ? calculatePlantsPerField(
+                      seedingDistance,
+                      plantSortName(
+                          plantSort,
+                          `Plant sort #${field.plantSortId.toString()}`,
+                      ),
+                  )
                 : null;
             const currentStatus = field.plantStatus ?? null;
             const previousPlantNames = buildPreviousPlantNames(
@@ -527,59 +536,60 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
     };
 }
 
-function buildReviewMessages({
+function buildReviewPrompt({
     input,
     promptContext,
 }: {
     input: ReviewInput & { ok: true };
     promptContext: AutomationJsonObject;
 }) {
-    return [
-        {
-            role: 'system' as const,
-            content: [
-                'Ti si stručni agronom koji pregledava fotografije Gredice i predlaže ISKLJUČIVO sigurne promjene stanja biljaka.',
-                'Vrati strukturirani rezultat prema shemi. Ne vraćaj markdown.',
-                'Predloži promjenu samo kada je vizualni dokaz jasan i gotovo siguran; ne pogađaj na temelju kalendara, očekivanih dana rasta ili mutne/zaklonjene fotografije.',
-                'Za svako polje smiješ predložiti plant-status samo iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči plant-status prijedlog za to polje.',
-                'Ako je trenutno stanje `sowed` ili `pendingVerification`, a na slici se jasno vide klice za direktno sijanu biljku, predloži `sprouted`.',
-                'U `weedProposals` predloži field-level status korova (`none`, `light` ili `heavy`) samo kada se korovi ili očišćeno polje jasno vide za pojedino polje.',
-                'Ne predlaži `none` za korove samo zato što korovi nisu vidljivi; predloži `none` samo kada slika jasno pokazuje da je polje čisto, osobito ako postoji trenutačni field ili raised-bed weed state.',
-                '`raisedBed.currentWeedState` je stanje na razini cijele gredice. `field.currentFieldWeedState` i `field.currentFieldWeedLevel` su stanje za pojedino polje; field-level prijedlozi smiju precizirati ili očistiti stanje iz gredice.',
-                'Ako je fotografija close-up i polje nije sigurno prepoznatljivo, koristi `focusField` kada postoji. Ako je fotografija cijele gredice, možeš predložiti više polja.',
-                'Polja s `currentLocation: "greenhouse"` ignoriraj osim ako fotografija jasno pokazuje da se ista biljka nalazi u pripadajućem polju gredice.',
-                'Koristi `expectedPlantCount` kao kontekst za to koliko pojedinačnih biljaka ili klica se očekuje u polju.',
-                '`previousPlantNames` sadrži samo nazive ranijih biljaka u tom polju; ne sadrži povijest događaja, statuse ni datume.',
-                '`imageDate` je datum fotografija ili izvornog dnevničkog unosa; koristi ga za kontekst polja i vrijednosti `daysFrom*`. `currentDate` je trenutak obrade automatizacije i ne smije promijeniti interpretaciju stanja na starijoj fotografiji.',
-                '',
-                'Raspored polja u slici cijele gredice:',
-                '- Polja su numerirana od donjeg desnog kuta slike.',
-                '- Donji red: 1 (donje desno), 2 (donja sredina), 3 (donje lijevo).',
-                '- Kod 18-poljne gredice gornji red je 16 (gornje desno), 17 (gornja sredina), 18 (gornje lijevo).',
-                '- `positionLabel` je 1-bazirana oznaka iz slike; `positionIndex = positionLabel - 1`.',
-            ].join('\n'),
-        },
-        {
-            role: 'user' as const,
-            content: [
-                {
-                    type: 'text' as const,
-                    text: [
-                        'Analiziraj fotografije i kontekst. Vrati samo prijedloge promjena stanja biljaka koje su vizualno sigurne.',
-                        'Vrati i prijedloge statusa korova za pojedinačna polja kada su vizualno sigurni.',
-                        'Ako nema sigurnih promjena, vrati prazne `proposals` i `weedProposals` nizove.',
-                        '',
-                        'Kontekst (JSON):',
-                        JSON.stringify(promptContext, null, 2),
-                    ].join('\n'),
-                },
-                ...input.imageUrls.map((imageUrl) => ({
-                    type: 'image' as const,
-                    image: new URL(imageUrl),
-                })),
-            ],
-        },
-    ];
+    return {
+        system: [
+            'Ti si stručni agronom koji pregledava fotografije Gredice i predlaže ISKLJUČIVO sigurne promjene stanja biljaka.',
+            'Vrati strukturirani rezultat prema shemi. Ne vraćaj markdown.',
+            'U poljima `summary` i `evidence` piši normalne hrvatske rečenice. Ne spominji interne nazive ili JSON ključeve kao `positionIndex`, `needsRemoval`, `plantStatus`, `plantSortId`, `currentLocation` ili `sowingLocation`.',
+            'Predloži promjenu samo kada je vizualni dokaz jasan i gotovo siguran; ne pogađaj na temelju kalendara, očekivanih dana rasta ili mutne/zaklonjene fotografije.',
+            'Za svako polje smiješ predložiti plant-status samo iz `allowedTargetStatuses`; ako nema odgovarajućeg statusa, preskoči plant-status prijedlog za to polje.',
+            'Ako je trenutno stanje `sowed` ili `pendingVerification`, a na slici se jasno vide klice za direktno sijanu biljku, predloži `sprouted`.',
+            'U `weedProposals` predloži field-level status korova (`none`, `light` ili `heavy`) samo kada se korovi ili očišćeno polje jasno vide za pojedino polje.',
+            'Ne predlaži `none` za korove samo zato što korovi nisu vidljivi; predloži `none` samo kada slika jasno pokazuje da je polje čisto, osobito ako postoji trenutačni field ili raised-bed weed state.',
+            '`raisedBed.currentWeedState` je stanje na razini cijele gredice. `field.currentFieldWeedState` i `field.currentFieldWeedLevel` su stanje za pojedino polje; field-level prijedlozi smiju precizirati ili očistiti stanje iz gredice.',
+            'Ako je fotografija close-up i polje nije sigurno prepoznatljivo, koristi `focusField` kada postoji. Ako je fotografija cijele gredice, možeš predložiti više polja.',
+            'Polja s `currentLocation: "greenhouse"` ignoriraj osim ako fotografija jasno pokazuje da se ista biljka nalazi u pripadajućem polju gredice.',
+            'Koristi `expectedPlantCount` kao kontekst za to koliko pojedinačnih biljaka ili klica se očekuje u polju.',
+            '`previousPlantNames` sadrži samo nazive ranijih biljaka u tom polju; ne sadrži povijest događaja, statuse ni datume.',
+            '`imageDate` je datum fotografija ili izvornog dnevničkog unosa; koristi ga za kontekst polja i vrijednosti `daysFrom*`. `currentDate` je trenutak obrade automatizacije i ne smije promijeniti interpretaciju stanja na starijoj fotografiji.',
+            '',
+            'Raspored polja u slici cijele gredice:',
+            '- Polja su numerirana od donjeg desnog kuta slike.',
+            '- Donji red: 1 (donje desno), 2 (donja sredina), 3 (donje lijevo).',
+            '- Kod 18-poljne gredice gornji red je 16 (gornje desno), 17 (gornja sredina), 18 (gornje lijevo).',
+            '- `positionLabel` je 1-bazirana oznaka iz slike; `positionIndex = positionLabel - 1`.',
+        ].join('\n'),
+        messages: [
+            {
+                role: 'user' as const,
+                content: [
+                    {
+                        type: 'text' as const,
+                        text: [
+                            'Analiziraj fotografije i kontekst. Vrati samo prijedloge promjena stanja biljaka koje su vizualno sigurne.',
+                            'Vrati i prijedloge statusa korova za pojedinačna polja kada su vizualno sigurni.',
+                            'Ako nema sigurnih promjena, vrati prazne `proposals` i `weedProposals` nizove.',
+                            '',
+                            'Kontekst (JSON):',
+                            JSON.stringify(promptContext, null, 2),
+                        ].join('\n'),
+                    },
+                    ...input.imageUrls.map((imageUrl) => ({
+                        type: 'file' as const,
+                        data: new URL(imageUrl),
+                        mediaType: 'image',
+                    })),
+                ],
+            },
+        ],
+    };
 }
 
 function proposalSkip(
@@ -639,6 +649,16 @@ function filterAcceptedProposals({
             continue;
         }
 
+        const activePlantCycle = field.plantCycles.find(
+            (plantCycle) => plantCycle.active,
+        );
+        if (!activePlantCycle) {
+            skipped.push(
+                proposalSkip(proposal, 'Field has no active plant cycle.'),
+            );
+            continue;
+        }
+
         if (proposal.requestedStatus === currentStatus) {
             skipped.push(
                 proposalSkip(proposal, 'Field already has requested status.'),
@@ -674,6 +694,8 @@ function filterAcceptedProposals({
             ...proposal,
             positionIndex,
             currentStatus,
+            plantCycleEventId: activePlantCycle.plantPlaceEventId,
+            plantCycleVersionEventId: activePlantCycle.endedEventId,
             plantSortId: field.plantSortId,
             raisedBedFieldId: field.id,
         });
@@ -780,7 +802,7 @@ function buildApprovalNote({
         proposal.observedPlantCount !== null
             ? `Uočeni broj biljaka/klica: ${proposal.observedPlantCount}.`
             : null,
-        `Dokaz: ${proposal.evidence}`,
+        `Dokaz: ${sanitizeRaisedBedAiMarkdown(proposal.evidence)}`,
     ]
         .filter((line): line is string => typeof line === 'string')
         .join('\n');
@@ -802,7 +824,7 @@ function buildWeedStateNotes({
         `Polje: ${proposal.positionLabel}.`,
         `Promjena: ${proposal.currentWeedLevel ?? 'none'} -> ${proposal.requestedWeedLevel}.`,
         `Pouzdanost: ${Math.round(proposal.confidence * 100)}%.`,
-        `Dokaz: ${proposal.evidence}`,
+        `Dokaz: ${sanitizeRaisedBedAiMarkdown(proposal.evidence)}`,
     ]
         .filter((line): line is string => typeof line === 'string')
         .join('\n');
@@ -887,7 +909,7 @@ export async function runRaisedBedImagePlantStatusReview({
         };
     }
 
-    const messages = buildReviewMessages({
+    const { system, messages } = buildReviewPrompt({
         input,
         promptContext: context.promptContext,
     });
@@ -903,6 +925,7 @@ export async function runRaisedBedImagePlantStatusReview({
                             'High-certainty plant status change proposals from raised-bed images.',
                         schema: plantStatusReviewOutputSchema,
                     }),
+                    system,
                     messages,
                 }),
             };
@@ -977,6 +1000,8 @@ export async function runRaisedBedImagePlantStatusReview({
             const request = await createPlantStatusApprovalRequest({
                 raisedBedId: input.raisedBedId,
                 positionIndex: proposal.positionIndex,
+                plantCycleEventId: proposal.plantCycleEventId,
+                plantCycleVersionEventId: proposal.plantCycleVersionEventId,
                 requestedStatus: proposal.requestedStatus,
                 requestedBy,
                 raisedBedFieldId: proposal.raisedBedFieldId,
@@ -1044,7 +1069,7 @@ export async function runRaisedBedImagePlantStatusReview({
             imageCount: input.imageUrls.length,
             skippedInvalidImageCount: input.skippedInvalidImageCount,
             model: AI_MODEL,
-            summary: output.summary,
+            summary: sanitizeRaisedBedAiMarkdown(output.summary),
             proposalCount: output.proposals.length,
             acceptedProposalCount: accepted.length,
             requestIds,

@@ -1,3 +1,4 @@
+import { shouldForwardPostHogConsoleMethod } from '@gredice/js/observability';
 import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -50,15 +51,15 @@ let pendingLogFlush: Promise<void> | null = null;
 
 const postHogLogsProcessor =
     postHogApiKey && postHogLogsUrl
-        ? new BatchLogRecordProcessor(
-              new OTLPLogExporter({
+        ? new BatchLogRecordProcessor({
+              exporter: new OTLPLogExporter({
                   headers: {
                       Authorization: `Bearer ${postHogApiKey}`,
                       'Content-Type': 'application/json',
                   },
                   url: postHogLogsUrl,
               }),
-          )
+          })
         : null;
 
 export const loggerProvider = new LoggerProvider({
@@ -144,6 +145,10 @@ export function registerPostHogConsoleForwarding(): void {
         severityNumber: SeverityNumber,
         severityText: string,
     ) => {
+        if (!shouldForwardPostHogConsoleMethod(method)) {
+            return;
+        }
+
         const originalMethod = originalConsole[method];
 
         console[method] = (...args: unknown[]) => {
@@ -193,10 +198,11 @@ export async function getPostHogClient(): Promise<PostHogCaptureClient> {
         return noopPostHogClient;
     }
 
-    const { getPostHog } = await import('@posthog/next');
+    const { createPostHog } = await import('@posthog/next');
+    const { getPostHog } = createPostHog({
+        apiKey: postHogApiKey,
+        options: postHogServerHost ? { host: postHogServerHost } : undefined,
+    });
 
-    return getPostHog(
-        postHogApiKey,
-        postHogServerHost ? { host: postHogServerHost } : undefined,
-    );
+    return getPostHog();
 }

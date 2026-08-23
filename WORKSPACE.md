@@ -9,6 +9,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - `apps/news`: public Novosti app served through `www.gredice.com/novosti` for CMS-backed blog posts and changelog updates.
 - `apps/garden`: customer garden experience and game-facing UI.
 - `apps/farm`: farm back-office application.
+- `apps/delivery`: driver route execution and customer delivery tracking.
 - `apps/app`: internal operations/admin application.
 - `apps/desktop`: Electron desktop release shells for `garden`, `farm`, and `app`.
 - `apps/storybook`: public Storybook documentation for shared and app-adjacent UI.
@@ -23,7 +24,7 @@ Use this guide for repo layout, setup, commands, package boundaries, and local d
 - Package manager: pnpm, pinned by the root `packageManager` field.
 - Task runner: Turborepo.
 - Formatting and linting: Biome per app/package.
-- Framework: Next.js 16 with React 19 and TypeScript 6.
+- Framework: Next.js 16 with React 19 and TypeScript 7.
 - Styling: Tailwind CSS 3 where applicable.
 - Browser tests: Playwright.
 - Node tests: Node's built-in test runner through `node --test` with `tsx` where needed.
@@ -97,7 +98,9 @@ Use `pnpm --filter @gredice/directory-types regenerate:cms-types` only when `src
 
 ## Type checking
 
-Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before `tsc`, so route, page, and layout types are generated without running a full production build.
+Use `pnpm typecheck --filter <workspace>` for a fast TypeScript compatibility check. Next.js apps run `next typegen` before the native TypeScript 7 CLI, so route, page, and layout types are generated without running a full production build. Production builds opt into Next.js' experimental `useTypeScriptCli` integration for the same compiler.
+
+TypeScript 7 does not expose the compiler API yet. `openapi-typescript` and Storybook's transitive tsconfig and React docgen tooling still require that API, so `pnpm-workspace.yaml` gives those tools the official `@typescript/typescript6` compatibility package and applies the matching patches from `patches/`. Remove that bridge once those dependencies support the TypeScript 7 API.
 
 For ordinary `@gredice/game` package changes, this is the default consumer compatibility check:
 
@@ -120,6 +123,7 @@ The dev proxy writes its Caddyfile from the registry at startup.
 - `news`: <https://novosti.gredice.test>
 - `garden`: <https://vrt.gredice.test>
 - `farm`: <https://farma.gredice.test>
+- `delivery`: <https://dostava.gredice.test>
 - `app`: <https://app.gredice.test>
 - `storybook`: <https://storybook.dev.gredice.test>
 - `api`: <https://api.gredice.test>
@@ -138,7 +142,7 @@ not `443`, use the printed port-qualified form such as
 The dev script verifies the hosts entries for the local `gredice.test` domains and attempts to add missing entries automatically. If it cannot modify the hosts file, add this entry manually and rerun the command:
 
 ```text
-127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
+127.0.0.1 www.gredice.test novosti.gredice.test vrt.gredice.test farma.gredice.test dostava.gredice.test app.gredice.test storybook.dev.gredice.test api.gredice.test status.gredice.test
 ```
 
 Docker must be running for the proxy. Use `SKIP_DEV_PROXY=1 pnpm dev` only when the local proxy is not needed.
@@ -174,7 +178,7 @@ pnpm vercel:link
 pnpm env:pull
 ```
 
-`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
+`pnpm env:pull` runs `vercel env pull .env` in every app with a Vercel project in `scripts/app-registry.ts`, including `apps/www`, `apps/news`, `apps/garden`, `apps/farm`, `apps/delivery`, `apps/app`, `apps/storybook`, `apps/api`, and `apps/status`.
 
 ### Turborepo remote cache
 
@@ -184,6 +188,13 @@ Turbo build/test results are cached remotely through Vercel for the `gredice` te
 - CI: the `TURBO_TOKEN` (set to `VERCEL_TOKEN`) and `TURBO_TEAM=gredice` environment variables are wired in `.github/workflows/ci.yml` and `.github/workflows/nextjs_ci_reusable.yml`. No per-repo link file is needed.
 
 `pnpm doctor` reports the link status under the optional "Turbo remote cache" check.
+
+### Next.js build cache
+
+Next.js 16.3 enables the Turbopack filesystem cache for development and
+production builds by default. Vercel persists `.next/cache` automatically,
+while the reusable GitHub Actions workflow persists it only when the caller
+sets `nextBuildCache: true`.
 
 ### Public page revalidation
 

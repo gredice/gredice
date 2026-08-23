@@ -23,6 +23,8 @@ type AssignableUser = Pick<
 
 interface AssignOperationModalProps {
     operationId: number;
+    expectedEntityId: number;
+    expectedTaskVersionEventId: number;
     label: string;
     farmUsers: AssignableUser[];
     assignedUsers?: OperationAssignedUser[];
@@ -38,6 +40,8 @@ function getUserLabel(user: AssignableUser | OperationAssignedUser) {
 
 export function AssignOperationModal({
     operationId,
+    expectedEntityId,
+    expectedTaskVersionEventId,
     label,
     farmUsers,
     assignedUsers,
@@ -105,7 +109,12 @@ export function AssignOperationModal({
             if (onSubmit) {
                 await onSubmit(selectedUserIds);
             } else {
-                await assignOperationUserAction(operationId, selectedUserIds);
+                await assignOperationUserAction(
+                    operationId,
+                    expectedEntityId,
+                    expectedTaskVersionEventId,
+                    selectedUserIds,
+                );
             }
             setOpen(false);
         } catch (error) {

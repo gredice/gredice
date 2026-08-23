@@ -1,4 +1,5 @@
 import { sendEmail } from '@gredice/email/acs';
+import { customerDeliveryNotificationCopy } from '@gredice/notifications/customer-delivery';
 import EmailVerifyEmailTemplate, {
     type EmailVerifyEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/email-verify';
@@ -11,12 +12,21 @@ import ResetPasswordEmailTemplate, {
 import WelcomeEmailTemplate, {
     type WelcomeEmailTemplateProps,
 } from '@gredice/transactional/emails/Account/welcome';
+import BillingDocumentsEmailTemplate, {
+    type BillingDocumentsEmailTemplateProps,
+} from '@gredice/transactional/emails/Commerce/billing-documents';
+import OrderConfirmationEmailTemplate, {
+    type OrderConfirmationEmailTemplateProps,
+} from '@gredice/transactional/emails/Commerce/order-confirmation';
 import BirthdayEmailTemplate, {
     type BirthdayEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/birthday';
 import DeliveryCancelledEmailTemplate, {
     type DeliveryCancelledEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-cancelled';
+import DeliveryLifecycleUpdateEmailTemplate, {
+    type DeliveryLifecycleUpdateEmailTemplateProps,
+} from '@gredice/transactional/emails/Notifications/delivery-lifecycle-update';
 import DeliveryReadyEmailTemplate, {
     type DeliveryReadyEmailTemplateProps,
 } from '@gredice/transactional/emails/Notifications/delivery-ready';
@@ -72,9 +82,58 @@ export async function sendWelcome(
     });
 }
 
+export async function sendOrderConfirmation(
+    to: string,
+    config: OrderConfirmationEmailTemplateProps,
+    options: {
+        abortSignal?: AbortSignal;
+        beforeProviderSubmission?: () => Promise<void>;
+        existingEmailLogId?: number;
+        providerOperationId?: string;
+    } = {},
+) {
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - potvrda narudžbe',
+        template: OrderConfirmationEmailTemplate(config),
+        templateName: 'commerce-order-confirmation',
+        messageType: 'commerce',
+        metadata: {
+            orderReference: config.orderReference ?? null,
+        },
+        abortSignal: options.abortSignal,
+        beforeProviderSubmission: options.beforeProviderSubmission,
+        existingEmailLogId: options.existingEmailLogId,
+        operationId: options.providerOperationId,
+    });
+}
+
+export async function sendBillingDocuments(
+    to: string,
+    config: BillingDocumentsEmailTemplateProps,
+    metadata: Record<string, unknown>,
+) {
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: 'Gredice - dokumenti narudžbe',
+        template: BillingDocumentsEmailTemplate(config),
+        templateName: 'commerce-billing-documents',
+        messageType: 'commerce',
+        metadata,
+    });
+}
+
 export async function sendDeliveryScheduled(
     to: string,
     config: DeliveryScheduledEmailTemplateProps,
+    options: {
+        abortSignal?: AbortSignal;
+        beforeProviderSubmission?: () => Promise<void>;
+        existingEmailLogId?: number;
+        providerOperationId?: string;
+    } = {},
 ) {
     const templateProps = {
         ...config,
@@ -86,6 +145,14 @@ export async function sendDeliveryScheduled(
         to,
         subject: 'Gredice - termin tvoje dostave',
         template: DeliveryScheduledEmailTemplate(templateProps),
+        templateName: options.existingEmailLogId
+            ? 'checkout-notification'
+            : 'delivery-scheduled',
+        messageType: options.existingEmailLogId ? 'checkout' : 'delivery',
+        abortSignal: options.abortSignal,
+        beforeProviderSubmission: options.beforeProviderSubmission,
+        existingEmailLogId: options.existingEmailLogId,
+        operationId: options.providerOperationId,
     });
 }
 
@@ -119,6 +186,32 @@ export async function sendDeliveryCancelled(
         to,
         subject: 'Gredice - dostava je otkazana',
         template: DeliveryCancelledEmailTemplate(templateProps),
+    });
+}
+
+export async function sendDeliveryLifecycleUpdate(
+    to: string,
+    config: DeliveryLifecycleUpdateEmailTemplateProps,
+    options: { providerOperationId?: string } = {},
+) {
+    const templateProps = {
+        ...config,
+        email: config.email ?? to,
+    } satisfies DeliveryLifecycleUpdateEmailTemplateProps;
+    const content = customerDeliveryNotificationCopy(config.event);
+
+    return await sendEmail({
+        from: 'suncokret@obavijesti.gredice.com',
+        to,
+        subject: `Gredice - ${content.title}`,
+        template: DeliveryLifecycleUpdateEmailTemplate(templateProps),
+        templateName: 'delivery-lifecycle-update',
+        messageType: 'delivery',
+        operationId: options.providerOperationId,
+        metadata: {
+            deliveryRequestId: config.event.requestId,
+            lifecycleMilestone: config.event.milestone,
+        },
     });
 }
 

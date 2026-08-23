@@ -5,8 +5,36 @@ import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { Suspense } from 'react';
+import { CommunityEntitySuggestionButton } from '../../../components/community-edits/CommunityEntitySuggestionButton';
 import { getPlantSortsData } from '../../../lib/plants/getPlantSortsData';
 import { KnownPages } from '../../../src/KnownPages';
+
+function PlantSortsHeading({
+    basePlantId,
+    basePlantName,
+}: {
+    basePlantId: number;
+    basePlantName: string;
+}) {
+    return (
+        <Row
+            alignItems="center"
+            justifyContent="between"
+            spacing={3}
+            className="flex-wrap"
+        >
+            <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
+                Sorte
+            </Typography>
+            <CommunityEntitySuggestionButton
+                kind="plantSort"
+                parentPlantId={basePlantId}
+                parentPlantName={basePlantName}
+                publicPath={KnownPages.Plant(basePlantName)}
+            />
+        </Row>
+    );
+}
 
 async function PlantSortsListContent({
     basePlantName,
@@ -24,9 +52,10 @@ async function PlantSortsListContent({
     if (!sorts.length) {
         return (
             <Stack spacing={4}>
-                <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
-                    Sorte
-                </Typography>
+                <PlantSortsHeading
+                    basePlantId={basePlantId}
+                    basePlantName={basePlantName}
+                />
                 <Typography level="body2" className="text-gray-500 italic">
                     Nema dostupnih sorti
                 </Typography>
@@ -35,9 +64,10 @@ async function PlantSortsListContent({
     }
     return (
         <Stack spacing={4}>
-            <Typography level="h2" className="text-2xl" id={slug('Sorte')}>
-                Sorte
-            </Typography>
+            <PlantSortsHeading
+                basePlantId={basePlantId}
+                basePlantName={basePlantName}
+            />
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                 {sorts.map((sort) => {
                     const isAvailable =
@@ -72,7 +102,7 @@ async function PlantSortsListContent({
                                     {!isAvailable && (
                                         <Typography
                                             level="body2"
-                                            className="text-amber-600 font-medium"
+                                            className="text-amber-700 dark:text-amber-300 font-medium"
                                         >
                                             Trenutno nije dostupna u trgovini
                                         </Typography>

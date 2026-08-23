@@ -1,0 +1,2351 @@
+import {
+    type DeliveryLifecycleMilestone,
+    notifyDeliveryRequestGroupEvent,
+} from '@gredice/notifications';
+import {
+    abandonDeliveryRun,
+    applyDeliveryRunPickupMutations,
+    consumeDeliveryRunPreparation,
+    DeliveryRequestStates,
+    type DeliveryRunCompletionOverrideInput,
+    DeliveryRunManifestItemStates,
+    DeliveryRunManifestStates,
+    DeliveryRunStates,
+    DeliveryRunStopOperationKinds,
+    DeliveryRunStopStates,
+    deliveryRunRouteProgressMilestoneBatchLimit,
+    getActiveDeliveryRunForDriver,
+    getActiveDeliveryRunStopsForRequestIds,
+    getDeliveryRequest,
+    getDeliveryRequestsWithEvents,
+    getDeliveryRun,
+    getDeliveryRunExecutionProgress,
+    getDeliveryRunStopsForRequestIds,
+    getUser,
+    hasLegacyGoogleRouteArtifact,
+    isDeliveryRunStopActionable,
+    isDeliveryRunStopTerminal,
+    type RecordDeliveryRunStopExceptionsInput,
+    reassignDeliveryRun,
+    recordDeliveryRunRouteProgressMilestones,
+    recordDeliveryRunStopExceptions,
+    recordDeliveryRunStopOperation,
+    recoverDeliveryRunStop,
+    retryDeliveryRunStop,
+    updateDeliveryRunEstimates,
+    updateDeliveryRunLocation,
+    updatePickupAwareDeliveryRunEstimates,
+} from '@gredice/storage';
+import 'server-only';
+import {
+    type CustomerDeliveryMilestoneInput,
+    customerDeliveryNotificationsEnabled,
+    customerDeliveryPickedUpStopIds,
+    customerDeliveryProgressMilestones,
+    customerDeliveryProgressStopIsEligible,
+    publishCustomerDeliveryMilestoneSafely,
+    publishCustomerDeliveryMilestonesSafely,
+    shouldEvaluateCustomerDeliveryProgress,
+} from './customerDeliveryNotifications';
+import {
+    customerDeliveryRequestSummary,
+    customerPickupInstructions,
+    customerPickupRequestSummary,
+} from './customerDeliveryPresentation';
+import type {
+    ActiveDeliveryRunSummary,
+    CustomerDeliveryReceiptSummary,
+    CustomerHandoffVerification,
+    DeliveryDashboard,
+    DeliveryHarvestSummary,
+    DeliveryPickupManifestItemState,
+    DeliveryPickupManifestSummary,
+    DeliveryPickupStepSummary,
+    DeliveryRouteOrderSummary,
+    DeliveryRouteStepSummary,
+    DeliveryStopDeliverySummary,
+    DeliveryStopSummary,
+} from './deliveryDashboardTypes';
+import {
+    customerDeliveryRecoverySummary,
+    driverDeliveryExceptionSummary,
+} from './deliveryExceptionPresentation';
+import { deliveryMapStopGroupSelectionId } from './deliveryMapData';
+import { deliveryOperationalErrorContext } from './deliveryOperationalLogging';
+import { refreshFixedPickupAwareDeliveryRoute } from './deliveryPickupRouting';
+import {
+    configuredDeliveryHqAddress,
+    DeliveryRoutePlanningError,
+    formatDeliveryDestinationAddress,
+    maximumDeliveryRouteStops,
+    maximumDeliveryRouteWindowHours,
+    recalculateDeliveryRoute,
+} from './deliveryRouting';
+import {
+    DeliveryRunPreparationError,
+    deliveryRunPersistencePreparationError,
+    prepareDeliveryRun,
+    savePreparedDeliveryRun,
+} from './deliveryRunPlanning';
+import {
+    deliveryRerouteLocationIsFresh,
+    deliveryRerouteRetryIsDue,
+    reconcileDeliveryRunReroute,
+    remainingDeliveryRouteNodesInExecutionOrder,
+} from './deliveryRunRerouting';
+import { resolveDeliveryRunStart } from './deliveryRunStart';
+import { buildDeliveryStopKey } from './deliveryStopGrouping';
+import {
+    customerDeliveryTrackingSummary,
+    deliveryTrackingRecoveryTransition,
+    deliveryTrackingStatus,
+    driverDeliveryTrackingLocation,
+} from './deliveryTracking';
+
+type ListedDeliveryRequest = Awaited<
+    ReturnType<typeof getDeliveryRequestsWithEvents>
+>[number];
+type DeliveryRequest =
+    | ListedDeliveryRequest
+    | NonNullable<Awaited<ReturnType<typeof getDeliveryRequest>>>;
+export type DeliveryRun = NonNullable<
+    Awaited<ReturnType<typeof getDeliveryRun>>
+>;
+type DeliveryRunStop = DeliveryRun['stops'][number];
+type DeliveryRunExecutionStep = Awaited<
+    ReturnType<typeof getDeliveryRunExecutionProgress>
+>[number];
+
+const batchStates: ReadonlySet<string> = new Set([
+    DeliveryRequestStates.CONFIRMED,
+    DeliveryRequestStates.PREPARING,
+    DeliveryRequestStates.READY,
+]);
+const terminalDeliveryRequestStates: ReadonlySet<string> = new Set([
+    DeliveryRequestStates.FULFILLED,
+    DeliveryRequestStates.FAILED,
+    DeliveryRequestStates.CANCELLED,
+]);
+const etaRefreshIntervalMs = 2 * 60 * 1000;
+
+type CustomerDeliveryNonExceptionMilestone = Exclude<
+    DeliveryLifecycleMilestone,
+    'exception'
+>;
+type CustomerDeliveryProgressMilestoneInput = CustomerDeliveryMilestoneInput & {
+    milestone: Extract<
+        DeliveryLifecycleMilestone,
+        'near-arrival' | 'next-stop' | 'delayed'
+    >;
+};
+
+export async function isolateCustomerDeliveryPostCommitNotification(
+    operation: () => Promise<void>,
+    onFailure: (error: unknown) => void,
+) {
+    try {
+        await operation();
+        return true;
+    } catch (error) {
+        onFailure(error);
+        return false;
+    }
+}
+
+function iso(value?: Date | null) {
+    return value?.toISOString() ?? null;
+}
+
+function plantName(request: DeliveryRequest) {
+    return (
+        request.plantSort?.information?.name ??
+        request.plantSort?.information?.plant?.information?.name ??
+        request.operationData?.information?.label ??
+        'Urod'
+    );
+}
+
+export function visibleDeliveryNotes(
+    audience: 'driver' | 'customer',
+    notes: string | null | undefined,
+) {
+    return audience === 'driver' ? (notes ?? null) : null;
+}
+
+function raisedBedName(request: DeliveryRequest) {
+    const physicalId = request.raisedBed?.physicalId;
+    return physicalId ? `Gredica ${physicalId}` : null;
+}
+
+function fieldName(request: DeliveryRequest) {
+    const positionIndex = request.raisedBedField?.positionIndex;
+    return typeof positionIndex === 'number'
+        ? `Polje ${positionIndex + 1}`
+        : null;
+}
+
+function harvestSummary(request: DeliveryRequest): DeliveryHarvestSummary {
+    return {
+        plantName: plantName(request),
+        operationName: request.operationData?.information?.label ?? null,
+        raisedBedName: raisedBedName(request),
+        fieldName: fieldName(request),
+        tracePath: request.trace?.publicPath ?? null,
+    };
+}
+
+export function customerDeliveryReceiptSummary({
+    audience,
+    mode,
+    requestState,
+    requestId,
+    handoffReceipt,
+    harvest,
+}: {
+    audience: 'driver' | 'customer';
+    mode: 'delivery' | 'pickup';
+    requestState: string;
+    requestId: string;
+    handoffReceipt?: {
+        fulfilledAt: Date;
+        verification: CustomerHandoffVerification;
+    };
+    harvest: DeliveryHarvestSummary;
+}): CustomerDeliveryReceiptSummary | null {
+    if (
+        audience !== 'customer' ||
+        mode !== 'delivery' ||
+        requestState !== DeliveryRequestStates.FULFILLED ||
+        !handoffReceipt
+    ) {
+        return null;
+    }
+
+    return {
+        requestReference: requestId,
+        deliveredAt: handoffReceipt.fulfilledAt.toISOString(),
+        verification: handoffReceipt.verification,
+        harvest,
+    };
+}
+
+function deliveryRequestStopKey(request: DeliveryRequest) {
+    if (!request.slot || !request.address) {
+        return `request:${request.id}`;
+    }
+
+    return buildDeliveryStopKey(
+        request.slot.id,
+        formatDeliveryDestinationAddress(request.address),
+    );
+}
+
+export type ResolvedDeliveryRunStop = {
+    stop: DeliveryRunStop;
+    request: DeliveryRequest | undefined;
+    stopKey: string;
+};
+
+export type ResolvedDeliveryRunStopGroup = {
+    executionKey: string;
+    stopKey: string;
+    items: ResolvedDeliveryRunStop[];
+};
+
+export async function resolveDeliveryRunStopGroups(
+    run: DeliveryRun,
+): Promise<ResolvedDeliveryRunStopGroup[]> {
+    const requests = await Promise.all(
+        run.stops.map((stop) => getDeliveryRequest(stop.deliveryRequestId)),
+    );
+
+    const items = run.stops.map((stop, index) => {
+        const request = requests[index];
+        return {
+            stop,
+            request,
+            stopKey:
+                stop.stopKey ??
+                buildDeliveryStopKey(run.timeSlotId, stop.formattedAddress),
+        };
+    });
+    const groups = new Map<string, ResolvedDeliveryRunStop[]>();
+    for (const item of items) {
+        const executionLane =
+            item.stop.retryLaneRank === null
+                ? `route:${item.stop.itinerarySequence ?? 'legacy'}`
+                : `retry:${item.stop.retryLaneRank}`;
+        const executionKey = `${executionLane}:${item.stopKey}`;
+        const group = groups.get(executionKey);
+        if (group) group.push(item);
+        else groups.set(executionKey, [item]);
+    }
+    return Array.from(groups, ([executionKey, groupedItems]) => ({
+        executionKey,
+        stopKey: groupedItems[0]?.stopKey ?? executionKey,
+        items: groupedItems,
+    })).sort((first, second) => {
+        const firstRetryRank = first.items[0]?.stop.retryLaneRank;
+        const secondRetryRank = second.items[0]?.stop.retryLaneRank;
+        const firstLane = firstRetryRank === null ? 0 : 1;
+        const secondLane = secondRetryRank === null ? 0 : 1;
+        const sequence = (group: ResolvedDeliveryRunStopGroup) =>
+            Math.min(
+                ...group.items.map(
+                    ({ stop }) =>
+                        stop.retryLaneRank ??
+                        stop.itinerarySequence ??
+                        stop.sequence,
+                ),
+            );
+        return (
+            firstLane - secondLane ||
+            sequence(first) - sequence(second) ||
+            first.executionKey.localeCompare(second.executionKey)
+        );
+    });
+}
+
+export function deliveryStatusLabel({
+    requestState,
+    stopState,
+    isCurrent,
+    runState,
+}: {
+    requestState: string;
+    stopState?: string | null;
+    isCurrent: boolean;
+    runState?: string | null;
+}) {
+    if (
+        stopState === DeliveryRunStopStates.DELIVERED ||
+        (!stopState && requestState === DeliveryRequestStates.FULFILLED)
+    ) {
+        return 'Dostavljeno';
+    }
+    if (stopState === DeliveryRunStopStates.ARRIVED) {
+        return 'Vozač je stigao';
+    }
+    if (stopState === DeliveryRunStopStates.DEFERRED) {
+        return 'Dostava je odgođena';
+    }
+    if (stopState === DeliveryRunStopStates.FAILED) {
+        return 'Dostava nije uspjela';
+    }
+    if (stopState === DeliveryRunStopStates.CANCELLED) {
+        return 'Dostava je otkazana';
+    }
+    if (runState === DeliveryRunStates.ACTIVE) {
+        return isCurrent ? 'Vozač stiže' : 'U dostavi';
+    }
+
+    switch (requestState) {
+        case DeliveryRequestStates.PENDING:
+            return 'Čeka potvrdu';
+        case DeliveryRequestStates.CONFIRMED:
+            return 'Dostava potvrđena';
+        case DeliveryRequestStates.PREPARING:
+            return 'Urod se priprema';
+        case DeliveryRequestStates.READY:
+            return 'Spremno za dostavu';
+        case DeliveryRequestStates.DEFERRED:
+            return 'Dostava je odgođena';
+        case DeliveryRequestStates.FAILED:
+            return 'Dostava nije uspjela';
+        case DeliveryRequestStates.CANCELLED:
+            return 'Otkazano';
+        default:
+            return requestState;
+    }
+}
+
+function pickupStatusLabel(requestState: string) {
+    if (requestState === DeliveryRequestStates.READY) {
+        return 'Spremno za preuzimanje';
+    }
+    if (requestState === DeliveryRequestStates.PREPARING) {
+        return 'U pripremi na lokaciji preuzimanja';
+    }
+    return 'Još nije spremno za preuzimanje';
+}
+
+type DeliveryRunSnapshot = Pick<
+    DeliveryRun,
+    | 'id'
+    | 'state'
+    | 'currentLatitude'
+    | 'currentLongitude'
+    | 'currentLocationAccuracy'
+    | 'currentLocationHeading'
+    | 'currentLocationSpeed'
+    | 'currentLocationRecordedAt'
+    | 'currentLocationReceivedAt'
+    | 'rerouteRequiredAt'
+>;
+
+export function visibleDeliveryStopEstimates({
+    reroutePending,
+    estimatedArrivalAt,
+    estimatedTravelSeconds,
+    estimatedDistanceMeters,
+}: {
+    reroutePending: boolean;
+    estimatedArrivalAt?: Date | null;
+    estimatedTravelSeconds?: number | null;
+    estimatedDistanceMeters?: number | null;
+}) {
+    return {
+        estimatedArrivalAt: reroutePending ? null : iso(estimatedArrivalAt),
+        estimatedTravelSeconds: reroutePending
+            ? null
+            : (estimatedTravelSeconds ?? null),
+        estimatedDistanceMeters: reroutePending
+            ? null
+            : (estimatedDistanceMeters ?? null),
+    };
+}
+
+export function visibleDeliveryRunTotals({
+    reroutePending,
+    totalDistanceMeters,
+    totalDurationSeconds,
+}: {
+    reroutePending: boolean;
+    totalDistanceMeters?: number | null;
+    totalDurationSeconds?: number | null;
+}) {
+    return {
+        totalDistanceMeters: reroutePending
+            ? null
+            : (totalDistanceMeters ?? null),
+        totalDurationSeconds: reroutePending
+            ? null
+            : (totalDurationSeconds ?? null),
+    };
+}
+
+function deliverySummaryItem(
+    request: DeliveryRequest,
+    stop: DeliveryRunStop | null | undefined,
+    audience: 'driver' | 'customer',
+): DeliveryStopDeliverySummary {
+    const address = request.address;
+    return {
+        stopId: stop?.id ?? null,
+        stopState: stop?.state ?? null,
+        requestId: request.id,
+        requestState: request.state,
+        contactName:
+            stop?.deliveryContactName ??
+            address?.contactName ??
+            'Nepoznat kontakt',
+        phone: stop?.deliveryPhone ?? address?.phone ?? null,
+        addressLabel: stop?.deliveryAddressLabel ?? address?.label ?? null,
+        requestNotes: request.requestNotes ?? null,
+        deliveryNotes: visibleDeliveryNotes(audience, request.deliveryNotes),
+        harvest: harvestSummary(request),
+        exception:
+            audience === 'driver' && stop
+                ? driverDeliveryExceptionSummary({
+                      state: stop.state,
+                      reason: stop.exceptionReason,
+                      note: stop.exceptionNote,
+                      occurredAt: stop.exceptionOccurredAt,
+                  })
+                : null,
+    };
+}
+
+export function deliveryRecipientCount(
+    items: readonly {
+        requestId: string;
+        recipientIdentity: string | number | null;
+        actionable: boolean;
+    }[],
+) {
+    const actionableItems = items.filter((item) => item.actionable);
+    const countedItems = actionableItems.length > 0 ? actionableItems : items;
+    return new Set(
+        countedItems.map((item) =>
+            item.recipientIdentity === null
+                ? `request:${item.requestId}`
+                : `recipient:${typeof item.recipientIdentity}:${item.recipientIdentity}`,
+        ),
+    ).size;
+}
+
+function deliveryStopSummary({
+    items,
+    run,
+    isCurrent,
+    audience,
+    now,
+    includeTracking,
+    sequence,
+    actionState,
+    lockedReason,
+}: {
+    items: { request: DeliveryRequest; stop?: DeliveryRunStop | null }[];
+    run?: DeliveryRunSnapshot | null;
+    isCurrent: boolean;
+    audience: 'driver' | 'customer';
+    now: Date;
+    includeTracking: boolean;
+    sequence?: number | null;
+    actionState?: DeliveryStopSummary['actionState'];
+    lockedReason?: string | null;
+}): DeliveryStopSummary {
+    const primary = items[0];
+    if (!primary) {
+        throw new Error('Dostavna stanica nema nijednu dostavu.');
+    }
+    const request = primary.request;
+    const stops = items.flatMap((item) => (item.stop ? [item.stop] : []));
+    const representativeStop =
+        stops.find((stop) => isDeliveryRunStopActionable(stop.state)) ??
+        stops.find((stop) => !isDeliveryRunStopTerminal(stop.state)) ??
+        stops[0];
+    const stopState =
+        stops.length > 0 &&
+        stops.every((stop) => stop.state === DeliveryRunStopStates.DELIVERED)
+            ? DeliveryRunStopStates.DELIVERED
+            : stops.some((stop) => stop.state === DeliveryRunStopStates.ARRIVED)
+              ? DeliveryRunStopStates.ARRIVED
+              : stops.some(
+                      (stop) => stop.state === DeliveryRunStopStates.PENDING,
+                  )
+                ? DeliveryRunStopStates.PENDING
+                : stops.some(
+                        (stop) => stop.state === DeliveryRunStopStates.DEFERRED,
+                    )
+                  ? DeliveryRunStopStates.DEFERRED
+                  : stops.some(
+                          (stop) => stop.state === DeliveryRunStopStates.FAILED,
+                      )
+                    ? DeliveryRunStopStates.FAILED
+                    : stops.some(
+                            (stop) =>
+                                stop.state === DeliveryRunStopStates.CANCELLED,
+                        )
+                      ? DeliveryRunStopStates.CANCELLED
+                      : (representativeStop?.state ?? null);
+    const address = request.address;
+    const formattedAddress =
+        representativeStop?.formattedAddress ??
+        (address
+            ? formatDeliveryDestinationAddress(address)
+            : 'Adresa nije dostupna');
+    const runSlot = representativeStop?.runSlot;
+    const reroutePending = Boolean(
+        run?.state === DeliveryRunStates.ACTIVE && run.rerouteRequiredAt,
+    );
+    const estimates = visibleDeliveryStopEstimates({
+        reroutePending,
+        estimatedArrivalAt: representativeStop?.estimatedArrivalAt,
+        estimatedTravelSeconds: representativeStop?.estimatedTravelSeconds,
+        estimatedDistanceMeters: representativeStop?.estimatedDistanceMeters,
+    });
+    const receipt = customerDeliveryReceiptSummary({
+        audience,
+        mode: request.mode ?? 'delivery',
+        requestState: request.state,
+        requestId: request.id,
+        handoffReceipt: request.customerHandoffReceipt,
+        harvest: harvestSummary(request),
+    });
+
+    return {
+        id: representativeStop?.id ?? null,
+        requestId: request.id,
+        sequence: sequence ?? representativeStop?.sequence ?? null,
+        stopState,
+        requestState: request.state,
+        statusLabel: deliveryStatusLabel({
+            requestState: request.state,
+            stopState,
+            isCurrent,
+            runState: run?.state,
+        }),
+        isCurrent,
+        contactName:
+            representativeStop?.deliveryContactName ??
+            address?.contactName ??
+            'Nepoznat kontakt',
+        phone: representativeStop?.deliveryPhone ?? address?.phone ?? null,
+        address: formattedAddress,
+        addressLabel:
+            representativeStop?.deliveryAddressLabel ?? address?.label ?? null,
+        requestNotes: request.requestNotes ?? null,
+        deliveryNotes: visibleDeliveryNotes(audience, request.deliveryNotes),
+        slotStartAt: iso(runSlot?.windowStartAt ?? request.slot?.startAt),
+        slotEndAt: iso(runSlot?.windowEndAt ?? request.slot?.endAt),
+        ...estimates,
+        reroutePending,
+        arrivedAt: iso(stops.find((stop) => stop.arrivedAt)?.arrivedAt),
+        deliveredAt:
+            receipt?.deliveredAt ??
+            iso(stops.find((stop) => stop.deliveredAt)?.deliveredAt),
+        harvest: harvestSummary(request),
+        receipt,
+        recovery:
+            audience === 'customer'
+                ? customerDeliveryRecoverySummary({
+                      requestState: request.state,
+                      stopState,
+                      exceptionReason: representativeStop?.exceptionReason,
+                      exceptionRecordedAt:
+                          request.deliveryException?.recordedAt,
+                      hqAddress: configuredDeliveryHqAddress(),
+                      now,
+                  })
+                : null,
+        tracking:
+            includeTracking && run
+                ? customerDeliveryTrackingSummary(run, now)
+                : null,
+        runId: run?.id ?? null,
+        deliveryCount: items.length,
+        recipientCount: deliveryRecipientCount(
+            items.map(({ request: itemRequest, stop }) => ({
+                requestId: itemRequest.id,
+                recipientIdentity:
+                    stop?.deliveryAddressId ??
+                    itemRequest.address?.id ??
+                    itemRequest.accountId ??
+                    null,
+                actionable: !stop || isDeliveryRunStopActionable(stop.state),
+            })),
+        ),
+        deliveries: items.map((item) =>
+            deliverySummaryItem(item.request, item.stop, audience),
+        ),
+        ...(actionState
+            ? { actionState, lockedReason: lockedReason ?? null }
+            : {}),
+    };
+}
+
+function deliveryManifestItemState(
+    state: DeliveryRunStop['pickupItemState'],
+    manifestConfirmed: boolean,
+): DeliveryPickupManifestItemState {
+    switch (state) {
+        case DeliveryRunManifestItemStates.READY:
+        case DeliveryRunManifestItemStates.SCANNED:
+        case DeliveryRunManifestItemStates.MISSING_LABEL:
+        case DeliveryRunManifestItemStates.NOT_READY:
+            return state;
+        default:
+            return manifestConfirmed
+                ? DeliveryRunManifestItemStates.SCANNED
+                : DeliveryRunManifestItemStates.READY;
+    }
+}
+
+export function pickupManifestTracePath(
+    pickupTraceToken: string | null | undefined,
+) {
+    return pickupTraceToken ? `/trag/${pickupTraceToken}` : null;
+}
+
+function pickupManifestSummary({
+    run,
+    slot,
+    requestsById,
+}: {
+    run: DeliveryRun;
+    slot: DeliveryRun['runSlots'][number];
+    requestsById: ReadonlyMap<string, DeliveryRequest>;
+}): DeliveryPickupManifestSummary {
+    const confirmed =
+        slot.manifestState === DeliveryRunManifestStates.CONFIRMED;
+    const items = run.stops
+        .filter((stop) => stop.runSlotId === slot.id)
+        .map((stop) => {
+            const request = requestsById.get(stop.deliveryRequestId);
+            const tracePath = pickupManifestTracePath(stop.pickupTraceToken);
+            return {
+                id: String(stop.id),
+                stopId: stop.id,
+                requestId: stop.deliveryRequestId,
+                stopKey:
+                    stop.stopKey ??
+                    (request
+                        ? deliveryRequestStopKey(request)
+                        : `request:${stop.deliveryRequestId}`),
+                state: deliveryManifestItemState(
+                    stop.pickupItemState,
+                    confirmed,
+                ),
+                resolvedAt: iso(stop.pickupResolvedAt),
+                tracePath,
+                harvest: request
+                    ? { ...harvestSummary(request), tracePath }
+                    : {
+                          plantName: 'Urod',
+                          operationName: null,
+                          raisedBedName: null,
+                          fieldName: null,
+                          tracePath: null,
+                      },
+            };
+        });
+    const scannedCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.SCANNED,
+    ).length;
+    const missingLabelCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.MISSING_LABEL,
+    ).length;
+    const notReadyCount = items.filter(
+        (item) => item.state === DeliveryRunManifestItemStates.NOT_READY,
+    ).length;
+
+    return {
+        id: slot.manifestId,
+        timeSlotId: slot.timeSlotId,
+        startAt: slot.windowStartAt.toISOString(),
+        endAt: slot.windowEndAt.toISOString(),
+        state: confirmed ? 'confirmed' : 'pending',
+        confirmedAt: iso(slot.confirmedAt),
+        expectedCount: items.length,
+        scannedCount,
+        missingLabelCount,
+        notReadyCount,
+        remainingCount: items.length - scannedCount - missingLabelCount,
+        items,
+    };
+}
+
+function pickupStepSummary({
+    run,
+    step,
+    requestsById,
+}: {
+    run: DeliveryRun;
+    step: Extract<DeliveryRunExecutionStep, { kind: 'pickup' }>;
+    requestsById: ReadonlyMap<string, DeliveryRequest>;
+}): DeliveryPickupStepSummary | null {
+    const pickupNode = run.pickupNodes.find(
+        (node) => node.id === step.pickupNodeId,
+    );
+    if (!pickupNode) return null;
+
+    const manifests = run.runSlots
+        .filter((slot) => slot.pickupNodeId === pickupNode.id)
+        .map((slot) => pickupManifestSummary({ run, slot, requestsById }));
+    const scannedCount = manifests.reduce(
+        (count, manifest) => count + manifest.scannedCount,
+        0,
+    );
+    const missingLabelCount = manifests.reduce(
+        (count, manifest) => count + manifest.missingLabelCount,
+        0,
+    );
+    const notReadyCount = manifests.reduce(
+        (count, manifest) => count + manifest.notReadyCount,
+        0,
+    );
+    const remainingCount = manifests.reduce(
+        (count, manifest) => count + manifest.remainingCount,
+        0,
+    );
+    const allConfirmed =
+        manifests.length > 0 &&
+        manifests.every((manifest) => manifest.state === 'confirmed');
+    const hasProgress =
+        scannedCount > 0 || missingLabelCount > 0 || notReadyCount > 0;
+    const estimates = visibleDeliveryStopEstimates({
+        reroutePending: run.rerouteRequiredAt !== null,
+        estimatedArrivalAt: pickupNode.estimatedArrivalAt,
+        estimatedTravelSeconds: pickupNode.incomingTravelSeconds,
+        estimatedDistanceMeters: pickupNode.incomingDistanceMeters,
+    });
+
+    return {
+        id: pickupNode.id,
+        pickupLocationId: pickupNode.pickupLocationId,
+        sequence: pickupNode.sequence,
+        itinerarySequence: step.itinerarySequence,
+        name: pickupNode.name,
+        address: pickupNode.formattedAddress,
+        ...estimates,
+        serviceDurationSeconds: pickupNode.serviceDurationSeconds,
+        state: allConfirmed ? 'confirmed' : hasProgress ? 'partial' : 'pending',
+        isCurrent: step.state === 'current',
+        expectedCount: manifests.reduce(
+            (count, manifest) => count + manifest.expectedCount,
+            0,
+        ),
+        scannedCount,
+        missingLabelCount,
+        notReadyCount,
+        remainingCount,
+        manifests,
+    };
+}
+
+async function activeRunSummary(
+    run: DeliveryRun,
+    now: Date,
+): Promise<ActiveDeliveryRunSummary> {
+    const groups = await resolveDeliveryRunStopGroups(run);
+    const requests = groups.flatMap((group) =>
+        group.items.flatMap((item) => (item.request ? [item.request] : [])),
+    );
+    const requestsById = new Map(
+        requests.map((request) => [request.id, request]),
+    );
+    const executionSteps = await getDeliveryRunExecutionProgress(run.id);
+    const groupsByStopId = new Map<number, ResolvedDeliveryRunStopGroup>();
+    for (const group of groups) {
+        for (const { stop } of group.items) {
+            groupsByStopId.set(stop.id, group);
+        }
+    }
+    const stops: DeliveryStopSummary[] = [];
+    const routeSteps: DeliveryRouteStepSummary[] = [];
+    const includedDeliveryGroups = new Set<string>();
+    for (const executionStep of executionSteps) {
+        if (executionStep.kind === 'pickup') {
+            const pickup = pickupStepSummary({
+                run,
+                step: executionStep,
+                requestsById,
+            });
+            if (!pickup) continue;
+            routeSteps.push({
+                kind: 'pickup',
+                itinerarySequence: executionStep.itinerarySequence,
+                actionState:
+                    executionStep.state === 'completed'
+                        ? 'completed'
+                        : executionStep.state === 'current'
+                          ? 'current'
+                          : 'locked',
+                pickup,
+            });
+            continue;
+        }
+
+        const group = executionStep.stopIds.flatMap((stopId) => {
+            const candidate = groupsByStopId.get(stopId);
+            return candidate ? [candidate] : [];
+        })[0];
+        if (!group || includedDeliveryGroups.has(group.executionKey)) continue;
+        includedDeliveryGroups.add(group.executionKey);
+
+        const groupStopIds = new Set(group.items.map(({ stop }) => stop.id));
+        const groupExecutionSteps = executionSteps.filter(
+            (
+                candidate,
+            ): candidate is Extract<
+                DeliveryRunExecutionStep,
+                { kind: 'delivery' }
+            > =>
+                candidate.kind === 'delivery' &&
+                candidate.stopIds.some((stopId) => groupStopIds.has(stopId)),
+        );
+        const items = group.items.flatMap(({ request, stop }) =>
+            request ? [{ request, stop }] : [],
+        );
+        if (items.length === 0) continue;
+        const complete = group.items.every(({ stop }) =>
+            isDeliveryRunStopTerminal(stop.state),
+        );
+        const dependencySatisfied = groupExecutionSteps.every(
+            (candidate) => candidate.pickupConfirmed,
+        );
+        const current = groupExecutionSteps.some(
+            (candidate) => candidate.state === 'current',
+        );
+        const actionState: NonNullable<DeliveryStopSummary['actionState']> =
+            complete
+                ? 'completed'
+                : !dependencySatisfied
+                  ? 'locked'
+                  : current
+                    ? 'current'
+                    : 'upcoming';
+        const itinerarySequence = Math.min(
+            ...groupExecutionSteps.map(
+                (candidate) => candidate.itinerarySequence,
+            ),
+        );
+        const stop = deliveryStopSummary({
+            items,
+            run,
+            isCurrent: actionState === 'current',
+            audience: 'driver',
+            now,
+            includeTracking: false,
+            sequence: Number.isFinite(itinerarySequence)
+                ? itinerarySequence
+                : stops.length + 1,
+            actionState,
+            lockedReason:
+                actionState === 'locked'
+                    ? 'Najprije potvrdi preuzimanje svih uroda za ovu stanicu.'
+                    : null,
+        });
+        stops.push(stop);
+        routeSteps.push({
+            kind: 'delivery',
+            itinerarySequence: Number.isFinite(itinerarySequence)
+                ? itinerarySequence
+                : executionStep.itinerarySequence,
+            mapNodeId:
+                deliveryMapStopGroupSelectionId(
+                    group.items.map(({ stop: groupStop }) => groupStop.id),
+                ) ?? undefined,
+            retryLaneRank: executionStep.retryLaneRank ?? null,
+            retryAttempt: executionStep.retryAttempt ?? 0,
+            actionState,
+            lockedReason: stop.lockedReason ?? null,
+            stop,
+        });
+    }
+
+    const reroutePending = run.rerouteRequiredAt !== null;
+    return {
+        id: run.id,
+        state: run.state,
+        startedAt: run.startedAt.toISOString(),
+        completedAt: iso(run.completedAt),
+        ...visibleDeliveryRunTotals({
+            reroutePending,
+            totalDistanceMeters: run.totalDistanceMeters,
+            totalDurationSeconds: run.totalDurationSeconds,
+        }),
+        routePlanVersion: run.routePlanVersion,
+        routeRevision: run.routeRevision,
+        reroutePending,
+        estimateSource: run.estimateSource,
+        tracking: customerDeliveryTrackingSummary(run, now),
+        location: driverDeliveryTrackingLocation(run, now),
+        estimatesUpdatedAt: iso(run.estimatesUpdatedAt),
+        mapUrl: `/api/map/${run.id}`,
+        deliveryCount: stops.reduce(
+            (count, stop) => count + stop.deliveryCount,
+            0,
+        ),
+        stops,
+        routeSteps,
+    };
+}
+
+async function driverDashboard({
+    userId,
+    role,
+}: {
+    userId: string;
+    role: string;
+}): Promise<DeliveryDashboard> {
+    const [user, initialActiveRun, requests] = await Promise.all([
+        getUser(userId),
+        getActiveDeliveryRunForDriver(userId),
+        getDeliveryRequestsWithEvents(),
+    ]);
+    if (!user) {
+        throw new Error('Korisnik nije pronađen.');
+    }
+    const projectedAt = new Date();
+    let activeRun = initialActiveRun;
+    if (
+        activeRun?.rerouteRequiredAt &&
+        deliveryRerouteLocationIsFresh(activeRun, projectedAt) &&
+        deliveryRerouteRetryIsDue(
+            activeRun.rerouteRequiredAt,
+            activeRun.rerouteAttemptedAt,
+            projectedAt,
+        )
+    ) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: userId,
+            runId: activeRun.id,
+            expectedRouteRevision: activeRun.routeRevision,
+        });
+        activeRun = await getActiveDeliveryRunForDriver(userId);
+    }
+
+    const now = projectedAt.getTime();
+    const candidateRequests = requests.filter(
+        (request) =>
+            request.mode === 'delivery' &&
+            request.address &&
+            request.slot &&
+            batchStates.has(request.state) &&
+            request.slot.endAt.getTime() >= now &&
+            request.slot.startAt.getTime() <= now + 14 * 24 * 60 * 60 * 1000,
+    );
+    const assigned = await getActiveDeliveryRunStopsForRequestIds(
+        candidateRequests.map((request) => request.id),
+    );
+    const assignedRequestIds = new Set(
+        assigned.map(({ stop }) => stop.deliveryRequestId),
+    );
+    const batchesBySlot = new Map<
+        number,
+        {
+            startAt: Date;
+            endAt: Date;
+            pickupLocationId: number;
+            pickupLocationName: string | null;
+            pickupAddress: string | null;
+            orders: DeliveryRouteOrderSummary[];
+        }
+    >();
+    for (const request of candidateRequests) {
+        if (
+            !request.slot ||
+            !request.address ||
+            assignedRequestIds.has(request.id)
+        ) {
+            continue;
+        }
+        const order = {
+            requestId: request.id,
+            stopKey: deliveryRequestStopKey(request),
+            readyForPickup: request.state === DeliveryRequestStates.READY,
+            pickupStatusLabel: pickupStatusLabel(request.state),
+            contactName: request.address.contactName,
+            address: formatDeliveryDestinationAddress(request.address),
+            addressLabel: request.address.label,
+            requestNotes: request.requestNotes ?? null,
+            harvest: harvestSummary(request),
+        } satisfies DeliveryRouteOrderSummary;
+        const batch = batchesBySlot.get(request.slot.id);
+        if (batch) {
+            batch.orders.push(order);
+        } else {
+            const pickupLocation = request.slot.location;
+            batchesBySlot.set(request.slot.id, {
+                startAt: request.slot.startAt,
+                endAt: request.slot.endAt,
+                pickupLocationId: request.slot.locationId,
+                pickupLocationName: pickupLocation?.name ?? null,
+                pickupAddress: pickupLocation
+                    ? formatDeliveryDestinationAddress(pickupLocation)
+                    : null,
+                orders: [order],
+            });
+        }
+    }
+
+    return {
+        kind: 'driver',
+        user: {
+            id: user.id,
+            displayName: user.displayName ?? user.userName,
+            role,
+        },
+        activeRun: activeRun
+            ? await activeRunSummary(activeRun, projectedAt)
+            : null,
+        batches: Array.from(batchesBySlot, ([slotId, batch]) => ({
+            slotId,
+            startAt: batch.startAt.toISOString(),
+            endAt: batch.endAt.toISOString(),
+            pickupLocationId: batch.pickupLocationId,
+            pickupLocationName: batch.pickupLocationName,
+            pickupAddress: batch.pickupAddress,
+            deliveryCount: batch.orders.length,
+            stopCount: new Set(batch.orders.map((order) => order.stopKey)).size,
+            orders: batch.orders.sort((first, second) =>
+                first.address.localeCompare(second.address, 'hr'),
+            ),
+        })).sort((first, second) =>
+            first.startAt.localeCompare(second.startAt),
+        ),
+        maximumRouteStops: maximumDeliveryRouteStops,
+        maximumRouteWindowHours: maximumDeliveryRouteWindowHours,
+        refreshedAt: projectedAt.toISOString(),
+    };
+}
+
+async function customerDashboard({
+    accountId,
+    userId,
+    role,
+}: {
+    accountId: string;
+    userId: string;
+    role: string;
+}): Promise<DeliveryDashboard> {
+    const [user, requests] = await Promise.all([
+        getUser(userId),
+        getDeliveryRequestsWithEvents(accountId),
+    ]);
+    if (!user) {
+        throw new Error('Korisnik nije pronađen.');
+    }
+
+    const deliveryRequests = requests.filter(
+        (request) => request.mode !== 'pickup',
+    );
+    const runRows = await getDeliveryRunStopsForRequestIds(
+        deliveryRequests.map((request) => request.id),
+    );
+    const rowsByRequestId = new Map(
+        runRows.map((row) => [row.stop.deliveryRequestId, row]),
+    );
+    const activeRunIds = Array.from(
+        new Set(
+            runRows.flatMap(({ run }) =>
+                run.state === DeliveryRunStates.ACTIVE ? [run.id] : [],
+            ),
+        ),
+    );
+    const activeRuns = await Promise.all(activeRunIds.map(getDeliveryRun));
+    const currentStopIdsByRunId = new Map<string, Set<number> | null>();
+    const executionProgressByRunId = new Map<
+        string,
+        DeliveryRunExecutionStep[]
+    >();
+    for (const run of activeRuns) {
+        if (!run) continue;
+        const progress = await getDeliveryRunExecutionProgress(run.id);
+        executionProgressByRunId.set(run.id, progress);
+        const current = progress.find((step) => step.state === 'current');
+        if (current?.kind !== 'delivery' || !current.pickupConfirmed) {
+            currentStopIdsByRunId.set(run.id, null);
+            continue;
+        }
+        currentStopIdsByRunId.set(
+            run.id,
+            deliveryTrackingStopIds({
+                routePlanVersion: run.routePlanVersion,
+                currentStopIds: new Set(current.actionableStopIds),
+                groups: await resolveDeliveryRunStopGroups(run),
+            }),
+        );
+    }
+
+    const projectedAt = new Date();
+    const deliveries = requests
+        .map((request) => {
+            if (request.mode === 'pickup') {
+                const location = request.slot?.location ?? request.location;
+                return customerPickupRequestSummary({
+                    requestId: request.id,
+                    status: request.state,
+                    requestNotes: request.requestNotes ?? null,
+                    slotStartAt: iso(request.slot?.startAt),
+                    slotEndAt: iso(request.slot?.endAt),
+                    harvest: harvestSummary(request),
+                    location: location
+                        ? {
+                              name: location.name,
+                              address:
+                                  formatDeliveryDestinationAddress(location),
+                              instructions: customerPickupInstructions(
+                                  request.state,
+                              ),
+                          }
+                        : null,
+                    pickedUpAt:
+                        request.state === DeliveryRequestStates.FULFILLED
+                            ? iso(request.customerHandoffReceipt?.fulfilledAt)
+                            : null,
+                });
+            }
+            const historicalRow = rowsByRequestId.get(request.id);
+            const row =
+                historicalRow?.stop.releasedAt !== null &&
+                !terminalDeliveryRequestStates.has(request.state)
+                    ? undefined
+                    : historicalRow;
+            const isCurrent = row
+                ? (currentStopIdsByRunId.get(row.run.id)?.has(row.stop.id) ??
+                  false)
+                : false;
+            const summary = deliveryStopSummary({
+                items: [{ request, stop: row?.stop }],
+                run: row?.run,
+                isCurrent,
+                audience: 'customer',
+                now: projectedAt,
+                includeTracking:
+                    row?.run.state === DeliveryRunStates.ACTIVE &&
+                    isDeliveryRunStopActionable(row.stop.state) &&
+                    isCurrent,
+            });
+            const runTracking = row
+                ? customerDeliveryTrackingSummary(row.run, projectedAt)
+                : null;
+            return customerDeliveryRequestSummary(summary, {
+                now: projectedAt.toISOString(),
+                runState: row?.run.state ?? null,
+                stopsAhead:
+                    row?.run.state === DeliveryRunStates.ACTIVE
+                        ? customerDeliveryStopsAhead({
+                              progress:
+                                  executionProgressByRunId.get(row.run.id) ??
+                                  [],
+                              stopId: row.stop.id,
+                          })
+                        : null,
+                estimatesCalculatedAt: iso(row?.run.estimatesUpdatedAt),
+                estimateSource: row?.run.estimateSource ?? null,
+                routePlanVersion: row?.run.routePlanVersion ?? null,
+                hasTrafficRouteArtifact: hasLegacyGoogleRouteArtifact(
+                    row?.run.encodedPolyline,
+                ),
+                trackingStatus: runTracking?.status ?? null,
+                trackingLastAcceptedAt: runTracking?.lastAcceptedAt ?? null,
+            });
+        })
+        .sort((first, second) => {
+            const firstTime = first.slotStartAt ?? '';
+            const secondTime = second.slotStartAt ?? '';
+            return secondTime.localeCompare(firstTime);
+        });
+
+    return {
+        kind: 'customer',
+        user: {
+            id: user.id,
+            displayName: user.displayName ?? user.userName,
+            role,
+        },
+        deliveries,
+        refreshedAt: projectedAt.toISOString(),
+    };
+}
+
+export function expandLegacyCurrentDeliveryStopIds({
+    currentStopIds,
+    groups,
+}: {
+    currentStopIds: ReadonlySet<number>;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{ stop: { id?: number } }>;
+    }>;
+}) {
+    const currentGroup = groups.find((group) =>
+        group.items.some(
+            ({ stop }) => stop.id !== undefined && currentStopIds.has(stop.id),
+        ),
+    );
+    if (!currentGroup) {
+        return new Set(currentStopIds);
+    }
+
+    return new Set(
+        currentGroup.items.flatMap(({ stop }) =>
+            stop.id === undefined ? [] : [stop.id],
+        ),
+    );
+}
+
+export function deliveryTrackingStopIds({
+    routePlanVersion,
+    currentStopIds,
+    groups,
+}: {
+    routePlanVersion: number;
+    currentStopIds: ReadonlySet<number>;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{ stop: { id?: number } }>;
+    }>;
+}) {
+    return routePlanVersion < 2
+        ? expandLegacyCurrentDeliveryStopIds({ currentStopIds, groups })
+        : new Set(currentStopIds);
+}
+
+export function customerDeliveryStopsAhead({
+    progress,
+    stopId,
+}: {
+    progress: readonly DeliveryRunExecutionStep[];
+    stopId: number | null | undefined;
+}) {
+    if (typeof stopId !== 'number') return null;
+
+    const targetIndex = progress.findIndex(
+        (step) => step.kind === 'delivery' && step.stopIds.includes(stopId),
+    );
+    const target = progress[targetIndex];
+    if (!target || target.state === 'completed') return null;
+
+    return progress
+        .slice(0, targetIndex)
+        .filter((step) => step.state !== 'completed').length;
+}
+
+async function publishCustomerDeliveryMilestoneForRunStops({
+    run,
+    stopIds,
+    milestone,
+    occurredAt,
+    sourceId,
+    sourceVersion,
+}: {
+    run: DeliveryRun;
+    stopIds: ReadonlySet<number>;
+    milestone: CustomerDeliveryNonExceptionMilestone;
+    occurredAt: Date;
+    sourceId: string;
+    sourceVersion: number;
+}) {
+    if (!customerDeliveryNotificationsEnabled()) return;
+    await publishCustomerDeliveryMilestonesSafely(
+        run.stops
+            .filter((stop) => stopIds.has(stop.id))
+            .map((stop) => ({
+                milestone,
+                occurredAt,
+                requestId: stop.deliveryRequestId,
+                retryAttempt: stop.retryAttempt,
+                runId: run.id,
+                source: {
+                    id: sourceId,
+                    kind:
+                        milestone === 'route-started'
+                            ? ('run-state' as const)
+                            : milestone === 'recovery'
+                              ? ('retry-state' as const)
+                              : milestone === 'near-arrival' ||
+                                  milestone === 'next-stop' ||
+                                  milestone === 'delayed'
+                                ? ('route-progress' as const)
+                                : ('stop-operation' as const),
+                    version: sourceVersion,
+                },
+                stopId: stop.id,
+            })),
+    );
+}
+
+async function publishCustomerDeliveryMilestoneForCurrentRun({
+    runId,
+    stopIds,
+    requestIds,
+    requiredStopState,
+    milestone,
+    occurredAt,
+    sourceId,
+    sourceVersion,
+}: Omit<
+    Parameters<typeof publishCustomerDeliveryMilestoneForRunStops>[0],
+    'run'
+> & {
+    requestIds?: ReadonlySet<string>;
+    requiredStopState?: string;
+    runId: string;
+}) {
+    await isolateCustomerDeliveryPostCommitNotification(
+        async () => {
+            if (!customerDeliveryNotificationsEnabled()) return;
+            const run = await getDeliveryRun(runId);
+            if (!run) return;
+            const selectedStopIds = new Set(
+                run.stops.flatMap((stop) =>
+                    stopIds.has(stop.id) &&
+                    (!requestIds || requestIds.has(stop.deliveryRequestId)) &&
+                    (!requiredStopState || stop.state === requiredStopState)
+                        ? [stop.id]
+                        : [],
+                ),
+            );
+            await publishCustomerDeliveryMilestoneForRunStops({
+                run,
+                stopIds: selectedStopIds,
+                milestone,
+                occurredAt,
+                sourceId,
+                sourceVersion,
+            });
+        },
+        (error) => {
+            console.warn('Customer delivery post-commit notification failed', {
+                errorName: error instanceof Error ? error.name : 'Unknown',
+                milestone,
+                runId,
+            });
+        },
+    );
+}
+
+async function publishCustomerDeliveryProgress({
+    runId,
+    occurredAt,
+}: {
+    runId: string;
+    occurredAt: Date;
+}) {
+    if (!customerDeliveryNotificationsEnabled()) return;
+    const [run, progress] = await Promise.all([
+        getDeliveryRun(runId),
+        getDeliveryRunExecutionProgress(runId),
+    ]);
+    if (
+        !run ||
+        run.state !== DeliveryRunStates.ACTIVE ||
+        run.rerouteRequiredAt
+    ) {
+        return;
+    }
+    const estimateAgeMs = run.estimatesUpdatedAt
+        ? occurredAt.getTime() - run.estimatesUpdatedAt.getTime()
+        : Number.POSITIVE_INFINITY;
+    const estimateIsFresh =
+        estimateAgeMs >= 0 && estimateAgeMs <= etaRefreshIntervalMs;
+    const milestones: CustomerDeliveryProgressMilestoneInput[] =
+        run.stops.flatMap((stop) => {
+            if (
+                !customerDeliveryProgressStopIsEligible({
+                    manifestState: stop.runSlot?.manifestState,
+                    stopState: stop.state,
+                })
+            ) {
+                return [];
+            }
+            const stopsAhead = customerDeliveryStopsAhead({
+                progress,
+                stopId: stop.id,
+            });
+            return customerDeliveryProgressMilestones({
+                estimatedArrivalAt: stop.estimatedArrivalAt,
+                estimatedTravelSeconds: stop.estimatedTravelSeconds,
+                estimateIsFresh,
+                now: occurredAt,
+                stopsAhead,
+                windowEndAt: stop.runSlot?.windowEndAt ?? null,
+            }).map((milestone) => ({
+                milestone,
+                occurredAt,
+                requestId: stop.deliveryRequestId,
+                retryAttempt: stop.retryAttempt,
+                runId: run.id,
+                source: {
+                    id: `route-progress:${occurredAt.toISOString()}`,
+                    kind: 'route-progress',
+                    version: run.routeRevision,
+                },
+                stopId: stop.id,
+            }));
+        });
+    for (
+        let start = 0;
+        start < milestones.length;
+        start += deliveryRunRouteProgressMilestoneBatchLimit
+    ) {
+        await recordDeliveryRunRouteProgressMilestones({
+            routeRevision: run.routeRevision,
+            runId: run.id,
+            milestones: milestones
+                .slice(
+                    start,
+                    start + deliveryRunRouteProgressMilestoneBatchLimit,
+                )
+                .map((milestone) => ({
+                    deliveryRequestId: milestone.requestId,
+                    milestone: milestone.milestone,
+                    occurredAt: milestone.occurredAt,
+                    retryAttempt: milestone.retryAttempt,
+                    sourceId: milestone.source.id,
+                    stopId: milestone.stopId,
+                })),
+        });
+    }
+    await publishCustomerDeliveryMilestonesSafely(milestones);
+}
+
+async function publishCustomerDeliveryProgressSafely({
+    runId,
+    occurredAt,
+}: {
+    runId: string;
+    occurredAt: Date;
+}) {
+    try {
+        await publishCustomerDeliveryProgress({ runId, occurredAt });
+    } catch (error) {
+        console.warn('Customer delivery progress notification failed', {
+            runId,
+            errorName: error instanceof Error ? error.name : 'Unknown',
+        });
+    }
+}
+
+export function deliveryDashboardKindForRole(role: string) {
+    switch (role) {
+        case 'driver':
+        case 'admin':
+            return 'driver';
+        case 'user':
+        case 'farmer':
+            return 'customer';
+        default:
+            return null;
+    }
+}
+
+export async function getDeliveryDashboard({
+    accountId,
+    userId,
+    role,
+}: {
+    accountId: string;
+    userId: string;
+    role: string;
+}) {
+    const kind = deliveryDashboardKindForRole(role);
+    if (!kind) {
+        throw new Error('Uloga nema pristup dostavnoj aplikaciji.');
+    }
+    return kind === 'driver'
+        ? await driverDashboard({ userId, role })
+        : await customerDashboard({ accountId, userId, role });
+}
+
+export async function startDeliveryRun({
+    driverUserId,
+    deliveryRequestIds,
+    preparationToken,
+}: {
+    driverUserId: string;
+    deliveryRequestIds: string[];
+    preparationToken?: string;
+}) {
+    const consumePreparation = async (token: string) => {
+        try {
+            return await consumeDeliveryRunPreparation({
+                preparationToken: token,
+                driverUserId,
+                deliveryRequestIds,
+            });
+        } catch (error) {
+            const preparationError =
+                deliveryRunPersistencePreparationError(error);
+            if (preparationError) throw preparationError;
+            throw error;
+        }
+    };
+
+    return await resolveDeliveryRunStart({
+        preparationToken,
+        getExistingRun: async () =>
+            await getActiveDeliveryRunForDriver(driverUserId),
+        createPreparationToken: async () => {
+            const preparation = await prepareDeliveryRun({
+                driverUserId,
+                deliveryRequestIds,
+            });
+            const savedPreparation = await savePreparedDeliveryRun(preparation);
+            return savedPreparation.preparationToken;
+        },
+        consumePreparation,
+    });
+}
+
+export async function applyDriverDeliveryRunPickupMutations(
+    input: Parameters<typeof applyDeliveryRunPickupMutations>[0],
+) {
+    const results = await applyDeliveryRunPickupMutations(input);
+    await isolateCustomerDeliveryPostCommitNotification(
+        async () => {
+            if (!customerDeliveryNotificationsEnabled()) return;
+            const run = await getDeliveryRun(input.runId);
+            if (!run) return;
+            const mutationsByOperationId = new Map(
+                input.mutations.map((mutation) => [
+                    mutation.clientOperationId,
+                    mutation,
+                ]),
+            );
+            await Promise.all(
+                results.map(async (result) => {
+                    const mutation = mutationsByOperationId.get(
+                        result.clientOperationId,
+                    );
+                    if (
+                        mutation?.kind !== 'confirm-manifest' ||
+                        result.result.kind !== 'confirm-manifest' ||
+                        result.result.manifestState !== 'confirmed'
+                    ) {
+                        return;
+                    }
+                    const stopIds = new Set(
+                        customerDeliveryPickedUpStopIds(
+                            run.stops,
+                            mutation.manifestId,
+                        ),
+                    );
+                    await publishCustomerDeliveryMilestoneForRunStops({
+                        run,
+                        stopIds,
+                        milestone: 'route-started',
+                        occurredAt: mutation.occurredAt,
+                        sourceId: mutation.clientOperationId,
+                        sourceVersion: run.routeRevision,
+                    });
+                }),
+            );
+            await publishCustomerDeliveryProgressSafely({
+                runId: input.runId,
+                occurredAt: new Date(),
+            });
+        },
+        (error) => {
+            console.warn('Customer delivery pickup notification failed', {
+                errorName: error instanceof Error ? error.name : 'Unknown',
+                runId: input.runId,
+            });
+        },
+    );
+    return results;
+}
+
+export async function arriveAtDeliveryStop({
+    driverUserId,
+    runId,
+    stopId,
+    expectedRouteRevision,
+    clientOperationId,
+    occurredAt,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+    clientOperationId: string;
+    occurredAt: Date;
+}) {
+    const recorded = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.ARRIVE,
+        driverUserId,
+        runId,
+        targetStopId: stopId,
+        expectedRouteRevision,
+        clientOperationId,
+        occurredAt,
+    });
+    await publishCustomerDeliveryMilestoneForCurrentRun({
+        runId,
+        stopIds: new Set(recorded.result.affectedStopIds),
+        requiredStopState: DeliveryRunStopStates.ARRIVED,
+        milestone: 'arrived',
+        occurredAt,
+        sourceId: clientOperationId,
+        sourceVersion: recorded.result.routeRevision,
+    });
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        result: recorded.result,
+    };
+}
+
+export async function deliverDeliveryStop({
+    driverUserId,
+    runId,
+    stopId,
+    notes,
+    completionOverride,
+    expectedRouteRevision,
+    clientOperationId,
+    occurredAt,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    notes?: string;
+    completionOverride?: DeliveryRunCompletionOverrideInput;
+    expectedRouteRevision: number;
+    clientOperationId: string;
+    occurredAt: Date;
+}) {
+    const recorded = await recordDeliveryRunStopOperation({
+        kind: DeliveryRunStopOperationKinds.DELIVER,
+        driverUserId,
+        runId,
+        targetStopId: stopId,
+        deliveryNotes: notes,
+        completionOverride,
+        expectedRouteRevision,
+        clientOperationId,
+        occurredAt,
+    });
+    await publishCustomerDeliveryMilestoneForCurrentRun({
+        runId,
+        stopIds: new Set(recorded.result.affectedStopIds),
+        requestIds: new Set(recorded.newlyFulfilledRequestIds),
+        requiredStopState: DeliveryRunStopStates.DELIVERED,
+        milestone: 'delivered',
+        occurredAt,
+        sourceId: clientOperationId,
+        sourceVersion: recorded.result.routeRevision,
+    });
+    await publishCustomerDeliveryProgressSafely({
+        runId,
+        occurredAt: new Date(),
+    });
+    if (!recorded.replayed) {
+        await isolateCustomerDeliveryPostCommitNotification(
+            async () => {
+                await notifyDeliveryRequestGroupEvent(
+                    recorded.newlyFulfilledRequestIds,
+                    'updated',
+                    {
+                        status: DeliveryRequestStates.FULFILLED,
+                        note: notes,
+                    },
+                );
+            },
+            (error) => {
+                console.warn('Delivery request notification failed', {
+                    errorName: error instanceof Error ? error.name : 'Unknown',
+                    runId,
+                });
+            },
+        );
+    }
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        result: recorded.result,
+    };
+}
+
+async function currentDeliveryRunMutationResult({
+    runId,
+    fallbackRouteRevision,
+}: {
+    runId: string;
+    fallbackRouteRevision: number;
+}) {
+    const run = await getDeliveryRun(runId);
+    return deliveryMutationRouteState(run, fallbackRouteRevision);
+}
+
+export function deliveryMutationRouteState(
+    run:
+        | {
+              routeRevision: number;
+              rerouteRequiredAt: Date | null;
+              state?: string;
+          }
+        | null
+        | undefined,
+    fallbackRouteRevision: number,
+) {
+    return {
+        routeRevision: run?.routeRevision ?? fallbackRouteRevision,
+        reroutePending: Boolean(run?.rerouteRequiredAt),
+        runCompleted: run?.state === DeliveryRunStates.COMPLETED,
+    };
+}
+
+export function recordedExceptionNeedsReroute({
+    currentRouteRevision,
+    recordedRouteRevision,
+    reroutePending,
+}: {
+    currentRouteRevision?: number;
+    recordedRouteRevision: number;
+    reroutePending: boolean;
+}) {
+    return reroutePending && currentRouteRevision === recordedRouteRevision;
+}
+
+export async function recordDriverDeliveryExceptions({
+    driverUserId,
+    runId,
+    clientOperationId,
+    expectedRouteRevision,
+    occurredAt,
+    exceptions,
+}: Omit<RecordDeliveryRunStopExceptionsInput, 'driverUserId'> & {
+    driverUserId: string;
+}) {
+    const recorded = await recordDeliveryRunStopExceptions({
+        driverUserId,
+        runId,
+        clientOperationId,
+        expectedRouteRevision,
+        occurredAt,
+        exceptions,
+    });
+    const runAfterMutation = await getDeliveryRun(runId);
+    if (customerDeliveryNotificationsEnabled()) {
+        await publishCustomerDeliveryMilestonesSafely(
+            recorded.result.outcomes.flatMap((outcome) => {
+                if (outcome.retryAttempt === undefined) return [];
+                return [
+                    {
+                        exception: {
+                            outcome: outcome.outcome,
+                            reason: outcome.reason,
+                        },
+                        milestone: 'exception' as const,
+                        occurredAt,
+                        requestId: outcome.deliveryRequestId,
+                        retryAttempt: outcome.retryAttempt,
+                        runId,
+                        source: {
+                            id: clientOperationId,
+                            kind: 'exception-operation' as const,
+                            version: recorded.result.routeRevision,
+                        },
+                        stopId: outcome.stopId,
+                    },
+                ];
+            }),
+        );
+    }
+    if (
+        recordedExceptionNeedsReroute({
+            currentRouteRevision: runAfterMutation?.routeRevision,
+            recordedRouteRevision: recorded.result.routeRevision,
+            reroutePending: Boolean(runAfterMutation?.rerouteRequiredAt),
+        })
+    ) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: driverUserId,
+            runId,
+            expectedRouteRevision: recorded.result.routeRevision,
+            originStopId: exceptions[0]?.stopId,
+        });
+    }
+    await publishCustomerDeliveryProgressSafely({
+        runId,
+        occurredAt: new Date(),
+    });
+    return {
+        clientOperationId: recorded.clientOperationId,
+        replayed: recorded.replayed,
+        outcomes: recorded.result.outcomes,
+        ...(await currentDeliveryRunMutationResult({
+            runId,
+            fallbackRouteRevision: recorded.result.routeRevision,
+        })),
+    };
+}
+
+export async function retryDriverDeliveryStop({
+    driverUserId,
+    runId,
+    stopId,
+    expectedRouteRevision,
+}: {
+    driverUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+}) {
+    const occurredAt = new Date();
+    const retried = await retryDeliveryRunStop({
+        driverUserId,
+        runId,
+        stopId,
+        expectedRouteRevision,
+        occurredAt,
+    });
+    await publishCustomerDeliveryMilestoneForCurrentRun({
+        runId,
+        stopIds: new Set(retried.stopIds),
+        milestone: 'recovery',
+        occurredAt,
+        sourceId: `driver-retry:${retried.routeRevision}`,
+        sourceVersion: retried.routeRevision,
+    });
+    await reconcileDeliveryRunReroute({
+        actorUserId: driverUserId,
+        runId,
+        expectedRouteRevision: retried.routeRevision,
+    });
+    await publishCustomerDeliveryProgressSafely({
+        runId,
+        occurredAt: new Date(),
+    });
+    return await currentDeliveryRunMutationResult({
+        runId,
+        fallbackRouteRevision: retried.routeRevision,
+    });
+}
+
+export async function reassignAdminDeliveryRun(input: {
+    adminUserId: string;
+    runId: string;
+    newDriverUserId: string;
+    expectedRouteRevision: number;
+}) {
+    return await reassignDeliveryRun(input);
+}
+
+export async function recoverAdminDeliveryStop(input: {
+    adminUserId: string;
+    runId: string;
+    stopId: number;
+    expectedRouteRevision: number;
+}) {
+    const occurredAt = new Date();
+    const recovered = await recoverDeliveryRunStop({ ...input, occurredAt });
+    if (customerDeliveryNotificationsEnabled()) {
+        await publishCustomerDeliveryMilestoneSafely({
+            milestone: 'recovery',
+            occurredAt,
+            requestId: recovered.requestId,
+            retryAttempt: recovered.retryAttempt,
+            runId: input.runId,
+            source: {
+                id: `admin-recovery:${recovered.routeRevision}`,
+                kind: 'retry-state',
+                version: recovered.routeRevision,
+            },
+            stopId: input.stopId,
+        });
+    }
+    if (recovered.resumedInRun) {
+        await reconcileDeliveryRunReroute({
+            actorUserId: input.adminUserId,
+            runId: input.runId,
+            expectedRouteRevision: recovered.routeRevision,
+            allowAdmin: true,
+        });
+    }
+    await publishCustomerDeliveryProgressSafely({
+        runId: input.runId,
+        occurredAt: new Date(),
+    });
+    return {
+        ...recovered,
+        ...(await currentDeliveryRunMutationResult({
+            runId: input.runId,
+            fallbackRouteRevision: recovered.routeRevision,
+        })),
+    };
+}
+
+export async function abandonAdminDeliveryRun(input: {
+    adminUserId: string;
+    runId: string;
+    expectedRouteRevision: number;
+    reason?: string;
+}) {
+    return await abandonDeliveryRun(input);
+}
+
+export async function accountCanTrackDeliveryRun({
+    accountId,
+    runId,
+}: {
+    accountId: string;
+    runId: string;
+}) {
+    const run = await getDeliveryRun(runId);
+    if (!run) return false;
+    return Boolean(await customerDeliveryTrackingContext({ accountId, run }));
+}
+
+export async function customerDeliveryTrackingContext({
+    accountId,
+    run,
+}: {
+    accountId: string;
+    run: DeliveryRun;
+}) {
+    if (run.state !== DeliveryRunStates.ACTIVE) return null;
+    const [groups, progress] = await Promise.all([
+        resolveDeliveryRunStopGroups(run),
+        getDeliveryRunExecutionProgress(run.id),
+    ]);
+    const current = progress.find((step) => step.state === 'current');
+    const currentDeliveryStopIds =
+        current?.kind === 'delivery' && current.pickupConfirmed
+            ? deliveryTrackingStopIds({
+                  routePlanVersion: run.routePlanVersion,
+                  currentStopIds: new Set(current.actionableStopIds),
+                  groups,
+              })
+            : null;
+    if (
+        !currentDeliveryStopIds ||
+        !accountCanTrackCurrentDeliveryGroup({
+            accountId,
+            runState: run.state,
+            groups,
+            currentDeliveryStopIds,
+        })
+    ) {
+        return null;
+    }
+    return {
+        groups,
+        currentDeliveryStopIds,
+    };
+}
+
+export function accountCanTrackCurrentDeliveryGroup({
+    accountId,
+    runState,
+    groups,
+    currentDeliveryStopIds,
+}: {
+    accountId: string;
+    runState: string;
+    groups: ReadonlyArray<{
+        items: ReadonlyArray<{
+            stop: { id?: number; state: string };
+            request?: { accountId?: string | null };
+        }>;
+    }>;
+    currentDeliveryStopIds?: ReadonlySet<number> | null;
+}) {
+    if (runState !== DeliveryRunStates.ACTIVE) {
+        return false;
+    }
+    const currentGroup =
+        currentDeliveryStopIds === undefined
+            ? groups.find((group) =>
+                  group.items.some(({ stop }) =>
+                      isDeliveryRunStopActionable(stop.state),
+                  ),
+              )
+            : currentDeliveryStopIds === null
+              ? undefined
+              : groups.find((group) =>
+                    group.items.some(
+                        ({ stop }) =>
+                            stop.id !== undefined &&
+                            currentDeliveryStopIds.has(stop.id),
+                    ),
+                );
+
+    return Boolean(
+        currentGroup?.items.some(({ stop, request }) => {
+            if (!isDeliveryRunStopActionable(stop.state)) return false;
+            if (
+                currentDeliveryStopIds !== undefined &&
+                (stop.id === undefined || !currentDeliveryStopIds?.has(stop.id))
+            ) {
+                return false;
+            }
+            return request?.accountId === accountId;
+        }),
+    );
+}
+
+async function refreshDeliveryRunAfterLocation({
+    run,
+    previousRun,
+    driverUserId,
+    runId,
+    expectedLocationRecordedAt,
+    expectedLocationReceivedAt,
+    now,
+}: {
+    run: DeliveryRun | null;
+    previousRun: DeliveryRun | null;
+    driverUserId: string;
+    runId: string;
+    expectedLocationRecordedAt: Date;
+    expectedLocationReceivedAt: Date;
+    now: Date;
+}) {
+    if (
+        !run ||
+        run.driverUserId !== driverUserId ||
+        run.currentLocationRecordedAt?.getTime() !==
+            expectedLocationRecordedAt.getTime() ||
+        run.currentLocationReceivedAt?.getTime() !==
+            expectedLocationReceivedAt.getTime()
+    ) {
+        return null;
+    }
+    const location = driverDeliveryTrackingLocation(run, now);
+    if (!location) return null;
+    if (
+        run.rerouteRequiredAt &&
+        deliveryRerouteLocationIsFresh(run, now) &&
+        (!previousRun ||
+            !deliveryRerouteLocationIsFresh(previousRun, now) ||
+            deliveryRerouteRetryIsDue(
+                run.rerouteRequiredAt,
+                run.rerouteAttemptedAt,
+                now,
+            ))
+    ) {
+        const reroute = await reconcileDeliveryRunReroute({
+            actorUserId: driverUserId,
+            runId,
+            expectedRouteRevision: run.routeRevision,
+        });
+        return 'estimatesUpdatedAt' in reroute &&
+            reroute.estimatesUpdatedAt instanceof Date
+            ? reroute.estimatesUpdatedAt
+            : null;
+    }
+    const estimatesAreFresh =
+        run.estimatesUpdatedAt &&
+        now.getTime() - run.estimatesUpdatedAt.getTime() < etaRefreshIntervalMs;
+    if (estimatesAreFresh) {
+        return run.estimatesUpdatedAt;
+    }
+
+    if (run.routePlanVersion >= 2) {
+        const progress = await getDeliveryRunExecutionProgress(runId);
+        const { nodes, pickupNodeIdsByNodeKey, stopIdsByNodeKey } =
+            remainingDeliveryRouteNodesInExecutionOrder({ run, progress });
+        const plan = await refreshFixedPickupAwareDeliveryRoute({
+            origin: {
+                latitude: location.latitude,
+                longitude: location.longitude,
+            },
+            nodes,
+            departureTime: now,
+        });
+        const pickupEstimates = plan.visits.flatMap((visit) => {
+            if (visit.kind !== 'pickup') return [];
+            const pickupNodeId = pickupNodeIdsByNodeKey.get(visit.nodeKey);
+            return pickupNodeId
+                ? [
+                      {
+                          pickupNodeId,
+                          estimatedArrivalAt: visit.estimatedArrivalAt,
+                          incomingTravelSeconds: visit.incomingTravelSeconds,
+                          incomingDistanceMeters: visit.incomingDistanceMeters,
+                      },
+                  ]
+                : [];
+        });
+        const stopEstimates = plan.visits.flatMap((visit) => {
+            if (visit.kind !== 'customer') return [];
+            const stopIds = stopIdsByNodeKey.get(visit.nodeKey);
+            return stopIds
+                ? [
+                      {
+                          stopIds,
+                          estimatedArrivalAt: visit.estimatedArrivalAt,
+                          estimatedTravelSeconds: visit.incomingTravelSeconds,
+                          estimatedDistanceMeters: visit.incomingDistanceMeters,
+                      },
+                  ]
+                : [];
+        });
+        const updated = await updatePickupAwareDeliveryRunEstimates({
+            runId,
+            driverUserId,
+            expectedRouteRevision: run.routeRevision,
+            expectedLocationRecordedAt,
+            expectedLocationReceivedAt,
+            estimatesUpdatedAt: now,
+            encodedPolyline: plan.encodedPolyline,
+            estimateSource: plan.estimateSource,
+            totalDistanceMeters: plan.totalDistanceMeters,
+            totalDurationSeconds: plan.totalDurationSeconds,
+            pickupEstimates,
+            stopEstimates,
+        });
+        return updated ? now : null;
+    }
+
+    const groups = await resolveDeliveryRunStopGroups(run);
+    const remainingGroups = groups.flatMap((group) => {
+        const items = group.items.filter(({ stop }) =>
+            isDeliveryRunStopActionable(stop.state),
+        );
+        return items.length > 0 ? [{ ...group, items }] : [];
+    });
+    const groupsByRepresentativeId = new Map<
+        string,
+        (typeof remainingGroups)[number]
+    >();
+    const routeStops = remainingGroups.flatMap((group) => {
+        const representative = group.items.find(({ request }) => request);
+        if (!representative) return [];
+        groupsByRepresentativeId.set(
+            representative.stop.deliveryRequestId,
+            group,
+        );
+        return [
+            {
+                deliveryRequestId: representative.stop.deliveryRequestId,
+                formattedAddress: representative.stop.formattedAddress,
+                latitude: representative.stop.latitude,
+                longitude: representative.stop.longitude,
+                windowStartAt:
+                    representative.stop.runSlot?.windowStartAt ??
+                    representative.request?.slot?.startAt,
+                windowEndAt:
+                    representative.stop.runSlot?.windowEndAt ??
+                    representative.request?.slot?.endAt,
+            },
+        ];
+    });
+    const plan = await recalculateDeliveryRoute({
+        origin: {
+            latitude: location.latitude,
+            longitude: location.longitude,
+        },
+        stops: routeStops,
+    });
+    const estimates = plan.stops.flatMap((estimate) => {
+        const group = groupsByRepresentativeId.get(estimate.deliveryRequestId);
+        return (
+            group?.items.map(({ stop }) => ({
+                deliveryRequestId: stop.deliveryRequestId,
+                estimatedArrivalAt: estimate.estimatedArrivalAt,
+                estimatedTravelSeconds: estimate.estimatedTravelSeconds,
+                estimatedDistanceMeters: estimate.estimatedDistanceMeters,
+            })) ?? []
+        );
+    });
+    const updated = await updateDeliveryRunEstimates({
+        runId,
+        driverUserId,
+        expectedRouteRevision: run.routeRevision,
+        expectedLocationRecordedAt,
+        expectedLocationReceivedAt,
+        encodedPolyline: plan.encodedPolyline,
+        totalDistanceMeters: plan.totalDistanceMeters,
+        totalDurationSeconds: plan.totalDurationSeconds,
+        estimates,
+        estimatesUpdatedAt: now,
+    });
+    return updated ? now : null;
+}
+
+export function deliveryProgressMilestoneOccurredAt({
+    acceptedAt,
+    estimatesUpdatedAt,
+    observedAt,
+}: {
+    acceptedAt: Date;
+    estimatesUpdatedAt: Date | null;
+    observedAt: Date;
+}) {
+    return new Date(
+        Math.max(
+            acceptedAt.getTime(),
+            estimatesUpdatedAt?.getTime() ?? 0,
+            observedAt.getTime(),
+        ),
+    );
+}
+
+export async function recordDriverLocation({
+    driverUserId,
+    runId,
+    latitude,
+    longitude,
+    accuracy,
+    heading,
+    speed,
+    recordedAt,
+}: {
+    driverUserId: string;
+    runId: string;
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+    heading?: number | null;
+    speed?: number | null;
+    recordedAt: Date;
+}) {
+    const previousRun = (await getDeliveryRun(runId)) ?? null;
+    const acknowledgement = await updateDeliveryRunLocation({
+        runId,
+        driverUserId,
+        latitude,
+        longitude,
+        accuracy,
+        heading,
+        speed,
+        recordedAt,
+    });
+    const processedAt = new Date();
+    const acknowledgedRun = (await getDeliveryRun(runId)) ?? null;
+    const status = acknowledgedRun
+        ? customerDeliveryTrackingSummary(acknowledgedRun, processedAt).status
+        : 'unavailable';
+    const previousStatus = previousRun
+        ? deliveryTrackingStatus(
+              {
+                  ...previousRun,
+                  currentLocationReceivedAt: acknowledgement.previousAcceptedAt,
+              },
+              processedAt,
+          )
+        : 'unavailable';
+
+    if (
+        !acknowledgement.replayed &&
+        deliveryTrackingRecoveryTransition(previousStatus, status)
+    ) {
+        console.info('Delivery tracking freshness recovered', {
+            runId,
+            previousStatus,
+            newStatus: status,
+        });
+    }
+
+    let refreshedEstimatesUpdatedAt =
+        acknowledgedRun?.estimatesUpdatedAt ?? null;
+    try {
+        refreshedEstimatesUpdatedAt =
+            (await refreshDeliveryRunAfterLocation({
+                run: acknowledgedRun,
+                previousRun,
+                driverUserId,
+                runId,
+                expectedLocationRecordedAt: recordedAt,
+                expectedLocationReceivedAt: acknowledgement.acceptedAt,
+                now: processedAt,
+            })) ?? refreshedEstimatesUpdatedAt;
+    } catch (error) {
+        console.warn('Driver location saved but route refresh failed', {
+            runId,
+            errorName: error instanceof Error ? error.name : 'Unknown',
+        });
+    }
+
+    if (
+        !acknowledgement.replayed &&
+        shouldEvaluateCustomerDeliveryProgress({
+            acceptedAt: acknowledgement.acceptedAt,
+            previousAcceptedAt: acknowledgement.previousAcceptedAt,
+        })
+    ) {
+        const occurredAt = deliveryProgressMilestoneOccurredAt({
+            acceptedAt: acknowledgement.acceptedAt,
+            estimatesUpdatedAt: refreshedEstimatesUpdatedAt,
+            observedAt: new Date(),
+        });
+        await publishCustomerDeliveryProgressSafely({
+            runId,
+            occurredAt,
+        });
+    }
+
+    return {
+        status,
+        acceptedAt: acknowledgement.acceptedAt,
+        replayed: acknowledgement.replayed,
+    };
+}
+
+export function deliveryRunStartErrorMessage(error: unknown) {
+    return error instanceof DeliveryRunPreparationError ||
+        error instanceof DeliveryRoutePlanningError
+        ? error.message
+        : null;
+}
+
+export function deliveryRunStartErrorLogContext(error: unknown) {
+    if (error instanceof DeliveryRoutePlanningError) {
+        return {
+            errorName: error.name,
+            errorCode: error.code,
+        };
+    }
+    if (error instanceof DeliveryRunPreparationError) {
+        return {
+            errorName: error.name,
+            errorCode: error.code,
+        };
+    }
+    return deliveryOperationalErrorContext(error);
+}

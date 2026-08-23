@@ -6,10 +6,10 @@ export function WhatsAppCard() {
         <SocialCard
             href="https://gredice.link/wa"
             ctaText="Pridruži se našoj WhatsApp zajednici"
-            icon={<CompanyWhatsApp className="size-10 text-white" />}
-            bgColor="bg-gradient-to-br p-2 from-green-50 dark:from-green-200 to-emerald-50 dark:to-emerald-200 border-green-200 dark:border-green-700"
-            bgIconColor="bg-green-500"
-            navigateIconColor="text-green-600"
+            icon={<CompanyWhatsApp className="size-9 text-white" />}
+            bgColor="border-green-200 bg-gradient-to-br from-green-50 to-emerald-100 text-green-950 dark:border-green-800 dark:from-green-950 dark:to-emerald-950 dark:text-green-100"
+            bgIconColor="bg-green-500 dark:bg-green-600"
+            navigateIconColor="text-green-600 dark:text-green-300"
         />
     );
 }

@@ -7,6 +7,7 @@ import {
 import { useGameState } from '../useGameState';
 import {
     createOptimisticBlockPlacement,
+    getPreferredBlockPlacementPosition,
     removeOptimisticBlockId,
     replaceOptimisticBlockId,
 } from './optimisticBlockPlacement';
@@ -115,6 +116,7 @@ export function useBlockPlace() {
     const queryClient = useQueryClient();
     const { data: garden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
+    const gameCamera = useGameState((state) => state.gameCamera);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
     );
@@ -124,6 +126,12 @@ export function useBlockPlace() {
     );
     const queueBlockPlacementDropAnimation = useGameState(
         (state) => state.queueBlockPlacementDropAnimation,
+    );
+    const confirmBlockPlacementDropAnimation = useGameState(
+        (state) => state.confirmBlockPlacementDropAnimation,
+    );
+    const cancelBlockPlacementDropAnimation = useGameState(
+        (state) => state.cancelBlockPlacementDropAnimation,
     );
     const gardenQueryKey = currentGardenKeys(
         winterMode,
@@ -201,6 +209,14 @@ export function useBlockPlace() {
                         blockData,
                         variables.blockName,
                         optimisticBlockId,
+                        {
+                            preferredPosition:
+                                variables.position ??
+                                getPreferredBlockPlacementPosition(
+                                    gameCamera?.getSnapshot(),
+                                ),
+                            requestedPosition: variables.position,
+                        },
                     );
                     if (!optimisticPlacement) {
                         return;
@@ -263,6 +279,10 @@ export function useBlockPlace() {
                 return;
             }
 
+            confirmBlockPlacementDropAnimation(
+                context.optimisticBlockId,
+                data.id,
+            );
             queryClient.setQueryData<CurrentGardenData | null>(
                 gardenQueryKey,
                 (currentGarden) =>
@@ -288,6 +308,7 @@ export function useBlockPlace() {
                               )
                             : currentGarden,
                 );
+                cancelBlockPlacementDropAnimation(context.optimisticBlockId);
             }
             if (context?.sunflowerAmount) {
                 queryClient.setQueryData<CurrentAccountData | null>(

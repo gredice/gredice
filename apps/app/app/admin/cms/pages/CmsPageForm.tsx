@@ -148,6 +148,8 @@ export type CmsPageFormTemplate = {
     metaTitle?: string;
     metaDescription?: string;
     metaImageUrl?: string;
+    metaImagePoiX?: number;
+    metaImagePoiY?: number;
     seoImageUrl?: string;
     publishedAt?: Date | string | null;
 };
@@ -681,11 +683,15 @@ function canonicalPathFromSlug(value: string) {
 function cmsPageOgPreviewUrl({
     contentKind,
     imageUrl,
+    pointOfInterestX,
+    pointOfInterestY,
     tags,
     title,
 }: {
     contentKind: CmsPageContentKind;
     imageUrl: string;
+    pointOfInterestX: number;
+    pointOfInterestY: number;
     tags: string[];
     title: string;
 }) {
@@ -694,6 +700,8 @@ function cmsPageOgPreviewUrl({
     searchParams.set('title', title.trim() || 'Gredice');
     if (imageUrl.trim()) {
         searchParams.set('imageUrl', imageUrl.trim());
+        searchParams.set('pointOfInterestX', pointOfInterestX.toString());
+        searchParams.set('pointOfInterestY', pointOfInterestY.toString());
     }
 
     for (const tag of tags) {
@@ -808,6 +816,12 @@ export function CmsPageForm({
     const [metaImageUrl, setMetaImageUrl] = useState(
         page?.metaImageUrl ?? template?.metaImageUrl ?? '',
     );
+    const [metaImagePoiX, setMetaImagePoiX] = useState(
+        page?.metaImagePoiX ?? template?.metaImagePoiX ?? 50,
+    );
+    const [metaImagePoiY, setMetaImagePoiY] = useState(
+        page?.metaImagePoiY ?? template?.metaImagePoiY ?? 50,
+    );
     const [seoImageUrl, setSeoImageUrl] = useState(
         page?.seoImageUrl ?? template?.seoImageUrl ?? '',
     );
@@ -820,10 +834,12 @@ export function CmsPageForm({
             cmsPageOgPreviewUrl({
                 contentKind,
                 imageUrl: metaImageUrl,
+                pointOfInterestX: metaImagePoiX,
+                pointOfInterestY: metaImagePoiY,
                 tags,
                 title,
             }),
-        [contentKind, metaImageUrl, tags, title],
+        [contentKind, metaImagePoiX, metaImagePoiY, metaImageUrl, tags, title],
     );
     const effectiveOgPreviewUrl = seoImageUrl.trim()
         ? seoImageUrl.trim()
@@ -1368,9 +1384,20 @@ export function CmsPageForm({
                 <CmsPageCoverImageField
                     name="metaImageUrl"
                     pageId={page?.id}
+                    pointOfInterestX={metaImagePoiX}
+                    pointOfInterestXName="metaImagePoiX"
+                    pointOfInterestY={metaImagePoiY}
+                    pointOfInterestYName="metaImagePoiY"
                     value={metaImageUrl}
                     onChange={(nextMetaImageUrl) => {
                         setMetaImageUrl(nextMetaImageUrl);
+                        setMetaImagePoiX(50);
+                        setMetaImagePoiY(50);
+                        setFormRevision((current) => current + 1);
+                    }}
+                    onPointOfInterestChange={(x, y) => {
+                        setMetaImagePoiX(x);
+                        setMetaImagePoiY(y);
                         setFormRevision((current) => current + 1);
                     }}
                 />

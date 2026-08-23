@@ -7,6 +7,7 @@ export function toPageAlias(value: string): string {
 export function matchesPageAlias(
     entityLabel: string,
     alias: string | null,
+    entitySlug?: string | null,
 ): boolean {
     if (alias === null) {
         return false;
@@ -15,6 +16,9 @@ export function matchesPageAlias(
     const normalizedAlias = alias.toLowerCase();
 
     return (
+        (entitySlug !== undefined &&
+            entitySlug !== null &&
+            toPageAlias(entitySlug) === normalizedAlias) ||
         entityLabel.toLowerCase() === normalizedAlias ||
         toPageAlias(entityLabel) === normalizedAlias
     );

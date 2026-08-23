@@ -7,6 +7,7 @@ import {
     invoiceItems,
     invoices,
     receipts,
+    transactions,
     type UpdateInvoice,
     type UpdateInvoiceItem,
     type UpdateReceipt,
@@ -30,6 +31,70 @@ export interface ReceiptCreationData {
     jir?: string;
     zki?: string;
 }
+
+export interface InvoiceForTransactionLineItem {
+    description: string;
+    quantity?: number | string | null;
+    unitPriceCents: number;
+    totalPriceCents: number;
+    entityId?: string | null;
+    entityTypeName?: string | null;
+}
+
+export interface InvoiceForTransactionBillingSnapshot {
+    billToName?: string | null;
+    billToEmail?: string | null;
+    billToAddress?: string | null;
+    billToCity?: string | null;
+    billToState?: string | null;
+    billToZip?: string | null;
+    billToCountry?: string | null;
+    notes?: string | null;
+    terms?: string | null;
+}
+
+export type EnsureInvoiceForTransactionSkippedReason =
+    | 'transaction_not_found'
+    | 'transaction_not_completed'
+    | 'missing_account'
+    | 'missing_billing_email'
+    | 'missing_items'
+    | 'invalid_item_amount'
+    | 'amount_mismatch';
+
+export type EnsureInvoiceForTransactionResult =
+    | {
+          status: 'created' | 'existing';
+          invoiceId: number;
+          invoiceNumber: string;
+      }
+    | {
+          status: 'skipped';
+          reason: EnsureInvoiceForTransactionSkippedReason;
+          message: string;
+      };
+
+export interface ReceiptForInvoiceData
+    extends Omit<ReceiptCreationData, 'jir' | 'zki'> {
+    issuedAt?: Date | null;
+}
+
+export type EnsureReceiptForInvoiceSkippedReason =
+    | 'invoice_not_found'
+    | 'invoice_not_paid';
+
+export type EnsureReceiptForInvoiceResult =
+    | {
+          status: 'created' | 'existing';
+          receiptId: number;
+          receiptNumber: string;
+          yearReceiptNumber: string;
+      }
+    | {
+          status: 'skipped';
+          reason: EnsureReceiptForInvoiceSkippedReason;
+          message: string;
+      };
 
 // Invoice CRUD operations
 export async function createInvoice(
@@ -136,6 +201,308 @@ export async function getInvoiceByNumber(invoiceNumber: string) {
     });
 }
 
+function cleanInvoiceText(value: string | null | undefined) {
+    const cleaned = value?.trim();
+    return cleaned ? cleaned : undefined;
+}
+
+function centsToDecimalString(cents: number) {
+    return (cents / 100).toFixed(2);
+}
+
+function normalizeInvoiceQuantity(value: number | string | null | undefined) {
+    const quantity = Number(value ?? 1);
+    return Number.isFinite(quantity) && quantity > 0
+        ? quantity.toFixed(2)
+        : '1.00';
+}
+
+function buildSkippedInvoiceResult(
+    reason: EnsureInvoiceForTransactionSkippedReason,
+    message: string,
+): EnsureInvoiceForTransactionResult {
+    return {
+        status: 'skipped',
+        reason,
+        message,
+    };
+}
+
+function buildSkippedReceiptResult(
+    reason: EnsureReceiptForInvoiceSkippedReason,
+    message: string,
+): EnsureReceiptForInvoiceResult {
+    return {
+        status: 'skipped',
+        reason,
+        message,
+    };
+}
+
+async function withInvoiceTransactionGenerationLock<T>(
+    transactionId: number,
+    callback: () => Promise<T>,
+) {
+    if (process.env.GREDICE_TEST_DB_PROVIDER === 'pglite') {
+        return callback();
+    }
+
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`invoice-transaction:${transactionId}`}));`,
+        );
+
+        return callback();
+    });
+}
+
+async function withReceiptInvoiceGenerationLock<T>(
+    invoiceId: number,
+    callback: () => Promise<T>,
+) {
+    if (process.env.GREDICE_TEST_DB_PROVIDER === 'pglite') {
+        return callback();
+    }
+
+    return storage().transaction(async (tx) => {
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`receipt-invoice:${invoiceId}`}));`,
+        );
+
+        return callback();
+    });
+}
+
+export async function ensureInvoiceForTransaction({
+    billingSnapshot,
+    items,
+    transactionId,
+}: {
+    billingSnapshot?: InvoiceForTransactionBillingSnapshot;
+    items: InvoiceForTransactionLineItem[];
+    transactionId: number;
+}): Promise<EnsureInvoiceForTransactionResult> {
+    return withInvoiceTransactionGenerationLock(transactionId, async () => {
+        const existingInvoices = await getAllInvoices({ transactionId });
+        if (existingInvoices.length > 0) {
+            if (existingInvoices.length > 1) {
+                console.warn(
+                    'Multiple active invoices found for transaction during invoice generation',
+                    {
+                        invoiceIds: existingInvoices.map(
+                            (invoice) => invoice.id,
+                        ),
+                        transactionId,
+                    },
+                );
+            }
+
+            const existingInvoice = existingInvoices[0];
+            return {
+                status: 'existing',
+                invoiceId: existingInvoice.id,
+                invoiceNumber: existingInvoice.invoiceNumber,
+            };
+        }
+
+        const transaction = await storage().query.transactions.findFirst({
+            where: and(
+                eq(transactions.id, transactionId),
+                eq(transactions.isDeleted, false),
+            ),
+            with: {
+                account: {
+                    with: {
+                        accountUsers: {
+                            with: {
+                                user: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        if (!transaction) {
+            return buildSkippedInvoiceResult(
+                'transaction_not_found',
+                `Transaction ${transactionId} was not found.`,
+            );
+        }
+        if (transaction.status !== 'completed') {
+            return buildSkippedInvoiceResult(
+                'transaction_not_completed',
+                `Transaction ${transactionId} is not completed.`,
+            );
+        }
+        if (!transaction.accountId) {
+            return buildSkippedInvoiceResult(
+                'missing_account',
+                `Transaction ${transactionId} has no account.`,
+            );
+        }
+        if (items.length === 0) {
+            return buildSkippedInvoiceResult(
+                'missing_items',
+                `Transaction ${transactionId} has no invoice line items.`,
+            );
+        }
+
+        const invalidItem = items.find(
+            (item) =>
+                !Number.isInteger(item.unitPriceCents) ||
+                !Number.isInteger(item.totalPriceCents) ||
+                item.unitPriceCents < 0 ||
+                item.totalPriceCents < 0,
+        );
+        if (invalidItem) {
+            return buildSkippedInvoiceResult(
+                'invalid_item_amount',
+                `Transaction ${transactionId} has an invalid invoice line amount.`,
+            );
+        }
+
+        const itemTotalCents = items.reduce(
+            (sum, item) => sum + item.totalPriceCents,
+            0,
+        );
+        if (itemTotalCents !== transaction.amount) {
+            return buildSkippedInvoiceResult(
+                'amount_mismatch',
+                `Transaction ${transactionId} amount ${transaction.amount} does not match invoice item total ${itemTotalCents}.`,
+            );
+        }
+
+        const billToEmail =
+            cleanInvoiceText(billingSnapshot?.billToEmail) ??
+            cleanInvoiceText(
+                transaction.account?.accountUsers[0]?.user.userName,
+            );
+        if (!billToEmail) {
+            return buildSkippedInvoiceResult(
+                'missing_billing_email',
+                `Transaction ${transactionId} has no billing email snapshot.`,
+            );
+        }
+
+        const issueDate = transaction.createdAt;
+        const totalAmount = centsToDecimalString(transaction.amount);
+        const invoiceId = await createInvoice(
+            {
+                accountId: transaction.accountId,
+                transactionId,
+                subtotal: totalAmount,
+                taxAmount: '0.00',
+                totalAmount,
+                currency: transaction.currency.toLowerCase(),
+                status: 'paid',
+                issueDate,
+                dueDate: issueDate,
+                paidDate: issueDate,
+                billToName: cleanInvoiceText(billingSnapshot?.billToName),
+                billToEmail,
+                billToAddress: cleanInvoiceText(billingSnapshot?.billToAddress),
+                billToCity: cleanInvoiceText(billingSnapshot?.billToCity),
+                billToState: cleanInvoiceText(billingSnapshot?.billToState),
+                billToZip: cleanInvoiceText(billingSnapshot?.billToZip),
+                billToCountry:
+                    cleanInvoiceText(billingSnapshot?.billToCountry) ??
+                    'Hrvatska',
+                notes: cleanInvoiceText(billingSnapshot?.notes),
+                terms: cleanInvoiceText(billingSnapshot?.terms),
+            },
+            items.map((item) => ({
+                description:
+                    cleanInvoiceText(item.description) ?? 'Plaćena narudžba',
+                quantity: normalizeInvoiceQuantity(item.quantity),
+                unitPrice: centsToDecimalString(item.unitPriceCents),
+                totalPrice: centsToDecimalString(item.totalPriceCents),
+                entityId: cleanInvoiceText(item.entityId),
+                entityTypeName: cleanInvoiceText(item.entityTypeName),
+            })),
+        );
+        const invoice = await getInvoice(invoiceId);
+        if (!invoice) {
+            throw new Error(
+                `Failed to read created invoice ${invoiceId} for transaction ${transactionId}`,
+            );
+        }
+
+        return {
+            status: 'created',
+            invoiceId,
+            invoiceNumber: invoice.invoiceNumber,
+        };
+    });
+}
+
+export async function ensureReceiptForInvoice(
+    invoiceId: number,
+    receiptData: ReceiptForInvoiceData,
+): Promise<EnsureReceiptForInvoiceResult> {
+    return withReceiptInvoiceGenerationLock(invoiceId, async () => {
+        const existingReceipt = await getReceiptByInvoice(invoiceId);
+        if (existingReceipt) {
+            return {
+                status: 'existing',
+                receiptId: existingReceipt.id,
+                receiptNumber: existingReceipt.receiptNumber,
+                yearReceiptNumber: existingReceipt.yearReceiptNumber,
+            };
+        }
+
+        const invoice = await getInvoice(invoiceId);
+        if (!invoice) {
+            return buildSkippedReceiptResult(
+                'invoice_not_found',
+                `Invoice ${invoiceId} was not found.`,
+            );
+        }
+        if (invoice.status !== 'paid') {
+            return buildSkippedReceiptResult(
+                'invoice_not_paid',
+                `Invoice ${invoiceId} is not paid.`,
+            );
+        }
+
+        const issuedAt = receiptData.issuedAt ?? invoice.paidDate ?? new Date();
+        const receiptId = await createReceipt({
+            invoiceId,
+            subtotal: invoice.subtotal,
+            taxAmount: invoice.taxAmount,
+            totalAmount: invoice.totalAmount,
+            currency: invoice.currency,
+            paymentMethod: receiptData.paymentMethod,
+            paymentReference:
+                receiptData.paymentReference ??
+                invoice.transaction?.stripePaymentId ??
+                invoice.transactionId?.toString(),
+            businessPin: receiptData.businessPin,
+            businessName: receiptData.businessName,
+            businessAddress: receiptData.businessAddress,
+            customerPin: receiptData.customerPin,
+            customerName: receiptData.customerName ?? invoice.billToName,
+            customerAddress:
+                receiptData.customerAddress ?? invoice.billToAddress,
+            issuedAt,
+            cisStatus: 'pending',
+        });
+
+        const receipt = await getReceipt(receiptId);
+        if (!receipt) {
+            throw new Error(
+                `Failed to create receipt for invoice ${invoiceId}`,
+            );
+        }
+
+        return {
+            status: 'created',
+            receiptId,
+            receiptNumber: receipt.receiptNumber,
+            yearReceiptNumber: receipt.yearReceiptNumber,
+        };
+    });
+}
+
 export async function getInvoices(accountId: string) {
     return storage().query.invoices.findMany({
         where: and(
@@ -165,6 +532,44 @@ export async function getAllInvoices(filters?: { transactionId?: number }) {
         },
         orderBy: desc(invoices.issueDate),
     });
+}
+
+export async function getAccountBillingInvoices(accountId: string) {
+    const accountInvoices = await getInvoices(accountId);
+
+    return Promise.all(
+        accountInvoices.map(async (invoice) => ({
+            ...invoice,
+            receipt: await getReceiptByInvoice(invoice.id),
+        })),
+    );
+}
+
+export async function getAccountBillingInvoice(
+    accountId: string,
+    invoiceId: number,
+) {
+    const invoice = await getInvoice(invoiceId);
+    if (!invoice || invoice.accountId !== accountId) {
+        return undefined;
+    }
+
+    return {
+        ...invoice,
+        receipt: await getReceiptByInvoice(invoice.id),
+    };
+}
+
+export async function getAccountBillingReceipt(
+    accountId: string,
+    receiptId: number,
+) {
+    const receipt = await getReceipt(receiptId);
+    if (!receipt || receipt.invoice?.accountId !== accountId) {
+        return undefined;
+    }
+
+    return receipt;
 }
 
 export async function getInvoicesByStatus(status: string, accountId?: string) {
@@ -503,42 +908,12 @@ export async function createReceiptFromInvoice(
     invoiceId: number,
     receiptData: Omit<ReceiptCreationData, 'jir' | 'zki'>,
 ) {
-    // Get the invoice details
-    const invoice = await getInvoice(invoiceId);
-    if (!invoice) {
-        throw new Error('Invoice not found');
+    const result = await ensureReceiptForInvoice(invoiceId, receiptData);
+    if (result.status === 'skipped') {
+        throw new Error(result.message);
     }
 
-    if (invoice.status !== 'paid') {
-        throw new Error('Can only create receipt for paid invoices');
-    }
-
-    // Check if receipt already exists for this invoice
-    const existingReceipt = await getReceiptByInvoice(invoiceId);
-    if (existingReceipt) {
-        throw new Error('Receipt already exists for this invoice');
-    }
-
-    // Generate receipt number
-    const receiptToInsert = {
-        invoiceId,
-        subtotal: invoice.subtotal,
-        taxAmount: invoice.taxAmount,
-        totalAmount: invoice.totalAmount,
-        currency: invoice.currency,
-        paymentMethod: receiptData.paymentMethod,
-        paymentReference: receiptData.paymentReference,
-        businessPin: receiptData.businessPin,
-        businessName: receiptData.businessName,
-        businessAddress: receiptData.businessAddress,
-        customerPin: receiptData.customerPin,
-        customerName: receiptData.customerName,
-        customerAddress: receiptData.customerAddress,
-        cisStatus: 'pending', // Start as pending, not fiscalized yet
-    } satisfies Omit<InsertReceipt, 'yearReceiptNumber'>;
-
-    const receiptId = await createReceipt(receiptToInsert);
-    return receiptId;
+    return result.receiptId;
 }
 
 // Receipt CRUD operations

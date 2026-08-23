@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "farm_schedule_grouped_watering_enabled" boolean DEFAULT true NOT NULL;

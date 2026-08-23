@@ -21,8 +21,8 @@
         "@gredice/js": "workspace:*"
     },
     "devDependencies": {
-        "@biomejs/biome": "2.4.16",
+        "@biomejs/biome": "2.5.3",
         "openapi-typescript": "7.13.0",
-        "typescript": "6.0.3"
+        "typescript": "7.0.2"
     }
 }

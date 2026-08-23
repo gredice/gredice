@@ -1,23 +1,21 @@
 import type { OperationData } from '@gredice/client';
+import { isOperationApplicableToPlant } from '@gredice/js/operations';
 import { Alert } from '@gredice/ui/Alert';
-import { Button } from '@gredice/ui/Button';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Close, Search } from '@gredice/ui/icons';
 import { List } from '@gredice/ui/List';
 import { NoDataPlaceholder } from '@gredice/ui/NoDataPlaceholder';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { memo, useState } from 'react';
-import {
-    sortFavoritesFirst,
-    useFavoriteIds,
-} from '../../../hooks/useFavorites';
+import { useFavoriteIds } from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
-import { ScrollView } from '../../../shared-ui/ScrollView';
-import { useShoppingCartOpenParam } from '../../../useUrlState';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+import { sortOperationsForList } from './operationListSorting';
+import { isPlantTargetMetadataResolved } from './plantTargetMetadata';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
 
 const MemoizedOperationsListItem = memo(OperationsListItem);
@@ -42,11 +40,9 @@ const OperationsListContent = memo(function OperationsListContent({
     scheduledOperationIds: Set<number>;
 }) {
     return (
-        <ScrollView
+        <ScrollArea
             className="overflow-hidden rounded-lg border bg-card"
             viewportClassName="max-h-96"
-            topFadeClassName="from-card"
-            bottomFadeClassName="from-card"
         >
             <List className="divide-y">
                 {!isLoading && operations?.length === 0 && (
@@ -75,7 +71,7 @@ const OperationsListContent = memo(function OperationsListContent({
                     />
                 ))}
             </List>
-        </ScrollView>
+        </ScrollArea>
     );
 });
 
@@ -97,13 +93,19 @@ export function OperationsList({
         isLoading: isLoadingOperations,
         isError,
     } = useOperations();
-    const { data: plantSort, isLoading: isPlantSortLoading } =
-        usePlantSort(plantSortId);
+    const { data: plantSort } = usePlantSort(plantSortId);
     const favoriteOperationIds = useFavoriteIds('operation');
-    const [, setShoppingCartOpen] = useShoppingCartOpenParam();
-    const isLoading =
-        isLoadingOperations || (Boolean(plantSortId) && isPlantSortLoading);
+    const isPlantMetadataResolved = isPlantTargetMetadataResolved(
+        plantSortId,
+        plantSort,
+    );
+    const isLoading = isLoadingOperations || !isPlantMetadataResolved;
     const [search, setSearch] = useState('');
+    const linkedOperationNames = new Set(
+        plantSort?.information.plant.information?.operations
+            ?.map((operation) => operation.information?.name)
+            .filter((name): name is string => Boolean(name)) ?? [],
+    );
 
     const { shoppingCartOperationIds, scheduledOperationIds } =
         useOperationContextIndicators({
@@ -116,9 +118,8 @@ export function OperationsList({
         ?.filter(filterFunc)
         .filter((op) =>
             plantSortId
-                ? plantSort?.information.plant.information?.operations
-                      ?.map((op) => op.information?.name)
-                      .includes(op.information.name)
+                ? isPlantMetadataResolved &&
+                  isOperationApplicableToPlant(op, linkedOperationNames)
                 : true,
         )
         .filter((op) =>
@@ -132,18 +133,11 @@ export function OperationsList({
                 : true,
         );
 
-    const cartOperations =
-        filteredOperations?.filter((op) =>
-            shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const remainingOperations =
-        filteredOperations?.filter(
-            (op) => !shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const sortedOperations = [
-        ...sortFavoritesFirst(cartOperations, favoriteOperationIds),
-        ...sortFavoritesFirst(remainingOperations, favoriteOperationIds),
-    ];
+    const sortedOperations = sortOperationsForList(
+        filteredOperations ?? [],
+        shoppingCartOperationIds,
+        favoriteOperationIds,
+    );
 
     return (
         <Stack spacing={2}>
@@ -170,24 +164,6 @@ export function OperationsList({
             </Row>
             {isError && (
                 <Alert color="danger">Greška prilikom učitavanja radnji</Alert>
-            )}
-            {cartOperations.length > 0 && (
-                <Row
-                    justifyContent="space-between"
-                    alignItems="center"
-                    className="px-1"
-                >
-                    <Alert color="warning" className="py-1">
-                        Radnje u košari (nisu kupljene) su na vrhu popisa.
-                    </Alert>
-                    <Button
-                        size="sm"
-                        variant="link"
-                        onClick={() => setShoppingCartOpen(true)}
-                    >
-                        Otvori košaru
-                    </Button>
-                </Row>
             )}
             <OperationsListContent
                 operations={sortedOperations}

@@ -1,4 +1,4 @@
-import type { PlantData, PlantSortData } from '@gredice/client';
+import type { OperationData, PlantData } from '@gredice/client';
 import { calculatePlantsPerField, FIELD_SIZE_LABEL } from '@gredice/js/plants';
 import { slug } from '@gredice/js/slug';
 import { Chip } from '@gredice/ui/Chip';
@@ -12,9 +12,13 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Link from 'next/link';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
+import { PriceAttributeCard } from '../../../components/attributes/PriceAttributeCard';
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
+import { resolvePlantSowingPrice } from '../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../src/KnownPages';
+import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { PlantCalendarPicker } from './PlantCalendarPicker';
 import { hasPlantHealth } from './PlantHealthSection';
@@ -25,10 +29,6 @@ type InformationWithAlternativeName = {
     name?: unknown;
     alternativeName?: unknown;
 };
-type PlantSortWithRelationships = PlantSortData & {
-    relationships?: PlantData['relationships'];
-};
-
 type OverviewEditTarget = {
     entityTypeName: 'plant' | 'plantSort';
     entityId: number;
@@ -63,17 +63,24 @@ function formatAlternativeNames(
 }
 
 export function PlantPageHeader({
+    operations,
     overviewEditTarget,
     plant,
     sort,
 }: {
+    operations?: readonly OperationData[];
     overviewEditTarget?: OverviewEditTarget;
     plant: PlantData & { isRecommended: boolean | null | undefined };
-    sort?: PlantSortWithRelationships;
+    sort?: PlantSortDataWithRelationships;
 }) {
-    const informationSections = getPlantInforationSections(plant, sort);
+    const informationSections = getPlantInforationSections(
+        plant,
+        sort,
+        operations,
+    );
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
+        sort?.information.name ?? plant.information.name,
     );
     const contentLinks = informationSections
         .filter((section) => section.avaialble)
@@ -81,6 +88,12 @@ export function PlantPageHeader({
             href: `#${slug(section.header)}`,
             label: section.header,
         }));
+    if (!sort) {
+        contentLinks.unshift({
+            href: `#${slug('Sorte')}`,
+            label: 'Sorte',
+        });
+    }
     if ((plant.information.tip?.length ?? 0) > 0) {
         contentLinks.push({
             href: `#${slug('Savjeti')}`,
@@ -99,12 +112,6 @@ export function PlantPageHeader({
             label: 'Biljni susjedi',
         });
     }
-    if (!sort) {
-        contentLinks.push({
-            href: `#${slug('Sorte')}`,
-            label: 'Sorte',
-        });
-    }
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -114,24 +121,43 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
+    const price = resolvePlantSowingPrice(plant, sort);
 
     return (
         <PageHeader
             visual={
                 sort ? (
-                    <PlantOrSortImage
-                        plantSort={sort}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plantSort={sort}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 ) : (
-                    <PlantOrSortImage
-                        plant={plant}
-                        preload
-                        width={192}
-                        height={192}
-                    />
+                    <span
+                        className="public-content-card-view-transition inline-flex size-48 items-center justify-center overflow-hidden"
+                        style={{
+                            viewTransitionName: getPlantImageViewTransitionName(
+                                plant.id,
+                            ),
+                        }}
+                    >
+                        <PlantOrSortImage
+                            plant={plant}
+                            preload
+                            width={192}
+                            height={192}
+                        />
+                    </span>
                 )
             }
             header={sort?.information?.name ?? plant.information.name}
@@ -216,11 +242,13 @@ export function PlantPageHeader({
                         Informacije
                     </Typography>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {plant.prices?.perPlant && (
-                            <AttributeCard
+                        {price && (
+                            <PriceAttributeCard
                                 icon={<Sprout />}
                                 header="Cijena sijanja"
-                                value={`${plant.prices.perPlant.toFixed(2)}€`}
+                                entityId={price.entityId}
+                                entityTypeName={price.entityTypeName}
+                                currentPrice={price.currentPrice}
                                 description="Cijena jedne biljke uključuje troškove sjemena, pripreme tla, sjetve i sezonske pogodnosti. Više o samoj sjetvi u gredicama možeš pročitati u nastavku."
                                 navigateHref={KnownPages.Sowing}
                                 navigateLabel="Više o sjetvi"

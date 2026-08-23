@@ -40,6 +40,9 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 - Existing product, operation, plant, sort, merchant return policy, and list pages should keep their schema.org data accurate.
 - Inject JSON-LD through the existing structured data component pattern.
 - Do not invent price, availability, review, or legal data for schema.
+- Every `Product` must have a non-empty name and at least one valid `offers`, `review`, or `aggregateRating` property. Use `WebPage`/`Thing` for informational entities and `Service` for garden operations instead of creating incomplete Products.
+- Keep unrelated catalogue entries as generic `ItemList` items. Google Product rich results are intended for pages focused on one product or its variants.
+- Run `pnpm --filter www test:seo` for the fast structured-data contract tests. The sitemap-driven public metadata suite parses rendered JSON-LD on every generated public route.
 
 ## Sitemaps and tests
 

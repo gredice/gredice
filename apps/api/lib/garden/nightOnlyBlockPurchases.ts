@@ -2,7 +2,7 @@ import {
     type BlockPurchaseAvailability,
     isNightOnlyBlockPurchase,
 } from '@gredice/js/blocks';
-import SunCalc from 'suncalc';
+import * as SunCalc from 'suncalc';
 
 const DEFAULT_LOCATION = { lat: 45.739, lon: 16.572 };
 
@@ -32,13 +32,22 @@ function isNightAtLocation(
     currentTime: Date,
 ) {
     const { lat, lon } = resolveLocation(location);
-    const { sunrise: sunriseStart, sunset: sunsetStart } = SunCalc.getTimes(
-        currentTime,
-        lat,
-        lon,
-    );
+    const times = SunCalc.getTimes(currentTime, lat, lon);
+    const { sunrise: sunriseStart, sunset: sunsetStart } = times;
 
-    return currentTime <= sunriseStart || currentTime >= sunsetStart;
+    if (sunriseStart && sunsetStart) {
+        return currentTime <= sunriseStart || currentTime >= sunsetStart;
+    }
+
+    if (times.alwaysDown) {
+        return true;
+    }
+
+    if (times.alwaysUp) {
+        return false;
+    }
+
+    return SunCalc.getPosition(currentTime, lat, lon).altitude < 0;
 }
 
 export function isBlockPurchaseAvailableNow({

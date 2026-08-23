@@ -14,24 +14,28 @@ import {
     Warning,
 } from '@gredice/ui/icons';
 import { Link } from '@gredice/ui/Link';
-import { Modal } from '@gredice/ui/Modal';
 import { PlantOrSortImage } from '@gredice/ui/plants';
 import { Row } from '@gredice/ui/Row';
+import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { SegmentedCircularProgress } from '@gredice/ui/SegmentedCircularProgress';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { useGameAnalytics } from '../../analytics/GameAnalyticsContext';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { usePlantSort } from '../../hooks/usePlantSorts';
 import { KnownPages } from '../../knownPages';
-import { ScrollView } from '../../shared-ui/ScrollView';
+import { GameModal } from '../../shared-ui/game-modal';
+import type { RaisedBedFieldTabValue } from '../../useUrlState';
 import {
     findRaisedBedFieldWithPlant,
     findRaisedBedOccupiedField,
+    getRaisedBedFieldActivePlantIdentity,
     type RaisedBedFieldPlantHistoryEntry,
 } from '../../utils/raisedBedFields';
+import { SuncokretChatTrigger } from '../SuncokretChatTrigger';
+import { suncokretContextConversationLabel } from '../suncokretChatContext';
 import { GreenhouseSeedlingPlantVisual } from './GreenhouseSeedlingPlantVisual';
 import { GreenhouseSeedlingProgress } from './GreenhouseSeedlingProgress';
 import { GreenhouseSeedlingTransplantAction } from './GreenhouseSeedlingTransplantAction';
@@ -51,13 +55,15 @@ import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryMod
 import { RaisedBedFieldStatusChange } from './RaisedBedFieldStatusChange';
 import { RaisedBedOperationHistoryList } from './RaisedBedOperationHistoryList';
 import { RaisedBedPhotosModal } from './RaisedBedPhotosModal';
+import {
+    type RaisedBedPlantTab,
+    RaisedBedPlantTabsList,
+} from './RaisedBedPlantTabsList';
 import { RecommendationsCard } from './RecommendationsCard';
 import {
     parseScheduledSowingDateValue,
     ScheduledSowingDateBadge,
 } from './ScheduledSowingDateBadge';
-
-type RaisedBedFieldTabValue = 'lifecycle' | 'diary' | 'operations';
 
 export function RaisedBedFieldItemPlanted({
     raisedBedId,
@@ -65,7 +71,9 @@ export function RaisedBedFieldItemPlanted({
     fieldOverride,
     onOpenChange,
     open: openProp,
+    requestedTab,
     plantHistory = [],
+    plantTabs,
     isHistorical = false,
     triggerOverride,
     triggerVariant = 'field',
@@ -75,7 +83,13 @@ export function RaisedBedFieldItemPlanted({
     fieldOverride?: RaisedBedFieldPlantHistoryEntry;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
+    requestedTab?: RaisedBedFieldTabValue;
     plantHistory?: RaisedBedFieldPlantHistoryEntry[];
+    plantTabs?: {
+        items: readonly RaisedBedPlantTab[];
+        onValueChange: (value: string) => void;
+        value: string;
+    };
     isHistorical?: boolean;
     triggerOverride?: ReactElement | null;
     triggerVariant?: 'field' | 'avatar';
@@ -116,8 +130,18 @@ export function RaisedBedFieldItemPlanted({
     const [internalOpen, setInternalOpen] = useState(false);
     const [activeTab, setActiveTab] =
         useState<RaisedBedFieldTabValue>('lifecycle');
+    const chatUiContext = {
+        surface: 'plant-details' as const,
+        tab: activeTab,
+    };
     const isOpenControlled = openProp !== undefined;
     const open = openProp ?? internalOpen;
+
+    useEffect(() => {
+        if (open && requestedTab) {
+            setActiveTab(requestedTab);
+        }
+    }, [open, requestedTab]);
 
     if (!raisedBed) {
         return null;
@@ -271,8 +295,10 @@ export function RaisedBedFieldItemPlanted({
     const localizedStatus = plantFieldStatusLabel(
         field.plantStatus ?? undefined,
     );
+    const currentPlantIdentity = getRaisedBedFieldActivePlantIdentity(field);
     const canChangeStatus = Boolean(
-        field.plantStatus &&
+        currentPlantIdentity &&
+            field.plantStatus &&
             userAllowedPlantStatusTransitions[field.plantStatus]?.length,
     );
     const statusContent = (
@@ -285,26 +311,27 @@ export function RaisedBedFieldItemPlanted({
             </Typography>
         </>
     );
-    const statusTrigger = field.active ? (
-        <button
-            type="button"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
-            aria-label={
-                canChangeStatus
-                    ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
-                    : `Stanje biljke: ${localizedStatus.shortLabel}`
-            }
-        >
-            {statusContent}
-        </button>
-    ) : (
-        <Stack
-            alignItems="center"
-            className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
-        >
-            {statusContent}
-        </Stack>
-    );
+    const statusTrigger =
+        field.active && currentPlantIdentity ? (
+            <button
+                type="button"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex flex-col gap-1 items-center justify-center pointer-events-auto transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-lime-700 focus-visible:ring-offset-2"
+                aria-label={
+                    canChangeStatus
+                        ? `Promijeni stanje biljke: ${localizedStatus.shortLabel}`
+                        : `Stanje biljke: ${localizedStatus.shortLabel}`
+                }
+            >
+                {statusContent}
+            </button>
+        ) : (
+            <Stack
+                alignItems="center"
+                className="border bg-card rounded-full shrink-0 size-[100px] aspect-square shadow flex items-center justify-center"
+            >
+                {statusContent}
+            </Stack>
+        );
     const avatarTrigger = (
         <button
             type="button"
@@ -427,9 +454,28 @@ export function RaisedBedFieldItemPlanted({
         triggerVariant === 'avatar' ? avatarTrigger : fieldTrigger;
     const trigger =
         triggerOverride === undefined ? defaultTrigger : triggerOverride;
+    const wrapWithPlantTabs = (content: ReactElement) =>
+        plantTabs ? (
+            <Tabs
+                className="flex flex-col"
+                onValueChange={plantTabs.onValueChange}
+                value={plantTabs.value}
+            >
+                <RaisedBedPlantTabsList tabs={plantTabs.items} />
+                <TabsContent
+                    className="mt-4"
+                    forceMount
+                    value={plantTabs.value}
+                >
+                    {content}
+                </TabsContent>
+            </Tabs>
+        ) : (
+            content
+        );
 
     const modal = (
-        <Modal
+        <GameModal
             open={open}
             onOpenChange={(nextOpen) => {
                 if (nextOpen) {
@@ -447,198 +493,230 @@ export function RaisedBedFieldItemPlanted({
                 onOpenChange?.(nextOpen);
             }}
             title={modalTitle}
-            className="max-w-xl overflow-x-hidden md:border-tertiary md:border-b-4"
+            className="max-w-xl overflow-x-hidden"
             trigger={trigger ?? undefined}
         >
-            <Stack spacing={4} className="min-w-0 max-w-full">
-                <Row spacing={4} className="items-start pr-8">
-                    {isGreenhouseSeedling ? (
-                        <GreenhouseSeedlingPlantVisual
-                            plantSort={plantSort}
-                            imageSize={60}
-                        />
-                    ) : (
-                        <PlantOrSortImage
-                            plantSort={plantSort}
-                            width={60}
-                            height={60}
-                        />
-                    )}
-                    <Stack spacing={1} className="min-w-0 flex-1">
-                        <Typography
-                            level="h4"
-                            component="h1"
-                            className="truncate line-clamp-2"
-                            title={plantSort.information.name}
-                        >
-                            {plantSort.information.name}
-                        </Typography>
-                        <Link
-                            href={plantDetailsUrl}
-                            target="_blank"
-                            aria-label="Detalji o biljci"
-                            className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
-                            onClick={() =>
-                                track('game_field_plant_details_opened', {
-                                    plant_sort_id: plantSort.id,
-                                    position_index: positionIndex,
-                                    raised_bed_id: raisedBedId,
-                                })
-                            }
-                        >
-                            <ExternalLink className="size-4" />
-                            <span>Detalji</span>
-                        </Link>
-                    </Stack>
-                    {garden && !isHistorical && (
-                        <RaisedBedPhotosModal
-                            gardenId={garden.id}
-                            raisedBedId={raisedBedId}
-                            subjectName={plantSort.information.name}
-                            positionIndex={positionIndex}
-                        />
-                    )}
-                </Row>
-                <Tabs
-                    value={activeTab}
-                    onValueChange={(value: string) => {
-                        track('game_raised_bed_tab_opened', {
-                            plant_sort_id: plantSort.id,
-                            position_index: positionIndex,
-                            raised_bed_id: raisedBedId,
-                            tab: value,
-                        });
-                        setActiveTab(value as RaisedBedFieldTabValue);
-                    }}
-                    className="flex flex-col"
-                >
-                    <TabsList className="border w-fit self-center">
-                        <TabsTrigger value="lifecycle">
-                            <Row spacing={2}>
-                                <Sprout className="size-4 shrink-0" />
-                                <Typography>Biljka</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        <TabsTrigger value="diary">
-                            <Row spacing={2}>
-                                <Book className="size-4 shrink-0" />
-                                <Typography>Dnevnik</Typography>
-                            </Row>
-                        </TabsTrigger>
-                        {!isHistorical && (
-                            <TabsTrigger value="operations">
+            {wrapWithPlantTabs(
+                <Stack spacing={4} className="min-w-0 max-w-full">
+                    <Row spacing={4} className="items-start pr-8">
+                        {isGreenhouseSeedling ? (
+                            <GreenhouseSeedlingPlantVisual
+                                plantSort={plantSort}
+                                imageSize={60}
+                            />
+                        ) : (
+                            <PlantOrSortImage
+                                plantSort={plantSort}
+                                width={60}
+                                height={60}
+                            />
+                        )}
+                        <Stack spacing={1} className="min-w-0 flex-1">
+                            <Typography
+                                level="h4"
+                                component="h1"
+                                className="truncate line-clamp-2"
+                                title={plantSort.information.name}
+                            >
+                                {plantSort.information.name}
+                            </Typography>
+                            <Link
+                                href={plantDetailsUrl}
+                                target="_blank"
+                                aria-label="Detalji o biljci"
+                                className="inline-flex mb-1 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-muted-foreground/60 shrink-0"
+                                onClick={() =>
+                                    track('game_field_plant_details_opened', {
+                                        plant_sort_id: plantSort.id,
+                                        position_index: positionIndex,
+                                        raised_bed_id: raisedBedId,
+                                    })
+                                }
+                            >
+                                <ExternalLink className="size-4" />
+                                <span>Detalji</span>
+                            </Link>
+                        </Stack>
+                        {garden && !isHistorical && (
+                            <SuncokretChatTrigger
+                                title="Pitaj Suncokreta o ovoj kartici biljke"
+                                target={{
+                                    conversationLabel:
+                                        suncokretContextConversationLabel({
+                                            plantName:
+                                                plantSort.information.name,
+                                            raisedBedName: raisedBed.name,
+                                            uiContext: chatUiContext,
+                                        }),
+                                    gardenId: garden.id,
+                                    positionIndex,
+                                    raisedBedId,
+                                    uiContext: chatUiContext,
+                                }}
+                            />
+                        )}
+                        {garden && !isHistorical && (
+                            <RaisedBedPhotosModal
+                                gardenId={garden.id}
+                                raisedBedId={raisedBedId}
+                                subjectName={plantSort.information.name}
+                                positionIndex={positionIndex}
+                            />
+                        )}
+                    </Row>
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(value: string) => {
+                            track('game_raised_bed_tab_opened', {
+                                plant_sort_id: plantSort.id,
+                                position_index: positionIndex,
+                                raised_bed_id: raisedBedId,
+                                tab: value,
+                            });
+                            setActiveTab(value as RaisedBedFieldTabValue);
+                        }}
+                        className="flex flex-col"
+                    >
+                        <TabsList className="border w-fit self-center">
+                            <TabsTrigger value="lifecycle">
                                 <Row spacing={2}>
-                                    <Hammer className="size-4 shrink-0" />
-                                    <Typography>Radnje</Typography>
+                                    <Sprout className="size-4 shrink-0" />
+                                    <Typography>Biljka</Typography>
                                 </Row>
                             </TabsTrigger>
-                        )}
-                    </TabsList>
-                    {!isHistorical && (
-                        <TabsContent value="operations">
-                            {garden && (
-                                <RaisedBedFieldOperationsTab
-                                    gardenId={garden.id}
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                    plantSortId={field.plantSortId}
-                                />
+                            <TabsTrigger value="diary">
+                                <Row spacing={2}>
+                                    <Book className="size-4 shrink-0" />
+                                    <Typography>Dnevnik</Typography>
+                                </Row>
+                            </TabsTrigger>
+                            {!isHistorical && (
+                                <TabsTrigger value="operations">
+                                    <Row spacing={2}>
+                                        <Hammer className="size-4 shrink-0" />
+                                        <Typography>Radnje</Typography>
+                                    </Row>
+                                </TabsTrigger>
                             )}
-                        </TabsContent>
-                    )}
-                    <TabsContent value="diary">
-                        {garden && (
-                            <ScrollView
-                                className="-mx-4 md:-mx-6"
-                                viewportClassName="max-h-96"
-                                contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
-                            >
-                                <RaisedBedOperationHistoryList
-                                    raisedBedId={raisedBed.id}
-                                    positionIndex={positionIndex}
-                                    disableActions={isHistorical}
-                                />
-                            </ScrollView>
-                        )}
-                    </TabsContent>
-                    <TabsContent value="lifecycle">
-                        <Stack spacing={4}>
-                            {isGreenhouseSeedling ? (
-                                <GreenhouseSeedlingProgress
-                                    field={field}
-                                    plantAttributes={plantAttributes}
-                                    lifecycleData={
-                                        greenhouseSeedlingLifecycleData
-                                    }
-                                    plantDetailsUrl={plantDetailsUrl}
-                                    statusTrigger={
-                                        field.active ? (
-                                            <RaisedBedFieldStatusChange
-                                                raisedBedId={raisedBedId}
-                                                positionIndex={positionIndex}
-                                                currentStatus={
-                                                    field.plantStatus ??
-                                                    undefined
-                                                }
-                                                trigger={statusTrigger}
-                                            />
-                                        ) : (
-                                            statusTrigger
-                                        )
-                                    }
-                                />
-                            ) : (
-                                <RaisedBedFieldLifecycleTab
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                    fieldOverride={fieldOverride}
-                                    includeInactive={isHistorical}
-                                    onShowOperations={() =>
-                                        setActiveTab('operations')
-                                    }
-                                />
-                            )}
-                            {isGreenhouseSeedling && garden && (
-                                <GreenhouseSeedlingTransplantAction
-                                    gardenId={garden.id}
-                                    raisedBedId={raisedBedId}
-                                    positionIndex={positionIndex}
-                                />
-                            )}
-                            {isGreenhouseSeedling &&
-                                garden &&
-                                greenhouseRecommendationStatus &&
-                                typeof field.plantSortId === 'number' && (
-                                    <RecommendationsCard
-                                        onShowOperations={() =>
-                                            setActiveTab('operations')
-                                        }
+                        </TabsList>
+                        {!isHistorical && (
+                            <TabsContent value="operations">
+                                {garden && (
+                                    <RaisedBedFieldOperationsTab
                                         gardenId={garden.id}
                                         raisedBedId={raisedBedId}
                                         positionIndex={positionIndex}
-                                        plantStatus={
-                                            greenhouseRecommendationStatus
-                                        }
                                         plantSortId={field.plantSortId}
                                     />
                                 )}
-                        </Stack>
-                    </TabsContent>
-                </Tabs>
-                <button
-                    type="button"
-                    className="sm:hidden self-end rounded-md border px-3 py-1.5 text-sm font-medium"
-                    onClick={() => {
-                        if (!isOpenControlled) {
-                            setInternalOpen(false);
-                        }
-                        onOpenChange?.(false);
-                    }}
-                >
-                    Zatvori
-                </button>
-            </Stack>
-        </Modal>
+                            </TabsContent>
+                        )}
+                        <TabsContent value="diary">
+                            {garden && (
+                                <ScrollArea
+                                    className="-mx-4 md:-mx-6"
+                                    viewportClassName="max-h-96"
+                                    contentClassName="pl-4 pr-2 md:pl-6 md:pr-2"
+                                >
+                                    <RaisedBedOperationHistoryList
+                                        raisedBedId={raisedBed.id}
+                                        positionIndex={positionIndex}
+                                        disableActions={isHistorical}
+                                    />
+                                </ScrollArea>
+                            )}
+                        </TabsContent>
+                        <TabsContent value="lifecycle">
+                            <Stack spacing={4}>
+                                {isGreenhouseSeedling ? (
+                                    <GreenhouseSeedlingProgress
+                                        field={field}
+                                        plantAttributes={plantAttributes}
+                                        lifecycleData={
+                                            greenhouseSeedlingLifecycleData
+                                        }
+                                        plantDetailsUrl={plantDetailsUrl}
+                                        statusTrigger={
+                                            field.active &&
+                                            currentPlantIdentity ? (
+                                                <RaisedBedFieldStatusChange
+                                                    expectedPlantCycleEventId={
+                                                        currentPlantIdentity.plantPlaceEventId
+                                                    }
+                                                    expectedPlantCycleVersionEventId={
+                                                        currentPlantIdentity.plantCycleVersionEventId
+                                                    }
+                                                    expectedPlantSortId={
+                                                        currentPlantIdentity.plantSortId
+                                                    }
+                                                    raisedBedId={raisedBedId}
+                                                    positionIndex={
+                                                        positionIndex
+                                                    }
+                                                    currentStatus={
+                                                        field.plantStatus ??
+                                                        undefined
+                                                    }
+                                                    trigger={statusTrigger}
+                                                />
+                                            ) : (
+                                                statusTrigger
+                                            )
+                                        }
+                                    />
+                                ) : (
+                                    <RaisedBedFieldLifecycleTab
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                        fieldOverride={fieldOverride}
+                                        includeInactive={isHistorical}
+                                        onShowOperations={() =>
+                                            setActiveTab('operations')
+                                        }
+                                    />
+                                )}
+                                {isGreenhouseSeedling && garden && (
+                                    <GreenhouseSeedlingTransplantAction
+                                        gardenId={garden.id}
+                                        raisedBedId={raisedBedId}
+                                        positionIndex={positionIndex}
+                                    />
+                                )}
+                                {isGreenhouseSeedling &&
+                                    garden &&
+                                    greenhouseRecommendationStatus &&
+                                    typeof field.plantSortId === 'number' && (
+                                        <RecommendationsCard
+                                            onShowOperations={() =>
+                                                setActiveTab('operations')
+                                            }
+                                            gardenId={garden.id}
+                                            raisedBedId={raisedBedId}
+                                            positionIndex={positionIndex}
+                                            plantStatus={
+                                                greenhouseRecommendationStatus
+                                            }
+                                            plantSortId={field.plantSortId}
+                                        />
+                                    )}
+                            </Stack>
+                        </TabsContent>
+                    </Tabs>
+                    <button
+                        type="button"
+                        className="sm:hidden self-end rounded-md border px-3 py-1.5 text-sm font-medium"
+                        onClick={() => {
+                            if (!isOpenControlled) {
+                                setInternalOpen(false);
+                            }
+                            onOpenChange?.(false);
+                        }}
+                    >
+                        Zatvori
+                    </button>
+                </Stack>,
+            )}
+        </GameModal>
     );
 
     if (triggerOverride === undefined && triggerVariant === 'field') {

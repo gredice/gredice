@@ -3,7 +3,6 @@
 import { Button } from '@gredice/ui/Button';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
-import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
@@ -15,6 +14,7 @@ import {
     AnimateFlyToItem,
     useAnimateFlyToSunflowersHud,
 } from '../indicators/AnimateFlyTo';
+import { GameModal } from '../shared-ui/game-modal';
 import { useGameState } from '../useGameState';
 
 const messageTypes = {
@@ -155,10 +155,10 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
     }
 
     return (
-        <Modal
+        <GameModal
             title={title}
             open={open}
-            className="max-w-screen-md border-tertiary border-b-4"
+            className="max-w-screen-md"
             dismissible={false}
         >
             <div className="grid md:grid-cols-2 [grid-template-areas:'sunflower'_'content'] md:[grid-template-areas:'content_sunflower'] md:p-4 gap-4">
@@ -238,6 +238,6 @@ export function WelcomeMessage({ onClosed }: { onClosed?: () => void }) {
                     </div>
                 </div>
             </div>
-        </Modal>
+        </GameModal>
     );
 }

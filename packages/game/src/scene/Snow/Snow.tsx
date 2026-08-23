@@ -1,14 +1,15 @@
-import { useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameState } from '../../useGameState';
+import { updateGameProfileMetadata } from '../gameProfileMetadata';
+import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
+import {
+    advanceSnowMotionOffset,
+    clampSnowParticleCount,
+    createSnowParticleAttributes,
+    resolveSnowWeatherMotion,
+} from './snowParticles';
 
 const DEFAULT_FLAKE_SIZE = 0.07;
 const DEFAULT_SIZE = 30;
@@ -16,6 +17,8 @@ const DEFAULT_HEIGHT = 5;
 const DEFAULT_HEIGHT_OFFSET = 10;
 const DEFAULT_GRAVITY = 0.002;
 const DEFAULT_GROUND_LEVEL = 0;
+let snowParticleGeometryBuildCount = 0;
+const reportedSnowParticleGeometries = new WeakSet<THREE.BufferGeometry>();
 
 const snowVertexShader = /* glsl */ `
     attribute vec4 instanceSnowBase;
@@ -26,6 +29,11 @@ const snowVertexShader = /* glsl */ `
     uniform float uSize;
     uniform float uHeightRange;
     uniform float uGroundLevel;
+    uniform float uFallOffset;
+    uniform float uFallVelocity;
+    uniform float uMotionEpoch;
+    uniform vec2 uWindOffset;
+    uniform vec2 uWindVelocity;
 
     varying vec2 vUv;
     varying float vSnowBrightness;
@@ -47,18 +55,31 @@ const snowVertexShader = /* glsl */ `
     void main() {
         vUv = uv;
         float halfSize = uSize * 0.5;
+        float weatherMotionTime = max(0.0, uTime - uMotionEpoch);
+        float weatherFallOffset =
+            uFallOffset + uFallVelocity * weatherMotionTime;
+        vec2 weatherWindOffset =
+            uWindOffset + uWindVelocity * weatherMotionTime;
         float screenY =
-            mod(instanceSnowBase.y - uTime * instanceSnowBase.w, uHeightRange) -
+            mod(
+                instanceSnowBase.y -
+                    uTime * instanceSnowBase.w -
+                    weatherFallOffset,
+                uHeightRange
+            ) -
             uHeightRange * 0.5;
         float x = wrapRange(
             instanceSnowBase.x +
                 instanceSnowMotion.x * uTime +
+                weatherWindOffset.x +
                 sin(uTime * 0.85 + instanceSnowMotion.z) * 0.28,
             -halfSize,
             halfSize
         );
         float z = wrapRange(
-            instanceSnowBase.z + instanceSnowMotion.y * uTime,
+            instanceSnowBase.z +
+                instanceSnowMotion.y * uTime +
+                weatherWindOffset.y,
             -halfSize,
             halfSize
         );
@@ -102,6 +123,8 @@ const snowFragmentShader = /* glsl */ `
 // Note: Source - https://tympanus.net/codrops/2025/09/18/creating-an-immersive-3d-weather-visualization-with-react-three-fiber/
 
 const Snow = ({
+    activeCount,
+    capacity,
     count = 500,
     windSpeed = 0.5,
     windDirection = 0,
@@ -111,7 +134,10 @@ const Snow = ({
     groundLevel = DEFAULT_GROUND_LEVEL,
     flakeSize = DEFAULT_FLAKE_SIZE,
     gravity = DEFAULT_GRAVITY,
+    followCamera = true,
 }: {
+    activeCount?: number;
+    capacity?: number;
     count?: number;
     windSpeed?: number;
     windDirection?: number;
@@ -127,55 +153,36 @@ const Snow = ({
     flakeSize?: number;
     /** Base gravity/fall speed */
     gravity?: number;
+    /** Whether the field follows the active garden camera */
+    followCamera?: boolean;
 }) => {
     const fref = useRef<THREE.Group>(null);
-    const camera = useThree((state) => state.camera);
-    const gameCamera = useGameState((state) => state.gameCamera);
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    usePrecipitationFieldPosition({ fieldRef: fref, followCamera });
     const timeUniform = useSceneTimeUniform();
     useSceneTimeInvalidation();
-    // Convert wind direction (0-360 degrees) to directional components
-    // 0° = North (negative z), 90° = East (positive x), 180° = South (positive z), 270° = West (negative x)
-    const windDirectionRadians = (windDirection * Math.PI) / 180;
-    const windDriftX = Math.sin(windDirectionRadians) * windSpeed;
-    const windDriftZ = -Math.cos(windDirectionRadians) * windSpeed;
     const heightRange = Math.max(0.001, height + heightOffset - groundLevel);
-    const fallSpeedBase = Math.max(0.2, gravity * 280 + windSpeed * 0.08);
+    const requestedActiveCount = activeCount ?? count;
+    const particleCapacity = Math.max(
+        0,
+        Math.floor(capacity ?? requestedActiveCount),
+    );
+    const visibleParticleCount = clampSnowParticleCount(
+        requestedActiveCount,
+        particleCapacity,
+    );
+    const { fallVelocity, windVelocityX, windVelocityZ } =
+        resolveSnowWeatherMotion({ gravity, windDirection, windSpeed });
 
     const geometry = useMemo(() => {
         const snowGeometry = new THREE.PlaneGeometry(1, 1);
-        const baseAttributes = new Float32Array(count * 4);
-        const motionAttributes = new Float32Array(count * 4);
-        const shapeAttributes = new Float32Array(count * 4);
-
-        for (let i = 0; i < count; i++) {
-            const baseOffset = i * 4;
-            baseAttributes[baseOffset] = (Math.random() - 0.5) * size;
-            baseAttributes[baseOffset + 1] = Math.random() * heightRange;
-            baseAttributes[baseOffset + 2] = (Math.random() - 0.5) * size;
-            baseAttributes[baseOffset + 3] =
-                THREE.MathUtils.randFloat(0.55, 1.35) + fallSpeedBase;
-
-            const motionOffset = i * 4;
-            motionAttributes[motionOffset] =
-                THREE.MathUtils.randFloatSpread(0.22) + windDriftX * 0.3;
-            motionAttributes[motionOffset + 1] =
-                THREE.MathUtils.randFloatSpread(0.16) + windDriftZ * 0.3;
-            motionAttributes[motionOffset + 2] = Math.random() * Math.PI * 2;
-            motionAttributes[motionOffset + 3] = THREE.MathUtils.randFloat(
-                0.45,
-                1.25,
-            );
-
-            const shapeOffset = i * 4;
-            shapeAttributes[shapeOffset] =
-                flakeSize * THREE.MathUtils.randFloat(0.75, 1.25);
-            shapeAttributes[shapeOffset + 1] = THREE.MathUtils.randFloat(
-                0.86,
-                1,
-            );
-            shapeAttributes[shapeOffset + 2] = 0;
-            shapeAttributes[shapeOffset + 3] = 0;
-        }
+        const { baseAttributes, motionAttributes, shapeAttributes } =
+            createSnowParticleAttributes({
+                capacity: particleCapacity,
+                flakeSize,
+                heightRange,
+                size,
+            });
 
         snowGeometry.setAttribute(
             'instanceSnowBase',
@@ -191,70 +198,108 @@ const Snow = ({
         );
 
         return snowGeometry;
-    }, [
-        count,
-        fallSpeedBase,
-        flakeSize,
-        heightRange,
-        size,
-        windDriftX,
-        windDriftZ,
-    ]);
+    }, [flakeSize, heightRange, particleCapacity, size]);
 
-    useEffect(() => () => geometry.dispose(), [geometry]);
-
-    const updateSnowFieldPosition = useCallback((x: number, z: number) => {
-        const group = fref.current;
-        if (!group) {
-            return;
+    useEffect(() => {
+        if (!reportedSnowParticleGeometries.has(geometry)) {
+            reportedSnowParticleGeometries.add(geometry);
+            snowParticleGeometryBuildCount += 1;
+            updateGameProfileMetadata({ snowParticleGeometryBuildCount });
         }
 
-        group.position.set(x, 0, z);
-    }, []);
+        return () => geometry.dispose();
+    }, [geometry]);
+
+    const weatherMotionUniforms = useMemo(
+        () => ({
+            uFallOffset: { value: 0 },
+            uFallVelocity: { value: 0 },
+            uMotionEpoch: { value: timeUniform.value },
+            uWindOffset: { value: new THREE.Vector2() },
+            uWindVelocity: { value: new THREE.Vector2() },
+        }),
+        [timeUniform],
+    );
 
     useLayoutEffect(() => {
-        const snapshot = gameCamera?.getSnapshot();
-        updateSnowFieldPosition(
-            snapshot?.target[0] ?? camera.position.x,
-            snapshot?.target[2] ?? camera.position.z,
+        const elapsed = Math.max(
+            0,
+            timeUniform.value - weatherMotionUniforms.uMotionEpoch.value,
         );
+        weatherMotionUniforms.uFallOffset.value = advanceSnowMotionOffset(
+            weatherMotionUniforms.uFallOffset.value,
+            weatherMotionUniforms.uFallVelocity.value,
+            elapsed,
+            heightRange,
+        );
+        weatherMotionUniforms.uWindOffset.value.set(
+            advanceSnowMotionOffset(
+                weatherMotionUniforms.uWindOffset.value.x,
+                weatherMotionUniforms.uWindVelocity.value.x,
+                elapsed,
+                size,
+            ),
+            advanceSnowMotionOffset(
+                weatherMotionUniforms.uWindOffset.value.y,
+                weatherMotionUniforms.uWindVelocity.value.y,
+                elapsed,
+                size,
+            ),
+        );
+        weatherMotionUniforms.uFallVelocity.value = fallVelocity;
+        weatherMotionUniforms.uWindVelocity.value.set(
+            windVelocityX,
+            windVelocityZ,
+        );
+        weatherMotionUniforms.uMotionEpoch.value = timeUniform.value;
+    }, [
+        fallVelocity,
+        heightRange,
+        size,
+        timeUniform,
+        weatherMotionUniforms,
+        windVelocityX,
+        windVelocityZ,
+    ]);
 
-        if (!gameCamera) {
+    useLayoutEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh) {
             return;
         }
 
-        return gameCamera.subscribe((snapshot) => {
-            updateSnowFieldPosition(snapshot.target[0], snapshot.target[2]);
-        });
-    }, [camera, gameCamera, updateSnowFieldPosition]);
+        mesh.count = visibleParticleCount;
+        mesh.visible = visibleParticleCount > 0;
+    }, [visibleParticleCount]);
 
-    const uniforms = useMemo(
-        () => ({
-            uTime: timeUniform,
-            uSize: { value: size },
-            uHeightRange: { value: heightRange },
-            uGroundLevel: { value: groundLevel },
-        }),
-        [groundLevel, heightRange, size, timeUniform],
+    const material = useMemo(
+        () =>
+            createPrecipitationMaterial({
+                fragmentShader: snowFragmentShader,
+                timeUniform,
+                uniforms: {
+                    ...weatherMotionUniforms,
+                    uSize: { value: size },
+                    uHeightRange: { value: heightRange },
+                    uGroundLevel: { value: groundLevel },
+                },
+                vertexShader: snowVertexShader,
+            }),
+        [groundLevel, heightRange, size, timeUniform, weatherMotionUniforms],
     );
+
+    useEffect(() => () => material.dispose(), [material]);
 
     return (
         <group ref={fref} name="Weather:Snow">
             <instancedMesh
-                name={`Weather:SnowFlakes:count:${count}`}
-                args={[geometry, undefined, count]}
+                ref={meshRef}
+                name={`Weather:SnowFlakes:count:${visibleParticleCount}:capacity:${particleCapacity}`}
+                args={[geometry, undefined, particleCapacity]}
                 frustumCulled={false}
                 renderOrder={36}
             >
-                <shaderMaterial
-                    depthTest={false}
-                    depthWrite={false}
-                    vertexShader={snowVertexShader}
-                    fragmentShader={snowFragmentShader}
-                    side={THREE.DoubleSide}
-                    transparent
-                    uniforms={uniforms}
-                />
+                <primitive attach="material" object={material} />
             </instancedMesh>
         </group>
     );

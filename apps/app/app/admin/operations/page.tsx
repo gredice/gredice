@@ -8,12 +8,20 @@ import {
 import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Stack } from '@gredice/ui/Stack';
 import { AdminPageHeader } from '../../../components/admin/navigation';
-import { OperationsTable } from '../../../components/operations/OperationsTable';
+import { OperationsList } from '../../../components/operations/OperationsList';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
-import { BulkOperationCreateModal } from './BulkOperationCreateModal';
+import { OperationCreateModal } from './OperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
-import { SingleOperationCreateModal } from './SingleOperationCreateModal';
+import { activeSelectedPlantingFieldIds } from './operationScope';
+import {
+    getOperationsListContext,
+    listOperationsPageFromContext,
+} from './operationsListData';
+import {
+    normalizeOperationsListRecordType,
+    parseOperationsListOperationEntityIds,
+} from './operationsListQuery';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,36 +59,68 @@ export default async function OperationsPage({
         userName: user.userName,
         displayName: user.displayName,
     }));
+    const operationTargetRaisedBeds = raisedBeds.map((raisedBed) => {
+        const selectedPlantingFieldIds = activeSelectedPlantingFieldIds(
+            raisedBed.plantings,
+        );
+        return {
+            id: raisedBed.id,
+            name: raisedBed.name,
+            physicalId: raisedBed.physicalId,
+            accountId: raisedBed.accountId,
+            gardenId: raisedBed.gardenId,
+            fields: raisedBed.fields.map((field) => ({
+                id: field.id,
+                positionIndex: field.positionIndex,
+                hasActiveSelectedPlanting: selectedPlantingFieldIds.has(
+                    field.id,
+                ),
+            })),
+        };
+    });
 
     const params = await searchParams;
     const fromFilter =
         typeof params.from === 'string' ? params.from : 'last-14-days';
+    const operationEntityIds = parseOperationsListOperationEntityIds(
+        typeof params.operations === 'string' ? params.operations : undefined,
+    );
+    const recordType = normalizeOperationsListRecordType(
+        typeof params.type === 'string' ? params.type : undefined,
+    );
     const fromDate = getDateFromTimeFilter(fromFilter);
+    const operationsListContext = await getOperationsListContext();
+    const initialOperationsPage = await listOperationsPageFromContext({
+        context: operationsListContext,
+        fromDate,
+        operationEntityIds,
+        recordType,
+    });
 
     return (
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <div className="flex gap-2">
-                        <SingleOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={raisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                        <BulkOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={raisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                    </div>
+                    <OperationCreateModal
+                        farms={activeFarms}
+                        gardens={gardens}
+                        raisedBeds={operationTargetRaisedBeds}
+                        assignableUsers={assignableUsers}
+                    />
                 }
             />
-            <OperationsFilters />
+            <OperationsFilters
+                operationOptions={operationsListContext.operationFilterOptions}
+                selectedOperationEntityIds={operationEntityIds}
+            />
             <Card>
                 <CardOverflow>
-                    <OperationsTable fromDate={fromDate} />
+                    <OperationsList
+                        fromFilter={fromFilter}
+                        initialPage={initialOperationsPage}
+                        operationEntityIds={operationEntityIds}
+                        recordType={recordType}
+                    />
                 </CardOverflow>
             </Card>
         </Stack>

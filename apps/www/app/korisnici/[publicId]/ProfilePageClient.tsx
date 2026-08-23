@@ -4,40 +4,12 @@ import { clientPublic } from '@gredice/client';
 import { getAchievementDefinition } from '@gredice/js/achievements';
 import { Stack } from '@gredice/ui/Stack';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { PublicGardenViewerDynamic } from './PublicGardenViewerDynamic';
 
 type ProfilePageClientProps = {
     publicId: string;
 };
-
-function mapStacks(
-    stacks: Record<
-        string,
-        Record<
-            string,
-            {
-                id: string;
-                name: string;
-                rotation?: number | null;
-                variant?: number | null;
-            }[]
-        >
-    >,
-) {
-    return Object.entries(stacks).flatMap(([x, rows]) =>
-        Object.entries(rows).map(([y, blocks]) => ({
-            x: Number(x),
-            y: Number(y),
-            blocks: blocks.map((block) => ({
-                id: block.id,
-                name: block.name,
-                rotation: block.rotation ?? 0,
-                variant: block.variant,
-            })),
-        })),
-    );
-}
 
 export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
     const profileQuery = useQuery({
@@ -84,11 +56,6 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
         profileQuery.data?.achievements.filter(
             (achievement) => achievement.status === 'approved',
         ) ?? [];
-
-    const gardenStacks = useMemo(
-        () => (gardenQuery.data ? mapStacks(gardenQuery.data.stacks) : []),
-        [gardenQuery.data],
-    );
 
     if (profileQuery.isLoading) {
         return <p>Učitavanje profila...</p>;
@@ -171,7 +138,7 @@ export function ProfilePageClient({ publicId }: ProfilePageClientProps) {
                     ) : (
                         <PublicGardenViewerDynamic
                             className="h-full"
-                            stacks={gardenStacks}
+                            garden={gardenQuery.data}
                         />
                     )}
                 </div>

@@ -1,54 +1,39 @@
 import { Container } from '@gredice/ui/Container';
-import type { Route } from 'next';
-import { redirect } from 'next/navigation';
+import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
+import type { Metadata, Route } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import { EmptyNewsState } from '../components/EmptyNewsState';
 import { FilterPills } from '../components/FilterPills';
+import { NewsArchiveNavigation } from '../components/NewsArchiveNavigation';
+import { NewsCard } from '../components/NewsCard';
+import { WeeklyChangelogCard } from '../components/WeeklyChangelogCard';
 import {
-    NewsCard,
-    type NewsCardEntry,
-    type NewsCardKind,
-} from '../components/NewsCard';
-import { NewsTagFilters } from '../components/NewsTagFilters';
-import {
+    formatNewsDate,
     getBlogPosts,
     getChangelogEntries,
-    getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../lib/news';
+import { newsArchiveMetadata } from '../lib/newsArchiveMetadata';
+import {
+    isKnownNewsFilter,
+    normalizeNewsFilterValue,
+} from '../lib/newsFilters';
+import { buildNewsTimeline } from '../lib/newsTimeline';
+import { getNewsArticleViewTransitionName } from '../lib/viewTransitions';
+import { buildChangelogWeeks } from '../lib/weeklyChangelog';
 
 export const dynamic = 'force-dynamic';
-
-const newsTypeFilters = [
-    { label: 'Blog', value: 'blog' },
-    { label: 'Što je novo', value: 'changelog' },
-] satisfies { label: string; value: NewsCardKind }[];
-
-type NewsLandingItem = {
-    entry: NewsCardEntry;
-    href: Route;
-    kind: NewsCardKind;
-    sortTime: number;
-};
-
-function normalizedTime(value: string | null | undefined) {
-    if (!value) {
-        return 0;
-    }
-
-    const time = new Date(value).getTime();
-    return Number.isNaN(time) ? 0 : time;
-}
-
-function normalizeNewsTypeFilter(value: string | undefined) {
-    return value === 'blog' || value === 'changelog' ? value : undefined;
-}
-
-function normalizeFilterValue(value: string | undefined) {
-    return value?.trim().toLocaleLowerCase('hr-HR');
-}
+export const metadata: Metadata = newsArchiveMetadata;
 
 function changelogTagRedirectPath(tag: string): Route {
     return `/sto-je-novo?tag=${encodeURIComponent(tag)}` as Route;
+}
+
+function blogArchivePath(category: string | undefined): Route {
+    const requestedCategory = category?.trim();
+    return requestedCategory
+        ? (`/?category=${encodeURIComponent(requestedCategory)}` as Route)
+        : '/';
 }
 
 export default async function NewsHomePage({
@@ -59,51 +44,31 @@ export default async function NewsHomePage({
     const { category, tag, type } = await searchParams;
     const requestedTag = tag?.trim();
     if (requestedTag) {
-        redirect(changelogTagRedirectPath(requestedTag));
+        permanentRedirect(changelogTagRedirectPath(requestedTag));
     }
 
-    const activeType = normalizeNewsTypeFilter(type);
-    const activeCategory = activeType === 'changelog' ? undefined : category;
-    const normalizedCategory = normalizeFilterValue(activeCategory);
-    const [allPosts, allChangelogEntries] = await Promise.all([
+    if (type === 'changelog') {
+        permanentRedirect('/sto-je-novo');
+    }
+    if (type) {
+        permanentRedirect(blogArchivePath(category));
+    }
+
+    const activeCategory = category?.trim() || undefined;
+    const normalizedCategory = normalizeNewsFilterValue(activeCategory);
+    const [allPosts, changelogEntries] = await Promise.all([
         getBlogPosts(),
         getChangelogEntries(),
     ]);
-    const allItems: NewsLandingItem[] = [
-        ...allPosts.map((entry) => ({
-            entry,
-            href: `/${entry.slug}` as Route,
-            kind: 'blog' as const,
-            sortTime: normalizedTime(entry.publishedAt),
-        })),
-        ...allChangelogEntries.map((entry) => ({
-            entry,
-            href: `/sto-je-novo/${entry.slug}` as Route,
-            kind: 'changelog' as const,
-            sortTime: normalizedTime(entry.publishedAt),
-        })),
-    ].sort((left, right) => right.sortTime - left.sortTime);
-    const currentFilters = { category: activeCategory, type: activeType };
-    const categories =
-        activeType === 'changelog'
-            ? []
-            : uniqueNewsValues(allPosts, (item) => item.category);
-    const tags = uniqueNewsValues(allChangelogEntries, (item) => item.tags);
-    const primaryTags = getPrimaryNewsTags(allChangelogEntries);
-    const primaryTagKeys = new Set(
-        primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),
-    );
-    const dropdownTags = tags.filter(
-        (value) => !primaryTagKeys.has(value.toLocaleLowerCase('hr-HR')),
-    );
-    const visibleItems = allItems.filter((item) => {
-        if (activeType && item.kind !== activeType) {
-            return false;
-        }
-
+    const currentFilters = { category: activeCategory };
+    const categories = uniqueNewsValues(allPosts, (item) => item.category);
+    if (!isKnownNewsFilter(categories, activeCategory)) {
+        permanentRedirect('/');
+    }
+    const visiblePosts = allPosts.filter((post) => {
         if (
             normalizedCategory &&
-            normalizeFilterValue(item.entry.category ?? undefined) !==
+            normalizeNewsFilterValue(post.category ?? undefined) !==
                 normalizedCategory
         ) {
             return false;
@@ -111,6 +76,16 @@ export default async function NewsHomePage({
 
         return true;
     });
+    const changelogWeeks = activeCategory
+        ? []
+        : buildChangelogWeeks(changelogEntries);
+    const eagerChangelogWeekKey = changelogWeeks[0]?.weekKey;
+    const timelineGroups = buildNewsTimeline(visiblePosts, changelogWeeks);
+    const totalItems = timelineGroups.reduce(
+        (total, group) => total + group.items.length,
+        0,
+    );
+    let itemIndex = 0;
 
     return (
         <Container className="grid gap-8 py-10">
@@ -122,50 +97,79 @@ export default async function NewsHomePage({
                     Novosti iz Gredica
                 </h1>
                 <p className="max-w-2xl text-lg text-muted-foreground">
-                    Blog objave i promjene proizvoda koje pomažu pratiti što se
-                    događa u Gredicama.
+                    Blog objave i tjedni pregledi novih mogućnosti, poboljšanja
+                    i promjena u Gredicama.
                 </p>
             </section>
-            <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
-                <FilterPills
-                    active={activeType}
-                    currentFilters={currentFilters}
-                    label="Vrsta"
-                    param="type"
-                    values={newsTypeFilters}
-                />
-                <FilterPills
-                    active={activeCategory}
-                    currentFilters={currentFilters}
-                    label="Kategorije"
-                    param="category"
-                    values={categories}
-                />
-                {tags.length > 0 ? (
-                    <div className="grid gap-2">
-                        <p className="text-xs font-semibold uppercase text-muted-foreground">
-                            Tagovi
-                        </p>
-                        <NewsTagFilters
-                            dropdownTags={dropdownTags}
-                            primaryTags={primaryTags}
-                        />
-                    </div>
-                ) : null}
-            </aside>
-            {visibleItems.length > 0 ? (
-                <section className="grid items-start gap-4 md:grid-cols-2">
-                    {visibleItems.map((item) => (
-                        <NewsCard
-                            key={`${item.kind}-${item.href}`}
-                            entry={item.entry}
-                            href={item.href}
-                            kind={item.kind}
-                        />
+            <NewsArchiveNavigation active="news" />
+            {categories.length > 0 ? (
+                <aside className="grid gap-4 rounded-md border bg-muted/15 p-4">
+                    <FilterPills
+                        active={activeCategory}
+                        currentFilters={currentFilters}
+                        label="Blog kategorije"
+                        param="category"
+                        values={categories}
+                    />
+                </aside>
+            ) : null}
+            {totalItems > 0 ? (
+                <Timeline>
+                    {timelineGroups.map((group, groupIndex) => (
+                        <TimelineGroup
+                            hasItems={group.items.length > 0}
+                            isFirst={groupIndex === 0}
+                            key={group.monthKey}
+                            label={group.monthLabel}
+                        >
+                            {group.items.map((item) => {
+                                const currentItemIndex = itemIndex;
+                                itemIndex += 1;
+
+                                return (
+                                    <TimelineEntry
+                                        index={currentItemIndex}
+                                        isLast={
+                                            currentItemIndex === totalItems - 1
+                                        }
+                                        key={item.key}
+                                        label={
+                                            item.kind === 'blog'
+                                                ? (formatNewsDate(
+                                                      item.blog.publishedAt,
+                                                  ) ?? 'Bez datuma')
+                                                : item.week.rangeLabel
+                                        }
+                                    >
+                                        {item.kind === 'blog' ? (
+                                            <NewsCard
+                                                entry={item.blog}
+                                                href={
+                                                    `/${item.blog.slug}` as Route
+                                                }
+                                                kind="blog"
+                                                viewTransitionName={getNewsArticleViewTransitionName(
+                                                    'blog',
+                                                    item.blog.slug,
+                                                )}
+                                            />
+                                        ) : (
+                                            <WeeklyChangelogCard
+                                                eager={
+                                                    item.week.weekKey ===
+                                                    eagerChangelogWeekKey
+                                                }
+                                                week={item.week}
+                                            />
+                                        )}
+                                    </TimelineEntry>
+                                );
+                            })}
+                        </TimelineGroup>
                     ))}
-                </section>
+                </Timeline>
             ) : (
-                <EmptyNewsState title="Još nema objava">
+                <EmptyNewsState title="Još nema novosti">
                     Trenutačno nema objavljenih novosti.
                 </EmptyNewsState>
             )}

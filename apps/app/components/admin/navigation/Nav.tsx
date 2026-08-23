@@ -27,6 +27,7 @@ import {
     Euro,
     Fence,
     File,
+    Graph,
     Hammer,
     Home,
     Inbox,
@@ -43,6 +44,7 @@ import {
     Tally3,
     Truck,
     User,
+    Warning,
 } from '@gredice/ui/icons';
 import { RaisedBedIcon } from '@gredice/ui/RaisedBedIcon';
 import { usePathname } from 'next/navigation';
@@ -52,24 +54,13 @@ import { reorderEntityType } from '../../../app/(actions)/entityActions';
 import { getDashboardQuickActionBadge } from '../../../src/dashboardQuickActions';
 import { KnownPages } from '../../../src/KnownPages';
 import { EntityTypeIcon } from '../directories/EntityTypeIcon';
-import { adminPages } from './adminPages';
+import { includesSelectedPath, isSelectedPath } from './adminNavigationPath';
+import { adminPages, communicationMessagePageHrefs } from './adminPages';
 import { NavContext } from './NavContext';
 import { NavGroup } from './NavGroup';
 import { NavItem } from './NavItem';
 import { NavSection } from './NavSection';
 import { ProfileNavItem } from './ProfileNavItem';
-
-function isSelectedPath(pathname: string, href: string, strictMatch = false) {
-    if (strictMatch) {
-        return pathname === href;
-    }
-
-    return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function includesSelectedPath(pathname: string, hrefs: string[]) {
-    return hrefs.some((href) => isSelectedPath(pathname, href));
-}
 
 function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
     if (quickAction.icon) {
@@ -84,6 +75,8 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Success className="size-5" />;
         case KnownPages.AiAnalytics:
             return <AI className="size-5" />;
+        case KnownPages.BillingReconciliation:
+            return <Warning className="size-5" />;
         case KnownPages.Approvals:
         case KnownPages.CommunicationInbox:
             return <Inbox className="size-5" />;
@@ -94,6 +87,10 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
         case KnownPages.DeliveryRequests:
         case KnownPages.DeliverySlots:
             return <Truck className="size-5" />;
+        case KnownPages.DeliveryOperations:
+        case KnownPages.DeliveryNotifications:
+        case KnownPages.DeliveryRequestStatistics:
+            return <Graph className="size-5" />;
         case KnownPages.FarmerPayouts:
         case KnownPages.FarmerPrices:
         case KnownPages.Transactions:
@@ -108,6 +105,7 @@ function quickActionIcon(quickAction: { href: string; icon?: string | null }) {
             return <Fence className="size-5" />;
         case KnownPages.Inventory:
         case KnownPages.SowingStatistics:
+        case KnownPages.Surveys:
             return <Tally3 className="size-5" />;
         case KnownPages.Notifications:
         case KnownPages.SocialPublishing:
@@ -261,10 +259,14 @@ export function Nav({
         shadowTypes.length > 0 ||
         uncategorizedTypes.length > 0;
     const navClassName = compact ? 'space-y-1' : 'space-y-3';
-    const sowingStatisticsActive = isSelectedPath(
-        pathname,
+    const statisticsActive = includesSelectedPath(pathname, [
         adminPages.SowingStatistics.href,
-    );
+        adminPages.DeliveryRequestStatistics.href,
+        adminPages.UsersStatistics.href,
+        adminPages.OperationsStatistics.href,
+        adminPages.RecordsStatistics.href,
+        adminPages.SunflowersStatistics.href,
+    ]);
 
     return (
         <div className={navClassName}>
@@ -458,6 +460,8 @@ export function Nav({
                         adminPages.Invoices.href,
                         adminPages.Transactions.href,
                         adminPages.Sunflowers.href,
+                        adminPages.BillingReconciliation.href,
+                        adminPages.BillingPreviews.href,
                         adminPages.Receipts.href,
                         adminPages.Outlet.href,
                     ])}
@@ -491,6 +495,22 @@ export function Nav({
                         href={adminPages.Sunflowers.href}
                         label={adminPages.Sunflowers.label}
                         icon={<Success className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.BillingReconciliation.href}
+                        label={adminPages.BillingReconciliation.label}
+                        icon={<Warning className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.BillingPreviews.href}
+                        label={adminPages.BillingPreviews.label}
+                        icon={<File className="size-5" />}
                         onClick={onItemClick}
                         compact={compact}
                         nested
@@ -626,6 +646,13 @@ export function Nav({
             </NavSection>
             <NavSection label="Upravljanje" compact={compact}>
                 <NavItem
+                    href={adminPages.Schedule.href}
+                    label={adminPages.Schedule.label}
+                    icon={<Calendar className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
+                <NavItem
                     href={adminPages.Approvals.href}
                     label={adminPages.Approvals.label}
                     icon={<Inbox className="size-5" />}
@@ -663,20 +690,13 @@ export function Nav({
                     label="Logistika"
                     icon={<Truck className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.Schedule.href,
                         adminPages.DeliverySlots.href,
                         adminPages.DeliveryRequests.href,
+                        adminPages.DeliveryOperations.href,
+                        adminPages.DeliveryNotifications.href,
                     ])}
                     compact={compact}
                 >
-                    <NavItem
-                        href={adminPages.Schedule.href}
-                        label={adminPages.Schedule.label}
-                        icon={<Calendar className="size-5" />}
-                        onClick={onItemClick}
-                        compact={compact}
-                        nested
-                    />
                     <NavItem
                         href={adminPages.DeliverySlots.href}
                         label={adminPages.DeliverySlots.label}
@@ -693,17 +713,33 @@ export function Nav({
                         compact={compact}
                         nested
                     />
+                    <NavItem
+                        href={adminPages.DeliveryOperations.href}
+                        label={adminPages.DeliveryOperations.label}
+                        icon={<Graph className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
+                    <NavItem
+                        href={adminPages.DeliveryNotifications.href}
+                        label={adminPages.DeliveryNotifications.label}
+                        icon={<Graph className="size-5" />}
+                        onClick={onItemClick}
+                        compact={compact}
+                        nested
+                    />
                 </NavGroup>
                 <NavGroup
                     label="Izvještaji"
                     icon={<Tally3 className="size-5" />}
-                    forceOpen={sowingStatisticsActive}
+                    forceOpen={statisticsActive}
                     compact={compact}
                 >
                     <NavGroup
                         label="Statistika"
                         icon={<Tally3 className="size-5" />}
-                        forceOpen={sowingStatisticsActive}
+                        forceOpen={statisticsActive}
                         compact={compact}
                         depth={1}
                     >
@@ -711,6 +747,46 @@ export function Nav({
                             href={adminPages.SowingStatistics.href}
                             label={adminPages.SowingStatistics.label}
                             icon={<Tally3 className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.DeliveryRequestStatistics.href}
+                            label={adminPages.DeliveryRequestStatistics.label}
+                            icon={<Graph className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.UsersStatistics.href}
+                            label={adminPages.UsersStatistics.label}
+                            icon={<User className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.OperationsStatistics.href}
+                            label={adminPages.OperationsStatistics.label}
+                            icon={<Hammer className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.RecordsStatistics.href}
+                            label={adminPages.RecordsStatistics.label}
+                            icon={<File className="size-5" />}
+                            onClick={onItemClick}
+                            compact={compact}
+                            nested
+                        />
+                        <NavItem
+                            href={adminPages.SunflowersStatistics.href}
+                            label={adminPages.SunflowersStatistics.label}
+                            icon={<Success className="size-5" />}
                             onClick={onItemClick}
                             compact={compact}
                             nested
@@ -723,10 +799,7 @@ export function Nav({
                     label="Poruke"
                     icon={<Inbox className="size-5" />}
                     forceOpen={includesSelectedPath(pathname, [
-                        adminPages.CommunicationInbox.href,
-                        adminPages.CommunicationEmails.href,
-                        adminPages.Notifications.href,
-                        adminPages.Feedback.href,
+                        ...communicationMessagePageHrefs,
                     ])}
                     compact={compact}
                 >
@@ -763,6 +836,13 @@ export function Nav({
                         nested
                     />
                 </NavGroup>
+                <NavItem
+                    href={adminPages.Surveys.href}
+                    label={adminPages.Surveys.label}
+                    icon={<Tally3 className="size-5" />}
+                    onClick={onItemClick}
+                    compact={compact}
+                />
             </NavSection>
             <NavSection label="Sustavi" compact={compact}>
                 <NavItem

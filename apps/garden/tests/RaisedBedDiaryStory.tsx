@@ -1,7 +1,12 @@
 import * as ReactQuery from '@tanstack/react-query';
 import { type PropsWithChildren, useMemo } from 'react';
 import { RaisedBedDiary } from '../../../packages/game/src/hud/raisedBed/RaisedBedDiary';
-import { Card, CardOverflow } from '../../../packages/ui/src/Card';
+import {
+    createGameState,
+    GameStateContext,
+} from '../../../packages/game/src/useGameState';
+import { Card } from '../../../packages/ui/src/Card';
+import { ScrollArea } from '../../../packages/ui/src/ScrollArea';
 import { buildOperation } from './raisedBedFieldHudScenarios';
 
 const TEST_GARDEN_ID = 1;
@@ -70,6 +75,19 @@ function todayUtcIso() {
     ).toISOString();
 }
 
+function futureLocalDateInput(daysFromToday: number) {
+    const today = new Date();
+    const date = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + daysFromToday,
+    );
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
 const diaryEntries: DiaryEntry[] = [
     {
         id: 1,
@@ -89,8 +107,7 @@ const diaryEntries: DiaryEntry[] = [
     {
         id: 2,
         name: 'AI analysis with operation links',
-        description:
-            '## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5) for the stressed plant.',
+        description: `## Analysis\n\nSchedule [Malčiranje gredice](https://www.gredice.com/radnje/mock-raised-bed-mulching#raisedBedId=101&scheduledDate=${futureLocalDateInput(2)}) for the full bed and [Zalijevanje biljke](https://www.gredice.com/radnje/mock-plant-watering#raisedBedId=101&positionIndex=5&scheduledDate=${futureLocalDateInput(3)}) for the stressed plant.`,
         status: null,
         timestamp: new Date('2026-05-12T12:00:00.000Z'),
         imageUrls,
@@ -143,10 +160,22 @@ function createRaisedBedDiaryQueryClient() {
 
 function RaisedBedDiaryTestProviders({ children }: PropsWithChildren) {
     const queryClient = useMemo(() => createRaisedBedDiaryQueryClient(), []);
+    const gameStore = useMemo(
+        () =>
+            createGameState({
+                appBaseUrl: 'http://localhost',
+                freezeTime: null,
+                isMock: false,
+                winterMode: 'summer',
+            }),
+        [],
+    );
 
     return (
         <ReactQuery.QueryClientProvider client={queryClient}>
-            {children}
+            <GameStateContext.Provider value={gameStore}>
+                {children}
+            </GameStateContext.Provider>
         </ReactQuery.QueryClientProvider>
     );
 }
@@ -159,12 +188,12 @@ export function RaisedBedDiaryOverflowStory() {
                     data-testid="diary-shell"
                     className="w-[360px] max-w-full"
                 >
-                    <CardOverflow className="max-h-96 overflow-y-auto overflow-x-hidden">
+                    <ScrollArea className="-m-2" viewportClassName="max-h-96">
                         <RaisedBedDiary
                             gardenId={TEST_GARDEN_ID}
                             raisedBedId={TEST_RAISED_BED_ID}
                         />
-                    </CardOverflow>
+                    </ScrollArea>
                 </Card>
             </div>
         </RaisedBedDiaryTestProviders>

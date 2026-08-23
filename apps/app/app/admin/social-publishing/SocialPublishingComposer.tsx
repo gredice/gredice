@@ -6,12 +6,15 @@ import type {
     SocialPostType,
     SocialProvider,
 } from '@gredice/storage';
+import { Button } from '@gredice/ui/Button';
+import { Card, CardOverflow } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { Input } from '@gredice/ui/Input';
 import { LocalDateTime } from '@gredice/ui/LocalDateTime';
 import { SelectItems } from '@gredice/ui/SelectItems';
-import { Table } from '@gredice/ui/Table';
+import { Typography } from '@gredice/ui/Typography';
 import { useActionState, useState } from 'react';
+import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import {
     getSocialProviderDefinition,
     isPostTypeSupportedByProvider,
@@ -374,93 +377,153 @@ export function SocialPublishingComposer({
 
             <div className="space-y-3">
                 <h3 className="text-lg font-semibold">Objave</h3>
-                <div className="overflow-x-auto">
-                    <Table>
-                        <Table.Header>
-                            <Table.Row>
-                                <Table.Head>Provider</Table.Head>
-                                <Table.Head>Račun</Table.Head>
-                                <Table.Head>Odredište</Table.Head>
-                                <Table.Head>Tip</Table.Head>
-                                <Table.Head>Status</Table.Head>
-                                <Table.Head>Vrijeme</Table.Head>
-                                <Table.Head>Naslov</Table.Head>
-                                <Table.Head>Mediji</Table.Head>
-                                <Table.Head>Greška</Table.Head>
-                                <Table.Head>Permalink</Table.Head>
-                            </Table.Row>
-                        </Table.Header>
-                        <Table.Body>
-                            {recentPosts.length === 0 ? (
-                                <Table.Row>
-                                    <Table.Cell colSpan={10}>
-                                        Nema objava za prikaz.
-                                    </Table.Cell>
-                                </Table.Row>
-                            ) : (
-                                recentPosts.map((post) => {
+                <Card>
+                    <CardOverflow>
+                        {recentPosts.length === 0 ? (
+                            <div className="p-4">
+                                <NoDataPlaceholder>
+                                    Nema objava za prikaz.
+                                </NoDataPlaceholder>
+                            </div>
+                        ) : (
+                            <ul className="divide-y">
+                                {recentPosts.map((post) => {
                                     const status = statusLabel(post.status);
+                                    const contentPreview =
+                                        post.title ?? post.body ?? '—';
                                     return (
-                                        <Table.Row key={post.id}>
-                                            <Table.Cell>
-                                                {providerLabel(post.provider)}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {post.providerAccountKey}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {post.destination}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {
-                                                    socialPostTypeLabels[
-                                                        post.postType
-                                                    ]
-                                                }
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                <Chip
-                                                    color={status.color}
-                                                    size="sm"
-                                                >
-                                                    {status.label}
-                                                </Chip>
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {postTimingLabel(post)}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {post.title ?? post.body ?? '—'}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {mediaCount(post.mediaUrls)}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {post.failureMessage ?? '—'}
-                                            </Table.Cell>
-                                            <Table.Cell>
-                                                {post.providerPermalink ? (
-                                                    <a
-                                                        className="text-blue-600 underline"
-                                                        href={
-                                                            post.providerPermalink
-                                                        }
-                                                        rel="noreferrer"
-                                                        target="_blank"
+                                        <li
+                                            key={post.id}
+                                            className="px-3 py-4 transition-colors hover:bg-muted/40 sm:px-4"
+                                        >
+                                            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                                <div className="min-w-0 flex-1 space-y-2">
+                                                    <Typography
+                                                        component="h4"
+                                                        level="body1"
+                                                        semiBold
+                                                        className="min-w-0 break-words"
                                                     >
-                                                        Otvori
-                                                    </a>
-                                                ) : (
-                                                    '—'
-                                                )}
-                                            </Table.Cell>
-                                        </Table.Row>
+                                                        {contentPreview}
+                                                    </Typography>
+
+                                                    {post.title && post.body ? (
+                                                        <Typography
+                                                            level="body2"
+                                                            className="line-clamp-2 min-w-0 whitespace-pre-wrap break-words text-muted-foreground"
+                                                        >
+                                                            {post.body}
+                                                        </Typography>
+                                                    ) : null}
+
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                                        <span>
+                                                            Provider:{' '}
+                                                            {providerLabel(
+                                                                post.provider,
+                                                            )}
+                                                        </span>
+                                                        <span className="min-w-0 max-w-full truncate">
+                                                            Račun:{' '}
+                                                            {
+                                                                post.providerAccountKey
+                                                            }
+                                                        </span>
+                                                        <span className="min-w-0 max-w-full truncate">
+                                                            Odredište:{' '}
+                                                            {post.destination}
+                                                        </span>
+                                                    </div>
+
+                                                    <Typography
+                                                        level="body3"
+                                                        className={
+                                                            post.failureMessage
+                                                                ? 'min-w-0 break-words text-red-700 dark:text-red-300'
+                                                                : 'text-muted-foreground'
+                                                        }
+                                                    >
+                                                        Greška:{' '}
+                                                        {post.failureMessage ??
+                                                            '—'}
+                                                    </Typography>
+                                                </div>
+
+                                                <div className="flex shrink-0 flex-col gap-2 lg:items-end">
+                                                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                                                        <Chip
+                                                            color="neutral"
+                                                            size="sm"
+                                                            variant="outlined"
+                                                        >
+                                                            Tip:{' '}
+                                                            {
+                                                                socialPostTypeLabels[
+                                                                    post
+                                                                        .postType
+                                                                ]
+                                                            }
+                                                        </Chip>
+                                                        <Chip
+                                                            color={status.color}
+                                                            size="sm"
+                                                        >
+                                                            {status.label}
+                                                        </Chip>
+                                                        <Chip
+                                                            color="neutral"
+                                                            size="sm"
+                                                            variant="soft"
+                                                        >
+                                                            Mediji:{' '}
+                                                            {mediaCount(
+                                                                post.mediaUrls,
+                                                            )}
+                                                        </Chip>
+                                                    </div>
+
+                                                    <Typography
+                                                        level="body3"
+                                                        className="text-muted-foreground lg:text-right"
+                                                    >
+                                                        Vrijeme:{' '}
+                                                        <span className="whitespace-nowrap">
+                                                            {postTimingLabel(
+                                                                post,
+                                                            )}
+                                                        </span>
+                                                    </Typography>
+
+                                                    {post.providerPermalink ? (
+                                                        <Button
+                                                            href={
+                                                                post.providerPermalink
+                                                            }
+                                                            rel="noreferrer"
+                                                            target="_blank"
+                                                            variant="outlined"
+                                                            color="neutral"
+                                                            size="sm"
+                                                        >
+                                                            Otvori permalink
+                                                        </Button>
+                                                    ) : (
+                                                        <Typography
+                                                            level="body3"
+                                                            className="text-muted-foreground lg:text-right"
+                                                        >
+                                                            Permalink: —
+                                                        </Typography>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </li>
                                     );
-                                })
-                            )}
-                        </Table.Body>
-                    </Table>
-                </div>
+                                })}
+                            </ul>
+                        )}
+                    </CardOverflow>
+                </Card>
             </div>
         </div>
     );

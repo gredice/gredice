@@ -1,5 +1,41 @@
 import { expect, test } from '@playwright/experimental-ct-react';
-import { InventoryHudGardenBoxesOpenStory } from './InventoryHudStory';
+import {
+    InventoryHudClosedStory,
+    InventoryHudGardenBoxesOpenStory,
+    InventoryHudTriggerlessStory,
+} from './InventoryHudStory';
+
+test('inventory HUD badge counts backpack items without garden box contents', async ({
+    mount,
+    page,
+}) => {
+    await mount(<InventoryHudClosedStory />);
+
+    const inventoryButton = page.locator('button[title="Inventar"]');
+    const inventoryIcon = inventoryButton.locator(
+        '[data-inventory-trigger-icon]',
+    );
+    const inventoryHudShell = page.locator('[data-inventory-hud-shell]');
+
+    await expect(inventoryButton).toBeVisible();
+    await expect(inventoryHudShell).toHaveCSS('width', '48px');
+    await expect(inventoryHudShell).toHaveCSS('height', '48px');
+    await expect(inventoryHudShell).toHaveClass(/rounded-full/u);
+    await expect(inventoryIcon).toHaveAttribute(
+        'src',
+        '/assets/hud/inventory-backpack.webp',
+    );
+    await expect(inventoryIcon).toHaveClass(/-translate-y-2\.5/u);
+    const inventoryBadge = inventoryButton.getByText('3', { exact: true });
+    await expect(inventoryBadge).toBeVisible();
+    await expect(inventoryBadge).toHaveClass(/pointer-events-none/u);
+    await expect(inventoryButton.getByText('32', { exact: true })).toHaveCount(
+        0,
+    );
+    await expect(inventoryButton.getByText('29', { exact: true })).toHaveCount(
+        0,
+    );
+});
 
 test('inventory can open directly on garden boxes tab', async ({
     mount,
@@ -7,10 +43,17 @@ test('inventory can open directly on garden boxes tab', async ({
 }) => {
     await mount(<InventoryHudGardenBoxesOpenStory />);
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+    const inventoryDialog = page.getByRole('dialog');
+    const modalIcon = inventoryDialog.locator('[data-inventory-modal-icon]');
+
+    await expect(inventoryDialog).toBeVisible();
+    await expect(modalIcon).toHaveAttribute(
+        'src',
+        '/assets/hud/inventory-backpack.webp',
+    );
     await expect(
         page.getByRole('tab', { name: /Kutije\s+1/u }),
-    ).toHaveAttribute('data-state', 'active');
+    ).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByText('Vrtna kutija 1')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Bucket' })).toBeVisible();
     await expect(page.getByText(/Predmeti u ruksaku koje možeš/u)).toBeHidden();
@@ -56,4 +99,16 @@ test('garden box block item can be placed back into the garden', async ({
 
     await expect.poll(() => placeRequestCount).toBe(1);
     await expect(page.getByRole('dialog', { name: 'Bucket' })).toBeHidden();
+});
+
+test('inventory opens without a HUD shell for avatar garden box interactions', async ({
+    mount,
+    page,
+}) => {
+    await mount(<InventoryHudTriggerlessStory />);
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Vrtna kutija 1')).toBeVisible();
+    await expect(page.locator('[data-inventory-hud-shell]')).toHaveCount(0);
+    await expect(page.locator('button[title="Inventar"]')).toHaveCount(0);
 });
