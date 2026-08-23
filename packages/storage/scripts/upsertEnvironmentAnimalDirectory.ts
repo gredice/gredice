@@ -19,6 +19,7 @@ import {
     upsertEntityType,
     upsertEntityTypeCategory,
 } from '../src';
+import { assertDevelopmentDatabaseIsAllowlisted } from './lib/developmentDatabaseGuard';
 import {
     butterflyEnvironmentAnimal,
     environmentAnimalAttributeCategories,
@@ -88,11 +89,11 @@ function assertDevelopmentWriteIsExplicit(options: Options) {
     if (!connection) {
         throw new Error('A Postgres connection is required.');
     }
-    if (/(^|[./_-])(prod|production)([./?_-]|$)/i.test(connection)) {
-        throw new Error(
-            'Refusing an environment-animal write because the connection looks like production.',
-        );
-    }
+    assertDevelopmentDatabaseIsAllowlisted({
+        allowedFingerprints:
+            process.env.GREDICE_DEVELOPMENT_DATABASE_FINGERPRINTS,
+        connection,
+    });
 }
 
 function orderedAttributeEntries(attributes: Record<string, string>) {

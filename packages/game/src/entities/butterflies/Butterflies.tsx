@@ -227,9 +227,14 @@ export function createButterflyHabitats({
             if (!firstTarget) {
                 return null;
             }
-            const id = `butterfly-habitat-${index + 1}-${hashButterflySeed(
-                `${firstTarget.id}:${group.length}`,
-            )}`;
+            const habitatGeometry = group
+                .map(
+                    (target) =>
+                        `${target.id}:${target.position.x}:${target.position.y}:${target.position.z}`,
+                )
+                .sort()
+                .join('|');
+            const id = `butterfly-habitat-${index + 1}-${hashButterflySeed(habitatGeometry)}`;
             return {
                 center: computePollinatorHabitatCenter(group),
                 id,

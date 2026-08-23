@@ -333,7 +333,7 @@ export const environmentAnimalAttributeDefinitions = [
             'JSON popis stabilnih ključeva, hrvatskih naziva, paleta i uzoraka krila.',
         dataType: 'text',
         order: 'fb',
-        required: true,
+        required: false,
         display: true,
     },
 ] as const;
