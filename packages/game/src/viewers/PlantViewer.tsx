@@ -29,6 +29,7 @@ export interface PlantViewerProps {
     includeEnvironment?: boolean;
     includeGround?: boolean;
     lightingPreset?: 'default' | 'snapshot';
+    preserveDrawingBuffer?: boolean;
     zoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
     orbitTarget?: [x: number, y: number, z: number];
@@ -43,6 +44,9 @@ const defaultOrbitTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
 const catalogRendererOptions: WebGLRendererParameters = {
     alpha: true,
     antialias: true,
+};
+const snapshotRendererOptions: WebGLRendererParameters = {
+    ...catalogRendererOptions,
     preserveDrawingBuffer: true,
 };
 
@@ -85,6 +89,7 @@ export function PlantViewer({
     includeEnvironment = true,
     includeGround = true,
     lightingPreset = 'default',
+    preserveDrawingBuffer = false,
     zoom = defaultZoom,
     cameraPosition = defaultCameraPosition,
     orbitTarget = defaultOrbitTarget,
@@ -114,7 +119,11 @@ export function PlantViewer({
                 position={cameraPosition}
                 zoom={zoom}
                 className={className}
-                rendererOptions={catalogRendererOptions}
+                rendererOptions={
+                    preserveDrawingBuffer
+                        ? snapshotRendererOptions
+                        : catalogRendererOptions
+                }
             >
                 <TransparentCanvasClear />
                 <ambientLight intensity={lighting.ambientIntensity} />

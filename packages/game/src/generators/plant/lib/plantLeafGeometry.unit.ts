@@ -132,7 +132,13 @@ test('only constrained quality tiers select compact leaf geometry', () => {
 });
 
 test('compound fronds read as tapering leaflets, not a thin saw', () => {
-    for (const leafType of ['feathery', 'pinnate', 'compound'] as const) {
+    const frondLeafTypes = [
+        'feathery',
+        'pinnate',
+        'compound',
+    ] satisfies PlantLeafType[];
+
+    for (const leafType of frondLeafTypes) {
         const geometry = getPlantLeafGeometry(leafType, 'full');
         geometry.computeBoundingBox();
         const bounds = geometry.boundingBox;
