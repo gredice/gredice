@@ -99,7 +99,7 @@ describe('getBlockHitboxSize', () => {
         );
     });
 
-    it('keeps farm animal homes at least as large as their rendered model bounds', () => {
+    it('keeps farm animal placement blocks at least as large as their rendered model bounds', () => {
         const compactAttributes = {
             height: 0.2,
             hitboxWidth: 0.2,
@@ -107,6 +107,18 @@ describe('getBlockHitboxSize', () => {
             hitboxDepth: 0.2,
         };
 
+        assert.deepEqual(
+            getBlockHitboxSize({
+                ...createBlockData(compactAttributes),
+                information: {
+                    name: 'Goat',
+                    label: 'Koza',
+                    shortDescription: 'Koza.',
+                    fullDescription: 'Koza.',
+                },
+            }),
+            { width: 0.5, height: 0.72, depth: 0.72 },
+        );
         assert.deepEqual(
             getBlockHitboxSize({
                 ...createBlockData(compactAttributes),

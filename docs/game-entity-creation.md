@@ -155,6 +155,11 @@ explicitly. Some repository helpers import `server-only`, so standalone scripts
 may need to run through an app/runtime path or use lower-level `storage` and
 schema imports with deliberate cache/search handling.
 
+When a new block is also added to `upsertBlockHitboxAttributes.ts`, create and
+publish the block first (for farm animals, apply
+`upsertFarmAnimalHomeBlockEntities.ts`), then run the hitbox upsert. The hitbox
+helper intentionally fails when a named published block does not exist.
+
 For a purchasable decoration/tool block, create a published `block` entity with
 these attributes:
 

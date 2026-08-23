@@ -79,7 +79,9 @@ function replaceGround(
     z: number,
     name:
         | 'Block_Dry_Ground'
+        | 'Block_Gravel'
         | 'Block_Sand'
+        | 'Block_Stone'
         | 'Block_Swamp_Ground'
         | 'Block_Water',
 ) {
@@ -208,6 +210,26 @@ function createCowHerdStacks() {
         if (z !== 0) {
             placeBlock(stacks, -1, z, 'GardenBox');
         }
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createGoatPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, 0, 'Goat', 1);
+    placeBlock(stacks, 4, 0, 'Tree');
+    replaceGround(stacks, 3, -2, 'Block_Stone');
+    replaceGround(stacks, 3, 2, 'Block_Gravel');
+
+    for (let z = -4; z <= 2; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Raised_Bed');
     }
 
     return serializeStacks(stacks);
@@ -346,6 +368,7 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -3, 3, 'PigletPen');
     placeBlock(stacks, -3, 0, 'Cow', 0, 0);
     placeBlock(stacks, 4, 1, 'Cow', 2, 1);
+    placeBlock(stacks, -3, -3, 'Goat', 1);
     placeBlock(stacks, -2, 0, 'Rabbit', 0, 0);
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
@@ -475,6 +498,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Cow herd
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createGoatPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Goat path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

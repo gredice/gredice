@@ -1,4 +1,4 @@
-export type FarmAnimalSpecies = 'Chicken' | 'Piglet';
+export type FarmAnimalSpecies = 'Chicken' | 'Goat' | 'Piglet';
 
 export type ChickenBehavior =
     | 'home'
@@ -16,7 +16,21 @@ export type PigletBehavior =
     | 'cover'
     | 'follow-avatar';
 
-export type FarmAnimalBehavior = ChickenBehavior | PigletBehavior;
+export type GoatBehavior =
+    | 'home'
+    | 'roam'
+    | 'browse'
+    | 'chew'
+    | 'play-hop'
+    | 'cover'
+    | 'approach-avatar'
+    | 'retreat-avatar'
+    | 'follow-avatar';
+
+export type FarmAnimalBehavior =
+    | ChickenBehavior
+    | GoatBehavior
+    | PigletBehavior;
 
 export type FarmAnimalWeather = {
     cloudy?: number | null;
@@ -58,6 +72,14 @@ const behaviorWeightsBySpecies = {
         { behavior: 'wallow', weight: 0.22 },
         { behavior: 'cover', weight: 0.12 },
     ],
+    Goat: [
+        { behavior: 'home', weight: 0.06 },
+        { behavior: 'roam', weight: 0.17 },
+        { behavior: 'browse', weight: 0.32 },
+        { behavior: 'chew', weight: 0.18 },
+        { behavior: 'play-hop', weight: 0.12 },
+        { behavior: 'cover', weight: 0.15 },
+    ],
 } satisfies Record<FarmAnimalSpecies, FarmAnimalBehaviorWeight[]>;
 
 const adverseWeatherThresholdsBySpecies = {
@@ -73,15 +95,23 @@ const adverseWeatherThresholdsBySpecies = {
         thundery: 0.1,
         windSpeed: 15,
     },
+    Goat: {
+        rainy: 0.42,
+        snowy: 0.18,
+        thundery: 0.08,
+        windSpeed: 14,
+    },
 } satisfies Record<FarmAnimalSpecies, FarmAnimalWeatherThresholds>;
 
 const daytimeActivityRangeBySpecies = {
     Chicken: 5.5,
+    Goat: 7.5,
     Piglet: 7,
 } satisfies Record<FarmAnimalSpecies, number>;
 
 const shelteredActivityRangeBySpecies = {
     Chicken: 1.1,
+    Goat: 1.1,
     Piglet: 1.4,
 } satisfies Record<FarmAnimalSpecies, number>;
 
@@ -216,6 +246,31 @@ function getPigletDwellRange(
     return [8, 15];
 }
 
+function getGoatDwellRange(
+    behavior: FarmAnimalBehavior,
+): readonly [number, number] {
+    if (behavior === 'browse') {
+        return [5, 9];
+    }
+    if (behavior === 'chew') {
+        return [4, 8];
+    }
+    if (behavior === 'play-hop') {
+        return [2.4, 4.2];
+    }
+    if (behavior === 'cover') {
+        return [7, 13];
+    }
+    if (behavior === 'roam') {
+        return [3, 6];
+    }
+    if (behavior === 'approach-avatar' || behavior === 'retreat-avatar') {
+        return [1.2, 2.2];
+    }
+
+    return [7, 13];
+}
+
 export function getFarmAnimalDwellSeconds({
     species,
     behavior,
@@ -229,7 +284,11 @@ export function getFarmAnimalDwellSeconds({
     timeOfDay: number;
     weather: FarmAnimalWeather | null | undefined;
 }) {
-    if (behavior === 'follow-avatar') {
+    if (
+        behavior === 'follow-avatar' ||
+        behavior === 'approach-avatar' ||
+        behavior === 'retreat-avatar'
+    ) {
         return 1;
     }
 
@@ -250,6 +309,8 @@ export function getFarmAnimalDwellSeconds({
     const [minimum, maximum] =
         species === 'Chicken'
             ? getChickenDwellRange(behavior)
-            : getPigletDwellRange(behavior);
+            : species === 'Goat'
+              ? getGoatDwellRange(behavior)
+              : getPigletDwellRange(behavior);
     return minimum + random() * (maximum - minimum);
 }

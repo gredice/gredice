@@ -20,6 +20,7 @@ test('empty search keeps every pet visible', () => {
         'Kokoš',
         'Praščić',
         'Krava',
+        'Koza',
     ]);
 });
 

@@ -204,6 +204,7 @@ describe('garden avatar world interactions', () => {
             'Chicken',
             'Cow',
             'Dog',
+            'Goat',
             'Piglet',
         ] as const) {
             assert.equal(isPettableAnimalSpecies(species), true);

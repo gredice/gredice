@@ -349,6 +349,7 @@ export type PettableAnimalSpecies =
     | 'Chicken'
     | 'Cow'
     | 'Dog'
+    | 'Goat'
     | 'Piglet';
 
 export type GardenAvatarAnimalPetRequest = {

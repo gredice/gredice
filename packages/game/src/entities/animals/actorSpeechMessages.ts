@@ -17,6 +17,7 @@ export const pigletSpeechMessages = [
 ] as const;
 
 export const cowSpeechMessages = ['Muuu!', 'Muu-muu!', 'Mljac...'] as const;
+export const goatSpeechMessages = ['Mee-e!', 'Meee!', 'Njom-njom!'] as const;
 
 export const birdSpeechMessages = [
     'Cvrk-cvrk!',
