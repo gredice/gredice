@@ -348,6 +348,7 @@ export type PettableAnimalSpecies =
     | 'Cat'
     | 'Chicken'
     | 'Dog'
+    | 'Goat'
     | 'Piglet'
     | 'Sheep';
 

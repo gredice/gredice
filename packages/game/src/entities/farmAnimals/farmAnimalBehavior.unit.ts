@@ -18,11 +18,11 @@ const clearWeather = {
     windSpeed: 0,
 };
 
-test('returns chickens and piglets home at night', () => {
+test('returns every farm animal home at night', () => {
     assert.equal(isFarmAnimalNight(0.5), false);
     assert.equal(isFarmAnimalNight(0.85), true);
 
-    for (const species of ['Chicken', 'Piglet'] as const) {
+    for (const species of ['Chicken', 'Goat', 'Piglet'] as const) {
         assert.equal(
             pickFarmAnimalBehavior({
                 species,
@@ -32,6 +32,9 @@ test('returns chickens and piglets home at night', () => {
                     'dust-bathe': true,
                     root: true,
                     wallow: true,
+                    browse: true,
+                    chew: true,
+                    'play-hop': true,
                     cover: true,
                 },
                 random: () => 0.99,
@@ -46,6 +49,8 @@ test('returns chickens and piglets home at night', () => {
 test('returns each species home in weather that is adverse for it', () => {
     assert.equal(isFarmAnimalAdverseWeather('Chicken', { rainy: 0.3 }), true);
     assert.equal(isFarmAnimalAdverseWeather('Piglet', { rainy: 0.3 }), false);
+    assert.equal(isFarmAnimalAdverseWeather('Goat', { rainy: 0.3 }), false);
+    assert.equal(isFarmAnimalAdverseWeather('Goat', { snowy: 0.2 }), true);
     assert.equal(isFarmAnimalAdverseWeather('Piglet', { thundery: 0.2 }), true);
 
     assert.equal(
@@ -79,10 +84,18 @@ test('uses only species-specific daytime behaviors', () => {
         species: 'Piglet',
         availability: {},
     });
+    const goatWeights = getFarmAnimalBehaviorWeights({
+        species: 'Goat',
+        availability: {},
+    });
 
     assert.deepEqual(
         chickenWeights.map(({ behavior }) => behavior),
         ['home', 'roam', 'forage', 'dust-bathe', 'cover'],
+    );
+    assert.deepEqual(
+        goatWeights.map(({ behavior }) => behavior),
+        ['home', 'roam', 'browse', 'chew', 'play-hop', 'cover'],
     );
     assert.deepEqual(
         pigletWeights.map(({ behavior }) => behavior),
@@ -98,6 +111,13 @@ test('picks species-specific activities from the same deterministic roll', () =>
         weather: clearWeather,
     };
 
+    assert.equal(
+        pickFarmAnimalBehavior({
+            ...commonArguments,
+            species: 'Goat',
+        }),
+        'chew',
+    );
     assert.equal(
         pickFarmAnimalBehavior({
             ...commonArguments,
@@ -172,6 +192,14 @@ test('follows the avatar only in safe daytime conditions', () => {
 test('shrinks activity range around home at night and in adverse weather', () => {
     assert.equal(
         getFarmAnimalActivityRange({
+            species: 'Goat',
+            timeOfDay: 0.5,
+            weather: clearWeather,
+        }),
+        7.5,
+    );
+    assert.equal(
+        getFarmAnimalActivityRange({
             species: 'Chicken',
             timeOfDay: 0.5,
             weather: clearWeather,
@@ -197,6 +225,16 @@ test('shrinks activity range around home at night and in adverse weather', () =>
 });
 
 test('uses short active dwells and longer home rests', () => {
+    assert.equal(
+        getFarmAnimalDwellSeconds({
+            species: 'Goat',
+            behavior: 'browse',
+            random: () => 0,
+            timeOfDay: 0.5,
+            weather: clearWeather,
+        }),
+        5,
+    );
     assert.equal(
         getFarmAnimalDwellSeconds({
             species: 'Chicken',

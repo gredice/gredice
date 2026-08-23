@@ -14,6 +14,7 @@ import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
 import type { Block } from '../../types/Block';
+import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import type { Stack } from '../../types/Stack';
 import {
     type AnimalDebugEntry,
@@ -37,10 +38,12 @@ import { AnimalPetHearts } from '../animals/AnimalPetHearts';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import {
     chickenSpeechMessages,
+    goatSpeechMessages,
     pigletSpeechMessages,
     sheepSpeechMessages,
 } from '../animals/actorSpeechMessages';
 import {
+    animalAvatarFollowDistance,
     animalAvatarFollowRepathSeconds,
     animalAvatarFollowSeconds,
     getAnimalAvatarFollowPosition,
@@ -103,6 +106,7 @@ export type FarmAnimalHabitat = {
     homeBlock: Block;
     homeStack: Stack;
     id: string;
+    rockyAnchors: FarmAnimalTarget[];
     roamAnchors: FarmAnimalTarget[];
     seed: number;
     species: FarmAnimalSpecies;
@@ -133,14 +137,14 @@ export type FarmAnimalRuntimeState =
     | SettledFarmAnimalState;
 
 type FarmAnimalConfig = {
-    assetName: 'Chicken' | 'Piglet' | 'Sheep';
+    assetName: 'Chicken' | 'Goat' | 'Piglet' | 'Sheep';
     debugColor: string;
     groundLift: number;
-    homeBlockName: 'ChickenCoop' | 'PigletPen' | 'Sheep';
+    homeBlockName: 'ChickenCoop' | 'Goat' | 'PigletPen' | 'Sheep';
     homeDoorOffset: number;
     petHeartsOffsetY: number;
     scale: number;
-    shadowSpecies: 'chicken' | 'piglet' | 'sheep';
+    shadowSpecies: 'chicken' | 'goat' | 'piglet' | 'sheep';
     speechBubbleOffsetY: number;
     speechMessages: readonly string[];
     species: FarmAnimalSpecies;
@@ -164,6 +168,7 @@ type FarmAnimalRig = {
     head: RigNode;
     jaw: RigNode;
     legs: RigNode[];
+    neck: RigNode;
     tail: RigNode;
     walkPhase: number;
     walkPoseAmount: number;
@@ -215,6 +220,23 @@ const pigletConfig = {
     walkSpeed: 0.82,
 } satisfies FarmAnimalConfig;
 
+const goatConfig = {
+    assetName: 'Goat',
+    debugColor: '#a78b67',
+    groundLift: 0.024,
+    homeBlockName: 'Goat',
+    homeDoorOffset: 0,
+    petHeartsOffsetY: 0.72,
+    scale: 0.392,
+    shadowSpecies: 'goat',
+    speechBubbleOffsetY: 0.8,
+    speechMessages: goatSpeechMessages,
+    species: 'Goat',
+    swimDepth: 0.14,
+    walkCycleDistance: 0.82,
+    walkSpeed: 0.86,
+} satisfies FarmAnimalConfig;
+
 const sheepConfig = {
     assetName: 'Sheep',
     debugColor: '#d6c7aa',
@@ -236,6 +258,9 @@ const sheepConfig = {
 function getFarmAnimalConfig(species: FarmAnimalSpecies) {
     if (species === 'Chicken') {
         return chickenConfig;
+    }
+    if (species === 'Goat') {
+        return goatConfig;
     }
     if (species === 'Piglet') {
         return pigletConfig;
@@ -276,6 +301,10 @@ function blockRotationToYaw(rotation: number) {
 
 function isDustBathGround(name: string) {
     return name.includes('Dry_Ground') || name.includes('Sand');
+}
+
+function isGoatPreferredGround(name: string) {
+    return name.includes('Stone') || name.includes('Gravel');
 }
 
 function targetForHomeBlock({
@@ -371,7 +400,10 @@ function targetForCover({
 }) {
     const seed = hashString(block.id);
     const angle = (seed / 4294967296) * fullTurn;
-    const radius = 0.28 + ((seed >>> 5) % 7) * 0.015;
+    const radius =
+        config.species === 'Goat'
+            ? 0.72 + ((seed >>> 5) % 7) * 0.02
+            : 0.28 + ((seed >>> 5) % 7) * 0.015;
     const position = new Vector3(
         stack.position.x + Math.cos(angle) * radius,
         Math.max(
@@ -417,6 +449,7 @@ function createFarmAnimalHabitats({
         homeStack: Stack;
         wallow: FarmAnimalTarget | null;
     }> = [];
+    const rockyAnchors: FarmAnimalTarget[] = [];
     const roamAnchors: FarmAnimalTarget[] = [];
 
     for (const stack of stacks ?? []) {
@@ -449,9 +482,24 @@ function createFarmAnimalHabitats({
             continue;
         }
         if (treeBlockNames.has(topBlock.name)) {
-            covers.push(
-                targetForCover({ block: topBlock, blockData, config, stack }),
+            const cover = targetForCover({
+                block: topBlock,
+                blockData,
+                config,
+                stack,
+            });
+            const coverCellBlocked = blockedCells.some(
+                (cell) =>
+                    cell.x === Math.round(cover.position.x) &&
+                    cell.z === Math.round(cover.position.z),
             );
+            if (
+                config.species !== 'Goat' ||
+                (!coverCellBlocked &&
+                    canAnimalSettleAt(cover.position, groundSurfaces))
+            ) {
+                covers.push(cover);
+            }
             continue;
         }
         if (
@@ -466,6 +514,16 @@ function createFarmAnimalHabitats({
                     stack,
                 }),
             );
+            if (isGoatPreferredGround(topBlock.name)) {
+                rockyAnchors.push(
+                    targetForGroundStack({
+                        behavior: 'roam',
+                        blockData,
+                        config,
+                        stack,
+                    }),
+                );
+            }
             if (isDustBathGround(topBlock.name)) {
                 dustBaths.push(
                     targetForGroundStack({
@@ -490,6 +548,7 @@ function createFarmAnimalHabitats({
                 homeBlock,
                 homeStack,
                 id: `${config.species.toLowerCase()}-${home.id}`,
+                rockyAnchors,
                 roamAnchors,
                 seed: hashString(`${config.species}:${home.id}`),
                 species: config.species,
@@ -570,14 +629,20 @@ export function getFarmAnimalBehaviorAvailability(
     range: number,
 ) {
     return {
+        browse:
+            targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
+        chew:
+            targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
         cover: targetsInRange(habitat.covers, habitat.home, range).length > 0,
         'dust-bathe':
             targetsInRange(habitat.dustBaths, habitat.home, range).length > 0,
         forage:
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
+        'chew-cud':
+            targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
         graze:
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
-        'chew-cud':
+        'play-hop':
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
         roam:
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
@@ -616,12 +681,173 @@ function targetForBehavior({
     const candidates =
         behavior === 'dust-bathe'
             ? targetsInRange(habitat.dustBaths, habitat.home, range)
-            : targetsInRange(habitat.roamAnchors, habitat.home, range);
+            : habitat.species === 'Goat' &&
+                (behavior === 'browse' || behavior === 'play-hop') &&
+                targetsInRange(habitat.rockyAnchors, habitat.home, range)
+                    .length > 0
+              ? targetsInRange(habitat.rockyAnchors, habitat.home, range)
+              : targetsInRange(habitat.roamAnchors, habitat.home, range);
     const target = pickCandidate(candidates, random);
     if (!target) {
         return habitat.home;
     }
     return withBehaviorAndJitter({ behavior, habitat, random, target });
+}
+
+const goatCuriosityMaxDistance = 3.6;
+const goatCuriosityApproachThreshold = 1.45;
+const goatCuriosityRetreatThreshold = 0.72;
+const goatCuriosityComfortDistance = 1.08;
+const goatCuriosityRetreatDistance = 1.32;
+
+function goatCuriosityPosition({
+    avatarPosition,
+    distance,
+    goatPosition,
+    habitat,
+}: {
+    avatarPosition: Pick<Vector3, 'x' | 'y' | 'z'>;
+    distance: number;
+    goatPosition: Pick<Vector3, 'x' | 'y' | 'z'>;
+    habitat: FarmAnimalHabitat;
+}) {
+    const direction = new Vector3(
+        goatPosition.x - avatarPosition.x,
+        0,
+        goatPosition.z - avatarPosition.z,
+    );
+    if (direction.lengthSq() <= 0.0001) {
+        direction.set(0, 0, 1);
+    }
+    direction.normalize();
+    const radii = [distance, distance + 0.18, Math.max(0.82, distance - 0.14)];
+    const angleOffsets = [
+        0,
+        Math.PI / 5,
+        -Math.PI / 5,
+        Math.PI / 2,
+        -Math.PI / 2,
+    ];
+    const blockedKeys = new Set(
+        habitat.blockedCells.map((cell) => `${cell.x}:${cell.z}`),
+    );
+
+    for (const radius of radii) {
+        for (const angle of angleOffsets) {
+            const candidateDirection = direction
+                .clone()
+                .applyAxisAngle(new Vector3(0, 1, 0), angle);
+            const candidate = new Vector3(
+                avatarPosition.x + candidateDirection.x * radius,
+                goatPosition.y,
+                avatarPosition.z + candidateDirection.z * radius,
+            );
+            candidate.y = getAnimalMovementYAt(
+                candidate,
+                habitat.groundSurfaces,
+            );
+            const candidateKey = `${Math.round(candidate.x)}:${Math.round(candidate.z)}`;
+            if (
+                !blockedKeys.has(candidateKey) &&
+                canAnimalSettleAt(candidate, habitat.groundSurfaces)
+            ) {
+                return candidate;
+            }
+        }
+    }
+
+    return null;
+}
+
+export function getGoatCuriosityTarget({
+    avatarPosition,
+    goatPosition,
+    habitat,
+}: {
+    avatarPosition: Pick<Vector3, 'x' | 'y' | 'z'>;
+    goatPosition: Pick<Vector3, 'x' | 'y' | 'z'>;
+    habitat: FarmAnimalHabitat;
+}) {
+    if (habitat.species !== 'Goat') {
+        return null;
+    }
+
+    const distance = horizontalDistance(avatarPosition, goatPosition);
+    const behavior =
+        distance < goatCuriosityRetreatThreshold
+            ? ('retreat-avatar' as const)
+            : distance > goatCuriosityApproachThreshold &&
+                distance <= goatCuriosityMaxDistance
+              ? ('approach-avatar' as const)
+              : null;
+    if (!behavior) {
+        return null;
+    }
+
+    const position = goatCuriosityPosition({
+        avatarPosition,
+        distance:
+            behavior === 'retreat-avatar'
+                ? goatCuriosityRetreatDistance
+                : goatCuriosityComfortDistance,
+        goatPosition,
+        habitat,
+    });
+    if (!position) {
+        return null;
+    }
+
+    return {
+        behavior,
+        id: `${behavior}-${habitat.id}`,
+        lookAtPosition: new Vector3(
+            avatarPosition.x,
+            avatarPosition.y + 0.72,
+            avatarPosition.z,
+        ),
+        position,
+    } satisfies FarmAnimalTarget;
+}
+
+export function canGoatStartCuriosity({
+    avatarDistance,
+    canFollowAvatar,
+    freshAvatar,
+    nextCuriosityAt,
+    now,
+    phase,
+    species,
+    targetBehavior,
+    timeOfDay,
+    weather,
+}: {
+    avatarDistance: number;
+    canFollowAvatar: boolean;
+    freshAvatar: boolean;
+    nextCuriosityAt: number;
+    now: number;
+    phase: FarmAnimalRuntimeState['phase'];
+    species: FarmAnimalSpecies;
+    targetBehavior: FarmAnimalBehavior;
+    timeOfDay: number;
+    weather: FarmAnimalWeather | null | undefined;
+}) {
+    if (
+        canFollowAvatar ||
+        !freshAvatar ||
+        species !== 'Goat' ||
+        now < nextCuriosityAt ||
+        isFarmAnimalNight(timeOfDay) ||
+        isFarmAnimalAdverseWeather(species, weather) ||
+        (phase === 'moving' &&
+            (targetBehavior === 'home' || targetBehavior === 'retreat-avatar'))
+    ) {
+        return false;
+    }
+
+    return (
+        avatarDistance < goatCuriosityRetreatThreshold || phase === 'settled'
+    );
 }
 
 export function chooseNextFarmAnimalTarget({
@@ -849,8 +1075,8 @@ function facePosition(group: Group, target: Vector3, delta: number) {
     group.rotation.y += difference * (1 - Math.exp(-8 * delta));
 }
 
-function getRigNode(root: Object3D, name: string) {
-    const object = root.getObjectByName(name) ?? null;
+function getRigNode(root: Object3D, name: string | null) {
+    const object = name ? (root.getObjectByName(name) ?? null) : null;
     return {
         basePositionY: object?.position.y ?? 0,
         baseRotationX: object?.rotation.x ?? 0,
@@ -866,11 +1092,12 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
             body: getRigNode(root, 'Chicken_BodyPivot'),
             ears: [],
             head: getRigNode(root, 'Chicken_HeadPivot'),
-            jaw: getRigNode(root, 'Chicken_JawPivot'),
+            jaw: getRigNode(root, null),
             legs: [
                 getRigNode(root, 'Chicken_LegPivot_L'),
                 getRigNode(root, 'Chicken_LegPivot_R'),
             ],
+            neck: getRigNode(root, null),
             tail: getRigNode(root, 'Chicken_TailPivot'),
             walkPhase: 0,
             walkPoseAmount: 0,
@@ -878,6 +1105,28 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
                 getRigNode(root, 'Chicken_WingPivot_L'),
                 getRigNode(root, 'Chicken_WingPivot_R'),
             ],
+        } satisfies FarmAnimalRig;
+    }
+    if (species === 'Goat') {
+        return {
+            body: getRigNode(root, 'Goat_BodyPivot'),
+            ears: [
+                getRigNode(root, 'Goat_EarPivot_L'),
+                getRigNode(root, 'Goat_EarPivot_R'),
+            ],
+            head: getRigNode(root, 'Goat_HeadPivot'),
+            jaw: getRigNode(root, 'Goat_JawPivot'),
+            legs: [
+                getRigNode(root, 'Goat_LegPivot_FL'),
+                getRigNode(root, 'Goat_LegPivot_FR'),
+                getRigNode(root, 'Goat_LegPivot_RL'),
+                getRigNode(root, 'Goat_LegPivot_RR'),
+            ],
+            neck: getRigNode(root, 'Goat_NeckPivot'),
+            tail: getRigNode(root, 'Goat_TailPivot'),
+            walkPhase: 0,
+            walkPoseAmount: 0,
+            wings: [],
         } satisfies FarmAnimalRig;
     }
     if (species === 'Piglet') {
@@ -888,13 +1137,14 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
                 getRigNode(root, 'Piglet_EarPivot_R'),
             ],
             head: getRigNode(root, 'Piglet_HeadPivot'),
-            jaw: getRigNode(root, 'Piglet_JawPivot'),
+            jaw: getRigNode(root, null),
             legs: [
                 getRigNode(root, 'Piglet_LegPivot_FL'),
                 getRigNode(root, 'Piglet_LegPivot_FR'),
                 getRigNode(root, 'Piglet_LegPivot_RL'),
                 getRigNode(root, 'Piglet_LegPivot_RR'),
             ],
+            neck: getRigNode(root, null),
             tail: getRigNode(root, 'Piglet_TailPivot'),
             walkPhase: 0,
             walkPoseAmount: 0,
@@ -915,6 +1165,7 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
             getRigNode(root, 'Sheep_LegPivot_RL'),
             getRigNode(root, 'Sheep_LegPivot_RR'),
         ],
+        neck: getRigNode(root, null),
         tail: getRigNode(root, 'Sheep_TailPivot'),
         walkPhase: 0,
         walkPoseAmount: 0,
@@ -1015,6 +1266,51 @@ export function getPigletHeadPitch({
         wallowing * 0.12 +
         (swimming ? -0.1 : 0)
     );
+}
+
+export function getGoatHeadPitch({
+    behavior,
+    moving,
+    now,
+    swimming,
+}: {
+    behavior: FarmAnimalBehavior;
+    moving: boolean;
+    now: number;
+    swimming: boolean;
+}) {
+    if (moving) {
+        return swimming ? -0.08 : -0.03;
+    }
+    if (behavior === 'browse') {
+        return -0.68 + Math.sin(now * 1.4) * 0.06;
+    }
+    if (behavior === 'chew') {
+        return -0.16 + Math.sin(now * 0.9) * 0.04;
+    }
+    if (
+        behavior === 'approach-avatar' ||
+        behavior === 'retreat-avatar' ||
+        behavior === 'follow-avatar'
+    ) {
+        return 0.11 + Math.sin(now * 1.8) * 0.035;
+    }
+    return Math.sin(now * 0.7) * 0.045;
+}
+
+export function getGoatPlayHopAmount({
+    behavior,
+    moving,
+    now,
+}: {
+    behavior: FarmAnimalBehavior;
+    moving: boolean;
+    now: number;
+}) {
+    if (behavior !== 'play-hop' || moving) {
+        return 0;
+    }
+    return Math.max(0, Math.sin(now * 3.1)) ** 6;
 }
 
 function updateChickenPose({
@@ -1255,6 +1551,104 @@ function updateSheepPose({
     });
 }
 
+function updateGoatPose({
+    behavior,
+    delta,
+    moving,
+    now,
+    rig,
+    swimming,
+    walkDistance,
+}: {
+    behavior: FarmAnimalBehavior;
+    delta: number;
+    moving: boolean;
+    now: number;
+    rig: FarmAnimalRig;
+    swimming: boolean;
+    walkDistance: number;
+}) {
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        moving ? 1 : 0,
+        10,
+        delta,
+    );
+    if (moving) {
+        rig.walkPhase =
+            (walkDistance / goatConfig.walkCycleDistance) * fullTurn;
+    }
+
+    const walkAmount = rig.walkPoseAmount;
+    const diagonal =
+        Math.sin(rig.walkPhase) * (swimming ? 0.56 : 0.48) * walkAmount;
+    const hop = getGoatPlayHopAmount({ behavior, moving, now });
+    rig.legs.forEach((leg, index) => {
+        const isFrontLeg = index <= 1;
+        const step = index === 0 || index === 3 ? diagonal : -diagonal;
+        poseRigNode(leg, delta, {
+            rotationX:
+                (swimming ? -0.24 : 0) +
+                step +
+                hop * (isFrontLeg ? -0.72 : 0.26),
+        });
+    });
+
+    poseRigNode(rig.body, delta, {
+        positionY: swimming
+            ? 0.025 + Math.sin(now * 5.2) * 0.012
+            : moving
+              ? Math.max(0, Math.sin(rig.walkPhase * 2)) * 0.022
+              : hop * 0.14,
+        rotationX: swimming ? -0.05 : -hop * 0.2,
+    });
+    poseRigNode(rig.neck, delta, {
+        rotationX:
+            behavior === 'browse' && !moving ? -0.28 : hop > 0 ? 0.16 : 0,
+    });
+    poseRigNode(rig.head, delta, {
+        rotationX: getGoatHeadPitch({
+            behavior,
+            moving,
+            now,
+            swimming,
+        }),
+        rotationY:
+            !moving && behavior === 'roam' ? Math.sin(now * 0.9) * 0.14 : 0,
+        rotationZ:
+            !moving &&
+            (behavior === 'approach-avatar' ||
+                behavior === 'retreat-avatar' ||
+                behavior === 'follow-avatar')
+                ? Math.sin(now * 1.5) * 0.055
+                : 0,
+    });
+
+    const chewing =
+        !moving && (behavior === 'browse' || behavior === 'chew') ? 1 : 0;
+    poseRigNode(rig.jaw, delta, {
+        rotationX: chewing * (0.08 + Math.max(0, Math.sin(now * 5.4)) * 0.13),
+        rotationY: chewing * Math.sin(now * 2.7) * 0.035,
+    });
+    rig.ears.forEach((ear, index) => {
+        const side = index === 0 ? -1 : 1;
+        poseRigNode(ear, delta, {
+            rotationY: side * Math.sin(now * 1.15 + index) * 0.055,
+            rotationZ:
+                side * 0.06 + Math.sin(now * 4.6 + index * Math.PI) * 0.12,
+        });
+    });
+    const curious =
+        behavior === 'approach-avatar' ||
+        behavior === 'retreat-avatar' ||
+        behavior === 'follow-avatar';
+    poseRigNode(rig.tail, delta, {
+        rotationX: moving ? Math.sin(rig.walkPhase * 2) * 0.08 : 0,
+        rotationY:
+            Math.sin(now * (curious ? 8.2 : 5.4)) * (curious ? 0.32 : 0.16),
+    });
+}
+
 function roundCoordinate(value: number) {
     return Math.round(value * 100) / 100;
 }
@@ -1285,6 +1679,11 @@ function isSpeciesBehavior(
 ): behavior is FarmAnimalBehavior {
     if (species === 'Chicken') {
         return ['home', 'roam', 'forage', 'dust-bathe', 'cover'].includes(
+            behavior,
+        );
+    }
+    if (species === 'Goat') {
+        return ['home', 'roam', 'browse', 'chew', 'play-hop', 'cover'].includes(
             behavior,
         );
     }
@@ -1320,6 +1719,7 @@ function FarmAnimal({
     const lastDebugCommandSequenceRef = useRef(0);
     const followAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
     const nextFollowRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
+    const nextCuriosityAtRef = useRef(0);
     const debugPathKeyRef = useRef('');
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
@@ -1476,7 +1876,7 @@ function FarmAnimal({
     }
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
-        if (habitat.species !== 'Sheep') {
+        if (habitat.species !== 'Goat' && habitat.species !== 'Sheep') {
             event.stopPropagation();
         }
     }
@@ -1562,7 +1962,19 @@ function FarmAnimal({
             isFreshGardenAvatarPresence(gardenAvatarPresence, now);
         if (canFollowAvatar && now >= nextFollowRepathAtRef.current) {
             const position =
-                getAnimalAvatarFollowPosition(gardenAvatarPresence);
+                habitat.species === 'Goat'
+                    ? goatCuriosityPosition({
+                          avatarPosition: gardenAvatarPresence.position,
+                          distance: animalAvatarFollowDistance,
+                          goatPosition: group.position,
+                          habitat,
+                      })
+                    : getAnimalAvatarFollowPosition(gardenAvatarPresence);
+            if (!position) {
+                nextFollowRepathAtRef.current =
+                    now + animalAvatarFollowRepathSeconds;
+                return;
+            }
             position.y = getAnimalMovementYAt(position, habitat.groundSurfaces);
             const avatarTargetCellIsBlocked = habitat.blockedCells.some(
                 (cell) =>
@@ -1598,6 +2010,50 @@ function FarmAnimal({
             runtimeRef.current = runtime;
             nextFollowRepathAtRef.current =
                 now + animalAvatarFollowRepathSeconds;
+        }
+
+        const freshAvatar = isFreshGardenAvatarPresence(
+            gardenAvatarPresence,
+            now,
+        );
+        const avatarDistance = freshAvatar
+            ? horizontalDistance(group.position, gardenAvatarPresence.position)
+            : Number.POSITIVE_INFINITY;
+        const curiosityReady = canGoatStartCuriosity({
+            avatarDistance,
+            canFollowAvatar,
+            freshAvatar,
+            nextCuriosityAt: nextCuriosityAtRef.current,
+            now,
+            phase: runtime.phase,
+            species: habitat.species,
+            targetBehavior: runtime.target.behavior,
+            timeOfDay,
+            weather,
+        });
+        if (curiosityReady && gardenAvatarPresence) {
+            const curiosityTarget = getGoatCuriosityTarget({
+                avatarPosition: gardenAvatarPresence.position,
+                goatPosition: group.position,
+                habitat,
+            });
+            if (curiosityTarget) {
+                runtime = resolveFarmAnimalRuntimeForTarget({
+                    from: group.position,
+                    habitat,
+                    now,
+                    random,
+                    target: curiosityTarget,
+                    timeOfDay,
+                    weather,
+                });
+                runtimeRef.current = runtime;
+                nextCuriosityAtRef.current =
+                    now +
+                    (curiosityTarget.behavior === 'retreat-avatar'
+                        ? 3
+                        : 7 + random() * 5);
+            }
         }
 
         if (
@@ -1790,6 +2246,16 @@ function FarmAnimal({
                 swimming: locomotion === 'swimming',
                 walkDistance,
             });
+        } else if (habitat.species === 'Goat') {
+            updateGoatPose({
+                behavior: activeRuntime.target.behavior,
+                delta,
+                moving: activeRuntime.phase === 'moving',
+                now,
+                rig: model.rig,
+                swimming: locomotion === 'swimming',
+                walkDistance,
+            });
         } else if (habitat.species === 'Piglet') {
             updatePigletPose({
                 behavior: activeRuntime.target.behavior,
@@ -1857,9 +2323,11 @@ function FarmAnimal({
             const debugBehaviors =
                 habitat.species === 'Chicken'
                     ? ['home', 'roam', 'forage', 'dust-bathe', 'cover']
-                    : habitat.species === 'Piglet'
-                      ? ['home', 'roam', 'root', 'wallow', 'cover']
-                      : ['home', 'roam', 'graze', 'chew-cud'];
+                    : habitat.species === 'Goat'
+                      ? ['home', 'roam', 'browse', 'chew', 'play-hop', 'cover']
+                      : habitat.species === 'Piglet'
+                        ? ['home', 'roam', 'root', 'wallow', 'cover']
+                        : ['home', 'roam', 'graze', 'chew-cud'];
             const entry = {
                 activity:
                     runtime.phase === 'moving'
@@ -2075,6 +2543,58 @@ export function Sheep({
             stacks={stacks}
             weather={weather}
             weatherDisabled={weatherDisabled}
+        />
+    );
+}
+
+export function Goat({
+    block,
+    farmId,
+    stack,
+    stacks,
+    weather,
+    weatherDisabled = false,
+}: EntityInstanceProps) {
+    const { data: blockData } = useBlockData();
+    const gameWeather = useGameState((state) => state.weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
+    const resolvedWeather = resolveFarmAnimalWeather({
+        gameWeather,
+        weatherDisabled,
+        weatherNow,
+        weatherOverride: weather,
+    });
+    const habitatStacks = useMemo(() => {
+        const availableStacks = stacks ?? [];
+        const containsGoat = availableStacks.some((candidateStack) =>
+            candidateStack.blocks.some(
+                (candidateBlock) => candidateBlock.id === block.id,
+            ),
+        );
+        return containsGoat ? availableStacks : [...availableStacks, stack];
+    }, [block.id, stack, stacks]);
+    const habitat = useMemo(
+        () =>
+            createFarmAnimalHabitatsForSpecies({
+                blockData,
+                species: 'Goat',
+                stacks: habitatStacks,
+            }).find((candidate) => candidate.home.id === `home-${block.id}`) ??
+            null,
+        [block.id, blockData, habitatStacks],
+    );
+    if (!habitat) {
+        return null;
+    }
+
+    return (
+        <FarmAnimal
+            config={goatConfig}
+            habitat={habitat}
+            weather={resolvedWeather}
         />
     );
 }

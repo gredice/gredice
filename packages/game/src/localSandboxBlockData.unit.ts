@@ -208,6 +208,14 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             name: 'DogHouse',
         },
         {
+            name: 'Goat',
+            label: 'Koza',
+            height: 0.72,
+            hitboxDepth: 0.72,
+            hitboxHeight: 0.72,
+            hitboxWidth: 0.5,
+        },
+        {
             name: 'PigletPen',
             label: 'Obor za praščića',
             height: 0.78,

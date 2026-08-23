@@ -189,6 +189,7 @@ const petItems: HudItemEntity[] = [
     { type: 'entity', name: 'CatPillow' },
     { type: 'entity', name: 'ChickenCoop' },
     { type: 'entity', name: 'DogHouse' },
+    { type: 'entity', name: 'Goat' },
     { type: 'entity', name: 'Horse' },
     { type: 'entity', name: 'PigletPen' },
     { type: 'entity', name: 'Rabbit' },

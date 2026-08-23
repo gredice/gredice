@@ -270,14 +270,20 @@ function useAdaptiveHighInteractionActivity(enabled: boolean) {
 
 function GameSceneEntitySlot({
     block,
+    farmId,
     noControls,
     stack,
     stacks,
+    weather,
+    weatherDisabled,
 }: {
     block: Block;
+    farmId?: number | null;
     noControls: boolean | undefined;
     stack: Stack;
     stacks: Stack[];
+    weather?: Partial<NonNullable<GameState['weather']>>;
+    weatherDisabled: boolean;
 }) {
     const placementDropAnimationRenderId = useGameState((state) =>
         getBlockPlacementDropAnimationRenderIdForBlockId(
@@ -294,9 +300,12 @@ function GameSceneEntitySlot({
             name={block.name}
             stack={stack}
             block={block}
+            farmId={farmId}
             stacks={stacks}
             rotation={block.rotation}
             variant={block.variant}
+            weather={weather}
+            weatherDisabled={weatherDisabled}
             noRenderInView={instancedBlockNames}
             noControl={noControls}
         />
@@ -636,9 +645,14 @@ export function GameScene({
                                             <GameSceneEntitySlot
                                                 key={slotKey}
                                                 block={block}
+                                                farmId={garden.farmId}
                                                 noControls={noControls}
                                                 stack={stack}
                                                 stacks={garden.stacks}
+                                                weather={weather}
+                                                weatherDisabled={
+                                                    weatherDisabled
+                                                }
                                             />
                                         );
                                     }),
