@@ -172,7 +172,6 @@ export type GLTFResult = GLTF & {
         Goat_Ear_R: THREE.Mesh;
         Goat_Jaw: THREE.Mesh;
         Goat_Beard: THREE.Mesh;
-        Goat_Collar: THREE.Mesh;
         Goat_Eye_L: THREE.Mesh;
         Goat_Eye_R: THREE.Mesh;
         Goat_EyeGlint_L: THREE.Mesh;
@@ -181,8 +180,9 @@ export type GLTFResult = GLTF & {
         Goat_Horn_L: THREE.Mesh;
         Goat_Horn_R: THREE.Mesh;
         Goat_Muzzle: THREE.Mesh;
-        Goat_SunflowerCharm: THREE.Mesh;
+        Goat_Collar: THREE.Mesh;
         Goat_Neck: THREE.Mesh;
+        Goat_SunflowerCharm: THREE.Mesh;
         Goat_Tail: THREE.Mesh;
         Goat_Body: THREE.Mesh;
         Goat_Chest: THREE.Mesh;

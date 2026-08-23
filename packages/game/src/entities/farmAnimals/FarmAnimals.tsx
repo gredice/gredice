@@ -210,7 +210,7 @@ const goatConfig = {
     homeBlockName: 'Goat',
     homeDoorOffset: 0,
     petHeartsOffsetY: 0.72,
-    scale: 0.42,
+    scale: 0.392,
     shadowSpecies: 'goat',
     speechBubbleOffsetY: 0.8,
     speechMessages: goatSpeechMessages,
@@ -757,6 +757,47 @@ export function getGoatCuriosityTarget({
         ),
         position,
     } satisfies FarmAnimalTarget;
+}
+
+export function canGoatStartCuriosity({
+    avatarDistance,
+    canFollowAvatar,
+    freshAvatar,
+    nextCuriosityAt,
+    now,
+    phase,
+    species,
+    targetBehavior,
+    timeOfDay,
+    weather,
+}: {
+    avatarDistance: number;
+    canFollowAvatar: boolean;
+    freshAvatar: boolean;
+    nextCuriosityAt: number;
+    now: number;
+    phase: FarmAnimalRuntimeState['phase'];
+    species: FarmAnimalSpecies;
+    targetBehavior: FarmAnimalBehavior;
+    timeOfDay: number;
+    weather: FarmAnimalWeather | null | undefined;
+}) {
+    if (
+        canFollowAvatar ||
+        !freshAvatar ||
+        species !== 'Goat' ||
+        now < nextCuriosityAt ||
+        isFarmAnimalNight(timeOfDay) ||
+        isFarmAnimalAdverseWeather(species, weather) ||
+        (phase === 'moving' &&
+            (targetBehavior === 'home' || targetBehavior === 'retreat-avatar'))
+    ) {
+        return false;
+    }
+
+    return (
+        avatarDistance < goatCuriosityRetreatThreshold || phase === 'settled'
+    );
 }
 
 export function chooseNextFarmAnimalTarget({
@@ -1715,14 +1756,19 @@ function FarmAnimal({
         const avatarDistance = freshAvatar
             ? horizontalDistance(group.position, gardenAvatarPresence.position)
             : Number.POSITIVE_INFINITY;
-        const curiosityReady =
-            !canFollowAvatar &&
-            freshAvatar &&
-            habitat.species === 'Goat' &&
-            (avatarDistance < goatCuriosityRetreatThreshold ||
-                (runtime.phase === 'settled' &&
-                    now >= nextCuriosityAtRef.current));
-        if (curiosityReady) {
+        const curiosityReady = canGoatStartCuriosity({
+            avatarDistance,
+            canFollowAvatar,
+            freshAvatar,
+            nextCuriosityAt: nextCuriosityAtRef.current,
+            now,
+            phase: runtime.phase,
+            species: habitat.species,
+            targetBehavior: runtime.target.behavior,
+            timeOfDay,
+            weather,
+        });
+        if (curiosityReady && gardenAvatarPresence) {
             const curiosityTarget = getGoatCuriosityTarget({
                 avatarPosition: gardenAvatarPresence.position,
                 goatPosition: group.position,
@@ -2133,9 +2179,26 @@ export function Piglets({
     );
 }
 
-export function Goat({ block, stack, stacks }: EntityInstanceProps) {
+export function Goat({
+    block,
+    farmId,
+    stack,
+    stacks,
+    weather,
+    weatherDisabled = false,
+}: EntityInstanceProps) {
     const { data: blockData } = useBlockData();
     const gameWeather = useGameState((state) => state.weather);
+    const { data: weatherNow } = useWeatherNow(
+        !weatherDisabled && !weather,
+        farmId,
+    );
+    const resolvedWeather = resolveFarmAnimalWeather({
+        gameWeather,
+        weatherDisabled,
+        weatherNow,
+        weatherOverride: weather,
+    });
     const habitatStacks = useMemo(() => {
         const availableStacks = stacks ?? [];
         const containsGoat = availableStacks.some((candidateStack) =>
@@ -2163,11 +2226,7 @@ export function Goat({ block, stack, stacks }: EntityInstanceProps) {
         <FarmAnimal
             config={goatConfig}
             habitat={habitat}
-            weather={
-                gameWeather
-                    ? { ...clearFarmAnimalWeather, ...gameWeather }
-                    : undefined
-            }
+            weather={resolvedWeather}
         />
     );
 }

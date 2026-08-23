@@ -63,8 +63,11 @@ export function areEntityFactoryPropsEqual(
         previous.name !== next.name ||
         previous.rotation !== next.rotation ||
         previous.variant !== next.variant ||
+        previous.farmId !== next.farmId ||
         previous.noControl !== next.noControl ||
         previous.noRenderInView !== next.noRenderInView ||
+        previous.weather !== next.weather ||
+        previous.weatherDisabled !== next.weatherDisabled ||
         previousInstanced !== nextInstanced
     ) {
         return false;

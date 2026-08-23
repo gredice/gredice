@@ -875,7 +875,8 @@ def create_goat(output_dir: Path) -> None:
 
     for obj in (body, chest, coat_patches):
         parent_keep_transform(obj, body_pivot)
-    parent_keep_transform(neck, neck_pivot)
+    for obj in (neck, collar_ring, sunflower_charm):
+        parent_keep_transform(obj, neck_pivot)
     for obj in (
         head,
         muzzle,
@@ -884,8 +885,6 @@ def create_goat(output_dir: Path) -> None:
         eye_right,
         glint_left,
         glint_right,
-        collar_ring,
-        sunflower_charm,
     ):
         parent_keep_transform(obj, head_pivot)
     parent_keep_transform(jaw, jaw_pivot)

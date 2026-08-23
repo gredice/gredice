@@ -535,7 +535,7 @@
             "name": "Goat",
             "source": "Goat.blend",
             "output": "Goat.glb",
-            "version": "2ec92da13dfe",
+            "version": "06164344617b",
             "preload": "lazy",
             "objects": [
                 "Goat_Root",

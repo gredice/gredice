@@ -3,6 +3,7 @@ import test from 'node:test';
 import { Vector3 } from 'three';
 import type { Stack } from '../../types/Stack';
 import {
+    canGoatStartCuriosity,
     chooseNextFarmAnimalTarget,
     createFarmAnimalHabitatsForSpecies,
     getChickenHeadPitch,
@@ -191,6 +192,51 @@ test('keeps goat avatar approach and retreat targets on unoccupied terrain', () 
     assert.ok(retreat);
     assert.equal(retreat.behavior, 'retreat-avatar');
     assert.ok(retreat.position.distanceTo(new Vector3(0.2, 0.024, 0)) > 1);
+});
+
+test('suppresses goat curiosity during sheltering and active retreat cooldowns', () => {
+    const eligible = {
+        avatarDistance: 0.5,
+        canFollowAvatar: false,
+        freshAvatar: true,
+        nextCuriosityAt: 0,
+        now: 10,
+        phase: 'settled' as const,
+        species: 'Goat' as const,
+        targetBehavior: 'chew' as const,
+        timeOfDay: 0.5,
+        weather: undefined,
+    };
+
+    assert.equal(canGoatStartCuriosity(eligible), true);
+    assert.equal(canGoatStartCuriosity({ ...eligible, timeOfDay: 0.9 }), false);
+    assert.equal(
+        canGoatStartCuriosity({
+            ...eligible,
+            weather: { rainy: 1 },
+        }),
+        false,
+    );
+    assert.equal(
+        canGoatStartCuriosity({ ...eligible, nextCuriosityAt: 11 }),
+        false,
+    );
+    assert.equal(
+        canGoatStartCuriosity({
+            ...eligible,
+            phase: 'moving',
+            targetBehavior: 'retreat-avatar',
+        }),
+        false,
+    );
+    assert.equal(
+        canGoatStartCuriosity({
+            ...eligible,
+            phase: 'moving',
+            targetBehavior: 'home',
+        }),
+        false,
+    );
 });
 
 test('keeps goat cover targets outside the occupied tree cell', () => {
