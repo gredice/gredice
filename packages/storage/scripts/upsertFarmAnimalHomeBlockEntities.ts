@@ -14,7 +14,8 @@ import {
 
 // Deploy the runtime models and public covers before using --apply. The default
 // dry-run prevents animal catalogue entries from pointing at assets that are
-// not live. Rabbit is a directly placeable animal; the other entries are homes.
+// not live. Goat and Rabbit are directly placeable animals; the other entries
+// are homes.
 
 const actor = {
     id: 'codex',
@@ -82,6 +83,17 @@ const blockSpecs = [
         height: 0.86,
         hitboxDepth: 0.97,
         hitboxWidth: 0.76,
+    }),
+    animalBlockSpec({
+        name: 'Goat',
+        label: 'Koza',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+        fullDescription:
+            'Smjesti kozu na slobodno mjesto u vrtu. Istraživat će prohodne staze, brstiti i preživati, povremeno razigrano poskočiti te ti oprezno prići prije nego što se odmakne na ugodnu udaljenost.',
+        height: 0.72,
+        hitboxDepth: 0.72,
+        hitboxWidth: 0.5,
     }),
     animalBlockSpec({
         name: 'PigletPen',

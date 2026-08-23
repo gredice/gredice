@@ -190,7 +190,7 @@ test('local sandbox stool metadata matches the reduced model', () => {
     assert.equal(stool?.attributes.hitboxWidth, 0.66);
 });
 
-test('local sandbox exposes animal blocks used by the item HUD', () => {
+test('local sandbox exposes animal placement blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const expectedHomes = [
         {
@@ -206,6 +206,14 @@ test('local sandbox exposes animal blocks used by the item HUD', () => {
         },
         {
             name: 'DogHouse',
+        },
+        {
+            name: 'Goat',
+            label: 'Koza',
+            height: 0.72,
+            hitboxDepth: 0.72,
+            hitboxHeight: 0.72,
+            hitboxWidth: 0.5,
         },
         {
             name: 'PigletPen',

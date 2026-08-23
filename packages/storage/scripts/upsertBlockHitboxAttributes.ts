@@ -33,6 +33,7 @@ const blockHitboxes = {
     BaleHey: { width: 0.44, height: 0.36, depth: 0.82 },
     BirdHouse: { width: 0.72, height: 1.3, depth: 0.72 },
     ChickenCoop: { width: 0.76, height: 0.86, depth: 0.97 },
+    Goat: { width: 0.5, height: 0.72, depth: 0.72 },
     Block_Grass: cell(0.4),
     Block_Grass_Angle: cell(0.4),
     Block_Grass_Corner: cell(0.4),
@@ -124,6 +125,7 @@ const blockVisualHeights = {
     Block_Sand_Corner: 0.4,
     Block_Sand_Reverse_Corner: 0.4,
     ChickenCoop: 0.86,
+    Goat: 0.72,
     PigletPen: 0.78,
     Stool: 0.39,
 } satisfies Record<string, number>;
