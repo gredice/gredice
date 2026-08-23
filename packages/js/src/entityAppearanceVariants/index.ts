@@ -100,6 +100,14 @@ export const horseAppearanceVariants = defineAppearanceVariants('Horse', [
     },
 ]);
 
+export const rabbitAppearanceVariants = defineAppearanceVariants('Rabbit', [
+    { id: 'chestnut-agouti', value: 0 },
+    { id: 'cream', value: 1 },
+]);
+
+export type RabbitAppearanceVariant =
+    (typeof rabbitAppearanceVariants.variants)[number]['value'];
+
 export type HorseAppearanceVariant =
     (typeof horseAppearanceVariants.variants)[number]['value'];
 
@@ -124,19 +132,76 @@ const horseLegacyFallbackVariants: readonly HorseAppearanceVariant[] = [
     0, 1, 2, 3, 4, 5,
 ];
 
+const appearanceVariantDefinitions = [
+    horseAppearanceVariants,
+    rabbitAppearanceVariants,
+] as const;
+
+export function getEntityAppearanceVariantDefinition(entityName: string) {
+    return (
+        appearanceVariantDefinitions.find(
+            (definition) => definition.entityName === entityName,
+        ) ?? null
+    );
+}
+
 export function isAppearanceVariantEntityName(
     entityName: string,
-): entityName is typeof horseAppearanceVariants.entityName {
-    return entityName === horseAppearanceVariants.entityName;
+): entityName is (typeof appearanceVariantDefinitions)[number]['entityName'] {
+    return getEntityAppearanceVariantDefinition(entityName) !== null;
 }
 
 export function isValidEntityAppearanceVariant(
     entityName: string,
     variant: unknown,
 ) {
+    const definition = getEntityAppearanceVariantDefinition(entityName);
+    return definition?.isVariant(variant) ?? false;
+}
+
+function normalizedRandomIndex(randomValue: number, length: number) {
+    if (!Number.isFinite(randomValue)) {
+        return 0;
+    }
+
+    const normalized = Math.min(Math.max(randomValue, 0), 1 - Number.EPSILON);
+    return Math.floor(normalized * length);
+}
+
+export function createEntityAppearanceVariantForPlacement(
+    entityName: string,
+    random: () => number,
+) {
+    if (entityName !== rabbitAppearanceVariants.entityName) {
+        return undefined;
+    }
+
+    const definition =
+        rabbitAppearanceVariants.variants[
+            normalizedRandomIndex(
+                random(),
+                rabbitAppearanceVariants.variants.length,
+            )
+        ] ?? rabbitAppearanceVariants.variants[0];
+    return definition.value;
+}
+
+export function isEntityAppearanceVariantUpdateAllowed({
+    entityName,
+    currentVariant,
+    requestedVariant,
+}: {
+    entityName: string;
+    currentVariant: number | null;
+    requestedVariant: number | null;
+}) {
+    if (!isAppearanceVariantEntityName(entityName)) {
+        return true;
+    }
+
     return (
-        isAppearanceVariantEntityName(entityName) &&
-        horseAppearanceVariants.isVariant(variant)
+        currentVariant === requestedVariant &&
+        isValidEntityAppearanceVariant(entityName, requestedVariant)
     );
 }
 
@@ -157,4 +222,23 @@ export function resolveHorseAppearanceVariant(
         throw new Error('Horse legacy appearance fallback is empty');
     }
     return fallback;
+}
+
+export function resolveRabbitAppearanceVariant(
+    persistedVariant: unknown,
+    immutableBlockId: string,
+): RabbitAppearanceVariant {
+    if (rabbitAppearanceVariants.isVariant(persistedVariant)) {
+        return persistedVariant;
+    }
+
+    const fallback =
+        rabbitAppearanceVariants.variants[
+            fnv1a32(`Rabbit:${immutableBlockId}`) %
+                rabbitAppearanceVariants.variants.length
+        ];
+    if (!fallback) {
+        throw new Error('Rabbit legacy appearance fallback is empty');
+    }
+    return fallback.value;
 }

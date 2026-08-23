@@ -1,5 +1,7 @@
 import {
+    createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
+    isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
@@ -2907,7 +2909,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (isAppearanceVariantEntityName(block.name)) {
                 return context.json(
                     {
-                        error: 'Konja nije moguće spremiti u vrtnu kutiju.',
+                        error: 'Životinju s odabranom bojom nije moguće spremiti u vrtnu kutiju.',
                     },
                     400,
                 );
@@ -3057,8 +3059,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
             'json',
             z.object({
                 blockName: z.string(),
-                variant: z.number().int().nonnegative().optional(),
                 expectedExistingBlocks: z.array(z.string()).optional(),
+                variant: z.number().int().nonnegative().optional(),
                 position: z
                     .object({
                         x: z.number().int(),
@@ -3093,24 +3095,41 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, expectedExistingBlocks, position, variant } =
-                context.req.valid('json');
+            const {
+                blockName,
+                expectedExistingBlocks,
+                position,
+                variant: requestedVariant,
+            } = context.req.valid('json');
 
             if (
-                isAppearanceVariantEntityName(blockName) &&
-                !isValidEntityAppearanceVariant(blockName, variant)
+                !isAppearanceVariantEntityName(blockName) &&
+                requestedVariant !== undefined
             ) {
                 return context.json(
-                    { error: 'Odaberi boju konja prije postavljanja.' },
+                    { error: 'Ovaj predmet nema varijante izgleda.' },
                     400,
                 );
             }
             if (
-                !isAppearanceVariantEntityName(blockName) &&
-                variant !== undefined
+                requestedVariant !== undefined &&
+                !isValidEntityAppearanceVariant(blockName, requestedVariant)
             ) {
                 return context.json(
-                    { error: 'Ovaj predmet nema varijante izgleda.' },
+                    { error: 'Neispravna varijanta izgleda predmeta.' },
+                    400,
+                );
+            }
+            const appearanceVariant =
+                requestedVariant ??
+                createEntityAppearanceVariantForPlacement(
+                    blockName,
+                    Math.random,
+                ) ??
+                null;
+            if (blockName === 'Horse' && appearanceVariant === null) {
+                return context.json(
+                    { error: 'Odaberi boju konja prije postavljanja.' },
                     400,
                 );
             }
@@ -3206,7 +3225,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockName,
                 cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
-                    createGardenBlock,
+                    createGardenBlock: (targetGardenId, name, variant) =>
+                        createGardenBlock(targetGardenId, name, variant),
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
                     spendSunflowers: garden.isSandbox
@@ -3222,7 +3242,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     y,
                     existingBlocks,
                 },
-                variant,
+                variant: appearanceVariant,
             });
             if (!purchaseResult.ok) {
                 return context.json(
@@ -3285,11 +3305,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
             if (
                 variant !== undefined &&
-                isAppearanceVariantEntityName(block.name)
+                !isEntityAppearanceVariantUpdateAllowed({
+                    entityName: block.name,
+                    currentVariant: block.variant,
+                    requestedVariant: variant,
+                })
             ) {
                 return context.json(
                     {
-                        error: 'Boju konja nije moguće promijeniti nakon postavljanja.',
+                        error: 'Boju životinje nije moguće promijeniti nakon postavljanja.',
                     },
                     400,
                 );
@@ -3297,7 +3321,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (
                 rotation !== undefined &&
                 rotation !== block.rotation &&
-                isAppearanceVariantEntityName(block.name)
+                block.name === 'Horse'
             ) {
                 return context.json(
                     {

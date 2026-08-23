@@ -7,6 +7,8 @@ export type GardenPet = {
     genitive: string;
     /** Name of the block that brings the animal into the garden. */
     homeBlockName: string;
+    /** Whether this block is the animal itself instead of a separate home. */
+    directlyPlaceable?: boolean;
     /** Sound the animal makes in the garden. */
     sound: string;
     shortDescription: string;
@@ -24,6 +26,31 @@ export type GardenPet = {
 };
 
 export const gardenPets = [
+    {
+        slug: 'zec',
+        name: 'Zec',
+        genitive: 'zeca',
+        homeBlockName: 'Rabbit',
+        directlyPlaceable: true,
+        sound: 'Njušk!',
+        shortDescription:
+            'Znatiželjni zec koji skakuće, njuška, uređuje krzno i kratko pase.',
+        fullDescription:
+            'Zec skakuće u kratkim naletima pa zastaje kako bi osluškivao vrt i njuškao okolinu. Sjeda, uređuje krzno i povremeno kratko gricka travu. Kad mu se avatar previše približi, brzo se udalji sigurnom rutom koja obilazi prepreke.',
+        habits: [
+            'Skakuće u kratkim naletima s mirnim stankama',
+            'Njuška i neovisno okreće ili trza ušima',
+            'Sjeda i uređuje krzno',
+            'Kratko gricka travu',
+            'Brzo se udalji od avatara obilazeći prepreke',
+        ],
+        dayRangeBlocks: 5.5,
+        nightRoutine:
+            'Nastavlja skakutati u kratkim naletima unutar svojeg sigurnog raspona.',
+        weatherRoutine:
+            'Nastavlja svoju mirnu rutinu samo po sigurnom, prohodnom tlu.',
+        searchTerms: ['zecic', 'kunić', 'kunic', 'rabbit'],
+    },
     {
         slug: 'pas',
         name: 'Pas',

@@ -267,6 +267,7 @@ const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     PanelRightClose,
     Paperclip,
     Password,
+    PawPrint,
     Pause,
     PawPrint,
     People,
