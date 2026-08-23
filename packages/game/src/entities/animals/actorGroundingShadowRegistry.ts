@@ -6,7 +6,8 @@ export type ActorGroundingShadowSpecies =
     | 'cat'
     | 'chicken'
     | 'dog'
-    | 'piglet';
+    | 'piglet'
+    | 'squirrel';
 
 export type ActorGroundingShadowState = {
     actorY: number;
@@ -128,6 +129,13 @@ export const actorGroundingShadowProfiles = {
         baseOpacity: 0.34,
         cutoffHeight: 1.1,
         maxFootprintScale: 1.6,
+    },
+    squirrel: {
+        baseHalfLength: 0.26,
+        baseHalfWidth: 0.18,
+        baseOpacity: 0.3,
+        cutoffHeight: 0.9,
+        maxFootprintScale: 1.55,
     },
 } satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;
 

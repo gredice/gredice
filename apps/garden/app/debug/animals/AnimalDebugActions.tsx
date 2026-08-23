@@ -211,6 +211,28 @@ function createBeeStacks() {
     return serializeStacks(stacks);
 }
 
+function createSquirrelStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -4, 0, 'Tree');
+    placeBlock(stacks, 4, 1, 'Pine');
+    placeBlock(stacks, -1, -2, 'GardenBox');
+    placeBlock(stacks, 1, 2, 'Composter');
+    placeBlock(stacks, 0, -3, 'Bucket');
+    for (let z = -4; z <= 1; z += 1) {
+        if (z !== -1) {
+            placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+        }
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -224,6 +246,7 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
     placeBlock(stacks, 2, 0, 'Tree');
+    placeBlock(stacks, 5, 1, 'Pine');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
     placeBlock(stacks, -4, 3, 'StoneMedium');
@@ -351,6 +374,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Bees
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createSquirrelStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Squirrels
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
