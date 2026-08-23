@@ -14,6 +14,7 @@ const minimumBlockHitboxSizes: Record<string, BlockHitboxSize> = {
     DeadTreeStump: { width: 0.45, height: 0.98, depth: 0.75 },
     DeadTreeTall: { width: 1.4, height: 1.8, depth: 0.52 },
     PigletPen: { width: 0.94, height: 0.78, depth: 0.89 },
+    Sheep: { width: 0.64, height: 0.64, depth: 0.92 },
     Pine: { width: 1.12, height: 2.77, depth: 1.12 },
     PineAdvent: { width: 1.12, height: 2.77, depth: 1.12 },
     Shade: { width: 1, height: 1.05, depth: 1 },

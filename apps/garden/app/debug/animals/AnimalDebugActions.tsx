@@ -176,6 +176,29 @@ function createPigletPathfindingStacks() {
     return serializeStacks(stacks);
 }
 
+function createSheepPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -4, -1, 'Sheep');
+    placeBlock(stacks, -4, 1, 'Sheep');
+    placeBlock(stacks, -2, 0, 'Sheep');
+    placeBlock(stacks, 3, -2, 'Tree');
+    placeBlock(stacks, 3, 2, 'StoneMedium');
+    for (let z = -4; z <= 1; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+    for (let x = 2; x <= 5; x += 1) {
+        placeBlock(stacks, x, 0, 'Block_Water');
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createBirdStacks() {
     const stacks = createGroundStacks({
         minX: -4,
@@ -223,6 +246,8 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
+    placeBlock(stacks, -3, 1, 'Sheep');
+    placeBlock(stacks, -1, 3, 'Sheep');
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -329,6 +354,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Piglet path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createSheepPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Sheep flock
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

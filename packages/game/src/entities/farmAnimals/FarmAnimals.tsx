@@ -36,6 +36,7 @@ import { configureActorMeshShadows } from '../animals/actorMeshShadows';
 import {
     chickenSpeechMessages,
     pigletSpeechMessages,
+    sheepSpeechMessages,
 } from '../animals/actorSpeechMessages';
 import {
     animalAvatarFollowRepathSeconds,
@@ -52,7 +53,10 @@ import {
     isAnimalGroundBlockName,
     isAnimalSwimmingAt,
 } from '../animals/animalMovementTerrain';
-import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
+import {
+    animalPresenceUpdateIntervalSeconds,
+    freshAnimalPresences,
+} from '../animals/animalPresence';
 import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type CatPathCell,
@@ -70,6 +74,12 @@ import {
     isFarmAnimalNight,
     pickFarmAnimalBehavior,
 } from './farmAnimalBehavior';
+import {
+    adjustSheepTargetForFlock,
+    getSheepSeparationOffset,
+    pickSheepLocomotion,
+    type SheepLocomotion,
+} from './sheepBehavior';
 
 type FarmAnimalWeatherOverride = Partial<NonNullable<GameState['weather']>>;
 
@@ -101,6 +111,7 @@ type MovingFarmAnimalState = {
     pathDistance: number;
     pathfinding: CatPathResult;
     phase: 'moving';
+    sheepLocomotion?: SheepLocomotion;
     startedAt: number;
     target: FarmAnimalTarget;
     to: Vector3;
@@ -117,20 +128,21 @@ export type FarmAnimalRuntimeState =
     | SettledFarmAnimalState;
 
 type FarmAnimalConfig = {
-    assetName: 'Chicken' | 'Piglet';
+    assetName: 'Chicken' | 'Piglet' | 'Sheep';
     debugColor: string;
     groundLift: number;
-    homeBlockName: 'ChickenCoop' | 'PigletPen';
+    homeBlockName: 'ChickenCoop' | 'PigletPen' | 'Sheep';
     homeDoorOffset: number;
     petHeartsOffsetY: number;
     scale: number;
-    shadowSpecies: 'chicken' | 'piglet';
+    shadowSpecies: 'chicken' | 'piglet' | 'sheep';
     speechBubbleOffsetY: number;
     speechMessages: readonly string[];
     species: FarmAnimalSpecies;
     swimDepth: number;
     walkCycleDistance: number;
     walkSpeed: number;
+    trotSpeed?: number;
 };
 
 type RigNode = {
@@ -145,6 +157,7 @@ type FarmAnimalRig = {
     body: RigNode;
     ears: RigNode[];
     head: RigNode;
+    jaw: RigNode;
     legs: RigNode[];
     tail: RigNode;
     walkPhase: number;
@@ -196,6 +209,34 @@ const pigletConfig = {
     walkCycleDistance: 0.62,
     walkSpeed: 0.82,
 } satisfies FarmAnimalConfig;
+
+const sheepConfig = {
+    assetName: 'Sheep',
+    debugColor: '#d6c7aa',
+    groundLift: 0.025,
+    homeBlockName: 'Sheep',
+    homeDoorOffset: 0,
+    petHeartsOffsetY: 0.72,
+    scale: 0.46,
+    shadowSpecies: 'sheep',
+    speechBubbleOffsetY: 0.82,
+    speechMessages: sheepSpeechMessages,
+    species: 'Sheep',
+    swimDepth: 0,
+    trotSpeed: 1.16,
+    walkCycleDistance: 0.74,
+    walkSpeed: 0.58,
+} satisfies FarmAnimalConfig;
+
+function getFarmAnimalConfig(species: FarmAnimalSpecies) {
+    if (species === 'Chicken') {
+        return chickenConfig;
+    }
+    if (species === 'Piglet') {
+        return pigletConfig;
+    }
+    return sheepConfig;
+}
 
 function hashString(value: string) {
     let hash = 2166136261;
@@ -360,7 +401,9 @@ function createFarmAnimalHabitats({
         groundLift: config.groundLift,
         stacks,
         swimDepth: config.swimDepth,
-    });
+    }).filter(
+        (surface) => config.species !== 'Sheep' || surface.kind === 'ground',
+    );
     const covers: FarmAnimalTarget[] = [];
     const dustBaths: FarmAnimalTarget[] = [];
     const homes: Array<{
@@ -455,7 +498,7 @@ export function createFarmAnimalHabitatsForSpecies({
 }) {
     return createFarmAnimalHabitats({
         blockData,
-        config: species === 'Chicken' ? chickenConfig : pigletConfig,
+        config: getFarmAnimalConfig(species),
         stacks,
     });
 }
@@ -520,6 +563,10 @@ export function getFarmAnimalBehaviorAvailability(
         'dust-bathe':
             targetsInRange(habitat.dustBaths, habitat.home, range).length > 0,
         forage:
+            targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
+        graze:
+            targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
+        'chew-cud':
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
         roam:
             targetsInRange(habitat.roamAnchors, habitat.home, range).length > 0,
@@ -639,12 +686,14 @@ function makeMovingState({
     habitat,
     from,
     now,
+    random,
     target,
 }: {
     config: FarmAnimalConfig;
     habitat: FarmAnimalHabitat;
     from: Vector3;
     now: number;
+    random: () => number;
     target: FarmAnimalTarget;
 }) {
     const walkFrom = from.clone();
@@ -667,13 +716,22 @@ function makeMovingState({
         pathfinding.distance,
         pathHorizontalDistance(path),
     );
+    const sheepLocomotion =
+        habitat.species === 'Sheep'
+            ? pickSheepLocomotion({ distance: pathDistance, random })
+            : undefined;
+    const movementSpeed =
+        sheepLocomotion === 'trot'
+            ? (config.trotSpeed ?? config.walkSpeed)
+            : config.walkSpeed;
     return {
-        duration: MathUtils.clamp(pathDistance / config.walkSpeed, 0.55, 9),
+        duration: MathUtils.clamp(pathDistance / movementSpeed, 0.55, 9),
         groundSurfaces: habitat.groundSurfaces,
         path,
         pathDistance,
         pathfinding,
         phase: 'moving',
+        sheepLocomotion,
         startedAt: now,
         target,
         to: walkTo,
@@ -738,12 +796,13 @@ export function resolveFarmAnimalRuntimeForTarget({
         });
     }
 
-    const config = habitat.species === 'Chicken' ? chickenConfig : pigletConfig;
+    const config = getFarmAnimalConfig(habitat.species);
     const moving = makeMovingState({
         config,
         habitat,
         from,
         now,
+        random,
         target,
     });
     if (moving) {
@@ -796,6 +855,7 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
             body: getRigNode(root, 'Chicken_BodyPivot'),
             ears: [],
             head: getRigNode(root, 'Chicken_HeadPivot'),
+            jaw: getRigNode(root, 'Chicken_JawPivot'),
             legs: [
                 getRigNode(root, 'Chicken_LegPivot_L'),
                 getRigNode(root, 'Chicken_LegPivot_R'),
@@ -809,20 +869,42 @@ function createFarmAnimalRig(root: Object3D, species: FarmAnimalSpecies) {
             ],
         } satisfies FarmAnimalRig;
     }
+    if (species === 'Piglet') {
+        return {
+            body: getRigNode(root, 'Piglet_BodyPivot'),
+            ears: [
+                getRigNode(root, 'Piglet_EarPivot_L'),
+                getRigNode(root, 'Piglet_EarPivot_R'),
+            ],
+            head: getRigNode(root, 'Piglet_HeadPivot'),
+            jaw: getRigNode(root, 'Piglet_JawPivot'),
+            legs: [
+                getRigNode(root, 'Piglet_LegPivot_FL'),
+                getRigNode(root, 'Piglet_LegPivot_FR'),
+                getRigNode(root, 'Piglet_LegPivot_RL'),
+                getRigNode(root, 'Piglet_LegPivot_RR'),
+            ],
+            tail: getRigNode(root, 'Piglet_TailPivot'),
+            walkPhase: 0,
+            walkPoseAmount: 0,
+            wings: [],
+        } satisfies FarmAnimalRig;
+    }
     return {
-        body: getRigNode(root, 'Piglet_BodyPivot'),
+        body: getRigNode(root, 'Sheep_BodyPivot'),
         ears: [
-            getRigNode(root, 'Piglet_EarPivot_L'),
-            getRigNode(root, 'Piglet_EarPivot_R'),
+            getRigNode(root, 'Sheep_EarPivot_L'),
+            getRigNode(root, 'Sheep_EarPivot_R'),
         ],
-        head: getRigNode(root, 'Piglet_HeadPivot'),
+        head: getRigNode(root, 'Sheep_HeadPivot'),
+        jaw: getRigNode(root, 'Sheep_JawPivot'),
         legs: [
-            getRigNode(root, 'Piglet_LegPivot_FL'),
-            getRigNode(root, 'Piglet_LegPivot_FR'),
-            getRigNode(root, 'Piglet_LegPivot_RL'),
-            getRigNode(root, 'Piglet_LegPivot_RR'),
+            getRigNode(root, 'Sheep_LegPivot_FL'),
+            getRigNode(root, 'Sheep_LegPivot_FR'),
+            getRigNode(root, 'Sheep_LegPivot_RL'),
+            getRigNode(root, 'Sheep_LegPivot_RR'),
         ],
-        tail: getRigNode(root, 'Piglet_TailPivot'),
+        tail: getRigNode(root, 'Sheep_TailPivot'),
         walkPhase: 0,
         walkPoseAmount: 0,
         wings: [],
@@ -1062,6 +1144,106 @@ function updatePigletPose({
     });
 }
 
+export function getSheepHeadPitch({
+    behavior,
+    moving,
+    now,
+}: {
+    behavior: FarmAnimalBehavior;
+    moving: boolean;
+    now: number;
+}) {
+    if (moving) {
+        return 0.02 + Math.sin(now * 2.1) * 0.025;
+    }
+    if (behavior === 'graze') {
+        return -0.82 + Math.sin(now * 1.35) * 0.07;
+    }
+    return Math.sin(now * 0.72) * 0.055;
+}
+
+function updateSheepPose({
+    behavior,
+    delta,
+    moving,
+    now,
+    rig,
+    seed,
+    trotting,
+    walkDistance,
+}: {
+    behavior: FarmAnimalBehavior;
+    delta: number;
+    moving: boolean;
+    now: number;
+    rig: FarmAnimalRig;
+    seed: number;
+    trotting: boolean;
+    walkDistance: number;
+}) {
+    const phaseOffset = (seed % 997) / 997;
+    const localTime = now + phaseOffset * 6.4;
+    rig.walkPoseAmount = MathUtils.damp(
+        rig.walkPoseAmount,
+        moving ? 1 : 0,
+        8,
+        delta,
+    );
+    if (moving) {
+        rig.walkPhase =
+            (walkDistance / sheepConfig.walkCycleDistance) * fullTurn;
+    }
+    const gaitAmount = (trotting ? 0.62 : 0.43) * rig.walkPoseAmount;
+    const diagonal = Math.sin(rig.walkPhase) * gaitAmount;
+    rig.legs.forEach((leg, index) => {
+        poseRigNode(leg, delta, {
+            rotationX: index === 0 || index === 3 ? diagonal : -diagonal,
+        });
+    });
+
+    const breathing = Math.sin(localTime * 1.15) * 0.012;
+    const gaitLift = moving
+        ? Math.max(0, Math.sin(rig.walkPhase * 2)) * (trotting ? 0.045 : 0.022)
+        : 0;
+    poseRigNode(rig.body, delta, {
+        positionY: breathing + gaitLift,
+        rotationZ: moving ? Math.sin(rig.walkPhase) * 0.025 : 0,
+    });
+    poseRigNode(rig.head, delta, {
+        rotationX: getSheepHeadPitch({ behavior, moving, now: localTime }),
+        rotationY:
+            !moving && behavior !== 'graze'
+                ? Math.sin(localTime * 0.58) * 0.11
+                : 0,
+        rotationZ:
+            !moving && behavior === 'roam'
+                ? Math.sin(localTime * 0.82) * 0.06
+                : 0,
+    });
+
+    const chewing = behavior === 'chew-cud' && !moving;
+    poseRigNode(rig.jaw, delta, {
+        rotationX: chewing
+            ? 0.08 + Math.max(0, Math.sin(localTime * 3.4)) * 0.13
+            : 0,
+        rotationY: chewing ? Math.sin(localTime * 1.7) * 0.045 : 0,
+    });
+    rig.ears.forEach((ear, index) => {
+        const side = index === 0 ? 1 : -1;
+        poseRigNode(ear, delta, {
+            rotationX: Math.sin(localTime * 1.1 + index * 1.8) * 0.055,
+            rotationZ:
+                side *
+                Math.max(0, Math.sin(localTime * 1.65 + index * 2.2)) *
+                0.13,
+        });
+    });
+    const tailPulse = Math.max(0, Math.sin(localTime * 1.38) - 0.84) / 0.16;
+    poseRigNode(rig.tail, delta, {
+        rotationY: tailPulse * Math.sin(localTime * 11) * 0.48,
+    });
+}
+
 function roundCoordinate(value: number) {
     return Math.round(value * 100) / 100;
 }
@@ -1090,9 +1272,15 @@ function isSpeciesBehavior(
     species: FarmAnimalSpecies,
     behavior: string,
 ): behavior is FarmAnimalBehavior {
-    return species === 'Chicken'
-        ? ['home', 'roam', 'forage', 'dust-bathe', 'cover'].includes(behavior)
-        : ['home', 'roam', 'root', 'wallow', 'cover'].includes(behavior);
+    if (species === 'Chicken') {
+        return ['home', 'roam', 'forage', 'dust-bathe', 'cover'].includes(
+            behavior,
+        );
+    }
+    if (species === 'Piglet') {
+        return ['home', 'roam', 'root', 'wallow', 'cover'].includes(behavior);
+    }
+    return ['home', 'roam', 'graze', 'chew-cud'].includes(behavior);
 }
 
 function FarmAnimal({
@@ -1146,6 +1334,55 @@ function FarmAnimal({
     const removeAnimalPresenceEntry = useGameState(
         (state) => state.removeAnimalPresenceEntry,
     );
+
+    function getFreshSheepNeighbors(now: number) {
+        if (habitat.species !== 'Sheep') {
+            return [];
+        }
+        return freshAnimalPresences({
+            entries: gameStateStore.getState().animalPresenceEntries,
+            now,
+            species: 'Sheep',
+        }).map((entry) => ({
+            id: entry.id,
+            x: entry.position.x,
+            z: entry.position.z,
+        }));
+    }
+
+    function flockAwareTarget(target: FarmAnimalTarget, now: number) {
+        const group = groupRef.current;
+        if (
+            habitat.species !== 'Sheep' ||
+            !group ||
+            target.behavior === 'home' ||
+            target.behavior === 'follow-avatar'
+        ) {
+            return target;
+        }
+        const adjusted = adjustSheepTargetForFlock({
+            animalId: habitat.id,
+            from: group.position,
+            neighbors: getFreshSheepNeighbors(now),
+            target: target.position,
+        });
+        const position = target.position.clone();
+        position.x = adjusted.x;
+        position.z = adjusted.z;
+        position.y = getAnimalMovementYAt(position, habitat.groundSurfaces);
+        const cellIsBlocked = habitat.blockedCells.some(
+            (cell) =>
+                cell.x === Math.round(position.x) &&
+                cell.z === Math.round(position.z),
+        );
+        if (
+            cellIsBlocked ||
+            !canAnimalSettleAt(position, habitat.groundSurfaces)
+        ) {
+            return target;
+        }
+        return { ...target, position } satisfies FarmAnimalTarget;
+    }
 
     const model = useMemo(() => {
         const scene = gltf.scene.clone(true);
@@ -1233,12 +1470,15 @@ function FarmAnimal({
             return;
         }
         const now = clock.getElapsedTime();
-        const target = chooseNextFarmAnimalTarget({
-            habitat,
-            random: randomRef.current,
-            timeOfDay,
-            weather,
-        });
+        const target = flockAwareTarget(
+            chooseNextFarmAnimalTarget({
+                habitat,
+                random: randomRef.current,
+                timeOfDay,
+                weather,
+            }),
+            now,
+        );
         runtimeRef.current = resolveFarmAnimalRuntimeForTarget({
             from: group.position,
             habitat,
@@ -1299,6 +1539,18 @@ function FarmAnimal({
             const position =
                 getAnimalAvatarFollowPosition(gardenAvatarPresence);
             position.y = getAnimalMovementYAt(position, habitat.groundSurfaces);
+            const avatarTargetCellIsBlocked = habitat.blockedCells.some(
+                (cell) =>
+                    cell.x === Math.round(position.x) &&
+                    cell.z === Math.round(position.z),
+            );
+            if (
+                habitat.species === 'Sheep' &&
+                (avatarTargetCellIsBlocked ||
+                    !canAnimalSettleAt(position, habitat.groundSurfaces))
+            ) {
+                position.copy(group.position);
+            }
             const target = {
                 behavior: 'follow-avatar',
                 id: `avatar-follow-${habitat.id}`,
@@ -1335,13 +1587,16 @@ function FarmAnimal({
                     animalDebugCommand.targetId === habitat.id) &&
                 isSpeciesBehavior(habitat.species, animalDebugCommand.behavior)
             ) {
-                const target = chooseNextFarmAnimalTarget({
-                    forcedBehavior: animalDebugCommand.behavior,
-                    habitat,
-                    random,
-                    timeOfDay,
-                    weather,
-                });
+                const target = flockAwareTarget(
+                    chooseNextFarmAnimalTarget({
+                        forcedBehavior: animalDebugCommand.behavior,
+                        habitat,
+                        random,
+                        timeOfDay,
+                        weather,
+                    }),
+                    now,
+                );
                 runtime = resolveFarmAnimalRuntimeForTarget({
                     from: group.position,
                     habitat,
@@ -1404,7 +1659,24 @@ function FarmAnimal({
             }
         } else {
             group.position.copy(runtime.target.position);
-            if (runtime.target.lookAtPosition) {
+            const calmAvatarReaction =
+                habitat.species === 'Sheep' &&
+                isFreshGardenAvatarPresence(gardenAvatarPresence, now) &&
+                horizontalDistance(
+                    group.position,
+                    gardenAvatarPresence.position,
+                ) < 2.2;
+            if (calmAvatarReaction) {
+                facePosition(
+                    group,
+                    new Vector3(
+                        gardenAvatarPresence.position.x,
+                        group.position.y,
+                        gardenAvatarPresence.position.z,
+                    ),
+                    delta * 0.45,
+                );
+            } else if (runtime.target.lookAtPosition) {
                 facePosition(group, runtime.target.lookAtPosition, delta);
             } else if (runtime.target.facingYaw !== undefined) {
                 const lookAt = group.position
@@ -1424,13 +1696,16 @@ function FarmAnimal({
                     isFarmAnimalAdverseWeather(habitat.species, weather)) &&
                 runtime.target.behavior !== 'home';
             if (mustReturnHome || now >= runtime.dwellUntil) {
-                const target = chooseNextFarmAnimalTarget({
-                    forcedBehavior: mustReturnHome ? 'home' : undefined,
-                    habitat,
-                    random,
-                    timeOfDay,
-                    weather,
-                });
+                const target = flockAwareTarget(
+                    chooseNextFarmAnimalTarget({
+                        forcedBehavior: mustReturnHome ? 'home' : undefined,
+                        habitat,
+                        random,
+                        timeOfDay,
+                        weather,
+                    }),
+                    now,
+                );
                 runtimeRef.current = resolveFarmAnimalRuntimeForTarget({
                     from: group.position,
                     habitat,
@@ -1440,6 +1715,34 @@ function FarmAnimal({
                     timeOfDay,
                     weather,
                 });
+            }
+        }
+
+        if (habitat.species === 'Sheep') {
+            const separation = getSheepSeparationOffset({
+                animalId: habitat.id,
+                from: group.position,
+                neighbors: getFreshSheepNeighbors(now),
+            });
+            if (separation.x !== 0 || separation.z !== 0) {
+                const separated = group.position.clone();
+                separated.x += separation.x;
+                separated.z += separation.z;
+                separated.y = getAnimalMovementYAt(
+                    separated,
+                    habitat.groundSurfaces,
+                );
+                const cellIsBlocked = habitat.blockedCells.some(
+                    (cell) =>
+                        cell.x === Math.round(separated.x) &&
+                        cell.z === Math.round(separated.z),
+                );
+                if (
+                    !cellIsBlocked &&
+                    canAnimalSettleAt(separated, habitat.groundSurfaces)
+                ) {
+                    group.position.copy(separated);
+                }
             }
         }
 
@@ -1459,7 +1762,7 @@ function FarmAnimal({
                 swimming: locomotion === 'swimming',
                 walkDistance,
             });
-        } else {
+        } else if (habitat.species === 'Piglet') {
             updatePigletPose({
                 behavior: activeRuntime.target.behavior,
                 delta,
@@ -1467,6 +1770,19 @@ function FarmAnimal({
                 now,
                 rig: model.rig,
                 swimming: locomotion === 'swimming',
+                walkDistance,
+            });
+        } else {
+            updateSheepPose({
+                behavior: activeRuntime.target.behavior,
+                delta,
+                moving: activeRuntime.phase === 'moving',
+                now,
+                rig: model.rig,
+                seed: habitat.seed,
+                trotting:
+                    activeRuntime.phase === 'moving' &&
+                    activeRuntime.sheepLocomotion === 'trot',
                 walkDistance,
             });
         }
@@ -1513,11 +1829,13 @@ function FarmAnimal({
             const debugBehaviors =
                 habitat.species === 'Chicken'
                     ? ['home', 'roam', 'forage', 'dust-bathe', 'cover']
-                    : ['home', 'roam', 'root', 'wallow', 'cover'];
+                    : habitat.species === 'Piglet'
+                      ? ['home', 'roam', 'root', 'wallow', 'cover']
+                      : ['home', 'roam', 'graze', 'chew-cud'];
             const entry = {
                 activity:
                     runtime.phase === 'moving'
-                        ? `${locomotion} to ${runtime.target.behavior}`
+                        ? `${runtime.sheepLocomotion ?? locomotion} to ${runtime.target.behavior}`
                         : runtime.target.behavior,
                 behavior: runtime.target.behavior,
                 debugBehaviors,
@@ -1689,6 +2007,28 @@ export function Piglets({
     return (
         <FarmAnimalCollection
             config={pigletConfig}
+            farmId={farmId}
+            stacks={stacks}
+            weather={weather}
+            weatherDisabled={weatherDisabled}
+        />
+    );
+}
+
+export function Sheep({
+    farmId,
+    stacks,
+    weather,
+    weatherDisabled = false,
+}: {
+    farmId?: number | null;
+    stacks: Stack[] | undefined;
+    weather?: FarmAnimalWeatherOverride;
+    weatherDisabled?: boolean;
+}) {
+    return (
+        <FarmAnimalCollection
+            config={sheepConfig}
             farmId={farmId}
             stacks={stacks}
             weather={weather}

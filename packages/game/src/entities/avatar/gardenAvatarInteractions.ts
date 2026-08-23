@@ -30,6 +30,7 @@ export const gardenAvatarAnimalAimProfiles = {
     Chicken: { centerHeight: 0.22, hitRadius: 0.32 },
     Dog: { centerHeight: 0.42, hitRadius: 0.42 },
     Piglet: { centerHeight: 0.32, hitRadius: 0.4 },
+    Sheep: { centerHeight: 0.46, hitRadius: 0.48 },
 } satisfies Record<
     PettableAnimalSpecies,
     { centerHeight: number; hitRadius: number }
@@ -42,7 +43,8 @@ export function isPettableAnimalSpecies(
         species === 'Cat' ||
         species === 'Chicken' ||
         species === 'Dog' ||
-        species === 'Piglet'
+        species === 'Piglet' ||
+        species === 'Sheep'
     );
 }
 

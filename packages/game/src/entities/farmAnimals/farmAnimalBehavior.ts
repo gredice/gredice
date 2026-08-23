@@ -1,4 +1,4 @@
-export type FarmAnimalSpecies = 'Chicken' | 'Piglet';
+export type FarmAnimalSpecies = 'Chicken' | 'Piglet' | 'Sheep';
 
 export type ChickenBehavior =
     | 'home'
@@ -16,7 +16,17 @@ export type PigletBehavior =
     | 'cover'
     | 'follow-avatar';
 
-export type FarmAnimalBehavior = ChickenBehavior | PigletBehavior;
+export type SheepBehavior =
+    | 'home'
+    | 'roam'
+    | 'graze'
+    | 'chew-cud'
+    | 'follow-avatar';
+
+export type FarmAnimalBehavior =
+    | ChickenBehavior
+    | PigletBehavior
+    | SheepBehavior;
 
 export type FarmAnimalWeather = {
     cloudy?: number | null;
@@ -58,6 +68,12 @@ const behaviorWeightsBySpecies = {
         { behavior: 'wallow', weight: 0.22 },
         { behavior: 'cover', weight: 0.12 },
     ],
+    Sheep: [
+        { behavior: 'home', weight: 0.08 },
+        { behavior: 'roam', weight: 0.2 },
+        { behavior: 'graze', weight: 0.43 },
+        { behavior: 'chew-cud', weight: 0.29 },
+    ],
 } satisfies Record<FarmAnimalSpecies, FarmAnimalBehaviorWeight[]>;
 
 const adverseWeatherThresholdsBySpecies = {
@@ -73,16 +89,24 @@ const adverseWeatherThresholdsBySpecies = {
         thundery: 0.1,
         windSpeed: 15,
     },
+    Sheep: {
+        rainy: 0.7,
+        snowy: 0.35,
+        thundery: 0.12,
+        windSpeed: 18,
+    },
 } satisfies Record<FarmAnimalSpecies, FarmAnimalWeatherThresholds>;
 
 const daytimeActivityRangeBySpecies = {
     Chicken: 5.5,
     Piglet: 7,
+    Sheep: 6.5,
 } satisfies Record<FarmAnimalSpecies, number>;
 
 const shelteredActivityRangeBySpecies = {
     Chicken: 1.1,
     Piglet: 1.4,
+    Sheep: 1.8,
 } satisfies Record<FarmAnimalSpecies, number>;
 
 export function isFarmAnimalNight(timeOfDay: number) {
@@ -216,6 +240,22 @@ function getPigletDwellRange(
     return [8, 15];
 }
 
+function getSheepDwellRange(
+    behavior: FarmAnimalBehavior,
+): readonly [number, number] {
+    if (behavior === 'graze') {
+        return [6, 11];
+    }
+    if (behavior === 'chew-cud') {
+        return [5, 9];
+    }
+    if (behavior === 'roam') {
+        return [4, 7];
+    }
+
+    return [7, 13];
+}
+
 export function getFarmAnimalDwellSeconds({
     species,
     behavior,
@@ -250,6 +290,8 @@ export function getFarmAnimalDwellSeconds({
     const [minimum, maximum] =
         species === 'Chicken'
             ? getChickenDwellRange(behavior)
-            : getPigletDwellRange(behavior);
+            : species === 'Piglet'
+              ? getPigletDwellRange(behavior)
+              : getSheepDwellRange(behavior);
     return minimum + random() * (maximum - minimum);
 }

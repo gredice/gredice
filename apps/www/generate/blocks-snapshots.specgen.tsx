@@ -65,6 +65,9 @@ test.use({
 
 test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addStyleTag({
+        content: 'html, body, #root { background: transparent !important; }',
+    });
 
     for (const assetName of allGameAssetNames) {
         await page.route(
@@ -139,6 +142,7 @@ const CLOSEUP_ENTITIES = new Set<string>([
     'WickerGardenLantern',
     'WoodenHandLantern',
     'MoonRainBarrel',
+    'Sheep',
 ]);
 const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['SummerHat', 105],
@@ -154,6 +158,7 @@ const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['WickerGardenLantern', 130],
     ['WoodenHandLantern', 145],
     ['MoonRainBarrel', 120],
+    ['Sheep', 128],
 ]);
 const NORMAL_ENTITY_ZOOM = new Map<string, number>([['FishingBoat', 58]]);
 const FAR_ENTITIES = new Set<string>(['PalmTree']);

@@ -28,7 +28,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
-import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
+import { Chickens, Piglets, Sheep } from './entities/farmAnimals/FarmAnimals';
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
@@ -708,6 +708,12 @@ export function GameScene({
                                             weatherDisabled={weatherDisabled}
                                         />
                                         <Piglets
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Sheep
                                             farmId={garden?.farmId}
                                             stacks={garden?.stacks}
                                             weather={weather}

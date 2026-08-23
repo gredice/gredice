@@ -190,7 +190,7 @@ test('local sandbox stool metadata matches the reduced model', () => {
     assert.equal(stool?.attributes.hitboxWidth, 0.66);
 });
 
-test('local sandbox exposes animal home blocks used by the item HUD', () => {
+test('local sandbox exposes animal catalogue blocks used by the item HUD', () => {
     const blockData = getLocalSandboxBlockData();
     const expectedHomes = [
         {
@@ -215,13 +215,21 @@ test('local sandbox exposes animal home blocks used by the item HUD', () => {
             hitboxHeight: 0.78,
             hitboxWidth: 0.94,
         },
+        {
+            name: 'Sheep',
+            label: 'Ovca',
+            height: 0.64,
+            hitboxDepth: 0.92,
+            hitboxHeight: 0.64,
+            hitboxWidth: 0.64,
+        },
     ];
 
     for (const expected of expectedHomes) {
         const home = blockData.find(
             (block) => block.information.name === expected.name,
         );
-        assert.ok(home, `Missing animal home ${expected.name}`);
+        assert.ok(home, `Missing animal catalogue block ${expected.name}`);
 
         if ('label' in expected) {
             assert.equal(home.information.label, expected.label);

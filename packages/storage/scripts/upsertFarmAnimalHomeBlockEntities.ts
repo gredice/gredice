@@ -91,6 +91,17 @@ const blockSpecs = [
         hitboxDepth: 0.89,
         hitboxWidth: 0.94,
     }),
+    farmAnimalHomeSpec({
+        name: 'Sheep',
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        fullDescription:
+            'Smjesti vunastu ovcu na travnati dio vrta. Mirno će pasti, preživati i istraživati okolicu, a više ovaca držat će se na ugodnoj udaljenosti bez naguravanja.',
+        height: 0.64,
+        hitboxDepth: 0.92,
+        hitboxWidth: 0.64,
+    }),
 ] satisfies Array<{
     name: string;
     attributes: Record<string, string>;
@@ -185,7 +196,7 @@ async function main() {
         ? blockSpecs.filter((spec) => spec.name === blockName)
         : blockSpecs;
     if (selectedBlockSpecs.length === 0) {
-        throw new Error(`Unknown farm animal home block: ${blockName}`);
+        throw new Error(`Unknown farm animal catalogue block: ${blockName}`);
     }
 
     const definitions = await getAttributeDefinitions(entityTypeName);
