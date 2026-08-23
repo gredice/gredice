@@ -7,6 +7,7 @@ import {
     getHorseAppearanceVariantDefinition,
     horseAppearanceVariants,
     isAppearanceVariantEntityName,
+    isAppearanceVariantRotationLocked,
     isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
     rabbitAppearanceVariants,
@@ -57,6 +58,8 @@ describe('Cow appearance variants', () => {
             createEntityAppearanceVariantForPlacement('Cow', () => 0.999),
             1,
         );
+        assert.equal(isAppearanceVariantRotationLocked('Cow'), true);
+        assert.equal(isAppearanceVariantRotationLocked('Rabbit'), false);
     });
 });
 

@@ -3326,7 +3326,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json(
                     {
-                        error: 'Konja nije moguće rotirati nakon postavljanja.',
+                        error: 'Životinju nije moguće rotirati nakon postavljanja.',
                     },
                     400,
                 );

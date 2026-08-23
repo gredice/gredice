@@ -185,7 +185,10 @@ export function requiresExplicitAppearanceVariantSelection(entityName: string) {
 }
 
 export function isAppearanceVariantRotationLocked(entityName: string) {
-    return entityName === horseAppearanceVariants.entityName;
+    return (
+        entityName === cowAppearanceVariants.entityName ||
+        entityName === horseAppearanceVariants.entityName
+    );
 }
 
 export function selectEntityAppearanceVariant(

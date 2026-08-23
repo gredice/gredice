@@ -30,6 +30,7 @@ const cowDwellRanges = {
 
 export const cowHerdMinimumDistance = 1.15;
 export const cowHerdPreferredDistance = 1.65;
+export const cowHerdSpacingMaxStallSeconds = 2.5;
 export const cowWalkSpeed = 0.62;
 export const cowTrotSpeed = 1.16;
 export const cowAvatarResponseSpeed = 0.48;
@@ -137,4 +138,8 @@ export function cowHerdSpacingIsSafe(
                 position.z - neighbor.position.z,
             ) >= cowHerdMinimumDistance,
     );
+}
+
+export function shouldCowYieldBlockedHerdPath(stalledSeconds: number) {
+    return stalledSeconds >= cowHerdSpacingMaxStallSeconds;
 }

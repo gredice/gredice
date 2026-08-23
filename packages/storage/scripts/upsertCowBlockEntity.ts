@@ -2,13 +2,16 @@ import { and, eq } from 'drizzle-orm';
 import {
     attributeValues,
     closeStorage,
-    createEntity,
+    createAttributeValueMutationSideEffects,
     entities,
+    entityRevisions,
+    flushAttributeValueMutationSideEffects,
     getAttributeDefinitions,
+    getEntityCompleteness,
     imageAttributeValueFromUrl,
     type SelectAttributeDefinition,
+    sql,
     storage,
-    updateEntity,
     upsertAttributeValue,
 } from '../src';
 
@@ -22,6 +25,11 @@ const actor = {
 
 const blockName = 'Cow';
 const entityTypeName = 'block';
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 const cowAttributes = {
     'attributes.height': '1.26',
@@ -62,9 +70,10 @@ function attributePath(definition: SelectAttributeDefinition) {
 }
 
 async function findBlockEntityId(
+    database: DatabaseClient,
     nameDefinition: SelectAttributeDefinition,
 ): Promise<number | null> {
-    const matches = await storage()
+    const matches = await database
         .select({ id: entities.id })
         .from(entities)
         .innerJoin(attributeValues, eq(attributeValues.entityId, entities.id))
@@ -90,12 +99,14 @@ async function findBlockEntityId(
 
 async function getExistingAttributeValue({
     attributeDefinitionId,
+    database,
     entityId,
 }: {
     attributeDefinitionId: number;
+    database: DatabaseClient;
     entityId: number;
 }) {
-    return storage().query.attributeValues.findFirst({
+    return database.query.attributeValues.findFirst({
         where: and(
             eq(attributeValues.entityId, entityId),
             eq(attributeValues.attributeDefinitionId, attributeDefinitionId),
@@ -127,7 +138,8 @@ async function main() {
         throw new Error('Missing information.name definition.');
     }
 
-    const existingEntityId = await findBlockEntityId(nameDefinition);
+    const database = storage();
+    const existingEntityId = await findBlockEntityId(database, nameDefinition);
     const changedAttributes: string[] = [];
     if (existingEntityId) {
         for (const [path, expectedValue] of Object.entries(cowAttributes)) {
@@ -137,6 +149,7 @@ async function main() {
             }
             const storedValue = await getExistingAttributeValue({
                 attributeDefinitionId: definition.id,
+                database,
                 entityId: existingEntityId,
             });
             if (storedValue?.value !== expectedValue) {
@@ -165,79 +178,156 @@ async function main() {
         return;
     }
 
-    let entityId = existingEntityId;
-    const created = entityId === null;
-    if (!entityId) {
-        entityId = await createEntity(entityTypeName, actor);
-    }
+    const sideEffects = createAttributeValueMutationSideEffects();
+    const result = await database.transaction(async (transaction) => {
+        await transaction.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${`block-upsert:${blockName}`}))`,
+        );
 
-    let changedValueCount = 0;
-    const orderedEntries = Object.entries(cowAttributes).sort(
-        ([leftPath], [rightPath]) =>
-            Number(rightPath === 'information.name') -
-            Number(leftPath === 'information.name'),
-    );
-    for (const [path, value] of orderedEntries) {
-        const definition = definitionsByPath.get(path);
-        if (!definition) {
-            throw new Error(`Missing ${path} while applying ${blockName}.`);
-        }
-        const existingValue = await getExistingAttributeValue({
-            attributeDefinitionId: definition.id,
-            entityId,
-        });
-        if (existingValue?.value === value) {
-            continue;
-        }
-        await upsertAttributeValue(
-            {
-                id: existingValue?.id,
-                attributeDefinitionId: definition.id,
+        let entityId = await findBlockEntityId(transaction, nameDefinition);
+        const created = entityId === null;
+        if (!entityId) {
+            const [createdEntity] = await transaction
+                .insert(entities)
+                .values({ entityTypeName })
+                .returning({ id: entities.id });
+            if (!createdEntity) {
+                throw new Error(`Failed to create ${blockName} block entity.`);
+            }
+            entityId = createdEntity.id;
+            await transaction.insert(entityRevisions).values({
+                action: 'entity.created',
+                actorId: actor.id,
+                actorName: actor.name,
                 entityId,
                 entityTypeName,
-                order: definition.order,
-                value,
-            },
-            actor,
-        );
-        changedValueCount += 1;
-    }
-
-    await updateEntity({ id: entityId, state: 'published' }, actor);
-    const publishedEntity = await storage().query.entities.findFirst({
-        where: and(
-            eq(entities.id, entityId),
-            eq(entities.entityTypeName, entityTypeName),
-            eq(entities.isDeleted, false),
-        ),
-    });
-    if (
-        publishedEntity?.state !== 'published' ||
-        publishedEntity.publishedAt === null
-    ) {
-        throw new Error(
-            `Failed to publish ${blockName} block entity ${entityId}.`,
-        );
-    }
-
-    for (const [path, expectedValue] of Object.entries(cowAttributes)) {
-        const definition = definitionsByPath.get(path);
-        if (!definition) {
-            throw new Error(`Missing ${path} during ${blockName} readback.`);
+            });
         }
-        const storedValue = await getExistingAttributeValue({
-            attributeDefinitionId: definition.id,
-            entityId,
-        });
-        if (storedValue?.value !== expectedValue) {
+
+        let changedValueCount = 0;
+        const orderedEntries = Object.entries(cowAttributes).sort(
+            ([leftPath], [rightPath]) =>
+                Number(rightPath === 'information.name') -
+                Number(leftPath === 'information.name'),
+        );
+        for (const [path, value] of orderedEntries) {
+            const definition = definitionsByPath.get(path);
+            if (!definition) {
+                throw new Error(`Missing ${path} while applying ${blockName}.`);
+            }
+            const existingValue = await getExistingAttributeValue({
+                attributeDefinitionId: definition.id,
+                database: transaction,
+                entityId,
+            });
+            if (existingValue?.value === value) {
+                continue;
+            }
+            await upsertAttributeValue(
+                {
+                    id: existingValue?.id,
+                    attributeDefinitionId: definition.id,
+                    entityId,
+                    entityTypeName,
+                    order: definition.order,
+                    value,
+                },
+                actor,
+                { db: transaction, sideEffects },
+            );
+            changedValueCount += 1;
+        }
+
+        const storedAttributes =
+            await transaction.query.attributeValues.findMany({
+                columns: {
+                    attributeDefinitionId: true,
+                    value: true,
+                },
+                where: and(
+                    eq(attributeValues.entityId, entityId),
+                    eq(attributeValues.isDeleted, false),
+                ),
+            });
+        const completeness = getEntityCompleteness(
+            { attributes: storedAttributes },
+            definitions,
+        );
+        if (!completeness.isComplete) {
             throw new Error(
-                `Unexpected ${path} value for ${blockName}: ${storedValue?.value ?? 'missing'}`,
+                `Cannot publish ${blockName}; missing required attributes: ${completeness.missingRequiredDefinitions
+                    .map((definition) => definition.label)
+                    .join(', ')}.`,
             );
         }
-    }
+
+        const entity = await transaction.query.entities.findFirst({
+            where: and(
+                eq(entities.id, entityId),
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.isDeleted, false),
+            ),
+        });
+        if (!entity) {
+            throw new Error(`${blockName} block entity disappeared.`);
+        }
+        if (entity.state !== 'published' || entity.publishedAt === null) {
+            await transaction.insert(entityRevisions).values({
+                action: 'entity.state_changed',
+                actorId: actor.id,
+                actorName: actor.name,
+                entityId,
+                entityTypeName,
+                nextState: 'published',
+                previousState: entity.state,
+            });
+            await transaction
+                .update(entities)
+                .set({ publishedAt: new Date(), state: 'published' })
+                .where(eq(entities.id, entityId));
+        }
+
+        const publishedEntity = await transaction.query.entities.findFirst({
+            where: and(
+                eq(entities.id, entityId),
+                eq(entities.entityTypeName, entityTypeName),
+                eq(entities.isDeleted, false),
+            ),
+        });
+        if (
+            publishedEntity?.state !== 'published' ||
+            publishedEntity.publishedAt === null
+        ) {
+            throw new Error(
+                `Failed to publish ${blockName} block entity ${entityId}.`,
+            );
+        }
+
+        for (const [path, expectedValue] of Object.entries(cowAttributes)) {
+            const definition = definitionsByPath.get(path);
+            if (!definition) {
+                throw new Error(
+                    `Missing ${path} during ${blockName} readback.`,
+                );
+            }
+            const storedValue = await getExistingAttributeValue({
+                attributeDefinitionId: definition.id,
+                database: transaction,
+                entityId,
+            });
+            if (storedValue?.value !== expectedValue) {
+                throw new Error(
+                    `Unexpected ${path} value for ${blockName}: ${storedValue?.value ?? 'missing'}`,
+                );
+            }
+        }
+
+        return { changedValueCount, created, entityId };
+    });
+    await flushAttributeValueMutationSideEffects(sideEffects);
 
     console.log(
-        `${created ? 'Created' : 'Updated'} ${blockName} block entity ${entityId}. Upserted ${changedValueCount} attributes and verified ${Object.keys(cowAttributes).length} attributes plus published state.`,
+        `${result.created ? 'Created' : 'Updated'} ${blockName} block entity ${result.entityId}. Upserted ${result.changedValueCount} attributes and verified ${Object.keys(cowAttributes).length} attributes plus published state.`,
     );
 }
 

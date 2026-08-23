@@ -35,6 +35,7 @@ import {
     cowHerdSpacingIsSafe,
     pickCowBehavior,
     resolveCowHerdSpacingTarget,
+    shouldCowYieldBlockedHerdPath,
 } from './cows/cowBehavior';
 import {
     type CowHabitat,
@@ -333,6 +334,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
     const lastDebugCommandSequenceRef = useRef(0);
     const observeAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
     const nextAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
+    const herdSpacingStallSecondsRef = useRef(0);
     const setAnimalDebugEntry = useGameState(
         (state) => state.setAnimalDebugEntry,
     );
@@ -490,6 +492,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                 target,
             });
             runtimeRef.current = runtime;
+            herdSpacingStallSecondsRef.current = 0;
             nextAvatarRepathAtRef.current =
                 now + animalAvatarFollowRepathSeconds + 0.35;
         }
@@ -534,6 +537,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                         target,
                     });
                     runtimeRef.current = runtime;
+                    herdSpacingStallSecondsRef.current = 0;
                 }
             }
         }
@@ -559,6 +563,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                 progress >= 1
             ) {
                 group.position.copy(nextPosition);
+                herdSpacingStallSecondsRef.current = 0;
                 facePosition(
                     group,
                     cowPathPositionAtDistance(
@@ -569,8 +574,22 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                 );
             } else {
                 runtime.startedAt += delta;
+                herdSpacingStallSecondsRef.current += delta;
+                if (
+                    shouldCowYieldBlockedHerdPath(
+                        herdSpacingStallSecondsRef.current,
+                    )
+                ) {
+                    runtime = makeSettledCowState({
+                        now,
+                        random,
+                        target: runtime.target,
+                    });
+                    runtimeRef.current = runtime;
+                    herdSpacingStallSecondsRef.current = 0;
+                }
             }
-            if (progress >= 1) {
+            if (runtime.phase === 'moving' && progress >= 1) {
                 group.position.copy(runtime.to);
                 runtime = makeSettledCowState({
                     now,
@@ -578,6 +597,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                     target: runtime.target,
                 });
                 runtimeRef.current = runtime;
+                herdSpacingStallSecondsRef.current = 0;
             }
         } else {
             if (runtime.target.lookAtPosition) {
@@ -613,6 +633,7 @@ export function Cow({ block, rotation, stack, stacks }: EntityInstanceProps) {
                     target,
                 });
                 runtimeRef.current = runtime;
+                herdSpacingStallSecondsRef.current = 0;
             }
         }
 

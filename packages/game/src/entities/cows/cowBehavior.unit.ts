@@ -3,12 +3,14 @@ import { describe, it } from 'node:test';
 import {
     cowAvatarResponseSpeed,
     cowHerdMinimumDistance,
+    cowHerdSpacingMaxStallSeconds,
     cowTrotSpeed,
     cowWalkSpeed,
     getCowDwellSeconds,
     getCowMovementSpeed,
     pickCowBehavior,
     resolveCowHerdSpacingTarget,
+    shouldCowYieldBlockedHerdPath,
 } from './cowBehavior';
 
 describe('cow behavior', () => {
@@ -85,5 +87,16 @@ describe('cow behavior', () => {
 
         assert.deepEqual(first, second);
         assert.notDeepEqual({ x: first.x, z: first.z }, { x: 1, z: 1 });
+    });
+
+    it('abandons a herd-blocked path instead of stalling forever', () => {
+        assert.equal(
+            shouldCowYieldBlockedHerdPath(cowHerdSpacingMaxStallSeconds - 0.01),
+            false,
+        );
+        assert.equal(
+            shouldCowYieldBlockedHerdPath(cowHerdSpacingMaxStallSeconds),
+            true,
+        );
     });
 });
