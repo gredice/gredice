@@ -38,6 +38,7 @@ import type { GardenVisitorPresenceController } from '../entities/avatar/gardenV
 import { Bats } from '../entities/bats/Bats';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
+import { Butterflies } from '../entities/butterflies/Butterflies';
 import { Cats } from '../entities/cats/Cats';
 import { Dogs } from '../entities/dogs/Dogs';
 import { EntityFactory } from '../entities/EntityFactory';
@@ -737,6 +738,15 @@ function PublicGardenScene({
                                                                 garden.farmId
                                                             }
                                                             garden={garden}
+                                                        />
+                                                        <Butterflies
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
+                                                            groundDecorationDensity={
+                                                                qualityProfile.groundDecorationDensity
+                                                            }
                                                         />
                                                     </Suspense>
                                                 )}

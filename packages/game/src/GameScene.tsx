@@ -22,6 +22,7 @@ import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvat
 import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
+import { Butterflies } from './entities/butterflies/Butterflies';
 import { Cats } from './entities/cats/Cats';
 import { Dogs } from './entities/dogs/Dogs';
 import { EntityFactory } from './entities/EntityFactory';
@@ -826,6 +827,15 @@ export function GameScene({
                                         <Slugs
                                             farmId={garden?.farmId}
                                             garden={garden}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Butterflies
+                                            farmId={garden?.farmId}
+                                            garden={garden}
+                                            groundDecorationDensity={
+                                                qualityProfile.groundDecorationDensity
+                                            }
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
