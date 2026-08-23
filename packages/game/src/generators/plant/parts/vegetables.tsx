@@ -177,6 +177,47 @@ function createBellPepperGeometry() {
     );
 }
 
+function createCarrotGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.1 },
+            { y: 0.05, radius: 0.32 },
+            { y: 0.12, radius: 0.4 },
+            { y: 0.28, radius: 0.36 },
+            { y: 0.48, radius: 0.28 },
+            { y: 0.68, radius: 0.18 },
+            { y: 0.86, radius: 0.09 },
+            { y: 1, radius: 0.035 },
+            { y: 1.1, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.06,
+            scaleY: 1.06,
+        },
+    );
+}
+
+function applyProduceBend(geometry: THREE.BufferGeometry, amount: number) {
+    geometry.computeBoundingBox();
+    const boundingBox = geometry.boundingBox;
+    const position = geometry.getAttribute('position');
+    if (!boundingBox || !position) {
+        return geometry;
+    }
+
+    const minY = boundingBox.min.y;
+    const height = Math.max(boundingBox.max.y - minY, 0.001);
+    for (let index = 0; index < position.count; index += 1) {
+        const t = (position.getY(index) - minY) / height;
+        position.setX(index, position.getX(index) + amount * t * t);
+    }
+
+    position.needsUpdate = true;
+    geometry.computeVertexNormals();
+    return centerGeometry(geometry);
+}
+
 function mergeProduceGeometries(geometries: THREE.BufferGeometry[]) {
     const mergedGeometry =
         mergeGeometries(geometries) ?? new THREE.BufferGeometry();
@@ -184,6 +225,398 @@ function mergeProduceGeometries(geometries: THREE.BufferGeometry[]) {
         geometry.dispose();
     });
     return centerGeometry(mergedGeometry);
+}
+
+function createOnionGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.08 },
+            { y: 0.06, radius: 0.16 },
+            { y: 0.18, radius: 0.38 },
+            { y: 0.42, radius: 0.52 },
+            { y: 0.68, radius: 0.48 },
+            { y: 0.88, radius: 0.28 },
+            { y: 1, radius: 0.1 },
+            { y: 1.06, radius: 0.02 },
+        ],
+        {
+            scaleY: 0.86,
+        },
+    );
+}
+
+function createEggplantGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.04 },
+            { y: 0.08, radius: 0.16 },
+            { y: 0.22, radius: 0.3 },
+            { y: 0.46, radius: 0.36 },
+            { y: 0.7, radius: 0.28 },
+            { y: 0.9, radius: 0.14 },
+            { y: 1.04, radius: 0.03 },
+            { y: 1.1, radius: 0 },
+        ],
+        {
+            scaleY: 1.32,
+        },
+    );
+}
+
+function createCucumberGeometry() {
+    return applyProduceBend(
+        createLatheProduceGeometry(
+            [
+                { y: 0, radius: 0.04 },
+                { y: 0.06, radius: 0.16 },
+                { y: 0.22, radius: 0.22 },
+                { y: 0.52, radius: 0.24 },
+                { y: 0.82, radius: 0.2 },
+                { y: 0.96, radius: 0.1 },
+                { y: 1.04, radius: 0.02 },
+            ],
+            {
+                ribCount: 8,
+                ribStrength: 0.04,
+                scaleY: 1.18,
+            },
+        ),
+        0.12,
+    );
+}
+
+function createZucchiniGeometry() {
+    return applyProduceBend(
+        createLatheProduceGeometry(
+            [
+                { y: 0, radius: 0.05 },
+                { y: 0.08, radius: 0.14 },
+                { y: 0.28, radius: 0.2 },
+                { y: 0.58, radius: 0.24 },
+                { y: 0.84, radius: 0.22 },
+                { y: 0.98, radius: 0.12 },
+                { y: 1.06, radius: 0.02 },
+            ],
+            {
+                ribCount: 8,
+                ribStrength: 0.035,
+                scaleY: 1.28,
+            },
+        ),
+        0.08,
+    );
+}
+
+function createPumpkinGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.08 },
+            { y: 0.08, radius: 0.32 },
+            { y: 0.22, radius: 0.52 },
+            { y: 0.48, radius: 0.6 },
+            { y: 0.72, radius: 0.52 },
+            { y: 0.9, radius: 0.3 },
+            { y: 1, radius: 0.08 },
+            { y: 1.04, radius: 0.02 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.14,
+            scaleY: 0.72,
+        },
+    );
+}
+
+function createMelonGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.06 },
+            { y: 0.1, radius: 0.3 },
+            { y: 0.28, radius: 0.48 },
+            { y: 0.5, radius: 0.54 },
+            { y: 0.74, radius: 0.46 },
+            { y: 0.92, radius: 0.26 },
+            { y: 1.02, radius: 0.06 },
+            { y: 1.06, radius: 0 },
+        ],
+        {
+            ribCount: 10,
+            ribStrength: 0.06,
+            scaleY: 0.9,
+        },
+    );
+}
+
+function createBeetGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.12 },
+            { y: 0.08, radius: 0.34 },
+            { y: 0.22, radius: 0.44 },
+            { y: 0.42, radius: 0.4 },
+            { y: 0.64, radius: 0.26 },
+            { y: 0.84, radius: 0.12 },
+            { y: 1, radius: 0.04 },
+            { y: 1.08, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.05,
+            scaleY: 0.92,
+        },
+    );
+}
+
+function createRadishGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.1 },
+            { y: 0.08, radius: 0.3 },
+            { y: 0.22, radius: 0.36 },
+            { y: 0.4, radius: 0.3 },
+            { y: 0.62, radius: 0.16 },
+            { y: 0.84, radius: 0.07 },
+            { y: 1, radius: 0.03 },
+            { y: 1.08, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.04,
+            scaleY: 1.08,
+        },
+    );
+}
+
+function createTurnipGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.1 },
+            { y: 0.08, radius: 0.34 },
+            { y: 0.24, radius: 0.48 },
+            { y: 0.46, radius: 0.5 },
+            { y: 0.68, radius: 0.36 },
+            { y: 0.86, radius: 0.16 },
+            { y: 1, radius: 0.05 },
+            { y: 1.08, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.045,
+            scaleY: 0.78,
+        },
+    );
+}
+
+function createLeekGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.1 },
+            { y: 0.12, radius: 0.13 },
+            { y: 0.4, radius: 0.16 },
+            { y: 0.72, radius: 0.2 },
+            { y: 0.94, radius: 0.22 },
+            { y: 1.04, radius: 0.1 },
+            { y: 1.08, radius: 0.02 },
+        ],
+        {
+            scaleY: 1.22,
+        },
+    );
+}
+
+function createKohlrabiGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.1 },
+            { y: 0.1, radius: 0.34 },
+            { y: 0.28, radius: 0.48 },
+            { y: 0.5, radius: 0.5 },
+            { y: 0.72, radius: 0.42 },
+            { y: 0.9, radius: 0.22 },
+            { y: 1.02, radius: 0.06 },
+            { y: 1.08, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.05,
+            scaleY: 0.88,
+        },
+    );
+}
+
+function createFennelGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.16 },
+            { y: 0.1, radius: 0.36 },
+            { y: 0.28, radius: 0.5 },
+            { y: 0.5, radius: 0.46 },
+            { y: 0.72, radius: 0.28 },
+            { y: 0.9, radius: 0.12 },
+            { y: 1.02, radius: 0.03 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.16,
+            scaleY: 0.7,
+        },
+    );
+}
+
+function createOkraGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.03 },
+            { y: 0.08, radius: 0.1 },
+            { y: 0.28, radius: 0.16 },
+            { y: 0.58, radius: 0.14 },
+            { y: 0.84, radius: 0.08 },
+            { y: 1, radius: 0.03 },
+            { y: 1.06, radius: 0 },
+        ],
+        {
+            ribCount: 8,
+            ribStrength: 0.18,
+            scaleY: 1.2,
+        },
+    );
+}
+
+function createArtichokeGeometry() {
+    return createLatheProduceGeometry(
+        [
+            { y: 0, radius: 0.06 },
+            { y: 0.1, radius: 0.22 },
+            { y: 0.28, radius: 0.38 },
+            { y: 0.5, radius: 0.4 },
+            { y: 0.72, radius: 0.3 },
+            { y: 0.9, radius: 0.14 },
+            { y: 1.04, radius: 0.02 },
+        ],
+        {
+            ribCount: 10,
+            ribStrength: 0.12,
+            scaleY: 1.12,
+        },
+    );
+}
+
+function createBeanpodGeometry() {
+    return applyProduceBend(
+        createLatheProduceGeometry(
+            [
+                { y: 0, radius: 0.02 },
+                { y: 0.06, radius: 0.07 },
+                { y: 0.28, radius: 0.09 },
+                { y: 0.62, radius: 0.09 },
+                { y: 0.9, radius: 0.06 },
+                { y: 1.02, radius: 0.02 },
+                { y: 1.06, radius: 0 },
+            ],
+            {
+                scaleY: 1.16,
+            },
+        ),
+        0.16,
+    );
+}
+
+function createPeapodGeometry() {
+    return applyProduceBend(
+        createLatheProduceGeometry(
+            [
+                { y: 0, radius: 0.02 },
+                { y: 0.08, radius: 0.08 },
+                { y: 0.3, radius: 0.12 },
+                { y: 0.52, radius: 0.11 },
+                { y: 0.74, radius: 0.12 },
+                { y: 0.92, radius: 0.07 },
+                { y: 1.04, radius: 0.02 },
+            ],
+            {
+                ribCount: 4,
+                ribStrength: 0.12,
+                scaleY: 1.08,
+            },
+        ),
+        0.2,
+    );
+}
+
+function createCabbageGeometry() {
+    const leafOffsets = [
+        { x: 0, y: 0.02, z: 0, radius: 0.42, flatten: 0.62 },
+        { x: 0.08, y: -0.04, z: 0.06, radius: 0.4, flatten: 0.58 },
+        { x: -0.07, y: 0.04, z: -0.05, radius: 0.39, flatten: 0.6 },
+        { x: 0.04, y: 0.08, z: -0.08, radius: 0.36, flatten: 0.54 },
+        { x: -0.06, y: -0.06, z: 0.07, radius: 0.35, flatten: 0.52 },
+        { x: 0, y: 0, z: 0, radius: 0.3, flatten: 0.7 },
+    ];
+    const geometries = leafOffsets.map((leaf, index) => {
+        const geometry = new THREE.SphereGeometry(leaf.radius, 10, 8);
+        geometry.scale(1.12, leaf.flatten, 1.12);
+        geometry.rotateY(index * 0.7);
+        geometry.translate(leaf.x, leaf.y, leaf.z);
+        return geometry;
+    });
+
+    return mergeProduceGeometries(geometries);
+}
+
+function createProduceClusterGeometry({
+    count,
+    flatten,
+    radius,
+    spread,
+}: {
+    count: number;
+    flatten: number;
+    radius: number;
+    spread: number;
+}) {
+    const geometries: THREE.BufferGeometry[] = [];
+    for (let index = 0; index < count; index += 1) {
+        const t = index / Math.max(count - 1, 1);
+        const y = (0.5 - t) * 0.22;
+        const ringRadius = Math.sin(t * Math.PI * 0.82) * spread;
+        const angle = index * 2.399;
+        const geometry = new THREE.SphereGeometry(
+            radius * (0.28 - t * 0.08),
+            8,
+            6,
+        );
+        geometry.scale(1, flatten, 1);
+        geometry.translate(
+            Math.cos(angle) * ringRadius,
+            y,
+            Math.sin(angle) * ringRadius,
+        );
+        geometries.push(geometry);
+    }
+
+    return mergeProduceGeometries(geometries);
+}
+
+function createGarlicGeometry() {
+    const cloveCount = 6;
+    const geometries = Array.from({ length: cloveCount }, (_, index) => {
+        const angle = (index / cloveCount) * Math.PI * 2;
+        const geometry = new THREE.SphereGeometry(0.2, 8, 6);
+        geometry.scale(0.62, 1.12, 0.5);
+        geometry.rotateY(angle);
+        geometry.translate(
+            Math.cos(angle) * 0.14,
+            0.02,
+            Math.sin(angle) * 0.14,
+        );
+        return geometry;
+    });
+    const neck = new THREE.SphereGeometry(0.12, 8, 6);
+    neck.scale(0.7, 0.55, 0.7);
+    neck.translate(0, -0.16, 0);
+    geometries.push(neck);
+
+    return mergeProduceGeometries(geometries);
 }
 
 function createStrawberryGeometry() {
@@ -252,28 +685,38 @@ const vegetableGeometries: Record<VegetableType, THREE.BufferGeometry> = {
     blueberry: createBlueberryClusterGeometry(),
     raspberry: createRaspberryGeometry(),
     tomato: createTomatoGeometry(),
-    cucumber: new THREE.CylinderGeometry(0.2, 0.2, 1, 8),
+    cucumber: createCucumberGeometry(),
     bellpepper: createBellPepperGeometry(),
-    carrot: new THREE.ConeGeometry(0.4, 1, 8),
-    onion: new THREE.SphereGeometry(0.5, 12, 8),
-    eggplant: new THREE.CapsuleGeometry(0.24, 0.55, 4, 8),
-    zucchini: new THREE.CylinderGeometry(0.16, 0.2, 1.15, 8),
-    pumpkin: new THREE.SphereGeometry(0.6, 12, 10),
-    melon: new THREE.SphereGeometry(0.56, 12, 10),
-    beet: new THREE.SphereGeometry(0.42, 12, 8),
-    radish: new THREE.ConeGeometry(0.28, 0.72, 8),
-    turnip: new THREE.SphereGeometry(0.46, 12, 8),
-    garlic: new THREE.SphereGeometry(0.36, 12, 8),
-    leek: new THREE.CylinderGeometry(0.16, 0.18, 1.05, 8),
-    broccoli: new THREE.SphereGeometry(0.5, 12, 10),
-    cauliflower: new THREE.SphereGeometry(0.52, 12, 10),
-    cabbage: new THREE.SphereGeometry(0.56, 12, 10),
-    beanpod: new THREE.CylinderGeometry(0.08, 0.08, 1, 8),
-    peapod: new THREE.CylinderGeometry(0.09, 0.09, 0.92, 8),
-    artichoke: new THREE.ConeGeometry(0.38, 0.82, 10),
-    okra: new THREE.CylinderGeometry(0.09, 0.14, 0.92, 8),
-    fennel: new THREE.SphereGeometry(0.44, 12, 8),
-    kohlrabi: new THREE.SphereGeometry(0.46, 12, 8),
+    carrot: createCarrotGeometry(),
+    onion: createOnionGeometry(),
+    eggplant: createEggplantGeometry(),
+    zucchini: createZucchiniGeometry(),
+    pumpkin: createPumpkinGeometry(),
+    melon: createMelonGeometry(),
+    beet: createBeetGeometry(),
+    radish: createRadishGeometry(),
+    turnip: createTurnipGeometry(),
+    garlic: createGarlicGeometry(),
+    leek: createLeekGeometry(),
+    broccoli: createProduceClusterGeometry({
+        count: 16,
+        flatten: 0.82,
+        radius: 0.5,
+        spread: 0.34,
+    }),
+    cauliflower: createProduceClusterGeometry({
+        count: 16,
+        flatten: 0.78,
+        radius: 0.52,
+        spread: 0.36,
+    }),
+    cabbage: createCabbageGeometry(),
+    beanpod: createBeanpodGeometry(),
+    peapod: createPeapodGeometry(),
+    artichoke: createArtichokeGeometry(),
+    okra: createOkraGeometry(),
+    fennel: createFennelGeometry(),
+    kohlrabi: createKohlrabiGeometry(),
 };
 const EMPTY_PACKED_VEGETABLES: PackedPlantVegetableInstances[] = [];
 const EMPTY_VEGETABLES: VegetableData[] = [];

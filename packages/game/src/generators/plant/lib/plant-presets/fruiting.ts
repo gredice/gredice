@@ -292,7 +292,7 @@ export const fruitingPlants = {
             ...fruitingAppearance.leaf,
             color: '#4f7d2f',
             size: 0.25,
-            type: 'heart',
+            type: 'palmate',
         },
         flower: {
             ...fruitingAppearance.flower,

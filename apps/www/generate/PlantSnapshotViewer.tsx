@@ -5,7 +5,10 @@ import { type ComponentType, createElement, useEffect, useState } from 'react';
 import type { PlantViewerProps } from '../../../packages/game/src/viewers/PlantViewer';
 
 type PlantViewerComponent = ComponentType<PlantViewerProps>;
-type PlantSnapshotViewerProps = Omit<PlantViewerProps, 'includeGround'>;
+type PlantSnapshotViewerProps = Omit<
+    PlantViewerProps,
+    'includeGround' | 'preserveDrawingBuffer'
+>;
 
 export function PlantSnapshotViewer(props: PlantSnapshotViewerProps) {
     const [Viewer, setViewer] = useState<PlantViewerComponent | null>(null);
@@ -39,6 +42,7 @@ export function PlantSnapshotViewer(props: PlantSnapshotViewerProps) {
               createElement(Viewer, {
                   ...props,
                   includeGround: false,
+                  preserveDrawingBuffer: true,
               }),
           )
         : null;

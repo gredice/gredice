@@ -93,11 +93,11 @@ export const herbPlants = {
             color: '#769b49',
             radius: 0.017,
             radiusDecay: 0.55,
-            minRadius: 0.002,
+            minRadius: 0.006,
         },
         leaf: {
             color: '#89b658',
-            size: 0.12,
+            size: 0.14,
             type: 'feathery',
         },
         flower: {
@@ -141,11 +141,11 @@ export const herbPlants = {
             color: '#688741',
             radius: 0.017,
             radiusDecay: 0.55,
-            minRadius: 0.002,
+            minRadius: 0.005,
         },
         leaf: {
             color: '#5f8a2f',
-            size: 0.15,
+            size: 0.16,
             type: 'pinnate',
         },
         flower: {
@@ -182,7 +182,7 @@ export const herbPlants = {
             color: '#688741',
             radius: 0.019,
             radiusDecay: 0.55,
-            minRadius: 0.002,
+            minRadius: 0.005,
         },
         leaf: {
             color: '#5f8a2f',
@@ -276,11 +276,11 @@ export const herbPlants = {
             color: '#688741',
             radius: 0.017,
             radiusDecay: 0.55,
-            minRadius: 0.002,
+            minRadius: 0.006,
         },
         leaf: {
             color: '#5f8a2f',
-            size: 0.16,
+            size: 0.17,
             type: 'pinnate',
         },
         flower: {

@@ -134,3 +134,68 @@ test('reports an unreachable target without crossing its blocked enclosure', () 
     assert.deepEqual(path.points, [from]);
     assert.equal(path.distance, 0);
 });
+
+test('strict traversal never routes through dry or missing habitat cells', () => {
+    const wetlandCells = [
+        { x: -2, z: 0 },
+        { x: -1, z: 0 },
+        { x: 1, z: 0 },
+        { x: 2, z: 0 },
+    ];
+    const path = findCatPath({
+        blockedCells: [],
+        from: { x: -2, y: 0.42, z: 0 },
+        surfaces: wetlandCells.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 2, y: 0.42, z: 0 },
+        traversableCells: wetlandCells,
+    });
+
+    assert.equal(path.status, 'unreachable');
+    assert.deepEqual(path.points, [{ x: -2, y: 0.42, z: 0 }]);
+});
+
+test('strict traversal uses only the connected eligible habitat detour', () => {
+    const wetlandCells = [
+        { x: -2, z: 0 },
+        { x: -1, z: 0 },
+        { x: -1, z: 1 },
+        { x: 0, z: 1 },
+        { x: 1, z: 1 },
+        { x: 1, z: 0 },
+        { x: 2, z: 0 },
+    ];
+    const path = findCatPath({
+        blockedCells: [{ x: 0, z: 0 }],
+        from: { x: -2, y: 0.42, z: 0 },
+        surfaces: wetlandCells.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 2, y: 0.42, z: 0 },
+        traversableCells: wetlandCells,
+    });
+
+    assert.equal(path.status, 'path');
+    assert.equal(
+        path.points.every((point) =>
+            wetlandCells.some(
+                (cell) => cell.x === point.x && cell.z === point.z,
+            ),
+        ),
+        true,
+    );
+});
+
+test('strict direct traversal cannot cut diagonally across missing habitat corners', () => {
+    const endpoints = [
+        { x: 0, z: 0 },
+        { x: 1, z: 1 },
+    ];
+    const path = findCatPath({
+        blockedCells: [],
+        from: { x: 0, y: 0.42, z: 0 },
+        surfaces: endpoints.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 1, y: 0.42, z: 1 },
+        traversableCells: endpoints,
+    });
+
+    assert.equal(path.status, 'unreachable');
+    assert.deepEqual(path.points, [{ x: 0, y: 0.42, z: 0 }]);
+});
