@@ -885,6 +885,7 @@ async function runOutletGardenLayoutTest({ page }: { page: Page }) {
         .poll(() => page.evaluate(() => window.innerWidth))
         .toBe(screenshotViewport.width);
     await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+    await expectOutletCanvasToFillScene(page);
     await expect(controlsGuide).toBeVisible();
     await expect
         .poll(async () => {
