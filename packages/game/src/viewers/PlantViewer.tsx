@@ -1,8 +1,9 @@
 'use client';
 
 import { OrbitControls } from '@react-three/drei';
-import { useRef } from 'react';
-import { Vector3 } from 'three';
+import { useThree } from '@react-three/fiber';
+import { useLayoutEffect, useRef } from 'react';
+import { Vector3, type WebGLRendererParameters } from 'three';
 import { groundGameAssetNames } from '../data/models';
 import { BlockGround } from '../entities/BlockGround';
 import { plantTypes } from '../generators/plant/lib/plant-presets';
@@ -28,6 +29,7 @@ export interface PlantViewerProps {
     includeEnvironment?: boolean;
     includeGround?: boolean;
     lightingPreset?: 'default' | 'snapshot';
+    preserveDrawingBuffer?: boolean;
     zoom?: number;
     cameraPosition?: [x: number, y: number, z: number];
     orbitTarget?: [x: number, y: number, z: number];
@@ -38,6 +40,25 @@ const defaultCameraPosition: [x: number, y: number, z: number] = [
     -100, 100, -100,
 ];
 const defaultOrbitTarget: [x: number, y: number, z: number] = [0, 0.9, 0];
+
+const catalogRendererOptions: WebGLRendererParameters = {
+    alpha: true,
+    antialias: true,
+};
+const snapshotRendererOptions: WebGLRendererParameters = {
+    ...catalogRendererOptions,
+    preserveDrawingBuffer: true,
+};
+
+function TransparentCanvasClear() {
+    const gl = useThree((state) => state.gl);
+
+    useLayoutEffect(() => {
+        gl.setClearColor(0x000000, 0);
+    }, [gl]);
+
+    return null;
+}
 
 const lightingPresets = {
     default: {
@@ -68,6 +89,7 @@ export function PlantViewer({
     includeEnvironment = true,
     includeGround = true,
     lightingPreset = 'default',
+    preserveDrawingBuffer = false,
     zoom = defaultZoom,
     cameraPosition = defaultCameraPosition,
     orbitTarget = defaultOrbitTarget,
@@ -93,7 +115,17 @@ export function PlantViewer({
 
     return (
         <GameStateContext.Provider value={storeRef.current}>
-            <Scene position={cameraPosition} zoom={zoom} className={className}>
+            <Scene
+                position={cameraPosition}
+                zoom={zoom}
+                className={className}
+                rendererOptions={
+                    preserveDrawingBuffer
+                        ? snapshotRendererOptions
+                        : catalogRendererOptions
+                }
+            >
+                <TransparentCanvasClear />
                 <ambientLight intensity={lighting.ambientIntensity} />
                 {lightingPreset === 'snapshot' && (
                     <hemisphereLight

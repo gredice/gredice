@@ -119,6 +119,10 @@ export const legumePlants = {
             type: 'beanpod',
             baseSize: 0.22,
         },
+        leaf: {
+            ...legumeAppearance.leaf,
+            type: 'trifoliate',
+        },
     }),
     pea: createPlant('pea', {
         ...legumeAppearance,
@@ -163,6 +167,7 @@ export const legumePlants = {
         leaf: {
             ...legumeAppearance.leaf,
             size: 0.16,
+            type: 'pinnate',
         },
         flower: {
             ...legumeAppearance.flower,
@@ -217,6 +222,10 @@ export const legumePlants = {
             enabled: true,
             type: 'beanpod',
             baseSize: 0.2,
+        },
+        leaf: {
+            ...legumeAppearance.leaf,
+            type: 'trifoliate',
         },
     }),
 };
