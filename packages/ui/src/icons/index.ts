@@ -114,6 +114,7 @@ export {
     PanelRightOpen,
     Paperclip,
     Pause,
+    PawPrint,
     Percent,
     Pin,
     PinOff,

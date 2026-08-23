@@ -30,6 +30,7 @@ const twelveHourCatalogueRevalidationPages = [
     '../app/blokovi/[alias]/page.tsx',
     '../app/blokovi/biljke/page.tsx',
     '../app/blokovi/biljke/[alias]/page.tsx',
+    '../app/blokovi/ljubimci/page.tsx',
 ] as const;
 
 const httpDataSourcePattern =

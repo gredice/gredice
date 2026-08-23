@@ -12,6 +12,7 @@ const publicOgExactPaths = new Set([
     '/biljke',
     '/blokovi',
     '/blokovi/biljke',
+    '/blokovi/ljubimci',
     '/bolesti',
     '/cesta-pitanja',
     '/cjenik',
@@ -53,7 +54,8 @@ function shouldUseEntityCover(pathname: string) {
     return (
         pathname.startsWith('/blokovi/') &&
         pathname !== '/blokovi/biljke' &&
-        pathname !== '/blokovi/biljke/generator'
+        pathname !== '/blokovi/biljke/generator' &&
+        pathname !== '/blokovi/ljubimci'
     );
 }
 
@@ -75,7 +77,10 @@ function dynamicCoverFamily(pathname: string) {
     }
 
     if (/^\/blokovi\/[^/]+$/u.test(pathname)) {
-        return pathname === '/blokovi/biljke' ? null : 'block';
+        return pathname === '/blokovi/biljke' ||
+            pathname === '/blokovi/ljubimci'
+            ? null
+            : 'block';
     }
 
     return null;

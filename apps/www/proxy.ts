@@ -87,7 +87,8 @@ function getCanonicalPathname(pathname: string): string | null {
     if (
         segments.length === 2 &&
         segments[0] === 'blokovi' &&
-        segments[1] !== 'biljke'
+        segments[1] !== 'biljke' &&
+        segments[1] !== 'ljubimci'
     ) {
         const blockAlias = normalizeSlugSegment(segments[1]);
         return blockAlias ? `/blokovi/${blockAlias}` : null;
