@@ -7,6 +7,7 @@ type StoredSandboxBlock = {
     id: string;
     name: string;
     rotation: number;
+    variant?: number;
 };
 
 type StoredSandboxStack = {
@@ -57,6 +58,7 @@ function placeBlock(
     z: number,
     name: string,
     rotation = 0,
+    variant?: number,
 ) {
     const stack = stacks.get(stackKey(x, z));
     if (!stack) {
@@ -67,6 +69,7 @@ function placeBlock(
         id: `animal-debug:${animalDebugStorageVersion}:${name}:${x}:${z}:${stack.blocks.length}`,
         name,
         rotation,
+        variant,
     });
 }
 
@@ -170,6 +173,24 @@ function createPigletPathfindingStacks() {
     placeBlock(stacks, -3, 3, 'StoneMedium');
 
     for (let z = -4; z <= 2; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createRabbitPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -5,
+        maxX: 5,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, 1, 0, 'Rabbit', 0, 0);
+    placeBlock(stacks, 4, -2, 'Tree');
+    placeBlock(stacks, -3, 3, 'StoneMedium');
+    for (let z = -4; z <= 1; z += 1) {
         placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
     }
 
@@ -289,6 +310,7 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
+    placeBlock(stacks, -2, 0, 'Rabbit', 0, 0);
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -406,6 +428,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Piglet path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createRabbitPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Rabbit path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

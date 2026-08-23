@@ -9,10 +9,12 @@ export function EntityViewerDynamic({
     entityName,
     rotation,
     storageKey,
+    variant,
 }: {
     entityName: string;
     rotation?: number;
     storageKey: string;
+    variant?: number;
 }) {
     const [EntitySandboxViewer, setEntitySandboxViewer] =
         useState<EntitySandboxViewerComponent | null>(null);
@@ -46,6 +48,7 @@ export function EntityViewerDynamic({
             entityName={entityName}
             localSandboxStorageKey={storageKey}
             rotation={rotation}
+            variant={variant}
         />
     );
 }

@@ -87,6 +87,25 @@ describe('getPublicGardenRaisedBedsWithBlocks', () => {
 });
 
 describe('normalizePublicGardenStacks', () => {
+    it('preserves a Rabbit coat variant in public device-facing data', () => {
+        const [stack] = normalizePublicGardenStacks([
+            {
+                x: 2,
+                y: 3,
+                blocks: [
+                    {
+                        id: 'rabbit-public',
+                        name: 'Rabbit',
+                        rotation: 0,
+                        variant: 1,
+                    },
+                ],
+            },
+        ]);
+
+        assert.equal(stack?.blocks[0]?.variant, 1);
+    });
+
     it('maps public garden rows onto the game z axis', () => {
         const publicStacks: PublicGardenStack[] = [
             {
