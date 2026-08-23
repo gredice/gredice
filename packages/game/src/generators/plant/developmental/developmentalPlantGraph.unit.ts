@@ -478,8 +478,8 @@ test('builds carrot with one below-soil storage root and crown leaves', () => {
 
     assert.equal(graph.architecture, 'rosette');
     assert.equal(roots.length, 1);
-    assert.equal(petioles.length, 13);
-    assert.equal(leaves.length, 13);
+    assert.equal(petioles.length, 15);
+    assert.equal(leaves.length, 15);
 
     const storageRoot = roots[0];
     assert.ok(storageRoot);

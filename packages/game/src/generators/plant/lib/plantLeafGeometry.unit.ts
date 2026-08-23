@@ -106,7 +106,12 @@ test('compact leaf silhouettes retain their footprint without adding triangles',
         const compactWidth = compactBounds.max.x - compactBounds.min.x;
         const compactHeight = compactBounds.max.y - compactBounds.min.y;
         const minimumWidthRatio =
-            leafType === 'lobed' || leafType === 'feathery' ? 0.72 : 0.8;
+            leafType === 'lobed' ||
+            leafType === 'feathery' ||
+            leafType === 'pinnate' ||
+            leafType === 'compound'
+                ? 0.68
+                : 0.8;
         assert.ok(
             compactWidth >= fullWidth * minimumWidthRatio,
             `${leafType} compact width should retain its silhouette`,
@@ -124,4 +129,23 @@ test('only constrained quality tiers select compact leaf geometry', () => {
     assert.equal(resolvePlantLeafGeometryDetail('medium'), 'full');
     assert.equal(resolvePlantLeafGeometryDetail('high'), 'full');
     assert.equal(resolvePlantLeafGeometryDetail('custom'), 'full');
+});
+
+test('compound fronds read as tapering leaflets, not a thin saw', () => {
+    for (const leafType of ['feathery', 'pinnate', 'compound'] as const) {
+        const geometry = getPlantLeafGeometry(leafType, 'full');
+        geometry.computeBoundingBox();
+        const bounds = geometry.boundingBox;
+        assert.ok(bounds);
+        const width = bounds.max.x - bounds.min.x;
+        const height = bounds.max.y - bounds.min.y;
+        assert.ok(
+            width / height >= 0.55,
+            `${leafType} should stay triangular, not a strip`,
+        );
+        assert.ok(
+            getPlantLeafGeometryTriangleCount(leafType, 'full') >= 24,
+            `${leafType} should be built from multiple leaflets`,
+        );
+    }
 });

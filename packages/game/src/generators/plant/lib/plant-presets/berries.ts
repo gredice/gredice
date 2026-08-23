@@ -32,7 +32,7 @@ const strawberryAppearance = {
     leaf: {
         color: '#5c8a3d',
         size: 0.24,
-        type: 'serrated',
+        type: 'trifoliate',
     },
     flower: {
         enabled: true,
@@ -179,7 +179,7 @@ export const berryPlants = {
             ...berryShrubAppearance.leaf,
             color: '#55762f',
             size: 0.22,
-            type: 'serrated',
+            type: 'compound',
         },
         flower: {
             ...berryShrubAppearance.flower,
