@@ -569,6 +569,7 @@ test('decorations are grouped into summer, furniture, pets, and signs', async ({
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Krava' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Zec' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ovca' })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Chicken', exact: true }),
     ).toHaveCount(0);

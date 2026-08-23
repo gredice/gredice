@@ -53,6 +53,7 @@
         "blocks:farm-animal-homes:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts",
         "blocks:cow:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertCowBlockEntity.ts",
         "blocks:rabbit:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts --name Rabbit",
+        "blocks:sheep:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertFarmAnimalHomeBlockEntities.ts --name Sheep",
         "environment-animals:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertEnvironmentAnimalEntities.ts",
         "blocks:horse:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertHorseBlockEntity.ts",
         "blocks:terrain-variations:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertTerrainVariationBlockEntities.ts",

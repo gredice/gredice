@@ -85,6 +85,7 @@ export const localSandboxBlockNames = [
     'Cow',
     'Rabbit',
     'Horse',
+    'Sheep',
     'Bush',
     'Tree',
     'Pine',
@@ -188,6 +189,13 @@ const localSandboxBlockMetadata: Partial<
             'Miran vrtni konj koji pase i polako obilazi slobodne staze.',
         fullDescription:
             'Smjesti konja u vrt, odaberi mu boju dlake i gledaj kako mirno pase, osluškuje okolinu te polako obilazi prohodne staze. Kad ima dovoljno prostora, nakratko prelazi u kas, ali ostaje oprezan uz gredice, ograde i druge prepreke.',
+    },
+    Sheep: {
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        fullDescription:
+            'Smjesti vunastu ovcu na travnati dio vrta. Mirno će pasti, preživati i istraživati okolicu, a više ovaca držat će se na ugodnoj udaljenosti bez naguravanja.',
     },
     Block_Stone: {
         label: 'Kamen',
@@ -458,6 +466,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Cow: 1.26,
         Rabbit: 0.76,
         Horse: 1.46,
+        Sheep: 0.64,
         FishingBoat: 0.62,
         PineAdvent: 2.6,
         Raised_Bed: 0.35,
@@ -661,6 +670,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 1.46,
         hitboxWidth: 0.76,
     },
+    Sheep: {
+        hitboxDepth: 0.92,
+        hitboxHeight: 0.64,
+        hitboxWidth: 0.64,
+    },
 };
 
 type LocalSandboxPlacementAttributes = Partial<
@@ -750,6 +764,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     Horse: {
         placeableOnWater: false,
         spanDepth: 2,
+        spanWidth: 1,
+    },
+    Sheep: {
+        placeableOnWater: false,
+        spanDepth: 1,
         spanWidth: 1,
     },
 };

@@ -350,7 +350,8 @@ export type PettableAnimalSpecies =
     | 'Cow'
     | 'Dog'
     | 'Goat'
-    | 'Piglet';
+    | 'Piglet'
+    | 'Sheep';
 
 export type GardenAvatarAnimalPetRequest = {
     createdAt: number;

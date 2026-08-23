@@ -84,6 +84,7 @@ import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
 import { Shade } from './Shade';
+import { Sheep } from './Sheep';
 import { ShovelSmall } from './ShovelSmall';
 import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
@@ -212,6 +213,7 @@ export const entityNameMap = {
     Goat: Goat,
     Rabbit: Rabbit,
     Horse: Horse,
+    Sheep,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,
