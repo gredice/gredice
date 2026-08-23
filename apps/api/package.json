@@ -11,7 +11,7 @@
         "lint": "biome check --write",
         "lint:migrate": "biome migrate --write",
         "dev": "node ../../scripts/run-app-command.mjs dev",
-        "build": "next build",
+        "build": "node ./scripts/migratePrPreviewDatabase.mjs && next build",
         "start": "node ../../scripts/run-app-command.mjs start",
         "test": "pnpm run /^test:.*/",
         "test:run": "playwright test",
