@@ -24,6 +24,7 @@ import {
     environmentAnimalDefinitions,
     environmentAnimalEntityType,
 } from './lib/environmentAnimalDirectory';
+import { assertEnvironmentAnimalWriteAllowed } from './lib/environmentAnimalWriteGuard';
 
 // This helper deliberately rejects non-development writes. Production remains
 // an explicit release operation after the runtime asset and code are deployed.
@@ -60,18 +61,7 @@ function parseOptions(argv: string[]) {
     if (!target) {
         throw new Error('--target development is required.');
     }
-    if (apply && target !== 'development') {
-        throw new Error('Writes are restricted to --target development.');
-    }
-    if (
-        apply &&
-        process.env.VERCEL_ENV &&
-        process.env.VERCEL_ENV !== 'development'
-    ) {
-        throw new Error(
-            `Configured VERCEL_ENV is ${process.env.VERCEL_ENV}; refusing a development write.`,
-        );
-    }
+    assertEnvironmentAnimalWriteAllowed({ apply, target });
     return { apply, target };
 }
 
