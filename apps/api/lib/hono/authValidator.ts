@@ -1,8 +1,4 @@
-import {
-    doUseRefreshToken,
-    getUser,
-    touchTemporaryUserActivity,
-} from '@gredice/storage';
+import { doUseRefreshToken, getUser } from '@gredice/storage';
 import type { Context } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { createJwt, setCookie, verifyJwt } from '../auth/auth';
@@ -13,6 +9,7 @@ import {
     refreshTokenCookieName,
     sessionCookieName,
 } from '../auth/sessionConfig';
+import { touchTemporaryUserActivityBestEffort } from '../auth/temporaryUserActivity';
 
 type AuthContext = Exclude<
     Awaited<ReturnType<typeof getAuthContextFromAccessToken>>,
@@ -88,7 +85,7 @@ async function getAuthContextFromAccessToken(
         }
 
         if (dbUser.isTemporary) {
-            await touchTemporaryUserActivity(dbUser.id);
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
         }
 
         return {
@@ -150,7 +147,7 @@ export function authValidator(roles: string[]) {
         }
 
         if (dbUser.isTemporary) {
-            await touchTemporaryUserActivity(dbUser.id);
+            await touchTemporaryUserActivityBestEffort(dbUser.id);
         }
 
         const newAccessToken = await createJwt(

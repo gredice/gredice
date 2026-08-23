@@ -9,7 +9,17 @@ import { and, desc, eq, lt, ne, sql } from 'drizzle-orm';
 import { createAccount, storage } from '..';
 import {
     accountUsers,
+    aiAccountLimitOverrides,
+    aiChatConversations,
+    aiChatToolCalls,
+    aiUsageLedger,
+    communityEditRequests,
+    events,
     gardens,
+    gardenVisitStates,
+    notificationEmailLog,
+    notifications,
+    refreshTokens,
     type SelectGarden,
     type UpdateUserInfo,
     userFavorites,
@@ -21,7 +31,12 @@ import {
     createDefaultGardenForAccount,
     createSandboxGarden,
 } from './gardensRepo';
-import { deleteRefreshTokensForUser } from './refreshTokensRepo';
+
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
 
 const temporaryAccountInactivityDays = 30;
 const temporaryUserNameSuffixMin = 1000;
@@ -396,16 +411,20 @@ export async function promoteTemporaryUser({
     );
 }
 
-export async function deleteUserAuthenticationData(userId: string) {
-    await deleteRefreshTokensForUser(userId);
-    await storage().delete(userLogins).where(eq(userLogins.userId, userId));
+export async function deleteUserAuthenticationData(
+    userId: string,
+    db: DatabaseClient = storage(),
+) {
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
+    await db.delete(userLogins).where(eq(userLogins.userId, userId));
 }
 
 async function convertTemporaryAccountGardensToAccountGardens(
     accountIds: string[],
+    db: DatabaseClient = storage(),
 ) {
     for (const accountId of accountIds) {
-        await storage()
+        await db
             .update(gardens)
             .set({ isSandbox: false })
             .where(
@@ -420,40 +439,41 @@ async function convertTemporaryAccountGardensToAccountGardens(
 async function reassignTemporaryFavoritesToUser({
     targetUserId,
     temporaryUserId,
+    db = storage(),
 }: {
     targetUserId: string;
     temporaryUserId: string;
+    db?: DatabaseClient;
 }) {
-    const temporaryFavorites = await storage().query.userFavorites.findMany({
+    const temporaryFavorites = await db.query.userFavorites.findMany({
         where: eq(userFavorites.userId, temporaryUserId),
     });
 
     for (const favorite of temporaryFavorites) {
-        const existingTargetFavorite =
-            await storage().query.userFavorites.findFirst({
-                where: and(
-                    eq(userFavorites.userId, targetUserId),
-                    eq(userFavorites.entityType, favorite.entityType),
-                    eq(userFavorites.entityId, favorite.entityId),
-                ),
-            });
+        const existingTargetFavorite = await db.query.userFavorites.findFirst({
+            where: and(
+                eq(userFavorites.userId, targetUserId),
+                eq(userFavorites.entityType, favorite.entityType),
+                eq(userFavorites.entityId, favorite.entityId),
+            ),
+        });
 
         if (existingTargetFavorite) {
             const updatedAt =
                 existingTargetFavorite.updatedAt > favorite.updatedAt
                     ? existingTargetFavorite.updatedAt
                     : favorite.updatedAt;
-            await storage()
+            await db
                 .update(userFavorites)
                 .set({ updatedAt })
                 .where(eq(userFavorites.id, existingTargetFavorite.id));
-            await storage()
+            await db
                 .delete(userFavorites)
                 .where(eq(userFavorites.id, favorite.id));
             continue;
         }
 
-        await storage()
+        await db
             .update(userFavorites)
             .set({ userId: targetUserId })
             .where(eq(userFavorites.id, favorite.id));
@@ -471,59 +491,105 @@ export async function attachTemporaryAccountsToUser({
         return { accountIds: [] };
     }
 
-    const temporaryUser = await storage().query.users.findFirst({
-        where: eq(users.id, temporaryUserId),
-        with: {
-            accounts: true,
-        },
-    });
-    if (!temporaryUser?.isTemporary) {
-        return { accountIds: [] };
-    }
+    return storage().transaction(async (db) => {
+        const temporaryUser = await db.query.users.findFirst({
+            where: eq(users.id, temporaryUserId),
+            with: {
+                accounts: true,
+            },
+        });
+        if (!temporaryUser?.isTemporary) {
+            return { accountIds: [] };
+        }
 
-    const targetUser = await storage().query.users.findFirst({
-        where: eq(users.id, targetUserId),
-    });
-    if (!targetUser) {
-        throw new Error('Target user not found');
-    }
+        const targetUser = await db.query.users.findFirst({
+            where: eq(users.id, targetUserId),
+        });
+        if (!targetUser) {
+            throw new Error('Target user not found');
+        }
 
-    const attachedAccountIds: string[] = [];
-    for (const accountUser of temporaryUser.accounts) {
-        const existingTargetLink = await storage().query.accountUsers.findFirst(
-            {
+        const attachedAccountIds: string[] = [];
+        for (const accountUser of temporaryUser.accounts) {
+            const existingTargetLink = await db.query.accountUsers.findFirst({
                 where: and(
                     eq(accountUsers.accountId, accountUser.accountId),
                     eq(accountUsers.userId, targetUserId),
                 ),
-            },
-        );
+            });
 
-        if (existingTargetLink) {
-            await storage()
-                .delete(accountUsers)
-                .where(eq(accountUsers.id, accountUser.id));
-        } else {
-            await storage()
-                .update(accountUsers)
-                .set({ userId: targetUserId })
-                .where(eq(accountUsers.id, accountUser.id));
-            await createEvent(
-                knownEvents.accounts.assignedUserV1(accountUser.accountId, {
-                    userId: targetUserId,
-                }),
-            );
+            if (existingTargetLink) {
+                await db
+                    .delete(accountUsers)
+                    .where(eq(accountUsers.id, accountUser.id));
+            } else {
+                await db
+                    .update(accountUsers)
+                    .set({ userId: targetUserId })
+                    .where(eq(accountUsers.id, accountUser.id));
+                await createEvent(
+                    knownEvents.accounts.assignedUserV1(accountUser.accountId, {
+                        userId: targetUserId,
+                    }),
+                    db,
+                );
+            }
+
+            attachedAccountIds.push(accountUser.accountId);
         }
 
-        attachedAccountIds.push(accountUser.accountId);
-    }
+        await reassignTemporaryFavoritesToUser({
+            targetUserId,
+            temporaryUserId,
+            db,
+        });
+        await convertTemporaryAccountGardensToAccountGardens(
+            attachedAccountIds,
+            db,
+        );
+        await db
+            .update(aiChatConversations)
+            .set({ userId: targetUserId })
+            .where(eq(aiChatConversations.userId, temporaryUserId));
+        await db
+            .update(aiUsageLedger)
+            .set({ userId: targetUserId })
+            .where(eq(aiUsageLedger.userId, temporaryUserId));
+        await db
+            .update(aiChatToolCalls)
+            .set({ approvedByUserId: targetUserId })
+            .where(eq(aiChatToolCalls.approvedByUserId, temporaryUserId));
+        await db
+            .update(aiAccountLimitOverrides)
+            .set({ updatedByUserId: targetUserId })
+            .where(
+                eq(aiAccountLimitOverrides.updatedByUserId, temporaryUserId),
+            );
+        await db
+            .update(notifications)
+            .set({ userId: targetUserId })
+            .where(eq(notifications.userId, temporaryUserId));
+        await db
+            .update(notificationEmailLog)
+            .set({ userId: targetUserId })
+            .where(eq(notificationEmailLog.userId, temporaryUserId));
+        await db
+            .update(communityEditRequests)
+            .set({ submitterUserId: targetUserId })
+            .where(eq(communityEditRequests.submitterUserId, temporaryUserId));
+        await db
+            .update(communityEditRequests)
+            .set({ reviewerUserId: targetUserId })
+            .where(eq(communityEditRequests.reviewerUserId, temporaryUserId));
+        await db
+            .delete(gardenVisitStates)
+            .where(eq(gardenVisitStates.userId, temporaryUserId));
+        await db.delete(events).where(eq(events.aggregateId, temporaryUserId));
+        await deleteUserAuthenticationData(temporaryUserId, db);
+        await db.delete(users).where(eq(users.id, temporaryUserId));
 
-    await reassignTemporaryFavoritesToUser({ targetUserId, temporaryUserId });
-    await convertTemporaryAccountGardensToAccountGardens(attachedAccountIds);
-    await deleteUserAuthenticationData(temporaryUserId);
-    await storage().delete(users).where(eq(users.id, temporaryUserId));
-
-    return { accountIds: attachedAccountIds };
+        return { accountIds: attachedAccountIds };
+    });
 }
 
 function passwordHash(password: string) {
@@ -560,17 +626,32 @@ export async function createOrUpdateUserPasswordLogin(
     password: string,
 ) {
     const { salt, hash } = passwordHash(password);
-    const loginData = JSON.stringify({
-        salt,
-        password: hash,
-        isVerified: false,
-    });
     const existingLogin = await storage().query.userLogins.findFirst({
         where: and(
             eq(userLogins.userId, userId),
             eq(userLogins.loginType, 'password'),
             eq(userLogins.loginId, userName),
         ),
+    });
+    let isVerified = false;
+    if (existingLogin) {
+        try {
+            const existingLoginData: unknown = JSON.parse(
+                existingLogin.loginData,
+            );
+            isVerified =
+                typeof existingLoginData === 'object' &&
+                existingLoginData !== null &&
+                'isVerified' in existingLoginData &&
+                existingLoginData.isVerified === true;
+        } catch {
+            isVerified = false;
+        }
+    }
+    const loginData = JSON.stringify({
+        salt,
+        password: hash,
+        isVerified,
     });
 
     if (existingLogin) {
@@ -640,6 +721,7 @@ export async function createOrUpdateUserWithOauth(
             return {
                 userId: existingLogin.userId,
                 loginId: existingLogin.id,
+                isNewUser: false,
                 attachedTemporaryAccountIds: attached.accountIds,
             };
         }
@@ -651,6 +733,8 @@ export async function createOrUpdateUserWithOauth(
         return {
             userId: existingLogin.userId,
             loginId: existingLogin.id,
+            isNewUser: false,
+            attachedTemporaryAccountIds: undefined,
         };
     }
 

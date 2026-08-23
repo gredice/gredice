@@ -76,7 +76,7 @@ const nextConfig: NextConfig = {
             process.env.NODE_ENV === 'development' ||
             process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
         const apiHost =
-            process.env.GREDICE_API_HOST ??
+            process.env.GREDICE_API_HOST?.trim() ||
             (isDev
                 ? localAppHostnameUrl(
                       apiApp,

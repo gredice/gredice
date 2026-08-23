@@ -18,7 +18,6 @@ import {
     incLoginFailedAttempts,
     loginSuccessful,
     promoteTemporaryUser,
-    touchTemporaryUserActivity,
     updateLoginData,
 } from '@gredice/storage';
 import { type Context, Hono } from 'hono';
@@ -68,6 +67,12 @@ import {
     issueSessionTokens,
     revokeSessionToken,
 } from '../../../lib/auth/sessionTokens';
+import {
+    temporaryAccountClientAddress,
+    temporaryAccountRateLimitAllows,
+    temporaryAccountRateLimitRetryAfterSeconds,
+} from '../../../lib/auth/temporaryAccountRateLimit';
+import { touchTemporaryUserActivityBestEffort } from '../../../lib/auth/temporaryUserActivity';
 import { sendWelcome } from '../../../lib/email/transactional';
 import { getPostHogClient } from '../../../lib/posthog-server';
 
@@ -184,7 +189,7 @@ async function currentClaimsFromRefreshToken(context: Context) {
     ]);
 
     if (user.isTemporary) {
-        await touchTemporaryUserActivity(user.id);
+        await touchTemporaryUserActivityBestEffort(user.id);
     }
 
     return currentClaimsFromUser(user);
@@ -198,7 +203,7 @@ async function getCurrentClaims(context: Context) {
             return null;
         }
         if (user.isTemporary) {
-            await touchTemporaryUserActivity(user.id);
+            await touchTemporaryUserActivityBestEffort(user.id);
         }
         return currentClaimsFromUser(user);
     }
@@ -401,11 +406,29 @@ const app = new Hono()
             const existingClaims = await getCurrentClaims(context);
             if (existingClaims) {
                 if (existingClaims.isTemporary) {
-                    await touchTemporaryUserActivity(existingClaims.id, {
-                        force: true,
-                    });
+                    await touchTemporaryUserActivityBestEffort(
+                        existingClaims.id,
+                        { force: true },
+                    );
                 }
                 return context.json(existingClaims);
+            }
+
+            const withinRateLimit = await temporaryAccountRateLimitAllows(
+                temporaryAccountClientAddress(context.req.raw.headers),
+            );
+            if (!withinRateLimit) {
+                context.header(
+                    'Retry-After',
+                    temporaryAccountRateLimitRetryAfterSeconds.toString(),
+                );
+                return context.json(
+                    {
+                        error: 'Too many temporary account requests',
+                        errorCode: 'rate_limited',
+                    },
+                    429,
+                );
             }
 
             const temporary = await createTemporaryUserAndAccount();

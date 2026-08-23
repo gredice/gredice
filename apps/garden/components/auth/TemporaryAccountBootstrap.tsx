@@ -30,15 +30,13 @@ function bootstrapTemporaryAccount() {
     )
         .then((response) => {
             if (!response.ok) {
-                temporaryAccountBootstrapPromise = null;
                 throw new Error(
                     `Failed to create temporary account: ${response.status.toString()}`,
                 );
             }
         })
-        .catch((error: unknown) => {
+        .finally(() => {
             temporaryAccountBootstrapPromise = null;
-            throw error;
         });
 
     return temporaryAccountBootstrapPromise;

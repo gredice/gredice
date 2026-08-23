@@ -190,6 +190,18 @@ async function mockOutletGardenApi(page: Page) {
             mutationRequests.push(`${request.method()} ${pathname}`);
         }
 
+        if (
+            pathname.endsWith('/api/auth/temporary') &&
+            request.method() === 'POST'
+        ) {
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
         if (pathname.endsWith('/api/auth/current-claims')) {
             await route.fulfill({
                 body: JSON.stringify({ error: 'Unauthorized' }),

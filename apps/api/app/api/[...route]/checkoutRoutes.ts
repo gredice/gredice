@@ -1573,9 +1573,23 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
         ),
         zValidator('json', packageCheckoutBodySchema),
         async (context) => {
-            const { accountId, userId } = context.get('authContext');
+            const {
+                accountId,
+                user: authUser,
+                userId,
+            } = context.get('authContext');
             const { code } = context.req.valid('param');
             const { returnContext } = context.req.valid('json');
+
+            if (authUser.isTemporary) {
+                return context.json(
+                    {
+                        error: 'Upgrade required before checkout',
+                        errorCode: 'upgrade_required',
+                    },
+                    403,
+                );
+            }
 
             const [account, user, packages] = await Promise.all([
                 getAccount(accountId),
