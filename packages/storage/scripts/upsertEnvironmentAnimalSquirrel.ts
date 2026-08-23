@@ -6,7 +6,6 @@ import {
     closeStorage,
     createAttributeDefinition,
     createAttributeDefinitionCategory,
-    createEntity,
     entities,
     entityTypes,
     getAttributeDefinitions,
@@ -25,6 +24,7 @@ import {
     environmentAnimalSquirrelSpec,
     parseEnvironmentAnimalSquirrelOptions,
 } from '../src/data/environmentAnimalSquirrel';
+import { createNamedEntity } from './lib/createNamedEntity';
 
 // Safe by default: use --apply only against the intended non-production
 // environment, after the runtime asset is deployed. Repeated applies converge.
@@ -256,8 +256,16 @@ async function main() {
             `Failed to create definitions: ${missingDefinitions.join(', ')}`,
         );
     }
+    if (!nameDefinition) {
+        throw new Error('Missing information.name while applying Squirrel.');
+    }
     if (!entityId) {
-        entityId = await createEntity(environmentAnimalEntityTypeName, actor);
+        entityId = await createNamedEntity({
+            actor,
+            entityTypeName: environmentAnimalEntityTypeName,
+            name: environmentAnimalSquirrelSpec.name,
+            nameDefinition,
+        });
         summary.entity.id = entityId;
     }
 

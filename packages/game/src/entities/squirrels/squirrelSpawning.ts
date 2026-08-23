@@ -70,6 +70,9 @@ export function createSquirrelSpawnPlan({
     maxPerGarden?: number;
     now: number;
 }) {
+    // Intentionally reserve the stable, top-ranked habitat slots before
+    // cooldown filtering. Backfilling a cooling slot from a lower-ranked
+    // habitat would unmount that squirrel when the preferred slot recovers.
     return habitats
         .map((habitat) => {
             const spawnSequence = cooldowns.get(habitat.id)?.spawnSequence ?? 0;

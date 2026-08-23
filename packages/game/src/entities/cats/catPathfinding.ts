@@ -21,6 +21,11 @@ export type CatPathResult = {
     visitedCellCount: number;
 };
 
+export type CatPathEdgeTraversal = (
+    from: CatPathCell,
+    to: CatPathCell,
+) => boolean;
+
 type SearchNode = {
     cell: CatPathCell;
     costFromStart: number;
@@ -181,12 +186,14 @@ function canWalkCell({
 
 function directPathCrossesBlockedCell({
     blockedKeys,
+    canTraverseEdge,
     from,
     startCell,
     targetCell,
     to,
 }: {
     blockedKeys: Set<string>;
+    canTraverseEdge?: CatPathEdgeTraversal;
     from: CatPathPoint;
     startCell: CatPathCell;
     targetCell: CatPathCell;
@@ -194,6 +201,7 @@ function directPathCrossesBlockedCell({
 }) {
     const distance = horizontalDistance(from, to);
     const steps = Math.max(1, Math.ceil(distance / directPathSampleStep));
+    let previousCell = startCell;
 
     for (let step = 1; step < steps; step += 1) {
         const progress = step / steps;
@@ -203,14 +211,26 @@ function directPathCrossesBlockedCell({
         });
 
         if (
+            !isSameCell(cell, previousCell) &&
+            canTraverseEdge &&
+            !canTraverseEdge(previousCell, cell)
+        ) {
+            return true;
+        }
+
+        if (
             !isTemporarilyAllowedCell(cell, startCell, targetCell) &&
             blockedKeys.has(cellKey(cell))
         ) {
             return true;
         }
+        previousCell = cell;
     }
 
-    return false;
+    return (
+        !isSameCell(previousCell, targetCell) &&
+        Boolean(canTraverseEdge && !canTraverseEdge(previousCell, targetCell))
+    );
 }
 
 function heuristic(left: CatPathCell, right: CatPathCell) {
@@ -310,11 +330,13 @@ function reconstructPath(
 function findCellPath({
     blockedKeys,
     bounds,
+    canTraverseEdge,
     startCell,
     targetCell,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
+    canTraverseEdge?: CatPathEdgeTraversal;
     startCell: CatPathCell;
     targetCell: CatPathCell;
 }) {
@@ -376,7 +398,9 @@ function findCellPath({
                     direction,
                     startCell,
                     targetCell,
-                })
+                }) ||
+                (canTraverseEdge &&
+                    !canTraverseEdge(current.node.cell, neighborCell))
             ) {
                 continue;
             }
@@ -487,11 +511,13 @@ function cellsToPoints({
 
 export function findCatPath({
     blockedCells,
+    canTraverseEdge,
     from,
     surfaces,
     to,
 }: {
     blockedCells: CatPathCell[];
+    canTraverseEdge?: CatPathEdgeTraversal;
     from: CatPathPoint;
     surfaces: CatPathSurface[];
     to: CatPathPoint;
@@ -508,6 +534,7 @@ export function findCatPath({
         isSameCell(startCell, targetCell) ||
         !directPathCrossesBlockedCell({
             blockedKeys,
+            canTraverseEdge,
             from,
             startCell,
             targetCell,
@@ -528,6 +555,7 @@ export function findCatPath({
     const cellPath = findCellPath({
         blockedKeys,
         bounds,
+        canTraverseEdge,
         startCell,
         targetCell,
     });

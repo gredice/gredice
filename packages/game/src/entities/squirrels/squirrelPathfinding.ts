@@ -12,6 +12,7 @@ export type SquirrelPathPoint = CatPathPoint;
 export type SquirrelPathResult = CatPathResult;
 
 const pathValidationStep = 0.14;
+const squirrelMaximumStepHeight = 0.26;
 
 function cellKey(cell: Pick<SquirrelPathCell, 'x' | 'z'>) {
     return `${Math.round(cell.x)}:${Math.round(cell.z)}`;
@@ -65,6 +66,7 @@ function isPathGroundSafe({
     surfaces: AnimalMovementSurface[];
 }) {
     const blockedKeys = new Set(blockedCells.map(cellKey));
+    let previousSurfaceY: number | null = null;
 
     for (let index = 1; index < points.length; index += 1) {
         const from = points[index - 1];
@@ -84,14 +86,41 @@ function isPathGroundSafe({
             const surface = getAnimalMovementSurfaceAt(position, surfaces);
             if (
                 surface?.kind !== 'ground' ||
-                (step > 0 && step < steps && blockedKeys.has(cellKey(position)))
+                (step > 0 &&
+                    step < steps &&
+                    blockedKeys.has(cellKey(position))) ||
+                (previousSurfaceY !== null &&
+                    Math.abs(surface.y - previousSurfaceY) >
+                        squirrelMaximumStepHeight)
             ) {
                 return false;
             }
+            previousSurfaceY = surface.y;
         }
     }
 
     return true;
+}
+
+function canSquirrelTraverseEdge(
+    from: SquirrelPathCell,
+    to: SquirrelPathCell,
+    surfaces: AnimalMovementSurface[],
+) {
+    const fromSurface = getAnimalMovementSurfaceAt(from, surfaces);
+    const toSurface = getAnimalMovementSurfaceAt(to, surfaces);
+    if (fromSurface?.kind !== 'ground' || toSurface?.kind !== 'ground') {
+        return false;
+    }
+
+    return isPathGroundSafe({
+        blockedCells: [],
+        points: [
+            { ...from, y: fromSurface.y },
+            { ...to, y: toSurface.y },
+        ],
+        surfaces,
+    });
 }
 
 export function findSquirrelPath({
@@ -111,6 +140,8 @@ export function findSquirrelPath({
     });
     const path = findCatPath({
         blockedCells: strictBlockedCells,
+        canTraverseEdge: (edgeFrom, edgeTo) =>
+            canSquirrelTraverseEdge(edgeFrom, edgeTo, surfaces),
         from,
         surfaces: surfaces
             .filter((surface) => surface.kind === 'ground')
