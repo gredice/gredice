@@ -1,7 +1,7 @@
 'use client';
 
 import { resolvePersistedAppearanceVariant } from '@gredice/js/appearanceVariants';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
     type Euler,
@@ -394,6 +394,7 @@ export function Rabbit({
     variant,
 }: EntityInstanceProps) {
     const gltf = useGameGLTF('Rabbit');
+    const clock = useThree((state) => state.clock);
     const { data: blockData } = useBlockData();
     const gameStateStore = useGameStateStore();
     const currentStackHeight = useStackHeight(stack, block);
@@ -480,9 +481,13 @@ export function Rabbit({
         }
         group.position.copy(home);
         group.rotation.y = rotation * (Math.PI / 2);
-        runtimeRef.current = makeSettledState(randomRef.current, 0, 'sniff');
+        runtimeRef.current = makeSettledState(
+            randomRef.current,
+            clock.getElapsedTime(),
+            'sniff',
+        );
         nextFleeAttemptAtRef.current = Number.NEGATIVE_INFINITY;
-    }, [home, rotation]);
+    }, [clock, home, rotation]);
 
     useEffect(
         () => () => {
@@ -511,9 +516,13 @@ export function Rabbit({
         });
         runtimeRef.current =
             replacement.status === 'unreachable'
-                ? makeSettledState(randomRef.current, 0, 'sit')
+                ? makeSettledState(
+                      randomRef.current,
+                      clock.getElapsedTime(),
+                      'sit',
+                  )
                 : makeMovingState(runtime.behavior, replacement.points);
-    }, [habitat]);
+    }, [clock, habitat]);
 
     useFrame(({ clock }, delta) => {
         const group = groupRef.current;

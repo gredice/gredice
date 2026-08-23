@@ -85,7 +85,7 @@ export function GardenPetCard({
                         <GardenPetRoutine
                             icon={<Sun aria-hidden className="size-4" />}
                             label="Danju"
-                            value={`Obilazi vrt u krugu do ${formatBlockDistance(pet.dayRangeBlocks)} blokova od doma.`}
+                            value={`Obilazi vrt u krugu do ${formatBlockDistance(pet.dayRangeBlocks)} blokova ${pet.directlyPlaceable ? 'od mjesta postavljanja' : 'od doma'}.`}
                         />
                         <GardenPetRoutine
                             icon={<Moon aria-hidden className="size-4" />}

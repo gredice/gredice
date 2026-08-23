@@ -128,6 +128,7 @@ export type GardenRenamePayload = {
 export type GardenBlockPlacePayload = {
     id: string;
     name: string;
+    variant: number | null;
 };
 
 export type GardenBlockRemovePayload = {

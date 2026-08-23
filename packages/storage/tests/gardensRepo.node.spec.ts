@@ -19,6 +19,7 @@ import {
     getAccountGardens,
     getAccountGardensMetadata,
     getAllRaisedBedsFiltered,
+    getEvents,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -35,6 +36,7 @@ import {
     getRaisedBeds,
     getUserLikedGardenIds,
     knownEvents,
+    knownEventTypes,
     listUserGardenLikes,
     PublicGardenLikeTargetNotFoundError,
     RAISED_BED_PHOTO_OPERATION_ID,
@@ -618,14 +620,29 @@ test('deleteGarden marks garden as deleted', async () => {
     assert.strictEqual(garden, null);
 });
 
-test('createGardenBlock and getGardenBlocks', async () => {
+test('createGardenBlock persists and emits the appearance variant', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
+    const blockId = await createGardenBlock(gardenId, 'Rabbit', undefined, {
+        variant: 1,
+    });
     const blocks = await getGardenBlocks(gardenId);
-    assert.ok(blocks.some((b) => b.id === blockId));
+    assert.strictEqual(
+        blocks.find((block) => block.id === blockId)?.variant,
+        1,
+    );
+
+    const placementEvents = await getEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    assert.deepStrictEqual(placementEvents.at(-1)?.data, {
+        id: blockId,
+        name: 'Rabbit',
+        variant: 1,
+    });
 });
 
 test('getGardenBlock returns correct block', async () => {

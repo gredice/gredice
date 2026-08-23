@@ -597,6 +597,7 @@ export async function createGardenBlock(
             knownEvents.gardens.blockPlacedV1(gardenId.toString(), {
                 id: blockId,
                 name: blockName,
+                variant: options.variant ?? null,
             }),
             db,
         ),
