@@ -141,6 +141,48 @@ describe('bat flight collision and avoidance', () => {
             null,
         );
     });
+
+    it('scans every waypoint even when the old random stride shared a factor with the count', () => {
+        const waypoints = Array.from({ length: 10 }, (_, index) => {
+            const angle = (index / 10) * Math.PI * 2;
+            return {
+                id: index === 4 ? 'clear-4' : `blocked-${index}`,
+                kind: 'circle' as const,
+                position: new Vector3(
+                    Math.cos(angle) * 8,
+                    3,
+                    Math.sin(angle) * 8,
+                ),
+            };
+        });
+        const habitat: BatHabitat = {
+            center: new Vector3(0, 3, 0),
+            id: 'environment-bat:complete-scan',
+            roost: new Vector3(0, 3, 0),
+            seed: 31,
+            waypoints,
+            world: {
+                bounds: { maxX: 10, maxZ: 10, minX: -10, minZ: -10 },
+                obstacles: [],
+            },
+        };
+        const avoid = waypoints
+            .filter((waypoint) => waypoint.id !== 'clear-4')
+            .map((waypoint) => ({
+                center: waypoint.position,
+                radius: 0.1,
+            }));
+
+        const selected = chooseBatWaypoint({
+            avoid,
+            current: new Vector3(0, 3, 0),
+            habitat,
+            random: () => 0.45,
+            startIndex: 0,
+        });
+
+        assert.equal(selected?.waypoint.id, 'clear-4');
+    });
 });
 
 describe('bat habitat selection', () => {

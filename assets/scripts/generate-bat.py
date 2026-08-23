@@ -242,10 +242,20 @@ def mirror_x(point: tuple[float, float, float]) -> tuple[float, float, float]:
     return (-point[0], point[1], point[2])
 
 
+def configure_eevee(scene: bpy.types.Scene) -> None:
+    for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        try:
+            scene.render.engine = engine
+            return
+        except TypeError:
+            continue
+    raise RuntimeError("This Blender version does not provide an EEVEE engine.")
+
+
 def create_bat(output: Path) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE"
+    configure_eevee(scene)
     scene.render.fps = 24
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1
@@ -521,6 +531,7 @@ def create_bat(output: Path) -> None:
                 (0, math.radians(-4), math.radians(-2)),
                 (0, math.radians(12), math.radians(-4)),
             ],
+            strict=True,
         ),
     )
     animate_rotation(
@@ -536,6 +547,7 @@ def create_bat(output: Path) -> None:
                 (0, math.radians(4), math.radians(2)),
                 (0, math.radians(-12), math.radians(4)),
             ],
+            strict=True,
         ),
     )
     for pivot, sign in (
@@ -558,6 +570,7 @@ def create_bat(output: Path) -> None:
                     (0, math.radians(sign * 5), math.radians(sign * 2)),
                     (0, 0, 0),
                 ],
+                strict=True,
             ),
         )
     animate_location(

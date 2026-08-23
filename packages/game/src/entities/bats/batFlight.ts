@@ -449,7 +449,7 @@ export function chooseBatWaypoint({
     if (habitat.waypoints.length === 0) {
         return null;
     }
-    const stride = 1 + Math.floor(random() * (habitat.waypoints.length - 1));
+    const offset = Math.floor(random() * habitat.waypoints.length);
     for (
         let attempt = 0;
         attempt <
@@ -457,7 +457,7 @@ export function chooseBatWaypoint({
         attempt += 1
     ) {
         const index =
-            (startIndex + attempt * stride + habitat.waypoints.length) %
+            (startIndex + offset + attempt + habitat.waypoints.length) %
             habitat.waypoints.length;
         const waypoint = habitat.waypoints[index];
         if (
