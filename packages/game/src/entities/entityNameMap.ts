@@ -50,6 +50,7 @@ import { Fence } from './Fence';
 import { FenceGate } from './FenceGate';
 import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
+import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
@@ -204,6 +205,7 @@ export const entityNameMap = {
     ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
     PigletPen: PigletPen,
+    Goat: Goat,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,

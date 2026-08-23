@@ -311,7 +311,7 @@ export function canAnimalSettleAt(
     position: AnimalMovementCell,
     surfaces: AnimalMovementSurface[],
 ) {
-    return getAnimalMovementSurfaceAt(position, surfaces)?.kind !== 'water';
+    return getAnimalMovementSurfaceAt(position, surfaces)?.kind === 'ground';
 }
 
 export function isAnimalSwimmingAt(

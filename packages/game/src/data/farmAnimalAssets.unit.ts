@@ -9,6 +9,7 @@ type JsonRecord = Record<string, unknown>;
 
 const farmAssetNames = [
     'Chicken',
+    'Goat',
     'Piglet',
     'ChickenCoop',
     'PigletPen',
@@ -93,8 +94,8 @@ function assertLinearMaterial(
 }
 
 describe('farm animal assets', () => {
-    it('exports both animals facing the runtime movement direction', () => {
-        for (const assetName of ['Chicken', 'Piglet'] as const) {
+    it('exports every animal facing the runtime movement direction', () => {
+        for (const assetName of ['Chicken', 'Goat', 'Piglet'] as const) {
             const document = readDocument(assetName);
             const root = records(document.nodes, `${assetName}.nodes`).find(
                 (candidate) => candidate.name === `${assetName}_Root`,
@@ -115,6 +116,7 @@ describe('farm animal assets', () => {
             'Material.Chicken.Cream',
             [0.92, 0.79, 0.52],
         );
+        assertLinearMaterial('Goat', 'Material.Goat.Cream', [0.86, 0.79, 0.63]);
         assertLinearMaterial(
             'Piglet',
             'Material.Piglet.Pink',
@@ -130,6 +132,38 @@ describe('farm animal assets', () => {
             'Material.PigletPen.Oak',
             [0.43, 0.25, 0.12],
         );
+    });
+
+    it('keeps the goat animation rig and readable anatomy in the exported GLB', () => {
+        const document = readDocument('Goat');
+        const nodeNames = new Set(
+            records(document.nodes, 'Goat.nodes').map(
+                (candidate) => candidate.name,
+            ),
+        );
+
+        for (const nodeName of [
+            'Goat_BodyPivot',
+            'Goat_NeckPivot',
+            'Goat_HeadPivot',
+            'Goat_JawPivot',
+            'Goat_EarPivot_L',
+            'Goat_EarPivot_R',
+            'Goat_TailPivot',
+            'Goat_LegPivot_FL',
+            'Goat_LegPivot_FR',
+            'Goat_LegPivot_RL',
+            'Goat_LegPivot_RR',
+            'Goat_Horn_L',
+            'Goat_Horn_R',
+            'Goat_Beard',
+            'Goat_Hoof_FL',
+            'Goat_Hoof_FR',
+            'Goat_Hoof_RL',
+            'Goat_Hoof_RR',
+        ]) {
+            assert.equal(nodeNames.has(nodeName), true, nodeName);
+        }
     });
 
     it('cache-busts every corrected farm GLB by its content hash', () => {

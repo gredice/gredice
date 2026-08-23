@@ -81,6 +81,17 @@ const blockSpecs = [
         hitboxWidth: 0.76,
     }),
     farmAnimalHomeSpec({
+        name: 'Goat',
+        label: 'Koza',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+        fullDescription:
+            'Smjesti kozu na slobodno mjesto u vrtu. Istraživat će prohodne staze, brstiti i preživati, povremeno razigrano poskočiti te ti oprezno prići prije nego što se odmakne na ugodnu udaljenost.',
+        height: 0.72,
+        hitboxDepth: 0.72,
+        hitboxWidth: 0.5,
+    }),
+    farmAnimalHomeSpec({
         name: 'PigletPen',
         label: 'Obor za praščića',
         shortDescription:

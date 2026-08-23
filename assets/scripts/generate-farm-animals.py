@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the original Gredice chicken, piglet, and their home blocks.
+"""Generate the original Gredice chicken, piglet, goat, and animal homes.
 
 Run with Blender, not the system Python:
 
@@ -658,6 +658,288 @@ def create_piglet(output_dir: Path) -> None:
     save_asset("Piglet.blend", expected_names, output_dir)
 
 
+def create_goat(output_dir: Path) -> None:
+    """Create a compact Croatian-spotted-goat-inspired garden companion."""
+
+    reset_scene("Goat")
+    cream = material("Material.Goat.Cream", (0.86, 0.79, 0.63, 1))
+    cream_light = material(
+        "Material.Goat.CreamLight", (0.96, 0.9, 0.75, 1)
+    )
+    charcoal = material(
+        "Material.Goat.Charcoal", (0.09, 0.085, 0.075, 1), roughness=0.78
+    )
+    horn = material(
+        "Material.Goat.Horn", (0.22, 0.19, 0.15, 1), roughness=0.9
+    )
+    hoof = material("Material.Goat.Hoof", (0.12, 0.105, 0.09, 1))
+    eye = material(
+        "Material.Goat.Eye", (0.025, 0.022, 0.018, 1), roughness=0.58
+    )
+    eye_glint = material(
+        "Material.Goat.EyeGlint", (1.0, 0.93, 0.72, 1), roughness=0.4
+    )
+    collar = material(
+        "Material.Goat.Collar", (0.12, 0.31, 0.2, 1), roughness=0.64
+    )
+    charm = material(
+        "Material.Goat.SunflowerCharm", (0.94, 0.58, 0.08, 1), roughness=0.5
+    )
+
+    root = empty("Goat_Root", (0, 0, 0))
+    body_pivot = empty("Goat_BodyPivot", (0, -0.06, 0.76))
+    neck_pivot = empty("Goat_NeckPivot", (0, 0.43, 0.94))
+    head_pivot = empty("Goat_HeadPivot", (0, 0.68, 1.2))
+    jaw_pivot = empty("Goat_JawPivot", (0, 0.91, 1.1))
+    ear_left_pivot = empty("Goat_EarPivot_L", (-0.22, 0.67, 1.35))
+    ear_right_pivot = empty("Goat_EarPivot_R", (0.22, 0.67, 1.35))
+    tail_pivot = empty("Goat_TailPivot", (0, -0.73, 0.91))
+    leg_pivots = {
+        "FL": empty("Goat_LegPivot_FL", (-0.27, 0.36, 0.49)),
+        "FR": empty("Goat_LegPivot_FR", (0.27, 0.36, 0.49)),
+        "RL": empty("Goat_LegPivot_RL", (-0.27, -0.45, 0.49)),
+        "RR": empty("Goat_LegPivot_RR", (0.27, -0.45, 0.49)),
+    }
+
+    parent_keep_transform(body_pivot, root)
+    parent_keep_transform(neck_pivot, body_pivot)
+    parent_keep_transform(head_pivot, neck_pivot)
+    parent_keep_transform(jaw_pivot, head_pivot)
+    parent_keep_transform(ear_left_pivot, head_pivot)
+    parent_keep_transform(ear_right_pivot, head_pivot)
+    parent_keep_transform(tail_pivot, body_pivot)
+    for pivot in leg_pivots.values():
+        parent_keep_transform(pivot, root)
+
+    body = add_ico_sphere(
+        "Goat_Body", (0, -0.08, 0.79), (0.43, 0.7, 0.39), cream
+    )
+    chest = add_ico_sphere(
+        "Goat_Chest", (0, 0.39, 0.82), (0.37, 0.36, 0.42), cream_light
+    )
+    patch_parts = [
+        add_ico_sphere(
+            "Goat_CoatPatch",
+            (-0.375, -0.1, 0.86),
+            (0.075, 0.31, 0.22),
+            charcoal,
+            subdivisions=2,
+        ),
+        add_ico_sphere(
+            "Goat_CoatPatch",
+            (0.375, -0.32, 0.76),
+            (0.075, 0.22, 0.18),
+            charcoal,
+            subdivisions=2,
+        ),
+    ]
+    coat_patches = join_objects(patch_parts, "Goat_CoatPatches")
+    neck = add_ico_sphere(
+        "Goat_Neck", (0, 0.47, 1.0), (0.27, 0.31, 0.43), cream_light
+    )
+    head = add_ico_sphere(
+        "Goat_Head", (0, 0.72, 1.24), (0.3, 0.37, 0.29), cream_light
+    )
+    muzzle = add_ico_sphere(
+        "Goat_Muzzle", (0, 1.02, 1.14), (0.21, 0.23, 0.17), cream
+    )
+    jaw = add_ico_sphere(
+        "Goat_Jaw", (0, 0.98, 1.055), (0.19, 0.2, 0.09), cream
+    )
+    beard = add_cone(
+        "Goat_Beard",
+        (0, 0.84, 0.94),
+        0.12,
+        0.035,
+        0.3,
+        charcoal,
+        rotation=(math.radians(4), 0, 0),
+        vertices=7,
+    )
+
+    eye_left = add_ico_sphere(
+        "Goat_Eye_L",
+        (-0.225, 0.94, 1.31),
+        (0.055, 0.034, 0.052),
+        eye,
+        subdivisions=2,
+    )
+    eye_right = add_ico_sphere(
+        "Goat_Eye_R",
+        (0.225, 0.94, 1.31),
+        (0.055, 0.034, 0.052),
+        eye,
+        subdivisions=2,
+    )
+    glint_left = add_ico_sphere(
+        "Goat_EyeGlint_L",
+        (-0.242, 0.968, 1.328),
+        (0.014, 0.01, 0.014),
+        eye_glint,
+        subdivisions=1,
+    )
+    glint_right = add_ico_sphere(
+        "Goat_EyeGlint_R",
+        (0.242, 0.968, 1.328),
+        (0.014, 0.01, 0.014),
+        eye_glint,
+        subdivisions=1,
+    )
+
+    ear_left = add_ico_sphere(
+        "Goat_Ear_L", (-0.35, 0.72, 1.36), (0.2, 0.085, 0.07), charcoal
+    )
+    ear_right = add_ico_sphere(
+        "Goat_Ear_R", (0.35, 0.72, 1.36), (0.2, 0.085, 0.07), charcoal
+    )
+
+    horns: list[bpy.types.Object] = []
+    for side, x in (("L", -0.16), ("R", 0.16)):
+        horn_parts = [
+            add_cone(
+                f"Goat_HornBase_{side}",
+                (x, 0.58, 1.51),
+                0.07,
+                0.052,
+                0.34,
+                horn,
+                rotation=(math.radians(38), 0, math.radians(4 if side == "L" else -4)),
+                vertices=8,
+            ),
+            add_cone(
+                f"Goat_HornTip_{side}",
+                (x * 1.12, 0.4, 1.61),
+                0.052,
+                0.012,
+                0.31,
+                horn,
+                rotation=(math.radians(62), 0, math.radians(7 if side == "L" else -7)),
+                vertices=8,
+            ),
+        ]
+        joined_horn = join_objects(horn_parts, f"Goat_Horn_{side}")
+        parent_keep_transform(joined_horn, head_pivot)
+        horns.append(joined_horn)
+
+    legs: list[bpy.types.Object] = []
+    hooves: list[bpy.types.Object] = []
+    for key, pivot in leg_pivots.items():
+        x = -0.27 if key.endswith("L") else 0.27
+        y = 0.36 if key.startswith("F") else -0.45
+        leg = add_cylinder(
+            f"Goat_Leg_{key}",
+            (x, y, 0.31),
+            0.072,
+            0.58,
+            cream,
+            vertices=8,
+        )
+        foot = add_ico_sphere(
+            f"Goat_Hoof_{key}",
+            (x, y + 0.035, 0.055),
+            (0.085, 0.13, 0.075),
+            hoof,
+            subdivisions=1,
+        )
+        parent_keep_transform(leg, pivot)
+        parent_keep_transform(foot, pivot)
+        legs.append(leg)
+        hooves.append(foot)
+
+    tail = add_cone(
+        "Goat_Tail",
+        (0, -0.85, 1.03),
+        0.105,
+        0.035,
+        0.35,
+        cream_light,
+        rotation=(math.radians(-38), 0, 0),
+        vertices=8,
+    )
+    collar_ring = add_torus(
+        "Goat_Collar",
+        (0, 0.54, 1.08),
+        0.24,
+        0.026,
+        collar,
+        major_segments=14,
+        minor_segments=5,
+    )
+    sunflower_charm = add_ico_sphere(
+        "Goat_SunflowerCharm",
+        (0, 0.79, 1.02),
+        (0.055, 0.035, 0.065),
+        charm,
+        subdivisions=1,
+    )
+
+    for obj in (body, chest, coat_patches):
+        parent_keep_transform(obj, body_pivot)
+    parent_keep_transform(neck, neck_pivot)
+    for obj in (
+        head,
+        muzzle,
+        beard,
+        eye_left,
+        eye_right,
+        glint_left,
+        glint_right,
+        collar_ring,
+        sunflower_charm,
+    ):
+        parent_keep_transform(obj, head_pivot)
+    parent_keep_transform(jaw, jaw_pivot)
+    parent_keep_transform(ear_left, ear_left_pivot)
+    parent_keep_transform(ear_right, ear_right_pivot)
+    parent_keep_transform(tail, tail_pivot)
+
+    # Align the authored +Y face with the runtime animal +Z travel convention.
+    root.rotation_euler.z = math.pi
+
+    expected_names = [
+        "Goat_Root",
+        "Goat_BodyPivot",
+        "Goat_NeckPivot",
+        "Goat_HeadPivot",
+        "Goat_JawPivot",
+        "Goat_EarPivot_L",
+        "Goat_EarPivot_R",
+        "Goat_TailPivot",
+        "Goat_LegPivot_FL",
+        "Goat_LegPivot_FR",
+        "Goat_LegPivot_RL",
+        "Goat_LegPivot_RR",
+        "Goat_Body",
+        "Goat_Chest",
+        "Goat_CoatPatches",
+        "Goat_Neck",
+        "Goat_Head",
+        "Goat_Muzzle",
+        "Goat_Jaw",
+        "Goat_Beard",
+        "Goat_Eye_L",
+        "Goat_Eye_R",
+        "Goat_EyeGlint_L",
+        "Goat_EyeGlint_R",
+        "Goat_Ear_L",
+        "Goat_Ear_R",
+        "Goat_Horn_L",
+        "Goat_Horn_R",
+        "Goat_Leg_FL",
+        "Goat_Leg_FR",
+        "Goat_Leg_RL",
+        "Goat_Leg_RR",
+        "Goat_Hoof_FL",
+        "Goat_Hoof_FR",
+        "Goat_Hoof_RL",
+        "Goat_Hoof_RR",
+        "Goat_Tail",
+        "Goat_Collar",
+        "Goat_SunflowerCharm",
+    ]
+    save_asset("Goat.blend", expected_names, output_dir)
+
+
 def create_chicken_coop(output_dir: Path) -> None:
     reset_scene("ChickenCoop")
     wood = material("Material.ChickenCoop.Oak", (0.42, 0.23, 0.1, 1))
@@ -870,6 +1152,7 @@ def create_piglet_pen(output_dir: Path) -> None:
 GENERATORS: dict[str, Callable[[Path], None]] = {
     "Chicken": create_chicken,
     "Piglet": create_piglet,
+    "Goat": create_goat,
     "ChickenCoop": create_chicken_coop,
     "PigletPen": create_piglet_pen,
 }

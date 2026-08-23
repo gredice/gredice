@@ -8,6 +8,9 @@ import {
     getChickenHeadPitch,
     getFarmAnimalBehaviorAvailability,
     getFarmAnimalLocomotion,
+    getGoatCuriosityTarget,
+    getGoatHeadPitch,
+    getGoatPlayHopAmount,
     getPigletHeadPitch,
     resolveFarmAnimalRuntimeForTarget,
 } from './FarmAnimals';
@@ -81,6 +84,144 @@ test('creates exactly one piglet per pen and none after the pen is removed', () 
         stacks: stacks.slice(1),
     });
     assert.deepEqual(withoutPen, []);
+});
+
+test('uses each placed Goat block as one stable goat home anchor', () => {
+    const stacks = [
+        stackWithBlocks(0, 0, [
+            { id: 'ground-a', name: 'Block_Grass' },
+            { id: 'goat-a', name: 'Goat', rotation: 1 },
+        ]),
+        stackWithBlocks(2, 0, [
+            { id: 'ground-b', name: 'Block_Stone' },
+            { id: 'goat-b', name: 'Goat', rotation: 3 },
+        ]),
+    ];
+    const habitats = createFarmAnimalHabitatsForSpecies({
+        blockData: undefined,
+        species: 'Goat',
+        stacks,
+    });
+
+    assert.deepEqual(
+        habitats.map((habitat) => habitat.id),
+        ['goat-home-goat-a', 'goat-home-goat-b'],
+    );
+    assert.deepEqual(
+        habitats.map((habitat) => habitat.home.position.toArray()),
+        [
+            [0, 0.024, 0],
+            [2, 0.024, 0],
+        ],
+    );
+});
+
+test('prefers only connected walkable stone or gravel targets for goat browsing', () => {
+    const habitats = createFarmAnimalHabitatsForSpecies({
+        blockData: undefined,
+        species: 'Goat',
+        stacks: [
+            stackWithBlocks(0, 0, [
+                { id: 'ground-home', name: 'Block_Grass' },
+                { id: 'goat', name: 'Goat' },
+            ]),
+            stackWithBlocks(1, 0, [{ id: 'grass', name: 'Block_Grass' }]),
+            stackWithBlocks(2, 0, [{ id: 'stone', name: 'Block_Stone' }]),
+            stackWithBlocks(3, 0, [
+                { id: 'raised-ground', name: 'Block_Stone' },
+                { id: 'raised-bed', name: 'Raised_Bed' },
+            ]),
+        ],
+    });
+    const habitat = habitats[0];
+    assert.ok(habitat);
+    assert.deepEqual(
+        habitat.rockyAnchors.map((target) => target.position.x),
+        [2],
+    );
+
+    const target = chooseNextFarmAnimalTarget({
+        forcedBehavior: 'browse',
+        habitat,
+        random: () => 0,
+        timeOfDay: 0.5,
+        weather: undefined,
+    });
+    assert.equal(target.behavior, 'browse');
+    assert.equal(Math.round(target.position.x), 2);
+});
+
+test('keeps goat avatar approach and retreat targets on unoccupied terrain', () => {
+    const groundStacks = Array.from({ length: 7 }, (_, index) =>
+        stackWithBlocks(index - 3, 0, [
+            { id: `ground-${index}`, name: 'Block_Grass' },
+        ]),
+    );
+    groundStacks[3]?.blocks.push({
+        id: 'goat',
+        name: 'Goat',
+        rotation: 0,
+    });
+    groundStacks[4]?.blocks.push({
+        id: 'raised-bed',
+        name: 'Raised_Bed',
+        rotation: 0,
+    });
+    const habitat = createFarmAnimalHabitatsForSpecies({
+        blockData: undefined,
+        species: 'Goat',
+        stacks: groundStacks,
+    })[0];
+    assert.ok(habitat);
+
+    const approach = getGoatCuriosityTarget({
+        avatarPosition: new Vector3(2.5, 0, 0),
+        goatPosition: habitat.home.position,
+        habitat,
+    });
+    assert.ok(approach);
+    assert.equal(approach.behavior, 'approach-avatar');
+    assert.notEqual(Math.round(approach.position.x), 1);
+
+    const retreat = getGoatCuriosityTarget({
+        avatarPosition: new Vector3(0.2, 0, 0),
+        goatPosition: habitat.home.position,
+        habitat,
+    });
+    assert.ok(retreat);
+    assert.equal(retreat.behavior, 'retreat-avatar');
+    assert.ok(retreat.position.distanceTo(new Vector3(0.2, 0.024, 0)) > 1);
+});
+
+test('keeps goat cover targets outside the occupied tree cell', () => {
+    const stacks = Array.from({ length: 25 }, (_, index) => {
+        const x = (index % 5) - 2;
+        const z = Math.floor(index / 5) - 2;
+        return stackWithBlocks(x, z, [
+            { id: `ground-${x}-${z}`, name: 'Block_Grass' },
+        ]);
+    });
+    stacks
+        .find((stack) => stack.position.x === -2 && stack.position.z === 0)
+        ?.blocks.push({ id: 'goat', name: 'Goat', rotation: 0 });
+    stacks
+        .find((stack) => stack.position.x === 0 && stack.position.z === 0)
+        ?.blocks.push({ id: 'tree', name: 'Tree', rotation: 0 });
+
+    const habitat = createFarmAnimalHabitatsForSpecies({
+        blockData: undefined,
+        species: 'Goat',
+        stacks,
+    })[0];
+    assert.ok(habitat);
+    assert.equal(habitat.covers.length, 1);
+    assert.notDeepEqual(
+        [
+            Math.round(habitat.covers[0]?.position.x ?? 0),
+            Math.round(habitat.covers[0]?.position.z ?? 0),
+        ],
+        [0, 0],
+    );
 });
 
 test('does not select special behavior targets outside the home activity range', () => {
@@ -275,5 +416,39 @@ test('aims piglet rooting and wallowing down while preserving the swim pose', ()
             swimming: true,
         }),
         -0.1,
+    );
+});
+
+test('poses goat browsing, chewing, alert curiosity, and playful hops distinctly', () => {
+    assert.ok(
+        getGoatHeadPitch({
+            behavior: 'browse',
+            moving: false,
+            now: 0,
+            swimming: false,
+        }) < -0.6,
+    );
+    assert.ok(
+        getGoatHeadPitch({
+            behavior: 'approach-avatar',
+            moving: false,
+            now: 0,
+            swimming: false,
+        }) > 0,
+    );
+    assert.equal(
+        getGoatPlayHopAmount({
+            behavior: 'roam',
+            moving: false,
+            now: Math.PI / (2 * 3.1),
+        }),
+        0,
+    );
+    assert.ok(
+        getGoatPlayHopAmount({
+            behavior: 'play-hop',
+            moving: false,
+            now: Math.PI / (2 * 3.1),
+        }) > 0.99,
     );
 });

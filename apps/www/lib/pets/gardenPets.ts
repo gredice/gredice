@@ -110,4 +110,26 @@ export const gardenPets = [
             'Podnosi više kiše od ostalih ljubimaca, ali se pred nevremenom povlači u obor.',
         searchTerms: ['prase', 'obor', 'svinja'],
     },
+    {
+        slug: 'koza',
+        name: 'Koza',
+        genitive: 'koze',
+        homeBlockName: 'Goat',
+        sound: 'Mee-e!',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim stazama.',
+        fullDescription:
+            'Koza istražuje samo prohodne dijelove vrta, brsti i preživa, a ponekad izvede kratki razigrani poskok. Voli sigurne kamene i šljunčane površine kada su povezane s vrtnim stazama. Kad te primijeti, oprezno će prići, zastati na ugodnoj udaljenosti i odmaknuti se ako joj se previše približiš.',
+        habits: [
+            'Brsti i preživa na prohodnim vrtnim stazama',
+            'Povremeno izvede kratki razigrani poskok',
+            'Rado bira povezane kamene i šljunčane površine',
+            'Znatiželjno prilazi pa se oprezno odmakne',
+        ],
+        dayRangeBlocks: 7.5,
+        nightRoutine: 'Vraća se na mjesto na kojem je smještena.',
+        weatherRoutine:
+            'Pred jakom kišom, snijegom, grmljavinom i snažnim vjetrom vraća se na svoje sigurno mjesto.',
+        searchTerms: ['kozica', 'jarica', 'jare', 'brstenje'],
+    },
 ] as const satisfies readonly GardenPet[];
