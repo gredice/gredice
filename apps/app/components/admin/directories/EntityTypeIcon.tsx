@@ -269,7 +269,6 @@ const iconMap: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
     Password,
     PawPrint,
     Pause,
-    PawPrint,
     People,
     Percent,
     Pin,
