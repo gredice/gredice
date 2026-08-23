@@ -7,6 +7,7 @@ export type ActorGroundingShadowSpecies =
     | 'chicken'
     | 'dog'
     | 'frog'
+    | 'horse'
     | 'piglet'
     | 'slug';
 
@@ -129,6 +130,13 @@ export const actorGroundingShadowProfiles = {
         baseHalfWidth: 0.17,
         baseOpacity: 0.28,
         cutoffHeight: 0.75,
+        maxFootprintScale: 1.55,
+    },
+    horse: {
+        baseHalfLength: 0.76,
+        baseHalfWidth: 0.34,
+        baseOpacity: 0.38,
+        cutoffHeight: 2,
         maxFootprintScale: 1.55,
     },
     piglet: {

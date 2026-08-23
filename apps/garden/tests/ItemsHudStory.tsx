@@ -384,6 +384,16 @@ const blockFixtures: Record<
         height: 0.86,
         stackable: false,
     },
+    Horse: {
+        label: 'Konj',
+        shortDescription:
+            'Miran vrtni konj s bojom dlake koju odabireš pri postavljanju.',
+        sunflowers: 500,
+        height: 1.55,
+        stackable: false,
+        spanDepth: 2,
+        spanWidth: 1,
+    },
     PigletPen: {
         label: 'Obor za praščića',
         shortDescription:
@@ -518,6 +528,7 @@ const blockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
+    'Horse',
     'PigletPen',
     'Bush',
     'Tree',
@@ -716,7 +727,7 @@ function HudPlacementDragStateProbe() {
     return (
         <output data-testid="hud-placement-drag-state">
             {drag
-                ? `${drag.blockName}:${drag.dropRequest ? 'drop' : 'drag'}`
+                ? `${drag.blockName}:${drag.dropRequest ? 'drop' : 'drag'}${drag.variant === undefined ? '' : `:${drag.variant.toString()}`}`
                 : 'idle'}
         </output>
     );
@@ -792,6 +803,23 @@ export function LowSunflowerBalanceItemsHudStory() {
     return (
         <ItemsHudTestProviders accountSunflowers={20}>
             <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function HorseItemsHudStory() {
+    return (
+        <ItemsHudTestProviders accountSunflowers={1_000}>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <HudPlacementDragStateProbe />
                 <div
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}
