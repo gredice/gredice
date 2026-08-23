@@ -46,7 +46,7 @@ export const gardenPets = [
         ],
         dayRangeBlocks: 5.5,
         nightRoutine:
-            'Sjedi i zadržava se bliže mjestu na kojem je postavljen.',
+            'Nastavlja skakutati u kratkim naletima unutar svojeg sigurnog raspona.',
         weatherRoutine:
             'Nastavlja svoju mirnu rutinu samo po sigurnom, prohodnom tlu.',
         searchTerms: ['zecic', 'kunić', 'kunic', 'rabbit'],
