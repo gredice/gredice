@@ -13,6 +13,7 @@ import {
     isAnimalGroundBlockName,
     isAnimalSwimmingAt,
     isAnimalWaterBlockName,
+    isAnimalWetlandBlockName,
 } from './animalMovementTerrain';
 
 function block(id: string, name: string, rotation = 0): Block {
@@ -72,14 +73,14 @@ describe('animal movement terrain', () => {
         });
 
         assert.equal(createAnimalBlockedCells([waterStack]).length, 0);
-        assert.deepEqual(surfaces, [
-            {
-                kind: 'water',
-                x: 1,
-                y: 0.62,
-                z: 2,
-            },
-        ]);
+        assert.equal(surfaces.length, 1);
+        assert.equal(surfaces[0]?.habitat, 'general');
+        assert.equal(surfaces[0]?.kind, 'water');
+        assert.equal(surfaces[0]?.sourceBlockName, 'Block_Water');
+        assert.equal(surfaces[0]?.x, 1);
+        assert.equal(surfaces[0]?.y, 0.62);
+        assert.equal(surfaces[0]?.z, 2);
+        assert.ok((surfaces[0]?.waterDepth ?? 0) > 0);
         assert.equal(isAnimalSwimmingAt({ x: 1, z: 2 }, surfaces), true);
         assert.equal(canAnimalSettleAt({ x: 1, z: 2 }, surfaces), false);
         assert.equal(canAnimalSettleAt({ x: 8, z: 8 }, surfaces), false);
@@ -98,9 +99,71 @@ describe('animal movement terrain', () => {
         });
 
         assert.equal(isAnimalWaterBlockName('Block_Swamp_Water'), true);
+        assert.equal(isAnimalWetlandBlockName('Block_Swamp_Water'), true);
+        assert.equal(isAnimalWetlandBlockName('Block_Swamp_Ground'), true);
+        assert.equal(isAnimalWetlandBlockName('Block_Grass'), false);
         assert.equal(createAnimalBlockedCells([waterStack]).length, 0);
+        assert.equal(surfaces[0]?.habitat, 'wetland');
         assert.equal(surfaces[0]?.kind, 'water');
         assert.equal(isAnimalSwimmingAt({ x: 1, z: 2 }, surfaces), true);
+        assert.equal(
+            canAnimalSettleAt({ x: 1, z: 2 }, surfaces, {
+                habitat: 'wetland',
+                waterMaxDepth: surfaces[0]?.waterDepth,
+            }),
+            true,
+        );
+    });
+
+    it('keeps deep wetland water traversable but outside shallow settlement policy', () => {
+        const deepWaterStack = stack(1, 2, [
+            block('swamp-ground', 'Block_Swamp_Ground'),
+            block('water-low', 'Block_Swamp_Water'),
+            block('water-high', 'Block_Swamp_Water'),
+        ]);
+        const surfaces = createAnimalMovementSurfaces({
+            blockData: getLocalSandboxBlockData(),
+            groundLift: 0.02,
+            stacks: [deepWaterStack],
+            swimDepth: 0.04,
+        });
+        const depth = surfaces[0]?.waterDepth ?? 0;
+
+        assert.ok(depth > 1.5);
+        assert.equal(
+            canAnimalSettleAt({ x: 1, z: 2 }, surfaces, {
+                habitat: 'wetland',
+                waterMaxDepth: 1.35,
+            }),
+            false,
+        );
+    });
+
+    it('classifies mixed ground stacks from the walkable top surface', () => {
+        const surfaces = createAnimalMovementSurfaces({
+            blockData: getLocalSandboxBlockData(),
+            groundLift: 0.02,
+            stacks: [
+                stack(1, 2, [
+                    block('swamp-under-grass', 'Block_Swamp_Ground'),
+                    block('grass-top', 'Block_Grass'),
+                ]),
+                stack(3, 4, [
+                    block('grass-under-swamp', 'Block_Grass'),
+                    block('swamp-top', 'Block_Swamp_Ground'),
+                ]),
+            ],
+            swimDepth: 0.12,
+        });
+
+        assert.equal(surfaces[0]?.habitat, 'general');
+        assert.equal(surfaces[0]?.sourceBlockName, 'Block_Swamp_Ground');
+        assert.equal(surfaces[1]?.habitat, 'wetland');
+        assert.equal(surfaces[1]?.sourceBlockName, 'Block_Grass');
+    });
+
+    it('does not settle animals outside a known movement surface', () => {
+        assert.equal(canAnimalSettleAt({ x: 4, z: 5 }, []), false);
     });
 
     it('blocks occupied cells while preserving the ground below them', () => {
@@ -120,6 +183,8 @@ describe('animal movement terrain', () => {
         ]);
         assert.equal(surfaces.length, 1);
         assert.equal(surfaces[0]?.kind, 'ground');
+        assert.equal(surfaces[0]?.habitat, 'general');
+        assert.equal(surfaces[0]?.sourceBlockName, 'Block_Sand');
         assert.equal(surfaces[0]?.x, 3);
         assert.equal(Number(surfaces[0]?.y.toFixed(6)), 0.42);
         assert.equal(surfaces[0]?.z, 4);

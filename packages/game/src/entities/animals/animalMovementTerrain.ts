@@ -11,8 +11,11 @@ import {
     isWalkwayBlockName,
     isWaterCoveredByWalkway,
 } from '../walkwayPlacement';
-import { getWaterBlockColumnSurfaceY } from '../waterBlockDepth';
-import { isWaterBlockName } from '../waterBlockNames';
+import {
+    getWaterBlockColumnSurfaceY,
+    getWaterBlockDepthSamples,
+} from '../waterBlockDepth';
+import { isWaterBlockName, swampWaterBlockName } from '../waterBlockNames';
 
 export type AnimalMovementCell = {
     x: number;
@@ -21,12 +24,20 @@ export type AnimalMovementCell = {
 
 export type AnimalMovementSurface = AnimalMovementCell & {
     bottomY?: number;
+    habitat?: 'general' | 'wetland';
     halfDepth?: number;
     halfWidth?: number;
     kind: 'ground' | 'water';
     rotation?: number;
     slopeBlockName?: string;
+    sourceBlockName?: string;
+    waterDepth?: number;
     y: number;
+};
+
+export type AnimalSettlementPolicy = {
+    habitat?: NonNullable<AnimalMovementSurface['habitat']>;
+    waterMaxDepth?: number;
 };
 
 const movementSurfaceHalfSize = 0.5;
@@ -74,12 +85,21 @@ const groundBlockNames = new Set([
     'Block_Swamp_Ground_Angle',
 ]);
 
+const wetlandGroundBlockNames = new Set([
+    'Block_Swamp_Ground',
+    'Block_Swamp_Ground_Angle',
+]);
+
 export function isAnimalGroundBlockName(name: string) {
     return groundBlockNames.has(name);
 }
 
 export function isAnimalWaterBlockName(name: string) {
     return isWaterBlockName(name);
+}
+
+export function isAnimalWetlandBlockName(name: string) {
+    return wetlandGroundBlockNames.has(name) || name === swampWaterBlockName;
 }
 
 function getGroundSurfaceY({
@@ -130,6 +150,27 @@ function getGroundSurfaceY({
     return walkwaySurfaceHeight > 0 ? walkwaySurfaceHeight + groundLift : 0;
 }
 
+function getGroundMovementSurfaceBlockName(stack: Stack) {
+    const firstBlockingIndex = stack.blocks.findIndex(
+        (block, blockIndex) =>
+            !isAnimalGroundBlockName(block.name) &&
+            !isWalkwayBlockName(block.name) &&
+            !isWaterCoveredByWalkway(stack, blockIndex),
+    );
+    const surfaceBlocks = stack.blocks.slice(
+        0,
+        firstBlockingIndex === -1 ? stack.blocks.length : firstBlockingIndex,
+    );
+
+    return (
+        surfaceBlocks.findLast(
+            (block) =>
+                isAnimalGroundBlockName(block.name) ||
+                isWalkwayBlockName(block.name),
+        )?.name ?? ''
+    );
+}
+
 function createStairMovementSurfaces({
     blockData,
     groundLift,
@@ -156,11 +197,15 @@ function createStairMovementSurfaces({
     return [
         {
             bottomY: bottomHeight + groundLift,
+            habitat: isAnimalWetlandBlockName(topBlock.name)
+                ? 'wetland'
+                : 'general',
             halfDepth: 0.5,
             halfWidth: 0.5,
             kind: 'ground',
             rotation,
             slopeBlockName: topBlock.name,
+            sourceBlockName: topBlock.name,
             x: stack.position.x,
             y,
             z: stack.position.z,
@@ -189,7 +234,18 @@ export function createAnimalMovementSurfaces({
 
         if (isAnimalWaterBlockName(topBlock.name)) {
             surfaces.push({
+                habitat: isAnimalWetlandBlockName(topBlock.name)
+                    ? 'wetland'
+                    : 'general',
                 kind: 'water',
+                sourceBlockName: topBlock.name,
+                waterDepth: Math.max(
+                    ...getWaterBlockDepthSamples({
+                        block: topBlock,
+                        blockData,
+                        stack,
+                    }),
+                ),
                 x: stack.position.x,
                 y: Math.max(
                     0,
@@ -217,8 +273,14 @@ export function createAnimalMovementSurfaces({
                 continue;
             }
 
+            const movementSurfaceBlockName =
+                getGroundMovementSurfaceBlockName(stack);
             surfaces.push({
+                habitat: isAnimalWetlandBlockName(movementSurfaceBlockName)
+                    ? 'wetland'
+                    : 'general',
                 kind: 'ground',
+                sourceBlockName: stack.blocks[0]?.name ?? topBlock.name,
                 x: stack.position.x,
                 y,
                 z: stack.position.z,
@@ -310,8 +372,21 @@ export function getAnimalMovementYAt(
 export function canAnimalSettleAt(
     position: AnimalMovementCell,
     surfaces: AnimalMovementSurface[],
+    policy?: AnimalSettlementPolicy,
 ) {
-    return getAnimalMovementSurfaceAt(position, surfaces)?.kind === 'ground';
+    const surface = getAnimalMovementSurfaceAt(position, surfaces);
+    if (!surface || (policy?.habitat && surface.habitat !== policy.habitat)) {
+        return false;
+    }
+
+    if (surface.kind !== 'water') {
+        return true;
+    }
+
+    return (
+        policy?.waterMaxDepth !== undefined &&
+        (surface.waterDepth ?? Number.POSITIVE_INFINITY) <= policy.waterMaxDepth
+    );
 }
 
 export function isAnimalSwimmingAt(

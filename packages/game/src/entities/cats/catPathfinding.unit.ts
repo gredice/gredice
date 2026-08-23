@@ -135,43 +135,67 @@ test('reports an unreachable target without crossing its blocked enclosure', () 
     assert.equal(path.distance, 0);
 });
 
-test('optional walkable cells keep terrain-bound animals off missing ground', () => {
-    const walkableCells = [
+test('strict traversal never routes through dry or missing habitat cells', () => {
+    const wetlandCells = [
+        { x: -2, z: 0 },
+        { x: -1, z: 0 },
+        { x: 1, z: 0 },
+        { x: 2, z: 0 },
+    ];
+    const path = findCatPath({
+        blockedCells: [],
+        from: { x: -2, y: 0.42, z: 0 },
+        surfaces: wetlandCells.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 2, y: 0.42, z: 0 },
+        traversableCells: wetlandCells,
+    });
+
+    assert.equal(path.status, 'unreachable');
+    assert.deepEqual(path.points, [{ x: -2, y: 0.42, z: 0 }]);
+});
+
+test('strict traversal uses only the connected eligible habitat detour', () => {
+    const wetlandCells = [
         { x: -2, z: 0 },
         { x: -1, z: 0 },
         { x: -1, z: 1 },
         { x: 0, z: 1 },
         { x: 1, z: 1 },
-        { x: 2, z: 1 },
+        { x: 1, z: 0 },
         { x: 2, z: 0 },
     ];
     const path = findCatPath({
         blockedCells: [{ x: 0, z: 0 }],
         from: { x: -2, y: 0.42, z: 0 },
-        surfaces: walkableCells.map((cell) => ({ ...cell, y: 0.42 })),
+        surfaces: wetlandCells.map((cell) => ({ ...cell, y: 0.42 })),
         to: { x: 2, y: 0.42, z: 0 },
-        walkableCells,
+        traversableCells: wetlandCells,
     });
 
     assert.equal(path.status, 'path');
-    assert.ok(path.points.some((point) => point.z === 1));
     assert.equal(
-        path.points.some((point) => point.z < 0),
-        false,
+        path.points.every((point) =>
+            wetlandCells.some(
+                (cell) => cell.x === point.x && cell.z === point.z,
+            ),
+        ),
+        true,
     );
 });
 
-test('optional walkable cells reject a route across disconnected terrain', () => {
-    const from = { x: -2, y: 0.42, z: 0 };
-    const to = { x: 2, y: 0.42, z: 0 };
+test('strict direct traversal cannot cut diagonally across missing habitat corners', () => {
+    const endpoints = [
+        { x: 0, z: 0 },
+        { x: 1, z: 1 },
+    ];
     const path = findCatPath({
-        blockedCells: [{ x: 0, z: 0 }],
-        from,
-        surfaces: [from, { x: -1, y: 0.42, z: 0 }, to],
-        to,
-        walkableCells: [from, { x: -1, z: 0 }, to],
+        blockedCells: [],
+        from: { x: 0, y: 0.42, z: 0 },
+        surfaces: endpoints.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 1, y: 0.42, z: 1 },
+        traversableCells: endpoints,
     });
 
     assert.equal(path.status, 'unreachable');
-    assert.deepEqual(path.points, [from]);
+    assert.deepEqual(path.points, [{ x: 0, y: 0.42, z: 0 }]);
 });

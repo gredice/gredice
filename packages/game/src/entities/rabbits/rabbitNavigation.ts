@@ -97,7 +97,7 @@ export function findRabbitPath({
         from,
         surfaces: groundSurfaces,
         to,
-        walkableCells: groundCells(groundSurfaces),
+        traversableCells: groundCells(groundSurfaces),
     });
 
     if (
