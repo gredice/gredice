@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { getHorseAppearanceVariantDefinition } from '@gredice/js/entityAppearanceVariants';
 import {
     allGameAssetNames,
     gameAssetModels,
@@ -50,6 +51,55 @@ function records(value: unknown, label: string) {
         assert.ok(isRecord(item), `${label}[${index}] must be an object`);
         return item;
     });
+}
+
+function numberValue(value: unknown, label: string) {
+    if (typeof value !== 'number') {
+        throw new TypeError(`${label} must be numeric`);
+    }
+    return value;
+}
+
+function srgbChannelToLinear(value: number) {
+    if (value <= 0.04045) {
+        return value / 12.92;
+    }
+    return ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function linearHexChannels(value: string) {
+    const hex = value.replace(/^#/u, '');
+    return [0, 2, 4].map((offset) =>
+        srgbChannelToLinear(
+            Number.parseInt(hex.slice(offset, offset + 2), 16) / 255,
+        ),
+    );
+}
+
+function assertMaterialColor(
+    document: JsonRecord,
+    materialName: string,
+    color: string,
+    factor = 1,
+) {
+    const material = records(document.materials, 'Horse.materials').find(
+        (candidate) => candidate.name === materialName,
+    );
+    assert.ok(material, `Missing ${materialName}`);
+    assert.ok(isRecord(material.pbrMetallicRoughness));
+    const baseColor = material.pbrMetallicRoughness.baseColorFactor;
+    assert.ok(Array.isArray(baseColor));
+    assert.equal(baseColor.length, 4);
+    for (const [index, expected] of linearHexChannels(color).entries()) {
+        const actual = numberValue(
+            baseColor[index],
+            `${materialName}.baseColorFactor[${index}]`,
+        );
+        assert.ok(
+            Math.abs(actual - expected * factor) < 0.000_01,
+            `${materialName}[${index}] ${actual} differs from ${expected * factor}`,
+        );
+    }
 }
 
 function readHorseDocument() {
@@ -112,6 +162,26 @@ describe('Horse asset', () => {
             ['0.96', '0.90', '0.83'],
         );
         assert.equal(records(document.meshes, 'Horse.meshes').length, 37);
+    });
+
+    it('keeps the authored palette aligned with the runtime bay variant', () => {
+        const { document } = readHorseDocument();
+        const bay = getHorseAppearanceVariantDefinition(0);
+
+        assertMaterialColor(document, 'Material.Horse.Coat', bay.coatColor);
+        assertMaterialColor(
+            document,
+            'Material.Horse.CoatDark',
+            bay.coatColor,
+            0.72,
+        );
+        assertMaterialColor(document, 'Material.Horse.Mane', bay.maneColor);
+        assertMaterialColor(
+            document,
+            'Material.Horse.Marking',
+            bay.markingColor,
+        );
+        assertMaterialColor(document, 'Material.Horse.Muzzle', bay.muzzleColor);
     });
 
     it('matches the manifest cache version and generated lazy registry', () => {

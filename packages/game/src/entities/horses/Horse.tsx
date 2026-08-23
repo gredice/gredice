@@ -385,6 +385,9 @@ export function Horse({
         primaryCasterCount: model.primaryCasterCount,
         species: 'horse',
     });
+    const homeX = navigation.home.x;
+    const homeY = navigation.home.y;
+    const homeZ = navigation.home.z;
 
     useEffect(() => {
         const group = groupRef.current;
@@ -392,10 +395,10 @@ export function Horse({
         randomRef.current = createHorseRandom(block.id);
         closeAvatarSinceRef.current = null;
         if (group) {
-            group.position.copy(navigation.home);
+            group.position.set(homeX, homeY, homeZ);
             group.rotation.y = rotation * (Math.PI / 2);
         }
-    }, [block.id, navigation.home, rotation]);
+    }, [block.id, homeX, homeY, homeZ, rotation]);
 
     useEffect(() => {
         const action = actions[activeAnimation];

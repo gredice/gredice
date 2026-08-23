@@ -389,7 +389,7 @@ const blockFixtures: Record<
         shortDescription:
             'Miran vrtni konj s bojom dlake koju odabireš pri postavljanju.',
         sunflowers: 500,
-        height: 1.55,
+        height: 1.46,
         stackable: false,
         spanDepth: 2,
         spanWidth: 1,

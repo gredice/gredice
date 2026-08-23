@@ -1023,7 +1023,7 @@ function HorseCoatPicker({
                     <label
                         key={variant.id}
                         className={cx(
-                            'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition-colors',
+                            'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
                             selectedVariant === variant.value
                                 ? 'border-primary bg-primary/10'
                                 : 'border-border hover:bg-primary/5',

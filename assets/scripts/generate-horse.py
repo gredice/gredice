@@ -28,53 +28,49 @@ from mathutils import Vector
 COAT_PALETTES = {
     "bay": {
         "label": "Dorat",
-        "coat": "#8D4F2F",
-        "coatDark": "#63301F",
-        "mane": "#251B18",
-        "marking": "#8D4F2F",
-        "muzzle": "#725148",
+        "coat": "#6F3F2D",
+        "mane": "#211715",
+        "marking": "#EEE3CF",
+        "muzzle": "#4D3832",
     },
     "chestnut": {
         "label": "Kestenjasti",
-        "coat": "#A9572F",
-        "coatDark": "#7B3521",
-        "mane": "#71371F",
-        "marking": "#F3E4C8",
-        "muzzle": "#8B5A4A",
+        "coat": "#9B4D2F",
+        "mane": "#6D2F22",
+        "marking": "#F2DFC4",
+        "muzzle": "#6F453C",
     },
     "black": {
         "label": "Vranac",
-        "coat": "#282624",
-        "coatDark": "#171615",
+        "coat": "#24211F",
         "mane": "#11100F",
-        "marking": "#282624",
-        "muzzle": "#44403D",
+        "marking": "#DDD8CE",
+        "muzzle": "#393433",
     },
     "dapple-gray": {
         "label": "Sivac",
-        "coat": "#B8B4AA",
-        "coatDark": "#88867F",
-        "mane": "#5E5D59",
-        "marking": "#E7E1D3",
-        "muzzle": "#85817C",
+        "coat": "#B9B5AD",
+        "mane": "#77736D",
+        "marking": "#E8E3D9",
+        "muzzle": "#858079",
     },
     "palomino": {
         "label": "Palomino",
-        "coat": "#C99B55",
-        "coatDark": "#A8783F",
-        "mane": "#E8D29C",
-        "marking": "#F1E2BE",
-        "muzzle": "#9D755D",
+        "coat": "#C9944F",
+        "mane": "#EAD8AB",
+        "marking": "#F4E8CD",
+        "muzzle": "#927052",
     },
     "pinto": {
         "label": "Šarac",
-        "coat": "#6E3D28",
-        "coatDark": "#49281E",
-        "mane": "#30221D",
-        "marking": "#F0E4CD",
-        "muzzle": "#8A6659",
+        "coat": "#8B553B",
+        "mane": "#38251E",
+        "marking": "#F0E6D5",
+        "muzzle": "#725449",
     },
 }
+
+HORSE_COAT_DARK_FACTOR = 0.72
 
 
 def parse_args() -> argparse.Namespace:
@@ -117,13 +113,21 @@ def linear_rgba(
     )
 
 
+def darken_linear_rgba(
+    color: tuple[float, float, float, float], factor: float
+) -> tuple[float, float, float, float]:
+    red, green, blue, alpha = linear_rgba(color)
+    return (red * factor, green * factor, blue * factor, alpha)
+
+
 def material(
     name: str,
     color: tuple[float, float, float, float],
     *,
+    color_is_linear: bool = False,
     roughness: float = 0.84,
 ) -> bpy.types.Material:
-    linear_color = linear_rgba(color)
+    linear_color = color if color_is_linear else linear_rgba(color)
     value = bpy.data.materials.new(name)
     value.diffuse_color = linear_color
     value.use_nodes = True
@@ -526,7 +530,11 @@ def add_animations(objects: dict[str, bpy.types.Object]) -> None:
 def create_horse(output_path: Path) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE"
+    scene.render.engine = (
+        "BLENDER_EEVEE"
+        if bpy.app.version >= (5, 0, 0)
+        else "BLENDER_EEVEE_NEXT"
+    )
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1
     scene.render.fps = 30
@@ -540,11 +548,14 @@ def create_horse(output_path: Path) -> None:
     scene["horse_coat_palettes"] = json.dumps(
         COAT_PALETTES, ensure_ascii=False, sort_keys=True
     )
+    scene["horse_coat_dark_factor"] = HORSE_COAT_DARK_FACTOR
 
     bay = COAT_PALETTES["bay"]
     coat = material("Material.Horse.Coat", hex_rgba(bay["coat"]))
     coat_dark = material(
-        "Material.Horse.CoatDark", hex_rgba(bay["coatDark"])
+        "Material.Horse.CoatDark",
+        darken_linear_rgba(hex_rgba(bay["coat"]), HORSE_COAT_DARK_FACTOR),
+        color_is_linear=True,
     )
     mane = material("Material.Horse.Mane", hex_rgba(bay["mane"]))
     # Marking meshes are present for runtime variants but blend into the

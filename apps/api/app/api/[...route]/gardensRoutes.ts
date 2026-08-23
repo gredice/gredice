@@ -3294,6 +3294,18 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     400,
                 );
             }
+            if (
+                rotation !== undefined &&
+                rotation !== block.rotation &&
+                isAppearanceVariantEntityName(block.name)
+            ) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće rotirati nakon postavljanja.',
+                    },
+                    400,
+                );
+            }
 
             const updated = await updateGardenBlock(gardenIdNumber, {
                 id: blockId,

@@ -614,7 +614,7 @@
             "source": "Horse.blend",
             "output": "Horse.glb",
             "preload": "lazy",
-            "version": "037e0e6d6655",
+            "version": "fc1b5ae150f8",
             "objects": [
                 "Horse_Root",
                 "Horse_BodyPivot",

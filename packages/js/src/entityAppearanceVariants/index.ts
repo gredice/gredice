@@ -98,7 +98,7 @@ export const horseAppearanceVariants = defineAppearanceVariants('Horse', [
         markingColor: '#f0e6d5',
         muzzleColor: '#725449',
     },
-] as const);
+]);
 
 export type HorseAppearanceVariant =
     (typeof horseAppearanceVariants.variants)[number]['value'];
@@ -120,9 +120,9 @@ export function getHorseAppearanceVariantDefinition(
 
 // Never extend or reorder this tuple. It is the permanent fallback domain for
 // legacy Horse records that predate persisted appearance variants.
-const horseLegacyFallbackVariants = [
+const horseLegacyFallbackVariants: readonly HorseAppearanceVariant[] = [
     0, 1, 2, 3, 4, 5,
-] as const satisfies readonly HorseAppearanceVariant[];
+];
 
 export function isAppearanceVariantEntityName(
     entityName: string,
