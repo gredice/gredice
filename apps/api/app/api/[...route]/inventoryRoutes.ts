@@ -1,3 +1,4 @@
+import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVariants';
 import {
     consumeGardenBoxInventoryItem,
     createGardenBlock,
@@ -286,6 +287,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (blockName === 'Raised_Bed') {
                 return context.json(
                     { error: 'Raised beds cannot be placed from garden boxes' },
+                    400,
+                );
+            }
+
+            if (isAppearanceVariantEntityName(blockName)) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće postaviti iz vrtne kutije.',
+                    },
                     400,
                 );
             }

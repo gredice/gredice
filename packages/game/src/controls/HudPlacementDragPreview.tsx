@@ -105,6 +105,7 @@ export function HudPlacementDragPreview() {
             id: `hud-placement-preview:${activeHudPlacementDrag.blockName}`,
             name: activeHudPlacementDrag.blockName,
             rotation: 0,
+            variant: activeHudPlacementDrag.variant,
         };
     }, [activeHudPlacementDrag, placementPreview]);
 

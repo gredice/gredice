@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import {
     batEnvironmentAnimal,
     environmentAnimalEntityTypeName,
-} from './environmentAnimalDirectory';
+} from '../src/data/environmentAnimalDirectory';
 
 describe('Bat environment-animal directory specification', () => {
     it('uses the shared dedicated non-block entity type', () => {
