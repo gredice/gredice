@@ -102,7 +102,7 @@ describe('Butterfly environment-animal directory specification', () => {
     });
 
     it('keeps eight distinct, named wing palettes in the directory record', () => {
-        assert.ok(butterflyWingVariantDirectory.length >= 7);
+        assert.equal(butterflyWingVariantDirectory.length, 8);
         assert.equal(
             new Set(butterflyWingVariantDirectory.map(({ id }) => id)).size,
             butterflyWingVariantDirectory.length,
