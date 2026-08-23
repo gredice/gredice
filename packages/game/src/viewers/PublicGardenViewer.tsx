@@ -45,7 +45,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from '../entities/EntityInstances';
-import { Chickens, Piglets } from '../entities/farmAnimals/FarmAnimals';
+import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
@@ -707,6 +707,12 @@ function PublicGardenScene({
                                                         }
                                                     />
                                                     <Piglets
+                                                        farmId={garden?.farmId}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                    <Sheep
                                                         farmId={garden?.farmId}
                                                         stacks={
                                                             normalizedStacks

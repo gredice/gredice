@@ -12,6 +12,7 @@ export type ActorGroundingShadowSpecies =
     | 'ladybug'
     | 'piglet'
     | 'rabbit'
+    | 'sheep'
     | 'slug';
 
 export type ActorGroundingShadowState = {
@@ -169,6 +170,13 @@ export const actorGroundingShadowProfiles = {
         baseOpacity: 0.32,
         cutoffHeight: 0.9,
         maxFootprintScale: 1.6,
+    },
+    sheep: {
+        baseHalfLength: 0.47,
+        baseHalfWidth: 0.29,
+        baseOpacity: 0.35,
+        cutoffHeight: 1.2,
+        maxFootprintScale: 1.65,
     },
     slug: {
         baseHalfLength: 0.25,

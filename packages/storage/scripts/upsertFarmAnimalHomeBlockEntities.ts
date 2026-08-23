@@ -14,8 +14,8 @@ import {
 
 // Deploy the runtime models and public covers before using --apply. The default
 // dry-run prevents animal catalogue entries from pointing at assets that are
-// not live. Goat and Rabbit are directly placeable animals; the other entries
-// are homes.
+// not live. Goat, Rabbit, and Sheep are directly placeable animals; the other
+// entries are homes.
 
 const actor = {
     id: 'codex',
@@ -105,6 +105,17 @@ const blockSpecs = [
         height: 0.78,
         hitboxDepth: 0.89,
         hitboxWidth: 0.94,
+    }),
+    animalBlockSpec({
+        name: 'Sheep',
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        fullDescription:
+            'Smjesti vunastu ovcu na travnati dio vrta. Mirno će pasti, preživati i istraživati okolicu, a više ovaca držat će se na ugodnoj udaljenosti bez naguravanja.',
+        height: 0.64,
+        hitboxDepth: 0.92,
+        hitboxWidth: 0.64,
     }),
     animalBlockSpec({
         name: 'Rabbit',
@@ -210,7 +221,12 @@ async function main() {
     const { apply, blockName } = parseOptions(process.argv.slice(2));
     const selectedBlockSpecs = blockName
         ? blockSpecs.filter((spec) => spec.name === blockName)
-        : blockSpecs.filter((spec) => spec.name !== 'Rabbit');
+        : blockSpecs.filter(
+              (spec) =>
+                  spec.name !== 'Goat' &&
+                  spec.name !== 'Rabbit' &&
+                  spec.name !== 'Sheep',
+          );
     if (selectedBlockSpecs.length === 0) {
         throw new Error(`Unknown animal catalogue block: ${blockName}`);
     }

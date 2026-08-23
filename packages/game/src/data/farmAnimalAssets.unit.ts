@@ -13,6 +13,7 @@ const farmAssetNames = [
     'Piglet',
     'ChickenCoop',
     'PigletPen',
+    'Sheep',
 ] as const;
 const manifestPath = fileURLToPath(
     new URL('../../../../assets/game-assets.json', import.meta.url),
@@ -110,7 +111,12 @@ function assertLinearMaterial(
 
 describe('farm animal assets', () => {
     it('exports every animal facing the runtime movement direction', () => {
-        for (const assetName of ['Chicken', 'Goat', 'Piglet'] as const) {
+        for (const assetName of [
+            'Chicken',
+            'Goat',
+            'Piglet',
+            'Sheep',
+        ] as const) {
             const document = readDocument(assetName);
             const root = records(document.nodes, `${assetName}.nodes`).find(
                 (candidate) => candidate.name === `${assetName}_Root`,
@@ -147,6 +153,46 @@ describe('farm animal assets', () => {
             'Material.PigletPen.Oak',
             [0.43, 0.25, 0.12],
         );
+        assertLinearMaterial(
+            'Sheep',
+            'Material.Sheep.Wool',
+            [0.91, 0.84, 0.68],
+        );
+    });
+
+    it('exports the sheep with stable animal-specific animation pivots', () => {
+        const document = readDocument('Sheep');
+        const nodeNames = new Set(
+            records(document.nodes, 'Sheep.nodes').map((node) => node.name),
+        );
+        const meshNames = new Set(
+            records(document.meshes, 'Sheep.meshes').map((mesh) => mesh.name),
+        );
+        for (const name of [
+            'Sheep_Root',
+            'Sheep_BodyPivot',
+            'Sheep_HeadPivot',
+            'Sheep_JawPivot',
+            'Sheep_EarPivot_L',
+            'Sheep_EarPivot_R',
+            'Sheep_TailPivot',
+            'Sheep_LegPivot_FL',
+            'Sheep_LegPivot_FR',
+            'Sheep_LegPivot_RL',
+            'Sheep_LegPivot_RR',
+            'Sheep_WoolBody',
+            'Sheep_Head',
+            'Sheep_Muzzle',
+        ]) {
+            assert.ok(nodeNames.has(name), `Missing Sheep rig node ${name}`);
+        }
+        for (const name of [
+            'Sheep_WoolBody',
+            'Sheep_WoolChest',
+            'Sheep_Tail',
+        ]) {
+            assert.ok(meshNames.has(name), `Missing Sheep mesh role ${name}`);
+        }
     });
 
     it('keeps the goat animation rig and readable anatomy in the exported GLB', () => {
