@@ -10,7 +10,7 @@ const steps = [
         icon: <Home aria-hidden className="size-5" />,
         title: 'Svaki ljubimac ima svoje mjesto',
         description:
-            'Neki stižu sa svojim domom, a kravu, kozu, ovcu i zeca postavljaš izravno u vrt.',
+            'Neki stižu sa svojim domom, a kravu, kozu i zeca postavljaš izravno u vrt.',
     },
     {
         icon: <PawPrint aria-hidden className="size-5" />,
