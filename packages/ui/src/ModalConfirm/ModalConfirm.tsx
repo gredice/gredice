@@ -1,8 +1,8 @@
 'use client';
 
-import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
+import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
 import type { FormEvent, HTMLAttributes, MouseEvent, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { isValidElement, useEffect, useState } from 'react';
 import { Button } from '../Button';
 import { Input } from '../Input';
 import { Row } from '../Row';
@@ -73,6 +73,7 @@ export function ModalConfirm({
         typeof children === 'string' &&
         children.trim().length > 0;
     const hiddenDescription = hasExplicitDescription ? description : title;
+    const triggerRender = isValidElement(trigger) ? trigger : undefined;
 
     useEffect(() => {
         if (!currentOpen) {
@@ -110,71 +111,80 @@ export function ModalConfirm({
     return (
         <AlertDialogPrimitive.Root onOpenChange={setOpen} open={currentOpen}>
             {trigger ? (
-                <AlertDialogPrimitive.Trigger asChild>
-                    {trigger}
+                <AlertDialogPrimitive.Trigger render={triggerRender}>
+                    {triggerRender ? undefined : trigger}
                 </AlertDialogPrimitive.Trigger>
             ) : null}
             <AlertDialogPrimitive.Portal>
-                <AlertDialogPrimitive.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
-                <AlertDialogPrimitive.Content
-                    className={cx(
-                        'fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=open]:zoom-in-95 sm:rounded-lg md:w-full',
-                        className,
-                    )}
-                    {...rest}
-                >
-                    <form onSubmit={handleSubmit}>
-                        <Stack spacing={8}>
-                            <Stack spacing={4}>
-                                <AlertDialogPrimitive.Title asChild>
-                                    {typeof header === 'string' ? (
-                                        <Typography level="h5">
-                                            {header}
-                                        </Typography>
-                                    ) : (
-                                        <div>{header}</div>
-                                    )}
-                                </AlertDialogPrimitive.Title>
-                                {!useChildrenAsDescription ? (
-                                    <AlertDialogPrimitive.Description className="sr-only">
-                                        {hiddenDescription}
-                                    </AlertDialogPrimitive.Description>
-                                ) : null}
-                                {typeof children === 'string' ? (
-                                    useChildrenAsDescription ? (
-                                        <AlertDialogPrimitive.Description
-                                            asChild
-                                        >
+                <AlertDialogPrimitive.Backdrop className="fixed inset-0 z-50 min-h-dvh bg-background/80 backdrop-blur-xs data-[starting-style]:animate-in data-[starting-style]:fade-in-0 data-[ending-style]:animate-out data-[ending-style]:fade-out-0 motion-reduce:animate-none motion-reduce:transition-none supports-[-webkit-touch-callout:none]:absolute" />
+                <AlertDialogPrimitive.Viewport className="pointer-events-none fixed inset-0 z-50">
+                    <AlertDialogPrimitive.Popup
+                        className={cx(
+                            'pointer-events-auto fixed left-1/2 top-1/2 z-50 grid w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[starting-style]:animate-in data-[starting-style]:fade-in-0 data-[starting-style]:zoom-in-95 data-[ending-style]:animate-out data-[ending-style]:fade-out-0 data-[ending-style]:zoom-out-95 motion-reduce:animate-none motion-reduce:transition-none sm:rounded-lg md:w-full',
+                            className,
+                        )}
+                        {...rest}
+                    >
+                        <form onSubmit={handleSubmit}>
+                            <Stack spacing={8}>
+                                <Stack spacing={4}>
+                                    <AlertDialogPrimitive.Title
+                                        render={
+                                            typeof header === 'string' ? (
+                                                <Typography level="h5" />
+                                            ) : (
+                                                <div />
+                                            )
+                                        }
+                                    >
+                                        {header}
+                                    </AlertDialogPrimitive.Title>
+                                    {!useChildrenAsDescription ? (
+                                        <AlertDialogPrimitive.Description className="sr-only">
+                                            {hiddenDescription}
+                                        </AlertDialogPrimitive.Description>
+                                    ) : null}
+                                    {typeof children === 'string' ? (
+                                        useChildrenAsDescription ? (
+                                            <AlertDialogPrimitive.Description
+                                                render={
+                                                    <Typography level="body1" />
+                                                }
+                                            >
+                                                {children}
+                                            </AlertDialogPrimitive.Description>
+                                        ) : (
                                             <Typography level="body1">
                                                 {children}
                                             </Typography>
-                                        </AlertDialogPrimitive.Description>
+                                        )
                                     ) : (
-                                        <Typography level="body1">
-                                            {children}
-                                        </Typography>
-                                    )
-                                ) : (
-                                    children
-                                )}
-                                {expectedConfirm ? (
-                                    <Input
-                                        autoFocus
-                                        label={promptLabel}
-                                        onChange={(event) =>
-                                            setPromptValue(event.target.value)
+                                        children
+                                    )}
+                                    {expectedConfirm ? (
+                                        <Input
+                                            autoFocus
+                                            label={promptLabel}
+                                            onChange={(event) =>
+                                                setPromptValue(
+                                                    event.target.value,
+                                                )
+                                            }
+                                            value={promptValue}
+                                        />
+                                    ) : null}
+                                </Stack>
+                                <Row justifyContent="end" spacing={2}>
+                                    <AlertDialogPrimitive.Close
+                                        render={
+                                            <Button
+                                                type="button"
+                                                variant="plain"
+                                            />
                                         }
-                                        value={promptValue}
-                                    />
-                                ) : null}
-                            </Stack>
-                            <Row justifyContent="end" spacing={2}>
-                                <AlertDialogPrimitive.Cancel asChild>
-                                    <Button type="button" variant="plain">
+                                    >
                                         {cancelLabel}
-                                    </Button>
-                                </AlertDialogPrimitive.Cancel>
-                                <AlertDialogPrimitive.Action asChild>
+                                    </AlertDialogPrimitive.Close>
                                     <Button
                                         disabled={!canConfirm}
                                         type="submit"
@@ -182,11 +192,11 @@ export function ModalConfirm({
                                     >
                                         {confirmLabel}
                                     </Button>
-                                </AlertDialogPrimitive.Action>
-                            </Row>
-                        </Stack>
-                    </form>
-                </AlertDialogPrimitive.Content>
+                                </Row>
+                            </Stack>
+                        </form>
+                    </AlertDialogPrimitive.Popup>
+                </AlertDialogPrimitive.Viewport>
             </AlertDialogPrimitive.Portal>
         </AlertDialogPrimitive.Root>
     );

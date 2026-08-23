@@ -16,6 +16,7 @@ import { PriceAttributeCard } from '../../../components/attributes/PriceAttribut
 import { CommunityEditButton } from '../../../components/community-edits/CommunityEditButton';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import type { PlantSortDataWithRelationships } from '../../../lib/plants/getPlantSortsData';
+import { resolvePlantSowingPrice } from '../../../lib/plants/resolvePlantSowingPrice';
 import { KnownPages } from '../../../src/KnownPages';
 import { getPlantImageViewTransitionName } from '../plantViewTransition';
 import { getPlantInforationSections } from './getPlantInforationSections';
@@ -79,6 +80,7 @@ export function PlantPageHeader({
     );
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes?.seedingDistance,
+        sort?.information.name ?? plant.information.name,
     );
     const contentLinks = informationSections
         .filter((section) => section.avaialble)
@@ -86,6 +88,12 @@ export function PlantPageHeader({
             href: `#${slug(section.header)}`,
             label: section.header,
         }));
+    if (!sort) {
+        contentLinks.unshift({
+            href: `#${slug('Sorte')}`,
+            label: 'Sorte',
+        });
+    }
     if ((plant.information.tip?.length ?? 0) > 0) {
         contentLinks.push({
             href: `#${slug('Savjeti')}`,
@@ -104,12 +112,6 @@ export function PlantPageHeader({
             label: 'Biljni susjedi',
         });
     }
-    if (!sort) {
-        contentLinks.push({
-            href: `#${slug('Sorte')}`,
-            label: 'Sorte',
-        });
-    }
 
     const baseLatinName = plant.information.latinName
         ? `lat. ${plant.information.latinName}`
@@ -119,17 +121,7 @@ export function PlantPageHeader({
     const alternativeNames =
         formatAlternativeNames(sort?.information) ||
         formatAlternativeNames(plant.information);
-    const plantPrice = sort ? sort.prices?.perPlant : plant.prices?.perPlant;
-    const price =
-        typeof plantPrice === 'number'
-            ? {
-                  currentPrice: plantPrice,
-                  entityId: sort?.id ?? plant.id,
-                  entityTypeName: sort
-                      ? ('plantSort' as const)
-                      : ('plant' as const),
-              }
-            : null;
+    const price = resolvePlantSowingPrice(plant, sort);
 
     return (
         <PageHeader

@@ -25,6 +25,10 @@ import {
     createPlantStemGeometryShell,
     disposePlantStemGeometryShell,
 } from './plantStemGeometry';
+import {
+    vegetableColorFragmentShader,
+    vegetableColorVertexShader,
+} from './plantVegetableMaterial';
 
 export const GENERATED_PLANT_SHADER_PREWARM_COMPILE_TIMEOUT_MS = 4_000;
 
@@ -33,8 +37,10 @@ export const generatedPlantShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
     'billboard',
     'mid-billboard',
+    'mid-billboard-single',
     'shadow-proxy',
 ] as const;
 
@@ -43,6 +49,7 @@ export const generatedPlantInstancedSwayShaderPrewarmVariants = [
     'leaf',
     'flower',
     'standard-sway',
+    'vegetable',
     'mid-billboard',
 ] as const;
 
@@ -51,6 +58,11 @@ export type GeneratedPlantShaderPrewarmCompletionStatus =
     | 'failed'
     | 'ready'
     | 'timed-out';
+
+export type GeneratedPlantShaderPrewarmLifecycleStatus =
+    | GeneratedPlantShaderPrewarmCompletionStatus
+    | 'compiling'
+    | 'scheduled';
 
 export type GeneratedPlantShaderPrewarmFailureReason =
     | 'aborted'
@@ -74,6 +86,7 @@ export interface GeneratedPlantShaderPrewarmRequest {
 
 export interface GeneratedPlantShaderPrewarmResources {
     dispose: () => void;
+    prepareReactUpdatedMaterials: () => void;
     root: THREE.Group;
 }
 
@@ -117,6 +130,125 @@ const prewarmRequestsByRenderer = new WeakMap<
     object,
     Map<string, GeneratedPlantShaderPrewarmCacheEntry>
 >();
+
+type GeneratedPlantShaderPrewarmLifecycleEntry = {
+    listeners: Set<() => void>;
+    status: GeneratedPlantShaderPrewarmLifecycleStatus | null;
+};
+
+const prewarmLifecycleByRenderer = new WeakMap<
+    object,
+    Map<string, GeneratedPlantShaderPrewarmLifecycleEntry>
+>();
+
+function getOrCreatePrewarmLifecycleEntry(
+    renderer: object,
+    variantKey: string,
+) {
+    let rendererEntries = prewarmLifecycleByRenderer.get(renderer);
+    if (!rendererEntries) {
+        rendererEntries = new Map();
+        prewarmLifecycleByRenderer.set(renderer, rendererEntries);
+    }
+
+    let entry = rendererEntries.get(variantKey);
+    if (!entry) {
+        entry = {
+            listeners: new Set(),
+            status: null,
+        };
+        rendererEntries.set(variantKey, entry);
+    }
+
+    return entry;
+}
+
+export function getGeneratedPlantShaderPrewarmLifecycleStatus({
+    renderer,
+    variantKey,
+}: {
+    renderer: object;
+    variantKey: string;
+}) {
+    return (
+        prewarmLifecycleByRenderer.get(renderer)?.get(variantKey)?.status ??
+        null
+    );
+}
+
+export function publishGeneratedPlantShaderPrewarmLifecycleStatus({
+    renderer,
+    status,
+    variantKey,
+}: {
+    renderer: object;
+    status: GeneratedPlantShaderPrewarmLifecycleStatus | null;
+    variantKey: string;
+}) {
+    const entry = getOrCreatePrewarmLifecycleEntry(renderer, variantKey);
+    if (entry.status === status) {
+        return;
+    }
+
+    entry.status = status;
+    for (const listener of entry.listeners) {
+        listener();
+    }
+}
+
+export function subscribeToGeneratedPlantShaderPrewarmLifecycle({
+    listener,
+    renderer,
+    variantKey,
+}: {
+    listener: () => void;
+    renderer: object;
+    variantKey: string;
+}) {
+    const entry = getOrCreatePrewarmLifecycleEntry(renderer, variantKey);
+    entry.listeners.add(listener);
+    return () => {
+        entry.listeners.delete(listener);
+    };
+}
+
+export function shouldRenderGeneratedPlantDetailAfterPrewarm({
+    required,
+    status,
+}: {
+    required: boolean;
+    status: GeneratedPlantShaderPrewarmLifecycleStatus | null;
+}) {
+    return (
+        !required ||
+        (status !== null && status !== 'scheduled' && status !== 'compiling')
+    );
+}
+
+function hashProgramCacheKey(cacheKey: string) {
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < cacheKey.length; index += 1) {
+        hash ^= cacheKey.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+export function getGeneratedPlantShaderProgramDiagnostics(
+    programs: Array<{
+        cacheKey: string;
+        id: number;
+        name: string;
+    }> | null,
+) {
+    return (
+        programs?.map((program) => ({
+            cacheKeyHash: hashProgramCacheKey(program.cacheKey),
+            id: program.id,
+            name: program.name,
+        })) ?? null
+    );
+}
 
 function now() {
     return typeof performance === 'undefined' ? Date.now() : performance.now();
@@ -248,6 +380,28 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
     );
     standardSway.name = 'GeneratedPlantShaderPrewarm:standard-sway';
 
+    const vegetableGeometry = new THREE.ConeGeometry(0.5, 1, 6);
+    vegetableGeometry.setAttribute(
+        'vegetableInstanceColor',
+        new THREE.InstancedBufferAttribute(
+            new Float32Array([0.84, 0.16, 0.16]),
+            3,
+        ),
+    );
+    const vegetableMaterial = new CustomShaderMaterial({
+        baseMaterial: THREE.MeshStandardMaterial,
+        fragmentShader: vegetableColorFragmentShader,
+        vertexShader: vegetableColorVertexShader,
+        uniforms: createSwayUniforms(),
+        color: '#ffffff',
+        roughness: 0.7,
+    });
+    const vegetable = initializeWarmupMesh(
+        new THREE.InstancedMesh(vegetableGeometry, vegetableMaterial, 1),
+        { usesSway: true },
+    );
+    vegetable.name = 'GeneratedPlantShaderPrewarm:vegetable';
+
     const billboardGeometry = new THREE.PlaneGeometry(1, 1);
     billboardGeometry.setAttribute(
         'instanceTint',
@@ -282,24 +436,33 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         'instanceOpacity',
         new THREE.InstancedBufferAttribute(new Float32Array([0.9]), 1),
     );
-    const midBillboardMaterial = new CustomShaderMaterial({
-        baseMaterial: THREE.MeshLambertMaterial,
-        depthWrite: false,
-        fragmentShader: midBillboardFragmentShader,
-        side: THREE.FrontSide,
-        transparent: true,
-        uniforms: {
-            ...createSwayUniforms(),
-            uOpacity: { value: 0.9 },
-            uTint: { value: new THREE.Color('#ffffff') },
-        },
-        vertexShader: midBillboardVertexShader,
-    });
+    const createMidBillboardMaterial = () =>
+        new CustomShaderMaterial({
+            baseMaterial: THREE.MeshLambertMaterial,
+            depthWrite: false,
+            fragmentShader: midBillboardFragmentShader,
+            side: THREE.FrontSide,
+            transparent: true,
+            uniforms: {
+                ...createSwayUniforms(),
+                uOpacity: { value: 0.9 },
+                uTint: { value: new THREE.Color('#ffffff') },
+            },
+            vertexShader: midBillboardVertexShader,
+        });
+    const midBillboardMaterial = createMidBillboardMaterial();
     const midBillboard = initializeWarmupMesh(
         new THREE.InstancedMesh(midBillboardGeometry, midBillboardMaterial, 1),
         { usesSway: true },
     );
     midBillboard.name = 'GeneratedPlantShaderPrewarm:mid-billboard';
+    const midBillboardSingleMaterial = createMidBillboardMaterial();
+    const midBillboardSingle = new THREE.Mesh(
+        midBillboardGeometry,
+        midBillboardSingleMaterial,
+    );
+    midBillboardSingle.name =
+        'GeneratedPlantShaderPrewarm:mid-billboard-single';
 
     const shadowProxyGeometry = createRaisedBedPlantShadowProxyGeometry();
     const shadowProxyColorMaterial = createRaisedBedPlantShadowProxyMaterial();
@@ -321,14 +484,39 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
         leaf,
         flower,
         standardSway,
+        vegetable,
         billboard,
         midBillboard,
+        midBillboardSingle,
         shadowProxy,
     );
 
     let disposed = false;
+    let preparedReactUpdates = false;
+    const customShaderMaterials = [
+        stemMaterial,
+        leafMaterial,
+        flowerMaterial,
+        standardSwayMaterial,
+        vegetableMaterial,
+        midBillboardMaterial,
+        midBillboardSingleMaterial,
+    ];
     return {
         root,
+        prepareReactUpdatedMaterials: () => {
+            if (preparedReactUpdates) {
+                return;
+            }
+            preparedReactUpdates = true;
+            for (const material of customShaderMaterials) {
+                material.update({
+                    fragmentShader: material.fragmentShader,
+                    uniforms: material.uniforms,
+                    vertexShader: material.vertexShader,
+                });
+            }
+        },
         dispose: () => {
             if (disposed) {
                 return;
@@ -340,6 +528,7 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             leafGeometry.dispose();
             flowerGeometry.dispose();
             standardSwayGeometry.dispose();
+            vegetableGeometry.dispose();
             billboardGeometry.dispose();
             midBillboardGeometry.dispose();
             shadowProxyGeometry.dispose();
@@ -347,8 +536,10 @@ export function createGeneratedPlantShaderPrewarmResources(): GeneratedPlantShad
             leafMaterial.dispose();
             flowerMaterial.dispose();
             standardSwayMaterial.dispose();
+            vegetableMaterial.dispose();
             billboardMaterial.dispose();
             midBillboardMaterial.dispose();
+            midBillboardSingleMaterial.dispose();
             shadowProxyColorMaterial.dispose();
             shadowProxyDepthMaterial.dispose();
         },
@@ -418,18 +609,28 @@ export async function prewarmGeneratedPlantShaders({
     resources.root.name = `GeneratedPlantShaderPrewarm:${variantKey}`;
 
     const compileOutcome = Promise.resolve()
-        .then(() => compiler.compileAsync(resources.root, camera, scene))
-        .then(
-            (): GeneratedPlantShaderPrewarmOutcome =>
-                isContextLost(compiler)
-                    ? {
-                          reason: 'context-lost',
-                          status: 'failed',
-                      }
-                    : {
-                          reason: null,
-                          status: 'ready',
-                      },
+        .then(async (): Promise<GeneratedPlantShaderPrewarmOutcome> => {
+            await compiler.compileAsync(resources.root, camera, scene);
+            if (isContextLost(compiler)) {
+                return {
+                    reason: 'context-lost',
+                    status: 'failed',
+                };
+            }
+
+            resources.prepareReactUpdatedMaterials();
+            await compiler.compileAsync(resources.root, camera, scene);
+            return isContextLost(compiler)
+                ? {
+                      reason: 'context-lost',
+                      status: 'failed',
+                  }
+                : {
+                      reason: null,
+                      status: 'ready',
+                  };
+        })
+        .catch(
             (): GeneratedPlantShaderPrewarmOutcome => ({
                 reason: 'compile-rejected',
                 status: 'failed',

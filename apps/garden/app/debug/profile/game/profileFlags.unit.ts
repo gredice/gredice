@@ -4,6 +4,7 @@ import {
     highTargetOperationVisualHighlightTarget,
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
+    resolveGameProfileGardenAvatar,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
@@ -36,34 +37,42 @@ describe('resolveGameProfileOperationVisuals', () => {
     });
 });
 
+describe('resolveGameProfileGardenAvatar', () => {
+    it('keeps the walkable avatar behind an explicit opt-in', () => {
+        assert.equal(resolveGameProfileGardenAvatar(undefined), false);
+        assert.equal(resolveGameProfileGardenAvatar('0'), false);
+        assert.equal(resolveGameProfileGardenAvatar('unexpected'), false);
+        assert.equal(resolveGameProfileGardenAvatar('1'), true);
+    });
+});
+
 describe('resolveGameProfileFlags', () => {
     it('defaults production-profile weather surfaces to the integrated path', () => {
-        assert.deepEqual(
-            resolveGameProfileFlags(undefined, undefined, undefined),
-            {
-                enableAdaptiveHighQualityFlag: false,
-                enableDebugHudFlag: true,
-                enableIntegratedWeatherSurfacesFlag: true,
-                enableRainWetOverlayFlag: true,
-                enableStaticOpaqueSceneCacheFlag: true,
-            },
-        );
-        assert.deepEqual(resolveGameProfileFlags('1', 'integrated', 'cache'), {
-            enableAdaptiveHighQualityFlag: true,
+        assert.deepEqual(resolveGameProfileFlags(undefined), {
             enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
             enableIntegratedWeatherSurfacesFlag: true,
-            enableRainWetOverlayFlag: true,
-            enableStaticOpaqueSceneCacheFlag: true,
+        });
+        assert.deepEqual(resolveGameProfileFlags('integrated'), {
+            enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
+            enableIntegratedWeatherSurfacesFlag: true,
         });
     });
 
-    it('allows explicit legacy weather-surface and scene-cache comparisons', () => {
-        assert.deepEqual(resolveGameProfileFlags('0', 'legacy', 'legacy'), {
-            enableAdaptiveHighQualityFlag: false,
+    it('allows explicit legacy weather-surface comparisons', () => {
+        assert.deepEqual(resolveGameProfileFlags('legacy'), {
             enableDebugHudFlag: true,
+            enableGardenAvatarFlag: false,
             enableIntegratedWeatherSurfacesFlag: false,
-            enableRainWetOverlayFlag: true,
-            enableStaticOpaqueSceneCacheFlag: false,
+        });
+    });
+
+    it('spawns the walkable avatar when the profile asks for it', () => {
+        assert.deepEqual(resolveGameProfileFlags(undefined, '1'), {
+            enableDebugHudFlag: true,
+            enableGardenAvatarFlag: true,
+            enableIntegratedWeatherSurfacesFlag: true,
         });
     });
 });

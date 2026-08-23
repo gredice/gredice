@@ -138,3 +138,25 @@ test('does not add flower clusters to sand decorations', () => {
         0,
     );
 });
+
+test('uses sparse light-brown cover only for swamp ground', () => {
+    const block = {
+        id: 'swamp-ground-test',
+        name: 'Block_Swamp_Ground_Angle',
+        rotation: 0,
+    } satisfies Block;
+    const placements = getBlockSurfaceDecorations({
+        block,
+        gardenId: 42,
+        surface: 'swamp',
+    });
+
+    assert.ok(placements.length > 0);
+    assert.ok(
+        placements.every(
+            (placement) =>
+                placement.kind === 'sprite' &&
+                placement.spriteName.startsWith('desert__'),
+        ),
+    );
+});

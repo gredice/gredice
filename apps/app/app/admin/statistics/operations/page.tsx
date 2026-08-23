@@ -14,6 +14,7 @@ import {
     resolveBoundedStatisticsPeriod,
     type StatisticsPeriodSearchParams,
 } from '../statisticsPeriod';
+import { OperationsFinancialBreakdownTable } from './OperationsFinancialBreakdownTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,10 @@ export default async function OperationsStatisticsPage({
                         detail: 'Procijenjeno trajanje evidentiranih sijanja',
                     },
                 ]}
+            />
+
+            <OperationsFinancialBreakdownTable
+                data={operations.financialBreakdown}
             />
 
             <OperationsDurationCard data={operations} />

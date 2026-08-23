@@ -4,7 +4,7 @@ import type {
 } from './packedPlantRenderData';
 import type { PlantDefinition } from './plant-definitions';
 
-export const PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION = 3 as const;
+export const PACKED_PLANT_RENDER_WORKER_PROTOCOL_VERSION = 4 as const;
 export const PACKED_PLANT_RENDER_WORKER_REQUEST_KIND =
     'packed-plant-render-request' as const;
 export const PACKED_PLANT_RENDER_WORKER_RESPONSE_KIND =

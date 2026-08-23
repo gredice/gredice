@@ -30,11 +30,13 @@ import {
     type AdaptiveHighQualityLevelProfile,
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
+import { GardenLightProvider } from './GardenLightProvider';
 import { updateGameProfileMetadata } from './gameProfileMetadata';
 import {
     type GameQualityProfile,
     resolveGameQualityProfile,
 } from './gameQuality';
+import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
 import { SceneTimeProvider, sceneFrameRates } from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
@@ -50,6 +52,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         onAdaptiveHighProfileChange?: (
             profile: AdaptiveHighQualityLevelProfile,
         ) => void;
+        onContextLost?: () => void;
         pixelRatio?: number;
         position: FiberVector3;
         quality?: GameQualityProfile;
@@ -208,6 +211,7 @@ export function Scene({
     debugStats,
     fixedTimeSeconds,
     onAdaptiveHighProfileChange,
+    onContextLost,
     pixelRatio,
     position,
     quality,
@@ -217,6 +221,32 @@ export function Scene({
     zoom,
     ...rest
 }: SceneProps) {
+    const contextLossCallbackRef = useRef(onContextLost);
+    const contextLossCleanupRef = useRef<(() => void) | null>(null);
+    const handleCanvasRef = useCallback((canvas: HTMLCanvasElement | null) => {
+        contextLossCleanupRef.current?.();
+        contextLossCleanupRef.current = null;
+        if (!canvas || !contextLossCallbackRef.current) {
+            return;
+        }
+        contextLossCleanupRef.current = subscribeToRendererContextLoss({
+            eventTarget: canvas,
+            onContextLost: () => contextLossCallbackRef.current?.(),
+        });
+    }, []);
+
+    useEffect(
+        () => () => {
+            contextLossCleanupRef.current?.();
+            contextLossCleanupRef.current = null;
+        },
+        [],
+    );
+
+    useEffect(() => {
+        contextLossCallbackRef.current = onContextLost;
+    }, [onContextLost]);
+
     const qualityProfile = quality ?? resolveGameQualityProfile();
     const adaptiveHighActive =
         adaptiveHighEnabled && qualityProfile.tier === 'high';
@@ -272,47 +302,53 @@ export function Scene({
             }}
             {...rest}
             frameloop="demand"
+            ref={handleCanvasRef}
         >
             <SceneTimeProvider
                 baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
-                <AdaptiveHighQualityController
-                    effectiveDprCeiling={qualityProfile.dpr}
-                    enabled={adaptiveHighActive}
-                    interactionActive={adaptiveHighInteractionActive}
-                    onProfileChange={
-                        onAdaptiveHighProfileChange ?? (() => undefined)
-                    }
-                    profileControlEnabled={
-                        adaptiveHighActive && adaptiveHighProfileControlEnabled
-                    }
-                />
-                <WeatherSurfaceUniformProvider>
-                    <StaticOpaqueSceneCacheProvider
-                        enabled={staticOpaqueCacheActive}
+                <GardenLightProvider qualityTier={qualityProfile.tier}>
+                    <AdaptiveHighQualityController
+                        effectiveDprCeiling={qualityProfile.dpr}
+                        enabled={adaptiveHighActive}
                         interactionActive={adaptiveHighInteractionActive}
-                        qualityKey={staticOpaqueCacheQualityKey}
-                        wireframe={Boolean(debugStats && wireframeDebugVisible)}
-                    >
-                        <ActorGroundingShadowProvider
-                            enabled={qualityProfile.shadows}
+                        onProfileChange={
+                            onAdaptiveHighProfileChange ?? (() => undefined)
+                        }
+                        profileControlEnabled={
+                            adaptiveHighActive &&
+                            adaptiveHighProfileControlEnabled
+                        }
+                    />
+                    <WeatherSurfaceUniformProvider>
+                        <StaticOpaqueSceneCacheProvider
+                            enabled={staticOpaqueCacheActive}
+                            interactionActive={adaptiveHighInteractionActive}
+                            qualityKey={staticOpaqueCacheQualityKey}
+                            wireframe={Boolean(
+                                debugStats && wireframeDebugVisible,
+                            )}
                         >
-                            <HoverOutlineProvider>
-                                <SceneDebugName />
-                                {debugStats && <RendererStatsReporter />}
-                                <SceneWireframeMode
-                                    enabled={Boolean(
-                                        debugStats && wireframeDebugVisible,
-                                    )}
-                                />
-                                {children}
-                                <HoverOutlineEffect />
-                            </HoverOutlineProvider>
-                        </ActorGroundingShadowProvider>
-                    </StaticOpaqueSceneCacheProvider>
-                </WeatherSurfaceUniformProvider>
+                            <ActorGroundingShadowProvider
+                                enabled={qualityProfile.shadows}
+                            >
+                                <HoverOutlineProvider>
+                                    <SceneDebugName />
+                                    {debugStats && <RendererStatsReporter />}
+                                    <SceneWireframeMode
+                                        enabled={Boolean(
+                                            debugStats && wireframeDebugVisible,
+                                        )}
+                                    />
+                                    {children}
+                                    <HoverOutlineEffect />
+                                </HoverOutlineProvider>
+                            </ActorGroundingShadowProvider>
+                        </StaticOpaqueSceneCacheProvider>
+                    </WeatherSurfaceUniformProvider>
+                </GardenLightProvider>
             </SceneTimeProvider>
         </Canvas>
     );

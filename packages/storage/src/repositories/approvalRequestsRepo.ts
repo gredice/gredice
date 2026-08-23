@@ -53,6 +53,15 @@ type CreatePlantStatusApprovalRequestInput = {
     note?: string | null;
 };
 
+export class PendingPlantStatusApprovalRequestConflictError extends Error {
+    readonly code = 'different_pending_request';
+
+    constructor() {
+        super('Već postoji zahtjev za promjenu stanja ove biljke.');
+        this.name = 'PendingPlantStatusApprovalRequestConflictError';
+    }
+}
+
 type StorageClient = ReturnType<typeof storage>;
 type DatabaseClient = StorageClient | ScheduleTaskTransaction;
 
@@ -191,6 +200,23 @@ function isSamePlantStatusTarget(
     return (
         left.raisedBedId === right.raisedBedId &&
         left.positionIndex === right.positionIndex
+    );
+}
+
+function isSamePlantStatusSnapshot(
+    target: PlantStatusApprovalTarget,
+    input: CreatePlantStatusApprovalRequestInput,
+) {
+    return (
+        isSamePlantStatusTarget(target, input) &&
+        target.plantCycleEventId === input.plantCycleEventId &&
+        target.plantCycleVersionEventId === input.plantCycleVersionEventId &&
+        (input.raisedBedFieldId == null ||
+            target.raisedBedFieldId === input.raisedBedFieldId) &&
+        (input.plantSortId == null ||
+            target.plantSortId === input.plantSortId) &&
+        (input.currentStatus == null ||
+            target.currentStatus === input.currentStatus)
     );
 }
 
@@ -491,59 +517,75 @@ export async function getPendingApprovalRequestsCount() {
 export async function createPlantStatusApprovalRequest(
     input: CreatePlantStatusApprovalRequestInput,
 ) {
-    const pendingPlantStatusRequests = await getApprovalRequests({
-        status: 'pending',
-        kind: 'raisedBedField.plantStatus',
-    });
-    const existingPendingRequest = pendingPlantStatusRequests.find(
-        (request) =>
-            request.target.kind === 'raisedBedField.plantStatus' &&
-            isSamePlantStatusTarget(request.target, input),
+    return withPlantingScheduleTaskTransaction(
+        input.raisedBedId,
+        input.positionIndex,
+        async (transaction) => {
+            const pendingPlantStatusRequests = await getApprovalRequests(
+                {
+                    status: 'pending',
+                    kind: 'raisedBedField.plantStatus',
+                },
+                transaction,
+            );
+            const existingPendingRequest = pendingPlantStatusRequests.find(
+                (request) =>
+                    request.target.kind === 'raisedBedField.plantStatus' &&
+                    isSamePlantStatusSnapshot(request.target, input),
+            );
+
+            if (existingPendingRequest) {
+                if (
+                    existingPendingRequest.target.kind ===
+                        'raisedBedField.plantStatus' &&
+                    existingPendingRequest.target.requestedStatus ===
+                        input.requestedStatus
+                ) {
+                    return existingPendingRequest;
+                }
+
+                throw new PendingPlantStatusApprovalRequestConflictError();
+            }
+
+            const requestId = uuidV4();
+            const requestedAt = new Date();
+            await createEvent(
+                knownEvents.approvalRequests.createdV1(requestId, {
+                    requestedBy: input.requestedBy,
+                    requestedAt: requestedAt.toISOString(),
+                    note: input.note,
+                    target: {
+                        kind: 'raisedBedField.plantStatus',
+                        raisedBedId: input.raisedBedId,
+                        positionIndex: input.positionIndex,
+                        plantCycleEventId: input.plantCycleEventId,
+                        plantCycleVersionEventId:
+                            input.plantCycleVersionEventId,
+                        raisedBedFieldId: input.raisedBedFieldId,
+                        accountId: input.accountId,
+                        gardenId: input.gardenId,
+                        plantSortId: input.plantSortId,
+                        currentStatus: input.currentStatus,
+                        requestedStatus: input.requestedStatus,
+                        effectiveAt: input.effectiveAt?.toISOString() ?? null,
+                    },
+                }),
+                transaction,
+            );
+
+            const createdRequest = await getApprovalRequest(
+                requestId,
+                transaction,
+            );
+            if (!createdRequest) {
+                throw new Error(
+                    'Zahtjev za odobrenje nije pronađen nakon spremanja.',
+                );
+            }
+
+            return createdRequest;
+        },
     );
-
-    if (existingPendingRequest) {
-        if (
-            existingPendingRequest.target.kind ===
-                'raisedBedField.plantStatus' &&
-            existingPendingRequest.target.requestedStatus ===
-                input.requestedStatus
-        ) {
-            return existingPendingRequest;
-        }
-
-        throw new Error('Već postoji zahtjev za promjenu stanja ove biljke.');
-    }
-
-    const requestId = uuidV4();
-    const requestedAt = new Date();
-    await createEvent(
-        knownEvents.approvalRequests.createdV1(requestId, {
-            requestedBy: input.requestedBy,
-            requestedAt: requestedAt.toISOString(),
-            note: input.note,
-            target: {
-                kind: 'raisedBedField.plantStatus',
-                raisedBedId: input.raisedBedId,
-                positionIndex: input.positionIndex,
-                plantCycleEventId: input.plantCycleEventId,
-                plantCycleVersionEventId: input.plantCycleVersionEventId,
-                raisedBedFieldId: input.raisedBedFieldId,
-                accountId: input.accountId,
-                gardenId: input.gardenId,
-                plantSortId: input.plantSortId,
-                currentStatus: input.currentStatus,
-                requestedStatus: input.requestedStatus,
-                effectiveAt: input.effectiveAt?.toISOString() ?? null,
-            },
-        }),
-    );
-
-    const createdRequest = await getApprovalRequest(requestId);
-    if (!createdRequest) {
-        throw new Error('Zahtjev za odobrenje nije pronađen nakon spremanja.');
-    }
-
-    return createdRequest;
 }
 
 export async function approveApprovalRequest(

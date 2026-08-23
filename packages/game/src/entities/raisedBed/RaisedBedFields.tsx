@@ -11,6 +11,7 @@ import {
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import type { RaisedBedOrientation } from '../../utils/raisedBedOrientation';
 import { resolveEntityNeighbors } from '../helpers/useEntityNeighbors';
+import { defaultGameWoodColor } from '../woodPalette';
 import { RaisedBedPlantField } from './RaisedBedPlantField';
 import {
     hasActiveRaisedBedProtectiveCover,
@@ -172,7 +173,7 @@ function getRaisedBedWholeAgrotextileCoverLayout({
     };
 }
 
-function RaisedBedFieldVisitSummaryHighlight({
+function RaisedBedFieldTargetHighlight({
     blockIndex,
     orientation,
     positionIndex,
@@ -492,7 +493,10 @@ function RaisedBedFieldSupportVisual({
         <group position={position}>
             <mesh castShadow position={[0, 0.39, 0]} renderOrder={8}>
                 <cylinderGeometry args={[0.018, 0.022, 0.78, 6]} />
-                <meshStandardMaterial color="#7a4f2b" roughness={0.9} />
+                <meshStandardMaterial
+                    color={defaultGameWoodColor}
+                    roughness={0.9}
+                />
             </mesh>
         </group>
     );
@@ -500,9 +504,13 @@ function RaisedBedFieldSupportVisual({
 
 export function RaisedBedFields({
     blockId,
+    blockIndex: requestedBlockIndex,
+    blockOffset: requestedBlockOffset,
     generatedPlantsHandledExternally = false,
 }: {
     blockId: string;
+    blockIndex?: number;
+    blockOffset?: number;
     generatedPlantsHandledExternally?: boolean;
 }) {
     const { renderDetails } = useGameSceneDetails();
@@ -518,8 +526,8 @@ export function RaisedBedFields({
         generatedPlantsHandledExternally ? undefined : raisedBed,
     );
     const orientation = raisedBed?.orientation ?? 'vertical';
-    const visitSummaryHighlight = useGameState(
-        (state) => state.gardenVisitSummaryHighlight,
+    const targetHighlight = useGameState(
+        (state) => state.gardenTargetHighlight,
     );
 
     const blockIds =
@@ -529,8 +537,10 @@ export function RaisedBedFields({
 
     // Bottom-right most block (last in position-sorted list) is offset 0;
     // other blocks get increasing offsets based on distance from bottom-right
-    const blockIndex = blockIds.indexOf(blockId);
-    const blockOffset = Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+    const blockIndex = requestedBlockIndex ?? blockIds.indexOf(blockId);
+    const blockOffset =
+        requestedBlockOffset ??
+        Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
 
     const cartItems = cart?.items.filter(
         (item) =>
@@ -657,13 +667,13 @@ export function RaisedBedFields({
     );
     const harvestPositionSet = new Set(visibleHarvestPositions);
     const highlightedPositionIndex =
-        raisedBed && visitSummaryHighlight?.raisedBedId === raisedBed.id
+        raisedBed && targetHighlight?.raisedBedId === raisedBed.id
             ? (raisedBed.fields.find(
                   (field) =>
                       typeof field.id === 'number' &&
-                      field.id === visitSummaryHighlight.fieldId,
+                      field.id === targetHighlight.fieldId,
               )?.positionIndex ??
-              visitSummaryHighlight.positionIndex ??
+              targetHighlight.positionIndex ??
               null)
             : null;
     const highlightedLocalPositionIndex =
@@ -676,7 +686,7 @@ export function RaisedBedFields({
     return (
         <>
             {highlightedLocalPositionIndex != null ? (
-                <RaisedBedFieldVisitSummaryHighlight
+                <RaisedBedFieldTargetHighlight
                     blockIndex={blockIndex}
                     orientation={orientation}
                     positionIndex={highlightedLocalPositionIndex}
@@ -709,6 +719,10 @@ export function RaisedBedFields({
                             harvestedVisual:
                                 harvestPositionSet.has(localPositionIndex),
                             positionIndex: localPositionIndex,
+                            supportedVisual:
+                                visibleSupportPositions.includes(
+                                    localPositionIndex,
+                                ),
                         }}
                         blockIndex={blockIndex}
                         orientation={orientation}

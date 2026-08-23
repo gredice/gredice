@@ -58,6 +58,7 @@ export function parseCmsPageRenderMaxWidth(
 }
 
 const reservedFirstSegments = new Set([
+    '_vercel',
     'biljke',
     'bolesti',
     'blokovi',
@@ -73,6 +74,7 @@ const reservedFirstSegments = new Set([
     'o-nama',
     'outlet',
     'podignuta-gredica',
+    'pozadine',
     'pozdrav',
     'preporuke',
     'prijava',

@@ -49,10 +49,9 @@ migration.
 - Export icons from `@gredice/ui/icons`. Most Signalco icons are Lucide icons,
   so map them directly where possible and copy only the custom icons that do not
   have a Lucide equivalent.
-- Prefer shadcn/ui source components where they fit. shadcn copies component
-  code into the repo, which matches the goal of owning the Gredice UI surface.
-  Use Radix-backed shadcn components for dialogs, menus, tooltips, selects,
-  accordions, tables, forms, and similar interaction primitives.
+- Prefer first-party `@gredice/ui` components. Base UI provides the headless
+  implementation for shared interactive primitives while Gredice owns the
+  public contracts, styling, and composition.
 - Base local Tailwind theme configuration on the pinned Signalco theme packages
   before removing them. `@signalco/ui-themes-minimal@0.1.3` defines the shared
   color tokens, radius tokens, accordion and scroll animations, `aspect-card`,
@@ -118,7 +117,7 @@ migration.
   At that point Garden still intentionally kept `@signalco/ui-notifications`
   and its `@signalco/ui-primitives` peer until the notification UI phase.
 - 2026-05-21: Fixed Gredice `Input` generated label ids and restored
-  Signalco-compatible mobile drawer behavior in `Modal` using `vaul`; focused
+  Signalco-compatible mobile drawer behavior in `Modal`; focused
   Garden notification/drawer tests and the full Garden Playwright assertion set
   passed. The Garden test runner still required manual cleanup after an
   orphaned `next-server` stayed alive after all tests reported pass.
@@ -293,8 +292,8 @@ pnpm build --filter storybook
 Rebase existing shared components onto the new first-party primitives before
 changing app imports.
 
-- [x] `packages/ui/src/Tabs` is already first-party on Radix; keep it as the
-      reference pattern.
+- [x] `packages/ui/src/Tabs` is first-party on Base UI and follows the shared
+      primitive boundary.
 - [x] Rebase `FilterInput`.
 - [x] Rebase `ExpandableSearchInput`.
 - [x] Rebase `TableFilter`.

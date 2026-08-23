@@ -1,11 +1,27 @@
 const MARKDOWN_LINK_DESTINATION_PATTERN = /\]\([^)]*\)/g;
 
+// ECB reference rates fluctuate daily. AI provider prices arrive in USD, so
+// this operational reference can be overridden at runtime where environment
+// configuration is available.
+export const AI_USD_TO_EUR_REFERENCE_RATE = 0.88;
+
+export function convertAiUsdToEur(
+    value: number,
+    rate = AI_USD_TO_EUR_REFERENCE_RATE,
+) {
+    return value * rate;
+}
+
 const RAW_OPERATION_URL_PATTERN =
     /\b(?:https?:\/\/)?(?:www\.)?gredice\.com\/radnje\/[^\s)\]]+/gi;
 
 const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['allowedTargetStatuses', 'moguća stanja'],
     ['availableOperations', 'dostupne radnje'],
+    ['blockNote', 'bilješka o blokadi'],
+    ['blockReason', 'razlog blokade'],
+    ['blockReasonLabel', 'razlog blokade'],
+    ['completionNotes', 'bilješka vrtlara'],
     ['currentFieldWeedLevel', 'razina korova'],
     ['currentFieldWeedState', 'stanje korova'],
     ['currentLocation', 'trenutačna lokacija'],
@@ -14,12 +30,15 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['daysFromHarvest', 'dani od berbe'],
     ['daysFromReady', 'dani od spremnosti za berbu'],
     ['daysFromSowing', 'dani od sjetve'],
+    ['deliverySlots', 'termini dostave'],
     ['isAnalyzedField', 'označeno polje'],
     ['isFocusField', 'označeno polje'],
     ['isGreenhouseSeedling', 'presadnica'],
     ['needsRemoval', 'oznaka za uklanjanje'],
     ['operationUrlFieldIndex', 'oznaka polja za poveznicu'],
+    ['orderDeadline', 'rok za narudžbu'],
     ['pastPlantFields', 'ranije biljke'],
+    ['photographySchedule', 'raspored fotografiranja'],
     ['plantFieldOperationUrlTemplate', 'poveznica za radnju na polju'],
     ['plantName', 'naziv biljke'],
     ['plantSortId', 'biljka'],
@@ -32,6 +51,7 @@ const INTERNAL_TERM_REPLACEMENTS = new Map([
     ['requestedWeedLevel', 'predložena razina korova'],
     ['sowingLocation', 'mjesto sjetve'],
     ['toBeRemoved', 'oznaka za uklanjanje'],
+    ['upcomingPhotographyDates', 'sljedeći datumi fotografiranja'],
     ['weedProposals', 'prijedlozi za korov'],
 ]);
 
@@ -95,20 +115,72 @@ export type SuncokretUiContext =
 
 const SUNCOKRET_TOOL_PROTOCOL_PATTERN =
     /<\s*(?:[|｜]\s*){1,2}DSML(?:\s*[|｜]){1,2}/iu;
+const SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN =
+    /^\s*(?:Confirmed\b|I(?:'|’)ll\b|I\s+(?:can|cannot|can't|found|must|need|should|will)\b|Let me\b|The user\b|We need\b)/iu;
+const SUNCOKRET_CROATIAN_ANSWER_START_PATTERN =
+    /\b(?:Da|Evo|Gotovo|Mogu|Možeš|Nažalost|Naravno|Ne|Nisam|Prema|Radnja|Razumijem|U Gredicama|Za ovu|Za tu|Zalijevanje)\b/iu;
+const SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN =
+    /[ \t]+[—–-][ \t]*(?:radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN =
+    /\b(radnj(?:a|e|u|om)|operacij(?:a|e|u|om)|biljk(?:a|e|u|om)|sort(?:a|e|u|om))\s+(?:(?:s\s+)?ID(?:-om)?\s*[:#]?\s*|#\s*)?\d+\b/giu;
+const SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN =
+    /\bID\s+(radnje|operacije|biljke|sorte)\s*[:#-]?\s*\d+\b/giu;
 
 export const SUNCOKRET_TOOL_PROTOCOL_FALLBACK =
     'Nisam uspio dovršiti odgovor. Pokušaj ponovno — ne moraš mijenjati pitanje.';
 
+function internalEntityNameWithoutId(value: string) {
+    switch (value.toLocaleLowerCase('hr')) {
+        case 'radnje':
+            return 'radnju';
+        case 'operacije':
+            return 'operaciju';
+        case 'biljke':
+            return 'biljku';
+        case 'sorte':
+            return 'sortu';
+        default:
+            return value;
+    }
+}
+
+function stripSuncokretInternalEntityIds(value: string) {
+    return value
+        .replace(SUNCOKRET_DASHED_INTERNAL_ENTITY_ID_PATTERN, '')
+        .replace(SUNCOKRET_INTERNAL_ENTITY_ID_PATTERN, '$1')
+        .replace(SUNCOKRET_INTERNAL_ID_ENTITY_PATTERN, (_match, entity) =>
+            internalEntityNameWithoutId(entity),
+        );
+}
+
 export function sanitizeSuncokretAssistantText(value: string) {
     const protocolStart = value.search(SUNCOKRET_TOOL_PROTOCOL_PATTERN);
-    if (protocolStart === -1) {
-        return value;
-    }
+    const protocolSafeText =
+        protocolStart === -1
+            ? value
+            : (() => {
+                  const visibleText = value.slice(0, protocolStart).trimEnd();
+                  return visibleText
+                      ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
+                      : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+              })();
 
-    const visibleText = value.slice(0, protocolStart).trimEnd();
-    return visibleText
-        ? `${visibleText}\n\n${SUNCOKRET_TOOL_PROTOCOL_FALLBACK}`
-        : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+    const answerText = SUNCOKRET_ENGLISH_META_PREAMBLE_PATTERN.test(
+        protocolSafeText,
+    )
+        ? (() => {
+              const answerStart =
+                  SUNCOKRET_CROATIAN_ANSWER_START_PATTERN.exec(
+                      protocolSafeText,
+                  );
+
+              return answerStart?.index !== undefined
+                  ? protocolSafeText.slice(answerStart.index).trimStart()
+                  : SUNCOKRET_TOOL_PROTOCOL_FALLBACK;
+          })()
+        : protocolSafeText;
+
+    return stripSuncokretInternalEntityIds(answerText);
 }
 
 function protectMarkdownLinkDestinations(value: string) {

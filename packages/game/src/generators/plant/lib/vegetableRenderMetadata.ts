@@ -1,10 +1,18 @@
-import type { Matrix4 } from 'three';
+import type { Color, Matrix4 } from 'three';
 import type { VegetableType } from './plant-definitions';
 
 export interface VegetableData {
+    color: Color;
     growth: number;
     matrix: Matrix4;
     type: VegetableType;
+}
+
+interface VegetableMaterialProps {
+    color: string;
+    ripeningStart?: number;
+    roughness: number;
+    unripeColor?: string;
 }
 
 /**
@@ -14,19 +22,54 @@ export interface VegetableData {
  */
 export const vegetableMaterialProps: Record<
     VegetableType,
-    { color: string; roughness: number }
+    VegetableMaterialProps
 > = {
-    strawberry: { color: '#cf3f4c', roughness: 0.52 },
-    blueberry: { color: '#5366bd', roughness: 0.58 },
-    raspberry: { color: '#c33b62', roughness: 0.5 },
-    tomato: { color: '#ff4500', roughness: 0.5 },
+    strawberry: {
+        color: '#cf3f4c',
+        ripeningStart: 0.5,
+        roughness: 0.52,
+        unripeColor: '#a2b85b',
+    },
+    blueberry: {
+        color: '#5366bd',
+        ripeningStart: 0.55,
+        roughness: 0.58,
+        unripeColor: '#8fad62',
+    },
+    raspberry: {
+        color: '#c33b62',
+        ripeningStart: 0.5,
+        roughness: 0.5,
+        unripeColor: '#9aad55',
+    },
+    tomato: {
+        color: '#d62828',
+        ripeningStart: 0.55,
+        roughness: 0.5,
+        unripeColor: '#6f8135',
+    },
     cucumber: { color: '#2e591a', roughness: 0.6 },
-    bellpepper: { color: '#d42a00', roughness: 0.4 },
+    bellpepper: {
+        color: '#c72f1e',
+        ripeningStart: 0.55,
+        roughness: 0.4,
+        unripeColor: '#4f7d32',
+    },
     carrot: { color: '#e56a1f', roughness: 0.7 },
     onion: { color: '#d1b28a', roughness: 0.8 },
-    eggplant: { color: '#5f3478', roughness: 0.45 },
+    eggplant: {
+        color: '#5f3478',
+        ripeningStart: 0.5,
+        roughness: 0.45,
+        unripeColor: '#87a45e',
+    },
     zucchini: { color: '#3f6a2a', roughness: 0.6 },
-    pumpkin: { color: '#d8771e', roughness: 0.72 },
+    pumpkin: {
+        color: '#d8771e',
+        ripeningStart: 0.45,
+        roughness: 0.72,
+        unripeColor: '#5d7931',
+    },
     melon: { color: '#a7bf69', roughness: 0.7 },
     beet: { color: '#8c2444', roughness: 0.6 },
     radish: { color: '#d04258', roughness: 0.6 },
@@ -43,3 +86,37 @@ export const vegetableMaterialProps: Record<
     fennel: { color: '#d6e5a3', roughness: 0.75 },
     kohlrabi: { color: '#9fc46f', roughness: 0.74 },
 };
+
+function clamp01(value: number) {
+    return Math.min(1, Math.max(0, value));
+}
+
+function mixHexColors(from: string, to: string, amount: number) {
+    const fromValue = Number.parseInt(from.slice(1), 16);
+    const toValue = Number.parseInt(to.slice(1), 16);
+    const progress = clamp01(amount);
+    const mixChannel = (shift: number) => {
+        const fromChannel = (fromValue >> shift) & 0xff;
+        const toChannel = (toValue >> shift) & 0xff;
+        return Math.round(fromChannel + (toChannel - fromChannel) * progress);
+    };
+    const mixed = (mixChannel(16) << 16) | (mixChannel(8) << 8) | mixChannel(0);
+
+    return `#${mixed.toString(16).padStart(6, '0')}`;
+}
+
+export function resolveVegetableColor(type: VegetableType, maturity: number) {
+    const material = vegetableMaterialProps[type];
+    if (!material.unripeColor) {
+        return material.color;
+    }
+
+    const ripeningStart = material.ripeningStart ?? 0;
+    const linearProgress = clamp01(
+        (clamp01(maturity) - ripeningStart) / (1 - ripeningStart),
+    );
+    const easedProgress =
+        linearProgress * linearProgress * (3 - 2 * linearProgress);
+
+    return mixHexColors(material.unripeColor, material.color, easedProgress);
+}

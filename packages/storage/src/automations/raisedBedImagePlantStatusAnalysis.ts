@@ -438,7 +438,13 @@ async function buildReviewContext(input: ReviewInput & { ok: true }) {
                     : undefined;
             const seedingDistance = plantSeedingDistance(plantSort);
             const plantsPerField = field.plantSortId
-                ? calculatePlantsPerField(seedingDistance)
+                ? calculatePlantsPerField(
+                      seedingDistance,
+                      plantSortName(
+                          plantSort,
+                          `Plant sort #${field.plantSortId.toString()}`,
+                      ),
+                  )
                 : null;
             const currentStatus = field.plantStatus ?? null;
             const previousPlantNames = buildPreviousPlantNames(
@@ -576,8 +582,9 @@ function buildReviewPrompt({
                         ].join('\n'),
                     },
                     ...input.imageUrls.map((imageUrl) => ({
-                        type: 'image' as const,
-                        image: new URL(imageUrl),
+                        type: 'file' as const,
+                        data: new URL(imageUrl),
+                        mediaType: 'image',
                     })),
                 ],
             },

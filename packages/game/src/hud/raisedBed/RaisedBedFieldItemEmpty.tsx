@@ -5,9 +5,11 @@ import { cx } from '@gredice/ui/utils';
 import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import type { ShoppingCartItemData } from '../../hooks/useShoppingCart';
 import type { RaisedBedFieldPlantHistoryEntry } from '../../utils/raisedBedFields';
+import { readAdvancedSowingCartItemSelectionSummary } from './advancedSowingSubmission';
 import { RaisedBedFieldIconStack } from './RaisedBedFieldIconStack';
 import { RaisedBedFieldItemButton } from './RaisedBedFieldItemButton';
 import { RaisedBedFieldItemPlanted } from './RaisedBedFieldItemPlanted';
+import { RaisedBedFieldOperationsModal } from './RaisedBedFieldOperationsModal';
 import { RaisedBedFieldPlantHistoryModal } from './RaisedBedFieldPlantHistoryModal';
 import { PlantPicker } from './RaisedBedPlantPicker';
 import { ScheduledSowingDateBadge } from './ScheduledSowingDateBadge';
@@ -66,6 +68,7 @@ export function RaisedBedFieldItemEmpty({
     raisedBedId,
     positionIndex,
     isDragging,
+    showOperations = true,
 }: {
     raisedBedId: number;
     gardenId: number;
@@ -74,6 +77,7 @@ export function RaisedBedFieldItemEmpty({
     plantHistory?: RaisedBedFieldPlantHistoryEntry[];
     positionIndex: number;
     isDragging?: boolean;
+    showOperations?: boolean;
 }) {
     const { data: garden, isLoading: isGardenPending } = useCurrentGarden();
     const raisedBed = garden?.raisedBeds.find((bed) => bed.id === raisedBedId);
@@ -97,7 +101,13 @@ export function RaisedBedFieldItemEmpty({
         selectedPlantId: cartPlantId ?? null,
         selectedPlantOptions: cartPlantOptions,
         selectedSortId: cartPlantSortId,
+        selectedCartItemId: cartPlantItem?.id,
     };
+    const primaryPlantPickerProps = readAdvancedSowingCartItemSelectionSummary(
+        cartPlantItem,
+    )
+        ? { gardenId, positionIndex, raisedBedId }
+        : plantPickerProps;
     const visiblePlantHistory = plantHistory.slice(-2);
     const shouldShowAllPlantHistory = plantHistory.length > 2;
 
@@ -116,6 +126,7 @@ export function RaisedBedFieldItemEmpty({
             <PlantPicker
                 trigger={
                     <RaisedBedFieldItemButton
+                        aria-label={`Posij biljku na polju ${positionIndex + 1}`}
                         isLoading={isLoading}
                         positionIndex={positionIndex}
                         className={cx(
@@ -149,9 +160,16 @@ export function RaisedBedFieldItemEmpty({
                         )}
                     </RaisedBedFieldItemButton>
                 }
-                {...plantPickerProps}
+                {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
+                {showOperations && (
+                    <RaisedBedFieldOperationsModal
+                        gardenId={gardenId}
+                        positionIndex={positionIndex}
+                        raisedBedId={raisedBedId}
+                    />
+                )}
                 {shouldShowAllPlantHistory && (
                     <RaisedBedFieldPlantHistoryModal
                         entries={plantHistory}

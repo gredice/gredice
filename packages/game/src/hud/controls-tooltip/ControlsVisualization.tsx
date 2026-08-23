@@ -10,6 +10,7 @@ import { WireframeCube } from './WireframeCube';
 
 export type ControlsVisualizationProps = {
     deviceType: DeviceType;
+    mode?: 'edit' | 'view';
     phase: number;
 };
 
@@ -24,12 +25,23 @@ function getActivePanKey(phase: number) {
     return y > 0 ? ('ArrowUp' as const) : ('ArrowDown' as const);
 }
 
-function getAccessibleDescription(deviceType: DeviceType) {
+function getAccessibleDescription(
+    deviceType: DeviceType,
+    mode: 'edit' | 'view',
+) {
     if (deviceType === 'desktop') {
-        return 'Pomak kamere: povucite mišem ili koristite strelice. Zum: kotačić miša. Rotacija vrta: tipke Q i W ili tipke za rotaciju. Pokupi i spusti blok: drži klik na bloku, povuci ga i pusti. Rotacija bloka: dvaput klikni blok.';
+        const viewDescription =
+            'Pomak kamere: povucite mišem ili koristite strelice. Zum: kotačić miša. Rotacija vrta: tipke Q i W ili tipke za rotaciju.';
+        return mode === 'view'
+            ? viewDescription
+            : `${viewDescription} Pokupi i spusti blok: drži klik na bloku, povuci ga i pusti. Rotacija bloka: dvaput klikni blok.`;
     }
 
-    return 'Pomak kamere: povucite jednim prstom. Zum: stisnite ili raširite dva prsta. Rotacija vrta: koristite tipke za rotaciju dolje lijevo. Pokupi i spusti blok: drži prst na bloku, povuci ga i pusti. Rotacija bloka: dvaput dodirni blok.';
+    const viewDescription =
+        'Pomak kamere: povucite jednim prstom. Zum: stisnite ili raširite dva prsta. Rotacija vrta: koristite tipke za rotaciju dolje lijevo.';
+    return mode === 'view'
+        ? viewDescription
+        : `${viewDescription} Pokupi i spusti blok: drži prst na bloku, povuci ga i pusti. Rotacija bloka: dvaput dodirni blok.`;
 }
 
 function PickupDropControls({ isTouchDevice }: { isTouchDevice: boolean }) {
@@ -72,9 +84,11 @@ function DoubleTapControls({ isTouchDevice }: { isTouchDevice: boolean }) {
 
 export function ControlsVisualization({
     deviceType,
+    mode = 'edit',
     phase,
 }: ControlsVisualizationProps) {
     const isTouchDevice = deviceType !== 'desktop';
+    const showEditingControls = mode === 'edit';
     const moveX = Math.sin(phase) * 14;
     const moveY = Math.cos(phase) * 5;
     const zoomProgress = Math.sin(phase * 0.9 + 0.6) * 0.5 + 0.5;
@@ -85,9 +99,11 @@ export function ControlsVisualization({
 
     return (
         <>
-            <p className="sr-only">{getAccessibleDescription(deviceType)}</p>
+            <p className="sr-only">
+                {getAccessibleDescription(deviceType, mode)}
+            </p>
             <div
-                className="grid grid-cols-2 overflow-hidden rounded-md bg-card border-b-4 border border-tertiary sm:grid-cols-5"
+                className={`grid overflow-hidden rounded-md border border-b-4 border-tertiary bg-card ${showEditingControls ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-3'}`}
                 aria-hidden="true"
             >
                 <VisualizationSection
@@ -137,31 +153,45 @@ export function ControlsVisualization({
                     }
                     withDivider
                 />
-                <VisualizationSection
-                    title="Pokupi / spusti"
-                    label="Drži i pusti"
-                    cube={
-                        <WireframeCube
-                            translateY={-2 - pickupProgress * 9}
-                            scale={1 + pickupProgress * 0.08}
+                {showEditingControls ? (
+                    <>
+                        <VisualizationSection
+                            title="Pokupi / spusti"
+                            label="Drži i pusti"
+                            cube={
+                                <WireframeCube
+                                    translateY={-2 - pickupProgress * 9}
+                                    scale={1 + pickupProgress * 0.08}
+                                />
+                            }
+                            controls={
+                                <PickupDropControls
+                                    isTouchDevice={isTouchDevice}
+                                />
+                            }
+                            withDivider
                         />
-                    }
-                    controls={
-                        <PickupDropControls isTouchDevice={isTouchDevice} />
-                    }
-                    withDivider
-                />
-                <VisualizationSection
-                    title="Okreni blok"
-                    label={isTouchDevice ? 'Dvaput dodirni' : 'Dvaput klikni'}
-                    cube={
-                        <WireframeCube rotateY={Math.sin(phase * 1.35) * 55} />
-                    }
-                    controls={
-                        <DoubleTapControls isTouchDevice={isTouchDevice} />
-                    }
-                    withDivider
-                />
+                        <VisualizationSection
+                            title="Okreni blok"
+                            label={
+                                isTouchDevice
+                                    ? 'Dvaput dodirni'
+                                    : 'Dvaput klikni'
+                            }
+                            cube={
+                                <WireframeCube
+                                    rotateY={Math.sin(phase * 1.35) * 55}
+                                />
+                            }
+                            controls={
+                                <DoubleTapControls
+                                    isTouchDevice={isTouchDevice}
+                                />
+                            }
+                            withDivider
+                        />
+                    </>
+                ) : null}
             </div>
         </>
     );

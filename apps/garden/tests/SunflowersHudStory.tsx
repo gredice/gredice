@@ -289,8 +289,10 @@ export function SunflowersPendingDetailsStory({
 
 export function SunflowerPackagesPanelStory({
     initialOfferUsed = false,
+    panelWidth,
 }: {
     initialOfferUsed?: boolean;
+    panelWidth?: number;
 }) {
     const queryClient = useMemo(() => {
         const client = createSunflowersHudQueryClient({
@@ -315,7 +317,10 @@ export function SunflowerPackagesPanelStory({
     }, [initialOfferUsed]);
 
     return (
-        <div className="max-w-4xl p-6">
+        <div
+            className="max-w-4xl p-6"
+            style={panelWidth ? { width: panelWidth } : undefined}
+        >
             <NuqsTestingAdapter>
                 <NextNavigationTestProvider>
                     <ReactQuery.QueryClientProvider client={queryClient}>

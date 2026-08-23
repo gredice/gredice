@@ -7,7 +7,9 @@ import type {
 } from '../../operationVisualRewards';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import {
+    hasActiveRaisedBedInsectMesh,
     hasActiveRaisedBedProtectiveCover,
+    resolveRaisedBedInsectMeshPositions,
     resolveRaisedBedProtectiveCoverPositions,
 } from './raisedBedAgrotextileRewards';
 
@@ -269,7 +271,7 @@ test('older remove-agrotextile reward does not clear newer cover visuals', () =>
     );
 });
 
-test('whole-bed insect mesh uses the same protective cover positions', () => {
+test('whole-bed insect mesh is resolved separately from opaque agrotextile', () => {
     const visualRewards = resolveOperationVisualRewards({
         appliedOperations: [
             applied(701, {
@@ -288,6 +290,15 @@ test('whole-bed insect mesh uses the same protective cover positions', () => {
             raisedBedId: 10,
             visualRewards,
         }),
+        [],
+    );
+    assert.deepStrictEqual(
+        resolveRaisedBedInsectMeshPositions({
+            blockOffset: 0,
+            fields: [],
+            raisedBedId: 10,
+            visualRewards,
+        }),
         [0, 1, 2, 3, 4, 5, 6, 7, 8],
     );
     assert.equal(
@@ -295,11 +306,18 @@ test('whole-bed insect mesh uses the same protective cover positions', () => {
             raisedBedId: 10,
             visualRewards,
         }),
+        false,
+    );
+    assert.equal(
+        hasActiveRaisedBedInsectMesh({
+            raisedBedId: 10,
+            visualRewards,
+        }),
         true,
     );
 });
 
-test('coexisting agrotextile and insect mesh deduplicate shared field visuals', () => {
+test('coexisting agrotextile and insect mesh keep independent field visuals', () => {
     const visualRewards = resolveOperationVisualRewards({
         appliedOperations: [
             applied(801, {
@@ -320,6 +338,15 @@ test('coexisting agrotextile and insect mesh deduplicate shared field visuals', 
 
     assert.deepStrictEqual(
         resolveRaisedBedProtectiveCoverPositions({
+            blockOffset: 9,
+            fields: [{ active: true, id: 50, positionIndex: 10 }],
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        [1],
+    );
+    assert.deepStrictEqual(
+        resolveRaisedBedInsectMeshPositions({
             blockOffset: 9,
             fields: [{ active: true, id: 50, positionIndex: 10 }],
             raisedBedId: 10,
@@ -358,6 +385,13 @@ test('removing insect mesh preserves an active agrotextile cover', () => {
         }),
         true,
     );
+    assert.equal(
+        hasActiveRaisedBedInsectMesh({
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        false,
+    );
 });
 
 test('removing agrotextile preserves an active insect mesh cover', () => {
@@ -384,6 +418,13 @@ test('removing agrotextile preserves an active insect mesh cover', () => {
 
     assert.equal(
         hasActiveRaisedBedProtectiveCover({
+            raisedBedId: 10,
+            visualRewards,
+        }),
+        false,
+    );
+    assert.equal(
+        hasActiveRaisedBedInsectMesh({
             raisedBedId: 10,
             visualRewards,
         }),

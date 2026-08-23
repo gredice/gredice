@@ -58,6 +58,14 @@ import type {
     RaisedBedFieldPlantReplaceSortPayload,
     RaisedBedFieldPlantSchedulePayload,
     RaisedBedFieldPlantUpdatePayload,
+    RaisedBedPlantingLifecycleStartedPayload,
+    RaisedBedPlantingLifecycleStatusChangedPayload,
+    RaisedBedPlantingTaskAssignedPayload,
+    RaisedBedPlantingTaskBlockedPayload,
+    RaisedBedPlantingTaskCancelledPayload,
+    RaisedBedPlantingTaskCompletedPayload,
+    RaisedBedPlantingTaskScheduledPayload,
+    RaisedBedPlantingTaskVerifiedPayload,
     RaisedBedWeedStateSetPayload,
     ReceiptCreatePayload,
     ReceiptFiscalizePayload,
@@ -373,6 +381,80 @@ export const knownEvents = {
             data: RaisedBedWeedStateSetPayload,
         ) => ({
             type: knownEventTypes.raisedBedFields.weedStateSet,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+    },
+    raisedBedPlantings: {
+        lifecycleStartedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingLifecycleStartedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.lifecycleStarted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        lifecycleStatusChangedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingLifecycleStatusChangedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.lifecycleStatusChanged,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskScheduledV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskScheduledPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskScheduled,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskAssignedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskAssignedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskAssigned,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskBlockedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskBlockedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskBlocked,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskCompletedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskCompletedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskCompleted,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskVerifiedV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskVerifiedPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskVerified,
+            version: 1,
+            aggregateId,
+            data,
+        }),
+        taskCancelledV1: (
+            aggregateId: string,
+            data: RaisedBedPlantingTaskCancelledPayload,
+        ) => ({
+            type: knownEventTypes.raisedBedPlantings.taskCancelled,
             version: 1,
             aggregateId,
             data,

@@ -15,9 +15,15 @@ import {
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
-import { waterBlockName } from '../waterBlockFoam';
+import { birdSpeechMessages } from '../animals/actorSpeechMessages';
+import { isAnimalGroundBlockName } from '../animals/animalMovementTerrain';
+import { isWaterBlockName } from '../waterBlockNames';
 import {
     type BirdBehavior,
     getBirdActivityRange,
@@ -152,6 +158,7 @@ const birdDebugBehaviors = [
 ] satisfies BirdBehavior[];
 
 const birdScale = 0.28;
+const birdSpeechBubbleOffsetY = 0.56;
 const birdGroundLift = 0.02;
 const birdHousePerchYOffset = 1.3;
 const birdHouseEntranceYawOffset = Math.PI;
@@ -181,18 +188,6 @@ const birdBeakColor = '#d76516';
 const birdLegColor = '#c65f17';
 const animalDisturbanceReactionWindowMs = 2500;
 
-const groundBlockNames = new Set([
-    'Block_Ground',
-    'Block_Ground_Angle',
-    'Block_Grass',
-    'Block_Grass_Angle',
-    'Block_Sand',
-    'Block_Sand_Angle',
-    'Block_Snow',
-    'Block_Snow_Angle',
-    'Block_Snow_Falling',
-]);
-
 const treeBlockNames = new Set(['Tree', 'Pine', 'PineAdvent']);
 
 const visualPerchYOffsets: Record<string, number> = {
@@ -214,7 +209,7 @@ const visualPerchYOffsets: Record<string, number> = {
     DesertStoneLarge: 0.5,
     DesertStoneMedium: 0.35,
     DesertStoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
     Tulip: 0.5,
     WaterWell: 1.05,
     BaleHey: 0.5,
@@ -251,15 +246,11 @@ function createRandom(seed: number) {
 }
 
 function isGroundBlockName(name: string) {
-    return groundBlockNames.has(name);
+    return isAnimalGroundBlockName(name);
 }
 
 function isTreeBlockName(name: string) {
     return treeBlockNames.has(name);
-}
-
-function isWaterBlockName(name: string) {
-    return name === waterBlockName;
 }
 
 function getBlockHeight(
@@ -1535,6 +1526,8 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
     const [isFlapping, setIsFlapping] = useState(false);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(birdSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
@@ -1635,6 +1628,11 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -2069,9 +2067,17 @@ function Bird({ habitat }: { habitat: BirdHabitat }) {
                 scale={birdScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <primitive object={birdModel.scene} />
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={birdSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#fb7185" />
         </>
     );

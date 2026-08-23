@@ -1,3 +1,4 @@
+import { buildRaisedBedPlantingReadModels } from '@gredice/js/plants';
 import {
     type ApprovalRequest,
     type EntityStandardized,
@@ -14,6 +15,7 @@ import {
     CardTitle,
 } from '@gredice/ui/Card';
 import { PlantOrSortImage } from '@gredice/ui/plants';
+import { RaisedBedPlantingsReadOnly } from '@gredice/ui/raisedBeds';
 import { Table } from '@gredice/ui/Table';
 import { Typography } from '@gredice/ui/Typography';
 import { notFound } from 'next/navigation';
@@ -157,6 +159,15 @@ async function RaisedBedDetailPageContent({
             positionIndex,
         };
     });
+    const plantingItems = buildRaisedBedPlantingReadModels(
+        raisedBed.plantings,
+    ).map((planting) => ({
+        ...planting,
+        plantName: resolvePlantName(
+            planting.plantSortId,
+            plantSortsById.get(planting.plantSortId),
+        ),
+    }));
 
     return (
         <div className="max-w-5xl mx-auto w-full p-4 space-y-4">
@@ -166,6 +177,15 @@ async function RaisedBedDetailPageContent({
                     Gredica {raisedBed.physicalId ?? raisedBed.id}
                 </Typography>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sadnje u gredici</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <RaisedBedPlantingsReadOnly items={plantingItems} />
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>

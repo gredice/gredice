@@ -3,7 +3,11 @@ import test from 'node:test';
 import { Vector3 } from 'three';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
-import { rotateBlocksInStacks } from './optimisticStackUpdates';
+import {
+    rotateBlocksInStacks,
+    updateBlockMessageInStacks,
+    updateBlockVariantInStacks,
+} from './optimisticStackUpdates';
 
 function createBlock(id: string, rotation = 0): Block {
     return {
@@ -52,6 +56,73 @@ test('rotateBlocksInStacks returns the original stack array when no rotation cha
             blockIds: ['target'],
             rotation: 2,
             stacks,
+        }),
+        stacks,
+    );
+});
+
+test('updateBlockMessageInStacks changes only the stack containing the target block', () => {
+    const targetBlock = createBlock('target');
+    const untouchedBlock = createBlock('untouched');
+    const targetStack = createStack(0, [targetBlock]);
+    const untouchedStack = createStack(1, [untouchedBlock]);
+
+    const updatedStacks = updateBlockMessageInStacks({
+        blockId: 'target',
+        message: 'MOJ\nVRT',
+        stacks: [targetStack, untouchedStack],
+    });
+
+    assert.notEqual(updatedStacks[0], targetStack);
+    assert.equal(updatedStacks[0]?.blocks[0]?.message, 'MOJ\nVRT');
+    assert.equal(updatedStacks[1], untouchedStack);
+    assert.equal(updatedStacks[1]?.blocks[0], untouchedBlock);
+});
+
+test('updateBlockMessageInStacks returns the original stacks when the message is unchanged', () => {
+    const block = {
+        ...createBlock('target'),
+        message: 'MOJ VRT',
+    };
+    const stacks = [createStack(0, [block])];
+
+    assert.equal(
+        updateBlockMessageInStacks({
+            blockId: 'target',
+            message: 'MOJ VRT',
+            stacks,
+        }),
+        stacks,
+    );
+});
+
+test('updateBlockVariantInStacks changes only the target gate', () => {
+    const targetBlock = { ...createBlock('gate'), name: 'FenceGate' };
+    const untouchedBlock = createBlock('untouched');
+    const targetStack = createStack(0, [targetBlock]);
+    const untouchedStack = createStack(1, [untouchedBlock]);
+
+    const updatedStacks = updateBlockVariantInStacks({
+        blockId: 'gate',
+        stacks: [targetStack, untouchedStack],
+        variant: 1,
+    });
+
+    assert.notEqual(updatedStacks[0], targetStack);
+    assert.equal(updatedStacks[0]?.blocks[0]?.variant, 1);
+    assert.equal(updatedStacks[1], untouchedStack);
+    assert.equal(updatedStacks[1]?.blocks[0], untouchedBlock);
+});
+
+test('updateBlockVariantInStacks preserves identity when the variant is unchanged', () => {
+    const block = { ...createBlock('gate'), name: 'FenceGate', variant: 1 };
+    const stacks = [createStack(0, [block])];
+
+    assert.equal(
+        updateBlockVariantInStacks({
+            blockId: 'gate',
+            stacks,
+            variant: 1,
         }),
         stacks,
     );

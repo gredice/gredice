@@ -20,7 +20,7 @@ import {
     useGameState,
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getGridPositionFromIndex,
@@ -28,8 +28,14 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
+import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
 import { AnimalTargetDebugMarker } from '../animals/AnimalDebugIndicators';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { beeSpeechMessages } from '../animals/actorSpeechMessages';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import { getCactusVariantConfig } from '../Cactus';
 import { getBlockSurfaceDecorations } from '../groundDecorations/getBlockSurfaceDecorations';
 import { resolveGroundDecorationSurface } from '../groundDecorations/groundDecorationConfig';
@@ -147,6 +153,7 @@ const clearBeeWeather = {
 } satisfies BeeWeather;
 
 const beeScale = 0.095;
+const beeSpeechBubbleOffsetY = 0.25;
 const beeFlightSpeedBlocksPerSecond = 1.1;
 const beeFlightTurnDamping = 7.5;
 const beeFlightLookAheadProgress = 0.06;
@@ -306,23 +313,27 @@ function createRaisedBedTargets(
             continue;
         }
 
-        const blockIds = getRaisedBedBlockIds(garden, raisedBed.id);
         const orientation = raisedBed.orientation ?? 'vertical';
+        const blockId = raisedBed.blockId;
+        if (!blockId) {
+            continue;
+        }
 
-        for (const blockId of blockIds) {
-            const placement = findBlockPlacement(garden.stacks, blockId);
-            if (!placement) {
-                continue;
-            }
+        const placement = findBlockPlacement(garden.stacks, blockId);
+        if (!placement) {
+            continue;
+        }
 
-            const blockIndex = blockIds.indexOf(blockId);
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
-            const currentStackHeight = getStackHeight(
-                blockData,
-                placement.stack,
-                placement.block,
-            );
+        const currentStackHeight = getStackHeight(
+            blockData,
+            placement.stack,
+            placement.block,
+        );
+        for (const segment of getRaisedBedFootprintSegments(
+            placement.block.rotation,
+        )) {
+            const blockIndex = segment.blockIndex;
+            const blockOffset = segment.blockOffset;
             const offsetX =
                 orientation === 'vertical' ? 0.31 - blockIndex * 0.05 : 0.27;
             const offsetY =
@@ -346,6 +357,7 @@ function createRaisedBedTargets(
                     kind: 'raised-bed-flower',
                     position: new Vector3(
                         placement.stack.position.x +
+                            segment.offset.x +
                             col * multiplierX -
                             offsetX,
                         currentStackHeight +
@@ -353,6 +365,7 @@ function createRaisedBedTargets(
                             0.75 +
                             raisedBedFlowerHoverHeight,
                         placement.stack.position.z +
+                            segment.offset.z +
                             (2 - row) * multiplierY -
                             offsetY,
                     ),
@@ -1158,6 +1171,8 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastDisturbanceSequenceRef = useRef(0);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(beeSpeechMessages);
     const animalTargetsDebugVisible = useGameState(
         (state) => state.animalTargetsDebugVisible,
     );
@@ -1196,12 +1211,15 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
     });
 
     useEffect(() => {
-        randomRef.current = createRandom(habitat.seed);
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.startTarget.position);
+        const initialized = initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.startTarget,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+        if (initialized) {
+            randomRef.current = createRandom(habitat.seed);
         }
-    }, [habitat.seed, habitat.startTarget.position]);
+    }, [habitat.seed, habitat.startTarget]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
@@ -1231,6 +1249,11 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1459,9 +1482,17 @@ function Bee({ habitat }: { habitat: BeeHabitat }) {
                 scale={beeScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <primitive object={beeModel.scene} />
             </group>
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={beeSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#facc15" />
         </>
     );

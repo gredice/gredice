@@ -1,5 +1,6 @@
 import { SeededRNG } from '../../generators/plant/lib/rng';
 import type { Block } from '../../types/Block';
+import { getSlopedGroundNormalizedHeight } from '../groundSurfaceHeight';
 import {
     type GroundDecorationSurface,
     getGroundDecorationSprites,
@@ -27,36 +28,19 @@ export type BlockSurfaceDecorationPlacement =
     | BlockSurfaceSpriteDecorationPlacement
     | BlockSurfaceFlowerDecorationPlacement;
 
-const angledBlockHighEdgeX = 0.5;
-
 function resolveDecorationBaseY(
     block: Block,
     options: (typeof groundDecorationOptions)[GroundDecorationSurface],
     x: number,
     z: number,
 ) {
-    if (block.name.endsWith('_Reverse_Corner')) {
-        return (
-            options.baseY +
-            (Math.max(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
-        );
-    }
-
-    if (block.name.endsWith('_Corner')) {
-        return (
-            options.baseY +
-            (Math.min(x, z) - angledBlockHighEdgeX) * options.angleLiftPerUnit
-        );
-    }
-
-    if (!block.name.endsWith('_Angle')) {
+    const normalizedHeight = getSlopedGroundNormalizedHeight(block.name, x, z);
+    if (normalizedHeight === null) {
         return options.baseY;
     }
 
-    // baseY is tuned for the raised local +X edge of angled block meshes.
-    return (
-        options.baseY + (x - angledBlockHighEdgeX) * options.angleLiftPerUnit
-    );
+    // baseY is tuned for the raised edge/corner of sloped block meshes.
+    return options.baseY + (normalizedHeight - 1) * options.angleLiftPerUnit;
 }
 
 function getDecorationCount(

@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import { Object3D, Ray, Vector3 } from 'three';
 import {
     type BlockInteractionLayerTarget,
+    blockInteractionPassthroughUserDataKey,
+    getBlockInteractionHitboxCenter,
     getBlockInteractionLayerBounds,
     getBlockInteractionRotatedHitboxFootprint,
     hasCloserNonLayerIntersection,
@@ -88,6 +90,44 @@ describe('resolveBlockInteractionLayerTarget', () => {
                 .key,
             'rotated',
         );
+    });
+
+    it('uses a centered full-tile hitbox for corner stairs and the legacy alias', () => {
+        for (const name of [
+            'Block_Stone_Stairs_Corner',
+            'Block_Polished_Stone_Stairs_Corner',
+            'Block_Stone_Stairs_Half',
+        ]) {
+            for (const rotation of [0, 1, 2, 3]) {
+                const cornerStair = createTarget({
+                    block: { id: name, name, rotation },
+                    hitbox: {
+                        depth: name.endsWith('_Half') ? 0.5 : 1,
+                        height: 0.4,
+                        width: 1,
+                    },
+                    key: `${name}:${rotation}`,
+                });
+                const ray = new Ray(
+                    new Vector3(-2, 0.2, 0.45),
+                    new Vector3(1, 0, 0),
+                );
+
+                assert.deepEqual(getBlockInteractionHitboxCenter(cornerStair), {
+                    x: 0,
+                    z: 0,
+                });
+                assert.deepEqual(
+                    getBlockInteractionRotatedHitboxFootprint(cornerStair),
+                    { depth: 1, width: 1 },
+                );
+                assert.equal(
+                    resolveBlockInteractionLayerTarget([cornerStair], ray)
+                        ?.target.key,
+                    `${name}:${rotation}`,
+                );
+            }
+        }
     });
 
     it('respects stack height when resolving vertical hitbox bounds', () => {
@@ -218,6 +258,30 @@ describe('hasCloserNonLayerIntersection', () => {
                     {
                         distance: 4,
                         object: backgroundObject,
+                    },
+                ],
+                layerObject,
+                ray,
+                resolvedHitPoint: new Vector3(0, 0, 3),
+            }),
+            false,
+        );
+    });
+
+    it('ignores a closer generated visual marked as interaction pass-through', () => {
+        const layerObject = new Object3D();
+        const visualRoot = new Object3D();
+        const generatedLeaf = new Object3D();
+        const ray = new Ray(new Vector3(0, 0, 0), new Vector3(0, 0, 1));
+        visualRoot.userData[blockInteractionPassthroughUserDataKey] = true;
+        visualRoot.add(generatedLeaf);
+
+        assert.equal(
+            hasCloserNonLayerIntersection({
+                intersections: [
+                    {
+                        distance: 1,
+                        object: generatedLeaf,
                     },
                 ],
                 layerObject,

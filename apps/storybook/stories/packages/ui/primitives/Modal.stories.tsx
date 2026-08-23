@@ -1,9 +1,11 @@
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
 import { Modal } from '@gredice/ui/Modal';
+import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { type ComponentProps, useState } from 'react';
 
 const meta = {
     title: 'packages/ui/Overlays/Modal',
@@ -13,7 +15,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Modal provides a Radix Dialog-backed surface with the Signalco-compatible trigger, title, and dismissible props.',
+                    'Modal uses Base UI Dialog on desktop and a keyboard-aware, swipe-dismissible Base UI Drawer on mobile while preserving one responsive contract.',
             },
         },
     },
@@ -56,6 +58,19 @@ export const WithoutClose: Story = {
 export const NotDismissible: Story = {
     args: {
         dismissible: false,
+    },
+};
+
+export const MobileDrawer: Story = {
+    args: {
+        mobileOverride: true,
+    },
+};
+
+export const MobileNotDismissible: Story = {
+    args: {
+        dismissible: false,
+        mobileOverride: true,
     },
 };
 
@@ -129,3 +144,36 @@ export const LongContent: Story = {
         </Modal>
     ),
 };
+
+export const NestedSelection: Story = {
+    args: {
+        description:
+            'Ugniježđeni odabir ostaje iznad modala i zatvara se prije roditeljske površine.',
+        title: 'Postavke prikaza',
+    },
+    render: (args) => <NestedSelectionModal {...args} />,
+};
+
+function NestedSelectionModal(args: ComponentProps<typeof Modal>) {
+    const [density, setDensity] = useState<string>();
+
+    return (
+        <Modal {...args} trigger={<Button>Otvori postavke</Button>}>
+            <Stack spacing={4}>
+                <Typography level="h5">Postavke prikaza</Typography>
+                <SelectItems
+                    items={[
+                        { value: 'compact', label: 'Kompaktno' },
+                        { value: 'comfortable', label: 'Udobno' },
+                    ]}
+                    label="Gustoća prikaza"
+                    onValueChange={setDensity}
+                    value={density}
+                />
+                <Typography level="body2" secondary>
+                    Trenutačni odabir: {density ?? 'nije odabrano'}
+                </Typography>
+            </Stack>
+        </Modal>
+    );
+}

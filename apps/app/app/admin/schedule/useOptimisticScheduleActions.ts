@@ -9,6 +9,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { getOperationScheduleActionFailureMessage } from './operationScheduleActionResult';
 import type { Operation, RaisedBedField } from './types';
 
 export type OperationOptimisticPatch = Partial<
@@ -114,7 +115,7 @@ type OptimisticScheduleActionsContextValue = {
     getOperationPatch: (
         operationId: number,
     ) => OperationOptimisticPatch | undefined;
-    runOptimisticAction: (action: OptimisticScheduleAction) => void;
+    runOptimisticAction: (action: OptimisticScheduleAction) => Promise<unknown>;
 };
 
 const OptimisticScheduleActionsContext =
@@ -147,8 +148,23 @@ function useOptimisticScheduleActionState(): OptimisticScheduleActionsContextVal
                 addPatchEntries(currentEntriesById, fieldPatches, token),
             );
 
-            void Promise.resolve()
+            return Promise.resolve()
                 .then(action)
+                .then((result) => {
+                    const actionFailureMessage =
+                        getOperationScheduleActionFailureMessage(result);
+                    if (!actionFailureMessage) {
+                        return result;
+                    }
+
+                    setOperationEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    setFieldEntriesById((currentEntriesById) =>
+                        removePatchToken(currentEntriesById, token),
+                    );
+                    return result;
+                })
                 .catch((error: unknown) => {
                     console.error(errorLogMessage, error);
                     setOperationEntriesById((currentEntriesById) =>

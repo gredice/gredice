@@ -1,6 +1,12 @@
-import { getEntityTypeByName } from '@gredice/storage';
+import {
+    getEntitiesRaw,
+    getEntityTypeByName,
+    sunflowerPackageEntityTypeName,
+    sunflowerPackageSeedSpecs,
+} from '@gredice/storage';
+import { Alert } from '@gredice/ui/Alert';
 import { Card, CardOverflow } from '@gredice/ui/Card';
-import { Add } from '@gredice/ui/icons';
+import { Add, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import Link from 'next/link';
@@ -14,6 +20,7 @@ import { FilterProvider } from '../../../../components/admin/providers';
 import { SearchInput } from '../../../../components/admin/SearchInput';
 import { ServerActionIconButton } from '../../../../components/shared/ServerActionIconButton';
 import { auth } from '../../../../lib/auth/auth';
+import { sunflowerPackageCatalogWarnings } from '../../../../src/entities/sunflowerPackageAdmin';
 import { KnownPages } from '../../../../src/KnownPages';
 import {
     createEntity,
@@ -60,6 +67,13 @@ export default async function EntitiesPage({
         sort: defaultDirectoryEntityListSort,
         state: stateFilter,
     });
+    const packageCatalogWarnings =
+        entityTypeName === sunflowerPackageEntityTypeName
+            ? sunflowerPackageCatalogWarnings(
+                  await getEntitiesRaw(sunflowerPackageEntityTypeName),
+                  sunflowerPackageSeedSpecs.map((spec) => spec.code),
+              )
+            : [];
 
     return (
         <FilterProvider>
@@ -109,6 +123,18 @@ export default async function EntitiesPage({
                     operationOptions={listContext.operationFilterOptions}
                     selectedOperationIds={operationIds}
                 />
+                {packageCatalogWarnings.length > 0 ? (
+                    <Alert
+                        color="warning"
+                        startDecorator={<Warning className="size-4" />}
+                    >
+                        <ul className="list-disc space-y-1 pl-5">
+                            {packageCatalogWarnings.map((warning) => (
+                                <li key={warning}>{warning}</li>
+                            ))}
+                        </ul>
+                    </Alert>
+                ) : null}
                 <Card>
                     <CardOverflow>
                         <EntitiesList

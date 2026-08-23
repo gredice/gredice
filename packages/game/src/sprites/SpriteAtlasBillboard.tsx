@@ -3,7 +3,7 @@
 import { Billboard } from '@react-three/drei';
 import { useCallback, useEffect, useLayoutEffect, useMemo } from 'react';
 import type { IUniform, Texture } from 'three';
-import { Color, PlaneGeometry, Vector4 } from 'three';
+import { Color, type ColorRepresentation, PlaneGeometry, Vector4 } from 'three';
 import { SeededRNG } from '../generators/plant/lib/rng';
 import { useSceneTimeUniform } from '../scene/SceneTime';
 import { useGameState } from '../useGameState';
@@ -25,6 +25,7 @@ type SpriteAtlasBillboardProps = {
     renderOrder?: number;
     rotationZ?: number;
     spriteName: string;
+    tint?: ColorRepresentation;
     windDirection?: number;
     windSpeed?: number;
 };
@@ -198,6 +199,7 @@ export function SpriteAtlasBillboard({
     renderOrder,
     rotationZ = 0,
     spriteName,
+    tint,
     windDirection = 0,
     windSpeed = 0,
 }: SpriteAtlasBillboardProps) {
@@ -210,9 +212,10 @@ export function SpriteAtlasBillboard({
     const resolvedDebugName =
         debugName ?? `SpriteAtlasBillboard:${atlasBasePath}:${spriteName}`;
     const brightness = getSpriteBrightness(timeOfDay, weather);
-    const color = useMemo(() => {
-        return new Color().setScalar(brightness);
-    }, [brightness]);
+    const color = useMemo(
+        () => new Color(tint ?? 0xffffff).multiplyScalar(brightness),
+        [brightness, tint],
+    );
     const wobbleProfile = useMemo(() => {
         const positionKey = position.map((value) => value.toFixed(3)).join(':');
         const rng = new SeededRNG(

@@ -3,12 +3,15 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Treće strane',
     description: 'Informacije o korištenim izvorima podataka trećih strana.',
-};
+    path: KnownPages.LegalThirdParty,
+    eyebrow: 'Pravni dokument',
+});
 
 const thirdPartyPlatforms = [
     {

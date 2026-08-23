@@ -1,6 +1,7 @@
 import chroma from 'chroma-js';
 import { Color } from 'three';
 import { getGameBackgroundPalette } from './backgroundPalettes';
+import { getSolarEclipseVisualScales } from './solarEclipse';
 import {
     getVisualDaylightAmount,
     getVisualNightAmount,
@@ -280,12 +281,14 @@ export function resolveSkyGradientColors({
     backgroundColor,
     backgroundPaletteIndex,
     moonlight,
+    solarEclipseObscuration = 0,
     timeOfDay,
     weather,
 }: {
     backgroundColor: Color;
     backgroundPaletteIndex: number;
     moonlight: number;
+    solarEclipseObscuration?: number;
     timeOfDay: number;
     weather?: SkyGradientWeather | null;
 }): SkyGradientColors {
@@ -301,6 +304,13 @@ export function resolveSkyGradientColors({
     const storm = clamp01(rainy + (weather?.thundery ?? 0) * 0.35);
     const overcast = clamp01(cloudy + foggy * 0.7 + rainy * 0.25);
     const visibleMoonlight = clamp01(moonlight);
+    const eclipseObscuration = clamp01(solarEclipseObscuration);
+    const eclipseScales = getSolarEclipseVisualScales(eclipseObscuration);
+    const eclipseSkyColor = colorFromHex('#26364d');
+    const applyEclipseTone = (color: Color) =>
+        color
+            .lerp(eclipseSkyColor, eclipseObscuration * 0.18)
+            .multiplyScalar(eclipseScales.sky);
     const twilightWarmth = dusk > 0.5 ? '#ff9f7c' : '#ffd59c';
     const nightFloorDarkening = Math.max(
         night,
@@ -361,15 +371,16 @@ export function resolveSkyGradientColors({
         .lerp(colorFromHex('#f2f1e9'), daylight * 0.28);
 
     return {
-        zenith: applyWeatherTone(zenith, weatherTone),
-        upper: applyWeatherTone(upper, weatherTone),
-        horizon: applyWeatherTone(horizon, weatherTone),
-        lower: applyWeatherTone(lower, weatherTone),
+        zenith: applyEclipseTone(applyWeatherTone(zenith, weatherTone)),
+        upper: applyEclipseTone(applyWeatherTone(upper, weatherTone)),
+        horizon: applyEclipseTone(applyWeatherTone(horizon, weatherTone)),
+        lower: applyEclipseTone(applyWeatherTone(lower, weatherTone)),
         sunGlow: applyWeatherTone(sunGlow, weatherTone),
         sunGlowIntensity:
             (0.26 + daylight * 0.22 + twilight * 0.26) *
             (1 - overcast * 0.72) *
-            (1 - storm * 0.2),
+            (1 - storm * 0.2) *
+            eclipseScales.sunGlow,
         moonGlow: applyWeatherTone(moonGlow, weatherTone),
         moonGlowIntensity:
             night *

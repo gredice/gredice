@@ -3,6 +3,10 @@ import { OAuthCallbackStatus } from '../../../../components/auth/OAuthCallbackSt
 
 export const metadata: Metadata = {
     title: 'Facebook prijava',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
 
 export default function FacebookCallbackPage() {

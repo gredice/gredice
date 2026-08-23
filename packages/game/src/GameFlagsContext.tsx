@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react';
 
 export interface GameFeatureFlags {
-    enableAdaptiveHighQualityFlag?: boolean;
+    enableGardenAvatarFlag?: boolean;
     enableDebugHudFlag?: boolean;
     enableRaisedBedWateringFlag?: boolean;
     enableRaisedBedDiaryFlag?: boolean;
@@ -12,9 +12,6 @@ export interface GameFeatureFlags {
     enableRaisedBedFieldWateringFlag?: boolean;
     enableRaisedBedFieldDiaryFlag?: boolean;
     enableIntegratedWeatherSurfacesFlag?: boolean;
-    enableRainWetOverlayFlag?: boolean;
-    enableStaticOpaqueSceneCacheFlag?: boolean;
-    enableSuncokretChatFlag?: boolean;
     enableSuncokretDebugFlag?: boolean;
 }
 

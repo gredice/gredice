@@ -33,6 +33,7 @@ import {
     type WinterMode,
 } from '../useGameState';
 import { useCurrentGardenIdParam } from '../useUrlState';
+import { getCurrentGardenQueryPolicy } from './currentGardenQueryPolicy';
 import { shareCurrentGardenQueryData } from './currentGardenStructuralSharing';
 import { resolveCurrentAccountGardenId } from './gardenSelection';
 import {
@@ -428,21 +429,13 @@ function addProfileRaisedBedPair({
     z: number;
 }): MockRaisedBed | null {
     const firstStack = stackByPosition.get(mockGardenStackPositionKey(x, z));
-    const secondStack = stackByPosition.get(
-        mockGardenStackPositionKey(x, z + 1),
-    );
-    if (!firstStack || !secondStack) {
+    if (!firstStack) {
         return null;
     }
 
     const firstBlockId = `profile-raised-bed:${id}:0`;
     firstStack.blocks.push({
         id: firstBlockId,
-        name: 'Raised_Bed',
-        rotation: 0,
-    });
-    secondStack.blocks.push({
-        id: `profile-raised-bed:${id}:1`,
         name: 'Raised_Bed',
         rotation: 0,
     });
@@ -1011,7 +1004,7 @@ function mockGarden(
             updatedAt: now,
             createdAt: now,
             isValid: true,
-            orientation: 'horizontal',
+            orientation: 'vertical',
         },
         {
             id: 2,
@@ -1026,7 +1019,7 @@ function mockGarden(
             updatedAt: now,
             createdAt: now,
             isValid: true,
-            orientation: 'horizontal',
+            orientation: 'vertical',
         },
     ];
 
@@ -1053,7 +1046,7 @@ function mockGarden(
                     {
                         id: '3',
                         name: 'Raised_Bed',
-                        rotation: 0,
+                        rotation: 1,
                     },
                 ],
             },
@@ -1148,7 +1141,7 @@ function mockGarden(
                     {
                         id: '8',
                         name: 'Raised_Bed',
-                        rotation: 0,
+                        rotation: 1,
                     },
                 ],
             },
@@ -1252,6 +1245,9 @@ function isHighTargetOperationVisualsProfile(profile: MockGardenProfile) {
 }
 
 export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | null> {
+    const authenticatedGardenQueriesEnabled = useGameState(
+        (state) => state.authenticatedGardenQueriesEnabled,
+    );
     const isMock = useGameState((state) => state.isMock);
     const localSandboxStorageKey = useGameState(
         (state) => state.localSandboxStorageKey,
@@ -1262,11 +1258,18 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
     const mockGardenProfile = useGameState((state) => state.mockGardenProfile);
     const winterMode = useGameState((state) => state.winterMode);
     const isLocalSandbox = localSandboxStorageKey !== null;
+    const queryPolicy = getCurrentGardenQueryPolicy({
+        authenticatedGardenQueriesEnabled,
+        isLocalSandbox,
+        isMock,
+    });
     const highTargetOperationVisuals =
         isMock && isHighTargetOperationVisualsProfile(mockGardenProfile);
-    const { data: gardens } = useGardens(isMock || isLocalSandbox);
+    const { data: gardens } = useGardens(
+        !queryPolicy.accountGardenQueriesEnabled,
+    );
     const { data: accountGroups } = useGardenAccountGroups(
-        isMock || isLocalSandbox,
+        !queryPolicy.accountGardenQueriesEnabled,
     );
     let selectedGardenId: number | null = null;
     if (!isMock && !isLocalSandbox) {
@@ -1362,6 +1365,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                                       name: block.name,
                                       rotation: block.rotation ?? 0,
                                       variant: block.variant,
+                                      message: block.message,
                                   };
                               })
                             : [],
@@ -1393,10 +1397,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
         retry: false,
         staleTime: 1000 * 60, // 1m
         enabled:
-            isLocalSandbox ||
-            isMock ||
-            (gardens !== null &&
-                (currentGardenId !== null || gardens !== undefined)),
+            queryPolicy.currentGardenQueryEnabled &&
+            (isLocalSandbox ||
+                isMock ||
+                (gardens !== null &&
+                    (currentGardenId !== null || gardens !== undefined))),
     });
 }
 

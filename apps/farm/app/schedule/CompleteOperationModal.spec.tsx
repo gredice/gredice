@@ -1783,7 +1783,7 @@ test('supports a keyboard-only blocker failure, retry, success, and close journe
 
     const dialog = page.getByRole('dialog', { name: 'Prijavi prepreku' });
     await expect(dialog).toBeVisible();
-    await expect(trigger).toBeFocused();
+    await expect(dialog).toBeFocused();
     const firstReason = dialog.getByRole('radio', {
         name: 'Vrijeme ili uvjeti nisu sigurni',
     });
@@ -2397,6 +2397,166 @@ test('queues a phone completion before network work and restores the waiting gat
     await expect(dialog.getByText('Možeš započeti novu skicu.')).toHaveCount(0);
 });
 
+test('uploads an online phone photo before confirming when offline sync is enabled', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            plantingCalls: 0,
+        };
+    });
+    const getUploadCalls = await mockOperationPhotoUpload(page, 0);
+    await mount(
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachImagesRequired: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Fotografiraj završenu radnju uz vezu"
+            operationId={247}
+        />,
+    );
+    await settleResponsiveModal(page);
+
+    const dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog.locator('input[capture="environment"]').setInputFiles({
+        buffer: Buffer.from('online completion proof'),
+        mimeType: 'image/jpeg',
+        name: 'online-dokaz.jpg',
+    });
+    await dialog.getByRole('button', { name: 'Potvrdi' }).click();
+
+    await expect(
+        dialog.getByText(
+            'Radnja „Fotografiraj završenu radnju uz vezu” spremljena je i čeka potvrdu.',
+        ),
+    ).toBeVisible();
+    expect(getUploadCalls()).toBe(1);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.__farmScheduleActionTestState?.operationCalls ?? -1,
+            ),
+        )
+        .toBe(1);
+    const submitted = await page.evaluate(
+        () => window.__farmScheduleActionTestState?.lastOperationSubmission,
+    );
+    expect(submitted?.submissionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    );
+    expect(submitted?.imageUrls).toHaveLength(1);
+    expect(submitted?.imageUrls?.[0]).toContain(
+        `/submissions/${submitted?.submissionId}/attachments/`,
+    );
+    await expect(dialog.getByText('čeka potvrdu farme')).toHaveCount(0);
+});
+
+test('reuses the online submission identity when a lost response is queued offline', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.evaluate(() => {
+        window.__farmScheduleActionTestState = {
+            blockerCalls: 0,
+            hold: false,
+            operationCalls: 0,
+            operationFailuresRemaining: 1,
+            plantingCalls: 0,
+        };
+    });
+    const getUploadCalls = await mockOperationPhotoUpload(page, 0);
+    await mount(
+        <OfflineQueueCompleteOperationModalStory
+            conditions={{ completionAttachImagesRequired: true }}
+            defaultOpen
+            expectedEntityId={701}
+            label="Fotografiraj radnju uz izgubljen odgovor"
+            operationId={248}
+        />,
+    );
+    await settleResponsiveModal(page);
+
+    const dialog = page.getByRole('dialog', {
+        name: 'Potvrda završetka radnje',
+    });
+    await dialog.locator('input[capture="environment"]').setInputFiles({
+        buffer: Buffer.from('lost response completion proof'),
+        mimeType: 'image/jpeg',
+        name: 'izgubljeni-odgovor.jpg',
+    });
+    await dialog.getByRole('button', { name: 'Potvrdi' }).click();
+    await expect(dialog.getByRole('alert')).toContainText(
+        'Radnja nije spremljena. Provjeri vezu i pokušaj ponovno.',
+    );
+
+    const firstSubmission = await page.evaluate(
+        () => window.__farmScheduleActionTestState?.lastOperationSubmission,
+    );
+    expect(firstSubmission?.submissionId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu,
+    );
+    expect(getUploadCalls()).toBe(1);
+
+    await page.context().setOffline(true);
+    await dialog.getByRole('button', { name: 'Pokušaj ponovno' }).click();
+    await expect(dialog.getByRole('status')).toContainText(
+        'sigurno je spremljena samo na ovom uređaju',
+    );
+
+    const queuedSubmissionId = await page.evaluate(
+        () =>
+            new Promise<string | null>((resolve, reject) => {
+                const request = indexedDB.open('gredice-farm-offline');
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    const database = request.result;
+                    const transaction = database.transaction(
+                        'operation-completion-queue',
+                        'readonly',
+                    );
+                    const getAllRequest = transaction
+                        .objectStore('operation-completion-queue')
+                        .getAll();
+                    transaction.onerror = () => reject(transaction.error);
+                    transaction.oncomplete = () => {
+                        const item = getAllRequest.result.find(
+                            (candidate) =>
+                                typeof candidate === 'object' &&
+                                candidate !== null &&
+                                'operationId' in candidate &&
+                                candidate.operationId === 248,
+                        );
+                        resolve(
+                            item &&
+                                typeof item === 'object' &&
+                                'submissionId' in item &&
+                                typeof item.submissionId === 'string'
+                                ? item.submissionId
+                                : null,
+                        );
+                        database.close();
+                    };
+                };
+            }),
+    );
+    expect(queuedSubmissionId).toBe(firstSubmission?.submissionId);
+    expect(
+        await page.evaluate(
+            () => window.__farmScheduleActionTestState?.operationCalls ?? -1,
+        ),
+    ).toBe(1);
+    await page.context().setOffline(false);
+});
+
 test('replaces the local-only success copy with a live server receipt', async ({
     mount,
     page,
@@ -2429,9 +2589,10 @@ test('replaces the local-only success copy with a live server receipt', async ({
     await expect(dialog.locator('[data-operation-draft-status]')).toHaveText(
         'Spremljeno samo na ovom uređaju — radnja još nije dovršena.',
     );
+    await page.context().setOffline(true);
     await dialog.getByRole('button', { name: 'Potvrdi' }).click();
     await expect(dialog.getByRole('status')).toContainText(
-        'čeka potvrdu farme',
+        'sigurno je spremljena samo na ovom uređaju',
     );
 
     await component.update(
@@ -2456,6 +2617,7 @@ test('replaces the local-only success copy with a live server receipt', async ({
         dialog.locator('[data-operation-completion-server-receipt]'),
     ).toContainText('radnja sada čeka provjeru');
     await expect(dialog.getByText('čeka potvrdu farme')).toHaveCount(0);
+    await page.context().setOffline(false);
 });
 
 test('does not resurrect a cleared note while its first local save is in flight', async ({

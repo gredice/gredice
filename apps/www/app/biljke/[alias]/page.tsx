@@ -6,16 +6,14 @@ import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { RecipeList } from '../../../components/recipes/RecipeList';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
 import { getPlantsData } from '../../../lib/plants/getPlantsData';
-import { getRecipesData } from '../../../lib/recipes/getRecipesData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
-import { recipesFlag } from '../../flags';
 import { GrowthAttributeCards } from './GrowthAttributeCards';
 import { getPlantInforationSections } from './getPlantInforationSections';
 import { HarvestAttributeCards } from './HarvestAttributeCards';
@@ -28,7 +26,7 @@ import { PlantTips } from './PlantTips';
 import { SowingAttributeCards } from './SowingAttributeCards';
 import { WateringAttributeCards } from './WateringAttributeCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 export async function generateMetadata(
     props: PageProps<'/biljke/[alias]'>,
 ): Promise<Metadata> {
@@ -38,15 +36,16 @@ export async function generateMetadata(
         matchesPageAlias(plant.information.name, alias),
     );
     if (!plant) {
-        return {
-            title: 'Biljka nije pronađena',
-            description: 'Biljka nije pronađena',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: plant.information.name,
         description: plant.information.description,
-    };
+        path: KnownPages.Plant(plant.slug || plant.information.name),
+        category: 'Biljka',
+        imageUrl: plant.image?.cover?.url,
+        imageAlt: `Fotografija biljke ${plant.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -72,32 +71,37 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
         notFound();
     }
 
-    const [isRecipesEnabled, operations] = await Promise.all([
-        recipesFlag(),
-        getOperationsData(),
-    ]);
-    const recipes = isRecipesEnabled
-        ? ((await getRecipesData())?.filter((r) =>
-              r.plants.includes(plant.information.name),
-          ) ?? [])
-        : [];
+    const operations = await getOperationsData();
     const informationSections = getPlantInforationSections(
         plant,
         undefined,
         operations,
     );
+    const plantPath = KnownPages.Plant(plant.slug || plant.information.name);
+    const plantUrl = `https://www.gredice.com${plantPath}`;
+    const plantPrice = plant.prices?.perPlant;
 
     // Map section IDs to their corresponding attribute cards
     const getAttributeCardsForSection = (sectionId: string) => {
         switch (sectionId) {
             case 'sowing':
-                return <SowingAttributeCards attributes={plant.attributes} />;
+                return (
+                    <SowingAttributeCards
+                        attributes={plant.attributes}
+                        plantName={plant.information.name}
+                    />
+                );
             case 'growth':
                 return <GrowthAttributeCards attributes={plant.attributes} />;
             case 'watering':
                 return <WateringAttributeCards attributes={plant.attributes} />;
             case 'harvest':
-                return <HarvestAttributeCards attributes={plant.attributes} />;
+                return (
+                    <HarvestAttributeCards
+                        attributes={plant.attributes}
+                        plantName={plant.information.name}
+                    />
+                );
             default:
                 return undefined;
         }
@@ -106,34 +110,49 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
     return (
         <div className="py-8">
             <StructuredDataScript
-                data={{
-                    '@context': 'https://schema.org',
-                    '@type': 'Product',
-                    name: plant.information.name,
-                    description: plant.information.description,
-                    category: 'Biljka',
-                    image: plant.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
-                        name: 'Gredice',
-                    },
-                    url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
-                    offers:
-                        typeof plant.prices?.perPlant === 'number' &&
-                        plant.prices.perPlant > 0
-                            ? {
+                data={
+                    typeof plantPrice === 'number' && plantPrice > 0
+                        ? {
+                              '@context': 'https://schema.org',
+                              '@type': 'Product',
+                              name: plant.information.name,
+                              description: plant.information.description,
+                              category: 'Biljka',
+                              image: plant.image?.cover?.url,
+                              brand: {
+                                  '@type': 'Brand',
+                                  name: 'Gredice',
+                              },
+                              url: plantUrl,
+                              offers: {
                                   '@type': 'Offer',
-                                  price: plant.prices.perPlant.toFixed(2),
+                                  price: plantPrice.toFixed(2),
                                   priceCurrency: 'EUR',
                                   availability:
                                       plant.store?.availableInStore === false
                                           ? 'https://schema.org/OutOfStock'
                                           : 'https://schema.org/InStock',
-                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
+                                  url: plantUrl,
                                   hasMerchantReturnPolicy: merchantReturnPolicy,
-                              }
-                            : undefined,
-                }}
+                              },
+                          }
+                        : {
+                              '@context': 'https://schema.org',
+                              '@type': 'WebPage',
+                              name: plant.information.name,
+                              description: plant.information.description,
+                              image: plant.image?.cover?.url,
+                              url: plantUrl,
+                              mainEntity: {
+                                  '@type': 'Thing',
+                                  '@id': `${plantUrl}#plant`,
+                                  name: plant.information.name,
+                                  description: plant.information.description,
+                                  image: plant.image?.cover?.url,
+                                  url: plantUrl,
+                              },
+                          }
+                }
             />
             <Stack spacing={8}>
                 <Breadcrumbs
@@ -148,8 +167,12 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     overviewEditTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
+                />
+                <PlantSortsList
+                    basePlantName={plant.information.name}
+                    basePlantId={plant.id}
                 />
                 {informationSections
                     .filter((section) => section.avaialble)
@@ -166,7 +189,7 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                             )}
                             editEntityTypeName="plant"
                             editEntityId={plant.id}
-                            editPublicPath={KnownPages.Plant(alias)}
+                            editPublicPath={plantPath}
                             editSectionKey={section.id}
                         />
                     ))}
@@ -178,22 +201,10 @@ export default async function PlantPage(props: PageProps<'/biljke/[alias]'>) {
                     editTarget={{
                         entityTypeName: 'plant',
                         entityId: plant.id,
-                        publicPath: KnownPages.Plant(alias),
+                        publicPath: plantPath,
                     }}
                     relationships={plant.relationships}
                 />
-                <PlantSortsList
-                    basePlantName={plant.information.name}
-                    basePlantId={plant.id}
-                />
-                {recipes.length > 0 && (
-                    <Stack spacing={4}>
-                        <Typography level="h2">
-                            Recepti s {plant.information.name}
-                        </Typography>
-                        <RecipeList recipes={recipes} />
-                    </Stack>
-                )}
                 <Typography level="body1" component="p">
                     Želiš saznati više o tome kako naručiti sjetvu? Posjeti našu
                     stranicu o{' '}

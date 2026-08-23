@@ -1,6 +1,7 @@
 import type { Block } from '../../types/Block';
 import type { Stack } from '../../types/Stack';
-import { waterBlockName } from '../waterBlockFoam';
+import { isMulchBlockName } from '../raisedBed/mulchPatchGeometry';
+import { isWaterBlockName } from '../waterBlockNames';
 import {
     type GroundDecorationSurface,
     resolveGroundDecorationSurface,
@@ -13,9 +14,10 @@ export type GroundDecorationBlock = {
     surface: GroundDecorationSurface;
 };
 
-function hasWaterBlockAbove(stack: Stack, blockIndex: number) {
+function hasCoverBlockAbove(stack: Stack, blockIndex: number) {
     for (let index = blockIndex + 1; index < stack.blocks.length; index += 1) {
-        if (stack.blocks[index]?.name === waterBlockName) {
+        const blockName = stack.blocks[index]?.name ?? '';
+        if (isWaterBlockName(blockName) || isMulchBlockName(blockName)) {
             return true;
         }
     }
@@ -31,7 +33,7 @@ export function getGroundDecorationBlocks(stacks: Stack[] | undefined) {
     return stacks.flatMap((stack) =>
         stack.blocks.flatMap((block, blockIndex) => {
             const surface = resolveGroundDecorationSurface(block.name);
-            if (!surface || hasWaterBlockAbove(stack, blockIndex)) {
+            if (!surface || hasCoverBlockAbove(stack, blockIndex)) {
                 return [];
             }
 

@@ -1,37 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Navigate } from '@gredice/ui/icons';
 import { CompanyInstagram } from '@gredice/ui/PublicChrome';
-import { cx } from '@gredice/ui/utils';
-import Link from 'next/link';
+import { SocialCard } from './SocialCard';
 
 export function InstagramCard() {
     return (
-        <Link href="https://gredice.link/ig">
-            <Card
-                className={cx(
-                    'h-full flex flex-row rounded-xl items-center justify-between max-w-md shadow hover:shadow-xl transition-all duration-300',
-                    'bg-gradient-to-br from-red-50 to-orange-50 border-red-200 dark:from-red-200 dark:to-orange-200 dark:border-red-700',
-                )}
-            >
-                <CardHeader className={cx('flex flex-row gap-4 items-center')}>
-                    <div
-                        className={cx(
-                            'size-16 shrink-0 rounded-full flex items-center justify-center shadow-lg',
-                            'bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]',
-                        )}
-                    >
-                        <CompanyInstagram className="size-10 text-white" />
-                    </div>
-                    <CardTitle className="text-lg leading-tight font-bold text-gray-800 max-w-xs mx-auto">
-                        Prati nas na Instagramu
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-2">
-                    <Navigate
-                        className={cx('size-8 shrink-0', 'text-[#fcb045]')}
-                    />
-                </CardContent>
-            </Card>
-        </Link>
+        <SocialCard
+            href="https://gredice.link/ig"
+            ctaText="Prati nas na Instagramu"
+            icon={<CompanyInstagram className="size-9 text-white" />}
+            bgColor="border-rose-200 bg-gradient-to-br from-rose-50 to-orange-50 text-rose-950 dark:border-rose-800 dark:from-rose-950 dark:to-orange-950 dark:text-rose-100"
+            bgIconColor="bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]"
+            navigateIconColor="text-orange-500 dark:text-orange-300"
+        />
     );
 }

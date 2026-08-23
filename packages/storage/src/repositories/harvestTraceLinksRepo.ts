@@ -69,6 +69,7 @@ export type PublicHarvestTraceTimelineItem = {
     imageAlt?: string;
     images?: PublicHarvestTraceTimelineImage[];
     location?: PublicHarvestTraceLocation;
+    isWatering?: boolean;
     operationCategoryName?: string;
     operationCount?: number;
     plantStatus?: string;
@@ -623,6 +624,7 @@ function operationGroupKey(item: PublicHarvestTraceTimelineItem) {
         timelineDayKey(item),
         item.title,
         item.description ?? '',
+        item.isWatering ? 'watering' : 'other',
         item.operationCategoryName ?? '',
         item.imageUrl ?? '',
         item.imageAlt ?? '',
@@ -737,6 +739,7 @@ function operationTimelineItem({
     imageAlt,
     images,
     imageUrl,
+    isWatering,
     label,
     operationId,
     token,
@@ -746,6 +749,7 @@ function operationTimelineItem({
     imageAlt?: string;
     images?: PublicHarvestTraceTimelineImage[];
     imageUrl?: string;
+    isWatering: boolean;
     label: string;
     operationId: number;
     token: string;
@@ -765,6 +769,7 @@ function operationTimelineItem({
             : 'Radnja je obavljena na cijeloj gredici.',
         ...(imageUrl ? { imageUrl, imageAlt: imageAlt ?? label } : {}),
         ...(images && images.length > 0 ? { images } : {}),
+        isWatering,
         ...(categoryName ? { operationCategoryName: categoryName } : {}),
         tone: 'care',
     } satisfies PublicHarvestTraceTimelineItem;
@@ -1079,6 +1084,7 @@ async function buildPublicTrace(
                 imageAlt: operationLabel,
                 images: operationImages,
                 imageUrl: entityImageUrl(operationEntity),
+                isWatering,
                 label: operationLabel,
                 operationId: operation.id,
                 token,

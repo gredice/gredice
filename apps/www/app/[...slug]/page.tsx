@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { draftMode } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { sectionsComponentRegistry } from '../../components/shared/sectionsComponentRegistry';
+import { createCmsPageMetadata } from '../../lib/seo/cmsPageMetadata';
 import {
     type CmsRoutePage,
     cmsPagePreviewSecret,
@@ -72,8 +73,11 @@ export async function generateMetadata({
     }
 
     const sourcePage = getSourceCmsPageBySlug(normalizedSlug);
+    const { isEnabled } = await draftMode();
+    const previewSecret = isEnabled ? await cmsPagePreviewSecret() : null;
     const response = await fetchCmsDirectoryPage({
         normalizedSlug,
+        previewSecret,
         suppressFetchError: Boolean(sourcePage),
     });
 
@@ -85,21 +89,5 @@ export async function generateMetadata({
     } else {
         return {};
     }
-    const canonicalPath = page.canonicalPath || `/${page.slug}`;
-    const openGraphImage = page.seoImageUrl || `/api/og/cms/${page.slug}`;
-    return {
-        title: page.metaTitle || page.title,
-        description: page.metaDescription || undefined,
-        alternates: {
-            canonical: canonicalPath,
-        },
-        robots: {
-            index: !page.noIndex,
-        },
-        openGraph: {
-            title: page.metaTitle || page.title,
-            description: page.metaDescription || undefined,
-            images: [openGraphImage],
-        },
-    };
+    return createCmsPageMetadata(page);
 }

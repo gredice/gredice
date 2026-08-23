@@ -14,6 +14,7 @@ import {
     isFieldCompleted,
     isFieldPendingVerification,
 } from './scheduleShared';
+import { buildAdminSelectedPlantingScheduleItem } from './selectedPlantingSchedulePresentation';
 import { OptimisticScheduleActionsProvider } from './useOptimisticScheduleActions';
 
 interface ScheduleDayPlantingsSectionProps {
@@ -25,22 +26,51 @@ export async function ScheduleDayPlantingsSection({
     isToday,
     date,
 }: ScheduleDayPlantingsSectionProps) {
-    const [{ dateKey, raisedBeds, scheduledFields, timeZone }, plantSorts] =
-        await Promise.all([
-            getScheduleDayData(date, isToday),
-            getSchedulePlantSorts(),
-        ]);
-    if (scheduledFields.length === 0) {
+    const [
+        {
+            dateKey,
+            raisedBeds,
+            scheduledFields,
+            scheduledSelectedPlantings,
+            timeZone,
+        },
+        plantSorts,
+    ] = await Promise.all([
+        getScheduleDayData(date, isToday),
+        getSchedulePlantSorts(),
+    ]);
+    if (
+        scheduledFields.length === 0 &&
+        scheduledSelectedPlantings.length === 0
+    ) {
         return null;
     }
 
     const affectedRaisedBedIds = [
-        ...new Set(scheduledFields.map((field) => field.raisedBedId)),
+        ...new Set([
+            ...scheduledFields.map((field) => field.raisedBedId),
+            ...scheduledSelectedPlantings.flatMap(({ planting }) =>
+                planting.memberships.map(
+                    (membership) => membership.raisedBedField.raisedBedId,
+                ),
+            ),
+        ]),
     ];
+    const selectedAnchorFieldIds = scheduledSelectedPlantings.flatMap(
+        ({ planting }) => {
+            const anchorMembership = planting.memberships.find(
+                (membership) => membership.isAnchor,
+            );
+            return anchorMembership ? [anchorMembership.raisedBedFieldId] : [];
+        },
+    );
     const assignableFarmUsersByRaisedBedFieldId =
-        await getAssignableFarmUsersByRaisedBedFieldIds(
-            scheduledFields.map((field) => field.id),
-        );
+        await getAssignableFarmUsersByRaisedBedFieldIds([
+            ...new Set([
+                ...scheduledFields.map((field) => field.id),
+                ...selectedAnchorFieldIds,
+            ]),
+        ]);
     const raisedBedGroups = groupRaisedBedsForSchedule(
         raisedBeds,
         affectedRaisedBedIds,
@@ -149,6 +179,53 @@ export async function ScheduleDayPlantingsSection({
                 </Row>
                 {raisedBedGroups.map(
                     ({ key, physicalId, raisedBeds: beds }) => {
+                        const bedIds = new Set(beds.map((bed) => bed.id));
+                        const firstBedId = beds.at(0)?.id;
+                        const selectedPlantingItems =
+                            scheduledSelectedPlantings.flatMap(
+                                ({ planting, raisedBedId }) => {
+                                    if (!bedIds.has(raisedBedId)) {
+                                        return [];
+                                    }
+                                    const physicalPositionNumbers =
+                                        planting.memberships.flatMap(
+                                            (membership) => {
+                                                if (
+                                                    !bedIds.has(
+                                                        membership
+                                                            .raisedBedField
+                                                            .raisedBedId,
+                                                    )
+                                                ) {
+                                                    return [];
+                                                }
+                                                return [
+                                                    membership.raisedBedField
+                                                        .positionIndex +
+                                                        (membership
+                                                            .raisedBedField
+                                                            .raisedBedId ===
+                                                        firstBedId
+                                                            ? 1
+                                                            : 10),
+                                                ];
+                                            },
+                                        );
+                                    const plantName = plantSorts?.find(
+                                        (plantSort) =>
+                                            plantSort.id ===
+                                            planting.plantSortId,
+                                    )?.information?.name;
+                                    const item =
+                                        buildAdminSelectedPlantingScheduleItem({
+                                            physicalPositionNumbers,
+                                            planting,
+                                            plantName,
+                                            raisedBedId,
+                                        });
+                                    return item ? [item] : [];
+                                },
+                            );
                         return (
                             <RaisedBedPlantingScheduleSection
                                 key={key}
@@ -157,6 +234,9 @@ export async function ScheduleDayPlantingsSection({
                                 physicalId={physicalId}
                                 raisedBeds={beds}
                                 scheduledFields={scheduledFields}
+                                scheduledSelectedPlantings={
+                                    selectedPlantingItems
+                                }
                                 plantSorts={plantSorts}
                                 assignableFarmUsersByRaisedBedFieldId={
                                     assignableFarmUsersByRaisedBedFieldId

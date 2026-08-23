@@ -3,12 +3,15 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Licenca izvornog koda',
     description: 'Uvjeti korištenja izvornog koda aplikacije Gredice.',
-};
+    path: KnownPages.LegalLicense,
+    eyebrow: 'Pravni dokument',
+});
 
 export default function PolitikaPrivatnostiPage() {
     return (

@@ -10,12 +10,14 @@
         "dev": "node ../../scripts/run-app-command.mjs dev",
         "build": "next build",
         "start": "node ../../scripts/run-app-command.mjs start",
-        "test": "pnpm run build"
+        "test": "pnpm run test:node",
+        "test:node": "node --import tsx --test ./lib/**/*.node.spec.ts"
     },
     "dependencies": {
-        "next": "16.3.0-preview.6",
-        "react": "19.2.7",
-        "react-dom": "19.2.7",
+        "next": "16.3.0",
+        "pg": "8.22.0",
+        "react": "19.2.8",
+        "react-dom": "19.2.8",
         "server-only": "0.0.1"
     },
     "devDependencies": {
@@ -23,10 +25,12 @@
         "@gredice/ui": "workspace:*",
         "@tailwindcss/postcss": "4.3.2",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
-        "@types/react-dom": "19.2.3",
+        "@types/pg": "8.20.0",
+        "@types/react": "19.2.18",
+        "@types/react-dom": "19.2.4",
         "postcss": "8.5.16",
         "tailwindcss": "4.3.2",
+        "tsx": "4.23.0",
         "typescript": "7.0.2"
     }
 }

@@ -1,10 +1,15 @@
 import { createHash } from 'node:crypto';
+import {
+    type AdvancedSowingCartAuthorizationV1,
+    parseAdvancedSowingCartAuthorizationV1,
+} from '@gredice/js/plants';
 import { and, asc, desc, eq, gt, inArray, notExists, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { events, shoppingCartItems, shoppingCarts } from '../schema';
 import { storage } from '../storage';
 import { lockAccountAndAssertNotDeleting } from './accountDeletionFenceRepo';
+import { getShoppingCartItemAdvancedSowingAuthorizations } from './advancedSowingCartAuthorizationRepo';
 import {
     type CheckoutCartItemLockTransaction,
     withCheckoutCartItemLocks,
@@ -42,6 +47,7 @@ export type StripeCheckoutAttemptReleaseReason =
     | 'session_creation_failed';
 
 export type StripeCheckoutAttemptSnapshotItem = {
+    advancedSowingAuthorization?: AdvancedSowingCartAuthorizationV1;
     additionalDataFingerprint: string;
     amount: number;
     cartId: number;
@@ -210,6 +216,16 @@ const canonicalUtcDaySchema = z
 
 const fingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/u);
 
+const advancedSowingCartAuthorizationSchema =
+    z.custom<AdvancedSowingCartAuthorizationV1>((value) => {
+        try {
+            parseAdvancedSowingCartAuthorizationV1(value);
+            return true;
+        } catch {
+            return false;
+        }
+    });
+
 export function serializeStripeCheckoutValue(value: unknown): string {
     if (value === undefined) {
         return 'undefined';
@@ -237,6 +253,8 @@ export function fingerprintStripeCheckoutValue(value: unknown) {
 
 const snapshotItemSchema = z
     .object({
+        advancedSowingAuthorization:
+            advancedSowingCartAuthorizationSchema.optional(),
         additionalDataFingerprint: fingerprintSchema,
         amount: positiveSafeIntegerSchema,
         cartId: positiveSafeIntegerSchema,
@@ -928,6 +946,10 @@ export async function lockAndAssertCartItemsMutable(
 export function assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
     snapshot: StripeCheckoutAttemptSnapshot,
     liveItems: readonly (typeof shoppingCartItems.$inferSelect)[],
+    liveAdvancedSowingAuthorizations: ReadonlyMap<
+        number,
+        AdvancedSowingCartAuthorizationV1
+    > = new Map(),
 ) {
     if (snapshot.items.length !== liveItems.length) {
         throw new StripeCheckoutAttemptConflictError('cart_membership_changed');
@@ -935,6 +957,8 @@ export function assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
     const liveItemsById = new Map(liveItems.map((item) => [item.id, item]));
     for (const expected of snapshot.items) {
         const live = liveItemsById.get(expected.id);
+        const liveAdvancedSowingAuthorization =
+            liveAdvancedSowingAuthorizations.get(expected.id);
         if (
             !live ||
             live.cartId !== expected.cartId ||
@@ -947,6 +971,10 @@ export function assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
                 expected.additionalDataFingerprint ||
             live.amount !== expected.amount ||
             live.currency !== expected.currency ||
+            fingerprintStripeCheckoutValue(liveAdvancedSowingAuthorization) !==
+                fingerprintStripeCheckoutValue(
+                    expected.advancedSowingAuthorization,
+                ) ||
             live.isDeleted ||
             (expected.status === 'paid'
                 ? live.status !== 'paid'
@@ -1015,7 +1043,13 @@ export async function createStripeCheckoutAttempt(
                 ),
             )
             .orderBy(asc(shoppingCartItems.id));
-        assertStripeCheckoutAttemptSnapshotMatchesLiveCart(snapshot, liveItems);
+        const liveAdvancedSowingAuthorizations =
+            await getShoppingCartItemAdvancedSowingAuthorizations(itemIds, db);
+        assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
+            snapshot,
+            liveItems,
+            liveAdvancedSowingAuthorizations,
+        );
         const outletReservationConflict =
             await getCheckoutOutletReservationConflict(
                 {
@@ -1371,9 +1405,15 @@ export async function verifyStripeCheckoutAttemptLiveCart(
                     ),
                 )
                 .orderBy(asc(shoppingCartItems.id));
+            const liveAdvancedSowingAuthorizations =
+                await getShoppingCartItemAdvancedSowingAuthorizations(
+                    attempt.snapshot.items.map((item) => item.id),
+                    db,
+                );
             assertStripeCheckoutAttemptSnapshotMatchesLiveCart(
                 attempt.snapshot,
                 liveItems,
+                liveAdvancedSowingAuthorizations,
             );
             const liveItemStatusById = new Map(
                 liveItems.map((item) => [item.id, item.status]),

@@ -18,7 +18,8 @@ import type { ReactNode } from 'react';
 import { updateRaisedBedEventDateAction } from '../../app/(actions)/raisedBedEventsActions';
 import { KnownPages } from '../../src/KnownPages';
 import {
-    canMutateRaisedBedHistoryEvent,
+    activeSelectedPlantingPositionIndices,
+    raisedBedEventMutationDecision,
     raisedBedFieldHistoryEventTypes,
     raisedBedHistoryEventTypes,
 } from '../../src/raisedBedEventMutationPolicy';
@@ -397,6 +398,10 @@ export async function RaisedBedEventsTable({
     const hasNextPage = eventsPage.length > RAISED_BED_EVENTS_PAGE_SIZE;
     const events = eventsPage.slice(0, RAISED_BED_EVENTS_PAGE_SIZE);
     const hasPagination = currentPage > 1 || hasNextPage;
+    const mutationContext = {
+        activeSelectedPlantingPositionIndices:
+            activeSelectedPlantingPositionIndices(raisedBed.plantings),
+    };
 
     return (
         <>
@@ -521,8 +526,13 @@ export async function RaisedBedEventsTable({
                 <EventsTable
                     actionsColumnClassName="w-32 text-right"
                     events={events}
-                    renderActions={(event) =>
-                        canMutateRaisedBedHistoryEvent(event, raisedBedId) ? (
+                    renderActions={(event) => {
+                        const decision = raisedBedEventMutationDecision(
+                            event,
+                            raisedBedId,
+                            mutationContext,
+                        );
+                        return decision.allowed ? (
                             <RaisedBedEventDeleteButton
                                 eventId={event.id}
                                 raisedBedId={raisedBedId}
@@ -532,16 +542,23 @@ export async function RaisedBedEventsTable({
                                 level="body3"
                                 className="text-muted-foreground"
                             >
-                                Samo čitanje
+                                {decision.reason ===
+                                'selected_planting_conflict'
+                                    ? 'Napredna sjetva · samo čitanje'
+                                    : 'Samo čitanje'}
                             </Typography>
-                        )
-                    }
+                        );
+                    }}
                     renderDetails={(event) => renderEventDetails(event)}
                     renderLocation={(event) =>
                         getEventLocationLabel(event.aggregateId, raisedBedId)
                     }
                     renderTime={(event) =>
-                        canMutateRaisedBedHistoryEvent(event, raisedBedId) ? (
+                        raisedBedEventMutationDecision(
+                            event,
+                            raisedBedId,
+                            mutationContext,
+                        ).allowed ? (
                             <EventDateEditButton
                                 date={event.createdAt}
                                 onSave={updateRaisedBedEventDateAction.bind(

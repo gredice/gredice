@@ -6,7 +6,7 @@ const animalDebugStorageKey = 'gredice.debug.sandbox.animals.v1';
 
 const animalDebugFlags = {
     enableDebugHudFlag: true,
-    enableRainWetOverlayFlag: true,
+    enableGardenAvatarFlag: true,
 } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
 
 const animalDebugFreezeTime = new Date('2026-06-02T10:00:00+02:00');

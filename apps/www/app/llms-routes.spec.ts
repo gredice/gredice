@@ -28,6 +28,10 @@ async function assertLlmsResponse(response: Response) {
     );
     assert.match(
         body,
+        /\[Zagreb vegetable delivery\]\(https:\/\/www\.gredice\.com\/dostava-povrca-zagreb\)/,
+    );
+    assert.match(
+        body,
         /\[Privacy policy\]\(https:\/\/www\.gredice\.com\/legalno\/politika-privatnosti\)/,
     );
 }

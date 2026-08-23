@@ -185,8 +185,10 @@ function createOutletHudQueryClient() {
 
 function OutletHudTestProviders({
     children,
-    searchParams = 'vrt=1&outlet=1',
-}: PropsWithChildren<{ searchParams?: string }>) {
+    searchParams = 'vrt=1',
+}: PropsWithChildren<{
+    searchParams?: string;
+}>) {
     const queryClient = useMemo(() => createOutletHudQueryClient(), []);
     const gameStore = useMemo(
         () =>

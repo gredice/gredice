@@ -1,4 +1,12 @@
-export type ActorGroundingShadowSpecies = 'bee' | 'bird' | 'cat' | 'dog';
+export type ActorGroundingShadowSpecies =
+    | 'avatar'
+    | 'beachBall'
+    | 'bee'
+    | 'bird'
+    | 'cat'
+    | 'chicken'
+    | 'dog'
+    | 'piglet';
 
 export type ActorGroundingShadowState = {
     actorY: number;
@@ -65,6 +73,20 @@ export const actorGroundingShadowSurfaceLift = 0.006;
 export const actorGroundingShadowSnowLift = 0.012;
 
 export const actorGroundingShadowProfiles = {
+    avatar: {
+        baseHalfLength: 0.24,
+        baseHalfWidth: 0.18,
+        baseOpacity: 0.32,
+        cutoffHeight: 2,
+        maxFootprintScale: 1.7,
+    },
+    beachBall: {
+        baseHalfLength: 0.23,
+        baseHalfWidth: 0.23,
+        baseOpacity: 0.28,
+        cutoffHeight: 0.42,
+        maxFootprintScale: 1.3,
+    },
     bee: {
         baseHalfLength: 0.055,
         baseHalfWidth: 0.035,
@@ -86,12 +108,26 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 1.2,
         maxFootprintScale: 1.65,
     },
+    chicken: {
+        baseHalfLength: 0.24,
+        baseHalfWidth: 0.17,
+        baseOpacity: 0.3,
+        cutoffHeight: 0.8,
+        maxFootprintScale: 1.55,
+    },
     dog: {
         baseHalfLength: 0.52,
         baseHalfWidth: 0.31,
         baseOpacity: 0.36,
         cutoffHeight: 1.6,
         maxFootprintScale: 1.7,
+    },
+    piglet: {
+        baseHalfLength: 0.36,
+        baseHalfWidth: 0.24,
+        baseOpacity: 0.34,
+        cutoffHeight: 1.1,
+        maxFootprintScale: 1.6,
     },
 } satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;
 

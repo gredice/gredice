@@ -17,29 +17,6 @@ export const addressDistanceVerificationFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
-export const rainWetOverlayFlag = flag<boolean>({
-    key: 'rainWetOverlay',
-    description: 'Enable rain wetness overlays on exposed garden entities.',
-    decide: () => false,
-    options: booleanFlagOptions,
-});
-
-export const adaptiveHighQualityFlag = flag<boolean>({
-    key: 'adaptiveHighQuality',
-    description:
-        'Adapt the runtime ceiling of manually selected High game quality.',
-    decide: () => true,
-    options: booleanFlagOptions,
-});
-
-export const staticOpaqueSceneCacheFlag = flag<boolean>({
-    key: 'staticOpaqueSceneCache',
-    description:
-        'Cache stable opaque terrain while rendering the game at High quality.',
-    decide: () => true,
-    options: booleanFlagOptions,
-});
-
 export const enableDebugCloseupFlag = flag<boolean>({
     key: 'enableDebugCloseup',
     decide: () => false,
@@ -52,16 +29,17 @@ export const enableDebugHudFlag = flag<boolean>({
     options: booleanFlagOptions,
 });
 
-export const enableSuncokretChatFlag = flag<boolean>({
-    key: 'enableSuncokretChat',
-    description: 'Enable the in-game Suncokret AI chat HUD.',
+export const enableSuncokretDebugFlag = flag<boolean>({
+    key: 'enableSuncokretDebug',
+    description: 'Show Suncokret AI debug metadata in chat conversations.',
     decide: () => false,
     options: booleanFlagOptions,
 });
 
-export const enableSuncokretDebugFlag = flag<boolean>({
-    key: 'enableSuncokretDebug',
-    description: 'Show Suncokret AI debug metadata in chat conversations.',
+export const enableGardenAvatarFlag = flag<boolean>({
+    key: 'enableGardenAvatar',
+    description:
+        'Enable the experimental walkable gardener with POV and third-person cameras.',
     decide: () => false,
     options: booleanFlagOptions,
 });

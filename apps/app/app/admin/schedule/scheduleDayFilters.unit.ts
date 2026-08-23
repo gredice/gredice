@@ -4,6 +4,8 @@ import {
     getDayDeliveryRequests,
     getScheduledFieldsForDay,
     getScheduledOperationsForDay,
+    getScheduledSelectedPlantingsForDay,
+    type SelectedPlantingScheduleFilterSource,
 } from './scheduleDayFilters.ts';
 import { getScheduleOperationHref } from './scheduleOperationLinks.ts';
 import {
@@ -27,6 +29,10 @@ import {
     canUpdatePlantingTaskStatus,
     isSameScheduleDay,
 } from './scheduleShared.ts';
+import {
+    buildAdminSelectedPlantingScheduleItem,
+    type SelectedPlantingPresentationSource,
+} from './selectedPlantingSchedulePresentation.ts';
 import type {
     DeliveryRequest,
     Operation,
@@ -108,12 +114,118 @@ function buildOperation(overrides: Partial<Operation>): Operation {
     };
 }
 
+type TestSelectedPlanting = SelectedPlantingScheduleFilterSource & {
+    id: number;
+    membershipFieldIds: readonly number[];
+};
+
+function buildSelectedPlanting({
+    id,
+    membershipFieldIds,
+}: {
+    id: number;
+    membershipFieldIds: readonly number[];
+}): TestSelectedPlanting {
+    return {
+        configurationSource: 'selected',
+        id,
+        membershipFieldIds,
+        selectedTask: {
+            block: null,
+            completion: null,
+            scheduledDate: '2026-05-14',
+            status: 'planned',
+        },
+    };
+}
+
 test('schedule task identities expose immutable attempt versions', () => {
     const field = buildField({});
 
     assert.equal(activePlantCycleEventId(field), 700);
     assert.equal(activePlantCycleVersionEventId(field), 701);
     assert.equal(buildOperation({}).taskVersionEventId, 800);
+});
+
+test('selected plantings stay one logical task each instead of membership tasks', () => {
+    const multiField = buildSelectedPlanting({
+        id: 41,
+        membershipFieldIds: [1, 2, 4, 5],
+    });
+    const coPlant = buildSelectedPlanting({
+        id: 42,
+        membershipFieldIds: [1],
+    });
+
+    const result = getScheduledSelectedPlantingsForDay(
+        false,
+        todayKey,
+        [
+            {
+                id: 10,
+                physicalId: 'A1',
+                plantings: [multiField, coPlant],
+            },
+        ],
+        scheduleTimeZone,
+    );
+
+    assert.deepEqual(
+        result.map(({ planting }) => planting.id),
+        [41, 42],
+    );
+    assert.deepEqual(result[0]?.planting.membershipFieldIds, [1, 2, 4, 5]);
+});
+
+test('selected planting presentation preserves exact identity and full footprint', () => {
+    const selectedPlanting = {
+        configurationSource: 'selected',
+        id: 71,
+        lifecycleStatus: 'planned',
+        memberships: [
+            { isAnchor: true, raisedBedFieldId: 101 },
+            { isAnchor: false, raisedBedFieldId: 102 },
+            { isAnchor: false, raisedBedFieldId: 104 },
+            { isAnchor: false, raisedBedFieldId: 105 },
+        ],
+        plantCount: 1,
+        plantSortId: 501,
+        plantsPerAxis: 1,
+        selectedSeedingDistanceCm: 60,
+        selectedTask: {
+            assignedUserIds: ['farmer-1'],
+            block: null,
+            completion: null,
+            identity: {
+                expectedLifecycleVersionEventId: 901,
+                expectedPlantSortId: 501,
+                kind: 'selected',
+                plantingId: 71,
+            },
+            scheduledDate: '2026-05-14',
+            sowingLocation: 'direct',
+            status: 'planned',
+        },
+        spanColumns: 2,
+        spanRows: 2,
+    } satisfies SelectedPlantingPresentationSource;
+
+    const item = buildAdminSelectedPlantingScheduleItem({
+        physicalPositionNumbers: [5, 1, 4, 2],
+        planting: selectedPlanting,
+        plantName: 'Tikvica',
+        raisedBedId: 10,
+    });
+
+    assert.ok(item);
+    assert.deepEqual(item.identity, selectedPlanting.selectedTask.identity);
+    assert.deepEqual(item.physicalPositionNumbers, [1, 2, 4, 5]);
+    assert.equal(item.anchorRaisedBedFieldId, 101);
+    assert.equal(item.plantCount, 1);
+    assert.equal(
+        item.label,
+        'Sijanje: Tikvica · 2 × 2 polja · gustoća 1 × 1 · ukupno 1 biljka · razmak 60 cm',
+    );
 });
 
 test('pending verification sowing remains visible today until verified', () => {

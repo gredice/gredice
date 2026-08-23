@@ -710,14 +710,14 @@ contract, R8 pipeline, kernel bound, and pass alignment.
 
 ### Global generated-foliage detail budget
 
-Issue `#4322` reserves exact generated L-system geometry for the raised bed
-that the player explicitly opens in close-up. Normal High-quality garden view
-uses deterministic bed-level mid/far clusters instead of independently
-promoting every visible field to exact detail. The selected bed is pinned,
-admitted atomically, and may overflow the global 179-instance budget rather
-than rendering only part of a bed. Interaction priority, projected
-benefit-per-instance ranking, an 8% incumbent hysteresis bias, and stable
-raised-bed IDs keep future competing detail requests deterministic.
+Issue `#4322` introduced a global exact-plant budget for High quality. After the
+developmental plant renderer replaced L-systems, normal High-quality garden
+view may admit nearby raised beds to exact detail when their plants occupy at
+least 8% of the viewport. Admission remains atomic and capped at 179 plant
+instances, while the explicitly selected close-up bed stays pinned and may
+overflow the budget rather than rendering only part of a bed. Interaction
+priority, projected benefit-per-instance ranking, an 8% incumbent hysteresis
+bias, and stable raised-bed IDs keep competing detail requests deterministic.
 
 Mid clusters retain per-plant height, canopy width, dominant foliage and
 accent colors, Lambert scene lighting, and deterministic wind sway. Two
@@ -727,11 +727,13 @@ instance uploads. Front-facing foliage cards submit one transparent pass
 instead of Three's default two-pass double-sided path. Far clusters are
 unchanged. Non-High profiles retain their shared plant-type/LOD background
 batches and original normal-view exact policy. A profiler-only `legacy` query
-keeps that old High policy available for a same-commit comparison; production
-High always reserves exact work for selected close-up.
+bypasses the High detail budget for a same-commit comparison; production High
+admits at most one typical full raised bed in normal view and always preserves
+selected close-up detail.
 
-The three-repeat DPR-2 comparison passed every structural gate on Chromium 149
-using ANGLE/Metal on an Apple M4 Pro:
+The pre-rollout three-repeat DPR-2 comparison that established the budget
+passed every structural gate on Chromium 149 using ANGLE/Metal on an Apple M4
+Pro:
 
 | Normal-view median | Legacy exact | Budgeted clusters | Change |
 | --- | ---: | ---: | ---: |
@@ -743,12 +745,27 @@ using ANGLE/Metal on an Apple M4 Pro:
 | p95 frame | 26.6 ms | 26.2 ms | -1.5% |
 | GPU timer p95 | 19.59 ms | 20.16 ms | neutral/noisy |
 
-All three filled beds and all 537 plants remained visible in both variants.
-The budgeted runs used six bed/LOD cluster batches, reported zero exact or
-pending instances after camera zoom, and submitted 3,354 cluster primitive
-triangles. The hardware GPU p95 ranges overlapped (`19.01-20.61 ms` legacy and
-`19.66-20.35 ms` budgeted), so the measured claim is the large geometry and
-heap reduction rather than a GPU-time win on this machine.
+The 2026-08-05 rollout calibration repeated the same comparison after widening
+High detail to the 8% viewport threshold. All six runs passed on Chromium 149
+using ANGLE/Metal on an Apple M3 Pro:
+
+| Rollout median | Unbudgeted exact | 179-instance budget | Change |
+| --- | ---: | ---: | ---: |
+| Exact generated plants | 537 | 179 | -66.7% |
+| Clustered generated plants | 0 | 358 | remaining plants retained |
+| Draws/render, full scene | 88.1 | 92.0 | +4.4% |
+| Triangles/render, full scene | 250,298 | 89,980 | -64.1% |
+| Sampled JS heap | 77.6 MB | 64.8 MB | -16.5% |
+| p95 frame | 9.4 ms | 8.9 ms | -5.3% |
+| GPU timer p95 | 6.47 ms | 5.48 ms | -15.3% |
+
+All three filled beds and all 537 plants remained visible in both variants. In
+the pre-rollout comparison, the budgeted runs used six bed/LOD cluster batches,
+reported zero exact or pending instances after camera zoom, and submitted 3,354
+cluster primitive triangles. The hardware GPU p95 ranges overlapped
+(`19.01-20.61 ms` legacy and `19.66-20.35 ms` budgeted), so the measured claim
+is the large geometry and heap reduction rather than a GPU-time win on this
+machine.
 
 The selected-bed validation separately opened High-target bed `2`. It retained
 all 179 exact plants across 18 fields, reached fully detailed in `256 ms`,
@@ -851,8 +868,62 @@ Both viewport suites passed every L-system-specific acceptance gate:
 | #4282 exact instance-buffer ownership | Thirteen active meshes held exactly `10,176/10,176` live/capacity instances and `803,708 bytes`, with zero empty meshes and zero orphaned resources. |
 | #4283 shader and shadow work | Shader variants were ready before the first detailed swap in every phase, with zero post-swap compilations. Warm prewarm was deduplicated to `0.2 ms`. Detailed plants use a single conservative raised-bed shadow proxy instead of submitting every plant part as a shadow caster. |
 
-The top-level headless budget remains red: the corrected software-WebGL profile
-reported steady median p95 values of `221.1-224.2 ms` desktop and
+### 2026-08-17 close-up closure audit
+
+The close-up matrix was repeated from production commit
+`1e87ebf6c4a72c1ec168b618e3979f542cf31126` after the acceptance report exposed
+a remaining race between close-up intent, packed render-data readiness, and
+idle-scheduled shader prewarming. Focused near detail now stays on its
+billboard and raised-bed shadow proxy until the renderer/quality-specific
+prewarm reaches a terminal state. Prewarming begins with close-up intent and
+covers both the initial and React-updated custom-material program keys,
+including instanced and non-instanced mid billboards. Failure, timeout, or
+context-loss recovery still fails visibly safe by allowing detail rather than
+leaving the selected bed permanently on its fallback.
+
+Command:
+
+```bash
+GITHUB_SHA=1e87ebf6c4a72c1ec168b618e3979f542cf31126 \
+GAME_PROFILE_SCENARIO_SET=plant-closeup \
+GAME_PROFILE_CLOSEUP_REPEAT=5 \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/issue-4277-4283-final-5x \
+pnpm --dir apps/garden run profile:game:start
+```
+
+The managed production server and headless Chrome 149 used ANGLE Metal on an
+Apple M4 Pro. The raw ignored report is at
+`apps/garden/test-results/game-profile/issue-4277-4283-final-5x/latest.md`.
+Its overall budget and both optimization acceptance rows passed:
+
+| Evidence | Desktop medium | Constrained mobile |
+| --- | ---: | ---: |
+| Cold/warm phases ready | `10/10` | `10/10` |
+| Selected fields total/near/detailed | `18/18/18` in `10/10` | `18/18/18` in `10/10` |
+| Group rejection / projection avoided | `79.2% / 81.2%` | `90.2% / 92.2%` |
+| First exact / full detail, cold | `123.1 / 231.0 ms` | `96.2 / 134.1 ms` |
+| First exact / full detail, warm | `35.3 / 91.6 ms` | `33.9 / 61.9 ms` |
+| Shader-ready with no swap compilation | `10/10` | `10/10` |
+| Cold / warm prewarm | `73.2 / 8.4 ms` | `61.9 / 7.6 ms` |
+| Post-swap programs | `0` in every phase | `0` in every phase |
+| Worker/fallback clean | `10/10` | `10/10` |
+
+All 40 requested normal, pending-near, cold-detailed, and warm-detailed
+screenshots were captured. The pending view retains billboard plants while the
+detailed view shows the same selected bed and layout at full geometry. The
+mobile cold-transition aggregate retained one `392.4 ms` maximum frame, while
+its median p95 remained `27.2 ms`, steady maximum remained `27.3 ms`, no long
+tasks were recorded, and the configured regression budget passed.
+
+This closure audit is deterministic desktop/mobile browser evidence for
+`#4277` and `#4283`; it is not physical-device thermal clearance. Ten-minute
+High-quality iPhone and Android thermal soaks, including throttling and battery
+state, remain independently tracked by `#4344`.
+
+In the earlier corrected software-WebGL report, the top-level headless budget
+remained red: it reported steady median p95 values of `221.1-224.2 ms` desktop and
 `187.4-187.5 ms` mobile, plus repeated `ReadPixels` stalls. Draw-call, triangle,
 and heap budgets passed. This does not invalidate the L-system-specific gates,
 but it also is not thermal clearance.

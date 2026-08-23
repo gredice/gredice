@@ -10,6 +10,8 @@ import { StructuredDataScript } from '../../../../../components/shared/seo/Struc
 import { getOperationsData } from '../../../../../lib/plants/getOperationsData';
 import { getPlantSortsData } from '../../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../../lib/plants/getPlantsData';
+import { resolvePlantSowingPrice } from '../../../../../lib/plants/resolvePlantSowingPrice';
+import { createPublicMetadata } from '../../../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../../../src/pageAliases';
@@ -23,11 +25,12 @@ import {
     hasPlantRelationships,
     PlantRelationshipsSection,
 } from '../../PlantRelationshipsSection';
+import { PlantSortSeedsList } from '../../PlantSortSeedsList';
 import { PlantTips } from '../../PlantTips';
 import { SowingAttributeCards } from '../../SowingAttributeCards';
 import { WateringAttributeCards } from '../../WateringAttributeCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/biljke/[alias]/sorte/[sortAlias]'>,
@@ -43,26 +46,30 @@ export async function generateMetadata(
         getPlantSortsData(),
     ]);
     const plant = plants?.find((plant) =>
-        matchesPageAlias(plant.information.name, alias),
+        matchesPageAlias(plant.information.name, alias, plant.slug),
     );
     const sort = sorts?.find(
         (sort) =>
             sort.information.plant?.id === plant?.id &&
-            matchesPageAlias(sort.information.name, sortAlias),
+            matchesPageAlias(sort.information.name, sortAlias, sort.slug),
     );
     if (!plant || !sort) {
-        return {
-            title: 'Sorta nije pronađena',
-            description: 'Sorta nije pronađena',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: sort.information.name,
         description:
             sort.information.shortDescription ??
             sort.information.description ??
             plant.information.description,
-    };
+        path: KnownPages.PlantSort(
+            plant.slug || plant.information.name,
+            sort.slug || sort.information.name,
+        ),
+        category: `Sorta biljke ${plant.information.name}`,
+        imageUrl: sort.image?.cover?.url,
+        imageAlt: `Fotografija sorte ${sort.information.name}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -113,10 +120,6 @@ export default async function PlantSortPage(
         ? decodeRouteParam(sortAliasUnescaped)
         : null;
     if (!alias || !sort) {
-        console.warn(
-            'Invalid parameters for plant sort page:',
-            await props.params,
-        );
         notFound();
     }
 
@@ -126,18 +129,14 @@ export default async function PlantSortPage(
         getOperationsData(),
     ]);
     const basePlantData = plants?.find((p) =>
-        matchesPageAlias(p.information.name, alias),
+        matchesPageAlias(p.information.name, alias, p.slug),
     );
     const sortData = sorts?.find(
         (s) =>
             s.information.plant?.id === basePlantData?.id &&
-            matchesPageAlias(s.information.name, sort),
+            matchesPageAlias(s.information.name, sort, s.slug),
     );
     if (!basePlantData || !sortData) {
-        console.error('Base plant or sort not found:', {
-            basePlantData,
-            sortData,
-        });
         notFound();
     }
 
@@ -154,6 +153,7 @@ export default async function PlantSortPage(
                 return (
                     <SowingAttributeCards
                         attributes={basePlantData.attributes}
+                        plantName={sortData.information.name}
                     />
                 );
             case 'growth':
@@ -172,6 +172,7 @@ export default async function PlantSortPage(
                 return (
                     <HarvestAttributeCards
                         attributes={basePlantData.attributes}
+                        plantName={sortData.information.name}
                     />
                 );
             default:
@@ -179,11 +180,19 @@ export default async function PlantSortPage(
         }
     };
 
-    const sortPath = KnownPages.PlantSort(alias, sortData.information.name);
+    const basePlantPath = KnownPages.Plant(
+        basePlantData.slug || basePlantData.information.name,
+    );
+    const sortPath = KnownPages.PlantSort(
+        basePlantData.slug || basePlantData.information.name,
+        sortData.slug || sortData.information.name,
+    );
     const sortUrl = `https://www.gredice.com${sortPath}`;
-    const sortPrice = sortData.prices?.perPlant;
-    const hasPerPlantPrice = typeof sortPrice === 'number';
-    const hasPricedOffer = hasPerPlantPrice && sortPrice > 0;
+    const sowingPrice = resolvePlantSowingPrice(basePlantData, sortData);
+    const pricedSowingOffer =
+        sowingPrice !== null && sowingPrice.currentPrice > 0
+            ? sowingPrice
+            : null;
     const relationships = hasPlantRelationships(sortData.relationships)
         ? sortData.relationships
         : basePlantData.relationships;
@@ -193,7 +202,7 @@ export default async function PlantSortPage(
         <div className="py-8">
             <StructuredDataScript
                 data={
-                    hasPerPlantPrice
+                    pricedSowingOffer
                         ? {
                               '@context': 'https://schema.org',
                               '@type': 'Product',
@@ -210,29 +219,20 @@ export default async function PlantSortPage(
                                   '@type': 'Brand',
                                   name: 'Gredice',
                               },
-                              isVariantOf: {
-                                  '@type': 'Product',
-                                  name: basePlantData.information.name,
-                                  url: `https://www.gredice.com${KnownPages.Plant(alias)}`,
-                              },
                               url: sortUrl,
-                              ...(hasPricedOffer
-                                  ? {
-                                        offers: {
-                                            '@type': 'Offer',
-                                            price: sortPrice.toFixed(2),
-                                            priceCurrency: 'EUR',
-                                            availability:
-                                                sortData.store
-                                                    ?.availableInStore === false
-                                                    ? 'https://schema.org/OutOfStock'
-                                                    : 'https://schema.org/InStock',
-                                            url: sortUrl,
-                                            hasMerchantReturnPolicy:
-                                                merchantReturnPolicy,
-                                        },
-                                    }
-                                  : {}),
+                              offers: {
+                                  '@type': 'Offer',
+                                  price: pricedSowingOffer.currentPrice.toFixed(
+                                      2,
+                                  ),
+                                  priceCurrency: 'EUR',
+                                  availability:
+                                      sortData.store?.availableInStore === false
+                                          ? 'https://schema.org/OutOfStock'
+                                          : 'https://schema.org/InStock',
+                                  url: sortUrl,
+                                  hasMerchantReturnPolicy: merchantReturnPolicy,
+                              },
                           }
                         : {
                               '@context': 'https://schema.org',
@@ -259,11 +259,11 @@ export default async function PlantSortPage(
                         { label: 'Biljke', href: KnownPages.Plants },
                         {
                             label: basePlantData.information.name,
-                            href: KnownPages.Plant(alias),
+                            href: basePlantPath,
                         },
                         {
                             label: 'Sorte',
-                            href: `${KnownPages.Plant(alias)}#sorte`,
+                            href: `${basePlantPath}#sorte`,
                         },
                         { label: sortData.information.name },
                     ]}
@@ -310,6 +310,7 @@ export default async function PlantSortPage(
                     }}
                     relationships={relationships}
                 />
+                <PlantSortSeedsList plantSortId={sortData.id} />
                 <Row spacing={4}>
                     <Typography level="body1">
                         Jesu li ti informacije o ovoj biljci korisne?

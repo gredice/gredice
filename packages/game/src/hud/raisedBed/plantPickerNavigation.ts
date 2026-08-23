@@ -1,7 +1,11 @@
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import type { GardenStack } from '../../types/Stack';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { raisedBedFieldSectionCount } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
+import {
+    getLegacySowingTargetAvailability,
+    readAdvancedSowingCartItemSelectionSummary,
+} from './advancedSowingSubmission';
 
 type RaisedBedTargetField = {
     active?: boolean | null;
@@ -16,6 +20,7 @@ type RaisedBedTarget = {
     isValid: boolean;
     name?: string | null;
     orientation?: 'vertical' | 'horizontal';
+    plantings?: unknown;
     status: string;
 };
 
@@ -27,6 +32,7 @@ export type RaisedBedFieldTargetGarden = {
 };
 
 export type RaisedBedFieldTargetCartItem = {
+    advancedSowingSelection?: unknown;
     entityTypeName?: string | null;
     gardenId?: number | null;
     positionIndex?: number | null;
@@ -41,6 +47,7 @@ export type EmptyRaisedBedFieldTarget = {
 };
 
 type EmptyRaisedBedFieldTargetOptions = {
+    includeAllFields?: boolean;
     includeNotYetActiveRaisedBeds?: boolean;
 };
 
@@ -93,10 +100,7 @@ export function findEmptyRaisedBedFieldTargets(
             continue;
         }
 
-        const blockCount = Math.max(
-            getRaisedBedBlockIds(garden, raisedBed.id).length,
-            1,
-        );
+        const blockCount = Math.max(raisedBedFieldSectionCount, 1);
         const occupiedPositionIndices = new Set(
             raisedBed.fields
                 .filter(isRaisedBedFieldOccupied)
@@ -104,7 +108,15 @@ export function findEmptyRaisedBedFieldTargets(
         );
         for (const item of cartItems ?? []) {
             if (isRaisedBedCartPlantItem(item, garden.id, raisedBed.id)) {
-                occupiedPositionIndices.add(item.positionIndex);
+                const advancedSowingSelection =
+                    readAdvancedSowingCartItemSelectionSummary(item);
+                if (advancedSowingSelection) {
+                    for (const occupiedPositionIndex of advancedSowingSelection.occupiedPositionIndices) {
+                        occupiedPositionIndices.add(occupiedPositionIndex);
+                    }
+                } else {
+                    occupiedPositionIndices.add(item.positionIndex);
+                }
             }
         }
 
@@ -113,13 +125,21 @@ export function findEmptyRaisedBedFieldTargets(
             positionIndex < blockCount * 9;
             positionIndex += 1
         ) {
-            if (!occupiedPositionIndices.has(positionIndex)) {
+            if (
+                !occupiedPositionIndices.has(positionIndex) &&
+                getLegacySowingTargetAvailability({
+                    plantings: raisedBed.plantings,
+                    positionIndex,
+                }).available
+            ) {
                 targets.push({
                     positionIndex,
                     raisedBedId: raisedBed.id,
                     raisedBedName,
                 });
-                break;
+                if (!options.includeAllFields) {
+                    break;
+                }
             }
         }
     }

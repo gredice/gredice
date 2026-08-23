@@ -209,7 +209,7 @@ export const highTargetMockGardenReferenceDate =
 /**
  * The high-quality target models a production-like, mid-complexity garden:
  * 270 terrain stacks, 24 detail entities, and three separate filled 1x2 raised
- * beds. The six bed blocks bring the placed-block total to exactly 300.
+ * beds. Each raised bed is one block with a 1x2 footprint.
  */
 export const highTargetMockGardenBounds = {
     minX: -9,
@@ -361,7 +361,7 @@ export function getHighTargetMockGardenCardinality() {
     const stackCount = createHighTargetMockGardenStackPositions().length;
     const detailBlockCount = highTargetMockGardenDetailFixtures.length;
     const raisedBedCount = highTargetMockGardenRaisedBedFixtures.length;
-    const raisedBedBlockCount = raisedBedCount * 2;
+    const raisedBedBlockCount = raisedBedCount;
 
     return {
         stackCount,
@@ -386,7 +386,10 @@ function getHighTargetMockGardenPlantInstancesPerRaisedBed() {
 
         return (
             total +
-            calculatePlantsPerField(attributes.seedingDistance).totalPlants
+            calculatePlantsPerField(
+                attributes.seedingDistance,
+                `High-target mock plant sort #${field.plantSortId.toString()}`,
+            ).totalPlants
         );
     }, 0);
 }
@@ -416,7 +419,10 @@ function getHighTargetFieldPlantInstanceCount(positionIndex: number) {
         );
     }
 
-    return calculatePlantsPerField(attributes.seedingDistance).totalPlants;
+    return calculatePlantsPerField(
+        attributes.seedingDistance,
+        `High-target mock plant sort #${field.plantSortId.toString()}`,
+    ).totalPlants;
 }
 
 export function getHighTargetOperationVisualFixtureCounts() {

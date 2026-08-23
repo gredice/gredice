@@ -29,7 +29,7 @@ export type OutletOffer = {
 export async function getOutletOffers() {
     try {
         const response = await clientPublic().api.outlet.offers.$get(
-            undefined,
+            { query: {} },
             {
                 init: { cache: 'no-store' },
             },
@@ -51,5 +51,5 @@ export function outletOfferImage(offer: OutletOffer) {
 }
 
 export function outletGardenUrl(offerId: number) {
-    return `https://vrt.gredice.com/?outlet=${encodeURIComponent(offerId)}`;
+    return `https://vrt.gredice.com/outlet?ponuda=${encodeURIComponent(offerId)}`;
 }

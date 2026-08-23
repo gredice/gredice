@@ -45,16 +45,13 @@ import {
 } from '../useGameState';
 import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useGiftBoxParam } from '../useUrlState';
-import { getBlockDataByName, getStackHeight } from '../utils/getStackHeight';
+import { getBlockDataByName } from '../utils/getStackHeight';
 import {
     triggerPickHaptic,
     triggerPlaceHaptic,
     triggerSelectionHaptic,
 } from '../utils/haptics';
-import {
-    findAttachedRaisedBedBlockId,
-    findRaisedBedByBlockId,
-} from '../utils/raisedBedBlocks';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import {
     type BlockInteractionTarget,
     createBlockInteractionTargetKey,
@@ -64,6 +61,7 @@ import {
     areBlockInteractionsSuppressed,
     suppressBlockInteractions,
 } from './blockInteractionSuppression';
+import { canRotatePlacedBlock } from './blockRotation';
 import {
     getInstancedInteractionMountProfileMetadata,
     getPickupPointerMoveCancelDistance,
@@ -574,38 +572,6 @@ export function InstancedBlockInteractionController({
         visualPreviewTarget,
     ]);
 
-    function getAttachedPlacement(
-        target: BlockInteractionLayerTarget,
-        garden: CurrentGarden | null | undefined,
-    ) {
-        if (target.block.name !== 'Raised_Bed' || !garden) {
-            return null;
-        }
-
-        const attachedRaisedBedBlockId = findAttachedRaisedBedBlockId(
-            garden.stacks,
-            target.block.id,
-        );
-
-        return attachedRaisedBedBlockId
-            ? (garden.stacks
-                  .flatMap((candidateStack) =>
-                      candidateStack.blocks.map(
-                          (candidateBlock, candidateBlockIndex) => ({
-                              candidateStack,
-                              candidateBlock,
-                              candidateBlockIndex,
-                          }),
-                      ),
-                  )
-                  .find(
-                      (candidate) =>
-                          candidate.candidateBlock.id ===
-                          attachedRaisedBedBlockId,
-                  ) ?? null)
-            : null;
-    }
-
     function getMovingSegments(
         target: BlockInteractionLayerTarget,
         activePreviewTarget: ActiveDragPreviewTarget,
@@ -622,35 +588,9 @@ export function InstancedBlockInteractionController({
 
         const raisedBed = findRaisedBedByBlockId(garden, target.block.id);
         const canRecycle = (raisedBed?.status ?? 'new') === 'new';
-        const attachedPlacement = getAttachedPlacement(target, garden);
-        const attachedCurrentStackHeight = attachedPlacement
-            ? getStackHeight(
-                  blocksData,
-                  attachedPlacement.candidateStack,
-                  attachedPlacement.candidateBlock,
-              )
-            : 0;
-        const attachedBlocks = attachedPlacement
-            ? attachedPlacement.candidateStack.blocks.slice(
-                  attachedPlacement.candidateBlockIndex,
-              )
-            : [];
-        const canRecycleSelection =
-            canRecycle &&
-            sourceBlocks.length === 1 &&
-            (!attachedPlacement || attachedBlocks.length === 1);
+        const canRecycleSelection = canRecycle && sourceBlocks.length === 1;
 
         return createPickupSelectionMovingSegments({
-            attachedSegment:
-                attachedPlacement && attachedBlocks.length > 0
-                    ? {
-                          sourceStack: attachedPlacement.candidateStack,
-                          sourceStartIndex:
-                              attachedPlacement.candidateBlockIndex,
-                          blocks: attachedBlocks,
-                          baseHeight: attachedCurrentStackHeight,
-                      }
-                    : null,
             blockData: blocksData,
             canRecyclePrimarySegment: canRecycleSelection,
             primaryTarget: activePreviewTarget,
@@ -1061,7 +1001,6 @@ export function InstancedBlockInteractionController({
     ) {
         const target = session.target;
         const garden = getCurrentGarden();
-        const attachedPlacement = getAttachedPlacement(target, garden);
         const raisedBed = findRaisedBedByBlockId(garden, target.block.id);
         const movingSegments = getMovingSegments(
             target,
@@ -1119,17 +1058,6 @@ export function InstancedBlockInteractionController({
                     position: target.stack.position,
                     blockIndex: target.blockIndex,
                     raisedBedId: raisedBed?.id,
-                    attached: attachedPlacement
-                        ? {
-                              position: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                          }
-                        : undefined,
                     onOptimisticUpdate: activePreviewReset.queue,
                 })
                 .finally(activePreviewReset.resetIfUnqueued);
@@ -1223,17 +1151,6 @@ export function InstancedBlockInteractionController({
                     position: target.stack.position,
                     blockIndex: target.blockIndex,
                     raisedBedId: raisedBed?.id,
-                    attached: attachedPlacement
-                        ? {
-                              position: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                          }
-                        : undefined,
                     onOptimisticUpdate: activePreviewReset.queue,
                 })
                 .finally(activePreviewReset.resetIfUnqueued);
@@ -1594,6 +1511,10 @@ export function InstancedBlockInteractionController({
     }
 
     function doRotate(target: BlockInteractionLayerTarget) {
+        if (!canRotatePlacedBlock(target.block.name)) {
+            return false;
+        }
+
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||
@@ -1603,19 +1524,10 @@ export function InstancedBlockInteractionController({
             return false;
         }
 
-        const garden = getCurrentGarden();
-        const attachedRaisedBedBlockId =
-            target.block.name === 'Raised_Bed' && garden
-                ? findAttachedRaisedBedBlockId(garden.stacks, target.block.id)
-                : null;
-        const blockIds = attachedRaisedBedBlockId
-            ? [target.block.id, attachedRaisedBedBlockId]
-            : [target.block.id];
-
         blockRotate.mutate({
             blockId: target.block.id,
             rotation: target.block.rotation + 1,
-            blockIds,
+            blockIds: [target.block.id],
         });
 
         swipeSound.play();

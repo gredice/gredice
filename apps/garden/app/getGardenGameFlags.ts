@@ -1,36 +1,21 @@
 import type { GameFeatureFlags } from '@gredice/game';
 import {
-    adaptiveHighQualityFlag,
     enableDebugHudFlag,
-    enableSuncokretChatFlag,
+    enableGardenAvatarFlag,
     enableSuncokretDebugFlag,
-    rainWetOverlayFlag,
-    staticOpaqueSceneCacheFlag,
 } from './flags';
 
 export async function getGardenGameFlags(): Promise<GameFeatureFlags> {
-    const [
-        enableAdaptiveHighQualityFlag,
-        enableDebugHud,
-        enableRainWetOverlayFlag,
-        enableStaticOpaqueSceneCacheFlag,
-        enableSuncokretChat,
-        enableSuncokretDebug,
-    ] = await Promise.all([
-        adaptiveHighQualityFlag(),
-        enableDebugHudFlag(),
-        rainWetOverlayFlag(),
-        staticOpaqueSceneCacheFlag(),
-        enableSuncokretChatFlag(),
-        enableSuncokretDebugFlag(),
-    ]);
+    const [enableDebugHud, enableGardenAvatar, enableSuncokretDebug] =
+        await Promise.all([
+            enableDebugHudFlag(),
+            enableGardenAvatarFlag(),
+            enableSuncokretDebugFlag(),
+        ]);
 
     return {
-        enableAdaptiveHighQualityFlag,
         enableDebugHudFlag: enableDebugHud,
-        enableRainWetOverlayFlag,
-        enableStaticOpaqueSceneCacheFlag,
-        enableSuncokretChatFlag: enableSuncokretChat,
+        enableGardenAvatarFlag: enableGardenAvatar,
         enableSuncokretDebugFlag: enableSuncokretDebug,
     };
 }

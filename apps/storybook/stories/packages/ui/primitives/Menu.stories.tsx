@@ -6,6 +6,8 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
+    DropdownMenuRadioGroup,
+    DropdownMenuRadioItem,
     DropdownMenuSeparator,
     DropdownMenuShortcut,
     DropdownMenuSub,
@@ -14,6 +16,7 @@ import {
     DropdownMenuTrigger,
 } from '@gredice/ui/Menu';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
 
 const meta = {
     title: 'packages/ui/Overlays/Menu',
@@ -44,6 +47,7 @@ const meta = {
                     Spremi
                     <DropdownMenuShortcut>S</DropdownMenuShortcut>
                 </DropdownMenuItem>
+                <DropdownMenuItem disabled>Nije dostupno</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuSub>
                     <DropdownMenuSubTrigger>Vise opcija</DropdownMenuSubTrigger>
@@ -103,6 +107,55 @@ export const ScrollableContent: Story = {
                             Stranica {pageNumber}
                         </DropdownMenuItem>
                     ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
+    ),
+};
+
+function ControlledMenu() {
+    const [open, setOpen] = useState(false);
+    const [density, setDensity] = useState('comfortable');
+
+    return (
+        <DropdownMenu onOpenChange={setOpen} open={open}>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outlined">
+                    {open ? 'Zatvori izbornik' : 'Otvori izbornik'}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Gustoca prikaza</DropdownMenuLabel>
+                <DropdownMenuRadioGroup
+                    onValueChange={setDensity}
+                    value={density}
+                >
+                    <DropdownMenuRadioItem value="comfortable">
+                        Ugodno
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="compact">
+                        Kompaktno
+                    </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+export const Controlled: Story = {
+    render: () => <ControlledMenu />,
+};
+
+export const CollisionEdge: Story = {
+    render: (args) => (
+        <div className="flex h-64 w-full items-start justify-end">
+            <DropdownMenu {...args} defaultOpen>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outlined">Rub prikaza</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" className="w-52">
+                    <DropdownMenuItem>Prva akcija</DropdownMenuItem>
+                    <DropdownMenuItem>Druga akcija</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>

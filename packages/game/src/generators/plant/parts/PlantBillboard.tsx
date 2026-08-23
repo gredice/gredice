@@ -1,6 +1,6 @@
 'use client';
 
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
     useCallback,
@@ -20,6 +20,7 @@ import {
 } from '../lib/plantInstanceBuffers';
 import type { PlantLodLevel } from '../lib/plantLod';
 import {
+    getMidBillboardCanopyCards,
     getMidBillboardSwayPhase,
     midBillboardCardGeometry,
     midBillboardFragmentShader,
@@ -114,6 +115,7 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
     const groupRef = useRef<THREE.Group>(null);
     const camera = useThree((state) => state.camera);
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
 
     const updateCameraFacing = useCallback(() => {
         groupRef.current?.quaternion.copy(camera.quaternion);
@@ -128,6 +130,12 @@ function CameraFacingBillboard({ children }: PropsWithChildren) {
 
         return gameCamera.subscribe(() => updateCameraFacing());
     }, [gameCamera, updateCameraFacing]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateCameraFacing();
+        }
+    }, -90);
 
     return <group ref={groupRef}>{children}</group>;
 }
@@ -377,50 +385,28 @@ export function PlantBillboardBatch({
             }),
         );
     }, [billboards, level]);
-    const midCanopyPrimaryItems = useMemo(() => {
+    const midCanopyItems = useMemo(() => {
         if (level !== 'mid') {
             return [];
         }
 
         return billboards
             .filter((billboard) => billboard.summary.hasFoliage)
-            .map(({ position, scale, summary }) =>
-                createBillboardItem({
-                    color: summary.foliageColor,
-                    height: 1,
-                    position: [
-                        position[0] - summary.canopyWidth * 0.08 * scale,
-                        position[1] + summary.canopyCenterY * scale,
-                        position[2],
-                    ],
-                    opacity: 0.88,
-                    radius: Math.max(summary.canopyWidth * 0.28, 0.16) * scale,
-                    swayPosition: position,
-                }),
-            );
-    }, [billboards, level]);
-    const midCanopySecondaryItems = useMemo(() => {
-        if (level !== 'mid') {
-            return [];
-        }
-
-        return billboards
-            .filter((billboard) => billboard.summary.hasFoliage)
-            .map(({ position, scale, summary }) =>
-                createBillboardItem({
-                    color: summary.foliageColor,
-                    height: 1,
-                    position: [
-                        position[0] + summary.canopyWidth * 0.1 * scale,
-                        position[1] +
-                            (summary.canopyCenterY + summary.height * 0.06) *
-                                scale,
-                        position[2] + 0.01 * scale,
-                    ],
-                    opacity: 0.78,
-                    radius: Math.max(summary.canopyWidth * 0.24, 0.14) * scale,
-                    swayPosition: position,
-                }),
+            .flatMap(({ position, scale, summary }) =>
+                getMidBillboardCanopyCards(summary).map((card) =>
+                    createBillboardItem({
+                        color: summary.foliageColor,
+                        height: card.halfHeight * scale,
+                        position: [
+                            position[0] + card.offsetX * scale,
+                            position[1] + card.centerY * scale,
+                            position[2] + card.offsetZ * scale,
+                        ],
+                        opacity: card.opacity,
+                        swayPosition: position,
+                        width: card.halfWidth * scale,
+                    }),
+                ),
             );
     }, [billboards, level]);
     const midAccentItems = useMemo(() => {
@@ -452,12 +438,8 @@ export function PlantBillboardBatch({
             );
     }, [billboards, level]);
     const midFoliageItems = useMemo(
-        () => [
-            ...midCanopyPrimaryItems,
-            ...midCanopySecondaryItems,
-            ...midAccentItems,
-        ],
-        [midAccentItems, midCanopyPrimaryItems, midCanopySecondaryItems],
+        () => [...midCanopyItems, ...midAccentItems],
+        [midAccentItems, midCanopyItems],
     );
 
     if (billboards.length === 0) {
@@ -509,6 +491,18 @@ function MidPlantBillboard({
         enabled: animate,
         speed: 1.1,
     });
+    const canopyCards = useMemo(
+        () =>
+            getMidBillboardCanopyCards(summary).map((card) => ({
+                ...card,
+                uniforms: {
+                    ...swayUniforms,
+                    uOpacity: { value: card.opacity },
+                    uTint: { value: new THREE.Color(summary.foliageColor) },
+                },
+            })),
+        [summary, swayUniforms],
+    );
     const uniforms = useMemo(
         () => ({
             accent: {
@@ -518,18 +512,8 @@ function MidPlantBillboard({
                     value: new THREE.Color(summary.accentColor ?? '#ffffff'),
                 },
             },
-            primary: {
-                ...swayUniforms,
-                uOpacity: { value: 0.88 },
-                uTint: { value: new THREE.Color(summary.foliageColor) },
-            },
-            secondary: {
-                ...swayUniforms,
-                uOpacity: { value: 0.78 },
-                uTint: { value: new THREE.Color(summary.foliageColor) },
-            },
         }),
-        [summary.accentColor, summary.foliageColor, swayUniforms],
+        [summary.accentColor, swayUniforms],
     );
 
     return (
@@ -550,52 +534,29 @@ function MidPlantBillboard({
             </mesh>
             {summary.hasFoliage ? (
                 <group>
-                    <mesh
-                        position={[
-                            -summary.canopyWidth * 0.08,
-                            summary.canopyCenterY,
-                            0,
-                        ]}
-                    >
-                        <planeGeometry
-                            args={[
-                                Math.max(summary.canopyWidth * 0.28, 0.16) * 2,
-                                Math.max(summary.canopyWidth * 0.28, 0.16) * 2,
+                    {canopyCards.map((card) => (
+                        <mesh
+                            key={card.id}
+                            position={[
+                                card.offsetX,
+                                card.centerY,
+                                card.offsetZ,
                             ]}
-                        />
-                        <CSM
-                            baseMaterial={THREE.MeshLambertMaterial}
-                            depthWrite={false}
-                            fragmentShader={midBillboardFragmentShader}
-                            side={THREE.FrontSide}
-                            transparent
-                            uniforms={uniforms.primary}
-                            vertexShader={midBillboardVertexShader}
-                        />
-                    </mesh>
-                    <mesh
-                        position={[
-                            summary.canopyWidth * 0.1,
-                            summary.canopyCenterY + summary.height * 0.06,
-                            0.01,
-                        ]}
-                    >
-                        <planeGeometry
-                            args={[
-                                Math.max(summary.canopyWidth * 0.24, 0.14) * 2,
-                                Math.max(summary.canopyWidth * 0.24, 0.14) * 2,
-                            ]}
-                        />
-                        <CSM
-                            baseMaterial={THREE.MeshLambertMaterial}
-                            depthWrite={false}
-                            fragmentShader={midBillboardFragmentShader}
-                            side={THREE.FrontSide}
-                            transparent
-                            uniforms={uniforms.secondary}
-                            vertexShader={midBillboardVertexShader}
-                        />
-                    </mesh>
+                        >
+                            <planeGeometry
+                                args={[card.halfWidth * 2, card.halfHeight * 2]}
+                            />
+                            <CSM
+                                baseMaterial={THREE.MeshLambertMaterial}
+                                depthWrite={false}
+                                fragmentShader={midBillboardFragmentShader}
+                                side={THREE.FrontSide}
+                                transparent
+                                uniforms={card.uniforms}
+                                vertexShader={midBillboardVertexShader}
+                            />
+                        </mesh>
+                    ))}
                 </group>
             ) : null}
             {summary.accentColor ? (

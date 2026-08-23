@@ -12,6 +12,7 @@ export type HudPlacementGridPosition = {
 
 export type HudPlacementPreview = {
     baseBlocks: Block[];
+    blockData: BlockData | undefined;
     error: string | null;
     hoverHeight: number;
     isBlocked: boolean;
@@ -83,6 +84,9 @@ export function resolveHudPlacementPreview({
         return null;
     }
 
+    const blockEntity = blockData.find(
+        (block) => block.information.name === blockName,
+    );
     const placement = resolveBlockPlacement(garden, blockData, blockName, {
         requestedPosition: { x: position.x, y: position.z },
     });
@@ -92,9 +96,9 @@ export function resolveHudPlacementPreview({
         position,
         stacks: garden.stacks,
     });
-
     return {
         baseBlocks: support.baseBlocks,
+        blockData: blockEntity,
         error: placement?.valid === false ? placement.error : null,
         hoverHeight: support.hoverHeight,
         isBlocked: placement?.valid !== true,

@@ -2,24 +2,31 @@ import { clientPublic } from '@gredice/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
 import { Container } from '@gredice/ui/Container';
 import { MapPin, Truck } from '@gredice/ui/icons';
-import { LocalDateTime, TimeRange } from '@gredice/ui/LocalDateTime';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { StyledHtml } from '@gredice/ui/StyledHtml';
 import { Typography } from '@gredice/ui/Typography';
 import { cx } from '@gredice/ui/utils';
-import type { Metadata } from 'next';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
 import { WhatsAppCard } from '../../../components/social/WhatsAppCard';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 import { ClosingSoonIndicator } from './ClosingSoonIndicator';
+import {
+    DELIVERY_TIME_ZONE,
+    formatDeliveryDate,
+    formatDeliveryTime,
+} from './deliverySlotFormatting';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Termini dostave',
     description:
         'Vidi raspoložive i zatvorene termine za dostavu ili osobno preuzimanje u sljedećih mjesec dana.',
-};
+    path: KnownPages.DeliverySlots,
+    eyebrow: 'Raspored dostave',
+});
 
 // Types from API response - these match the type-safe client schema
 interface TimeSlot {
@@ -41,7 +48,6 @@ interface TimeSlot {
 }
 
 const SLOT_RANGE_DAYS = 30;
-const DELIVERY_TIME_ZONE = 'Europe/Zagreb';
 const deliveryDateKeyFormatter = new Intl.DateTimeFormat('en-US', {
     day: '2-digit',
     month: '2-digit',
@@ -210,21 +216,17 @@ function WeekRange({ startAt, endAt }: Pick<WeekSlots, 'startAt' | 'endAt'>) {
 
     return (
         <>
-            <LocalDateTime time={false} format={startFormat}>
-                {startAt}
-            </LocalDateTime>{' '}
+            <time dateTime={startAt.toISOString()}>
+                {formatDeliveryDate(startAt, startFormat)}
+            </time>{' '}
             –{' '}
-            <LocalDateTime
-                time={false}
-                format={{
+            <time dateTime={endAt.toISOString()}>
+                {formatDeliveryDate(endAt, {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
-                    timeZone: DELIVERY_TIME_ZONE,
-                }}
-            >
-                {endAt}
-            </LocalDateTime>
+                })}
+            </time>
         </>
     );
 }
@@ -311,29 +313,23 @@ async function SlotsDisplay() {
                                         className="grid grid-cols-[3.25rem_minmax(0,1fr)] gap-3 border-b p-3 last:border-b-0 md:gap-4"
                                     >
                                         <div className="flex min-h-10 flex-col items-start justify-center text-left">
-                                            <LocalDateTime
+                                            <time
                                                 className="text-sm font-bold uppercase tracking-wide text-foreground"
-                                                time={false}
-                                                format={{
-                                                    weekday: 'short',
-                                                    timeZone:
-                                                        DELIVERY_TIME_ZONE,
-                                                }}
+                                                dateTime={day.date.toISOString()}
                                             >
-                                                {day.date}
-                                            </LocalDateTime>
-                                            <LocalDateTime
+                                                {formatDeliveryDate(day.date, {
+                                                    weekday: 'short',
+                                                })}
+                                            </time>
+                                            <time
                                                 className="whitespace-nowrap text-[0.65rem] font-normal text-muted-foreground"
-                                                time={false}
-                                                format={{
+                                                dateTime={day.date.toISOString()}
+                                            >
+                                                {formatDeliveryDate(day.date, {
                                                     day: 'numeric',
                                                     month: 'short',
-                                                    timeZone:
-                                                        DELIVERY_TIME_ZONE,
-                                                }}
-                                            >
-                                                {day.date}
-                                            </LocalDateTime>
+                                                })}
+                                            </time>
                                             {isToday && (
                                                 <span className="mt-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-[0.55rem] font-semibold uppercase leading-none tracking-wide text-primary">
                                                     Danas
@@ -375,20 +371,34 @@ async function SlotsDisplay() {
                                                                         'text-tertiary-foreground',
                                                                 )}
                                                             />
-                                                            <TimeRange
+                                                            <span
                                                                 className={cx(
                                                                     'font-medium tabular-nums',
                                                                     isClosed &&
                                                                         'line-through',
                                                                 )}
-                                                                startAt={
-                                                                    slot.startAt
-                                                                }
-                                                                endAt={
-                                                                    slot.endAt
-                                                                }
-                                                                timeOnly
-                                                            />
+                                                                title={`${slot.startAt} – ${slot.endAt}`}
+                                                            >
+                                                                <time
+                                                                    dateTime={
+                                                                        slot.startAt
+                                                                    }
+                                                                >
+                                                                    {formatDeliveryTime(
+                                                                        slot.startAt,
+                                                                    )}
+                                                                </time>{' '}
+                                                                –{' '}
+                                                                <time
+                                                                    dateTime={
+                                                                        slot.endAt
+                                                                    }
+                                                                >
+                                                                    {formatDeliveryTime(
+                                                                        slot.endAt,
+                                                                    )}
+                                                                </time>
+                                                            </span>
                                                             {slot.type ===
                                                                 'pickup' &&
                                                                 slot.location && (

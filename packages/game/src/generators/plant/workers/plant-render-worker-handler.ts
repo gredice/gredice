@@ -90,6 +90,7 @@ function clonePackedPlantRenderData(
             swayPhases: template.thorns.swayPhases.slice(),
         },
         vegetables: template.vegetables.map((vegetable) => ({
+            colors: vegetable.colors.slice(),
             count: vegetable.count,
             growth: vegetable.growth.slice(),
             matrices: vegetable.matrices.slice(),

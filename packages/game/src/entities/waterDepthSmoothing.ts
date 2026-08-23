@@ -281,7 +281,9 @@ function smoothSamplesForInstance({
     ];
 }
 
-export function smoothWaterTopDepthSamples(instances: WaterTopChunkInstance[]) {
+export function smoothWaterTopDepthSamples<
+    TInstance extends WaterTopChunkInstance,
+>(instances: TInstance[]) {
     const instancesByPosition = groupInstancesByPosition(instances);
 
     return instances.map((instance) => ({

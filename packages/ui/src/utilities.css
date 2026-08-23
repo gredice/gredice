@@ -1,5 +1,21 @@
 @source "../node_modules/streamdown/dist/*.js";
 
+body[data-gredice-ui-portal-root] {
+    position: relative;
+}
+
+.gredice-ui-application-root {
+    isolation: isolate;
+    min-height: inherit;
+    min-width: 0;
+    width: 100%;
+}
+
+body.flex > .gredice-ui-application-root {
+    display: flex;
+    flex: 1 1 auto;
+}
+
 /* Scroll-aware masks adapted from shadcn/ui's scroll-fade utility. */
 :is(.scrollbar-none, .no-scrollbar) {
     -ms-overflow-style: none;

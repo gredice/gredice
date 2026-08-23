@@ -210,6 +210,29 @@ function emptyScenario(): RaisedBedScenario {
     return { fields: [] };
 }
 
+function emptyFieldOperationsScenario(): RaisedBedScenario {
+    return {
+        fields: [],
+        operations: [
+            buildOperation({
+                appliesToAllTargets: true,
+                id: 191,
+                name: 'mock-empty-field-preparation',
+                label: 'Priprema praznog polja',
+                stageName: 'soilPreparation',
+                stageLabel: 'Priprema tla',
+            }),
+            buildOperation({
+                id: 192,
+                name: 'mock-plant-specific-care',
+                label: 'Njega određene biljke',
+                stageName: 'maintenance',
+                stageLabel: 'Održavanje',
+            }),
+        ],
+    };
+}
+
 function abandonedScenario(): RaisedBedScenario {
     return {
         fields: [],
@@ -255,6 +278,54 @@ function plantedGrowingScenario(): RaisedBedScenario {
                 plantSowDate: daysAgoIso(40),
                 plantGrowthDate: daysAgoIso(30),
             },
+        ],
+    };
+}
+
+function legacyDualSowingScenario(
+    includeSelectedPlanting = false,
+): RaisedBedScenario {
+    return {
+        ...plantedGrowingScenario(),
+        plantings: [
+            {
+                configurationSource: 'legacy',
+                id: 201,
+                isActive: true,
+                isDeleted: false,
+                layoutKey: null,
+                memberships: [{ positionIndex: 0 }],
+                plantSortId: testSorts.tomato.id,
+            },
+            ...(includeSelectedPlanting
+                ? [
+                      {
+                          anchorPositionIndex: 0,
+                          configurationSource: 'selected',
+                          id: 202,
+                          isActive: true,
+                          isDeleted: false,
+                          layoutKey: 'v1:fields:1x1:plants:2x2',
+                          layoutVersion: 1,
+                          lifecycleStartedAt: '2026-05-10T00:00:00.000Z',
+                          memberships: [
+                              {
+                                  isAnchor: true,
+                                  positionIndex: 0,
+                                  relativeColumn: 0,
+                                  relativeRow: 0,
+                              },
+                          ],
+                          plantCount: 4,
+                          plantSortId: testSorts.basil.id,
+                          plantsPerAxis: 2,
+                          selectedSeedingDistanceCm: 15,
+                          selectedTask: null,
+                          spanColumns: 1,
+                          spanRows: 1,
+                      },
+                  ]
+                : []),
         ],
     };
 }
@@ -785,19 +856,85 @@ function daysFromNowIso(days: number): string {
 test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     test.use({ viewport: DESKTOP_VIEWPORT });
 
-    test('empty field shows sowing seed icon and no indicator stack', async ({
+    test('quick sowing heading keeps the card text color in dark mode', async ({
+        mount,
+        page,
+    }) => {
+        await page.evaluate(() =>
+            document.documentElement.classList.add('dark'),
+        );
+        await mount(
+            <RaisedBedFieldSuggestionsStory scenario={emptyScenario()} />,
+        );
+
+        const recommendations = page.locator(
+            '[data-quick-sowing-recommendations]',
+        );
+        const heading = page.getByText('Brzo sijanje', { exact: true });
+
+        await expect(heading).toBeVisible();
+        expect(
+            await heading.evaluate(
+                (element) => getComputedStyle(element).color,
+            ),
+        ).toBe(
+            await recommendations.evaluate(
+                (element) => getComputedStyle(element).color,
+            ),
+        );
+    });
+
+    test('opens the plant details modal on the Dnevnik tab from a field deep link', async ({
         mount,
         page,
     }) => {
         await mount(
             <RaisedBedFieldHudStory
-                scenario={emptyScenario()}
+                scenario={plantedGrowingScenario()}
+                positionIndex={0}
+                searchParams="polje=1&polje-kartica=diary"
+            />,
+        );
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole('tab', { name: /Dnevnik/ }),
+        ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    test('empty field keeps sowing as the primary action and exposes field operations', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={emptyFieldOperationsScenario()}
                 positionIndex={0}
             />,
         );
 
-        await expect(page.getByRole('button').first()).toBeVisible();
-        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: 'Posij biljku na polju 1' }),
+        ).toBeVisible();
+        const operationsTrigger = page.getByRole('button', {
+            name: 'Otvori radnje za polje 1',
+        });
+        await expect(operationsTrigger).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(1);
+
+        await operationsTrigger.click();
+
+        const dialog = page.getByRole('dialog', {
+            name: 'Radnje za polje 1',
+        });
+        await expect(dialog).toBeVisible();
+        await expect(
+            dialog.getByRole('button', {
+                name: 'Priprema praznog polja 0.10€',
+            }),
+        ).toBeVisible();
+        await expect(dialog.getByText('Njega određene biljke')).toHaveCount(0);
     });
 
     test('cart item shows cart indicator and scheduled date badge', async ({
@@ -820,6 +957,24 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(stack).toHaveAttribute('data-touch-expanded', 'false');
         const fieldButton = page.getByRole('button').first();
         await expect(fieldButton).toContainText('20');
+    });
+
+    test('full raised-bed HUD preserves controls for a pending cart planting', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+
+        await expect(
+            page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
+        ).toBeVisible();
+        await expect(page.locator('[data-field-icon-stack]')).toHaveCount(18);
+        await expect(
+            page.getByRole('button', { name: /Otvori radnje za polje/ }),
+        ).toHaveCount(18);
+        await expect(
+            page.locator('[data-scheduled-sowing-badge]'),
+        ).toContainText('20');
     });
 
     test('checked out scheduled field shows scheduled date badge until sown', async ({
@@ -892,7 +1047,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         );
 
         const layerToggles = page.locator('[data-raised-bed-layer-control]');
-        await expect(layerToggles).toHaveCount(2);
+        await expect(layerToggles).toHaveCount(3);
 
         for (const isDarkMode of [false, true]) {
             await page.evaluate((dark) => {
@@ -903,6 +1058,111 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 await expect(layerToggle).toHaveCSS('border-top-width', '0px');
             }
         }
+    });
+
+    test('planting mode turns an active legacy field into an add-plant button', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario()}
+            />,
+        );
+
+        const fieldPlantingTrigger = page.locator(
+            '[data-raised-bed-plant-picker-trigger][data-position-index="0"]',
+        );
+        await expect(fieldPlantingTrigger).toHaveCount(0);
+
+        await page
+            .getByRole('button', { name: 'Dodaj biljku u polje' })
+            .click();
+
+        await expect(fieldPlantingTrigger).toBeVisible();
+        await fieldPlantingTrigger.click();
+        await expect(
+            page.getByRole('dialog', { name: 'Sijanje biljke' }),
+        ).toBeVisible();
+    });
+
+    test('planting mode does not expose a third planting button', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario(true)}
+            />,
+        );
+
+        await page
+            .getByRole('button', { name: 'Dodaj biljku u polje' })
+            .click();
+
+        await expect(
+            page.locator(
+                '[data-raised-bed-plant-picker-trigger][data-position-index="0"]',
+            ),
+        ).toHaveCount(0);
+    });
+
+    test('co-planted field splits both plants and switches their detail tabs', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={legacyDualSowingScenario(true)}
+            />,
+        );
+
+        const splitField = page.locator(
+            '[data-advanced-sowing-field-position="0"]',
+        );
+        await expect(splitField).toBeVisible();
+        await expect(
+            splitField.locator('[data-advanced-sowing-field-segment]'),
+        ).toHaveCount(2);
+        await expect(
+            splitField.getByRole('img', { name: 'Cherry rajčica' }),
+        ).toBeVisible();
+        await expect(
+            splitField.getByRole('img', { name: 'Klasični bosiljak' }),
+        ).toBeVisible();
+        await expect(
+            splitField.getByText('2 × 2', { exact: true }),
+        ).toHaveCount(0);
+
+        await splitField
+            .locator('[data-advanced-sowing-field-segment="standard:0"]')
+            .click();
+        const standardDialog = page.getByRole('dialog', {
+            name: 'Biljka "Cherry rajčica"',
+        });
+        await expect(standardDialog).toBeVisible();
+        await expect(
+            standardDialog.getByRole('tab', { name: 'Cherry rajčica' }),
+        ).toBeVisible();
+        await standardDialog
+            .getByRole('tab', { name: 'Klasični bosiljak' })
+            .click();
+
+        const advancedDialog = page.getByRole('dialog', {
+            name: 'Klasični bosiljak',
+        });
+        await expect(advancedDialog).toBeVisible();
+        await expect(
+            advancedDialog.getByText('Gustoća', { exact: true }),
+        ).toBeVisible();
+        await advancedDialog.getByRole('button', { name: 'Zatvori' }).click();
+
+        await splitField
+            .locator('[data-advanced-sowing-field-segment="advanced:202"]')
+            .click();
+        await expect(
+            page.getByRole('dialog', { name: 'Klasični bosiljak' }),
+        ).toBeVisible();
     });
 
     test('abandoned raised bed shows inactivity message instead of sowing grid', async ({
@@ -1359,7 +1619,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             /opacity-100/,
         );
         await expect(healthContent).toHaveAttribute('aria-hidden', 'true');
-        await expect(healthContent).toHaveCount(0);
         await healthHeader.click();
         await expect
             .poll(() =>
@@ -1724,7 +1983,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedCloseupHudStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
             />,
         );
@@ -1751,7 +2009,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedInfoModalStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
             />,
         );
@@ -1776,7 +2033,6 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
     }) => {
         await mount(
             <RaisedBedFieldHudStory
-                enableSuncokret
                 scenario={plantedGrowingWithOperationHistoryScenario()}
                 positionIndex={0}
             />,
@@ -2426,9 +2682,15 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         await expect(statusChangeDateButton).toBeVisible();
         await statusChangeDateButton.click();
 
+        const statusChangeCalendar = page
+            .getByRole('group', { name: 'Kalendar' })
+            .last();
+        await expect(statusChangeCalendar).toBeVisible();
         await expect(
-            page.getByRole('textbox', { name: 'Datum promjene' }),
-        ).toBeVisible();
+            statusChangeCalendar.locator(
+                '[data-calendar-date][aria-pressed="true"]',
+            ),
+        ).toHaveCount(1);
     });
 
     test('opening the plant history modal lists prior plants newest first', async ({
@@ -2589,16 +2851,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
-        await expect(dialog).toHaveAttribute(
-            'data-vaul-drawer-direction',
-            'bottom',
-        );
         await expect(
-            dialog.locator(
-                'div.bg-muted.mx-auto.h-2.w-\\[100px\\].rounded-full',
-            ),
-        ).toHaveCount(1);
+            dialog.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
     });
 
     test('raised bed header no longer exposes the abandonment action', async ({
@@ -2760,7 +3015,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        // Wait for the vaul slide-in animation to complete before measuring.
+        // Wait for the drawer transition to complete before measuring.
         await page.waitForTimeout(700);
         const dialogBox = await dialog.boundingBox();
         if (!dialogBox) {
@@ -2829,8 +3084,10 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        await expect(dialog).toHaveAttribute('data-vaul-drawer', '');
-        // Let vaul's slide-in animation settle so layout measurements are
+        await expect(
+            dialog.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
+        // Let the drawer transition settle so layout measurements are
         // taken against the resting position rather than mid-transform values.
         await page.waitForTimeout(700);
         return dialog;
@@ -2933,7 +3190,9 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
             .getByRole('dialog')
             .filter({ hasText: /Prethodna biljka/ });
         await expect(detailsDrawer).toBeVisible();
-        await expect(detailsDrawer).toHaveAttribute('data-vaul-drawer', '');
+        await expect(
+            detailsDrawer.locator('[data-modal-drawer-handle]'),
+        ).toBeVisible();
         await page.waitForTimeout(700);
         return { detailsDrawer, historyListDrawer };
     }
@@ -3076,7 +3335,7 @@ test.describe('RaisedBedFieldItem HUD (mobile)', () => {
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-        // Wait for vaul's slide-in animation to settle before sampling layout.
+        // Wait for the drawer transition to settle before sampling layout.
         await page.waitForTimeout(700);
 
         const dialogBox = await dialog.boundingBox();

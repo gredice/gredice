@@ -2,19 +2,23 @@ import { animated } from '@react-spring/three';
 import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Group } from 'three';
+import { areBlockInteractionsSuppressed } from '../controls/blockInteractionSuppression';
 import { useBlockData } from '../hooks/useBlockData';
 import type { GLTFResult } from '../models/GameAssets';
 import { RainWetOverlay } from '../rain/RainWetOverlay';
 import { SnowOverlay } from '../snow/SnowOverlay';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
+import { useGameState, useGameStateStore } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
 import { useGameGLTF } from '../utils/useGameGLTF';
+import { useActorGroundingShadow } from './animals/ActorGroundingShadows';
 import {
     advanceBeachBallBounce,
     beachBallCollisionRadius,
     createBeachBallBounceEnvironment,
     createBeachBallBounceState,
     getBeachBallSurfaceHeight,
+    startBeachBallBounce,
 } from './beachBallBounce';
 import { HoverOutline } from './helpers/HoverOutline';
 import { useAnimatedEntityRotation } from './helpers/useAnimatedEntityRotation';
@@ -39,6 +43,9 @@ const beachBallBounceDurationSeconds = 0.58;
 const beachBallGroundLift = 0.008;
 const beachBallMinBounceLift = 0.026;
 const beachBallMaxBounceLift = 0.16;
+// The exported mesh spans Y=0.0025..2.0475. Roll around its scaled center
+// instead of the ground-level model origin so rotation cannot bury the ball.
+const beachBallVisualCenterY = 1.025 * beachBallScale;
 
 const beachBallNodeNames = [
     'BeachBall_Cap',
@@ -56,7 +63,7 @@ const beachBallNodeNames = [
 function BeachBallPart({ node }: { node: BeachBallNode }) {
     return (
         <mesh
-            castShadow
+            castShadow={false}
             receiveShadow
             geometry={node.geometry}
             material={node.material}
@@ -145,10 +152,25 @@ export function BeachBall({
         .clone()
         .setY(currentStackHeight + beachBallGroundLift);
     const motionGroupRef = useRef<Group>(null);
+    const rollingGroupRef = useRef<Group>(null);
     const bounceStateRef = useRef(createBeachBallBounceState());
     const visualBounceRef = useRef(createBeachBallVisualBounce());
     const clickCountRef = useRef(0);
+    const lastAvatarKickSequenceRef = useRef(0);
+    const lastPresenceUpdateRef = useRef(Number.NEGATIVE_INFINITY);
     const [hovered, setHovered] = useState(false);
+    const gameStateStore = useGameStateStore();
+    const setAnimalPresenceEntry = useGameState(
+        (state) => state.setAnimalPresenceEntry,
+    );
+    const removeAnimalPresenceEntry = useGameState(
+        (state) => state.removeAnimalPresenceEntry,
+    );
+    const updateGroundingShadow = useActorGroundingShadow({
+        id: `beach-ball:${block.id}`,
+        primaryCasterCount: 0,
+        species: 'beachBall',
+    });
     const bounceEnvironment = useMemo(
         () =>
             createBeachBallBounceEnvironment({
@@ -165,22 +187,58 @@ export function BeachBall({
         visualBounceRef.current = createBeachBallVisualBounce();
 
         const motionGroup = motionGroupRef.current;
-        if (!motionGroup) {
+        const rollingGroup = rollingGroupRef.current;
+        if (!motionGroup || !rollingGroup) {
             return;
         }
 
         motionGroup.position.set(0, 0, 0);
-        motionGroup.rotation.set(0, 0, 0);
+        rollingGroup.rotation.set(0, 0, 0);
     }, [block.id, stack.position.x, stack.position.z]);
 
-    useFrame((_, deltaSeconds) => {
+    useEffect(
+        () => () => removeAnimalPresenceEntry(`beach-ball:${block.id}`),
+        [block.id, removeAnimalPresenceEntry],
+    );
+
+    useFrame(({ clock }, deltaSeconds) => {
         const motionGroup = motionGroupRef.current;
-        if (!motionGroup) {
+        const rollingGroup = rollingGroupRef.current;
+        if (!motionGroup || !rollingGroup) {
             return;
         }
 
         const currentState = bounceStateRef.current;
         const visualBounce = visualBounceRef.current;
+        const avatarKickRequest =
+            gameStateStore.getState().gardenAvatarBeachBallKickRequest;
+        if (
+            avatarKickRequest &&
+            avatarKickRequest.targetId === block.id &&
+            avatarKickRequest.sequence !== lastAvatarKickSequenceRef.current
+        ) {
+            lastAvatarKickSequenceRef.current = avatarKickRequest.sequence;
+            bounceStateRef.current = startBeachBallBounce({
+                direction: avatarKickRequest.direction,
+                speed: beachBallKickSpeed,
+                state: bounceStateRef.current,
+            });
+        }
+
+        if (clock.elapsedTime - lastPresenceUpdateRef.current >= 0.2) {
+            lastPresenceUpdateRef.current = clock.elapsedTime;
+            setAnimalPresenceEntry({
+                behavior: currentState.active ? 'rolling' : 'idle',
+                id: `beach-ball:${block.id}`,
+                position: {
+                    x: stack.position.x + currentState.offsetX,
+                    y: position.y + motionGroup.position.y,
+                    z: stack.position.z + currentState.offsetZ,
+                },
+                species: 'BeachBall',
+                updatedAt: clock.elapsedTime,
+            });
+        }
 
         const setMotionPosition = (state: typeof currentState, bounceY = 0) => {
             const surfaceHeight = getBeachBallSurfaceHeight(bounceEnvironment, {
@@ -194,6 +252,14 @@ export function BeachBall({
                 surfaceHeight - currentStackHeight + bounceY,
                 state.offsetZ,
             );
+            updateGroundingShadow?.({
+                actorY: surfaceHeight + bounceY,
+                receiverY: surfaceHeight,
+                visible: motionGroup.visible,
+                x: stack.position.x + state.offsetX,
+                yaw: 0,
+                z: stack.position.z + state.offsetZ,
+            });
         };
 
         if (!currentState.active) {
@@ -229,20 +295,26 @@ export function BeachBall({
         const movementZ = nextState.offsetZ - previousOffsetZ;
 
         setMotionPosition(nextState, bounceY);
-        motionGroup.rotation.x += movementZ / beachBallCollisionRadius;
-        motionGroup.rotation.z -= movementX / beachBallCollisionRadius;
+        rollingGroup.rotation.x += movementZ / beachBallCollisionRadius;
+        rollingGroup.rotation.z -= movementX / beachBallCollisionRadius;
     });
 
-    function handlePointerDown(event: ThreeEvent<PointerEvent>) {
+    function handlePointerUp(event: ThreeEvent<PointerEvent>) {
         if (event.button !== 0) {
             return;
         }
 
+        // Pickup starts in the parent on pointer down. Keep pointer up from
+        // also turning a beach-ball tap into the parent's rotate gesture.
         event.stopPropagation();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
         event.stopPropagation();
+
+        if (areBlockInteractionsSuppressed()) {
+            return;
+        }
 
         const currentState = bounceStateRef.current;
         if (
@@ -275,15 +347,11 @@ export function BeachBall({
             beachBallKickSpeed +
             (clickCountRef.current % 3) * beachBallKickSpeedVariance;
 
-        bounceStateRef.current = {
-            active: true,
-            collisionCount: currentState.collisionCount,
-            elapsedSeconds: 0,
-            offsetX: currentState.offsetX,
-            offsetZ: currentState.offsetZ,
-            velocityX: directionX * speed,
-            velocityZ: directionZ * speed,
-        };
+        bounceStateRef.current = startBeachBallBounce({
+            direction: { x: directionX, z: directionZ },
+            speed,
+            state: currentState,
+        });
     }
 
     function handlePointerEnter(event: ThreeEvent<PointerEvent>) {
@@ -298,30 +366,43 @@ export function BeachBall({
 
     return (
         <HoverOutline color="white" hovered={hovered} thickness={7}>
-            <animated.group
-                position={position}
-                rotation={
-                    animatedRotation as unknown as [number, number, number]
-                }
-            >
+            <group position={position}>
                 {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js group uses raycast picking for the clickable beach ball. */}
                 <group
                     ref={motionGroupRef}
                     onClick={handleClick}
-                    onPointerDown={handlePointerDown}
                     onPointerEnter={handlePointerEnter}
                     onPointerLeave={handlePointerLeave}
+                    onPointerUp={handlePointerUp}
                 >
-                    <group scale={beachBallScale}>
-                        {beachBallNodeNames.map((nodeName) => (
-                            <BeachBallPart
-                                key={nodeName}
-                                node={nodes[nodeName]}
-                            />
-                        ))}
+                    <group
+                        ref={rollingGroupRef}
+                        position={[0, beachBallVisualCenterY, 0]}
+                    >
+                        <animated.group
+                            rotation={
+                                animatedRotation as unknown as [
+                                    number,
+                                    number,
+                                    number,
+                                ]
+                            }
+                        >
+                            <group
+                                position={[0, -beachBallVisualCenterY, 0]}
+                                scale={beachBallScale}
+                            >
+                                {beachBallNodeNames.map((nodeName) => (
+                                    <BeachBallPart
+                                        key={nodeName}
+                                        node={nodes[nodeName]}
+                                    />
+                                ))}
+                            </group>
+                        </animated.group>
                     </group>
                 </group>
-            </animated.group>
+            </group>
         </HoverOutline>
     );
 }

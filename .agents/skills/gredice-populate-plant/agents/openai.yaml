@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gredice Plant Population"
+  short_description: "Create complete draft plant records"
+  default_prompt: "Use $gredice-populate-plant to create and fully populate a new unpublished Gredice plant record."

@@ -5,10 +5,15 @@ import {
     createGeneratedPlantShaderPrewarmResources,
     generatedPlantInstancedSwayShaderPrewarmVariants,
     generatedPlantShaderPrewarmVariants,
+    getGeneratedPlantShaderPrewarmLifecycleStatus,
+    getGeneratedPlantShaderProgramDiagnostics,
     invalidateGeneratedPlantShaderPrewarm,
     prewarmGeneratedPlantShaders,
+    publishGeneratedPlantShaderPrewarmLifecycleStatus,
     requestGeneratedPlantShaderPrewarm,
+    shouldRenderGeneratedPlantDetailAfterPrewarm,
     subscribeToGeneratedPlantShaderPrewarmContextRecovery,
+    subscribeToGeneratedPlantShaderPrewarmLifecycle,
 } from './plantShaderPrewarm';
 
 function createDeferred() {
@@ -20,30 +25,106 @@ function createDeferred() {
     return { promise, resolve };
 }
 
-function getInstancedMeshes(root: THREE.Object3D) {
-    const meshes: THREE.InstancedMesh[] = [];
+function getMeshes(root: THREE.Object3D) {
+    const meshes: THREE.Mesh[] = [];
     root.traverse((object) => {
-        if (object instanceof THREE.InstancedMesh) {
+        if (object instanceof THREE.Mesh) {
             meshes.push(object);
         }
     });
     return meshes;
 }
 
-function getVariantName(mesh: THREE.InstancedMesh) {
+function getVariantName(mesh: THREE.Mesh) {
     return mesh.name.replace('GeneratedPlantShaderPrewarm:', '');
 }
 
 describe('generated plant shader prewarm', () => {
+    it('publishes renderer-scoped lifecycle status and gates focused detail', () => {
+        const renderer = {};
+        const listenerStatuses: Array<string | null> = [];
+        const readStatus = () =>
+            getGeneratedPlantShaderPrewarmLifecycleStatus({
+                renderer,
+                variantKey: 'shadows',
+            });
+        const unsubscribe = subscribeToGeneratedPlantShaderPrewarmLifecycle({
+            listener: () => listenerStatuses.push(readStatus()),
+            renderer,
+            variantKey: 'shadows',
+        });
+
+        assert.equal(
+            shouldRenderGeneratedPlantDetailAfterPrewarm({
+                required: true,
+                status: readStatus(),
+            }),
+            false,
+        );
+        publishGeneratedPlantShaderPrewarmLifecycleStatus({
+            renderer,
+            status: 'compiling',
+            variantKey: 'shadows',
+        });
+        publishGeneratedPlantShaderPrewarmLifecycleStatus({
+            renderer,
+            status: 'ready',
+            variantKey: 'shadows',
+        });
+
+        assert.deepEqual(listenerStatuses, ['compiling', 'ready']);
+        assert.equal(
+            shouldRenderGeneratedPlantDetailAfterPrewarm({
+                required: true,
+                status: readStatus(),
+            }),
+            true,
+        );
+        assert.equal(
+            shouldRenderGeneratedPlantDetailAfterPrewarm({
+                required: false,
+                status: null,
+            }),
+            true,
+        );
+        assert.equal(
+            shouldRenderGeneratedPlantDetailAfterPrewarm({
+                required: true,
+                status: 'timed-out',
+            }),
+            true,
+        );
+
+        unsubscribe();
+    });
+
+    it('summarizes renderer programs without retaining shader cache keys', () => {
+        const diagnostics = getGeneratedPlantShaderProgramDiagnostics([
+            { cacheKey: 'large-internal-cache-key', id: 7, name: 'plant' },
+        ]);
+
+        assert.deepEqual(diagnostics, [
+            { cacheKeyHash: 'c050d0e7', id: 7, name: 'plant' },
+        ]);
+        assert.equal(
+            JSON.stringify(diagnostics).includes('large-internal-cache-key'),
+            false,
+        );
+    });
+
     it('provides a complete representative set with required instanced attributes', () => {
         const resources = createGeneratedPlantShaderPrewarmResources();
-        const meshes = getInstancedMeshes(resources.root);
+        const meshes = getMeshes(resources.root);
 
         assert.deepEqual(
             meshes.map(getVariantName),
             generatedPlantShaderPrewarmVariants,
         );
-        assert.ok(meshes.every((mesh) => mesh.count === 1));
+        assert.ok(
+            meshes
+                .filter((mesh) => mesh instanceof THREE.InstancedMesh)
+                .every((mesh) => mesh.count === 1),
+        );
 
         const meshesByVariant = new Map(
             meshes.map((mesh) => [getVariantName(mesh), mesh]),
@@ -55,6 +136,11 @@ describe('generated plant shader prewarm', () => {
             meshesByVariant
                 .get('leaf')
                 ?.geometry.hasAttribute('leafInstanceColor'),
+        );
+        assert.ok(
+            meshesByVariant
+                .get('vegetable')
+                ?.geometry.hasAttribute('vegetableInstanceColor'),
         );
         for (const variant of generatedPlantInstancedSwayShaderPrewarmVariants) {
             assert.ok(
@@ -83,6 +169,44 @@ describe('generated plant shader prewarm', () => {
         assert.equal(midBillboardMaterial.transparent, true);
         assert.equal(midBillboardMaterial.depthWrite, false);
         assert.equal(midBillboardMaterial.side, THREE.FrontSide);
+
+        const singleMidBillboard = meshesByVariant.get('mid-billboard-single');
+        assert.ok(singleMidBillboard);
+        assert.equal(singleMidBillboard instanceof THREE.InstancedMesh, false);
+        assert.notEqual(singleMidBillboard.material, midBillboardMaterial);
+        assert.ok(!Array.isArray(singleMidBillboard.material));
+        assert.equal(
+            singleMidBillboard.material.customProgramCacheKey(),
+            midBillboardMaterial.customProgramCacheKey(),
+        );
+
+        const customShaderMaterials = meshes.flatMap((mesh) => {
+            const materials = Array.isArray(mesh.material)
+                ? mesh.material
+                : [mesh.material];
+            return materials.filter((material) =>
+                material.name.startsWith('CustomShaderMaterial<'),
+            );
+        });
+        const initialProgramKeys = customShaderMaterials.map((material) =>
+            material.customProgramCacheKey(),
+        );
+        resources.prepareReactUpdatedMaterials();
+        const updatedProgramKeys = customShaderMaterials.map((material) =>
+            material.customProgramCacheKey(),
+        );
+        assert.ok(
+            updatedProgramKeys.every(
+                (key, index) => key !== initialProgramKeys[index],
+            ),
+        );
+        resources.prepareReactUpdatedMaterials();
+        assert.deepEqual(
+            customShaderMaterials.map((material) =>
+                material.customProgramCacheKey(),
+            ),
+            updatedProgramKeys,
+        );
 
         const shadowProxy = meshesByVariant.get('shadow-proxy');
         assert.ok(shadowProxy);
@@ -135,7 +259,7 @@ describe('generated plant shader prewarm', () => {
         assert.equal(result.variantKey, 'shadows');
         assert.equal(result.deduplicated, false);
         assert.ok(result.durationMs >= 0);
-        assert.equal(calls.length, 1);
+        assert.equal(calls.length, 2);
         assert.equal(calls[0]?.camera, camera);
         assert.equal(calls[0]?.scene, scene);
         assert.equal(
@@ -286,7 +410,7 @@ describe('generated plant shader prewarm', () => {
         });
         assert.equal(cached.deduplicated, true);
         assert.equal((await cached.completion).status, 'ready');
-        assert.equal(compileCount, 1);
+        assert.equal(compileCount, 2);
 
         const otherVariant = requestGeneratedPlantShaderPrewarm({
             camera,
@@ -303,7 +427,7 @@ describe('generated plant shader prewarm', () => {
         });
         assert.equal(otherVariant.deduplicated, false);
         assert.equal((await otherVariant.completion).status, 'ready');
-        assert.equal(compileCount, 2);
+        assert.equal(compileCount, 4);
 
         invalidateGeneratedPlantShaderPrewarm(renderer, 'shadows');
         const afterInvalidation = requestGeneratedPlantShaderPrewarm({
@@ -321,7 +445,7 @@ describe('generated plant shader prewarm', () => {
         });
         assert.equal(afterInvalidation.deduplicated, false);
         assert.equal((await afterInvalidation.completion).status, 'ready');
-        assert.equal(compileCount, 3);
+        assert.equal(compileCount, 6);
     });
 
     it('retains ready resources until the renderer variant is invalidated', async () => {
@@ -376,7 +500,7 @@ describe('generated plant shader prewarm', () => {
             requestVariant('shadows').completion,
             requestVariant('without-shadows').completion,
         ]);
-        assert.equal(compileCount, 2);
+        assert.equal(compileCount, 4);
         assert.ok(compiledRoots.every((root) => root.children.length > 0));
 
         let contextLostCount = 0;
@@ -404,17 +528,17 @@ describe('generated plant shader prewarm', () => {
         assert.ok(restoredRequest);
         assert.equal(restoredRequest.deduplicated, false);
         assert.equal((await restoredRequest.completion).status, 'ready');
-        assert.equal(compileCount, 3);
+        assert.equal(compileCount, 6);
 
         const alternateAfterRestore = requestVariant('without-shadows');
         assert.equal(alternateAfterRestore.deduplicated, false);
         assert.equal((await alternateAfterRestore.completion).status, 'ready');
-        assert.equal(compileCount, 4);
+        assert.equal(compileCount, 8);
 
         unsubscribe();
         eventTarget.dispatchEvent(new Event('webglcontextrestored'));
         assert.equal(restoredRequests.length, 1);
-        assert.equal(compileCount, 4);
+        assert.equal(compileCount, 8);
         invalidateGeneratedPlantShaderPrewarm(renderer);
     });
 
@@ -453,7 +577,7 @@ describe('generated plant shader prewarm', () => {
         });
         assert.equal(retry.deduplicated, false);
         assert.equal((await retry.completion).status, 'ready');
-        assert.equal(compileCount, 2);
+        assert.equal(compileCount, 3);
     });
 
     it('cancels one subscriber without interrupting shared compilation or cleanup', async () => {

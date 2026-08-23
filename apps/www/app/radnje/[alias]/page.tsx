@@ -17,6 +17,7 @@ import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getOperationPriceAvailability } from '../../../lib/operationPricing';
 import { getOperationsData } from '../../../lib/plants/getOperationsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
 import { KnownPages } from '../../../src/KnownPages';
 import { merchantReturnPolicy } from '../../../src/merchantReturnPolicy';
 import { matchesPageAlias, toPageAlias } from '../../../src/pageAliases';
@@ -24,7 +25,7 @@ import { getOperationImageViewTransitionName } from '../operationViewTransition'
 import { OperationApplicationsList } from './OperationApplicationsList';
 import { OperationAttributesCards } from './OperationAttributesCards';
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 43200; // 12 hours
 
 export async function generateMetadata(
     props: PageProps<'/radnje/[alias]'>,
@@ -36,15 +37,18 @@ export async function generateMetadata(
         matchesPageAlias(op.information.label, alias),
     );
     if (!operation) {
-        return {
-            title: 'Radnja nije pronađena',
-            description: 'Radnja koju tražiš nije pronađena.',
-        };
+        notFound();
     }
-    return {
+    return createPublicMetadata({
         title: operation.information.label,
         description: operation.information.shortDescription,
-    };
+        path: KnownPages.Operation(
+            operation.slug || operation.information.label,
+        ),
+        category: 'Vrtlarska radnja',
+        imageUrl: operation.image?.cover?.url,
+        imageAlt: `Prikaz radnje ${operation.information.label}`,
+    });
 }
 
 export async function generateStaticParams() {
@@ -83,15 +87,15 @@ export default async function OperationPage(
             <StructuredDataScript
                 data={{
                     '@context': 'https://schema.org',
-                    '@type': 'Product',
+                    '@type': 'Service',
                     name: operation.information.label,
                     description:
                         operation.information.shortDescription ??
                         operation.information.description,
-                    category: 'Radnja',
+                    serviceType: 'Vrtlarska radnja',
                     image: operation.image?.cover?.url,
-                    brand: {
-                        '@type': 'Brand',
+                    provider: {
+                        '@type': 'Organization',
                         name: 'Gredice',
                     },
                     url: `https://www.gredice.com${operationPath}`,

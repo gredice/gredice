@@ -15,6 +15,10 @@ import {
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
 } from './scheduleShared';
+import {
+    buildSelectedPlantingSowingLabels,
+    SOWING_LABEL_PLANT_LIMIT,
+} from './selectedPlantingSowingLabels';
 
 type FarmRaisedBed = FarmScheduleDayData['raisedBeds'][number];
 type FarmRaisedBedField = FarmScheduleDayData['scheduledFields'][number];
@@ -23,8 +27,6 @@ type SowingLabelField = FarmRaisedBedField & {
     physicalPositionIndex: number;
 };
 type HarvestLabelField = FarmRaisedBed['fields'][number];
-
-const SOWING_LABEL_PLANT_LIMIT = 24;
 
 function getEntityById(entities: EntityStandardized[] | null | undefined) {
     const entityById = new Map<number, EntityStandardized>();
@@ -45,7 +47,11 @@ function getPlantsPerFieldCount(
     const seedingDistance =
         plantSort?.information?.plant?.attributes?.seedingDistance;
     return typeof seedingDistance === 'number'
-        ? calculatePlantsPerField(seedingDistance).totalPlants
+        ? calculatePlantsPerField(
+              seedingDistance,
+              plantSort?.information?.name ??
+                  `Plant sort #${plantSort?.id.toString() ?? 'unknown'}`,
+          ).totalPlants
         : null;
 }
 
@@ -234,6 +240,55 @@ function buildSowingLabels(
     }
 
     return labels;
+}
+
+function buildSelectedSowingLabels(
+    dayData: FarmScheduleDayData,
+    plantSortById: Map<number, EntityStandardized>,
+    dateLabel: string,
+) {
+    const affectedRaisedBedIds = [
+        ...new Set(
+            dayData.scheduledSelectedPlantings.map(
+                (entry) => entry.raisedBedId,
+            ),
+        ),
+    ];
+    const raisedBedGroups = groupRaisedBedsForSchedule(
+        dayData.raisedBeds,
+        affectedRaisedBedIds,
+    );
+
+    return raisedBedGroups.flatMap(({ physicalId, raisedBeds }) =>
+        buildSelectedPlantingSowingLabels(
+            dayData.scheduledSelectedPlantings
+                .filter((entry) =>
+                    raisedBeds.some(
+                        (raisedBed) => raisedBed.id === entry.raisedBedId,
+                    ),
+                )
+                .map(({ planting }) => ({
+                    dateLabel,
+                    physicalPositionNumbers: planting.memberships.map(
+                        (membership) =>
+                            getFieldPhysicalPositionIndex(
+                                {
+                                    positionIndex:
+                                        membership.raisedBedField.positionIndex,
+                                    raisedBedId:
+                                        membership.raisedBedField.raisedBedId,
+                                },
+                                raisedBeds,
+                            ),
+                    ),
+                    plantCount: planting.plantCount,
+                    plantSortName: plantSortById.get(planting.plantSortId)
+                        ?.information?.name,
+                    raisedBedPhysicalId: physicalId,
+                    sowingLocation: planting.selectedTask?.sowingLocation,
+                })),
+        ),
+    );
 }
 
 function isHarvestOperation(operationData: EntityStandardized | undefined) {
@@ -525,7 +580,10 @@ export async function buildScheduleLabelPrintData(
     const plantSortById = getEntityById(plantSorts);
     const operationDataById = getEntityById(operationsData);
     const dateLabel = formatScheduleLabelDate(dateKey);
-    const sowingLabels = buildSowingLabels(dayData, plantSortById, dateLabel);
+    const sowingLabels = [
+        ...buildSowingLabels(dayData, plantSortById, dateLabel),
+        ...buildSelectedSowingLabels(dayData, plantSortById, dateLabel),
+    ].sort(compareLabelData);
     const harvestLabels = await buildHarvestLabels(
         dayData,
         plantSortById,

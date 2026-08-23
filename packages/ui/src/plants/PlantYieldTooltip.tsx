@@ -27,6 +27,7 @@ export function PlantYieldTooltip({
 
     const { totalPlants } = calculatePlantsPerField(
         plant.attributes.seedingDistance,
+        plant.information.name,
     );
 
     const yieldMin = plant.attributes.yieldMin ?? 0;

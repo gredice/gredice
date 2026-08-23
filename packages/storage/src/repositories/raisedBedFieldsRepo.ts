@@ -3,6 +3,10 @@ import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
+    LegacyRaisedBedPlantCycleProjectionError,
+    projectLegacyRaisedBedPlantCycles,
+} from '../helpers/legacyRaisedBedPlantCycles';
+import {
     events,
     farmUsers,
     gardens,
@@ -13,6 +17,8 @@ import {
 import {
     type InsertRaisedBedField,
     raisedBedFields,
+    raisedBedPlantingFields,
+    raisedBedPlantings,
     type SelectRaisedBedField,
 } from '../schema/gardenSchema';
 import { normalizeAssignedUserIds } from './events/normalizeAssignedUserIds';
@@ -1110,13 +1116,69 @@ function summarizePlantCycles(
     positionIndex: number,
     plantEvents: RaisedBedFieldPlantCycleEvent[],
 ) {
-    return splitPlantCycleEvents(plantEvents)
+    const orderedPlantEvents = [...plantEvents].sort(
+        comparePlantCycleEventOrder,
+    );
+    const plantCycles = splitPlantCycleEvents(orderedPlantEvents)
         .map((plantCycleEvents) =>
             summarizePlantCycle(aggregateId, positionIndex, plantCycleEvents),
         )
         .filter((plantCycle): plantCycle is RaisedBedFieldPlantCycle =>
             Boolean(plantCycle),
         );
+
+    const permissivePlantCycles = plantCycles.map((plantCycle, index) => {
+        const nextPlantCycle = plantCycles[index + 1];
+        if (!nextPlantCycle || !plantCycle.active) {
+            return plantCycle;
+        }
+        return {
+            ...plantCycle,
+            active: false,
+            stoppedDate: nextPlantCycle.startedAt,
+        };
+    });
+
+    let authoritativeCyclesBySourceEventId: Map<
+        number,
+        ReturnType<typeof projectLegacyRaisedBedPlantCycles>[number]
+    >;
+    try {
+        authoritativeCyclesBySourceEventId = new Map(
+            projectLegacyRaisedBedPlantCycles(orderedPlantEvents).map(
+                (cycle) => [cycle.sourceEventId, cycle],
+            ),
+        );
+    } catch (error) {
+        if (!(error instanceof LegacyRaisedBedPlantCycleProjectionError)) {
+            throw error;
+        }
+        // This repository is a compatibility read model for historical field
+        // events. Keep strict projection failures in secured diagnostics while
+        // omitting aggregate IDs and event payloads. Planting/backfill callers
+        // continue to use the canonical helper strictly.
+        console.warn('Raised-bed field history used compatibility projection', {
+            code: error.code,
+            eventId: error.eventId,
+        });
+        return permissivePlantCycles;
+    }
+
+    return permissivePlantCycles.map((plantCycle) => {
+        const authoritativeCycle = authoritativeCyclesBySourceEventId.get(
+            plantCycle.plantPlaceEventId,
+        );
+        if (!authoritativeCycle) {
+            return plantCycle;
+        }
+
+        return {
+            ...plantCycle,
+            active: authoritativeCycle.isActive,
+            plantSortId: authoritativeCycle.plantSortId,
+            stoppedDate: authoritativeCycle.stoppedAt ?? undefined,
+        };
+    });
 }
 
 function eventDataRecord(event: RaisedBedFieldPlantCycleEvent) {
@@ -1715,19 +1777,23 @@ function reduceRaisedBedFieldWithEvents(
         }
     }
 
+    const plantCycles = summarizePlantCycles(
+        aggregateId,
+        field.positionIndex,
+        events.filter((event) => PLANT_CYCLE_EVENT_TYPE_SET.has(event.type)),
+    );
+    const latestPlantCycle = plantCycles[plantCycles.length - 1];
+
     return {
         ...field,
-        plantCycles: summarizePlantCycles(
-            aggregateId,
-            field.positionIndex,
-            events.filter((event) =>
-                PLANT_CYCLE_EVENT_TYPE_SET.has(event.type),
-            ),
-        ),
+        plantCycles,
         plantStatus,
         plantStatusEventId,
         plantStatusChangedAt,
-        plantSortId,
+        plantSortId:
+            plantStatus === 'deleted'
+                ? undefined
+                : (latestPlantCycle?.plantSortId ?? plantSortId),
         plantScheduledDate,
         sowingLocation,
         plantSowDate,
@@ -1736,7 +1802,7 @@ function reduceRaisedBedFieldWithEvents(
         plantDeadDate,
         plantHarvestedDate,
         plantRemovedDate,
-        active,
+        active: latestPlantCycle?.active ?? active,
         toBeRemoved,
         stoppedDate,
         assignedUserIds: normalizeAssignedUserIds(
@@ -1906,6 +1972,20 @@ export async function moveRaisedBedFieldPlantHistory(
                 positionIndex,
             );
         }
+        await tx
+            .select({ id: raisedBedFields.id })
+            .from(raisedBedFields)
+            .where(
+                and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    inArray(
+                        raisedBedFields.positionIndex,
+                        lockedPositionIndexes,
+                    ),
+                ),
+            )
+            .orderBy(asc(raisedBedFields.id))
+            .for('update');
 
         const sourceFieldRows = await getRaisedBedFieldRowsAtPosition(
             tx,
@@ -1926,6 +2006,28 @@ export async function moveRaisedBedFieldPlantHistory(
             raisedBedId,
             positionIndex: targetPositionIndex,
         });
+
+        const [sourceCanonicalField, targetCanonicalField] = await Promise.all([
+            tx.query.raisedBedFields.findFirst({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    eq(raisedBedFields.positionIndex, sourcePositionIndex),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+                orderBy: [asc(raisedBedFields.id)],
+            }),
+            tx.query.raisedBedFields.findFirst({
+                where: and(
+                    eq(raisedBedFields.raisedBedId, raisedBedId),
+                    eq(raisedBedFields.positionIndex, targetPositionIndex),
+                    eq(raisedBedFields.isDeleted, false),
+                ),
+                orderBy: [asc(raisedBedFields.id)],
+            }),
+        ]);
+        if (!sourceCanonicalField || !targetCanonicalField) {
+            throw new Error('Failed to resolve canonical move fields');
+        }
 
         const [sourcePlantCycles, targetPlantCycles] = await Promise.all([
             getPlantCyclesForPosition(tx, raisedBedId, sourcePositionIndex),
@@ -1951,6 +2053,49 @@ export async function moveRaisedBedFieldPlantHistory(
             (targetPlantCycle) => targetPlantCycle.eventIds,
         );
 
+        const selectedOccupancies = await tx
+            .select({
+                raisedBedFieldId: raisedBedPlantingFields.raisedBedFieldId,
+            })
+            .from(raisedBedPlantingFields)
+            .innerJoin(
+                raisedBedPlantings,
+                eq(raisedBedPlantings.id, raisedBedPlantingFields.plantingId),
+            )
+            .where(
+                and(
+                    inArray(raisedBedPlantingFields.raisedBedFieldId, [
+                        sourceCanonicalField.id,
+                        targetCanonicalField.id,
+                    ]),
+                    eq(raisedBedPlantingFields.isDeleted, false),
+                    eq(raisedBedPlantings.isDeleted, false),
+                    eq(raisedBedPlantings.isActive, true),
+                    eq(raisedBedPlantings.configurationSource, 'selected'),
+                ),
+            );
+        const selectedOccupiedFieldIds = new Set(
+            selectedOccupancies.map((row) => row.raisedBedFieldId),
+        );
+        if (
+            sourcePlantCycle.active &&
+            selectedOccupiedFieldIds.has(targetCanonicalField.id)
+        ) {
+            throw new Error(
+                'Cannot move an active legacy plant cycle onto an active selected planting.',
+            );
+        }
+        if (
+            overlappingTargetPlantCycles.some(
+                (plantCycle) => plantCycle.active,
+            ) &&
+            selectedOccupiedFieldIds.has(sourceCanonicalField.id)
+        ) {
+            throw new Error(
+                'Cannot swap an active legacy plant cycle onto an active selected planting.',
+            );
+        }
+
         await tx
             .update(events)
             .set({
@@ -1965,6 +2110,67 @@ export async function moveRaisedBedFieldPlantHistory(
                     aggregateId: sourceAggregateId,
                 })
                 .where(inArray(events.id, targetPlantCycleEventIds));
+        }
+
+        const sourceProjectionRows = await tx
+            .select({ id: raisedBedPlantings.id })
+            .from(raisedBedPlantings)
+            .where(
+                eq(
+                    raisedBedPlantings.legacyPlantPlaceEventId,
+                    sourcePlantCycle.plantPlaceEventId,
+                ),
+            )
+            .for('update');
+        const targetPlantPlaceEventIds = overlappingTargetPlantCycles.map(
+            (plantCycle) => plantCycle.plantPlaceEventId,
+        );
+        const targetProjectionRows =
+            targetPlantPlaceEventIds.length === 0
+                ? []
+                : await tx
+                      .select({ id: raisedBedPlantings.id })
+                      .from(raisedBedPlantings)
+                      .where(
+                          inArray(
+                              raisedBedPlantings.legacyPlantPlaceEventId,
+                              targetPlantPlaceEventIds,
+                          ),
+                      )
+                      .for('update');
+
+        const sourceProjectionIds = sourceProjectionRows.map((row) => row.id);
+        if (sourceProjectionIds.length > 0) {
+            await tx
+                .update(raisedBedPlantingFields)
+                .set({ raisedBedFieldId: targetCanonicalField.id })
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        sourceProjectionIds,
+                    ),
+                );
+            await tx
+                .update(raisedBedPlantings)
+                .set({ anchorPositionIndex: targetPositionIndex })
+                .where(inArray(raisedBedPlantings.id, sourceProjectionIds));
+        }
+
+        const targetProjectionIds = targetProjectionRows.map((row) => row.id);
+        if (targetProjectionIds.length > 0) {
+            await tx
+                .update(raisedBedPlantingFields)
+                .set({ raisedBedFieldId: sourceCanonicalField.id })
+                .where(
+                    inArray(
+                        raisedBedPlantingFields.plantingId,
+                        targetProjectionIds,
+                    ),
+                );
+            await tx
+                .update(raisedBedPlantings)
+                .set({ anchorPositionIndex: sourcePositionIndex })
+                .where(inArray(raisedBedPlantings.id, targetProjectionIds));
         }
 
         return {

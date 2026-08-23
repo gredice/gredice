@@ -1,7 +1,7 @@
 'use client';
 
 import { animated, useSpring } from '@react-spring/three';
-import { Billboard, Shadow, useTexture } from '@react-three/drei';
+import { Billboard, useTexture } from '@react-three/drei';
 import { type ThreeEvent, useThree } from '@react-three/fiber';
 import {
     type PropsWithChildren,
@@ -43,20 +43,13 @@ import {
     GameStateContext,
     useGameState,
 } from '../useGameState';
-import {
-    getBlockDataByName,
-    getStackHeight,
-    useStackHeight,
-} from '../utils/getStackHeight';
+import { getBlockDataByName, useStackHeight } from '../utils/getStackHeight';
 import {
     triggerPickHaptic,
     triggerPlaceHaptic,
     triggerSelectionHaptic,
 } from '../utils/haptics';
-import {
-    findAttachedRaisedBedBlockId,
-    findRaisedBedByBlockId,
-} from '../utils/raisedBedBlocks';
+import { findRaisedBedByBlockId } from '../utils/raisedBedBlocks';
 import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
 import {
     areBlockInteractionsSuppressed,
@@ -68,6 +61,7 @@ import {
     type PickupPlacementPreviewResolver,
     type ResolvedPlacementPreview,
 } from './PickupPlacementResolver';
+import { PlacementFootprintIndicator } from './PlacementFootprintIndicator';
 import { resolvePickupHudDropAction } from './pickupRemovalDropAction';
 import {
     createPickupSelectionMoveRequests,
@@ -423,35 +417,6 @@ export function PickableGroup({
         };
     }, [stopDragAutopan]);
 
-    function getAttachedPlacement(garden: CurrentGarden | null | undefined) {
-        if (block.name !== 'Raised_Bed' || !garden) {
-            return null;
-        }
-
-        const attachedRaisedBedBlockId = findAttachedRaisedBedBlockId(
-            garden.stacks,
-            block.id,
-        );
-
-        return attachedRaisedBedBlockId
-            ? (garden.stacks
-                  .flatMap((candidateStack) =>
-                      candidateStack.blocks.map(
-                          (candidateBlock, candidateBlockIndex) => ({
-                              candidateStack,
-                              candidateBlock,
-                              candidateBlockIndex,
-                          }),
-                      ),
-                  )
-                  .find(
-                      (candidate) =>
-                          candidate.candidateBlock.id ===
-                          attachedRaisedBedBlockId,
-                  ) ?? null)
-            : null;
-    }
-
     function getMovingSegments(
         garden: CurrentGarden | null | undefined = getCurrentGarden(),
     ): MovingSegment[] {
@@ -468,35 +433,9 @@ export function PickableGroup({
         const canRecycle = garden
             ? (raisedBed?.status ?? 'new') === 'new'
             : false;
-        const attachedPlacement = getAttachedPlacement(garden);
-        const attachedCurrentStackHeight = attachedPlacement
-            ? getStackHeight(
-                  blocksData,
-                  attachedPlacement.candidateStack,
-                  attachedPlacement.candidateBlock,
-              )
-            : 0;
-        const attachedBlocks = attachedPlacement
-            ? attachedPlacement.candidateStack.blocks.slice(
-                  attachedPlacement.candidateBlockIndex,
-              )
-            : [];
-        const canRecycleSelection =
-            canRecycle &&
-            sourceBlocks.length === 1 &&
-            (!attachedPlacement || attachedBlocks.length === 1);
+        const canRecycleSelection = canRecycle && sourceBlocks.length === 1;
 
         return createPickupSelectionMovingSegments({
-            attachedSegment:
-                attachedPlacement && attachedBlocks.length > 0
-                    ? {
-                          sourceStack: attachedPlacement.candidateStack,
-                          sourceStartIndex:
-                              attachedPlacement.candidateBlockIndex,
-                          blocks: attachedBlocks,
-                          baseHeight: attachedCurrentStackHeight,
-                      }
-                    : null,
             blockData: blocksData,
             canRecyclePrimarySegment: canRecycleSelection,
             primaryTarget: activePreviewTarget,
@@ -929,7 +868,6 @@ export function PickableGroup({
         },
     ) {
         const garden = getCurrentGarden();
-        const attachedPlacement = getAttachedPlacement(garden);
         const raisedBed = findRaisedBedByBlockId(garden, block.id);
         const movingSegments = getMovingSegments(garden);
         const hudDropAction = hudDropRequested
@@ -983,17 +921,6 @@ export function PickableGroup({
                     position: stack.position,
                     blockIndex,
                     raisedBedId: raisedBed?.id,
-                    attached: attachedPlacement
-                        ? {
-                              position: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                          }
-                        : undefined,
                     onOptimisticUpdate: activePreviewReset.queue,
                 })
                 .finally(activePreviewReset.resetIfUnqueued);
@@ -1082,17 +1009,6 @@ export function PickableGroup({
                     position: stack.position,
                     blockIndex,
                     raisedBedId: raisedBed?.id,
-                    attached: attachedPlacement
-                        ? {
-                              position: {
-                                  x: attachedPlacement.candidateStack.position
-                                      .x,
-                                  z: attachedPlacement.candidateStack.position
-                                      .z,
-                              },
-                              blockIndex: attachedPlacement.candidateBlockIndex,
-                          }
-                        : undefined,
                     onOptimisticUpdate: activePreviewReset.queue,
                 })
                 .finally(activePreviewReset.resetIfUnqueued);
@@ -1365,6 +1281,7 @@ export function PickableGroup({
         },
     });
     const showPickupOutline = pickupOutlineVisible || isPreviewTarget;
+    const blockEntity = getBlockDataByName(blocksData, block.name);
     const indicatorPosition: [number, number, number] = [
         stack.position.x,
         currentStackHeight,
@@ -1397,7 +1314,12 @@ export function PickableGroup({
             scale={blockedScaleSprings.scale}
             position={indicatorPosition}
         >
-            <Shadow color={0xff0000} opacity={1} colorStop={0.5} scale={2} />
+            <PlacementFootprintIndicator
+                blockData={blockEntity}
+                color={0xff0000}
+                opacity={1}
+                rotation={block.rotation}
+            />
         </animated.group>
     ) : null;
     const recycleIndicator = isOverRecycler ? (

@@ -14,16 +14,29 @@ import {
     type AnimalPresenceEntry,
     type GameState,
     useGameState,
+    useGameStateStore,
 } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useActorGroundingShadow } from '../animals/ActorGroundingShadows';
 import {
+    ActorSpeechBubble,
+    useActorHoverSpeech,
+} from '../animals/ActorSpeechBubble';
+import {
     type AnimalDebugPathPoint,
     AnimalPathDebugIndicator,
     AnimalTargetDebugMarker,
 } from '../animals/AnimalDebugIndicators';
+import { AnimalPetHearts } from '../animals/AnimalPetHearts';
 import { configureActorMeshShadows } from '../animals/actorMeshShadows';
+import { dogSpeechMessages } from '../animals/actorSpeechMessages';
+import {
+    animalAvatarFollowRepathSeconds,
+    animalAvatarFollowSeconds,
+    getAnimalAvatarFollowPosition,
+    isFreshGardenAvatarPresence,
+} from '../animals/animalAvatarFollowing';
 import {
     type AnimalMovementSurface,
     canAnimalSettleAt,
@@ -39,6 +52,7 @@ import {
     animalPresenceUpdateIntervalSeconds,
     freshAnimalPresences,
 } from '../animals/animalPresence';
+import { initializeAnimalAtHome } from '../animals/animalRuntimeLifecycle';
 import {
     type DogBehavior,
     type DogWeather,
@@ -146,6 +160,7 @@ const clearDogWeather = {
 } satisfies DogWeather;
 
 const dogScale = 0.46;
+const dogSpeechBubbleOffsetY = 1.13;
 const dogGroundLift = 0.02;
 const dogHouseDoorOffset = 0.46;
 const dogHouseNightRestInset = 0.42;
@@ -190,7 +205,7 @@ const lowEntityYOffsets: Record<string, number> = {
     PotWideLippedCup: 0.49,
     StoneMedium: 0.35,
     StoneSmall: 0.22,
-    Stool: 0.52,
+    Stool: 0.42,
 };
 
 function hashString(value: string) {
@@ -1431,6 +1446,7 @@ function Dog({
     const gltf = useGameGLTF('Dog');
     const { enableDebugHudFlag = false } = useGameFlags();
     const clock = useThree((state) => state.clock);
+    const gameStateStore = useGameStateStore();
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
     const randomRef = useRef(createRandom(habitat.seed));
@@ -1438,6 +1454,9 @@ function Dog({
     const lastAnimalDebugUpdateRef = useRef(0);
     const lastAnimalPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
+    const lastPetRequestSequenceRef = useRef(0);
+    const followAvatarUntilRef = useRef(Number.NEGATIVE_INFINITY);
+    const nextFollowAvatarRepathAtRef = useRef(Number.NEGATIVE_INFINITY);
     const pathDebugKeyRef = useRef('');
     const activeAnimationRef = useRef<DogAnimationName>('Dog_LyingIdle');
     const [activeAnimation, setActiveAnimation] =
@@ -1445,6 +1464,8 @@ function Dog({
     const [pathDebugPoints, setPathDebugPoints] = useState<
         AnimalDebugPathPoint[]
     >([]);
+    const { message: speechMessage, showMessage: showSpeechMessage } =
+        useActorHoverSpeech(dogSpeechMessages);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const animalPathfindingDebugVisible = useGameState(
         (state) => state.animalPathfindingDebugVisible,
@@ -1504,14 +1525,12 @@ function Dog({
     }, [actions, activeAnimation]);
 
     useEffect(() => {
-        runtimeRef.current = null;
-        if (groupRef.current) {
-            groupRef.current.position.copy(habitat.dogHouse.position);
-            if (habitat.dogHouse.facingYaw !== undefined) {
-                groupRef.current.rotation.y = habitat.dogHouse.facingYaw;
-            }
-        }
-    }, [habitat.dogHouse.facingYaw, habitat.dogHouse.position]);
+        initializeAnimalAtHome({
+            actor: groupRef.current,
+            home: habitat.dogHouse,
+            runtimeInitialized: runtimeRef.current !== null,
+        });
+    }, [habitat.dogHouse]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
@@ -1565,6 +1584,11 @@ function Dog({
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
+    }
+
+    function handlePointerOver(event: ThreeEvent<PointerEvent>) {
+        event.stopPropagation();
+        showSpeechMessage();
     }
 
     function handleClick(event: ThreeEvent<MouseEvent>) {
@@ -1657,6 +1681,66 @@ function Dog({
             if (habitat.dogHouse.facingYaw !== undefined) {
                 group.rotation.y = habitat.dogHouse.facingYaw;
             }
+        }
+
+        const { gardenAvatarAnimalPetRequest, gardenAvatarPresence } =
+            gameStateStore.getState();
+        if (
+            gardenAvatarAnimalPetRequest &&
+            gardenAvatarAnimalPetRequest.sequence !==
+                lastPetRequestSequenceRef.current
+        ) {
+            lastPetRequestSequenceRef.current =
+                gardenAvatarAnimalPetRequest.sequence;
+            if (
+                gardenAvatarAnimalPetRequest.species === 'Dog' &&
+                gardenAvatarAnimalPetRequest.targetId === habitat.id
+            ) {
+                followAvatarUntilRef.current = now + animalAvatarFollowSeconds;
+                nextFollowAvatarRepathAtRef.current = Number.NEGATIVE_INFINITY;
+            }
+        }
+
+        if (
+            now < followAvatarUntilRef.current &&
+            isFreshGardenAvatarPresence(gardenAvatarPresence, now) &&
+            now >= nextFollowAvatarRepathAtRef.current
+        ) {
+            const followPosition =
+                getAnimalAvatarFollowPosition(gardenAvatarPresence);
+            const lookAtPosition = new Vector3(
+                gardenAvatarPresence.position.x,
+                gardenAvatarPresence.position.y + 0.85,
+                gardenAvatarPresence.position.z,
+            );
+            const target = {
+                behavior: 'follow-avatar',
+                id: `avatar-follow:${habitat.id}`,
+                lookAtPosition,
+                position: followPosition,
+            } satisfies DogTarget;
+            const movingState = makeMovingState({
+                blockedCells: habitat.blockedCells,
+                from: group.position.clone(),
+                groundSurfaces: habitat.groundSurfaces,
+                now,
+                target,
+            });
+            runtime =
+                movingState ??
+                makeSettledState({
+                    now,
+                    random,
+                    target: {
+                        ...target,
+                        position: group.position.clone(),
+                    },
+                    timeOfDay,
+                    weather,
+                });
+            runtimeRef.current = runtime;
+            nextFollowAvatarRepathAtRef.current =
+                now + animalAvatarFollowRepathSeconds;
         }
 
         if (
@@ -1900,11 +1984,24 @@ function Dog({
                 scale={dogScale}
                 onPointerDown={handlePointerDown}
                 onClick={handleClick}
+                onPointerOver={handlePointerOver}
             >
                 <group rotation={[0, dogVisualYawOffset, 0]}>
                     <primitive object={dogModel.scene} />
                 </group>
             </group>
+            <AnimalPetHearts
+                actorRef={groupRef}
+                offsetY={0.9}
+                targetId={habitat.id}
+            />
+            {speechMessage ? (
+                <ActorSpeechBubble
+                    actorRef={groupRef}
+                    message={speechMessage}
+                    offsetY={dogSpeechBubbleOffsetY}
+                />
+            ) : null}
             <AnimalTargetDebugMarker ref={targetDebugRef} color="#f59e0b" />
             <AnimalPathDebugIndicator
                 color="#f59e0b"

@@ -1,8 +1,14 @@
 'use client';
 
-import { useThree } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import chroma from 'chroma-js';
-import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+} from 'react';
 import * as SunCalc from 'suncalc';
 import {
     AdditiveBlending,
@@ -10,18 +16,26 @@ import {
     DoubleSide,
     type Mesh,
     ShaderMaterial,
+    Vector2,
 } from 'three';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useSnapshotTime } from '../hooks/useSnapshotTime';
 import { useGameState } from '../useGameState';
 import { getMoonVisualPhase } from './moonPhase';
 import {
+    createSkyCameraProjectionSnapshot,
     createSkyViewBasis,
+    getSkyDirectionProjectionScale,
     getSunViewportTuning,
     SKY_FORWARD_DISTANCE,
     SUN_SCREEN_OFFSET_MULTIPLIER,
+    updateSkyCameraProjectionSnapshot,
     updateSkyViewBasis,
 } from './skyProjection';
+import {
+    getSolarEclipseVisualScales,
+    type SolarEclipseState,
+} from './solarEclipse';
 import {
     altAzToScenePosition,
     degreesToRadians,
@@ -44,6 +58,7 @@ const HORIZON_FADE_END = 0.18;
 // game camera zoom so on-screen size matches the plane size at default zoom.
 const SIZE_MULTIPLIER = 1.5;
 const SUN_SIZE_MULTIPLIER = 0.8;
+const SUN_DISC_RADIUS = 0.32;
 
 const MOON_NIGHT_COLOR = new Color('#c8d8f2');
 const MOON_DAY_COLOR = new Color('#f4f2ec');
@@ -86,6 +101,7 @@ const sunFragment = /* glsl */ `
     varying vec2 vUv;
     uniform vec3 uColor;
     uniform float uOpacity;
+    uniform float uGlowScale;
 
     const float DISC_R = 0.32;
     const float GLOW_R = 0.9;
@@ -94,7 +110,7 @@ const sunFragment = /* glsl */ `
         vec2 p = vUv * 2.0 - 1.0;
         float d = length(p);
         float disc = smoothstep(DISC_R + 0.02, DISC_R - 0.02, d);
-        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.22;
+        float glow = smoothstep(GLOW_R, DISC_R, d) * 0.22 * uGlowScale;
         float alpha = clamp(disc + glow, 0.0, 1.0) * uOpacity;
         if (alpha < 0.001) discard;
         gl_FragColor = vec4(uColor, alpha);
@@ -139,17 +155,51 @@ const moonFragment = /* glsl */ `
     }
 `;
 
+const solarEclipseFragment = /* glsl */ `
+    varying vec2 vUv;
+    uniform vec2 uMoonCenter;
+    uniform float uMoonRadius;
+    uniform float uOpacity;
+
+    const float SUN_DISC_R = 0.32;
+    const float EDGE_FEATHER = 0.008;
+
+    void main() {
+        vec2 p = vUv * 2.0 - 1.0;
+        float sunDisc = smoothstep(
+            SUN_DISC_R + EDGE_FEATHER,
+            SUN_DISC_R - EDGE_FEATHER,
+            length(p)
+        );
+        float moonDisc = smoothstep(
+            uMoonRadius + EDGE_FEATHER,
+            uMoonRadius - EDGE_FEATHER,
+            length(p - uMoonCenter)
+        );
+        float alpha = sunDisc * moonDisc * uOpacity;
+        if (alpha < 0.001) discard;
+        gl_FragColor = vec4(vec3(0.025, 0.035, 0.055), alpha);
+    }
+`;
+
 type SunMoonProps = {
+    screenOffsetMultiplier?: number;
+    solarEclipse?: SolarEclipseState | null;
     visibility?: number;
 };
 
-export function SunMoon({ visibility = 1 }: SunMoonProps) {
+export function SunMoon({
+    screenOffsetMultiplier = 1,
+    solarEclipse,
+    visibility = 1,
+}: SunMoonProps) {
     const currentTime = useSnapshotTime();
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const dayNightCycleDisabled = useGameState(
         (state) => state.dayNightCycleDisabled,
     );
     const gameCamera = useGameState((state) => state.gameCamera);
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: garden } = useCurrentGarden();
     const camera = useThree((state) => state.camera);
     const { width: viewportWidth, height: viewportHeight } = useThree(
@@ -167,6 +217,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
 
     const sunMesh = useRef<Mesh>(null);
     const moonMesh = useRef<Mesh>(null);
+    const solarEclipseMesh = useRef<Mesh>(null);
 
     const sunMaterial = useMemo(
         () =>
@@ -179,6 +230,7 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 blending: AdditiveBlending,
                 uniforms: {
                     uColor: { value: new Color('#fff2c4') },
+                    uGlowScale: { value: 1 },
                     uOpacity: { value: 0 },
                 },
             }),
@@ -203,15 +255,44 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         [],
     );
 
+    const solarEclipseMaterial = useMemo(
+        () =>
+            new ShaderMaterial({
+                vertexShader: bodyVertex,
+                fragmentShader: solarEclipseFragment,
+                transparent: true,
+                depthTest: true,
+                depthWrite: false,
+                side: DoubleSide,
+                uniforms: {
+                    uMoonCenter: { value: new Vector2() },
+                    uMoonRadius: { value: SUN_DISC_RADIUS },
+                    uOpacity: { value: 0 },
+                },
+            }),
+        [],
+    );
+
+    useEffect(
+        () => () => {
+            sunMaterial.dispose();
+            moonMaterial.dispose();
+            solarEclipseMaterial.dispose();
+        },
+        [moonMaterial, solarEclipseMaterial, sunMaterial],
+    );
+
     const sunViewportTuning = useMemo(
         () => getSunViewportTuning(viewportWidth, viewportHeight),
         [viewportHeight, viewportWidth],
     );
 
     const skyBasisRef = useRef(createSkyViewBasis());
+    const projectionSnapshotRef = useRef(createSkyCameraProjectionSnapshot());
 
     const updateSunMoon = useCallback(() => {
-        if (!sunMesh.current || !moonMesh.current) return;
+        if (!sunMesh.current || !moonMesh.current || !solarEclipseMesh.current)
+            return;
 
         if (!updateSkyViewBasis(camera, skyBasisRef.current)) return;
 
@@ -234,31 +315,42 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         const sunOpacity =
             smoothstep(HORIZON_FADE_START, HORIZON_FADE_END, sunAltitude) *
             visibility;
-        if (sunOpacity > 0.001) {
-            const sunDir = altAzToScenePosition(
-                sun.altitude,
-                sun.azimuth,
-            ).normalize();
-            const sx = sunDir.dot(basis.right);
-            const sy = sunDir.dot(basis.viewUp);
-
-            sunMesh.current.position
-                .copy(camera.position)
-                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
-                .addScaledVector(
-                    basis.right,
-                    sx *
-                        basis.skyRadius *
-                        SUN_SCREEN_OFFSET_MULTIPLIER *
-                        sunViewportTuning.horizontalOffsetMultiplier,
-                )
-                .addScaledVector(
-                    basis.viewUp,
-                    sy *
-                        basis.skyRadius *
-                        SUN_SCREEN_OFFSET_MULTIPLIER *
-                        sunViewportTuning.verticalOffsetMultiplier,
-                );
+        const sunDir = altAzToScenePosition(
+            sun.altitude,
+            sun.azimuth,
+        ).normalize();
+        const sunProjectionScale = getSkyDirectionProjectionScale(
+            sunDir,
+            basis,
+        );
+        if (sunOpacity > 0.001 && sunProjectionScale !== null) {
+            if (gardenAvatarView === 'overview') {
+                const sx = sunDir.dot(basis.right) * sunProjectionScale;
+                const sy = sunDir.dot(basis.viewUp) * sunProjectionScale;
+                sunMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
+                    .addScaledVector(
+                        basis.right,
+                        sx *
+                            basis.skyRadius *
+                            SUN_SCREEN_OFFSET_MULTIPLIER *
+                            screenOffsetMultiplier *
+                            sunViewportTuning.horizontalOffsetMultiplier,
+                    )
+                    .addScaledVector(
+                        basis.viewUp,
+                        sy *
+                            basis.skyRadius *
+                            SUN_SCREEN_OFFSET_MULTIPLIER *
+                            screenOffsetMultiplier *
+                            sunViewportTuning.verticalOffsetMultiplier,
+                    );
+            } else {
+                sunMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(sunDir, SKY_FORWARD_DISTANCE);
+            }
             sunMesh.current.lookAt(camera.position);
 
             const sunRgb = sunColorScale(timeOfDay).rgb();
@@ -268,6 +360,9 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 sunRgb[2] / 255,
             );
             sunMaterial.uniforms.uOpacity.value = sunOpacity;
+            sunMaterial.uniforms.uGlowScale.value = getSolarEclipseVisualScales(
+                solarEclipse?.obscuration ?? 0,
+            ).sunGlow;
             sunMesh.current.visible = true;
         } else {
             sunMaterial.uniforms.uOpacity.value = 0;
@@ -283,19 +378,92 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         // reads as a pale daytime moon rather than a competing sun.
         const moonDayFade = 1 - 0.85 * smoothstep(-0.05, 0.3, sunAltitude);
         const moonOpacity = moonHorizonOpacity * moonDayFade * visibility;
-        if (moonOpacity > 0.001) {
-            const moonDir = altAzToScenePosition(
-                moon.altitude,
-                moon.azimuth,
-            ).normalize();
-            const mx = moonDir.dot(basis.right);
-            const my = moonDir.dot(basis.viewUp);
+        const moonDir = altAzToScenePosition(
+            moon.altitude,
+            moon.azimuth,
+        ).normalize();
 
-            moonMesh.current.position
-                .copy(camera.position)
-                .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
-                .addScaledVector(basis.right, mx * basis.skyRadius)
-                .addScaledVector(basis.viewUp, my * basis.skyRadius);
+        const solarEclipseVisible =
+            solarEclipse !== null &&
+            solarEclipse !== undefined &&
+            solarEclipse.obscuration > 0 &&
+            sunMesh.current.visible;
+        if (solarEclipseVisible) {
+            solarEclipseMesh.current.position.copy(sunMesh.current.position);
+            solarEclipseMesh.current.quaternion.copy(
+                sunMesh.current.quaternion,
+            );
+            solarEclipseMesh.current.scale.copy(sunMesh.current.scale);
+
+            const moonCenter = solarEclipseMaterial.uniforms.uMoonCenter.value;
+            if (
+                moonCenter instanceof Vector2 &&
+                solarEclipse.sunAngularRadius > 0
+            ) {
+                const liveSunDirection = altAzToScenePosition(
+                    solarEclipse.sunPosition.altitude,
+                    solarEclipse.sunPosition.azimuth,
+                ).normalize();
+                const liveMoonDirection = altAzToScenePosition(
+                    solarEclipse.moonPosition.altitude,
+                    solarEclipse.moonPosition.azimuth,
+                ).normalize();
+                const screenDeltaX =
+                    liveMoonDirection.dot(basis.right) -
+                    liveSunDirection.dot(basis.right);
+                const screenDeltaY =
+                    liveMoonDirection.dot(basis.viewUp) -
+                    liveSunDirection.dot(basis.viewUp);
+                const screenDeltaLength = Math.hypot(
+                    screenDeltaX,
+                    screenDeltaY,
+                );
+                const centerDistance =
+                    (solarEclipse.angularSeparation /
+                        solarEclipse.sunAngularRadius) *
+                    SUN_DISC_RADIUS;
+                if (screenDeltaLength > 0) {
+                    moonCenter.set(
+                        (screenDeltaX / screenDeltaLength) * centerDistance,
+                        (screenDeltaY / screenDeltaLength) * centerDistance,
+                    );
+                }
+            }
+            solarEclipseMaterial.uniforms.uMoonRadius.value =
+                SUN_DISC_RADIUS *
+                (solarEclipse.moonAngularRadius /
+                    solarEclipse.sunAngularRadius);
+            solarEclipseMaterial.uniforms.uOpacity.value = sunOpacity;
+            solarEclipseMesh.current.visible = true;
+        } else {
+            solarEclipseMaterial.uniforms.uOpacity.value = 0;
+            solarEclipseMesh.current.visible = false;
+        }
+
+        const moonProjectionScale = getSkyDirectionProjectionScale(
+            moonDir,
+            basis,
+        );
+        if (moonOpacity > 0.001 && moonProjectionScale !== null) {
+            if (gardenAvatarView === 'overview') {
+                const mx = moonDir.dot(basis.right) * moonProjectionScale;
+                const my = moonDir.dot(basis.viewUp) * moonProjectionScale;
+                moonMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(basis.forward, SKY_FORWARD_DISTANCE)
+                    .addScaledVector(
+                        basis.right,
+                        mx * basis.skyRadius * screenOffsetMultiplier,
+                    )
+                    .addScaledVector(
+                        basis.viewUp,
+                        my * basis.skyRadius * screenOffsetMultiplier,
+                    );
+            } else {
+                moonMesh.current.position
+                    .copy(camera.position)
+                    .addScaledVector(moonDir, SKY_FORWARD_DISTANCE);
+            }
             moonMesh.current.lookAt(camera.position);
 
             moonMaterial.uniforms.uPhase.value = moonVisualPhase.phase;
@@ -319,9 +487,13 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         camera,
         currentTime,
         dayNightCycleDisabled,
+        gardenAvatarView,
         lat,
         lon,
         moonMaterial,
+        screenOffsetMultiplier,
+        solarEclipse,
+        solarEclipseMaterial,
         sunMaterial,
         sunViewportTuning.horizontalOffsetMultiplier,
         sunViewportTuning.sizeMultiplier,
@@ -329,6 +501,18 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
         timeOfDay,
         visibility,
     ]);
+
+    useFrame(() => {
+        if (
+            screenOffsetMultiplier !== 1 &&
+            updateSkyCameraProjectionSnapshot(
+                camera,
+                projectionSnapshotRef.current,
+            )
+        ) {
+            updateSunMoon();
+        }
+    });
 
     useLayoutEffect(() => {
         updateSunMoon();
@@ -339,6 +523,12 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
 
         return gameCamera.subscribe(() => updateSunMoon());
     }, [gameCamera, updateSunMoon]);
+
+    useFrame(() => {
+        if (gardenAvatarView !== 'overview') {
+            updateSunMoon();
+        }
+    });
 
     return (
         <>
@@ -359,6 +549,16 @@ export function SunMoon({ visibility = 1 }: SunMoonProps) {
                 material={moonMaterial}
             >
                 <planeGeometry args={[MOON_PLANE_SIZE, MOON_PLANE_SIZE]} />
+            </mesh>
+            <mesh
+                ref={solarEclipseMesh}
+                name="Environment:SolarEclipseOccluder"
+                frustumCulled={false}
+                renderOrder={0}
+                material={solarEclipseMaterial}
+                visible={false}
+            >
+                <planeGeometry args={[SUN_PLANE_SIZE, SUN_PLANE_SIZE]} />
             </mesh>
         </>
     );

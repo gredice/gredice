@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
+import { getInternalSceneBlockData } from '../internalSceneBlockData';
 import {
     createOptimisticBlockPlacement,
     getPreferredBlockPlacementPosition,
@@ -10,6 +11,7 @@ import {
 } from './optimisticBlockPlacement';
 
 const blockData: PlacementBlockData[] = [
+    ...getInternalSceneBlockData(),
     {
         information: { name: 'Block_Grass' },
         attributes: { stackable: true, height: 1 },
@@ -20,11 +22,15 @@ const blockData: PlacementBlockData[] = [
     },
     {
         information: { name: 'Raised_Bed' },
-        attributes: { stackable: true, height: 1 },
+        attributes: { stackable: false, height: 1, spanDepth: 2 },
     },
     {
         information: { name: 'Shade' },
         attributes: { stackable: false, height: 1 },
+    },
+    {
+        information: { name: 'PotRoundedBowl' },
+        attributes: { stackable: false, height: 0.2 },
     },
 ];
 
@@ -124,16 +130,19 @@ describe('createOptimisticBlockPlacement', () => {
 
         assert.ok(placement);
         assert.deepStrictEqual(placement.position, { x: -1, y: 0, z: 1 });
-        assert.deepStrictEqual(placement.stacks.at(-1), {
-            position: { x: -1, y: 0, z: 1 },
-            blocks: [
-                {
-                    id: 'optimistic-bed',
-                    name: 'Raised_Bed',
-                    rotation: 0,
-                },
-            ],
-        });
+        assert.equal(placement.blockId, 'optimistic-bed');
+        assert.deepStrictEqual(placement.stacks.slice(-1), [
+            {
+                position: { x: -1, y: 0, z: 1 },
+                blocks: [
+                    {
+                        id: 'optimistic-bed',
+                        name: 'Raised_Bed',
+                        rotation: 0,
+                    },
+                ],
+            },
+        ]);
     });
 
     it('avoids water stacks when automatically placing new blocks', () => {
@@ -265,6 +274,55 @@ describe('createOptimisticBlockPlacement', () => {
                         rotation: 0,
                     },
                 ],
+            },
+        ]);
+    });
+
+    it('places a pot on top of the stackable display table', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(2, 0, 3),
+                        blocks: [
+                            {
+                                id: 'grass-table',
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                            {
+                                id: 'display-table',
+                                name: 'OutletDisplayTable',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'PotRoundedBowl',
+            'display-pot',
+            {
+                requestedPosition: { x: 2, y: 3 },
+            },
+        );
+
+        assert.ok(placement);
+        assert.deepStrictEqual(placement.stacks[0]?.blocks, [
+            {
+                id: 'grass-table',
+                name: 'Block_Grass',
+                rotation: 0,
+            },
+            {
+                id: 'display-table',
+                name: 'OutletDisplayTable',
+                rotation: 0,
+            },
+            {
+                id: 'display-pot',
+                name: 'PotRoundedBowl',
+                rotation: 0,
             },
         ]);
     });

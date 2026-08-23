@@ -566,6 +566,97 @@ test('syncTimeOfDay refreshes time of day for a new garden location', () => {
     }
 });
 
+test('garden avatar view enters play mode and resets controls on exit', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setGardenAvatarView('third-person');
+        store.getState().setGardenAvatarMoveInput({ forward: 1, right: -1 });
+        store.getState().setGardenAvatarSprintInput(true);
+        store.getState().setGardenAvatarCrouchInput(true);
+        store.getState().scaleGardenAvatarCameraZoom(1.15);
+        store.getState().requestGardenAvatarJump();
+
+        assert.equal(store.getState().gardenAvatarView, 'third-person');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 1,
+            right: -1,
+        });
+        assert.equal(store.getState().gardenAvatarJumpRequest, 1);
+        assert.equal(store.getState().gardenAvatarSprintInput, true);
+        assert.equal(store.getState().gardenAvatarCrouchInput, true);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1.15);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, false);
+
+        store.getState().setGardenAvatarAimedBoatId('boat-a');
+        store.getState().setGardenAvatarBoatId('boat-a');
+        assert.equal(store.getState().gardenAvatarBoatId, 'boat-a');
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+
+        store.getState().setGardenAvatarSeatId('bench-a');
+        assert.equal(store.getState().gardenAvatarSeatId, 'bench-a');
+        assert.equal(store.getState().gardenAvatarBoatId, null);
+        store.getState().setGardenAvatarBoatId('boat-a');
+        assert.equal(store.getState().gardenAvatarSeatId, null);
+
+        store.getState().setGardenAvatarPresence({
+            position: { x: 1, y: 0, z: -2 },
+            updatedAt: 4,
+            yaw: 0.5,
+        });
+        store.getState().petGardenAvatarAnimal({
+            species: 'Cat',
+            targetId: 'cat-a',
+        });
+        store.getState().petGardenAvatarAnimal({
+            species: 'Dog',
+            targetId: 'dog-a',
+        });
+        store.getState().kickGardenAvatarBeachBall({
+            direction: { x: 0, z: -1 },
+            targetId: 'ball-a',
+        });
+        assert.equal(store.getState().gardenAvatarPresence?.position.x, 1);
+        assert.equal(
+            store.getState().gardenAvatarAnimalPetRequest?.sequence,
+            2,
+        );
+        assert.equal(
+            store.getState().gardenAvatarAnimalPetRequest?.targetId,
+            'dog-a',
+        );
+        assert.equal(
+            store.getState().gardenAvatarBeachBallKickRequest?.targetId,
+            'ball-a',
+        );
+
+        store.getState().setGardenAvatarCollisionDebugVisible(true);
+        assert.equal(store.getState().gardenAvatarCollisionDebugVisible, true);
+
+        store.getState().setGardenAvatarView('overview');
+        assert.equal(store.getState().gardenAvatarView, 'overview');
+        assert.deepEqual(store.getState().gardenAvatarMoveInput, {
+            forward: 0,
+            right: 0,
+        });
+        assert.equal(store.getState().gardenAvatarSprintInput, false);
+        assert.equal(store.getState().gardenAvatarCrouchInput, false);
+        assert.equal(store.getState().gardenAvatarCameraZoom, 1);
+        assert.equal(store.getState().gardenAvatarBoatId, null);
+        assert.equal(store.getState().gardenAvatarAimedBoatId, null);
+        assert.equal(store.getState().gardenAvatarSeatId, null);
+        assert.equal(store.getState().gardenAvatarPresence, null);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('environment can publish blended rain intensity for surface effects', () => {
     const store = createGameState({
         appBaseUrl: '',
@@ -577,6 +668,52 @@ test('environment can publish blended rain intensity for surface effects', () =>
         assert.equal(store.getState().rainSurfaceIntensity, 0);
         store.getState().setRainSurfaceIntensity(0.72);
         assert.equal(store.getState().rainSurfaceIntensity, 0.72);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
+test('garden target highlights can be replaced and cleared', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        const highlight = {
+            fieldId: 27,
+            gardenId: 8,
+            label: 'Polje 3',
+            message: 'Prikazana je završena radnja.',
+            positionIndex: 2,
+            raisedBedId: 17,
+            raisedBedName: 'Sjever',
+        };
+
+        store.getState().setGardenTargetHighlight(highlight);
+        const firstHighlight = store.getState().gardenTargetHighlight;
+        assert.ok(firstHighlight);
+        assert.deepEqual(
+            {
+                fieldId: firstHighlight.fieldId,
+                gardenId: firstHighlight.gardenId,
+                label: firstHighlight.label,
+                message: firstHighlight.message,
+                positionIndex: firstHighlight.positionIndex,
+                raisedBedId: firstHighlight.raisedBedId,
+                raisedBedName: firstHighlight.raisedBedName,
+                sequence: firstHighlight.sequence,
+            },
+            { ...highlight, sequence: 1 },
+        );
+        assert.equal(typeof firstHighlight.createdAt, 'number');
+
+        store.getState().setGardenTargetHighlight(highlight);
+        assert.equal(store.getState().gardenTargetHighlight?.sequence, 2);
+
+        store.getState().clearGardenTargetHighlight();
+        assert.equal(store.getState().gardenTargetHighlight, null);
     } finally {
         store.getState().audio.dispose();
     }

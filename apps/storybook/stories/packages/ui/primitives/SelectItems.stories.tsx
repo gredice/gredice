@@ -11,7 +11,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'SelectItems provides a Radix Select-backed compatibility primitive for choosing one value from a compact option list.',
+                    'SelectItems uses Base UI Select for compact option lists and Base UI Combobox when searchable client or server filtering is active.',
             },
         },
     },
@@ -37,6 +37,13 @@ export const Default: Story = {};
 export const Plain: Story = {
     args: {
         variant: 'plain',
+    },
+};
+
+export const Disabled: Story = {
+    args: {
+        disabled: true,
+        defaultValue: 'active',
     },
 };
 
@@ -82,6 +89,47 @@ export const SearchableList: Story = {
     },
 };
 
+export const ForcedCompactList: Story = {
+    args: {
+        label: 'Biljka bez pretrage',
+        placeholder: 'Odaberi biljku',
+        items: plantSortItems,
+        searchable: false,
+    },
+};
+
+export const RichSearchLabels: Story = {
+    args: {
+        label: 'Sorta',
+        placeholder: 'Odaberi sortu',
+        searchable: true,
+        items: [
+            {
+                value: 'cherry',
+                title: 'Cherry rajčica',
+                label: (
+                    <span>
+                        Cherry{' '}
+                        <span className="text-muted-foreground">Rajčica</span>
+                    </span>
+                ),
+                icon: <Leaf className="size-4" />,
+            },
+            {
+                value: 'babura',
+                title: 'Babura paprika',
+                label: (
+                    <span>
+                        Babura{' '}
+                        <span className="text-muted-foreground">Paprika</span>
+                    </span>
+                ),
+                icon: <Leaf className="size-4" />,
+            },
+        ],
+    },
+};
+
 export const ServerFilteredList: Story = {
     args: {
         label: 'Račun',
@@ -104,10 +152,24 @@ export const EmptyStringValue: Story = {
     },
 };
 
+export const EmptySearchResults: Story = {
+    args: {
+        label: 'Biljka',
+        emptySearchText: 'Nema biljaka za ovaj upit.',
+        items: plantSortItems,
+        searchable: true,
+        searchValue: 'nepostojeca biljka',
+    },
+};
+
 export const HelperText: Story = {
     args: {
         helperText: 'Odaberi jednu vrijednost prije spremanja.',
     },
+};
+
+export const CustomPortal: Story = {
+    render: () => <CustomPortalSelect />,
 };
 
 function ControlledSelect(args: ComponentProps<typeof SelectItems>) {
@@ -147,6 +209,26 @@ function ServerFilteredSelect(args: ComponentProps<typeof SelectItems>) {
                 value={value}
                 onSearchValueChange={setSearch}
                 onValueChange={(nextValue) => setValue(nextValue)}
+            />
+        </div>
+    );
+}
+
+function CustomPortalSelect() {
+    const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
+        null,
+    );
+
+    return (
+        <div
+            ref={setPortalContainer}
+            className="w-80 rounded-lg border border-dashed p-4"
+        >
+            <SelectItems
+                container={portalContainer ?? undefined}
+                items={plantSortItems}
+                label="Portal unutar okvira"
+                placeholder="Odaberi biljku"
             />
         </div>
     );

@@ -1,6 +1,5 @@
 'use client';
 
-import { Shadow } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { Suspense, useMemo, useRef } from 'react';
 import { Plane, Raycaster, Vector2, Vector3 } from 'three';
@@ -11,6 +10,7 @@ import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import type { HudPlacementGridPosition } from './hudPlacement';
+import { PlacementFootprintIndicator } from './PlacementFootprintIndicator';
 import { useHudPlacementPreview } from './useHudPlacementPreview';
 
 const groundPlane = new Plane(new Vector3(0, 1, 0), 0);
@@ -128,6 +128,7 @@ export function HudPlacementDragPreview() {
     }
 
     const previewY = placementPreview.hoverHeight + previewLift;
+    const blockData = placementPreview.blockData;
 
     return (
         <group name="Interaction:HudPlacementDragPreview">
@@ -139,11 +140,10 @@ export function HudPlacementDragPreview() {
                         placementPreview.position.z,
                     ]}
                 >
-                    <Shadow
+                    <PlacementFootprintIndicator
+                        blockData={blockData}
                         color={0xff0000}
-                        colorStop={0.5}
                         opacity={0.9}
-                        scale={2}
                     />
                 </group>
             )}

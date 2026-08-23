@@ -19,7 +19,7 @@ import type { Block } from '../../types/Block';
 import type { GardenStack } from '../../types/Stack';
 import { type ActiveDragPreview, useGameState } from '../../useGameState';
 import { getStackHeight } from '../../utils/getStackHeight';
-import { getRaisedBedBlockIds } from '../../utils/raisedBedBlocks';
+import { getRaisedBedFootprintSegments } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getGridPositionFromIndex,
@@ -51,20 +51,13 @@ import {
     resolveMulchVisualByOperationId,
 } from './raisedBedMulchVisualRewards';
 
-const combinedOverlap = 0.1;
-const halfOverlap = combinedOverlap / 2;
-
 type CurrentGardenData = NonNullable<
     NonNullable<ReturnType<typeof useCurrentGarden>['data']>
 >;
 type RaisedBedFieldData =
     CurrentGardenData['raisedBeds'][number]['fields'][number];
 
-type RaisedBedDirtGeometryName =
-    | 'Raised_Bed_O_2'
-    | 'Raised_Bed_L_1'
-    | 'Raised_Bed_I_1'
-    | 'Raised_Bed_U_1';
+type RaisedBedDirtGeometryName = 'Raised_Bed_U_1';
 
 type FootprintBounds = {
     minX: number;
@@ -188,67 +181,6 @@ function activeDragPreviewTouchesRaisedBed(
     );
 }
 
-function getRaisedBedNeighbors(
-    garden: CurrentGardenData,
-    stack: GardenStack,
-    block: Block,
-) {
-    function getStackAt(x: number, z: number) {
-        return garden.stacks.find(
-            (candidate) =>
-                candidate.position.x === x && candidate.position.z === z,
-        );
-    }
-
-    const currentInStackIndex = stack.blocks.indexOf(block);
-    const north = getStackAt(stack.position.x + 1, stack.position.z);
-    const east = getStackAt(stack.position.x, stack.position.z - 1);
-    const south = getStackAt(stack.position.x - 1, stack.position.z);
-    const west = getStackAt(stack.position.x, stack.position.z + 1);
-
-    const neighbors = {
-        n: north?.blocks.at(currentInStackIndex)?.name === block.name,
-        e: east?.blocks.at(currentInStackIndex)?.name === block.name,
-        s: south?.blocks.at(currentInStackIndex)?.name === block.name,
-        w: west?.blocks.at(currentInStackIndex)?.name === block.name,
-    };
-
-    return {
-        ...neighbors,
-        total:
-            (neighbors.n ? 1 : 0) +
-            (neighbors.e ? 1 : 0) +
-            (neighbors.s ? 1 : 0) +
-            (neighbors.w ? 1 : 0),
-    };
-}
-
-function getRaisedBedOrigin(
-    blockData: ReturnType<typeof useBlockData>['data'],
-    stack: GardenStack,
-    block: Block,
-    neighbors: ReturnType<typeof getRaisedBedNeighbors>,
-): [number, number, number] {
-    const currentStackHeight = getStackHeight(blockData, stack, block);
-
-    let x = stack.position.x;
-    let z = stack.position.z;
-
-    if (neighbors.total === 1) {
-        if (neighbors.n) {
-            x += halfOverlap;
-        } else if (neighbors.e) {
-            z -= halfOverlap;
-        } else if (neighbors.s) {
-            x -= halfOverlap;
-        } else if (neighbors.w) {
-            z += halfOverlap;
-        }
-    }
-
-    return [x, currentStackHeight + 1, z];
-}
-
 function getRaisedBedSurfaceY(origin: [number, number, number]) {
     return origin[1] - 0.75;
 }
@@ -295,52 +227,6 @@ function getPlacementForPositionIndex(
     }
 
     return null;
-}
-
-function getRaisedBedSurfaceGeometry(
-    neighbors: ReturnType<typeof getRaisedBedNeighbors>,
-): {
-    dirtGeometryName: RaisedBedDirtGeometryName;
-    rotationQuarterTurns: number;
-} {
-    let dirtGeometryName: RaisedBedDirtGeometryName = 'Raised_Bed_O_2';
-    let rotationQuarterTurns = 0;
-
-    if (neighbors.total === 1) {
-        dirtGeometryName = 'Raised_Bed_U_1';
-
-        if (neighbors.n) {
-            rotationQuarterTurns = 0;
-        } else if (neighbors.e) {
-            rotationQuarterTurns = 1;
-        } else if (neighbors.s) {
-            rotationQuarterTurns = 2;
-        } else if (neighbors.w) {
-            rotationQuarterTurns = 3;
-        }
-    } else if (neighbors.total === 2) {
-        if ((neighbors.n && neighbors.s) || (neighbors.e && neighbors.w)) {
-            dirtGeometryName = 'Raised_Bed_I_1';
-            rotationQuarterTurns = neighbors.n && neighbors.s ? 1 : 0;
-        } else {
-            dirtGeometryName = 'Raised_Bed_L_1';
-
-            if (neighbors.n && neighbors.e) {
-                rotationQuarterTurns = 0;
-            } else if (neighbors.e && neighbors.s) {
-                rotationQuarterTurns = 1;
-            } else if (neighbors.s && neighbors.w) {
-                rotationQuarterTurns = 2;
-            } else {
-                rotationQuarterTurns = 3;
-            }
-        }
-    }
-
-    return {
-        dirtGeometryName,
-        rotationQuarterTurns,
-    };
 }
 
 function getGeometryFootprintBounds(geometry: BufferGeometry): FootprintBounds {
@@ -584,26 +470,15 @@ export function RaisedBedMulchOverlays({
         const patches: MulchRenderPatch[] = [];
 
         for (const raisedBed of currentGarden.raisedBeds) {
-            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
             const placements: RaisedBedPlacement[] = [];
-
-            for (const [blockIndex, blockId] of blockIds.entries()) {
-                const placement = getBlockPlacement(currentGarden, blockId);
-                if (!placement) {
-                    continue;
-                }
-
-                const neighbors = getRaisedBedNeighbors(
-                    currentGarden,
-                    placement.stack,
-                    placement.block,
-                );
-                const surfaceGeometry = getRaisedBedSurfaceGeometry(neighbors);
-                const origin = getRaisedBedOrigin(
+            const placement = raisedBed.blockId
+                ? getBlockPlacement(currentGarden, raisedBed.blockId)
+                : null;
+            if (placement) {
+                const currentStackHeight = getStackHeight(
                     blockData,
                     placement.stack,
                     placement.block,
-                    neighbors,
                 );
                 const dragPreviewOffset =
                     getActiveDragPreviewTargetPositionOffset(
@@ -615,21 +490,30 @@ export function RaisedBedMulchOverlays({
                         activeDragPreview,
                     );
 
-                placements.push({
-                    block: placement.block,
-                    blockIndex,
-                    blockOffset:
-                        Math.max(blockIds.length - 1 - blockIndex, 0) * 9,
-                    dirtGeometryName: surfaceGeometry.dirtGeometryName,
-                    origin: [
-                        origin[0] + (dragPreviewOffset?.x ?? 0),
-                        origin[1] + (dragPreviewOffset?.y ?? 0),
-                        origin[2] + (dragPreviewOffset?.z ?? 0),
-                    ],
-                    rotationQuarterTurns: surfaceGeometry.rotationQuarterTurns,
-                    stack: placement.stack,
-                    stackBlockIndex: placement.stackBlockIndex,
-                });
+                for (const segment of getRaisedBedFootprintSegments(
+                    placement.block.rotation,
+                )) {
+                    placements.push({
+                        block: placement.block,
+                        blockIndex: segment.blockIndex,
+                        blockOffset: segment.blockOffset,
+                        dirtGeometryName: 'Raised_Bed_U_1',
+                        origin: [
+                            placement.stack.position.x +
+                                segment.offset.x +
+                                (dragPreviewOffset?.x ?? 0),
+                            currentStackHeight +
+                                1 +
+                                (dragPreviewOffset?.y ?? 0),
+                            placement.stack.position.z +
+                                segment.offset.z +
+                                (dragPreviewOffset?.z ?? 0),
+                        ],
+                        rotationQuarterTurns: segment.shapeRotation,
+                        stack: placement.stack,
+                        stackBlockIndex: placement.stackBlockIndex,
+                    });
+                }
             }
 
             if (placements.length === 0) {

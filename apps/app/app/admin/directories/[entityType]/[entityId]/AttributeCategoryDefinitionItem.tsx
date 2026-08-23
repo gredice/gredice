@@ -33,13 +33,16 @@ export function AttributeCategoryDefinitionItem({
     );
 
     function handleAdd() {
-        void trackSave(() =>
-            handleValueSave(
+        void trackSave(async () => {
+            const result = await handleValueSave(
                 entity.entityTypeName,
                 entity.id,
                 attributeDefinition,
-            ),
-        ).catch((error) => {
+            );
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+        }).catch((error) => {
             console.error(
                 'AttributeCategoryDefinitionItem handleAdd error',
                 error,

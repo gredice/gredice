@@ -5,7 +5,9 @@ import type { Group } from 'three';
 import { usePlantLodState } from '../../generators/plant/hooks/usePlantLod';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantDefinition,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
 import { getApproximatePlantHeight } from '../../generators/plant/lib/plantRenderData';
@@ -19,6 +21,10 @@ import {
 } from '../../utils/raisedBedOrientation';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { RaisedBedGeneratedPlantBatch } from './RaisedBedGeneratedPlantBatch';
+import {
+    resolveRaisedBedPlantVisualStage,
+    shouldRenderRaisedBedPlant,
+} from './raisedBedPlantVisualStatus';
 
 export const mockPlantPresetLabelsBySortId: Record<number, string> = {
     219: 'pepper',
@@ -42,11 +48,18 @@ export function RaisedBedPlantField({
         plantSortId: number | null | undefined;
         plantStatus?: string | null;
         plantSowDate?: string | null;
+        supportedVisual?: boolean;
     };
     orientation: RaisedBedOrientation;
     blockIndex: number;
 }) {
-    const { harvestedVisual, positionIndex, plantSortId, plantSowDate } = field;
+    const {
+        harvestedVisual,
+        positionIndex,
+        plantSortId,
+        plantSowDate,
+        supportedVisual,
+    } = field;
     const fieldGroupRef = useRef<Group | null>(null);
     const { data: sortData } = usePlantSort(plantSortId);
     const isMock = useGameState((state) => state.isMock);
@@ -61,6 +74,9 @@ export function RaisedBedPlantField({
 
     const { plantsPerRow, totalPlants } = calculatePlantsPerField(
         sortData?.information?.plant.attributes?.seedingDistance,
+        sortData?.information.name ??
+            mockPlantPresetLabelsBySortId[plantSortId ?? 0] ??
+            `Plant sort #${plantSortId?.toString() ?? 'unknown'}`,
     );
     const safePlantsPerRow = Math.max(plantsPerRow, 1);
     const seedsCount = totalPlants;
@@ -105,39 +121,47 @@ export function RaisedBedPlantField({
         sortData?.information.plant.information?.latinName,
         sortData?.information.plant.information?.name,
     ]);
-    const lifecycleWindowDays = getPlantLifecycleWindowDays({
+    const maturityWindowDays = getPlantMaturityWindowDays({
         germinationWindowMax:
             sortData?.information.plant.attributes?.germinationWindowMax,
         growthWindowMax:
             sortData?.information.plant.attributes?.growthWindowMax,
-        harvestWindowMax:
-            sortData?.information.plant.attributes?.harvestWindowMax,
     });
     const plantGeneration =
         plantSowDate && resolvedPlantPreset
             ? calculateInGamePlantGeneration({
                   currentTime,
                   sowDate: plantSowDate,
-                  lifecycleWindowDays,
+                  lifecycleWindowDays: maturityWindowDays,
                   growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                  plantStatus: field.plantStatus,
               })
             : 0;
-    const visualPlantGeneration = harvestedVisual
-        ? Math.max(0.8, plantGeneration * 0.7)
-        : plantGeneration;
     const shouldRenderGeneratedPlants =
         Boolean(resolvedPlantPreset) &&
-        Boolean(plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested');
+        shouldRenderRaisedBedPlant({
+            plantSowDate,
+            plantStatus: field.plantStatus,
+        });
     const plantInstanceScale = resolvedPlantPreset
-        ? resolvedPlantPreset.instanceScale *
-          Math.max(0.72, 1 - Math.max(0, safePlantsPerRow - 2) * 0.12)
+        ? getInGamePlantInstanceScale(resolvedPlantPreset, safePlantsPerRow)
         : 0;
-    const approximateFieldPlantHeight = resolvedPlantPreset
-        ? getApproximatePlantHeight(resolvedPlantPreset.definition) *
-          plantInstanceScale
+    const plantDefinition = resolvedPlantPreset
+        ? getInGamePlantDefinition(
+              resolvedPlantPreset,
+              supportedVisual === true,
+          )
+        : null;
+    const plantVisualStage = plantDefinition
+        ? resolveRaisedBedPlantVisualStage({
+              generation: plantGeneration,
+              harvestedVisual,
+              plantDefinition,
+              plantStatus: field.plantStatus,
+          })
+        : null;
+    const approximateFieldPlantHeight = plantDefinition
+        ? getApproximatePlantHeight(plantDefinition) * plantInstanceScale
         : 0.25;
     const fieldLod = usePlantLodState(
         fieldGroupRef,
@@ -153,7 +177,7 @@ export function RaisedBedPlantField({
         }
 
         return fieldSlots.map((position, index) => ({
-            generation: visualPlantGeneration,
+            generation: plantVisualStage?.generation ?? plantGeneration,
             position: [position[0], 0.02, position[2]] as const,
             scale: plantInstanceScale,
             seed: `${plantSortId ?? 'sort'}:${positionIndex}:${blockIndex}:${index}`,
@@ -164,8 +188,9 @@ export function RaisedBedPlantField({
         plantInstanceScale,
         plantSortId,
         positionIndex,
+        plantGeneration,
+        plantVisualStage?.generation,
         resolvedPlantPreset,
-        visualPlantGeneration,
     ]);
 
     const seedColor = plantSowDate ? '#4b3223' : '#6495ED';
@@ -197,12 +222,15 @@ export function RaisedBedPlantField({
             {fieldLod.visible ? (
                 shouldRenderGeneratedPlants && resolvedPlantPreset ? (
                     <RaisedBedGeneratedPlantBatch
-                        definition={resolvedPlantPreset.definition}
-                        flowerGrowth={harvestedVisual ? 0.35 : 1}
-                        fruitGrowth={harvestedVisual ? 0.1 : 1}
+                        definition={
+                            plantDefinition ?? resolvedPlantPreset.definition
+                        }
+                        flowerGrowth={plantVisualStage?.flowerGrowth}
+                        fruitGrowth={plantVisualStage?.fruitGrowth}
                         instances={generatedPlantInstances}
                         lodLevel={fieldLod.level}
-                        showProduce={!harvestedVisual}
+                        showFlowers={plantVisualStage?.showFlowers}
+                        showProduce={plantVisualStage?.showProduce}
                     />
                 ) : (
                     fieldSlots.map((position) => {

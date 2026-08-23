@@ -226,7 +226,9 @@ test.describe('Garden tab', () => {
             ),
         ).toBeVisible();
         await expect(
-            page.getByRole('button', { name: 'Napusti gredicu' }),
+            page
+                .getByRole('alertdialog', { name: 'Napuštanje gredice' })
+                .getByRole('button', { name: 'Napusti gredicu' }),
         ).toBeEnabled();
     });
 

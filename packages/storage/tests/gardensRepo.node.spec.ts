@@ -644,11 +644,53 @@ test('updateGardenBlock updates block', async () => {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
-    await updateGardenBlock({ id: blockId, rotation: 1 });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'MOJ VRT',
+        rotation: 1,
+    });
+    const block = await getGardenBlock(gardenId, blockId);
+    assert.strictEqual(updated, true);
+    assert.ok(block);
+    assert.strictEqual(block?.message, 'MOJ VRT');
+    assert.strictEqual(block?.rotation, 1);
+});
+
+test('updateGardenBlock only updates a block in the selected garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const otherGardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+
+    const updated = await updateGardenBlock(otherGardenId, {
+        id: blockId,
+        message: 'KRIVI VRT',
+    });
+
+    assert.strictEqual(updated, false);
     const block = await getGardenBlock(gardenId, blockId);
     assert.ok(block);
-    assert.strictEqual(block?.rotation, 1);
+    assert.strictEqual(block.message, null);
+});
+
+test('updateGardenBlock does not restore or modify a deleted block', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'WoodenSign');
+    await deleteGardenBlock(gardenId, blockId);
+
+    const updated = await updateGardenBlock(gardenId, {
+        id: blockId,
+        message: 'NE SMIJE',
+    });
+
+    assert.strictEqual(updated, false);
+    assert.strictEqual(await getGardenBlock(gardenId, blockId), null);
 });
 
 test('deleteGardenBlock marks block as deleted', async () => {
@@ -837,17 +879,23 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     const grassBlocks = blocks.filter((b) => b.name === 'Block_Grass');
     const raisedBedBlocks = blocks.filter((b) => b.name === 'Raised_Bed');
 
-    // 12 grass blocks + 2 raised beds = 14 total blocks
+    // 12 grass blocks + one spanning raised bed = 13 total blocks
     assert.strictEqual(grassBlocks.length, 12, 'Should have 12 grass blocks');
     assert.strictEqual(
         raisedBedBlocks.length,
-        2,
-        'Should have 2 raised bed blocks',
+        1,
+        'Should have one raised bed block',
+    );
+    assert.strictEqual(
+        raisedBedBlocks[0]?.rotation,
+        1,
+        'Raised bed should span the adjacent stack',
     );
 
-    // Verify raised beds were created at (0,0) and (1,0)
+    // Verify one raised-bed record is linked to the spanning block at (0,0)
     const raisedBeds = await getRaisedBeds(gardenId);
-    assert.strictEqual(raisedBeds.length, 2, 'Should have 2 raised beds');
+    assert.strictEqual(raisedBeds.length, 1, 'Should have one raised bed');
+    assert.strictEqual(raisedBeds[0]?.blockId, raisedBedBlocks[0]?.id);
 
     // Verify specific stacks have correct blocks
     const stack00 = await getGardenStack(gardenId, { x: 0, y: 0 });
@@ -861,8 +909,8 @@ test('createDefaultGardenForAccount creates garden with default layout', async (
     );
     assert.strictEqual(
         stack10?.blocks.length,
-        2,
-        'Stack (1,0) should have 2 blocks (grass + raised bed)',
+        1,
+        'Stack (1,0) should store only its grass block',
     );
 });
 

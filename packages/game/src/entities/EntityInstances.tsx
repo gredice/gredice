@@ -14,7 +14,7 @@ import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     AdditionalEntityInstances,
     additionalInstancedBlockNames,
-    resolveRaisedBedInstance,
+    resolveRaisedBedInstances,
 } from './AdditionalEntityInstances';
 import {
     EntityInstancesBlock,
@@ -35,6 +35,7 @@ import {
 } from './helpers/groundPatchMaterial';
 import { MulchPatchInstances } from './raisedBed/MulchPatch';
 import { RaisedBedGeneratedPlantFieldBatches } from './raisedBed/RaisedBedGeneratedPlantFieldBatches';
+import { RAISED_BED_SUPPORT_SCALE } from './raisedBed/raisedBedDimensions';
 import { tulipBouquetStems } from './tulipBouquet';
 
 export const instancedBlockNames = [
@@ -76,6 +77,23 @@ const instancedSnowOverlayCounts = {
     Block_Grass_Angle: 1,
     Block_Grass_Corner: 1,
     Block_Grass_Reverse_Corner: 1,
+    Block_Dry_Ground: 1,
+    Block_Dry_Ground_Angle: 1,
+    Block_Dry_Ground_Corner: 1,
+    Block_Dry_Ground_Reverse_Corner: 1,
+    Block_Swamp_Ground: 1,
+    Block_Swamp_Ground_Angle: 1,
+    Block_Stone: 3,
+    Block_Stone_Angle: 3,
+    Block_Gravel: 3,
+    Block_Gravel_Angle: 3,
+    Block_Polished_Stone: 1,
+    Block_Polished_Stone_Angle: 1,
+    Block_Polished_Stone_Stairs: 1,
+    Block_Polished_Stone_Stairs_Corner: 1,
+    Block_Stone_Stairs: 3,
+    Block_Stone_Stairs_Corner: 3,
+    Block_Stone_Stairs_Half: 3,
     Block_Sand: 1,
     Block_Sand_Angle: 1,
     Block_Sand_Corner: 1,
@@ -108,6 +126,9 @@ const instancedSnowOverlayCounts = {
     DeadTreeStump: 4,
     DeadTreeTall: 7,
     Fence: 1,
+    PolishedStoneFence: 1,
+    StoneFence: 3,
+    WhiteFence: 1,
     GardenBox: 2,
     GiftBox_BlueWhite: 3,
     GiftBox_GoldRed: 3,
@@ -167,7 +188,7 @@ function RaisedBedGeneratedPlantInstances({
         name: 'Raised_Bed',
         stacks,
         yOffset: 1,
-    })?.map((instance) => resolveRaisedBedInstance(instance, stacks));
+    })?.flatMap(resolveRaisedBedInstances);
 
     if (!instances?.length) {
         return null;
@@ -177,6 +198,7 @@ function RaisedBedGeneratedPlantInstances({
         <RaisedBedGeneratedPlantFieldBatches
             blocks={instances.map((instance) => ({
                 blockId: instance.block.id,
+                blockIndex: instance.blockIndex,
                 position: instance.position,
             }))}
             quality={quality}
@@ -778,6 +800,7 @@ export function EntityInstances({
                 name="Stick"
                 geometry={(gltf) => gltf.nodes.Stick.geometry}
                 material={(gltf) => gltf.nodes.Stick.material}
+                scale={RAISED_BED_SUPPORT_SCALE}
                 snow={snowPresets.tool}
                 snowLift={0.002}
                 {...commonSnowProps}

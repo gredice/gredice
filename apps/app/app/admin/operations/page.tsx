@@ -11,8 +11,9 @@ import { AdminPageHeader } from '../../../components/admin/navigation';
 import { OperationsList } from '../../../components/operations/OperationsList';
 import { auth } from '../../../lib/auth/auth';
 import { getDateFromTimeFilter } from '../../../lib/utils/timeFilters';
-import { BulkOperationCreateModal } from './BulkOperationCreateModal';
+import { OperationCreateModal } from './OperationCreateModal';
 import { OperationsFilters } from './OperationsFilters';
+import { activeSelectedPlantingFieldIds } from './operationScope';
 import {
     getOperationsListContext,
     listOperationsPageFromContext,
@@ -21,7 +22,6 @@ import {
     normalizeOperationsListRecordType,
     parseOperationsListOperationEntityIds,
 } from './operationsListQuery';
-import { SingleOperationCreateModal } from './SingleOperationCreateModal';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +59,25 @@ export default async function OperationsPage({
         userName: user.userName,
         displayName: user.displayName,
     }));
+    const operationTargetRaisedBeds = raisedBeds.map((raisedBed) => {
+        const selectedPlantingFieldIds = activeSelectedPlantingFieldIds(
+            raisedBed.plantings,
+        );
+        return {
+            id: raisedBed.id,
+            name: raisedBed.name,
+            physicalId: raisedBed.physicalId,
+            accountId: raisedBed.accountId,
+            gardenId: raisedBed.gardenId,
+            fields: raisedBed.fields.map((field) => ({
+                id: field.id,
+                positionIndex: field.positionIndex,
+                hasActiveSelectedPlanting: selectedPlantingFieldIds.has(
+                    field.id,
+                ),
+            })),
+        };
+    });
 
     const params = await searchParams;
     const fromFilter =
@@ -82,20 +101,12 @@ export default async function OperationsPage({
         <Stack spacing={4}>
             <AdminPageHeader
                 actions={
-                    <div className="flex gap-2">
-                        <SingleOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={raisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                        <BulkOperationCreateModal
-                            farms={activeFarms}
-                            gardens={gardens}
-                            raisedBeds={raisedBeds}
-                            assignableUsers={assignableUsers}
-                        />
-                    </div>
+                    <OperationCreateModal
+                        farms={activeFarms}
+                        gardens={gardens}
+                        raisedBeds={operationTargetRaisedBeds}
+                        assignableUsers={assignableUsers}
+                    />
                 }
             />
             <OperationsFilters

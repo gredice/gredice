@@ -174,33 +174,9 @@ async function mockGardenApi(
             body = { items: [], nextCursor: null, total: 0 };
         } else if (
             withGarden &&
-            pathname.endsWith('/api/gardens/1/visit-summary/seen')
+            pathname.endsWith('/api/gardens/1/raised-bed-notifications')
         ) {
-            body = {
-                state: {
-                    accountId: 'test-account',
-                    gardenId: 1,
-                    id: 1,
-                    lastOpenedAt: '2026-07-28T00:00:00.000Z',
-                    lastSummaryFactsHash: null,
-                    lastSummarySeenAt: '2026-07-28T00:00:00.000Z',
-                    userId: currentUser.id,
-                },
-            };
-        } else if (
-            withGarden &&
-            pathname.endsWith('/api/gardens/1/visit-summary')
-        ) {
-            body = {
-                facts: [],
-                factsHash: null,
-                state: null,
-                window: {
-                    firstVisit: false,
-                    since: '2026-07-01T00:00:00.000Z',
-                    until: '2026-07-28T00:00:00.000Z',
-                },
-            };
+            body = { notifications: [] };
         } else if (
             withGarden &&
             pathname.endsWith('/api/gardens/1/raised-beds/10/ai-history')
@@ -304,6 +280,10 @@ async function mockGardenApi(
             body = { devices: [] };
         } else if (pathname.endsWith('/api/notifications/push-status')) {
             body = { hasDevices: false, status: 'unsubscribed' };
+        } else if (
+            /\/api\/gardens\/\d+\/raised-bed-notifications$/u.test(pathname)
+        ) {
+            body = { notifications: [] };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
         }
@@ -450,6 +430,7 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     test.setTimeout(20_000);
     const failures = collectRuntimeFailures(page);
     const modelRequests: string[] = [];
+    let raisedBedNotificationRequestCount = 0;
     await page.setViewportSize({ height: 844, width: 390 });
     await page.addInitScript(() => {
         const probeWindow = window as GardenRenderProbeWindow;
@@ -473,8 +454,12 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
             instrumentedGetContext as typeof originalGetContext;
     });
     page.on('request', (request) => {
-        if (new URL(request.url()).pathname.endsWith('.glb')) {
+        const { pathname } = new URL(request.url());
+        if (pathname.endsWith('.glb')) {
             modelRequests.push(request.url());
+        }
+        if (pathname.endsWith('/api/gardens/1/raised-bed-notifications')) {
+            raisedBedNotificationRequestCount += 1;
         }
     });
     await context.addCookies([
@@ -500,6 +485,9 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     await expect(
         page.getByRole('button', { name: /Otvori gredicu Testna gredica/u }),
     ).toBeVisible();
+    await expect
+        .poll(() => raisedBedNotificationRequestCount)
+        .toBeGreaterThan(0);
     await expect(page.getByTitle('Profil')).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page.getByTitle(/zvuk/u)).toHaveCount(0);
@@ -517,6 +505,20 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     const overview = page.getByRole('region', {
         name: 'Tlocrt vrta Testni vrt',
     });
+    const topDownBlockImages = overview.locator('img[src*="top-down"]');
+    await expect(topDownBlockImages).toHaveCount(6);
+    await expect
+        .poll(() =>
+            topDownBlockImages.evaluateAll((images) =>
+                images.every(
+                    (image) =>
+                        image instanceof HTMLImageElement &&
+                        image.complete &&
+                        image.naturalWidth > 0,
+                ),
+            ),
+        )
+        .toBe(true);
     const overviewScrollport = page.locator('[data-garden-overview-2d]');
     await expect(overview).toHaveAttribute('data-preview-track-padding', '2');
     const initialScrollBounds = await overviewScrollport.boundingBox();
@@ -542,6 +544,58 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
     ).toBeLessThanOrEqual(
         (finalScrollBounds?.x ?? 0) + (finalScrollBounds?.width ?? 0) + 1,
     );
+
+    const dragStartScrollLeft = await overviewScrollport.evaluate(
+        (element, scrollRange) => {
+            element.scrollLeft = scrollRange / 2;
+            return element.scrollLeft;
+        },
+        horizontalScrollRange,
+    );
+    const panBounds = await overviewScrollport.boundingBox();
+    expect(panBounds).not.toBeNull();
+    const panStartX = (panBounds?.x ?? 0) + (panBounds?.width ?? 0) * 0.7;
+    const panStartY = (panBounds?.y ?? 0) + (panBounds?.height ?? 0) * 0.7;
+    await page.mouse.move(panStartX, panStartY);
+    await page.mouse.down();
+    await page.mouse.move(panStartX - 100, panStartY, { steps: 5 });
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'true');
+    await page.mouse.up();
+    await expect
+        .poll(() =>
+            overviewScrollport.evaluate((element) => element.scrollLeft),
+        )
+        .toBeGreaterThan(dragStartScrollLeft + 60);
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'false');
+
+    const touchStartScrollLeft = await overviewScrollport.evaluate(
+        (element, scrollRange) => {
+            element.scrollLeft = scrollRange / 2;
+            return element.scrollLeft;
+        },
+        horizontalScrollRange,
+    );
+    const cdpSession = await page.context().newCDPSession(page);
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [{ x: panStartX, y: panStartY }],
+        type: 'touchStart',
+    });
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [{ x: panStartX - 100, y: panStartY }],
+        type: 'touchMove',
+    });
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'true');
+    await cdpSession.send('Input.dispatchTouchEvent', {
+        touchPoints: [],
+        type: 'touchEnd',
+    });
+    await cdpSession.detach();
+    await expect
+        .poll(() =>
+            overviewScrollport.evaluate((element) => element.scrollLeft),
+        )
+        .toBeGreaterThan(touchStartScrollLeft + 60);
+    await expect(overviewScrollport).toHaveAttribute('data-panning', 'false');
 
     await expect(overview).toHaveAttribute('data-world-rotation', '0');
     await expect(
@@ -576,6 +630,16 @@ test('renders the shared HUD over a React-only 2D garden overview', async ({
             name: 'Podignuta gredica Testna gredica',
         }),
     ).toBeVisible();
+    const raisedBedPlaceholder = page.locator(
+        '[data-raised-bed-2d-placeholder]',
+    );
+    await expect(raisedBedPlaceholder).toBeVisible();
+    await expect(
+        raisedBedPlaceholder.locator('[data-raised-bed-soil]'),
+    ).toBeVisible();
+    await expect(
+        raisedBedPlaceholder.locator('[data-raised-bed-plank]'),
+    ).toHaveCount(4);
     await expectNoImmediateRuntimeFailures(page, failures);
     await expect(page.locator('canvas')).toHaveCount(0);
     expect(modelRequests).toEqual([]);

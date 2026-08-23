@@ -17,14 +17,14 @@
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
-        "@types/react": "19.2.17",
+        "@types/react": "19.2.18",
         "server-only": "0.0.1",
         "typescript": "7.0.2"
     },
     "dependencies": {
         "@gredice/js": "workspace:*",
         "@stripe/stripe-js": "9.9.0",
-        "react": "19.2.7",
+        "react": "19.2.8",
         "stripe": "22.3.1"
     }
 }

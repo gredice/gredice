@@ -1,31 +1,26 @@
 import { Container } from '@gredice/ui/Container';
-import { Discount, ShoppingCart, Sprout, Timer } from '@gredice/ui/icons';
+import { Discount, Sprout, Timer } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata } from 'next';
+import { ShoppingBasketVisual } from '../../components/ShoppingBasketVisual';
 import { StructuredDataScript } from '../../components/shared/seo/StructuredDataScript';
+import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
+import { OutletBrandMark } from './OutletBrandMark';
 import { OutletOfferCard } from './OutletOfferCard';
 import { getOutletOffers, outletOfferImage } from './outletData';
 import { currencyFormatter } from './outletPresentation';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Outlet sadnica',
     description:
         'Vremenski ograničene outlet ponude presadnica koje su ostale u Gredice stakleniku.',
-    alternates: {
-        canonical: KnownPages.Outlet,
-    },
-    openGraph: {
-        title: 'Gredice Outlet sadnica',
-        description:
-            'Pogledaj dostupne presadnice iz staklenika po outlet cijeni.',
-        url: KnownPages.Outlet,
-    },
-};
+    path: KnownPages.Outlet,
+    eyebrow: 'Ponuda iz staklenika',
+});
 
 function outletStructuredData(
     offers: Awaited<ReturnType<typeof getOutletOffers>>,
@@ -97,28 +92,34 @@ export default async function OutletPage() {
             <Stack spacing={10}>
                 <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)] lg:items-end">
                     <Stack spacing={5} className="max-w-3xl">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                            <Discount aria-hidden className="size-4" />
-                            Outlet cijena, Gredice kvaliteta
-                        </div>
-                        <Stack spacing={3}>
-                            <Typography level="body1" semiBold tertiary>
-                                Gredice Outlet
-                            </Typography>
-                            <Typography level="h1">
-                                Presadnice po outlet cijeni
-                            </Typography>
-                            <Typography
-                                level="body1"
-                                secondary
-                                className="max-w-2xl text-pretty"
+                        <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-center gap-x-4 gap-y-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-x-6">
+                            <OutletBrandMark className="col-start-1 row-start-1 h-auto w-20 shrink-0 object-contain drop-shadow-lg sm:row-span-2 sm:w-32" />
+                            <div className="col-start-2 row-start-1 inline-flex w-fit items-center gap-2 rounded-full border border-amber-300/70 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                                <Discount aria-hidden className="size-4" />
+                                Outlet cijena, Gredice kvaliteta
+                            </div>
+                            <Stack
+                                spacing={1}
+                                className="col-span-2 row-start-2 sm:col-span-1 sm:col-start-2"
                             >
-                                Zdrave presadnice koje su već krenule u rast iz
-                                našeg staklenika možeš dodati u svoju gredicu po
-                                povoljnijoj cijeni. Ponude su vremenski i
-                                količinski ograničene.
-                            </Typography>
-                        </Stack>
+                                <Typography level="body1" semiBold tertiary>
+                                    Gredice Outlet
+                                </Typography>
+                                <Typography level="h1">
+                                    Presadnice po outlet cijeni
+                                </Typography>
+                            </Stack>
+                        </div>
+                        <Typography
+                            level="body1"
+                            secondary
+                            className="max-w-2xl text-pretty"
+                        >
+                            Zdrave presadnice koje su već krenule u rast iz
+                            našeg staklenika možeš dodati u svoju gredicu po
+                            povoljnijoj cijeni. Ponude su vremenski i količinski
+                            ograničene.
+                        </Typography>
                         <div className="flex flex-wrap gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
                                 <Sprout
@@ -128,10 +129,7 @@ export default async function OutletPage() {
                                 Spremne za tvoju gredicu
                             </span>
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 text-sm text-secondary-foreground ring-1 ring-tertiary">
-                                <ShoppingCart
-                                    aria-hidden
-                                    className="size-4 text-primary"
-                                />
+                                <ShoppingBasketVisual className="h-auto w-6 shrink-0 object-contain drop-shadow-sm" />
                                 Rezervacija kroz vrt
                             </span>
                         </div>

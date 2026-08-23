@@ -66,6 +66,8 @@
                 "SOCIAL_PUBLISHING_QUEUE_SECRET",
                 "STRIPE_SECRETKEY",
                 "STRIPE_WEBHOOK_SECRET",
+                "VERCEL",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

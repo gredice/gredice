@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { navigateNotificationLink } from './notificationNavigation';
+import {
+    navigateNotificationLink,
+    resolveRaisedBedNotificationHref,
+} from './notificationNavigation';
 
 const currentOrigin = 'https://vrt.gredice.test';
 
@@ -21,6 +24,53 @@ function createHarness() {
         pushed,
     };
 }
+
+test('falls back to the raised-bed closeup for a blank notification link', () => {
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            linkUrl: '   ',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/?gredica=Moja%20gredica',
+    );
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            linkUrl: ' /obavijesti/42 ',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/obavijesti/42',
+    );
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            linkUrl: 'https://example.com/nepouzdano',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/?gredica=Moja%20gredica',
+    );
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            linkUrl: 'https://vrt.gredice.com/?gredica=Moja%20gredica&polje=3',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/?gredica=Moja%20gredica&polje=3',
+    );
+});
+
+test('adds the diary tab to operation field links while preserving the target', () => {
+    assert.equal(
+        resolveRaisedBedNotificationHref({
+            currentOrigin,
+            fieldTab: 'diary',
+            linkUrl: 'https://vrt.gredice.com/?gredica=Moja%20gredica&polje=3',
+            raisedBedName: 'Moja gredica',
+        }),
+        '/?gredica=Moja+gredica&polje=3&polje-kartica=diary',
+    );
+});
 
 test('uses router navigation for relative and absolute same-origin links', () => {
     const harness = createHarness();

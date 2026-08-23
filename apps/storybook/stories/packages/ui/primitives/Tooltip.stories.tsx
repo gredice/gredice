@@ -10,7 +10,7 @@ const meta = {
         docs: {
             description: {
                 component:
-                    'Tooltip provides a Radix-backed hint surface for compact controls and data labels.',
+                    'Tooltip provides a Base UI-backed hint surface for compact controls and data labels.',
             },
         },
     },

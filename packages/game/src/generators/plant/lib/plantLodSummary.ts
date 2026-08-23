@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { PlantDefinition } from './plant-definitions';
 import type { PlantLodSummary } from './plantRenderData';
 import { SeededRNG } from './rng';
-import { vegetableMaterialProps } from './vegetableRenderMetadata';
+import { resolveVegetableColor } from './vegetableRenderMetadata';
 
 interface BuildApproximatePlantLodSummaryOptions {
     flowerGrowth: number;
@@ -27,6 +27,33 @@ function getLifecycleGrowth(
         return 1;
     }
     return THREE.MathUtils.smoothstep(generation, start, matureAt);
+}
+
+export function getNominalMaturePlantHeight(plantDefinition: PlantDefinition) {
+    const { development } = plantDefinition;
+    const isBasal =
+        development.architecture === 'rosette' ||
+        development.architecture === 'clump';
+    const isProstrate = development.axes.habit === 'prostrate';
+    const storageHeight = development.storage
+        ? plantDefinition.vegetable.baseSize *
+          development.storage.sizeScale *
+          Math.max(0.5, development.storage.aboveSoilFraction)
+        : 0;
+    const basalFoliageHeight =
+        plantDefinition.leaf.size *
+        (1.05 + development.foliage.petioleLengthScale * 0.5);
+    const axialFoliageHeight =
+        plantDefinition.height *
+            development.axes.internodeLengthScale *
+            (isProstrate ? 0.18 : 0.98) +
+        plantDefinition.leaf.size;
+
+    return Math.max(
+        isBasal ? basalFoliageHeight : axialFoliageHeight,
+        storageHeight,
+        0.16,
+    );
 }
 
 export function buildApproximatePlantLodSummary({
@@ -58,24 +85,7 @@ export function buildApproximatePlantLodSummary({
         development.architecture === 'rosette' ||
         development.architecture === 'clump';
     const isProstrate = development.axes.habit === 'prostrate';
-    const storageHeight = development.storage
-        ? plantDefinition.vegetable.baseSize *
-          development.storage.sizeScale *
-          Math.max(0.5, development.storage.aboveSoilFraction)
-        : 0;
-    const basalFoliageHeight =
-        plantDefinition.leaf.size *
-        (1.05 + development.foliage.petioleLengthScale * 0.5);
-    const axialFoliageHeight =
-        plantDefinition.height *
-            development.axes.internodeLengthScale *
-            (isProstrate ? 0.18 : 0.98) +
-        plantDefinition.leaf.size;
-    const matureHeight = Math.max(
-        isBasal ? basalFoliageHeight : axialFoliageHeight,
-        storageHeight,
-        0.16,
-    );
+    const matureHeight = getNominalMaturePlantHeight(plantDefinition);
     const minimumHeight = Math.max(
         plantDefinition.vegetable.baseSize * 1.2,
         plantDefinition.leaf.size * (isBasal ? 1.1 : 0.7),
@@ -123,15 +133,15 @@ export function buildApproximatePlantLodSummary({
     const reproduction = development.reproduction;
     const storage = development.storage;
     const fruitStart = storage?.birthGeneration ?? reproduction.fruitStart;
-    const produceGrowth =
+    const produceMaturity =
         fruitStart === undefined
             ? 0
-            : fruitGrowth *
-              getLifecycleGrowth(
+            : getLifecycleGrowth(
                   generation,
                   fruitStart,
                   storage?.matureGeneration ?? fruitStart + 2.2,
               );
+    const produceGrowth = fruitGrowth * produceMaturity;
     const flowerStageGrowth =
         flowerGrowth *
         getLifecycleGrowth(
@@ -153,8 +163,10 @@ export function buildApproximatePlantLodSummary({
         plantDefinition.vegetable.enabled &&
         produceGrowth > 0.01
     ) {
-        accentColor =
-            vegetableMaterialProps[plantDefinition.vegetable.type].color;
+        accentColor = resolveVegetableColor(
+            plantDefinition.vegetable.type,
+            produceMaturity,
+        );
         if (storage) {
             accentCenterY = Math.max(
                 plantDefinition.vegetable.baseSize * storage.aboveSoilFraction,

@@ -1,99 +1,32 @@
 import { Container } from '@gredice/ui/Container';
-import { Timeline, TimelineEntry, TimelineGroup } from '@gredice/ui/Timeline';
-import type { Route } from 'next';
-import { EmptyNewsState } from '../../components/EmptyNewsState';
+import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { NewsArchiveNavigation } from '../../components/NewsArchiveNavigation';
-import { NewsCard } from '../../components/NewsCard';
 import { NewsTagFilters } from '../../components/NewsTagFilters';
+import { WeeklyChangelogArchive } from '../../components/WeeklyChangelogArchive';
+import { WeeklyChangelogTimeline } from '../../components/WeeklyChangelogTimeline';
 import {
-    formatNewsDate,
-    getChangelogEntries,
+    getDailyChangelogEntries,
     getPrimaryNewsTags,
     uniqueNewsValues,
 } from '../../lib/news';
-import { getNewsArticleViewTransitionName } from '../../lib/viewTransitions';
+import { changelogArchiveMetadata } from '../../lib/newsArchiveMetadata';
+import { buildChangelogWeeks } from '../../lib/weeklyChangelog';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 86_400;
+export const metadata: Metadata = changelogArchiveMetadata;
 
-const monthFormatter = new Intl.DateTimeFormat('hr-HR', {
-    month: 'long',
-    year: 'numeric',
-});
-type ChangelogEntry = Awaited<ReturnType<typeof getChangelogEntries>>[number];
-
-type ChangelogTimelineGroup = {
-    entries: ChangelogEntry[];
-    monthKey: string;
-    monthLabel: string;
-};
-
-function paddedDatePart(value: number) {
-    return value.toString().padStart(2, '0');
-}
-
-function getEntryDate(entry: ChangelogEntry) {
-    if (!entry.publishedAt) {
-        return null;
-    }
-
-    const date = new Date(entry.publishedAt);
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function getMonthKey(date: Date) {
-    return [date.getFullYear(), paddedDatePart(date.getMonth() + 1)].join('-');
-}
-
-function groupEntriesByMonth(entries: ChangelogEntry[]) {
-    const groups: ChangelogTimelineGroup[] = [];
-    const groupsByKey = new Map<string, ChangelogTimelineGroup>();
-
-    for (const entry of entries) {
-        const date = getEntryDate(entry);
-        const monthKey = date ? getMonthKey(date) : 'unknown';
-        let group = groupsByKey.get(monthKey);
-
-        if (!group) {
-            group = {
-                entries: [],
-                monthKey,
-                monthLabel: date ? monthFormatter.format(date) : 'Bez datuma',
-            };
-            groupsByKey.set(monthKey, group);
-            groups.push(group);
-        }
-
-        group.entries.push(entry);
-    }
-
-    return groups;
-}
-
-function changelogEntryPath(slug: string): Route {
-    return `/sto-je-novo/${slug}` as Route;
-}
-
-export default async function WhatsNewPage({
-    searchParams,
-}: {
-    searchParams: Promise<{ tag?: string }>;
-}) {
-    const { tag } = await searchParams;
-    const [allEntries, entries] = await Promise.all([
-        getChangelogEntries(),
-        tag ? getChangelogEntries({ tag }) : getChangelogEntries(),
-    ]);
-    const tags = uniqueNewsValues(allEntries, (item) => item.tags);
-    const primaryTags = getPrimaryNewsTags(allEntries);
+export default async function WhatsNewPage() {
+    const entries = await getDailyChangelogEntries();
+    const tags = uniqueNewsValues(entries, (item) => item.tags);
+    const primaryTags = getPrimaryNewsTags(entries);
     const primaryTagKeys = new Set(
         primaryTags.map((value) => value.toLocaleLowerCase('hr-HR')),
     );
     const dropdownTags = tags.filter(
         (value) => !primaryTagKeys.has(value.toLocaleLowerCase('hr-HR')),
     );
-    const timelineGroups = groupEntriesByMonth(entries);
-    const totalEntries = entries.length;
-    let entryIndex = 0;
+    const weeks = buildChangelogWeeks(entries);
 
     return (
         <Container className="grid gap-8 py-10">
@@ -105,68 +38,30 @@ export default async function WhatsNewPage({
                     Promjene i nove mogućnosti
                 </h1>
                 <p className="max-w-2xl text-lg text-muted-foreground">
-                    Kronološki pregled nadogradnji, poboljšanja i novih značajki
-                    u Gredicama.
+                    Tjedni sažeci nadogradnji, poboljšanja i novih značajki u
+                    Gredicama, s poveznicama na svaku promjenu.
                 </p>
             </section>
             <NewsArchiveNavigation active="changelog" />
-            {tags.length > 0 ? (
-                <NewsTagFilters
-                    activeTag={tag}
+            <Suspense
+                fallback={
+                    <div className="grid gap-8">
+                        {tags.length > 0 ? (
+                            <NewsTagFilters
+                                dropdownTags={dropdownTags}
+                                primaryTags={primaryTags}
+                            />
+                        ) : null}
+                        <WeeklyChangelogTimeline weeks={weeks} />
+                    </div>
+                }
+            >
+                <WeeklyChangelogArchive
                     dropdownTags={dropdownTags}
                     primaryTags={primaryTags}
+                    weeks={weeks}
                 />
-            ) : null}
-            {entries.length > 0 ? (
-                <Timeline>
-                    {timelineGroups.map((group, groupIndex) => (
-                        <TimelineGroup
-                            hasItems={group.entries.length > 0}
-                            isFirst={groupIndex === 0}
-                            key={group.monthKey}
-                            label={group.monthLabel}
-                        >
-                            {group.entries.map((entry) => {
-                                const currentEntryIndex = entryIndex;
-                                const dateLabel = entry.publishedAt
-                                    ? formatNewsDate(entry.publishedAt)
-                                    : null;
-                                entryIndex += 1;
-
-                                return (
-                                    <TimelineEntry
-                                        index={currentEntryIndex}
-                                        isLast={
-                                            currentEntryIndex ===
-                                            totalEntries - 1
-                                        }
-                                        key={entry.id}
-                                        label={dateLabel ?? 'Bez datuma'}
-                                    >
-                                        <NewsCard
-                                            entry={entry}
-                                            href={changelogEntryPath(
-                                                entry.slug,
-                                            )}
-                                            kind="changelog"
-                                            showDate={false}
-                                            showKindLabel={false}
-                                            viewTransitionName={getNewsArticleViewTransitionName(
-                                                'changelog',
-                                                entry.slug,
-                                            )}
-                                        />
-                                    </TimelineEntry>
-                                );
-                            })}
-                        </TimelineGroup>
-                    ))}
-                </Timeline>
-            ) : (
-                <EmptyNewsState title="Još nema zapisa">
-                    Trenutačno nema objavljenih novosti.
-                </EmptyNewsState>
-            )}
+            </Suspense>
         </Container>
     );
 }

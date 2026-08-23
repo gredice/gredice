@@ -13,8 +13,8 @@ import { AudioHud } from './hud/AudioHud';
 import { CameraHud } from './hud/CameraHud';
 import { ControlsTooltipHud } from './hud/ControlsTooltipHud';
 import { DebugHudDynamic } from './hud/DebugHudDynamic';
-import { GardenVisitSummaryHighlightHud } from './hud/GardenVisitSummaryHighlightHud';
-import { GardenVisitSummaryModal } from './hud/GardenVisitSummaryModal';
+import { GardenAvatarHud } from './hud/GardenAvatarHud';
+import { GardenTargetHighlightHud } from './hud/GardenTargetHighlightHud';
 import { InventoryHud } from './hud/InventoryHud';
 import { ItemsHud } from './hud/ItemsHud';
 import { OutletHud } from './hud/OutletHud';
@@ -33,6 +33,7 @@ import { WhatsNewWidget } from './hud/WhatsNewWidget';
 import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
+import { WoodenSignModal } from './modals/WoodenSignModal';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -71,10 +72,6 @@ export function GameHud({
 }) {
     const [welcomeConfirmed, setWelcomeConfirmed] = useState(false);
     const [whatsNewOpenRequestId, setWhatsNewOpenRequestId] = useState(0);
-    const [visitSummaryConfirmation, setVisitSummaryConfirmation] = useState<{
-        confirmed: boolean;
-        gardenId: number | null;
-    }>({ confirmed: false, gardenId: null });
     const [
         raisedBedOnboardingConfirmation,
         setRaisedBedOnboardingConfirmation,
@@ -83,6 +80,7 @@ export function GameHud({
         gardenId: number | null;
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
+    const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const { data: currentGarden } = useCurrentGarden();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
     // Sandbox ("play") gardens are decoration only: no economy or inventory.
@@ -96,31 +94,33 @@ export function GameHud({
     );
     const currentGardenId = currentGarden?.id ?? null;
     const raisedBedOnboardingAvailable = !isSandbox;
-    const visitSummaryConfirmed =
-        visitSummaryConfirmation.confirmed &&
-        visitSummaryConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingChecklistResolved =
         raisedBedOnboardingConfirmation.confirmed &&
         raisedBedOnboardingConfirmation.gardenId === currentGardenId;
-    const visitSummaryEnabled =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        !visitSummaryConfirmed &&
-        !isSandbox;
-    const visitSummaryStageComplete =
-        !suppressOpeningHud &&
-        welcomeConfirmed &&
-        (isSandbox || visitSummaryConfirmed);
     const raisedBedOnboardingEnabled =
-        visitSummaryStageComplete &&
+        !suppressOpeningHud &&
+        welcomeConfirmed &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
     const openingFlowComplete =
         !suppressOpeningHud &&
-        visitSummaryStageComplete &&
+        welcomeConfirmed &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
+
+    if (gardenAvatarView !== 'overview') {
+        // Interacting with a garden box or a sign while walking has to open its
+        // modal right away, so those keep rendering without their HUD shells.
+        return (
+            <>
+                <GardenAvatarHud />
+                {!isSandbox && <InventoryHud hideTrigger />}
+                <WoodenSignModal />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
+    }
 
     return (
         <SuncokretChatProvider>
@@ -184,8 +184,19 @@ export function GameHud({
                     )}
                 </div>
                 {!isSandbox && <SunflowersHud />}
-                {!isSandbox && !isLocalSandbox && <SuncokretChatHud />}
             </div>
+            {!isSandbox && !isLocalSandbox && (
+                <div
+                    data-game-hud-bottom-right
+                    className={cx(
+                        'pointer-events-none absolute right-[calc(var(--game-safe-area-right,0px)+0.5rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] z-40',
+                        gameHudEntranceClassName,
+                        'motion-safe:slide-in-from-right-4',
+                    )}
+                >
+                    <SuncokretChatHud />
+                </div>
+            )}
             <div className={gameHudBottomBarClassName}>
                 <div
                     data-game-hud-bottom-controls
@@ -198,7 +209,9 @@ export function GameHud({
                 >
                     <CameraHud />
                     {viewMode === '3d' ? <AudioHud /> : null}
-                    {viewMode === '3d' ? <ControlsTooltipHud /> : null}
+                    {viewMode === '3d' ? (
+                        <ControlsTooltipHud isCloseup={isCloseup} />
+                    ) : null}
                     {whatsNewHudEnabled && (
                         <IconButton
                             title="Što je novo"
@@ -227,26 +240,21 @@ export function GameHud({
                 </div>
             </div>
             {!isLocalSandbox && (
-                <RaisedBedFieldHud instantTransition={viewMode === '2d'} />
+                <RaisedBedFieldHud
+                    instantTransition={viewMode === '2d'}
+                    show2DPlaceholder={viewMode === '2d'}
+                />
             )}
             {!isLocalSandbox && <OverviewModal />}
             {!isLocalSandbox && <AdventModal />}
             {!isLocalSandbox && <GiftBoxModal />}
+            <WoodenSignModal />
             {!isLocalSandbox && !suppressOpeningHud && (
                 <>
                     <WelcomeMessage
                         onClosed={() => setWelcomeConfirmed(true)}
                     />
-                    <GardenVisitSummaryModal
-                        enabled={visitSummaryEnabled}
-                        onClosed={() =>
-                            setVisitSummaryConfirmation({
-                                confirmed: true,
-                                gardenId: currentGardenId,
-                            })
-                        }
-                    />
-                    <GardenVisitSummaryHighlightHud />
+                    <GardenTargetHighlightHud />
                     <WhatsNewWidget
                         enabled={openingFlowComplete}
                         openRequestId={whatsNewOpenRequestId}

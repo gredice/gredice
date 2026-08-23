@@ -10,11 +10,13 @@
     "scripts": {
         "clean": "rimraf .turbo dist build out coverage tsconfig.tsbuildinfo",
         "lint": "biome check --write",
-        "lint:migrate": "biome migrate --write"
+        "lint:migrate": "biome migrate --write",
+        "test": "node --import tsx --test ./src/**/*.unit.ts"
     },
     "devDependencies": {
         "@biomejs/biome": "2.5.3",
         "@types/node": "24.12.4",
+        "tsx": "4.23.0",
         "typescript": "7.0.2"
     }
 }

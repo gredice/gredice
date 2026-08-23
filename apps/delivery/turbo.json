@@ -6,6 +6,7 @@
             "env": [
                 "COOKIE_DOMAIN",
                 "GREDICE_API_HOST",
+                "GREDICE_DIRECTORY_CACHE_PREFIX",
                 "GREDICE_DELIVERY_HQ_ADDRESS",
                 "GREDICE_DELIVERY_NOTIFICATIONS_ENABLED",
                 "GREDICE_GOOGLE_MAPS_SERVER_API_KEY",
@@ -14,6 +15,8 @@
                 "NEXT_PUBLIC_GREDICE_API_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_DELIVERY_ORIGIN",
                 "NEXT_PUBLIC_GREDICE_GOOGLE_MAPS_API_KEY",
+                "PLANTS_SILO_KV_REST_API_TOKEN",
+                "PLANTS_SILO_KV_REST_API_URL",
                 "POSTGRES_DATABASE",
                 "POSTGRES_HOST",
                 "POSTGRES_PASSWORD",
@@ -22,6 +25,7 @@
                 "POSTGRES_URL_NON_POOLING",
                 "POSTGRES_URL_NO_SSL",
                 "POSTGRES_USER",
+                "VERCEL_ENV",
                 "VERCEL_OIDC_TOKEN"
             ]
         }

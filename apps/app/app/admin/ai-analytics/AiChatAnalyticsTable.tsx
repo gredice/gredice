@@ -9,7 +9,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { useState } from 'react';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
-import { formatAiCostUsd } from '../../../src/ai/aiAnalyticsCost';
+import { formatAiCostEur } from '../../../src/ai/aiAnalyticsCost';
 
 export type AiChatRow = {
     id: string;
@@ -22,7 +22,7 @@ export type AiChatRow = {
     messageCount: number;
     toolCallCount: number;
     totalTokens: number;
-    totalCostUsd: number;
+    totalCostEur: number;
     messages: Array<{
         id: string;
         role: string;
@@ -127,7 +127,7 @@ function AiChatDetails({ row }: { row: AiChatRow }) {
                 <Stack spacing={0}>
                     <Typography level="body3">Trošak</Typography>
                     <Typography level="body2">
-                        {formatAiCostUsd(row.totalCostUsd)}
+                        {formatAiCostEur(row.totalCostEur)}
                     </Typography>
                 </Stack>
             </div>
@@ -324,8 +324,8 @@ export function AiChatAnalyticsTable({ rows }: { rows: AiChatRow[] }) {
                                                     <Typography level="body3">
                                                         Trošak:{' '}
                                                         <span className="font-medium text-foreground tabular-nums">
-                                                            {formatAiCostUsd(
-                                                                row.totalCostUsd,
+                                                            {formatAiCostEur(
+                                                                row.totalCostEur,
                                                             )}
                                                         </span>
                                                     </Typography>

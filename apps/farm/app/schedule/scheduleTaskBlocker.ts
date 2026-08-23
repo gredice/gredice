@@ -50,6 +50,12 @@ export type ScheduleTaskBlockerTarget =
           kind: 'planting';
           positionIndex: number;
           raisedBedId: number;
+      }
+    | {
+          expectedLifecycleVersionEventId: number;
+          expectedPlantSortId: number;
+          kind: 'selected';
+          plantingId: number;
       };
 
 function assertPositiveSafeInteger(value: unknown, message: string) {
@@ -126,6 +132,23 @@ export function parseScheduleTaskBlockerTarget(
             ),
         };
     }
+    if (kind === 'selected') {
+        return {
+            expectedLifecycleVersionEventId: assertPositiveSafeInteger(
+                Reflect.get(value, 'expectedLifecycleVersionEventId'),
+                'Verzija životnog ciklusa nije ispravna.',
+            ),
+            expectedPlantSortId: assertPositiveSafeInteger(
+                Reflect.get(value, 'expectedPlantSortId'),
+                'ID sorte biljke nije ispravan.',
+            ),
+            kind,
+            plantingId: assertPositiveSafeInteger(
+                Reflect.get(value, 'plantingId'),
+                'ID sadnje nije ispravan.',
+            ),
+        };
+    }
 
     throw new Error('Vrsta zadatka za prijavu prepreke nije ispravna.');
 }
@@ -159,9 +182,13 @@ export function scheduleTaskBlockerReasonRequiresNote(
 export function getScheduleTaskBlockerTargetKey(
     target: ScheduleTaskBlockerTarget,
 ) {
-    return target.kind === 'operation'
-        ? `operation-${target.operationId}-entity-${target.expectedEntityId}-version-${target.expectedTaskVersionEventId}`
-        : `planting-${target.raisedBedId}-${target.positionIndex}-cycle-${target.expectedPlantCycleEventId}-version-${target.expectedPlantCycleVersionEventId}-sort-${target.expectedPlantSortId}`;
+    if (target.kind === 'operation') {
+        return `operation-${target.operationId}-entity-${target.expectedEntityId}-version-${target.expectedTaskVersionEventId}`;
+    }
+    if (target.kind === 'selected') {
+        return `selected-planting-${target.plantingId}-version-${target.expectedLifecycleVersionEventId}-sort-${target.expectedPlantSortId}`;
+    }
+    return `planting-${target.raisedBedId}-${target.positionIndex}-cycle-${target.expectedPlantCycleEventId}-version-${target.expectedPlantCycleVersionEventId}-sort-${target.expectedPlantSortId}`;
 }
 
 export function getScheduleTaskBlockerTargetLabel(

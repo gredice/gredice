@@ -101,9 +101,9 @@ export async function createDefaultGardenForAccount({
         name: trimmedName || 'Moj vrt',
     });
 
-    // Assign 4x3 grid of grass blocks with origin-centered coordinates and two raised beds near the center
+    // Assign a 4x3 grass grid and one 1x2 raised bed near the center.
     // Grid: x = -1..2, y = -1..1
-    // Raised beds are placed at coordinates (0,0) and (1,0)
+    // The raised bed is anchored at (0,0) and rotated across (1,0).
     for (let x = -1; x < 3; x++) {
         for (let y = -1; y < 2; y++) {
             // Create base block
@@ -113,11 +113,15 @@ export async function createDefaultGardenForAccount({
             await createGardenStack(gardenId, { x, y });
 
             const blockIds = [blockId];
-            if ((x === 0 && y === 0) || (x === 1 && y === 0)) {
+            if (x === 0 && y === 0) {
                 const raisedBedBlockId = await createGardenBlock(
                     gardenId,
                     'Raised_Bed',
                 );
+                await updateGardenBlock(gardenId, {
+                    id: raisedBedBlockId,
+                    rotation: 1,
+                });
                 await createRaisedBed({
                     accountId,
                     gardenId,
@@ -598,13 +602,26 @@ export async function createGardenBlock(
     return blockId;
 }
 
-export async function updateGardenBlock({ id, ...values }: UpdateGardenBlock) {
-    await storage()
+export async function updateGardenBlock(
+    gardenId: number,
+    { id, ...values }: UpdateGardenBlock,
+    db: DatabaseClient = storage(),
+) {
+    const updatedBlocks = await db
         .update(gardenBlocks)
         .set({
             ...values,
         })
-        .where(eq(gardenBlocks.id, id));
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, id),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+
+    return updatedBlocks.length > 0;
 }
 
 export async function deleteGardenBlock(

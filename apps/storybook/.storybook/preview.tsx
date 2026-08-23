@@ -1,7 +1,15 @@
+import {
+    UI_PORTAL_ROOT_ATTRIBUTE,
+    UiApplicationRoot,
+} from '@gredice/ui/PortalRoot';
 import type { Preview } from '@storybook/nextjs-vite';
 import { Analytics } from '@vercel/analytics/next';
 import { docsTheme } from './themes';
 import '../styles.css';
+
+if (typeof document !== 'undefined') {
+    document.body.setAttribute(UI_PORTAL_ROOT_ATTRIBUTE, '');
+}
 
 const preview: Preview = {
     decorators: [
@@ -9,7 +17,7 @@ const preview: Preview = {
             const isFullscreen = context.parameters.layout === 'fullscreen';
 
             return (
-                <div
+                <UiApplicationRoot
                     className={
                         isFullscreen
                             ? 'bg-background text-foreground'
@@ -18,7 +26,7 @@ const preview: Preview = {
                 >
                     <Story />
                     <Analytics />
-                </div>
+                </UiApplicationRoot>
             );
         },
     ],

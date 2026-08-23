@@ -88,6 +88,7 @@ export interface PlantDevelopmentAxes {
     branchingPattern: PlantBranchingPattern;
     habit: PlantAxisHabit;
     internodeLengthScale: number;
+    mainStemHorizontalScale?: number;
     nodeCount: number;
     pitchDegrees: number;
     spread: number;

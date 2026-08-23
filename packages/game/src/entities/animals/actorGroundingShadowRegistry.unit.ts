@@ -34,6 +34,30 @@ describe('actor grounding-shadow projection', () => {
         assert.equal(resolved.z, groundedState.z);
     });
 
+    it('uses compact species footprints for chicken and piglet', () => {
+        const chicken = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'chicken',
+            state: groundedState,
+        });
+        const piglet = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'piglet',
+            state: groundedState,
+        });
+
+        assert.equal(
+            chicken.halfLength,
+            actorGroundingShadowProfiles.chicken.baseHalfLength,
+        );
+        assert.equal(
+            piglet.halfLength,
+            actorGroundingShadowProfiles.piglet.baseHalfLength,
+        );
+        assert.ok(piglet.halfLength > chicken.halfLength);
+        assert.ok(piglet.halfWidth > chicken.halfWidth);
+    });
+
     it('grows and quadratically fades a flying actor footprint', () => {
         const profile = actorGroundingShadowProfiles.bird;
         const resolved = resolveActorGroundingShadow({
@@ -53,6 +77,30 @@ describe('actor grounding-shadow projection', () => {
         );
         assert.equal(resolved.halfWidth, profile.baseHalfWidth * expectedScale);
         assert.equal(resolved.opacity, profile.baseOpacity * 0.25);
+    });
+
+    it('keeps the beach ball shadow centered below its bounce', () => {
+        const profile = actorGroundingShadowProfiles.beachBall;
+        const bounceHeight = profile.cutoffHeight / 4;
+        const resolved = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'beachBall',
+            state: {
+                ...groundedState,
+                actorY: groundedState.receiverY + bounceHeight,
+            },
+        });
+        const expectedScale = 1 + (profile.maxFootprintScale - 1) * (1 / 4);
+
+        assert.equal(resolved.visible, true);
+        assert.equal(resolved.x, groundedState.x);
+        assert.equal(resolved.z, groundedState.z);
+        assert.equal(
+            resolved.halfLength,
+            profile.baseHalfLength * expectedScale,
+        );
+        assert.equal(resolved.halfWidth, profile.baseHalfWidth * expectedScale);
+        assert.equal(resolved.opacity, profile.baseOpacity * (3 / 4) ** 2);
     });
 
     it('cuts the projection off at the species flight height', () => {

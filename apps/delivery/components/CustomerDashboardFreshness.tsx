@@ -22,6 +22,7 @@ export function CustomerDashboardFreshness({
     const stale = failure !== null;
     const previousStaleRef = useRef(stale);
     const manualRetryRef = useRef(false);
+    const focusRecoveredRef = useRef(false);
     const recoveredRef = useRef<HTMLDivElement>(null);
     const [retrying, setRetrying] = useState(false);
     const [retryFailed, setRetryFailed] = useState(false);
@@ -31,19 +32,23 @@ export function CustomerDashboardFreshness({
         const wasStale = previousStaleRef.current;
         previousStaleRef.current = stale;
         if (stale) {
+            focusRecoveredRef.current = false;
             setShowRecovered(false);
             return;
         }
         if (!wasStale) return;
 
         setRetryFailed(false);
-        setShowRecovered(true);
-        const focusRecovery = manualRetryRef.current;
+        focusRecoveredRef.current = manualRetryRef.current;
         manualRetryRef.current = false;
-        if (focusRecovery) {
-            window.requestAnimationFrame(() => recoveredRef.current?.focus());
-        }
+        setShowRecovered(true);
     }, [stale]);
+
+    useEffect(() => {
+        if (!showRecovered || !focusRecoveredRef.current) return;
+        focusRecoveredRef.current = false;
+        recoveredRef.current?.focus({ preventScroll: true });
+    }, [showRecovered]);
 
     const retry = async () => {
         if (retrying) return;

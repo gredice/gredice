@@ -105,6 +105,7 @@ test('getFarmUserRaisedBeds returns only beds from active assigned non-sandbox f
         })),
         [{ farmId: activeFarmId, id: activeRaisedBedId }],
     );
+    assert.deepStrictEqual(raisedBeds[0]?.plantings, []);
     assert.ok(
         !raisedBeds.some((raisedBed) =>
             [

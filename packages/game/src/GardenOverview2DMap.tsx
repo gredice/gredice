@@ -1,10 +1,16 @@
 'use client';
 
 import type { BlockData } from '@gredice/client';
-import { BlockImage } from '@gredice/ui/BlockImage';
 import { cx } from '@gredice/ui/utils';
-import { type CSSProperties, useMemo, useRef } from 'react';
+import {
+    type CSSProperties,
+    type PointerEvent as ReactPointerEvent,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { useHudPlacementPreview } from './controls/useHudPlacementPreview';
+import { GardenOverview2DBlockImage } from './GardenOverview2DBlockImage';
 import {
     createGardenOverview2DLayout,
     type GardenOverview2DGridArea,
@@ -13,11 +19,27 @@ import {
     getGardenOverview2DPreviewTrackPadding,
 } from './gardenOverview2DLayout';
 import type { CurrentGarden } from './hooks/useCurrentGarden';
+import {
+    RaisedBedNotificationBubbleContent,
+    RaisedBedNotificationImageViewer,
+    useRaisedBedNotificationSurface,
+} from './hud/RaisedBedNotificationSurface';
+import { getSolarEclipseVisualScales } from './scene/solarEclipse';
 import { useGameState } from './useGameState';
 import { useSetRaisedBedCloseupParam } from './useRaisedBedCloseup';
 import { getRaisedBedBlockIds } from './utils/raisedBedBlocks';
 
 const gridPositionSelector = '[data-garden-grid-position="true"]';
+const panStartThreshold = 4;
+
+type PanSession = {
+    hasMoved: boolean;
+    pointerId: number;
+    scrollLeft: number;
+    scrollTop: number;
+    x: number;
+    y: number;
+};
 
 function gridAreaStyle(
     area: GardenOverview2DGridArea,
@@ -38,15 +60,28 @@ function isGroundBlock(blockName: string) {
 export function GardenOverview2DMap({
     blockData,
     garden,
+    solarEclipseObscuration = 0,
 }: {
     blockData: BlockData[];
     garden: CurrentGarden;
+    solarEclipseObscuration?: number;
 }) {
     const gridRef = useRef<HTMLElement>(null);
+    const panSessionRef = useRef<PanSession | null>(null);
+    const suppressClickRef = useRef(false);
+    const [isPanning, setIsPanning] = useState(false);
     const worldRotation = useGameState((state) => state.worldRotation);
     const activeView = useGameState((state) => state.view);
     const hudPlacementDrag = useGameState((state) => state.hudPlacementDrag);
     const { mutate: openRaisedBed } = useSetRaisedBedCloseupParam();
+    const {
+        closeImageViewer: closeRaisedBedNotificationImageViewer,
+        dismissNotification: dismissRaisedBedNotification,
+        notifications: raisedBedNotifications,
+        openImageNotification: openRaisedBedNotificationImage,
+        openNotification: openRaisedBedNotification,
+        viewerImage: raisedBedNotificationViewerImage,
+    } = useRaisedBedNotificationSurface(garden);
     const layout = useMemo(
         () =>
             createGardenOverview2DLayout({
@@ -116,6 +151,13 @@ export function GardenOverview2DMap({
             }),
         [garden, layoutItemByBlockId],
     );
+    const raisedBedTargetById = useMemo(
+        () =>
+            new Map(
+                raisedBedTargets.map((target) => [target.raisedBed.id, target]),
+            ),
+        [raisedBedTargets],
+    );
     const pointerPosition = useMemo(() => {
         if (!hudPlacementDrag || typeof document === 'undefined') {
             return null;
@@ -156,20 +198,124 @@ export function GardenOverview2DMap({
     const isCloseup = activeView === 'closeup';
     const gridColumnCount = layout.columnCount + previewTrackPadding * 2;
     const gridRowCount = layout.rowCount + previewTrackPadding * 2;
+    const solarEclipseScales = getSolarEclipseVisualScales(
+        solarEclipseObscuration,
+    );
     const gridStyle: CSSProperties = {
         gridTemplateColumns: `repeat(${gridColumnCount}, clamp(2.75rem, 7vw, 4.5rem))`,
         gridTemplateRows: `repeat(${gridRowCount}, clamp(2.75rem, 7vw, 4.5rem))`,
     };
 
+    function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+        if (
+            !event.isPrimary ||
+            event.button !== 0 ||
+            hudPlacementDrag !== null
+        ) {
+            return;
+        }
+
+        panSessionRef.current = {
+            hasMoved: false,
+            pointerId: event.pointerId,
+            scrollLeft: event.currentTarget.scrollLeft,
+            scrollTop: event.currentTarget.scrollTop,
+            x: event.clientX,
+            y: event.clientY,
+        };
+        suppressClickRef.current = false;
+    }
+
+    function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+        const panSession = panSessionRef.current;
+        if (!panSession || panSession.pointerId !== event.pointerId) {
+            return;
+        }
+
+        const deltaX = event.clientX - panSession.x;
+        const deltaY = event.clientY - panSession.y;
+        if (
+            !panSession.hasMoved &&
+            Math.hypot(deltaX, deltaY) < panStartThreshold
+        ) {
+            return;
+        }
+
+        if (!panSession.hasMoved) {
+            panSession.hasMoved = true;
+            suppressClickRef.current = true;
+            setIsPanning(true);
+            event.currentTarget.setPointerCapture(event.pointerId);
+        }
+
+        event.preventDefault();
+        event.currentTarget.scrollLeft = panSession.scrollLeft - deltaX;
+        event.currentTarget.scrollTop = panSession.scrollTop - deltaY;
+    }
+
+    function finishPointerPan(event: ReactPointerEvent<HTMLDivElement>) {
+        const panSession = panSessionRef.current;
+        if (!panSession || panSession.pointerId !== event.pointerId) {
+            return;
+        }
+
+        panSessionRef.current = null;
+        setIsPanning(false);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        if (panSession.hasMoved) {
+            window.setTimeout(() => {
+                suppressClickRef.current = false;
+            }, 0);
+        }
+    }
+
+    function cancelPointerPan(event: ReactPointerEvent<HTMLDivElement>) {
+        suppressClickRef.current = false;
+        finishPointerPan(event);
+    }
+
+    function abandonUncapturedPointer(
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) {
+        const panSession = panSessionRef.current;
+        if (panSession?.pointerId === event.pointerId && !panSession.hasMoved) {
+            panSessionRef.current = null;
+        }
+    }
+
     return (
-        <div
+        <section
             data-garden-overview-2d
+            data-solar-eclipse-obscuration={solarEclipseObscuration.toFixed(3)}
+            data-panning={isPanning ? 'true' : 'false'}
+            aria-label="Pomicanje tlocrta vrta"
             className={cx(
-                'absolute inset-0 overflow-auto overscroll-contain bg-[radial-gradient(circle_at_top,#dcfce7_0%,#bbf7d0_38%,#86efac_100%)] transition-[opacity,transform] duration-300 dark:bg-[radial-gradient(circle_at_top,#163522_0%,#10271a_45%,#07150d_100%)]',
+                'absolute inset-0 touch-none cursor-grab overflow-auto overscroll-contain bg-[radial-gradient(circle_at_top,#dcfce7_0%,#bbf7d0_38%,#86efac_100%)] transition-[filter,opacity,transform] duration-300 dark:bg-[radial-gradient(circle_at_top,#163522_0%,#10271a_45%,#07150d_100%)]',
+                isPanning && 'cursor-grabbing',
                 isCloseup && 'pointer-events-none scale-95 opacity-0',
             )}
+            style={{
+                filter: `brightness(${solarEclipseScales.ambient.toFixed(3)}) saturate(${(0.82 + solarEclipseScales.sunGlow * 0.18).toFixed(3)})`,
+            }}
             aria-hidden={isCloseup ? 'true' : 'false'}
             inert={isCloseup ? true : undefined}
+            tabIndex={isCloseup ? -1 : 0}
+            onClickCapture={(event) => {
+                if (!suppressClickRef.current) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                suppressClickRef.current = false;
+            }}
+            onPointerCancel={cancelPointerPan}
+            onPointerDown={handlePointerDown}
+            onPointerLeave={abandonUncapturedPointer}
+            onPointerMove={handlePointerMove}
+            onPointerUp={finishPointerPan}
         >
             <div
                 className="flex min-h-full min-w-full items-center justify-start"
@@ -228,7 +374,7 @@ export function GardenOverview2DMap({
                                 )}
                                 style={gridAreaStyle(item, previewTrackPadding)}
                             >
-                                <BlockImage
+                                <GardenOverview2DBlockImage
                                     blockName={item.block.name}
                                     alt={
                                         block?.information.label ??
@@ -272,6 +418,41 @@ export function GardenOverview2DMap({
                             </button>
                         ),
                     )}
+                    {!activeHudPlacementDrag
+                        ? raisedBedNotifications.map((notification) => {
+                              const target = raisedBedTargetById.get(
+                                  notification.raisedBedId,
+                              );
+                              if (!target) {
+                                  return null;
+                              }
+
+                              return (
+                                  <div
+                                      key={notification.id}
+                                      className="pointer-events-none relative z-40 min-h-0 min-w-0 overflow-visible"
+                                      data-raised-bed-notification-anchor-2d
+                                      style={gridAreaStyle(
+                                          target.area,
+                                          previewTrackPadding,
+                                      )}
+                                  >
+                                      <div className="pointer-events-auto absolute bottom-[calc(100%+0.5rem)] left-1/2 -translate-x-1/2">
+                                          <RaisedBedNotificationBubbleContent
+                                              notification={notification}
+                                              onDismiss={
+                                                  dismissRaisedBedNotification
+                                              }
+                                              onOpen={openRaisedBedNotification}
+                                              onOpenImage={
+                                                  openRaisedBedNotificationImage
+                                              }
+                                          />
+                                      </div>
+                                  </div>
+                              );
+                          })
+                        : null}
                     {placementArea && activeHudPlacementDrag ? (
                         <div
                             aria-hidden="true"
@@ -287,7 +468,7 @@ export function GardenOverview2DMap({
                                 previewTrackPadding,
                             )}
                         >
-                            <BlockImage
+                            <GardenOverview2DBlockImage
                                 blockName={activeHudPlacementDrag.blockName}
                                 alt={activeHudPlacementDrag.blockName}
                                 draggable={false}
@@ -303,6 +484,10 @@ export function GardenOverview2DMap({
                     ) : null}
                 </section>
             </div>
-        </div>
+            <RaisedBedNotificationImageViewer
+                image={raisedBedNotificationViewerImage}
+                onClose={closeRaisedBedNotificationImageViewer}
+            />
+        </section>
     );
 }

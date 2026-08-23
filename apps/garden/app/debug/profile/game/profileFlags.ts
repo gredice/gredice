@@ -13,6 +13,10 @@ export function resolveGameProfileAdaptiveHigh(value: string | undefined) {
     return value === '1';
 }
 
+export function resolveGameProfileGardenAvatar(value: string | undefined) {
+    return value === '1';
+}
+
 export function resolveGameProfileOperationVisuals(value: string | undefined) {
     return value === '1';
 }
@@ -36,21 +40,15 @@ export function resolveGameProfileWeatherSurface(
 }
 
 export function resolveGameProfileFlags(
-    adaptiveHigh: string | undefined,
     weatherSurface: string | undefined,
-    staticSceneCache: string | undefined,
+    gardenAvatar?: string,
 ) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
-    const staticSceneCacheMode =
-        resolveGameProfileStaticSceneCache(staticSceneCache);
 
     return {
-        enableAdaptiveHighQualityFlag:
-            resolveGameProfileAdaptiveHigh(adaptiveHigh),
         enableDebugHudFlag: true,
+        enableGardenAvatarFlag: resolveGameProfileGardenAvatar(gardenAvatar),
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
-        enableRainWetOverlayFlag: true,
-        enableStaticOpaqueSceneCacheFlag: staticSceneCacheMode === 'cache',
     } satisfies NonNullable<GameSceneProps['flags']>;
 }

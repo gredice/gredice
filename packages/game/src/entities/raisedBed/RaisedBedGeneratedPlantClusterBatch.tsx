@@ -21,7 +21,12 @@ import type { RaisedBedGeneratedPlantBatchInstance } from './RaisedBedGeneratedP
 export interface RaisedBedGeneratedPlantClusterField {
     definition: PlantDefinition;
     fieldKey: string;
+    flowerGrowth: number;
+    fruitGrowth: number;
     instances: RaisedBedGeneratedPlantBatchInstance[];
+    renderVariant: string;
+    showFlowers: boolean;
+    showProduce: boolean;
 }
 
 export function RaisedBedGeneratedPlantClusterBatch({
@@ -45,12 +50,13 @@ export function RaisedBedGeneratedPlantClusterBatch({
                         scale:
                             instance.scale * (variation.scaleMultiplier ?? 1),
                         summary: buildApproximatePlantLodSummary({
-                            flowerGrowth: 1,
-                            fruitGrowth: 1,
+                            flowerGrowth: field.flowerGrowth,
+                            fruitGrowth: field.fruitGrowth,
                             generation: instance.generation,
                             plantDefinition: field.definition,
                             seed: instance.seed,
-                            showProduce: true,
+                            showFlowers: field.showFlowers,
+                            showProduce: field.showProduce,
                         }),
                     };
                 }),

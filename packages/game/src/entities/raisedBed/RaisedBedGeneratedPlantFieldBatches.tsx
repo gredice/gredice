@@ -17,7 +17,9 @@ import { useGameSceneDetails } from '../../GameSceneDetailContext';
 import type { GeneratedPlantTaskPriority } from '../../generators/plant/hooks/generatedPlantTaskScheduler';
 import {
     calculateInGamePlantGeneration,
-    getPlantLifecycleWindowDays,
+    getInGamePlantDefinition,
+    getInGamePlantInstanceScale,
+    getPlantMaturityWindowDays,
     type ResolvedInGamePlantPreset,
     resolveInGamePlantPreset,
 } from '../../generators/plant/lib/inGamePlantPresets';
@@ -38,6 +40,7 @@ import { useOperations } from '../../hooks/useOperations';
 import { useAllSorts } from '../../hooks/usePlantSorts';
 import { useShoppingCart } from '../../hooks/useShoppingCart';
 import { useSnapshotTime } from '../../hooks/useSnapshotTime';
+import { buildAdvancedSowingGardenPlantingVisuals } from '../../hud/raisedBed/advancedSowingGardenVisuals';
 import { resolveOperationVisualRewards } from '../../operationVisualRewards';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import type { GameQualityProfile } from '../../scene/gameQuality';
@@ -47,15 +50,16 @@ import {
     recordGeneratedPlantProfileLodEvaluation,
 } from '../../scene/generatedPlantProfileMetrics';
 import { useGameState } from '../../useGameState';
-import {
-    findRaisedBedByBlockId,
-    getRaisedBedBlockIds,
-} from '../../utils/raisedBedBlocks';
+import { findRaisedBedByBlockId } from '../../utils/raisedBedBlocks';
 import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
 import {
     getGridPositionFromIndex,
     type RaisedBedOrientation,
 } from '../../utils/raisedBedOrientation';
+import {
+    buildAdvancedSowingPlantVisualLayout,
+    resolveAdvancedSowingPlantVisualStage,
+} from './advancedSowingPlantVisualLayout';
 import { reconcileGeneratedPlantBatches } from './generatedPlantBatchReconciliation';
 import {
     allocateGeneratedPlantDetailBudget,
@@ -67,6 +71,8 @@ import {
 import {
     buildGeneratedPlantRaisedBedBounds,
     getGeneratedPlantBatchKey,
+    HIGH_QUALITY_PLANT_NEAR_HYSTERESIS,
+    HIGH_QUALITY_PLANT_NEAR_THRESHOLD,
     isGeneratedPlantRaisedBedGroupVisible,
     resolveGeneratedPlantFieldLod,
 } from './generatedPlantFieldLod';
@@ -80,9 +86,16 @@ import {
 } from './RaisedBedGeneratedPlantClusterBatch';
 import { mockPlantPresetLabelsBySortId } from './RaisedBedPlantField';
 import { resolveRaisedBedProtectiveCoverPositions } from './raisedBedAgrotextileRewards';
+import {
+    type RaisedBedPlantVisualStage,
+    resolveRaisedBedPlantVisualStage,
+    shouldRenderRaisedBedPlant,
+} from './raisedBedPlantVisualStatus';
+import { resolveRaisedBedSupportPositions } from './raisedBedSupportRewards';
 
 export interface RaisedBedGeneratedPlantFieldBatchBlock {
     blockId: string;
+    blockIndex: number;
     position: readonly [number, number, number];
 }
 
@@ -100,9 +113,10 @@ type GeneratedPlantField = {
     definition: ResolvedInGamePlantPreset['definition'];
     fieldKey: string;
     instances: RaisedBedGeneratedPlantBatchInstance[];
-    plantType: ResolvedInGamePlantPreset['plantType'];
     position: readonly [number, number, number];
     raisedBedId: number;
+    renderVariant: string;
+    visualStage: RaisedBedPlantVisualStage;
 };
 
 type GeneratedPlantBatch = {
@@ -110,9 +124,9 @@ type GeneratedPlantBatch = {
     definition: ResolvedInGamePlantPreset['definition'];
     instances: RaisedBedGeneratedPlantBatchInstance[];
     lodLevel: 'near';
-    plantType: ResolvedInGamePlantPreset['plantType'];
     signature: string;
     taskPriority: GeneratedPlantTaskPriority;
+    visualStage: RaisedBedPlantVisualStage;
 };
 
 type GeneratedPlantClusterBatch = {
@@ -200,15 +214,6 @@ function getGeneratedPlantInstanceSignature(
     ].join(':');
 }
 
-function shouldRenderGeneratedPlantField(field: DisplayedRaisedBedField) {
-    return (
-        Boolean(field.plantSowDate) &&
-        (field.plantStatus === 'sprouted' ||
-            field.plantStatus === 'ready' ||
-            field.plantStatus === 'harvested')
-    );
-}
-
 function getFieldPosition({
     blockIndex,
     blockPosition,
@@ -233,6 +238,12 @@ function getFieldPosition({
         blockPosition[1] - 0.75,
         blockPosition[2] + (2 - row) * multiplierY - offsetY,
     ] as const;
+}
+
+function readRaisedBedPlantings(value: unknown) {
+    return typeof value === 'object' && value !== null
+        ? Reflect.get(value, 'plantings')
+        : null;
 }
 
 function getOrthographicCameraZoom(camera: THREE.Camera) {
@@ -271,18 +282,20 @@ function resolveGeneratedFieldVisibility({
 }
 
 function useGeneratedPlantFieldLods({
-    allowNormalViewNear,
     detailInstanceBudget,
     focusActive,
     generatedFields,
     interactingRaisedBedId,
+    nearHysteresis,
+    nearThreshold,
     selectedRaisedBedId,
 }: {
-    allowNormalViewNear: boolean;
     detailInstanceBudget: number;
     focusActive: boolean;
     generatedFields: GeneratedPlantField[];
     interactingRaisedBedId: number | null;
+    nearHysteresis?: number;
+    nearThreshold?: number;
     selectedRaisedBedId: number | null;
 }) {
     const camera = useThree((state) => state.camera);
@@ -458,11 +471,12 @@ function useGeneratedPlantFieldLods({
                     lodByFieldKeyRef.current.get(field.fieldKey)
                         ?.requestedLevel ?? 'far';
                 const requestedLevel = resolveGeneratedPlantFieldLod({
-                    allowNormalViewNear,
                     cameraZoom: getOrthographicCameraZoom(camera),
                     currentLevel: previousLevel,
                     focusActive,
                     isSelectedRaisedBed,
+                    nearHysteresis,
+                    nearThreshold,
                     screenOccupancy,
                 });
 
@@ -585,13 +599,14 @@ function useGeneratedPlantFieldLods({
             return current;
         });
     }, [
-        allowNormalViewNear,
         camera,
         detailInstanceBudget,
         focusActive,
         frustum,
         generatedFields.length,
         interactingRaisedBedId,
+        nearHysteresis,
+        nearThreshold,
         projectedPosition,
         projectionViewMatrix,
         raisedBedGroups,
@@ -683,12 +698,19 @@ export function RaisedBedGeneratedPlantFieldBatches({
             }
 
             const orientation = raisedBed.orientation ?? 'vertical';
-            const blockIds = getRaisedBedBlockIds(currentGarden, raisedBed.id);
-            const blockIndex = blockIds.indexOf(block.blockId);
-            const blockOffset =
-                Math.max(blockIds.length - 1 - blockIndex, 0) * 9;
+            const blockIndex = block.blockIndex;
+            const blockOffset = Math.max(1 - blockIndex, 0) * 9;
             const protectiveCoverPositionSet = new Set(
                 resolveRaisedBedProtectiveCoverPositions({
+                    blockOffset,
+                    fields: raisedBed.fields,
+                    raisedBedId: raisedBed.id,
+                    visualRewards:
+                        visualRewardsByRaisedBedId.get(raisedBed.id) ?? [],
+                }),
+            );
+            const supportPositionSet = new Set(
+                resolveRaisedBedSupportPositions({
                     blockOffset,
                     fields: raisedBed.fields,
                     raisedBedId: raisedBed.id,
@@ -763,7 +785,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 if (
                     !plantSortId ||
                     !resolvedPlantPreset ||
-                    !shouldRenderGeneratedPlantField(field)
+                    !shouldRenderRaisedBedPlant(field)
                 ) {
                     continue;
                 }
@@ -771,6 +793,9 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 const { plantsPerRow, totalPlants } = calculatePlantsPerField(
                     highTargetAttributes?.seedingDistance ??
                         sort?.information.plant.attributes?.seedingDistance,
+                    sort?.information.name ??
+                        mockPlantPresetLabelsBySortId[plantSortId] ??
+                        `Plant sort #${plantSortId.toString()}`,
                 );
                 const safePlantsPerRow = Math.max(plantsPerRow, 1);
                 const seedLayout =
@@ -781,7 +806,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 const plantGeneration = calculateInGamePlantGeneration({
                     currentTime,
                     sowDate: field.plantSowDate ?? '',
-                    lifecycleWindowDays: getPlantLifecycleWindowDays({
+                    lifecycleWindowDays: getPlantMaturityWindowDays({
                         germinationWindowMax:
                             highTargetAttributes?.germinationWindowMax ??
                             sort?.information.plant.attributes
@@ -789,19 +814,26 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         growthWindowMax:
                             highTargetAttributes?.growthWindowMax ??
                             sort?.information.plant.attributes?.growthWindowMax,
-                        harvestWindowMax:
-                            highTargetAttributes?.harvestWindowMax ??
-                            sort?.information.plant.attributes
-                                ?.harvestWindowMax,
                     }),
                     growthMultiplier: resolvedPlantPreset.growthMultiplier,
+                    plantStatus: field.plantStatus,
                 });
-                const plantInstanceScale =
-                    resolvedPlantPreset.instanceScale *
-                    Math.max(
-                        0.72,
-                        1 - Math.max(0, safePlantsPerRow - 2) * 0.12,
-                    );
+                const plantInstanceScale = getInGamePlantInstanceScale(
+                    resolvedPlantPreset,
+                    safePlantsPerRow,
+                );
+                const supported = supportPositionSet.has(
+                    field.positionIndex - blockOffset,
+                );
+                const plantDefinition = getInGamePlantDefinition(
+                    resolvedPlantPreset,
+                    supported,
+                );
+                const visualStage = resolveRaisedBedPlantVisualStage({
+                    generation: plantGeneration,
+                    plantDefinition,
+                    plantStatus: field.plantStatus,
+                });
                 const fieldPosition = getFieldPosition({
                     blockIndex,
                     blockPosition: block.position,
@@ -809,7 +841,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     positionIndex: field.positionIndex - blockOffset,
                 });
                 const approximatePlantHeight =
-                    getApproximatePlantHeight(resolvedPlantPreset.definition) *
+                    getApproximatePlantHeight(plantDefinition) *
                     plantInstanceScale;
                 const instances: RaisedBedGeneratedPlantBatchInstance[] = [];
 
@@ -823,7 +855,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                         safePlantsPerRow * seedLayout.offset;
 
                     instances.push({
-                        generation: plantGeneration,
+                        generation: visualStage.generation,
                         fieldKey: getFieldRenderKey(block.blockId, field),
                         position: [
                             fieldPosition[0] + slotX,
@@ -839,12 +871,136 @@ export function RaisedBedGeneratedPlantFieldBatches({
                 fields.push({
                     approximatePlantHeight,
                     blockId: block.blockId,
-                    definition: resolvedPlantPreset.definition,
+                    definition: plantDefinition,
                     fieldKey: getFieldRenderKey(block.blockId, field),
                     instances,
-                    plantType: resolvedPlantPreset.plantType,
                     position: fieldPosition,
                     raisedBedId: raisedBed.id,
+                    renderVariant: `${resolvedPlantPreset.plantType}:${supported ? 'supported' : 'free'}:${visualStage.key}`,
+                    visualStage,
+                });
+            }
+        }
+
+        for (const raisedBed of currentGarden.raisedBeds) {
+            if (raisedBed.status === 'abandoned') {
+                continue;
+            }
+
+            const orientation = raisedBed.orientation ?? 'vertical';
+            const raisedBedBlocks = blocks
+                .filter((block) => block.blockId === raisedBed.blockId)
+                .sort((left, right) => left.blockIndex - right.blockIndex);
+            if (raisedBedBlocks.length === 0) {
+                continue;
+            }
+
+            const fieldPositionByIndex = new Map<
+                number,
+                readonly [number, number, number]
+            >();
+            const blockIdByPositionIndex = new Map<number, string>();
+            for (const sceneBlock of raisedBedBlocks) {
+                const blockIndex = sceneBlock.blockIndex;
+                const blockOffset = Math.max(1 - blockIndex, 0) * 9;
+                for (
+                    let localPositionIndex = 0;
+                    localPositionIndex < 9;
+                    localPositionIndex += 1
+                ) {
+                    const positionIndex = blockOffset + localPositionIndex;
+                    fieldPositionByIndex.set(
+                        positionIndex,
+                        getFieldPosition({
+                            blockIndex,
+                            blockPosition: sceneBlock.position,
+                            orientation,
+                            positionIndex: localPositionIndex,
+                        }),
+                    );
+                    blockIdByPositionIndex.set(
+                        positionIndex,
+                        sceneBlock.blockId,
+                    );
+                }
+            }
+
+            const selectedPlantings = buildAdvancedSowingGardenPlantingVisuals(
+                readRaisedBedPlantings(raisedBed),
+                raisedBedBlocks.length * 9,
+            );
+            for (const planting of selectedPlantings) {
+                const layout = buildAdvancedSowingPlantVisualLayout({
+                    fieldPositionByIndex,
+                    planting,
+                });
+                const anchorBlockId = blockIdByPositionIndex.get(
+                    planting.anchorPositionIndex,
+                );
+                if (!layout || !anchorBlockId) {
+                    continue;
+                }
+
+                const sort = sortData?.find(
+                    (item) => item.id === planting.plantSortId,
+                );
+                // Catalogue labels select the existing visual archetype only.
+                // Density, count, footprint, and growth all come from the
+                // persisted planting snapshot and lifecycle projection above.
+                const resolvedPlantPreset = resolveInGamePlantPreset([
+                    sort?.information.name,
+                    sort?.information.plant.information?.name,
+                    sort?.information.plant.information?.latinName,
+                    isMock || isSandbox
+                        ? mockPlantPresetLabelsBySortId[planting.plantSortId]
+                        : undefined,
+                ]);
+                if (!resolvedPlantPreset) {
+                    continue;
+                }
+
+                const plantInstanceScale = getInGamePlantInstanceScale(
+                    resolvedPlantPreset,
+                    planting.plantsPerAxis,
+                );
+                const plantDefinition = getInGamePlantDefinition(
+                    resolvedPlantPreset,
+                    false,
+                );
+                const visualStage = resolveAdvancedSowingPlantVisualStage({
+                    lifecycleStatus: planting.lifecycleStatus,
+                    plantDefinition,
+                });
+                if (!visualStage) {
+                    continue;
+                }
+                const fieldKey = `advanced-sowing:${raisedBed.id.toString()}:${planting.id.toString()}`;
+                const instances = layout.instancePositions.map(
+                    (
+                        position,
+                        index,
+                    ): RaisedBedGeneratedPlantBatchInstance => ({
+                        fieldKey,
+                        generation: visualStage.generation,
+                        position,
+                        raisedBedId: raisedBed.id,
+                        scale: plantInstanceScale,
+                        seed: `${fieldKey}:${planting.plantSortId.toString()}:${index.toString()}`,
+                    }),
+                );
+
+                fields.push({
+                    approximatePlantHeight:
+                        getApproximatePlantHeight(plantDefinition) *
+                        plantInstanceScale,
+                    blockId: anchorBlockId,
+                    definition: plantDefinition,
+                    fieldKey,
+                    instances,
+                    position: layout.centroid,
+                    raisedBedId: raisedBed.id,
+                    renderVariant: `${resolvedPlantPreset.plantType}:advanced-selected:${visualStage.key}`,
+                    visualStage,
                 });
             }
         }
@@ -904,12 +1060,18 @@ export function RaisedBedGeneratedPlantFieldBatches({
     const detailInstanceBudget = globalDetailBudgetActive
         ? HIGH_GENERATED_PLANT_DETAIL_INSTANCE_BUDGET
         : generatedPlantInstanceCount;
+    const expandedHighQualityDetail = quality.tier === 'high';
     const { detailBudget, lodByFieldKey: lods } = useGeneratedPlantFieldLods({
-        allowNormalViewNear: !globalDetailBudgetActive,
         detailInstanceBudget,
         focusActive,
         generatedFields,
         interactingRaisedBedId,
+        nearHysteresis: expandedHighQualityDetail
+            ? HIGH_QUALITY_PLANT_NEAR_HYSTERESIS
+            : undefined,
+        nearThreshold: expandedHighQualityDetail
+            ? HIGH_QUALITY_PLANT_NEAR_THRESHOLD
+            : undefined,
         selectedRaisedBedId,
     });
     const detailTransitionTotalsRef = useRef({
@@ -985,14 +1147,19 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     : getGeneratedPlantBatchKey({
                           focused: false,
                           lodLevel: lod.level,
-                          plantType: field.plantType,
+                          plantType: field.renderVariant,
                           raisedBedId: field.raisedBedId,
                       });
                 const clusterBatch = clusterBatchMap.get(batchKey);
                 const clusterField = {
                     definition: field.definition,
                     fieldKey: field.fieldKey,
+                    flowerGrowth: field.visualStage.flowerGrowth,
+                    fruitGrowth: field.visualStage.fruitGrowth,
                     instances: field.instances,
+                    renderVariant: field.renderVariant,
+                    showFlowers: field.visualStage.showFlowers,
+                    showProduce: field.visualStage.showProduce,
                 } satisfies RaisedBedGeneratedPlantClusterField;
 
                 if (clusterBatch) {
@@ -1011,7 +1178,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
             const batchKey = getGeneratedPlantBatchKey({
                 focused,
                 lodLevel: 'near',
-                plantType: field.plantType,
+                plantType: field.renderVariant,
                 raisedBedId: field.raisedBedId,
             });
             let batch = detailedBatchMap.get(batchKey);
@@ -1022,13 +1189,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     definition: field.definition,
                     instances: [],
                     lodLevel: 'near',
-                    plantType: field.plantType,
                     signature: '',
                     taskPriority: focused
                         ? 'focused'
                         : focusActive
                           ? 'background'
                           : 'normal',
+                    visualStage: field.visualStage,
                 };
                 detailedBatchMap.set(batchKey, batch);
             }
@@ -1044,6 +1211,7 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     ...batch.fields.flatMap((field) => [
                         field.fieldKey,
                         field.definition.name,
+                        field.renderVariant,
                         ...field.instances.map(
                             getGeneratedPlantInstanceSignature,
                         ),
@@ -1056,6 +1224,11 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     batch.lodLevel,
                     batch.definition.name,
                     batch.taskPriority,
+                    batch.visualStage.key,
+                    batch.visualStage.flowerGrowth,
+                    batch.visualStage.fruitGrowth,
+                    batch.visualStage.showFlowers,
+                    batch.visualStage.showProduce,
                     ...batch.instances.map(getGeneratedPlantInstanceSignature),
                 ].join('|'),
             })),
@@ -1190,6 +1363,13 @@ export function RaisedBedGeneratedPlantFieldBatches({
                     instances={batch.instances}
                     leafGeometryDetail={leafGeometryDetail}
                     lodLevel={batch.lodLevel}
+                    flowerGrowth={batch.visualStage.flowerGrowth}
+                    fruitGrowth={batch.visualStage.fruitGrowth}
+                    showFlowers={batch.visualStage.showFlowers}
+                    showProduce={batch.visualStage.showProduce}
+                    shaderPrewarmVariantKey={
+                        quality.shadows ? 'shadows' : 'without-shadows'
+                    }
                     taskPriority={batch.taskPriority}
                 />
             ))}

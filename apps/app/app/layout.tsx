@@ -1,4 +1,6 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { PostHogPageView, PostHogProvider } from '@posthog/next';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
@@ -31,6 +33,9 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
             ? undefined
@@ -46,30 +51,35 @@ export default function RootLayout({
                 <ImpersonationBanner />
                 {children}
             </ClientAppProvider>
-            <Analytics />
+            {injectVercelAnalytics && <Analytics />}
         </>
     );
 
     return (
         <html lang="hr" translate="no" suppressHydrationWarning={true}>
-            <body className="antialiased min-h-screen flex bg-background text-foreground">
-                {postHogApiKey ? (
-                    <PostHogProvider
-                        apiKey={postHogApiKey}
-                        clientOptions={{
-                            api_host: postHogApiHost,
-                            capture_exceptions: true,
-                            debug: process.env.NODE_ENV === 'development',
-                            defaults: '2026-01-30',
-                            ui_host: postHogUiHost ?? null,
-                        }}
-                    >
-                        <PostHogPageView />
-                        {content}
-                    </PostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className="antialiased min-h-screen flex bg-background text-foreground"
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <PostHogProvider
+                            apiKey={postHogApiKey}
+                            clientOptions={{
+                                api_host: postHogApiHost,
+                                capture_exceptions: true,
+                                debug: process.env.NODE_ENV === 'development',
+                                defaults: '2026-01-30',
+                                ui_host: postHogUiHost ?? null,
+                            }}
+                        >
+                            <PostHogPageView />
+                            {content}
+                        </PostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

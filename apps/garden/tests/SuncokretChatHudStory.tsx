@@ -3,16 +3,24 @@ import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import { useMemo } from 'react';
 import { GameFlagsContext } from '../../../packages/game/src/GameFlagsContext';
 import { currentGardenKeys } from '../../../packages/game/src/hooks/useCurrentGarden';
+import { useShoppingCartQueryKey } from '../../../packages/game/src/hooks/useShoppingCart';
 import { SuncokretChatHud } from '../../../packages/game/src/hud/SuncokretChatHud';
 import {
     SuncokretChatProvider,
     type SuncokretChatTarget,
 } from '../../../packages/game/src/hud/SuncokretChatProvider';
 import { SuncokretChatTrigger } from '../../../packages/game/src/hud/SuncokretChatTrigger';
+import { GameModal } from '../../../packages/game/src/shared-ui/game-modal';
 import {
     createGameState,
     GameStateContext,
 } from '../../../packages/game/src/useGameState';
+import {
+    allSorts,
+    buildField,
+    buildOperation,
+    testSorts,
+} from './raisedBedFieldHudScenarios';
 
 const gardenId = 1;
 const raisedBedId = 11;
@@ -35,7 +43,19 @@ const garden = {
             name: 'Sunčano Sunce',
             blockId: raisedBedBlock.id,
             physicalId: 'A1',
-            fields: [],
+            fields: [
+                {
+                    ...buildField(
+                        {
+                            positionIndex: 1,
+                            plantSortId: testSorts.tomato.id,
+                            plantStatus: 'sprouted',
+                        },
+                        1,
+                    ),
+                    raisedBedId,
+                },
+            ],
             appliedOperations: [],
             weedState: null,
             status: 'active',
@@ -54,6 +74,45 @@ const garden = {
     ],
 };
 
+const wateringOperationBase = buildOperation({
+    id: 77,
+    name: 'watering-raised-bed',
+    label: 'Zalijevanje gredice',
+    stageName: 'maintenance',
+    stageLabel: 'Održavanje',
+});
+const wateringOperation = {
+    ...wateringOperationBase,
+    attributes: {
+        ...wateringOperationBase.attributes,
+        application: 'raisedBedFull' as const,
+    },
+};
+const resistanceOperation = buildOperation({
+    id: 569,
+    name: 'applyTomatoResiliencePreparation',
+    label: 'Jačanje otpornosti rajčice i patlidžana',
+    stageName: 'maintenance',
+    stageLabel: 'Održavanje',
+});
+const recommendationSorts = allSorts.map((plantSort) =>
+    plantSort.id === testSorts.tomato.id
+        ? {
+              ...plantSort,
+              information: {
+                  ...plantSort.information,
+                  plant: {
+                      ...plantSort.information.plant,
+                      information: {
+                          ...plantSort.information.plant.information,
+                          operations: [resistanceOperation],
+                      },
+                  },
+              },
+          }
+        : plantSort,
+);
+
 function createQueryClient() {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -65,18 +124,42 @@ function createQueryClient() {
         [{ id: gardenId, name: garden.name, isSandbox: false }],
     );
     queryClient.setQueryData(currentGardenKeys('summer', gardenId), garden);
+    queryClient.setQueryData(
+        ['operations'],
+        [wateringOperation, resistanceOperation],
+    );
+    queryClient.setQueryData(['sorts'], recommendationSorts);
     return queryClient;
+}
+
+function ShoppingCartQueryProbe() {
+    const { data = 'učitavanje' } = ReactQuery.useQuery({
+        queryKey: useShoppingCartQueryKey,
+        queryFn: async () => {
+            const response = await fetch('/api/test/suncokret-shopping-cart');
+            if (!response.ok) {
+                throw new Error('Shopping-cart test query failed');
+            }
+            return response.text();
+        },
+    });
+
+    return <output aria-label="Verzija košarice">{data}</output>;
 }
 
 export function SuncokretChatHudStory({
     contextTarget,
     debug = false,
+    fieldUiTarget,
     focusedRaisedBed = false,
+    observeShoppingCart = false,
     settingsSection,
 }: {
     contextTarget?: SuncokretChatTarget;
     debug?: boolean;
+    fieldUiTarget?: SuncokretChatTarget;
     focusedRaisedBed?: boolean;
+    observeShoppingCart?: boolean;
     settingsSection?: string;
 }) {
     const queryClient = useMemo(createQueryClient, []);
@@ -106,17 +189,26 @@ export function SuncokretChatHudStory({
                 <GameStateContext.Provider value={gameStore}>
                     <GameFlagsContext.Provider
                         value={{
-                            enableSuncokretChatFlag: true,
                             enableSuncokretDebugFlag: debug,
                         }}
                     >
                         <SuncokretChatProvider>
-                            {contextTarget && (
+                            {observeShoppingCart ? (
+                                <ShoppingCartQueryProbe />
+                            ) : null}
+                            {fieldUiTarget ? (
+                                <GameModal open title="Kartica biljke">
+                                    <SuncokretChatTrigger
+                                        title="Pitaj Suncokreta iz kartice biljke"
+                                        target={fieldUiTarget}
+                                    />
+                                </GameModal>
+                            ) : contextTarget ? (
                                 <SuncokretChatTrigger
                                     title="Pitaj Suncokreta u kontekstu"
                                     target={contextTarget}
                                 />
-                            )}
+                            ) : null}
                             <SuncokretChatHud />
                         </SuncokretChatProvider>
                     </GameFlagsContext.Provider>

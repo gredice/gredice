@@ -97,7 +97,6 @@ export function EntitySandboxViewer({
             deferDetails={false}
             flags={{
                 enableDebugHudFlag: debugHud,
-                enableRainWetOverlayFlag: debugHud,
             }}
             key={storageKey}
             localSandboxInitialStacks={stacks}

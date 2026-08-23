@@ -16,10 +16,6 @@ export function usePaymentStatusParam() {
     return useQueryState('placanje', parseAsString);
 }
 
-export function useOutletOpenParam() {
-    return useQueryState('outlet', parseAsString);
-}
-
 export function useOutletOfferSelectionParam() {
     return useQueryState('outlet-ponuda', parseAsInteger);
 }
@@ -62,6 +58,7 @@ export function useRaisedBedCloseupParam() {
 const raisedBedCloseupParamParsers = {
     gredica: parseAsString,
     polje: parseAsInteger,
+    'polje-kartica': parseAsString,
 };
 
 export function useRaisedBedCloseupParams() {
@@ -73,9 +70,27 @@ export function useRaisedBedFieldDetailsParam() {
     return useQueryState('polje', parseAsInteger);
 }
 
+export const raisedBedFieldTabValues = [
+    'lifecycle',
+    'diary',
+    'operations',
+] as const;
+export type RaisedBedFieldTabValue = (typeof raisedBedFieldTabValues)[number];
+
+export function normalizeRaisedBedFieldTab(
+    value: string | null | undefined,
+): RaisedBedFieldTabValue {
+    return raisedBedFieldTabValues.find((tab) => tab === value) ?? 'lifecycle';
+}
+
 // Gift box modal parameter (Croatian: "poklon-kutija" = gift box)
 export function useGiftBoxParam() {
     return useQueryState('poklon-kutija', parseAsString);
+}
+
+// Editable wooden sign parameter (Croatian: "natpis" = inscription)
+export function useWoodenSignParam() {
+    return useQueryState('natpis', parseAsString);
 }
 
 // Current garden ID parameter (Croatian: "vrt" = garden)
@@ -91,13 +106,14 @@ export function useOverviewSectionParam() {
 export const urlStateSerializer = createSerializer({
     kosarica: parseAsBoolean,
     placanje: parseAsString,
-    outlet: parseAsString,
     'outlet-ponuda': parseAsInteger,
     ruksak: parseAsBoolean,
     'ruksak-kartica': parseAsString,
     gredica: parseAsString,
     polje: parseAsInteger,
+    'polje-kartica': parseAsString,
     'poklon-kutija': parseAsString,
+    natpis: parseAsString,
     vrt: parseAsInteger,
     pregled: parseAsString,
 });

@@ -9,14 +9,12 @@ import { Row } from '@gredice/ui/Row';
 import { ScrollArea } from '@gredice/ui/ScrollArea';
 import { Stack } from '@gredice/ui/Stack';
 import { memo, useState } from 'react';
-import {
-    sortFavoritesFirst,
-    useFavoriteIds,
-} from '../../../hooks/useFavorites';
+import { useFavoriteIds } from '../../../hooks/useFavorites';
 import { useOperations } from '../../../hooks/useOperations';
 import { usePlantSort } from '../../../hooks/usePlantSorts';
 import { OperationListItemSkeleton } from '../OperationListItemSkeleton';
 import { OperationsListItem } from './OperationsListItem';
+import { sortOperationsForList } from './operationListSorting';
 import { isPlantTargetMetadataResolved } from './plantTargetMetadata';
 import { useOperationContextIndicators } from './useOperationContextIndicators';
 
@@ -135,18 +133,11 @@ export function OperationsList({
                 : true,
         );
 
-    const cartOperations =
-        filteredOperations?.filter((op) =>
-            shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const remainingOperations =
-        filteredOperations?.filter(
-            (op) => !shoppingCartOperationIds.has(op.id),
-        ) ?? [];
-    const sortedOperations = [
-        ...sortFavoritesFirst(cartOperations, favoriteOperationIds),
-        ...sortFavoritesFirst(remainingOperations, favoriteOperationIds),
-    ];
+    const sortedOperations = sortOperationsForList(
+        filteredOperations ?? [],
+        shoppingCartOperationIds,
+        favoriteOperationIds,
+    );
 
     return (
         <Stack spacing={2}>

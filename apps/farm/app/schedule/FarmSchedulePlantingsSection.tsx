@@ -1,4 +1,3 @@
-import { calculatePlantsPerField } from '@gredice/js/plants';
 import type {
     EntityStandardized,
     RaisedBedFieldAssignableFarmUser,
@@ -8,6 +7,7 @@ import { Stack } from '@gredice/ui/Stack';
 import { Suspense } from 'react';
 import { CompletePlantingModal } from './CompletePlantingModal';
 import { FarmSchedulePlantingTaskCard } from './FarmSchedulePlantingTaskCard';
+import { FarmScheduleSelectedPlantingTaskCard } from './FarmScheduleSelectedPlantingTaskCard';
 import { RaisedBedScheduleGroupHeader } from './RaisedBedScheduleGroupHeader';
 import { RaisedBedScheduleGroupHeaderWithPhotos } from './RaisedBedScheduleGroupHeaderWithPhotos';
 import { ScheduleSectionSummaryBadges } from './ScheduleSectionSummaryBadges';
@@ -16,18 +16,25 @@ import type {
     FarmScheduleRaisedBedPhotoPreview,
 } from './scheduleData';
 import {
+    buildFarmSchedulePlantingLabel,
+    buildFarmScheduleSelectedPlantingLabel,
+    getRecommendedPlantCountPerField,
+} from './schedulePlantingPresentation';
+import {
     compareScheduleDates,
     getFieldPhysicalPositionIndex,
     groupRaisedBedsForSchedule,
     PLANTING_TASK_DURATION_MINUTES,
 } from './scheduleShared';
 import { getSchedulePlantingTaskIdentity } from './scheduleTaskIdentity';
+import type { FarmScheduleSelectedPlanting } from './selectedPlantingSchedule';
 
 type FarmRaisedBedField = FarmScheduleDayData['scheduledFields'][number];
 
 interface FarmSchedulePlantingsSectionProps {
     raisedBeds: FarmScheduleDayData['raisedBeds'];
     scheduledFields: FarmScheduleDayData['scheduledFields'];
+    scheduledSelectedPlantings: FarmScheduleSelectedPlanting[];
     plantSorts: EntityStandardized[] | null | undefined;
     userId: string;
     assignedUserByFieldIdPromise: Promise<
@@ -43,41 +50,31 @@ function buildFieldLabel(
     field: FarmRaisedBedField,
     plantSortById: Map<number, EntityStandardized>,
 ) {
-    const taskName =
-        field.sowingLocation === 'greenhouse'
-            ? 'Sijanje u stakleniku'
-            : 'Sijanje';
     const sort = field.plantSortId
         ? plantSortById.get(field.plantSortId)
         : null;
-    if (!field.plantSortId || !sort) {
-        return `${taskName}: ? Nepoznato`;
-    }
 
-    const totalPlants = getPlantsPerFieldCount(sort);
-    return `${taskName}: ${totalPlants ?? '?'} ${sort.information?.name ?? 'Nepoznato'}`;
-}
-
-function getPlantsPerFieldCount(
-    plantSort: EntityStandardized | null | undefined,
-) {
-    const seedingDistance =
-        plantSort?.information?.plant?.attributes?.seedingDistance;
-    return typeof seedingDistance === 'number'
-        ? calculatePlantsPerField(seedingDistance).totalPlants
-        : null;
+    return buildFarmSchedulePlantingLabel({
+        plantName: sort?.information?.name,
+        recommendedPlantCount: getRecommendedPlantCountPerField(sort),
+        sowingLocation: field.sowingLocation,
+    });
 }
 
 export function FarmSchedulePlantingsSection({
     raisedBeds,
     scheduledFields,
+    scheduledSelectedPlantings,
     plantSorts,
     userId,
     assignedUserByFieldIdPromise,
     raisedBedPhotoPreviewByIdPromise,
     selectedDateKey,
 }: FarmSchedulePlantingsSectionProps) {
-    if (scheduledFields.length === 0) {
+    if (
+        scheduledFields.length === 0 &&
+        scheduledSelectedPlantings.length === 0
+    ) {
         return null;
     }
 
@@ -89,7 +86,14 @@ export function FarmSchedulePlantingsSection({
     }
 
     const affectedRaisedBedIds = [
-        ...new Set(scheduledFields.map((field) => field.raisedBedId)),
+        ...new Set([
+            ...scheduledFields.map((field) => field.raisedBedId),
+            ...scheduledSelectedPlantings.flatMap(({ planting }) =>
+                planting.memberships.map(
+                    (membership) => membership.raisedBedField.raisedBedId,
+                ),
+            ),
+        ]),
     ];
     const raisedBedGroups = groupRaisedBedsForSchedule(
         raisedBeds,
@@ -108,6 +112,11 @@ export function FarmSchedulePlantingsSection({
                             ),
                         )
                         .map((field) => {
+                            const plantingIdentity =
+                                getSchedulePlantingTaskIdentity(field);
+                            // Keep every legacy field task at its existing
+                            // mutation boundary. Selected planting tasks are
+                            // rendered separately and never synthesized here.
                             const physicalPositionIndex =
                                 getFieldPhysicalPositionIndex(
                                     field,
@@ -116,6 +125,7 @@ export function FarmSchedulePlantingsSection({
 
                             return {
                                 ...field,
+                                plantingIdentity,
                                 physicalPositionIndex,
                                 label: buildFieldLabel(field, plantSortById),
                             };
@@ -134,8 +144,64 @@ export function FarmSchedulePlantingsSection({
                                 right.physicalPositionIndex
                             );
                         });
+                    const daySelectedPlantings = scheduledSelectedPlantings
+                        .filter((entry) =>
+                            groupedRaisedBeds.some(
+                                (raisedBed) =>
+                                    raisedBed.id === entry.raisedBedId,
+                            ),
+                        )
+                        .map((entry) => {
+                            const task = entry.planting.selectedTask;
+                            const plantSort = plantSortById.get(
+                                entry.planting.plantSortId,
+                            );
+                            return {
+                                ...entry,
+                                label: buildFarmScheduleSelectedPlantingLabel({
+                                    plantCount: entry.planting.plantCount,
+                                    plantName: plantSort?.information?.name,
+                                    plantsPerAxis: entry.planting.plantsPerAxis,
+                                    selectedSeedingDistanceCm:
+                                        entry.planting
+                                            .selectedSeedingDistanceCm,
+                                    sowingLocation: task?.sowingLocation,
+                                    spanColumns: entry.planting.spanColumns,
+                                    spanRows: entry.planting.spanRows,
+                                }),
+                                physicalPositionNumbers:
+                                    entry.planting.memberships.map(
+                                        (membership) =>
+                                            getFieldPhysicalPositionIndex(
+                                                {
+                                                    positionIndex:
+                                                        membership
+                                                            .raisedBedField
+                                                            .positionIndex,
+                                                    raisedBedId:
+                                                        membership
+                                                            .raisedBedField
+                                                            .raisedBedId,
+                                                },
+                                                groupedRaisedBeds,
+                                            ),
+                                    ),
+                                plantSort,
+                            };
+                        })
+                        .sort((left, right) => {
+                            const dateComparison = compareScheduleDates(
+                                left.planting.selectedTask?.scheduledDate,
+                                right.planting.selectedTask?.scheduledDate,
+                            );
+                            return (
+                                dateComparison ||
+                                left.planting.id - right.planting.id
+                            );
+                        });
                     const totalDuration =
-                        dayFields.length * PLANTING_TASK_DURATION_MINUTES;
+                        (dayFields.length + daySelectedPlantings.length) *
+                        PLANTING_TASK_DURATION_MINUTES;
 
                     return (
                         <Stack key={key} spacing={2}>
@@ -162,7 +228,10 @@ export function FarmSchedulePlantingsSection({
                                     className="justify-end text-right"
                                 >
                                     <ScheduleSectionSummaryBadges
-                                        count={dayFields.length}
+                                        count={
+                                            dayFields.length +
+                                            daySelectedPlantings.length
+                                        }
                                         countLabel="sijanja"
                                         durationMinutes={totalDuration}
                                     />
@@ -173,8 +242,7 @@ export function FarmSchedulePlantingsSection({
                                     const plantSort = field.plantSortId
                                         ? plantSortById.get(field.plantSortId)
                                         : undefined;
-                                    const plantingIdentity =
-                                        getSchedulePlantingTaskIdentity(field);
+                                    const { plantingIdentity } = field;
 
                                     return (
                                         <FarmSchedulePlantingTaskCard
@@ -213,6 +281,23 @@ export function FarmSchedulePlantingsSection({
                                         />
                                     );
                                 })}
+                                {daySelectedPlantings.map((entry) => (
+                                    <FarmScheduleSelectedPlantingTaskCard
+                                        key={`selected-${entry.planting.id.toString()}`}
+                                        label={entry.label}
+                                        physicalPositionNumbers={
+                                            entry.physicalPositionNumbers
+                                        }
+                                        planting={entry.planting}
+                                        plantSort={entry.plantSort}
+                                        raisedBedLabel={
+                                            physicalId
+                                                ? `Gr ${physicalId}`
+                                                : `Gredica ${entry.raisedBedId.toString()}`
+                                        }
+                                        userId={userId}
+                                    />
+                                ))}
                             </Stack>
                         </Stack>
                     );

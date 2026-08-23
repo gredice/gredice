@@ -2,12 +2,11 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { type PropsWithChildren, useContext, useRef } from 'react';
 import type { Vector3 } from 'three';
 import { useBlockRotate } from '../hooks/useBlockRotate';
-import { useCurrentGardenCache } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
 import type { Stack } from '../types/Stack';
 import { GameStateContext, useGameState } from '../useGameState';
-import { findAttachedRaisedBedBlockId } from '../utils/raisedBedBlocks';
 import { useBlockInteractionTargetRegistration } from './BlockInteractionRegistry';
+import { canRotatePlacedBlock } from './blockRotation';
 
 const ROTATE_DRAG_THRESHOLD = 0.1;
 const DOUBLE_TAP_THRESHOLD_MS = 320;
@@ -25,7 +24,6 @@ export function RotatableGroup({
     stack?: Stack;
 }>) {
     const blockRotate = useBlockRotate();
-    const getCurrentGarden = useCurrentGardenCache();
     const gameStateStore = useContext(GameStateContext);
     const effectsAudioMixer = useGameState((state) => state.audio.effects);
     const swipeSound = effectsAudioMixer.useSoundEffect(
@@ -36,6 +34,10 @@ export function RotatableGroup({
     const firstTapTimeStamp = useRef(0);
 
     function doRotate() {
+        if (!canRotatePlacedBlock(block.name)) {
+            return false;
+        }
+
         const gameState = gameStateStore?.getState();
         if (
             gameState?.isDragging ||
@@ -45,19 +47,10 @@ export function RotatableGroup({
             return false;
         }
 
-        const garden = getCurrentGarden();
-        const attachedRaisedBedBlockId =
-            block.name === 'Raised_Bed' && garden
-                ? findAttachedRaisedBedBlockId(garden.stacks, block.id)
-                : null;
-        const blockIds = attachedRaisedBedBlockId
-            ? [block.id, attachedRaisedBedBlockId]
-            : [block.id];
-
         blockRotate.mutate({
             blockId: block.id,
             rotation: block.rotation + 1,
-            blockIds,
+            blockIds: [block.id],
         });
 
         swipeSound.play();

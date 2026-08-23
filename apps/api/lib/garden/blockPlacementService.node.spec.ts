@@ -4,6 +4,7 @@ import { resolveGardenBlockPlacement } from './blockPlacementService';
 
 const blockDataByName = new Map([
     ['Block_Grass', { attributes: { stackable: true, height: 1 } }],
+    ['Block_Grass_Angle', { attributes: { stackable: true, height: 1 } }],
     [
         'Block_Water',
         {
@@ -14,7 +15,49 @@ const blockDataByName = new Map([
             },
         },
     ],
-    ['Raised_Bed', { attributes: { stackable: true, height: 1 } }],
+    [
+        'Block_Swamp',
+        {
+            attributes: {
+                stackable: true,
+                height: 1,
+                placeableOnWater: true,
+            },
+        },
+    ],
+    [
+        'FishingBoat',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.62,
+                placeableOnWater: true,
+                spanWidth: 1,
+                spanDepth: 2,
+            },
+        },
+    ],
+    [
+        'SmallWoodenBridge',
+        {
+            attributes: {
+                stackable: false,
+                height: 0.38,
+                placeableOnWater: true,
+            },
+        },
+    ],
+    [
+        'Raised_Bed',
+        {
+            attributes: {
+                stackable: false,
+                height: 1,
+                spanWidth: 1,
+                spanDepth: 2,
+            },
+        },
+    ],
     ['Shade', { attributes: { stackable: false, height: 1 } }],
     [
         'LemonadeStand',
@@ -27,6 +70,9 @@ const blockDataByName = new Map([
             },
         },
     ],
+    ['HazelLightArch', { attributes: { stackable: false, height: 1.65 } }],
+    ['StoneWalkway', { attributes: { stackable: false, height: 0.1 } }],
+    ['WoodenWalkway', { attributes: { stackable: false, height: 0.1 } }],
 ]);
 
 const maxSpiralSteps = 1000;
@@ -93,6 +139,26 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
+    it('resolves a raised-bed purchase as one complete 1 x 2 offer', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Raised_Bed',
+            requestedPosition: { x: 4, y: 6 },
+            stacks: [],
+            blockNameById: new Map(),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 4,
+                y: 6,
+                index: 0,
+                existingBlocks: [],
+            },
+        });
+    });
+
     it('starts automatic placement near the preferred position', () => {
         const placement = resolveGardenBlockPlacement({
             blockName: 'Shade',
@@ -152,7 +218,7 @@ describe('resolveGardenBlockPlacement', () => {
 
         assert.deepStrictEqual(placement, {
             valid: false,
-            error: 'Invalid raised bed placement: cannot place next to an already attached raised bed',
+            error: 'Invalid block placement: block bed-a cannot support Raised_Bed',
         });
     });
 
@@ -231,6 +297,103 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
+    it('places the small wooden bridge on a requested water stack', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'SmallWoodenBridge',
+            requestedPosition: { x: 0, y: 0 },
+            stacks: [{ positionX: 0, positionY: 0, blocks: ['water-origin'] }],
+            blockNameById: new Map([['water-origin', 'Block_Water']]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: 0,
+                index: 1,
+                existingBlocks: ['water-origin'],
+            },
+        });
+    });
+
+    for (const walkwayName of ['StoneWalkway', 'WoodenWalkway']) {
+        it(`places HazelLightArch on a requested ${walkwayName} stack`, () => {
+            const placement = resolveGardenBlockPlacement({
+                blockName: 'HazelLightArch',
+                requestedPosition: { x: 0, y: 0 },
+                stacks: [
+                    {
+                        positionX: 0,
+                        positionY: 0,
+                        blocks: ['walkway-origin'],
+                    },
+                ],
+                blockNameById: new Map([['walkway-origin', walkwayName]]),
+                blockDataByName,
+            });
+
+            assert.deepStrictEqual(placement, {
+                valid: true,
+                placement: {
+                    x: 0,
+                    y: 0,
+                    index: 1,
+                    existingBlocks: ['walkway-origin'],
+                },
+            });
+        });
+    }
+
+    it('requires water or swamp below every fishing boat footprint cell', () => {
+        const supportCases = [
+            {
+                name: 'water',
+                supportNames: ['Block_Water', 'Block_Water'],
+                valid: true,
+            },
+            {
+                name: 'swamp',
+                supportNames: ['Block_Swamp', 'Block_Swamp'],
+                valid: true,
+            },
+            {
+                name: 'land',
+                supportNames: ['Block_Grass', 'Block_Grass'],
+                valid: false,
+            },
+            {
+                name: 'partial water',
+                supportNames: ['Block_Water'],
+                valid: false,
+            },
+        ] as const;
+
+        for (const supportCase of supportCases) {
+            const supportBlocks = supportCase.supportNames.map(
+                (supportName, index) => ({
+                    id: `${supportCase.name}-${index.toString()}`,
+                    name: supportName,
+                }),
+            );
+            const placement = resolveGardenBlockPlacement({
+                blockName: 'FishingBoat',
+                requestedPosition: { x: 0, y: 0 },
+                stacks: supportBlocks.map((support, index) => ({
+                    positionX: 0,
+                    positionY: index,
+                    blocks: [support.id],
+                })),
+                blockNameById: new Map(
+                    supportBlocks.map((support) => [support.id, support.name]),
+                ),
+                blockDataByName,
+            });
+
+            assert.equal(placement.valid, supportCase.valid, supportCase.name);
+        }
+    });
+
     it('rejects multi-block placement on uneven footprint support', () => {
         const placement = resolveGardenBlockPlacement({
             blockName: 'LemonadeStand',
@@ -255,6 +418,41 @@ describe('resolveGardenBlockPlacement', () => {
         assert.deepStrictEqual(placement, {
             valid: false,
             error: 'Invalid block placement: all spanned cells must be on the same level',
+        });
+    });
+
+    it('places a spanning block on level water with shaped terrain underneath', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'FishingBoat',
+            requestedPosition: { x: 0, y: 0 },
+            stacks: [
+                {
+                    positionX: 0,
+                    positionY: 0,
+                    blocks: ['angle-a', 'water-shaped'],
+                },
+                {
+                    positionX: 0,
+                    positionY: 1,
+                    blocks: ['water-flat'],
+                },
+            ],
+            blockNameById: new Map([
+                ['angle-a', 'Block_Grass_Angle'],
+                ['water-shaped', 'Block_Water'],
+                ['water-flat', 'Block_Water'],
+            ]),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 0,
+                y: 0,
+                index: 2,
+                existingBlocks: ['angle-a', 'water-shaped'],
+            },
         });
     });
 

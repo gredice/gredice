@@ -9,7 +9,7 @@ import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import type { Stack } from '../types/Stack';
 import { useGameState } from '../useGameState';
 import { getBlockHitboxSize } from '../utils/blockHitbox';
-import { getStackHeight } from '../utils/getStackHeight';
+import { getBlockDataByName, getStackHeight } from '../utils/getStackHeight';
 import {
     createBlockInteractionTargetKey,
     useBlockInteractionRegistry,
@@ -46,9 +46,7 @@ export function getBlockInteractionLayerTargets({
                 return;
             }
 
-            const blockEntity = blockData?.find(
-                (entity) => entity.information.name === block.name,
-            );
+            const blockEntity = getBlockDataByName(blockData, block.name);
             const hitbox = getBlockHitboxSize(blockEntity);
             const stackHeight = getStackHeight(blockData, stack, block);
             targets.push({

@@ -160,6 +160,19 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
         },
     },
     {
+        name: 'gardens/get-garden-composition',
+        description:
+            'Summarize placed blocks, entities, decorations, and special reward mechanics for an authenticated account garden.',
+        domain: 'gardens',
+        exposure: 'auth-read',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                gardenId: { type: 'number' },
+            },
+        },
+    },
+    {
         name: 'gardens/get-raised-bed-fields',
         description: 'Get field and plant lifecycle state for one raised bed.',
         domain: 'gardens',
@@ -174,7 +187,8 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
     },
     {
         name: 'gardens/list-operations',
-        description: 'List scheduled and completed operations for a garden.',
+        description:
+            'List scheduled and completed operations for a garden, including gardener notes left on completed or blocked operations.',
         domain: 'gardens',
         exposure: 'auth-read',
         inputSchema: {
@@ -272,6 +286,24 @@ const TOOL_CATALOG: readonly McpToolCatalogEntry[] = [
             type: 'object',
             properties: {
                 productId: { type: 'string' },
+                quantity: { type: 'number' },
+                gardenId: { type: 'number' },
+                raisedBedId: { type: 'number' },
+                positionIndex: { type: 'number' },
+                scheduledDate: { type: 'string' },
+            },
+        },
+    },
+    {
+        name: 'commerce/add-operation-to-cart',
+        description:
+            'Add an applicable raised-bed or plant-field operation to the authenticated account cart.',
+        domain: 'commerce',
+        exposure: 'auth-mutation',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                operationId: { type: 'number' },
                 quantity: { type: 'number' },
                 gardenId: { type: 'number' },
                 raisedBedId: { type: 'number' },

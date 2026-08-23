@@ -1,4 +1,6 @@
+import { shouldInjectVercelAnalytics } from '@gredice/js/observability';
 import { ImpersonationBanner } from '@gredice/ui/ImpersonationBanner';
+import { UiApplicationRoot } from '@gredice/ui/PortalRoot';
 import { VercelToolbar } from '@vercel/toolbar/next';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
@@ -30,6 +32,9 @@ export default function RootLayout({
 }: Readonly<{
     children: ReactNode;
 }>) {
+    const injectVercelAnalytics = shouldInjectVercelAnalytics(
+        process.env.VERCEL,
+    );
     const shouldInjectToolbar = process.env.NODE_ENV === 'development';
     const postHogApiKey =
         process.env.NODE_ENV === 'development'
@@ -50,7 +55,7 @@ export default function RootLayout({
                     </FarmAnalyticsProvider>
                 </AuthAppProvider>
             </ClientAppProvider>
-            <FarmWebAnalytics />
+            {injectVercelAnalytics && <FarmWebAnalytics />}
             {shouldInjectToolbar && <VercelToolbar />}
         </>
     );
@@ -65,19 +70,24 @@ export default function RootLayout({
                 <meta name="theme-color" content="#8b5e34" />
                 <title>Gredice Farm</title>
             </Head>
-            <body className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-background">
-                {postHogApiKey ? (
-                    <FarmPostHogProvider
-                        apiKey={postHogApiKey}
-                        apiHost={postHogApiHost}
-                        uiHost={postHogUiHost}
-                    >
-                        <FarmPageViewTracker />
-                        {content}
-                    </FarmPostHogProvider>
-                ) : (
-                    content
-                )}
+            <body
+                className="antialiased min-h-screen flex w-full min-w-0 overflow-x-hidden bg-background"
+                data-gredice-ui-portal-root=""
+            >
+                <UiApplicationRoot>
+                    {postHogApiKey ? (
+                        <FarmPostHogProvider
+                            apiKey={postHogApiKey}
+                            apiHost={postHogApiHost}
+                            uiHost={postHogUiHost}
+                        >
+                            <FarmPageViewTracker />
+                            {content}
+                        </FarmPostHogProvider>
+                    ) : (
+                        content
+                    )}
+                </UiApplicationRoot>
             </body>
         </html>
     );

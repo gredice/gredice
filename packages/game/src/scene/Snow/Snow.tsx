@@ -1,16 +1,9 @@
-import { useThree } from '@react-three/fiber';
-import {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useRef,
-} from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { useGameState } from '../../useGameState';
 import { updateGameProfileMetadata } from '../gameProfileMetadata';
 import { createPrecipitationMaterial } from '../PrecipitationMaterial';
 import { useSceneTimeInvalidation, useSceneTimeUniform } from '../SceneTime';
+import { usePrecipitationFieldPosition } from '../usePrecipitationFieldPosition';
 import {
     advanceSnowMotionOffset,
     clampSnowParticleCount,
@@ -141,6 +134,7 @@ const Snow = ({
     groundLevel = DEFAULT_GROUND_LEVEL,
     flakeSize = DEFAULT_FLAKE_SIZE,
     gravity = DEFAULT_GRAVITY,
+    followCamera = true,
 }: {
     activeCount?: number;
     capacity?: number;
@@ -159,11 +153,12 @@ const Snow = ({
     flakeSize?: number;
     /** Base gravity/fall speed */
     gravity?: number;
+    /** Whether the field follows the active garden camera */
+    followCamera?: boolean;
 }) => {
     const fref = useRef<THREE.Group>(null);
     const meshRef = useRef<THREE.InstancedMesh>(null);
-    const camera = useThree((state) => state.camera);
-    const gameCamera = useGameState((state) => state.gameCamera);
+    usePrecipitationFieldPosition({ fieldRef: fref, followCamera });
     const timeUniform = useSceneTimeUniform();
     useSceneTimeInvalidation();
     const heightRange = Math.max(0.001, height + heightOffset - groundLevel);
@@ -214,31 +209,6 @@ const Snow = ({
 
         return () => geometry.dispose();
     }, [geometry]);
-
-    const updateSnowFieldPosition = useCallback((x: number, z: number) => {
-        const group = fref.current;
-        if (!group) {
-            return;
-        }
-
-        group.position.set(x, 0, z);
-    }, []);
-
-    useLayoutEffect(() => {
-        const snapshot = gameCamera?.getSnapshot();
-        updateSnowFieldPosition(
-            snapshot?.target[0] ?? camera.position.x,
-            snapshot?.target[2] ?? camera.position.z,
-        );
-
-        if (!gameCamera) {
-            return;
-        }
-
-        return gameCamera.subscribe((snapshot) => {
-            updateSnowFieldPosition(snapshot.target[0], snapshot.target[2]);
-        });
-    }, [camera, gameCamera, updateSnowFieldPosition]);
 
     const weatherMotionUniforms = useMemo(
         () => ({

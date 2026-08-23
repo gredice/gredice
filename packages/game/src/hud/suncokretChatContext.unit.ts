@@ -122,3 +122,45 @@ test('provider tool protocol variants are replaced with a friendly retry message
         assert.match(sanitized, /Pokušaj ponovno/);
     }
 });
+
+test('english model planning preamble is not displayed before a Croatian answer', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        "Confirmed: watering is available. I'll explain briefly.Nažalost, prethodni odgovor nije bio točan. Zalijevanje se može naručiti.",
+    );
+
+    assert.strictEqual(
+        sanitized,
+        'Nažalost, prethodni odgovor nije bio točan. Zalijevanje se može naručiti.',
+    );
+});
+
+test('english model planning without a Croatian answer uses the retry fallback', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        'I should inspect the tool output before answering.',
+    );
+
+    assert.doesNotMatch(sanitized, /I should|tool output/);
+    assert.match(sanitized, /Pokušaj ponovno/);
+});
+
+test('internal operation and plant ids are hidden while field numbers remain visible', () => {
+    const sanitized = sanitizeSuncokretAssistantText(
+        [
+            'Za to odaberi Zelenu rezidbu — radnja 320.',
+            'Primjenjuje se na biljku #741 na polju 5.',
+            'Drugi prijedlog ima ID radnje: 321 za polje 11.',
+        ].join('\n'),
+    );
+
+    assert.strictEqual(
+        sanitized,
+        [
+            'Za to odaberi Zelenu rezidbu.',
+            'Primjenjuje se na biljku na polju 5.',
+            'Drugi prijedlog ima radnju za polje 11.',
+        ].join('\n'),
+    );
+    assert.doesNotMatch(sanitized, /\b(?:320|321|741)\b/);
+    assert.match(sanitized, /polju 5/);
+    assert.match(sanitized, /polje 11/);
+});

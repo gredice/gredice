@@ -271,10 +271,16 @@ valid `closeupRaisedBedId` query. It drives the real normal/close-up game-state
 transition while leaving the initial camera untouched. Outside an active debug
 session, the generated-plant instrumentation does not publish or retain
 per-session field, scheduler, cache, worker, instance-buffer, shader, or
-render-build state. Shader prewarming starts when close-up intent becomes
-active, during the camera transition. Successful representative materials stay
-retained per renderer/quality variant so Three.js cannot release the compiled
-programs before detailed plants mount.
+render-build state. Shader prewarming starts immediately when close-up intent
+becomes active, during the camera transition. Focused near detail retains its
+billboard and raised-bed shadow proxy until the matching renderer/quality
+prewarm reaches a terminal state. The retained representative materials cover
+both initial and React-updated custom-material cache keys plus instanced and
+non-instanced mid billboards, so Three.js cannot release or lazily introduce
+their programs when detailed plants mount. Failure and timeout remain visible
+fallbacks: they allow detail to mount instead of pinning the bed to a billboard.
+Program diagnostics are profile-session-only and retain hashed cache keys,
+numeric program IDs, and material names rather than raw shader cache keys.
 
 Each close-up pass separates the selected field's near-LOD intent,
 pending-near billboard fallback, first exact chunk, first detailed field, fully

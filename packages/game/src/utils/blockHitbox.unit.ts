@@ -99,6 +99,40 @@ describe('getBlockHitboxSize', () => {
         );
     });
 
+    it('keeps farm animal homes at least as large as their rendered model bounds', () => {
+        const compactAttributes = {
+            height: 0.2,
+            hitboxWidth: 0.2,
+            hitboxHeight: 0.2,
+            hitboxDepth: 0.2,
+        };
+
+        assert.deepEqual(
+            getBlockHitboxSize({
+                ...createBlockData(compactAttributes),
+                information: {
+                    name: 'ChickenCoop',
+                    label: 'Kokošinjac',
+                    shortDescription: 'Kokošinjac.',
+                    fullDescription: 'Kokošinjac.',
+                },
+            }),
+            { width: 0.76, height: 0.86, depth: 0.97 },
+        );
+        assert.deepEqual(
+            getBlockHitboxSize({
+                ...createBlockData(compactAttributes),
+                information: {
+                    name: 'PigletPen',
+                    label: 'Obor za praščića',
+                    shortDescription: 'Obor za praščića.',
+                    fullDescription: 'Obor za praščića.',
+                },
+            }),
+            { width: 0.94, height: 0.78, depth: 0.89 },
+        );
+    });
+
     it('ignores non-positive and non-finite hitbox attributes', () => {
         assert.deepEqual(
             getBlockHitboxSize(

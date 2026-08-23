@@ -11,6 +11,7 @@ export function useRemoveRaisedBedCloseupParam() {
             setRaisedBedCloseupParams({
                 gredica: null,
                 polje: null,
+                'polje-kartica': null,
             }),
         [setRaisedBedCloseupParams],
     );
@@ -30,6 +31,7 @@ export function useSetRaisedBedCloseupParam() {
                     typeof positionIndex === 'number'
                         ? positionIndex + 1
                         : null,
+                'polje-kartica': null,
             }),
         [setRaisedBedCloseupParams],
     );
@@ -70,6 +72,7 @@ export function useRaisedBedCloseup() {
             void setRaisedBedCloseupParams({
                 gredica: null,
                 polje: null,
+                'polje-kartica': null,
             });
             return;
         }
@@ -102,6 +105,7 @@ export function useRaisedBedCloseup() {
             void setRaisedBedCloseupParams({
                 gredica: null,
                 polje: null,
+                'polje-kartica': null,
             });
             return;
         }
@@ -117,6 +121,7 @@ export function useRaisedBedCloseup() {
             void setRaisedBedCloseupParams({
                 gredica: null,
                 polje: null,
+                'polje-kartica': null,
             });
             return;
         }

@@ -9,6 +9,7 @@ import {
     createAccount,
     createAttributeDefinition,
     createCommunityEditRequest,
+    createCommunityEntitySuggestion,
     createEntity,
     getAccountAchievements,
     getCommunityEditableFieldsForEntity,
@@ -17,6 +18,8 @@ import {
     getEntityFormatted,
     getEntityRaw,
     getEntityRevisions,
+    parseCommunityEntitySuggestion,
+    parseCommunityEntitySuggestionRequest,
     rejectCommunityEditRequest,
     storage,
     updateEntity,
@@ -34,6 +37,8 @@ type CommunityEditFixture = {
     plantMaintenanceDefinitionId: number;
     plantOperationsDefinitionId: number;
     plantSeedingDistanceDefinitionId: number;
+    plantSeedingDistanceMaxDefinitionId: number;
+    plantSeedingDistanceMinDefinitionId: number;
     plantStorageDefinitionId: number;
     plantSortAntagonistsDefinitionId: number;
     plantSortCompanionsDefinitionId: number;
@@ -114,6 +119,24 @@ async function createFixture(): Promise<CommunityEditFixture> {
         entityTypeName: 'plant',
         dataType: 'number',
     });
+    const plantSeedingDistanceMinDefinitionId = await createAttributeDefinition(
+        {
+            category: 'attributes',
+            name: 'seedingDistanceMin',
+            label: 'Minimalni razmak sijanja',
+            entityTypeName: 'plant',
+            dataType: 'number',
+        },
+    );
+    const plantSeedingDistanceMaxDefinitionId = await createAttributeDefinition(
+        {
+            category: 'attributes',
+            name: 'seedingDistanceMax',
+            label: 'Maksimalni razmak sijanja',
+            entityTypeName: 'plant',
+            dataType: 'number',
+        },
+    );
     const plantGerminationTypeDefinitionId = await createAttributeDefinition({
         category: 'attributes',
         name: 'germinationType',
@@ -243,6 +266,8 @@ async function createFixture(): Promise<CommunityEditFixture> {
         plantMaintenanceDefinitionId,
         plantOperationsDefinitionId,
         plantSeedingDistanceDefinitionId,
+        plantSeedingDistanceMaxDefinitionId,
+        plantSeedingDistanceMinDefinitionId,
         plantStorageDefinitionId,
         plantSortAntagonistsDefinitionId,
         plantSortCompanionsDefinitionId,
@@ -268,6 +293,8 @@ async function createPublishedPlant(input?: {
     maintenance?: string;
     operationIds?: number[];
     seedingDistance?: string;
+    seedingDistanceMax?: string;
+    seedingDistanceMin?: string;
     storage?: string;
 }) {
     const data = await fixture();
@@ -285,6 +312,22 @@ async function createPublishedPlant(input?: {
         entityId,
         value: input?.seedingDistance ?? '25',
     });
+    if (input?.seedingDistanceMin) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantSeedingDistanceMinDefinitionId,
+            entityTypeName: 'plant',
+            entityId,
+            value: input.seedingDistanceMin,
+        });
+    }
+    if (input?.seedingDistanceMax) {
+        await upsertAttributeValue({
+            attributeDefinitionId: data.plantSeedingDistanceMaxDefinitionId,
+            entityTypeName: 'plant',
+            entityId,
+            value: input.seedingDistanceMax,
+        });
+    }
     await upsertAttributeValue({
         attributeDefinitionId: data.plantGerminationTypeDefinitionId,
         entityTypeName: 'plant',
@@ -567,8 +610,43 @@ test('community editable registry resolves allowed plant and operation fields', 
                 (field) => field.fieldKey === 'operation.application',
             ),
     );
+    for (const entityTypeName of ['plantDisease', 'plantPest']) {
+        const healthSections = getCommunityEditableSections(entityTypeName);
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'overview')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey ===
+                        `${entityTypeName}.short-description`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'symptoms')
+                ?.fields.some(
+                    (field) => field.fieldKey === `${entityTypeName}.symptoms`,
+                ),
+        );
+        assert.ok(
+            healthSections
+                .find((section) => section.key === 'relationships')
+                ?.fields.some(
+                    (field) =>
+                        field.fieldKey === `${entityTypeName}.affected-plants`,
+                ),
+        );
+        assert.equal(
+            healthSections.find((section) => section.key === 'operations')
+                ?.fields.length,
+            3,
+        );
+    }
 
-    const plantId = await createPublishedPlant();
+    const plantId = await createPublishedPlant({
+        seedingDistanceMin: '15',
+        seedingDistanceMax: '60',
+    });
     const plantFields = await getCommunityEditableFieldsForEntity({
         entityTypeName: 'plant',
         entityId: plantId,
@@ -587,6 +665,22 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.fieldKey === 'plant.seeding-distance' &&
                 field.controlType === 'number' &&
                 field.currentValue === '25',
+        ),
+    );
+    assert.ok(
+        plantFields.some(
+            (field) =>
+                field.fieldKey === 'plant.seeding-distance-min' &&
+                field.controlType === 'number' &&
+                field.currentValue === '15',
+        ),
+    );
+    assert.ok(
+        plantFields.some(
+            (field) =>
+                field.fieldKey === 'plant.seeding-distance-max' &&
+                field.controlType === 'number' &&
+                field.currentValue === '60',
         ),
     );
     assert.ok(
@@ -664,13 +758,24 @@ test('community editable registry resolves allowed plant and operation fields', 
         entityId: relationshipPlantId,
         sectionKey: 'relationships',
     });
+    const companionsField = relationshipFields.find(
+        (field) => field.fieldKey === 'plant.relationships.companions',
+    );
+    assert.ok(companionsField);
+    assert.equal(companionsField.controlType, 'reference');
+    assert.ok(companionsField.multiple);
+    assert.equal(
+        companionsField.currentValue,
+        JSON.stringify([String(companionId)]),
+    );
     assert.ok(
-        relationshipFields.some(
-            (field) =>
-                field.fieldKey === 'plant.relationships.companions' &&
-                field.controlType === 'reference' &&
-                field.multiple &&
-                field.currentValue === JSON.stringify([String(companionId)]),
+        companionsField.options?.some(
+            (option) => option.value === String(companionId),
+        ),
+    );
+    assert.ok(
+        !companionsField.options?.some(
+            (option) => option.value === String(relationshipPlantId),
         ),
     );
     assert.ok(
@@ -769,6 +874,143 @@ test('community editable registry resolves allowed plant and operation fields', 
                 field.options?.some((option) => option.value === 'garden'),
         ),
     );
+});
+
+test('community entity suggestions store a reviewable new plant sort proposal', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'plantSort',
+        parentPlantId: plantId,
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        source: 'https://example.com/blitva-rubin',
+        note: 'Provjeriti dostupnost sjemena.',
+        publicPath: '/biljke/blitva',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plant');
+    assert.equal(request.entityId, plantId);
+    assert.equal(request.sectionKey, 'new-plant-sort');
+    assert.equal(request.changes.length, 0);
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'plantSort',
+        name: 'Blitva rubin',
+        description: 'Sorta s izraženim crvenim peteljkama.',
+        parentPlantId: plantId,
+        parentPlantName: `Biljka ${plantId}`,
+        note: 'Provjeriti dostupnost sjemena.',
+        source: 'https://example.com/blitva-rubin',
+    });
+    assert.equal(
+        parseCommunityEntitySuggestionRequest(request)?.kind,
+        'plantSort',
+    );
+
+    assert.equal(
+        parseCommunityEntitySuggestionRequest({
+            ...request,
+            sectionKey: 'overview',
+            changes: [
+                {
+                    fieldKey: 'plant.description',
+                },
+            ],
+        }),
+        null,
+    );
+
+    const approved = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId, name: 'Community Reviewer' },
+    });
+    assert.equal(approved.status, 'applied');
+});
+
+test('community entity suggestions store operation context and application', async () => {
+    const data = await fixture();
+    const plantStageId = await createPublishedPlantStage({
+        name: 'maintenance',
+        label: 'Održavanje',
+    });
+
+    const request = await createCommunityEntitySuggestion({
+        kind: 'operation',
+        plantStageId,
+        application: 'raisedBedFull',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        publicPath: '/radnje',
+        submitter: { id: data.submitterId, name: 'Community Submitter' },
+    });
+
+    assert.equal(request.status, 'pending');
+    assert.equal(request.entityTypeName, 'plantStage');
+    assert.equal(request.entityId, plantStageId);
+    assert.equal(request.sectionKey, 'new-operation');
+    assert.deepEqual(parseCommunityEntitySuggestion(request.submitterNote), {
+        format: 'community-entity-suggestion-v1',
+        kind: 'operation',
+        name: 'Provjera drenaže',
+        description: 'Provjeriti odvodi li se višak vode iz cijele gredice.',
+        application: 'raisedBedFull',
+        plantStageId,
+        stageName: 'maintenance',
+        stageLabel: 'Održavanje',
+    });
+});
+
+test('community entity suggestions store disease and pest details against affected plant context', async () => {
+    const data = await fixture();
+    const firstPlantId = await createPublishedPlant();
+    const secondPlantId = await createPublishedPlant();
+
+    for (const kind of ['disease', 'pest'] as const) {
+        const request = await createCommunityEntitySuggestion({
+            kind,
+            affectedPlantIds: [firstPlantId, secondPlantId, firstPlantId],
+            name: kind === 'disease' ? 'Nova pjegavost' : 'Novi kukac',
+            description: 'Kratki javni opis problema.',
+            symptoms: 'Na listovima se pojavljuju vidljivi znakovi.',
+            favorableConditions: 'Problem se češće javlja za toplog vremena.',
+            severity: 'Srednje',
+            source: 'https://example.com/plant-health',
+            publicPath: kind === 'disease' ? '/bolesti' : '/stetnici',
+            submitter: { id: data.submitterId },
+        });
+
+        assert.equal(request.entityTypeName, 'plant');
+        assert.equal(request.entityId, firstPlantId);
+        assert.equal(request.sectionKey, `new-${kind}`);
+        assert.equal(request.changes.length, 0);
+
+        const suggestion = parseCommunityEntitySuggestionRequest(request);
+        assert.equal(suggestion?.kind, kind);
+        if (suggestion?.kind !== 'disease' && suggestion?.kind !== 'pest') {
+            assert.fail('Expected a plant health suggestion.');
+        }
+        assert.deepEqual(suggestion.affectedPlants, [
+            { id: firstPlantId, name: `Biljka ${firstPlantId}` },
+            { id: secondPlantId, name: `Biljka ${secondPlantId}` },
+        ]);
+        assert.equal(
+            suggestion.symptoms,
+            'Na listovima se pojavljuju vidljivi znakovi.',
+        );
+        assert.equal(suggestion.severity, 'Srednje');
+
+        assert.equal(
+            parseCommunityEntitySuggestionRequest({
+                ...request,
+                entityId: secondPlantId,
+            }),
+            null,
+        );
+    }
 });
 
 test('community edit requests submit storage content and operation suggestions together', async () => {
@@ -940,8 +1182,8 @@ test('community edit requests submit plant relationship references', async () =>
     const entity = await getEntityRaw(plantId);
     assert.ok(entity);
     assert.deepEqual(
-        attributeValues(entity, data.plantCompanionsDefinitionId),
-        [String(basilId), String(calendulaId)],
+        attributeValues(entity, data.plantCompanionsDefinitionId).sort(),
+        [String(basilId), String(calendulaId)].sort(),
     );
     assert.deepEqual(
         attributeValues(entity, data.plantAntagonistsDefinitionId),
@@ -1675,6 +1917,208 @@ test('community edit approval marks stale requests conflicted', async () => {
     assert.equal(
         attributeValue(entity, data.plantDescriptionDefinitionId),
         'U međuvremenu promijenjen opis.',
+    );
+});
+
+test('community edits reject malformed, contradictory, and unsupported sowing spacing', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant();
+    const fields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'sowing',
+    });
+    const fieldsByKey = new Map(fields.map((field) => [field.fieldKey, field]));
+
+    for (const [fieldKey, proposedValue] of [
+        ['plant.seeding-distance-min', '15abc'],
+        ['plant.seeding-distance-min', '-5'],
+        ['plant.seeding-distance-min', '30'],
+        ['plant.seeding-distance-max', '20'],
+        ['plant.seeding-distance-max', '95'],
+    ] as const) {
+        const field = fieldsByKey.get(fieldKey);
+        assert.ok(field);
+        await assert.rejects(
+            createCommunityEditRequest({
+                entityTypeName: 'plant',
+                entityId: plantId,
+                publicPath: '/biljke/test',
+                sectionKey: 'sowing',
+                submitter: { id: data.submitterId },
+                changes: [
+                    {
+                        fieldKey,
+                        baseValueHash: field.baseValueHash,
+                        proposedValue,
+                    },
+                ],
+            }),
+            (error: unknown) =>
+                error instanceof CommunityEditRequestError &&
+                error.code === 'invalid_value',
+        );
+    }
+});
+
+test('community sowing edits support one bound and revalidate prospective state on approval', async () => {
+    const data = await fixture();
+    const validPlantId = await createPublishedPlant();
+    const validFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: validPlantId,
+        sectionKey: 'sowing',
+    });
+    const validMinField = validFields.find(
+        (field) => field.fieldKey === 'plant.seeding-distance-min',
+    );
+    assert.ok(validMinField);
+    const validRequest = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: validPlantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'sowing',
+        submitter: { id: data.submitterId },
+        changes: [
+            {
+                fieldKey: validMinField.fieldKey,
+                baseValueHash: validMinField.baseValueHash,
+                proposedValue: '15',
+            },
+        ],
+    });
+    const validApplied = await approveCommunityEditRequest({
+        id: validRequest.id,
+        reviewer: { id: data.reviewerId },
+    });
+    assert.equal(validApplied.status, 'applied');
+    const validReplay = await approveCommunityEditRequest({
+        id: validRequest.id,
+        reviewer: { id: data.reviewerId },
+    });
+    assert.equal(validReplay.status, 'applied');
+    const validEntity = await getEntityRaw(validPlantId);
+    assert.ok(validEntity);
+    assert.equal(
+        attributeValue(validEntity, data.plantSeedingDistanceMinDefinitionId),
+        '15',
+    );
+    assert.equal(
+        attributeValue(validEntity, data.plantSeedingDistanceMaxDefinitionId),
+        undefined,
+    );
+
+    const driftingPlantId = await createPublishedPlant();
+    const driftingFields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: driftingPlantId,
+        sectionKey: 'sowing',
+    });
+    const driftingMinField = driftingFields.find(
+        (field) => field.fieldKey === 'plant.seeding-distance-min',
+    );
+    const driftingOptimalField = driftingFields.find(
+        (field) => field.fieldKey === 'plant.seeding-distance',
+    );
+    assert.ok(driftingMinField);
+    assert.ok(driftingOptimalField);
+    const driftingRequest = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: driftingPlantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'sowing',
+        submitter: { id: data.submitterId },
+        changes: [
+            {
+                fieldKey: driftingMinField.fieldKey,
+                baseValueHash: driftingMinField.baseValueHash,
+                proposedValue: '15',
+            },
+        ],
+    });
+    await upsertAttributeValue({
+        id: driftingOptimalField.attributeValueId ?? undefined,
+        attributeDefinitionId: data.plantSeedingDistanceDefinitionId,
+        entityTypeName: 'plant',
+        entityId: driftingPlantId,
+        value: '10',
+    });
+
+    const conflicted = await approveCommunityEditRequest({
+        id: driftingRequest.id,
+        reviewer: { id: data.reviewerId },
+    });
+    assert.equal(conflicted.status, 'conflicted');
+    assert.match(
+        conflicted.applicationFailureReason ?? '',
+        /Invalid Advanced Sowing spacing/u,
+    );
+    const driftingEntity = await getEntityRaw(driftingPlantId);
+    assert.ok(driftingEntity);
+    assert.equal(
+        attributeValue(
+            driftingEntity,
+            data.plantSeedingDistanceMinDefinitionId,
+        ),
+        undefined,
+    );
+});
+
+test('community approval applies a valid spacing transition as one atomic batch', async () => {
+    const data = await fixture();
+    const plantId = await createPublishedPlant({
+        seedingDistance: '20',
+        seedingDistanceMin: '10',
+        seedingDistanceMax: '30',
+    });
+    const fields = await getCommunityEditableFieldsForEntity({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        sectionKey: 'sowing',
+    });
+    const fieldsByKey = new Map(fields.map((field) => [field.fieldKey, field]));
+    const proposedValues = new Map([
+        ['plant.seeding-distance-min', '40'],
+        ['plant.seeding-distance', '50'],
+        ['plant.seeding-distance-max', '60'],
+    ]);
+    const changes = Array.from(proposedValues, ([fieldKey, proposedValue]) => {
+        const field = fieldsByKey.get(fieldKey);
+        assert.ok(field);
+        return {
+            fieldKey,
+            baseValueHash: field.baseValueHash,
+            proposedValue,
+        };
+    });
+
+    const request = await createCommunityEditRequest({
+        entityTypeName: 'plant',
+        entityId: plantId,
+        publicPath: '/biljke/test',
+        sectionKey: 'sowing',
+        submitter: { id: data.submitterId },
+        changes,
+    });
+    const applied = await approveCommunityEditRequest({
+        id: request.id,
+        reviewer: { id: data.reviewerId },
+    });
+    assert.equal(applied.status, 'applied');
+
+    const entity = await getEntityRaw(plantId);
+    assert.ok(entity);
+    assert.equal(
+        attributeValue(entity, data.plantSeedingDistanceMinDefinitionId),
+        '40',
+    );
+    assert.equal(
+        attributeValue(entity, data.plantSeedingDistanceDefinitionId),
+        '50',
+    );
+    assert.equal(
+        attributeValue(entity, data.plantSeedingDistanceMaxDefinitionId),
+        '60',
     );
 });
 

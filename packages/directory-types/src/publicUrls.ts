@@ -19,7 +19,6 @@ export const publicSearchCategoryByDirectoryEntityType = {
 >;
 
 export const publicDirectoryEntityTypeExclusions = {
-    brand: 'No canonical www brand detail or listing page exists yet.',
     farmSupply:
         'Farm supplies are operational inventory records without a public www destination.',
     hqLocations:
@@ -49,11 +48,17 @@ export type DirectoryEntityPublicUrlParts = {
     label?: string | null;
     parentName?: string | null;
     parentLabel?: string | null;
-    plantName?: string | null;
-    plantSortName?: string | null;
 };
 
 export const PublicDirectoryPaths = {
+    Seeds: '/sjeme',
+    Seed(alias: string) {
+        return `/sjeme/${toPublicPageAlias(alias)}`;
+    },
+    SeedBrands: '/sjeme/brendovi',
+    SeedBrand(alias: string) {
+        return `/sjeme/brend/${toPublicPageAlias(alias)}`;
+    },
     Plants: '/biljke',
     Plant(alias: string) {
         return `/biljke/${toPublicPageAlias(alias)}`;
@@ -69,6 +74,7 @@ export const PublicDirectoryPaths = {
     BlockPlant(alias: string) {
         return `/blokovi/biljke/${toPublicPageAlias(alias)}`;
     },
+    BlockPets: '/blokovi/ljubimci',
     Operations: '/radnje',
     Operation(alias: string) {
         return `/radnje/${toPublicPageAlias(alias)}`;
@@ -118,8 +124,6 @@ export function resolveDirectoryEntityPublicPathFromParts({
     label,
     parentName,
     parentLabel,
-    plantName,
-    plantSortName,
 }: DirectoryEntityPublicUrlParts): string | null {
     const entityTitle = firstText(label, name);
 
@@ -158,22 +162,12 @@ export function resolveDirectoryEntityPublicPathFromParts({
                 ? PublicDirectoryPaths.Occasion(occasionAlias)
                 : null;
         }
-        case 'seed': {
-            const seedPlantAlias = firstText(
-                parentName,
-                parentLabel,
-                plantName,
-            );
-            if (seedPlantAlias && plantSortName) {
-                return PublicDirectoryPaths.PlantSort(
-                    seedPlantAlias,
-                    plantSortName,
-                );
-            }
-            return seedPlantAlias
-                ? PublicDirectoryPaths.Plant(seedPlantAlias)
+        case 'seed':
+            return entityTitle ? PublicDirectoryPaths.Seed(entityTitle) : null;
+        case 'brand':
+            return entityTitle
+                ? PublicDirectoryPaths.SeedBrand(entityTitle)
                 : null;
-        }
         default:
             return null;
     }
@@ -231,9 +225,11 @@ export function resolveDirectoryEntityPublicPath(
             return resolveDirectoryEntityPublicPathFromParts({
                 entityTypeName: input.entityTypeName,
                 name: input.entity.information.name,
-                parentName: input.entity.information.plant.information.name,
-                plantSortName:
-                    input.entity.information.plantSort.information.name,
+            });
+        case 'brand':
+            return resolveDirectoryEntityPublicPathFromParts({
+                entityTypeName: input.entityTypeName,
+                name: input.entity.information.name,
             });
         default:
             return null;

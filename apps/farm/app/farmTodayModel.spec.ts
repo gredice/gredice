@@ -8,6 +8,7 @@ import {
     type FarmTodayPlantingInput,
     type FarmTodayPlantingsSourceData,
     type FarmTodayRaisedBedInput,
+    type FarmTodaySelectedPlantingInput,
     type FarmTodaySource,
 } from './farmTodayModel';
 
@@ -57,6 +58,7 @@ function buildRaisedBed({
     fields = [],
     gardenId = 1,
     id = 10,
+    plantings = [],
     physicalId = `A${id}`,
     status = 'active',
 }: {
@@ -65,6 +67,7 @@ function buildRaisedBed({
     fields?: FarmTodayPlantingInput[];
     gardenId?: number;
     id?: number;
+    plantings?: FarmTodaySelectedPlantingInput[];
     physicalId?: string;
     status?: string;
 } = {}): FarmTodayRaisedBedInput {
@@ -74,6 +77,7 @@ function buildRaisedBed({
         fields,
         gardenId,
         id,
+        plantings,
         physicalId,
         status,
     };
@@ -131,6 +135,65 @@ function emptyOperations(): FarmTodayOperationsSourceData {
     };
 }
 
+function buildSelectedPlanting({
+    completion = null,
+    id,
+    memberships,
+    plantCount,
+    plantSortId,
+    plantsPerAxis,
+    selectedSeedingDistanceCm,
+    spanColumns,
+    spanRows,
+    taskStatus = 'planned',
+}: {
+    completion?: NonNullable<
+        FarmTodaySelectedPlantingInput['selectedTask']
+    >['completion'];
+    id: number;
+    memberships: readonly {
+        positionIndex: number;
+        raisedBedId?: number;
+    }[];
+    plantCount: number;
+    plantSortId: number;
+    plantsPerAxis: number;
+    selectedSeedingDistanceCm: number;
+    spanColumns: number;
+    spanRows: number;
+    taskStatus?: NonNullable<
+        FarmTodaySelectedPlantingInput['selectedTask']
+    >['status'];
+}): FarmTodaySelectedPlantingInput {
+    return {
+        configurationSource: 'selected',
+        id,
+        memberships: memberships.map(({ positionIndex, raisedBedId }) => ({
+            raisedBedField: { positionIndex, raisedBedId: raisedBedId ?? 10 },
+        })),
+        plantCount,
+        plantSortId,
+        plantsPerAxis,
+        selectedSeedingDistanceCm,
+        selectedTask: {
+            assignedUserIds: [userId],
+            block: null,
+            completion,
+            identity: {
+                expectedLifecycleVersionEventId: 9000 + id,
+                expectedPlantSortId: plantSortId,
+                kind: 'selected',
+                plantingId: id,
+            },
+            scheduledDate: dateKey,
+            sowingLocation: 'direct',
+            status: taskStatus,
+        },
+        spanColumns,
+        spanRows,
+    };
+}
+
 function buildInput(
     overrides: Partial<ComposeFarmTodayDataInput> = {},
 ): ComposeFarmTodayDataInput {
@@ -146,6 +209,105 @@ function buildInput(
         ...overrides,
     };
 }
+
+test('shows immutable density and count for same-field and multi-field selected sowing', () => {
+    const densePlanting = buildSelectedPlanting({
+        id: 301,
+        memberships: [{ positionIndex: 0 }],
+        plantCount: 16,
+        plantSortId: 601,
+        plantsPerAxis: 4,
+        selectedSeedingDistanceCm: 7.5,
+        spanColumns: 1,
+        spanRows: 1,
+    });
+    const multiFieldPlanting = buildSelectedPlanting({
+        id: 302,
+        memberships: [
+            { positionIndex: 6 },
+            { positionIndex: 7 },
+            { positionIndex: 0, raisedBedId: 11 },
+            { positionIndex: 1, raisedBedId: 11 },
+        ],
+        plantCount: 1,
+        plantSortId: 602,
+        plantsPerAxis: 1,
+        selectedSeedingDistanceCm: 60,
+        spanColumns: 2,
+        spanRows: 2,
+    });
+    const unrelatedRaisedBed = buildRaisedBed({ id: 5, physicalId: 'B' });
+    const raisedBed = buildRaisedBed({ physicalId: 'A' });
+    const pairedRaisedBed = buildRaisedBed({ id: 11, physicalId: 'A' });
+    const result = composeFarmTodayData(
+        buildInput({
+            plantings: ready({
+                raisedBeds: [unrelatedRaisedBed, raisedBed, pairedRaisedBed],
+                scheduledFields: [],
+                scheduledSelectedPlantings: [
+                    { planting: densePlanting, raisedBedId: raisedBed.id },
+                    { planting: multiFieldPlanting, raisedBedId: raisedBed.id },
+                ],
+            }),
+            plantSorts: ready([
+                { id: 601, information: { name: 'Mrkva' } },
+                { id: 602, information: { name: 'Tikvica' } },
+            ]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+    expect(result.focusQueue.map(({ label }) => label)).toEqual([
+        'Sijanje: Mrkva · 1 × 1 polja · gustoća 4 × 4 · ukupno 16 biljaka · razmak 7.5 cm · polja 1',
+        'Sijanje: Tikvica · 2 × 2 polja · gustoća 1 × 1 · ukupno 1 biljka · razmak 60 cm · polja 7, 8, 10, 11',
+    ]);
+});
+
+test('keeps an earlier selected completion visible until Admin verification', () => {
+    const pendingPlanting = buildSelectedPlanting({
+        completion: {
+            completedAt: overdueDate,
+            completedBy: userId,
+            eventId: 9301,
+            images: [],
+            status: 'pendingVerification',
+        },
+        id: 303,
+        memberships: [{ positionIndex: 2 }],
+        plantCount: 4,
+        plantSortId: 601,
+        plantsPerAxis: 2,
+        selectedSeedingDistanceCm: 15,
+        spanColumns: 1,
+        spanRows: 1,
+        taskStatus: 'pendingVerification',
+    });
+    const raisedBed = buildRaisedBed({ plantings: [pendingPlanting] });
+    const result = composeFarmTodayData(
+        buildInput({
+            plantings: ready({
+                raisedBeds: [raisedBed],
+                scheduledFields: [],
+                scheduledSelectedPlantings: [],
+            }),
+            plantSorts: ready([{ id: 601, information: { name: 'Bosiljak' } }]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+    expect(result.summary.pendingVerification).toBe(1);
+    expect(
+        result.attentionItems
+            .filter((item) => item.reasons.includes('pendingVerification'))
+            .map((item) => item.task.key),
+    ).toEqual(['selected-planting:303']);
+});
 
 test('composes mixed operation and planting work without merging pending into completed', () => {
     const operationMine = buildOperation({
@@ -323,6 +485,59 @@ test('composes mixed operation and planting work without merging pending into co
         positionIndex: 0,
         raisedBedId: 10,
     });
+});
+
+test('shows the greenhouse transplant quantity in Today operation work', () => {
+    const greenhouseParsley = buildField({
+        id: 211,
+        plantSortId: 213,
+        sowingLocation: 'greenhouse',
+    });
+    const raisedBed = buildRaisedBed({ fields: [greenhouseParsley] });
+    const transplanting = buildOperation({
+        entityId: 593,
+        id: 111,
+        raisedBedFieldId: greenhouseParsley.id,
+    });
+    const result = composeFarmTodayData(
+        buildInput({
+            operationDefinitions: ready([
+                buildDefinition({
+                    id: 593,
+                    label: 'Presađivanje presadnica',
+                }),
+            ]),
+            operations: ready({
+                authorizationScope: 'farmMembership',
+                pendingOperations: [],
+                pendingOperationsComplete: true,
+                raisedBeds: [raisedBed],
+                raisedBedsComplete: true,
+                scheduledOperations: [transplanting],
+                scheduledOperationsComplete: true,
+            }),
+            plantSorts: ready([
+                {
+                    id: 213,
+                    information: {
+                        name: 'Peršin lisnati',
+                        plant: {
+                            id: 148,
+                            attributes: { seedingDistance: 15 },
+                        },
+                    },
+                },
+            ]),
+        }),
+    );
+
+    expect(result.status).toBe('ready');
+    if (result.status !== 'ready') {
+        return;
+    }
+    expect(result.focusQueue.map(({ label }) => label)).toEqual([
+        'Presađivanje presadnica: Peršin lisnati · presaditi 4 biljke u polje',
+    ]);
 });
 
 test('keeps physical positions continuous across raised-bed blocks', () => {

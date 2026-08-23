@@ -2,6 +2,8 @@ import type { BlockData } from '@gredice/client';
 import {
     canStackBlockOnBlock,
     getGardenBlockFootprintOffsets,
+    isWaterOrSwampBlockName,
+    requiresWaterOrSwampSupport,
 } from '@gredice/js/gardenBlocks';
 import {
     type ActiveDragPreviewTargetOffset,
@@ -148,8 +150,9 @@ function getTopOccupiedCell(
         return null;
     }
 
+    // A collapsed water block is logically above its support at the same height.
     return cells.reduce((topCell, cell) =>
-        cell.topHeight > topCell.topHeight ? cell : topCell,
+        cell.topHeight >= topCell.topHeight ? cell : topCell,
     );
 }
 
@@ -191,155 +194,6 @@ function createTargetOffsets(
             hoverHeight,
         })),
     );
-}
-
-function getExternalRaisedBedBlockAtPosition({
-    movingBlockIds,
-    stacks,
-    x,
-    z,
-}: {
-    movingBlockIds: Set<string>;
-    stacks: GardenStack[] | undefined;
-    x: number;
-    z: number;
-}): Block | null {
-    const stackAtPosition = getStack(stacks, { x, z });
-    const candidateBlocks =
-        stackAtPosition?.blocks.filter(
-            (candidate) => !movingBlockIds.has(candidate.id),
-        ) ?? [];
-
-    for (
-        let candidateIndex = candidateBlocks.length - 1;
-        candidateIndex >= 0;
-        candidateIndex--
-    ) {
-        const candidateBlock = candidateBlocks[candidateIndex];
-        if (candidateBlock?.name === 'Raised_Bed') {
-            return candidateBlock;
-        }
-    }
-
-    return null;
-}
-
-function hasExternalRaisedBedNeighbor({
-    excludedPositions,
-    movingBlockIds,
-    stacks,
-    x,
-    z,
-}: {
-    excludedPositions: Set<string>;
-    movingBlockIds: Set<string>;
-    stacks: GardenStack[] | undefined;
-    x: number;
-    z: number;
-}) {
-    const neighbors = [
-        { x: x - 1, z },
-        { x: x + 1, z },
-        { x, z: z - 1 },
-        { x, z: z + 1 },
-    ];
-
-    return neighbors.some((neighbor) => {
-        if (excludedPositions.has(`${neighbor.x}|${neighbor.z}`)) {
-            return false;
-        }
-
-        return Boolean(
-            getExternalRaisedBedBlockAtPosition({
-                movingBlockIds,
-                stacks,
-                x: neighbor.x,
-                z: neighbor.z,
-            }),
-        );
-    });
-}
-
-function isRaisedBedPlacementBlocked({
-    movingBlockIds,
-    movedRaisedBedPreviews,
-    stacks,
-}: {
-    movingBlockIds: Set<string>;
-    movedRaisedBedPreviews: PlacementPreview[];
-    stacks: GardenStack[] | undefined;
-}) {
-    const movedRaisedBedPreviewByPosition = new Map(
-        movedRaisedBedPreviews.map((preview) => [
-            `${preview.destination.x}|${preview.destination.z}`,
-            preview,
-        ]),
-    );
-
-    return movedRaisedBedPreviews.some((preview) => {
-        const neighbors = [
-            { x: preview.destination.x - 1, z: preview.destination.z },
-            { x: preview.destination.x + 1, z: preview.destination.z },
-            { x: preview.destination.x, z: preview.destination.z - 1 },
-            { x: preview.destination.x, z: preview.destination.z + 1 },
-        ];
-
-        let raisedBedNeighborCount = 0;
-        let externalNeighbor:
-            | {
-                  x: number;
-                  z: number;
-              }
-            | undefined;
-
-        for (const neighbor of neighbors) {
-            const movedNeighbor = movedRaisedBedPreviewByPosition.get(
-                `${neighbor.x}|${neighbor.z}`,
-            );
-            if (movedNeighbor) {
-                raisedBedNeighborCount += 1;
-                continue;
-            }
-
-            const externalNeighborBlock = getExternalRaisedBedBlockAtPosition({
-                movingBlockIds,
-                stacks,
-                x: neighbor.x,
-                z: neighbor.z,
-            });
-            if (externalNeighborBlock) {
-                raisedBedNeighborCount += 1;
-                externalNeighbor = {
-                    x: neighbor.x,
-                    z: neighbor.z,
-                };
-            }
-        }
-
-        if (raisedBedNeighborCount > 1) {
-            return true;
-        }
-
-        if (!externalNeighbor) {
-            return false;
-        }
-
-        const excludedPositions = new Set<string>([
-            `${preview.destination.x}|${preview.destination.z}`,
-            ...movedRaisedBedPreviews.map(
-                (candidatePreview) =>
-                    `${candidatePreview.destination.x}|${candidatePreview.destination.z}`,
-            ),
-        ]);
-
-        return hasExternalRaisedBedNeighbor({
-            excludedPositions,
-            movingBlockIds,
-            stacks,
-            x: externalNeighbor.x,
-            z: externalNeighbor.z,
-        });
-    });
 }
 
 export function resolvePickupPlacementPreviewForRelative({
@@ -485,16 +339,35 @@ function resolvePickupPlacementPreviewFromPreparedState({
                 const occupiedBlockData = occupiedCell
                     ? getBlockDataByName(blockData, occupiedCell.block.name)
                     : null;
-                const isSupported =
-                    !occupiedCell ||
-                    (movingBaseBlock
-                        ? canStackBlockOnBlock({
-                              aboveBlockData: movingBaseBlockData ?? undefined,
-                              aboveBlockName: movingBaseBlock.name,
-                              belowBlockData: occupiedBlockData ?? undefined,
-                              belowBlockName: occupiedCell.block.name,
-                          })
-                        : true);
+                const requiresWaterSupport = movingBaseBlock
+                    ? requiresWaterOrSwampSupport(movingBaseBlock.name)
+                    : false;
+                const isSupported = requiresWaterSupport
+                    ? Boolean(
+                          occupiedCell &&
+                              isWaterOrSwampBlockName(
+                                  occupiedCell.block.name,
+                              ) &&
+                              movingBaseBlock &&
+                              canStackBlockOnBlock({
+                                  aboveBlockData:
+                                      movingBaseBlockData ?? undefined,
+                                  aboveBlockName: movingBaseBlock.name,
+                                  belowBlockData:
+                                      occupiedBlockData ?? undefined,
+                                  belowBlockName: occupiedCell.block.name,
+                              }),
+                      )
+                    : !occupiedCell ||
+                      (movingBaseBlock
+                          ? canStackBlockOnBlock({
+                                aboveBlockData:
+                                    movingBaseBlockData ?? undefined,
+                                aboveBlockName: movingBaseBlock.name,
+                                belowBlockData: occupiedBlockData ?? undefined,
+                                belowBlockName: occupiedCell.block.name,
+                            })
+                          : true);
 
                 return {
                     isBlocked: !isSupported,
@@ -536,17 +409,6 @@ function resolvePickupPlacementPreviewFromPreparedState({
             ];
         });
 
-    const movedRaisedBedPreviews = placementPreviews.filter((preview) =>
-        preview.segment.blocks.some(
-            (segmentBlock) => segmentBlock.name === 'Raised_Bed',
-        ),
-    );
-    const raisedBedPlacementBlocked = isRaisedBedPlacementBlocked({
-        movingBlockIds,
-        movedRaisedBedPreviews,
-        stacks,
-    });
-
     const sourcePreview = placementPreviews[0];
     if (!sourcePreview) {
         return null;
@@ -578,8 +440,7 @@ function resolvePickupPlacementPreviewFromPreparedState({
         : canStoreInGardenBox
           ? false
           : placementPreviews.some((preview) => preview.isBlocked) ||
-            heightsMismatch ||
-            raisedBedPlacementBlocked;
+            heightsMismatch;
 
     return {
         relative: {

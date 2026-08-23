@@ -29,7 +29,7 @@ const highTargetOperationVisualHighlightObjectCount = 2;
 const highTargetOperationVisualLegacyObjectCount = 452;
 const highTargetOperationVisualRenderedObjectLimit = 64;
 const highTargetGeneratedPlantDetailInstanceBudget = 179;
-const highTargetExpectedGeneratedPlantClusterTriangleCount = 3_354;
+const highTargetBudgetedGeneratedPlantClusterTriangleCount = 2_740;
 const highTargetWeatherSurfaceExpectations = {
     rain: {
         avoidedOverlaySubmissionCount: 16,
@@ -2753,20 +2753,57 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 { timeout: 90_000 },
             );
         } else {
-            await page.waitForFunction(
-                (expected) => {
+            try {
+                await page.waitForFunction(
+                    ({ expectedClusterCount, expectedDetailCount }) => {
+                        const profile = globalThis.__grediceGameProfile;
+                        return (
+                            profile?.generatedPlantClusterInstanceCount ===
+                                expectedClusterCount &&
+                            profile.generatedPlantRenderNearInstanceCount ===
+                                expectedDetailCount &&
+                            profile.generatedPlantDetailedInstanceCount ===
+                                expectedDetailCount &&
+                            profile.generatedPlantPendingDetailInstanceCount ===
+                                0
+                        );
+                    },
+                    {
+                        expectedClusterCount:
+                            highTargetExpectedGeneratedPlantInstanceCount -
+                            highTargetGeneratedPlantDetailInstanceBudget,
+                        expectedDetailCount:
+                            highTargetGeneratedPlantDetailInstanceBudget,
+                    },
+                    { timeout: 90_000 },
+                );
+            } catch (error) {
+                const readiness = await page.evaluate(() => {
                     const profile = globalThis.__grediceGameProfile;
-                    return (
-                        profile?.generatedPlantClusterInstanceCount ===
-                            expected &&
-                        profile.generatedPlantRenderNearInstanceCount === 0 &&
-                        profile.generatedPlantDetailedInstanceCount === 0 &&
-                        profile.generatedPlantPendingDetailInstanceCount === 0
-                    );
-                },
-                highTargetExpectedGeneratedPlantInstanceCount,
-                { timeout: 90_000 },
-            );
+                    return {
+                        admittedBeds:
+                            profile?.generatedPlantDetailAdmittedBedCount,
+                        admittedInstances:
+                            profile?.generatedPlantDetailAdmittedInstanceCount,
+                        clusterInstances:
+                            profile?.generatedPlantClusterInstanceCount,
+                        detailedInstances:
+                            profile?.generatedPlantDetailedInstanceCount,
+                        nearInstances:
+                            profile?.generatedPlantRenderNearInstanceCount,
+                        pendingInstances:
+                            profile?.generatedPlantPendingDetailInstanceCount,
+                        requestedBeds:
+                            profile?.generatedPlantDetailRequestedBedCount,
+                        requestedInstances:
+                            profile?.generatedPlantDetailRequestedInstanceCount,
+                    };
+                });
+                throw new Error(
+                    `Budgeted foliage detail did not become ready: ${JSON.stringify(readiness)}`,
+                    { cause: error },
+                );
+            }
         }
     }
     const adaptiveHighProfileControlStarted = scenario.profileControl
@@ -4927,32 +4964,32 @@ function evaluateHighTargetAcceptance({
                   exact(
                       'highTargetFoliageRequestedBeds',
                       runtime?.generatedPlantDetailRequestedBedCount,
-                      0,
+                      3,
                   ),
                   exact(
                       'highTargetFoliageRequestedInstances',
                       runtime?.generatedPlantDetailRequestedInstanceCount,
-                      0,
+                      highTargetExpectedGeneratedPlantInstanceCount,
                   ),
                   exact(
                       'highTargetFoliageAdmittedBeds',
                       runtime?.generatedPlantDetailAdmittedBedCount,
-                      0,
+                      1,
                   ),
                   exact(
                       'highTargetFoliageAdmittedInstances',
                       runtime?.generatedPlantDetailAdmittedInstanceCount,
-                      0,
+                      highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliageUsedBudget',
                       runtime?.generatedPlantDetailUsedBudgetInstanceCount,
-                      0,
+                      highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliageDemotedBeds',
                       runtime?.generatedPlantDetailDemotedBedCount,
-                      0,
+                      2,
                   ),
                   exact(
                       'highTargetFoliageSelectedOverflow',
@@ -4962,29 +4999,30 @@ function evaluateHighTargetAcceptance({
                   exact(
                       'highTargetFoliageNearFields',
                       runtime?.generatedPlantNearFieldCount,
-                      0,
+                      18,
                   ),
                   exact(
                       'highTargetFoliageNearInstances',
                       runtime?.generatedPlantNearInstanceCount,
-                      0,
+                      highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliageClusterFields',
                       (runtime?.generatedPlantMidFieldCount ?? 0) +
                           (runtime?.generatedPlantFarFieldCount ?? 0),
-                      highTargetExpectedGeneratedPlantFieldCount,
+                      highTargetExpectedGeneratedPlantFieldCount - 18,
                   ),
                   exact(
                       'highTargetFoliageClusterLodInstances',
                       (runtime?.generatedPlantMidInstanceCount ?? 0) +
                           (runtime?.generatedPlantFarInstanceCount ?? 0),
-                      highTargetExpectedGeneratedPlantInstanceCount,
+                      highTargetExpectedGeneratedPlantInstanceCount -
+                          highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliageDetailedRenderInstances',
                       runtime?.generatedPlantDetailedInstanceCount,
-                      0,
+                      highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliagePendingDetailInstances',
@@ -4994,18 +5032,19 @@ function evaluateHighTargetAcceptance({
                   exact(
                       'highTargetFoliageClusterInstances',
                       runtime?.generatedPlantClusterInstanceCount,
-                      highTargetExpectedGeneratedPlantInstanceCount,
+                      highTargetExpectedGeneratedPlantInstanceCount -
+                          highTargetGeneratedPlantDetailInstanceBudget,
                   ),
                   exact(
                       'highTargetFoliageClusterPrimitiveTriangles',
                       runtime?.generatedPlantClusterPrimitiveTriangleCount,
-                      highTargetExpectedGeneratedPlantClusterTriangleCount,
+                      highTargetBudgetedGeneratedPlantClusterTriangleCount,
                   ),
                   range(
                       'highTargetFoliageRenderBatches',
                       runtime?.generatedPlantRenderBatchCount,
                       3,
-                      6,
+                      12,
                   ),
               ]
             : []),

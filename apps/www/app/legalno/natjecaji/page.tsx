@@ -7,14 +7,18 @@ import { PageHeader } from '@gredice/ui/PageHeader';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
-import type { Metadata, Route } from 'next';
+import type { Route } from 'next';
 import { NoDataPlaceholder } from '../../../components/shared/placeholders/NoDataPlaceholder';
 import { getOccasionsData } from '../../../lib/occasions/getOccasionsData';
+import { createPublicMetadata } from '../../../lib/seo/publicMetadata';
+import { KnownPages } from '../../../src/KnownPages';
 
-export const metadata: Metadata = {
+export const metadata = createPublicMetadata({
     title: 'Natječaji',
     description: 'Pregled svih natječaja i nagradnih igara.',
-};
+    path: KnownPages.LegalOccasions,
+    eyebrow: 'Natječaji i nagradne igre',
+});
 
 function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString('hr-HR', {
