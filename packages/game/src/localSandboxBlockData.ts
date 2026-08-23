@@ -464,7 +464,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         Goat: 0.72,
         PigletPen: 0.78,
         Cow: 1.26,
-        Rabbit: 0.76,
+        Rabbit: 0.456,
         Horse: 1.46,
         Sheep: 0.64,
         FishingBoat: 0.62,
@@ -661,9 +661,9 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxWidth: 0.5,
     },
     Rabbit: {
-        hitboxDepth: 0.72,
-        hitboxHeight: 0.76,
-        hitboxWidth: 0.58,
+        hitboxDepth: 0.432,
+        hitboxHeight: 0.456,
+        hitboxWidth: 0.348,
     },
     Horse: {
         hitboxDepth: 1.86,

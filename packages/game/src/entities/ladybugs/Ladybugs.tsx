@@ -184,7 +184,7 @@ const clearWarmLadybugWeather = {
     windSpeed: 0,
 } satisfies LadybugWeather;
 
-const ladybugScale = 0.17;
+const ladybugScale = 0.17 * 0.5;
 const ladybugSurfaceLift = 0.015;
 const raisedBedLadybugHeight = 0.33;
 const tulipLadybugHeight = 0.48;
