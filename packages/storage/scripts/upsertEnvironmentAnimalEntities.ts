@@ -4,16 +4,45 @@ import {
     attributeDefinitions,
     attributeValues,
     closeStorage,
+    createAttributeDefinition,
+    createAttributeDefinitionCategory,
     createEntity,
     entities,
-    entityTypeCategories,
-    entityTypes,
+    getAttributeDefinitionCategories,
+    getAttributeDefinitions,
+    getEntityTypeByName,
+    getEntityTypeCategories,
     type SelectAttributeDefinition,
     storage,
+    updateAttributeDefinition,
+    updateAttributeDefinitionCategory,
     updateEntity,
     upsertAttributeValue,
+    upsertEntityType,
+    upsertEntityTypeCategory,
 } from '../src';
+import {
+    batEnvironmentAnimal,
+    environmentAnimalEntityTypeName,
+    ladybugEnvironmentAnimal,
+} from '../src/data/environmentAnimalDirectory';
 import { assertEnvironmentAnimalDevelopmentDatabase } from './environmentAnimalDatabaseGuard';
+
+type AttributeSpec = {
+    category: string;
+    dataType: string;
+    display: boolean;
+    label: string;
+    name: string;
+    order: string;
+    required: boolean;
+    unit?: string;
+};
+
+type EnvironmentAnimalRecord = {
+    attributes: Readonly<Record<string, string>>;
+    name: string;
+};
 
 const actor = {
     id: 'environment-animal-directory-upsert',
@@ -28,20 +57,25 @@ const entityTypeCategory = {
 };
 
 const entityType = {
-    icon: 'frog',
+    icon: 'PawPrint',
+    isRoot: true,
     label: 'Životinje okoliša',
-    name: 'environmentAnimal',
+    name: environmentAnimalEntityTypeName,
     order: 'a',
 };
 
 const attributeCategories = [
     { label: 'Informacije', name: 'information', order: 'a' },
     { label: 'Stanište', name: 'habitat', order: 'b' },
-    { label: 'Pojavljivanje', name: 'spawn', order: 'c' },
-    { label: 'Ponašanje', name: 'behavior', order: 'd' },
+    { label: 'Aktivnost', name: 'activity', order: 'c' },
+    { label: 'Vrijeme', name: 'weather', order: 'd' },
+    { label: 'Pojavljivanje', name: 'spawn', order: 'e' },
+    { label: 'Ponašanje', name: 'behavior', order: 'f' },
+    { label: 'Model', name: 'model', order: 'g' },
+    { label: 'Slika', name: 'image', order: 'z' },
 ] as const;
 
-const attributeSpecs = [
+const attributeSpecs: AttributeSpec[] = [
     {
         category: 'information',
         dataType: 'text',
@@ -104,6 +138,7 @@ const attributeSpecs = [
         name: 'minimumTemperature',
         order: 'bc',
         required: true,
+        unit: '°C',
     },
     {
         category: 'habitat',
@@ -113,6 +148,7 @@ const attributeSpecs = [
         name: 'maximumTemperature',
         order: 'bd',
         required: true,
+        unit: '°C',
     },
     {
         category: 'habitat',
@@ -240,7 +276,94 @@ const attributeSpecs = [
         order: 'de',
         required: true,
     },
-] as const;
+    {
+        category: 'habitat',
+        dataType: 'number',
+        display: false,
+        label: 'Najmanja površina staništa',
+        name: 'minimumCells',
+        order: 'bj',
+        required: false,
+    },
+    {
+        category: 'activity',
+        dataType: 'number',
+        display: false,
+        label: 'Kraj aktivnosti u zoru',
+        name: 'dawnEnd',
+        order: 'ca',
+        required: false,
+    },
+    {
+        category: 'activity',
+        dataType: 'number',
+        display: false,
+        label: 'Početak aktivnosti u sumrak',
+        name: 'duskStart',
+        order: 'cb',
+        required: false,
+    },
+    ...[
+        ['maxFog', 'Najveća magla'],
+        ['maxRain', 'Najveća kiša'],
+        ['maxSnow', 'Najveći snijeg'],
+        ['maxThunder', 'Najveća grmljavina'],
+        ['maxWindSpeed', 'Najveća brzina vjetra'],
+    ].map(([name, label], index) => ({
+        category: 'weather',
+        dataType: 'number',
+        display: false,
+        label,
+        name,
+        order: `d${String.fromCharCode(97 + index)}`,
+        required: false,
+    })),
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najviše skupina u sceni',
+        name: 'maxGroupsPerScene',
+        order: 'ce',
+        required: false,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najveća ukupna populacija',
+        name: 'maxGlobal',
+        order: 'cf',
+        required: false,
+    },
+    {
+        category: 'behavior',
+        dataType: 'boolean',
+        display: true,
+        label: 'Može se postaviti',
+        name: 'placeable',
+        order: 'df',
+        required: false,
+    },
+    {
+        category: 'model',
+        dataType: 'text',
+        display: false,
+        label: 'Model u registru igre',
+        name: 'assetName',
+        order: 'ga',
+        required: false,
+    },
+    {
+        category: 'image',
+        dataType: 'image',
+        display: true,
+        label: 'Slika',
+        name: 'cover',
+        order: 'za',
+        required: false,
+    },
+];
 
 const frogAttributes = {
     'behavior.animationStates': 'Frog_Idle,Frog_Blink,Frog_Hop,Frog_Croak',
@@ -248,6 +371,7 @@ const frogAttributes = {
     'behavior.cropImpact': 'neutralan-koristan',
     'behavior.movement':
         'Čuči i mirno diše, povremeno trepće ili zakrekeće. Kreće se lukovima skoka uz pripremu i doskok, prednost daje plitkoj vodi te brzo i sigurno odskače od lika bez prolaska kroz prepreke.',
+    'behavior.placeable': 'false',
     'behavior.purchasable': 'false',
     'habitat.allowedTerrain':
         'Block_Swamp_Ground,Block_Swamp_Ground_Angle,Block_Swamp_Water',
@@ -265,11 +389,18 @@ const frogAttributes = {
     'information.name': 'Frog',
     'information.shortDescription':
         'Samosvojna močvarna žaba koja voli plitku vodu i sigurno odskače od prolaznika.',
+    'model.assetName': 'Frog',
     'spawn.cooldownMaxSeconds': '32',
     'spawn.cooldownMinSeconds': '18',
     'spawn.maxPopulation': '3',
     'spawn.maxPopulationPerHabitat': '2',
 } satisfies Record<string, string>;
+
+const environmentAnimals: EnvironmentAnimalRecord[] = [
+    { attributes: frogAttributes, name: 'Frog' },
+    batEnvironmentAnimal,
+    ladybugEnvironmentAnimal,
+];
 
 const obsoleteAttributePaths = new Set(['commerce.purchasable', 'spawn.mode']);
 
@@ -279,9 +410,7 @@ function parseOptions(argv: string[]) {
 
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
-        if (argument === '--') {
-            continue;
-        }
+        if (argument === '--') continue;
         if (argument === '--apply') {
             apply = true;
             continue;
@@ -312,112 +441,85 @@ function attributePath(
     return `${definition.category}.${definition.name}`;
 }
 
-async function ensureEntityTypeCategory() {
-    const existing = await storage().query.entityTypeCategories.findFirst({
-        where: eq(entityTypeCategories.name, entityTypeCategory.name),
-    });
-    if (existing) {
-        await storage()
-            .update(entityTypeCategories)
-            .set({ ...entityTypeCategory, isDeleted: false })
-            .where(eq(entityTypeCategories.id, existing.id));
-        return existing.id;
-    }
-
-    const [created] = await storage()
-        .insert(entityTypeCategories)
-        .values(entityTypeCategory)
-        .returning({ id: entityTypeCategories.id });
-    return created.id;
+function configChanged(
+    current: Record<string, unknown>,
+    expected: Record<string, unknown>,
+) {
+    return Object.entries(expected).some(
+        ([key, value]) => current[key] !== (value ?? null),
+    );
 }
 
-async function ensureEntityType(categoryId: number) {
-    const existing = await storage().query.entityTypes.findFirst({
-        where: eq(entityTypes.name, entityType.name),
-    });
-    if (existing) {
-        await storage()
-            .update(entityTypes)
-            .set({
-                ...entityType,
-                categoryId,
-                isDeleted: false,
-                isRoot: true,
-            })
-            .where(eq(entityTypes.id, existing.id));
-        return existing.id;
-    }
-
-    const [created] = await storage()
-        .insert(entityTypes)
-        .values({ ...entityType, categoryId, isRoot: true })
-        .returning({ id: entityTypes.id });
-    return created.id;
-}
-
-async function ensureAttributeCategories() {
-    for (const category of attributeCategories) {
-        const existing =
-            await storage().query.attributeDefinitionCategories.findFirst({
-                where: and(
-                    eq(
-                        attributeDefinitionCategories.entityTypeName,
-                        entityType.name,
-                    ),
-                    eq(attributeDefinitionCategories.name, category.name),
-                ),
-            });
-        if (existing) {
-            await storage()
-                .update(attributeDefinitionCategories)
-                .set({ ...category, isDeleted: false })
-                .where(eq(attributeDefinitionCategories.id, existing.id));
-            continue;
-        }
-        await storage()
-            .insert(attributeDefinitionCategories)
-            .values({
-                ...category,
-                entityTypeName: entityType.name,
-            });
-    }
-}
-
-async function ensureAttributeDefinitions() {
-    const definitions: SelectAttributeDefinition[] = [];
-    for (const spec of attributeSpecs) {
-        const existing = await storage().query.attributeDefinitions.findFirst({
-            where: and(
-                eq(attributeDefinitions.entityTypeName, entityType.name),
-                eq(attributeDefinitions.category, spec.category),
-                eq(attributeDefinitions.name, spec.name),
-            ),
-        });
-        const values = {
-            ...spec,
-            entityTypeName: entityType.name,
+async function ensureStructure() {
+    let category = (await getEntityTypeCategories()).find(
+        (candidate) => candidate.name === entityTypeCategory.name,
+    );
+    if (!category) {
+        await upsertEntityTypeCategory(entityTypeCategory);
+        category = (await getEntityTypeCategories()).find(
+            (candidate) => candidate.name === entityTypeCategory.name,
+        );
+    } else if (configChanged(category, entityTypeCategory)) {
+        await upsertEntityTypeCategory({
+            id: category.id,
+            ...entityTypeCategory,
             isDeleted: false,
+        });
+    }
+    if (!category) {
+        throw new Error('Failed to upsert garden environment category.');
+    }
+
+    const currentType = await getEntityTypeByName(entityType.name);
+    const expectedType = { ...entityType, categoryId: category.id };
+    if (!currentType || configChanged(currentType, expectedType)) {
+        await upsertEntityType(
+            currentType
+                ? { id: currentType.id, ...expectedType, isDeleted: false }
+                : expectedType,
+        );
+    }
+
+    const existingCategories = await getAttributeDefinitionCategories(
+        entityType.name,
+    );
+    for (const expected of attributeCategories) {
+        const current = existingCategories.find(
+            (candidate) => candidate.name === expected.name,
+        );
+        const values = { ...expected, entityTypeName: entityType.name };
+        if (!current) {
+            await createAttributeDefinitionCategory(values);
+        } else if (configChanged(current, values)) {
+            await updateAttributeDefinitionCategory({
+                id: current.id,
+                ...values,
+            });
+        }
+    }
+
+    const existingDefinitions = await getAttributeDefinitions(entityType.name);
+    for (const expected of attributeSpecs) {
+        const current = existingDefinitions.find(
+            (candidate) => attributePath(candidate) === attributePath(expected),
+        );
+        const values = {
+            ...expected,
+            entityTypeName: entityType.name,
             multiple: false,
         };
-        if (existing) {
-            await storage()
-                .update(attributeDefinitions)
-                .set(values)
-                .where(eq(attributeDefinitions.id, existing.id));
-            definitions.push({ ...existing, ...values });
-            continue;
+        if (!current) {
+            await createAttributeDefinition(values);
+        } else if (configChanged(current, values)) {
+            await updateAttributeDefinition({
+                id: current.id,
+                ...values,
+            });
         }
-
-        const [created] = await storage()
-            .insert(attributeDefinitions)
-            .values(values)
-            .returning();
-        definitions.push(created);
     }
-    return definitions;
 }
 
-async function retireObsoleteDraftDefinitions() {
+async function retireObsoleteDefinitions() {
     const definitions = await storage().query.attributeDefinitions.findMany({
         where: and(
             eq(attributeDefinitions.entityTypeName, entityType.name),
@@ -425,9 +527,7 @@ async function retireObsoleteDraftDefinitions() {
         ),
     });
     for (const definition of definitions) {
-        if (!obsoleteAttributePaths.has(attributePath(definition))) {
-            continue;
-        }
+        if (!obsoleteAttributePaths.has(attributePath(definition))) continue;
         await storage()
             .update(attributeValues)
             .set({ isDeleted: true })
@@ -452,9 +552,13 @@ async function retireObsoleteDraftDefinitions() {
         );
 }
 
-async function findFrogEntityId(nameDefinitionId: number) {
-    const [frog] = await storage()
-        .select({ id: entities.id })
+async function findEnvironmentAnimal(nameDefinitionId: number, name: string) {
+    const matches = await storage()
+        .select({
+            id: entities.id,
+            publishedAt: entities.publishedAt,
+            state: entities.state,
+        })
         .from(entities)
         .innerJoin(attributeValues, eq(attributeValues.entityId, entities.id))
         .where(
@@ -462,72 +566,84 @@ async function findFrogEntityId(nameDefinitionId: number) {
                 eq(entities.entityTypeName, entityType.name),
                 eq(entities.isDeleted, false),
                 eq(attributeValues.attributeDefinitionId, nameDefinitionId),
-                eq(attributeValues.value, 'Frog'),
+                eq(attributeValues.value, name),
                 eq(attributeValues.isDeleted, false),
             ),
         )
-        .limit(1);
-    return frog?.id ?? null;
+        .limit(2);
+    if (matches.length > 1) {
+        throw new Error(`Multiple active ${name} environment animals found.`);
+    }
+    return matches[0] ?? null;
 }
 
-async function findAttributeValue(entityId: number, definitionId: number) {
-    const [value] = await storage()
-        .select({ id: attributeValues.id, value: attributeValues.value })
-        .from(attributeValues)
-        .where(
-            and(
-                eq(attributeValues.entityId, entityId),
-                eq(attributeValues.attributeDefinitionId, definitionId),
-                eq(attributeValues.isDeleted, false),
-            ),
-        )
-        .limit(1);
-    return value;
+function findAttributeValue(entityId: number, definitionId: number) {
+    return storage().query.attributeValues.findFirst({
+        where: and(
+            eq(attributeValues.entityId, entityId),
+            eq(attributeValues.attributeDefinitionId, definitionId),
+            eq(attributeValues.isDeleted, false),
+        ),
+    });
+}
+
+async function inspectAnimal(
+    animal: EnvironmentAnimalRecord,
+    definitionsByPath: Map<string, SelectAttributeDefinition>,
+) {
+    const nameDefinition = definitionsByPath.get('information.name');
+    const entity = nameDefinition
+        ? await findEnvironmentAnimal(nameDefinition.id, animal.name)
+        : null;
+    const changedAttributes: string[] = [];
+    for (const [path, expected] of Object.entries(animal.attributes)) {
+        const definition = definitionsByPath.get(path);
+        const current =
+            entity && definition
+                ? await findAttributeValue(entity.id, definition.id)
+                : null;
+        if (current?.value !== expected) changedAttributes.push(path);
+    }
+
+    return {
+        action: !entity
+            ? 'create'
+            : changedAttributes.length > 0 ||
+                entity.state !== 'published' ||
+                !entity.publishedAt
+              ? 'update'
+              : 'unchanged',
+        changedAttributes,
+        entityId: entity?.id ?? null,
+        name: animal.name,
+    };
 }
 
 async function dryRun() {
-    const existingType = await storage().query.entityTypes.findFirst({
-        where: and(
-            eq(entityTypes.name, entityType.name),
-            eq(entityTypes.isDeleted, false),
-        ),
-    });
-    const definitions = await storage().query.attributeDefinitions.findMany({
-        where: and(
-            eq(attributeDefinitions.entityTypeName, entityType.name),
-            eq(attributeDefinitions.isDeleted, false),
-        ),
-    });
+    const definitions = await getAttributeDefinitions(entityType.name);
     const definitionsByPath = new Map(
         definitions.map((definition) => [
             attributePath(definition),
             definition,
         ]),
     );
-    const nameDefinition = definitionsByPath.get('information.name');
-    const frogId = nameDefinition
-        ? await findFrogEntityId(nameDefinition.id)
-        : null;
+    const animals = [];
+    for (const animal of environmentAnimals) {
+        animals.push(await inspectAnimal(animal, definitionsByPath));
+    }
 
     console.log(
         JSON.stringify(
             {
-                action: frogId ? 'update' : 'create',
-                entityId: frogId,
-                entityTypeExists: Boolean(existingType),
+                animals,
+                entityTypeExists: Boolean(
+                    await getEntityTypeByName(entityType.name),
+                ),
                 missingAttributeDefinitions: attributeSpecs
-                    .map((spec) => `${spec.category}.${spec.name}`)
+                    .map(attributePath)
                     .filter((path) => !definitionsByPath.has(path)),
                 mode: 'dry-run',
-                requiredAttributeDefinitions: definitions
-                    .filter((definition) => definition.required)
-                    .map((definition) => ({
-                        dataType: definition.dataType,
-                        label: definition.label,
-                        multiple: definition.multiple,
-                        path: attributePath(definition),
-                    })),
-                target: 'development-only environmentAnimal/Frog',
+                target: 'development-only environment animals',
             },
             null,
             2,
@@ -535,45 +651,43 @@ async function dryRun() {
     );
 }
 
-async function applyAndReadBack() {
-    const categoryId = await ensureEntityTypeCategory();
-    await ensureEntityType(categoryId);
-    await ensureAttributeCategories();
-    const definitions = await ensureAttributeDefinitions();
-    await retireObsoleteDraftDefinitions();
-    const definitionsByPath = new Map(
-        definitions.map((definition) => [
-            attributePath(definition),
-            definition,
-        ]),
+async function applyAnimal(
+    animal: EnvironmentAnimalRecord,
+    definitionsByPath: Map<string, SelectAttributeDefinition>,
+) {
+    const missingDefinitions = Object.keys(animal.attributes).filter(
+        (path) => !definitionsByPath.has(path),
     );
     const nameDefinition = definitionsByPath.get('information.name');
-    if (!nameDefinition) {
-        throw new Error('Missing information.name definition after upsert.');
+    if (!nameDefinition || missingDefinitions.length > 0) {
+        throw new Error(
+            `Missing ${animal.name} definitions: ${missingDefinitions.join(', ')}`,
+        );
     }
 
-    let entityId = await findFrogEntityId(nameDefinition.id);
-    const created = entityId === null;
-    if (entityId === null) {
-        entityId = await createEntity(entityType.name, actor);
-    }
-
+    let entity = await findEnvironmentAnimal(nameDefinition.id, animal.name);
+    const created = !entity;
+    const entityId = entity?.id ?? (await createEntity(entityType.name, actor));
     let changedAttributeCount = 0;
-    for (const [path, expected] of Object.entries(frogAttributes)) {
+
+    const entries = Object.entries(animal.attributes).sort(([left], [right]) =>
+        left === 'information.name'
+            ? -1
+            : right === 'information.name'
+              ? 1
+              : left.localeCompare(right),
+    );
+    for (const [path, expected] of entries) {
         const definition = definitionsByPath.get(path);
-        if (!definition) {
-            throw new Error(`Missing ${path} definition after upsert.`);
-        }
-        const existing = await findAttributeValue(entityId, definition.id);
-        if (existing?.value === expected) {
-            continue;
-        }
+        if (!definition) throw new Error(`Missing ${path} after upsert.`);
+        const current = await findAttributeValue(entityId, definition.id);
+        if (current?.value === expected) continue;
         await upsertAttributeValue(
             {
                 attributeDefinitionId: definition.id,
                 entityId,
                 entityTypeName: entityType.name,
-                id: existing?.id,
+                id: current?.id,
                 order: definition.order,
                 value: expected,
             },
@@ -583,51 +697,58 @@ async function applyAndReadBack() {
     }
 
     await updateEntity({ id: entityId, state: 'published' }, actor);
-
-    const [readback] = await storage()
-        .select({
-            id: entities.id,
-            publishedAt: entities.publishedAt,
-            state: entities.state,
-        })
-        .from(entities)
-        .where(
-            and(
-                eq(entities.id, entityId),
-                eq(entities.entityTypeName, entityType.name),
-                eq(entities.isDeleted, false),
-            ),
-        )
-        .limit(1);
-    if (readback?.state !== 'published' || !readback.publishedAt) {
-        throw new Error(`Frog entity ${entityId} was not published.`);
+    entity = await findEnvironmentAnimal(nameDefinition.id, animal.name);
+    if (
+        !entity ||
+        entity.id !== entityId ||
+        entity.state !== 'published' ||
+        !entity.publishedAt
+    ) {
+        throw new Error(`${animal.name} directory readback failed.`);
     }
 
-    for (const [path, expected] of Object.entries(frogAttributes)) {
+    for (const [path, expected] of entries) {
         const definition = definitionsByPath.get(path);
-        if (!definition) {
-            throw new Error(`Missing ${path} during readback.`);
-        }
+        if (!definition) throw new Error(`Missing ${path} during readback.`);
         const value = await findAttributeValue(entityId, definition.id);
         if (value?.value !== expected) {
-            throw new Error(
-                `Unexpected ${path}: ${value?.value ?? 'missing'} (expected ${expected}).`,
-            );
+            throw new Error(`${animal.name} readback mismatch for ${path}.`);
         }
+    }
+
+    return {
+        attributeCount: entries.length,
+        changedAttributeCount,
+        created,
+        entityId,
+        name: animal.name,
+        state: entity.state,
+        verified: true,
+    };
+}
+
+async function applyAndReadBack() {
+    await ensureStructure();
+    await retireObsoleteDefinitions();
+    const definitions = await getAttributeDefinitions(entityType.name);
+    const definitionsByPath = new Map(
+        definitions.map((definition) => [
+            attributePath(definition),
+            definition,
+        ]),
+    );
+    const animals = [];
+    for (const animal of environmentAnimals) {
+        animals.push(await applyAnimal(animal, definitionsByPath));
     }
 
     console.log(
         JSON.stringify(
             {
-                attributeCount: Object.keys(frogAttributes).length,
-                changedAttributeCount,
-                created,
-                entityId,
+                animals,
                 entityType: entityType.name,
                 environment: 'development',
-                name: 'Frog',
-                state: readback.state,
-                verified: true,
+                mode: 'apply',
             },
             null,
             2,
@@ -651,7 +772,7 @@ async function main() {
 }
 
 main()
-    .catch((error) => {
+    .catch((error: unknown) => {
         console.error(error);
         process.exitCode = 1;
     })

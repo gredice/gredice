@@ -330,6 +330,11 @@ test.describe('block screenshots', async () => {
                             cameraUp={cameraUp}
                             itemPosition={itemPosition}
                             entityName={entity.information.name}
+                            appearanceVariant={
+                                entity.information.name === 'Horse'
+                                    ? 0
+                                    : undefined
+                            }
                             message={
                                 entity.information.name === 'WoodenSign'
                                     ? 'MOJ\nVRT'
@@ -340,6 +345,11 @@ test.describe('block screenshots', async () => {
                             quality={snapshotQuality}
                             noControl
                             rotation={rotation}
+                            variant={
+                                entity.information.name === 'Rabbit'
+                                    ? 0
+                                    : undefined
+                            }
                             renderDetails={shouldRenderSnapshotDetails(
                                 entity.information.name,
                             )}

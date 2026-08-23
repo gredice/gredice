@@ -18,7 +18,9 @@ import {
     deleteGardenStack,
     getAccountGardens,
     getAccountGardensMetadata,
+    getAllEvents,
     getAllRaisedBedsFiltered,
+    getEvents,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -35,6 +37,7 @@ import {
     getRaisedBeds,
     getUserLikedGardenIds,
     knownEvents,
+    knownEventTypes,
     listUserGardenLikes,
     PublicGardenLikeTargetNotFoundError,
     RAISED_BED_PHOTO_OPERATION_ID,
@@ -618,14 +621,53 @@ test('deleteGarden marks garden as deleted', async () => {
     assert.strictEqual(garden, null);
 });
 
-test('createGardenBlock and getGardenBlocks', async () => {
+test('createGardenBlock persists and emits the appearance variant', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
+    const blockId = await createGardenBlock(gardenId, 'Rabbit', 1);
     const blocks = await getGardenBlocks(gardenId);
-    assert.ok(blocks.some((b) => b.id === blockId));
+    assert.strictEqual(
+        blocks.find((block) => block.id === blockId)?.variant,
+        1,
+    );
+
+    const placementEvents = await getEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    assert.equal(placementEvents.at(-1)?.version, 2);
+    assert.deepStrictEqual(placementEvents.at(-1)?.data, {
+        id: blockId,
+        name: 'Rabbit',
+        variant: 1,
+    });
+});
+
+test('createGardenBlock persists the Horse variant and records it in the placement event', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+
+    const blockId = await createGardenBlock(gardenId, 'Horse', 5);
+    const block = await getGardenBlock(gardenId, blockId);
+    const placementEvents = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    const placementEvent = placementEvents.find(
+        (event) => event.data?.id === blockId,
+    );
+
+    assert.equal(block?.variant, 5);
+    assert.equal(placementEvent?.version, 2);
+    assert.deepEqual(placementEvent?.data, {
+        id: blockId,
+        name: 'Horse',
+        variant: 5,
+    });
 });
 
 test('getGardenBlock returns correct block', async () => {

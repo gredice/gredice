@@ -19,12 +19,15 @@ function createEntitySandboxBlock(
     name: string,
     index: number,
     rotation: number,
+    variant?: number,
 ): Block {
     return {
         id: `entity-sandbox:${name}:${index}`,
         name,
         rotation,
-        variant: name === 'PineAdvent' ? 100 : undefined,
+        variant:
+            variant ??
+            (name === 'PineAdvent' ? 100 : name === 'Horse' ? 0 : undefined),
     };
 }
 
@@ -32,10 +35,12 @@ function createEntitySandboxStacks({
     blockNames,
     columns,
     rotation,
+    variant,
 }: {
     blockNames: readonly string[];
     columns: number;
     rotation: number;
+    variant?: number;
 }): Stack[] {
     const safeColumns = Math.max(1, Math.floor(columns));
     const rowCount = Math.ceil(blockNames.length / safeColumns);
@@ -48,7 +53,7 @@ function createEntitySandboxStacks({
 
         return {
             position: new Vector3(x, 0, z),
-            blocks: [createEntitySandboxBlock(name, index, rotation)],
+            blocks: [createEntitySandboxBlock(name, index, rotation, variant)],
         };
     });
 }
@@ -59,6 +64,7 @@ export type EntitySandboxViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName?: string;
     localSandboxStorageKey?: string;
     rotation?: number;
+    variant?: number;
 };
 
 export function EntitySandboxViewer({
@@ -68,6 +74,7 @@ export function EntitySandboxViewer({
     entityName,
     localSandboxStorageKey,
     rotation = 0,
+    variant,
     ...rest
 }: EntitySandboxViewerProps) {
     const normalizedRotation = ((rotation % 4) + 4) % 4;
@@ -81,8 +88,9 @@ export function EntitySandboxViewer({
                 blockNames,
                 columns,
                 rotation: normalizedRotation,
+                variant,
             }),
-        [blockNames, columns, normalizedRotation],
+        [blockNames, columns, normalizedRotation, variant],
     );
     const storageKey =
         localSandboxStorageKey ??

@@ -4,6 +4,7 @@ import {
     ActiveItemsHudDropTargetStory,
     CloseupBottomHudStory,
     ControlsTooltipCloseupStory,
+    HorseItemsHudStory,
     ItemsHudAlignmentStory,
     ItemsHudCameraTargetStory,
     ItemsHudControlsTooltipStory,
@@ -19,7 +20,9 @@ import {
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
+    { label: 'Zec', price: 350, picker: 'Ljubimci' },
     { label: 'Kokošinjac', price: 500, picker: 'Ljubimci' },
+    { label: 'Konj', price: 500, picker: 'Ljubimci' },
     { label: 'Obor za praščića', price: 500, picker: 'Ljubimci' },
     { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
     { label: 'Kamena ograda', price: 5, picker: 'Ograde' },
@@ -556,8 +559,12 @@ test('decorations are grouped into summer, furniture, pets, and signs', async ({
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'DogHouse' })).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'Konj', exact: true }),
+    ).toBeVisible();
+    await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zec' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ovca' })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Chicken', exact: true }),
@@ -870,8 +877,12 @@ test('local sandbox decoration picker includes current decoration blocks', async
         page.getByRole('button', { name: 'Kokošinjac' }),
     ).toBeVisible();
     await expect(
+        page.getByRole('button', { name: 'Konj', exact: true }),
+    ).toBeVisible();
+    await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zec' })).toBeVisible();
     await page.getByRole('button', { name: 'Natrag' }).click();
 
     await page.getByRole('button', { name: 'Malč' }).click();
@@ -1103,6 +1114,90 @@ test('item details place button keeps the soft color treatment', async ({
 
     const pricePill = placeButton.locator('div').filter({ hasText: '10' });
     await expect(pricePill).toHaveClass(/bg-primary\/15/u);
+});
+
+test('horse placement requires and persists one explicit coat variant', async ({
+    mount,
+    page,
+}) => {
+    const placementBodies: unknown[] = [];
+    await page.route(
+        /\/api(?:\/gredice)?\/gardens\/1\/blocks$/u,
+        async (route) => {
+            placementBodies.push(route.request().postDataJSON());
+            await route.fulfill({
+                status: 200,
+                contentType: 'application/json',
+                body: JSON.stringify({
+                    id: 'placed-horse',
+                    position: { x: 0, y: 0 },
+                    variant: 4,
+                }),
+            });
+        },
+    );
+
+    await mount(<HorseItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ljubimci' }).click();
+    await page.getByRole('button', { name: 'Konj', exact: true }).click();
+
+    const coatPicker = page.getByRole('group', { name: 'Boja dlake' });
+    await expect(coatPicker).toBeVisible();
+    await expect(coatPicker.getByRole('radio')).toHaveCount(6);
+
+    const placeButton = page.getByRole('button', { name: /Postavi.*500/u });
+    await expect(placeButton).toBeDisabled();
+    await expect(
+        page.getByText('Odaberi boju dlake prije postavljanja.'),
+    ).toBeVisible();
+
+    await coatPicker.getByText('Palomino', { exact: true }).click();
+    await expect(
+        coatPicker.getByRole('radio', { name: 'Palomino' }),
+    ).toBeChecked();
+    await expect(placeButton).toBeEnabled();
+    await placeButton.click();
+
+    await expect.poll(() => placementBodies.length).toBe(1);
+    expect(placementBodies[0]).toMatchObject({
+        blockName: 'Horse',
+        variant: 4,
+    });
+    await expect(coatPicker).toHaveCount(0);
+});
+
+test('horse drag placement is unavailable until a coat is selected and carries it', async ({
+    mount,
+    page,
+}) => {
+    await mount(<HorseItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ljubimci' }).click();
+
+    const horseButton = page.getByRole('button', {
+        name: 'Konj',
+        exact: true,
+    });
+    await dragLocatorByMouse(page, horseButton);
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'idle',
+    );
+
+    await horseButton.click();
+    await page.getByText('Sivac', { exact: true }).click();
+    await expect(page.getByRole('radio', { name: 'Sivac' })).toBeChecked();
+    await page.keyboard.press('Escape');
+    await dragLocatorByMouse(page, horseButton);
+
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'Horse:drag:3',
+    );
+    await page.mouse.up();
+    await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
+        'Horse:drop:3',
+    );
 });
 
 test('item placement starts near the current camera target', async ({

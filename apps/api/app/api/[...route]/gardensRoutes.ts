@@ -1,3 +1,9 @@
+import {
+    createEntityAppearanceVariantForPlacement,
+    isAppearanceVariantEntityName,
+    isEntityAppearanceVariantUpdateAllowed,
+    isValidEntityAppearanceVariant,
+} from '@gredice/js/entityAppearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
@@ -2900,6 +2906,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
+            if (isAppearanceVariantEntityName(block.name)) {
+                return context.json(
+                    {
+                        error: 'Životinju s odabranom bojom nije moguće spremiti u vrtnu kutiju.',
+                    },
+                    400,
+                );
+            }
+
             const inventoryBlock = blockData.find(
                 (candidate) => candidate.information?.name === block.name,
             );
@@ -3045,6 +3060,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 blockName: z.string(),
                 expectedExistingBlocks: z.array(z.string()).optional(),
+                variant: z.number().int().nonnegative().optional(),
                 position: z
                     .object({
                         x: z.number().int(),
@@ -3079,8 +3095,44 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, expectedExistingBlocks, position } =
-                context.req.valid('json');
+            const {
+                blockName,
+                expectedExistingBlocks,
+                position,
+                variant: requestedVariant,
+            } = context.req.valid('json');
+
+            if (
+                !isAppearanceVariantEntityName(blockName) &&
+                requestedVariant !== undefined
+            ) {
+                return context.json(
+                    { error: 'Ovaj predmet nema varijante izgleda.' },
+                    400,
+                );
+            }
+            if (
+                requestedVariant !== undefined &&
+                !isValidEntityAppearanceVariant(blockName, requestedVariant)
+            ) {
+                return context.json(
+                    { error: 'Neispravna varijanta izgleda predmeta.' },
+                    400,
+                );
+            }
+            const appearanceVariant =
+                requestedVariant ??
+                createEntityAppearanceVariantForPlacement(
+                    blockName,
+                    Math.random,
+                ) ??
+                null;
+            if (blockName === 'Horse' && appearanceVariant === null) {
+                return context.json(
+                    { error: 'Odaberi boju konja prije postavljanja.' },
+                    400,
+                );
+            }
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -3173,7 +3225,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 blockName,
                 cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
-                    createGardenBlock,
+                    createGardenBlock: (targetGardenId, name, variant) =>
+                        createGardenBlock(targetGardenId, name, variant),
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
                     spendSunflowers: garden.isSandbox
@@ -3189,6 +3242,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     y,
                     existingBlocks,
                 },
+                variant: appearanceVariant,
             });
             if (!purchaseResult.ok) {
                 return context.json(
@@ -3200,6 +3254,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: purchaseResult.blockId,
                 position: purchaseResult.position,
+                variant: purchaseResult.variant,
             });
         },
     )
@@ -3245,6 +3300,33 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (message !== undefined && block.name !== woodenSignBlockName) {
                 return context.json(
                     { error: 'Only wooden signs can have a message' },
+                    400,
+                );
+            }
+            if (
+                variant !== undefined &&
+                !isEntityAppearanceVariantUpdateAllowed({
+                    entityName: block.name,
+                    currentVariant: block.variant,
+                    requestedVariant: variant,
+                })
+            ) {
+                return context.json(
+                    {
+                        error: 'Boju životinje nije moguće promijeniti nakon postavljanja.',
+                    },
+                    400,
+                );
+            }
+            if (
+                rotation !== undefined &&
+                rotation !== block.rotation &&
+                block.name === 'Horse'
+            ) {
+                return context.json(
+                    {
+                        error: 'Konja nije moguće rotirati nakon postavljanja.',
+                    },
                     400,
                 );
             }

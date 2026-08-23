@@ -216,6 +216,14 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             hitboxWidth: 0.94,
         },
         {
+            name: 'Rabbit',
+            label: 'Zec',
+            height: 0.76,
+            hitboxDepth: 0.72,
+            hitboxHeight: 0.76,
+            hitboxWidth: 0.58,
+        },
+        {
             name: 'Sheep',
             label: 'Ovca',
             height: 0.64,
@@ -243,6 +251,24 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             assert.equal(home.attributes.stackable, false);
         }
     }
+});
+
+test('local sandbox exposes the placeable horse at horse scale', () => {
+    const horse = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'Horse',
+    );
+
+    assert.ok(horse);
+    assert.equal(horse.information.label, 'Konj');
+    assert.match(horse.information.fullDescription, /boju dlake/);
+    assert.equal(horse.attributes.height, 1.46);
+    assert.equal(horse.attributes.hitboxDepth, 1.86);
+    assert.equal(horse.attributes.hitboxHeight, 1.46);
+    assert.equal(horse.attributes.hitboxWidth, 0.76);
+    assert.equal(horse.attributes.placeableOnWater, false);
+    assert.equal(horse.attributes.spanDepth, 2);
+    assert.equal(horse.attributes.spanWidth, 1);
+    assert.equal(horse.attributes.stackable, false);
 });
 
 test('local sandbox exposes the connected white fence with model bounds', () => {

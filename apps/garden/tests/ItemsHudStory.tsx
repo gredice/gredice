@@ -384,12 +384,30 @@ const blockFixtures: Record<
         height: 0.86,
         stackable: false,
     },
+    Horse: {
+        label: 'Konj',
+        shortDescription:
+            'Miran vrtni konj s bojom dlake koju odabireš pri postavljanju.',
+        sunflowers: 500,
+        height: 1.46,
+        stackable: false,
+        spanDepth: 2,
+        spanWidth: 1,
+    },
     PigletPen: {
         label: 'Obor za praščića',
         shortDescription:
             'Mali obor s kaljužom koji u vrt dovodi razigranog praščića.',
         sunflowers: 500,
         height: 0.78,
+        stackable: false,
+    },
+    Rabbit: {
+        label: 'Zec',
+        shortDescription:
+            'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
+        sunflowers: 350,
+        height: 0.76,
         stackable: false,
     },
     Sheep: {
@@ -526,7 +544,9 @@ const blockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
+    'Horse',
     'PigletPen',
+    'Rabbit',
     'Sheep',
     'Bush',
     'Tree',
@@ -725,7 +745,7 @@ function HudPlacementDragStateProbe() {
     return (
         <output data-testid="hud-placement-drag-state">
             {drag
-                ? `${drag.blockName}:${drag.dropRequest ? 'drop' : 'drag'}`
+                ? `${drag.blockName}:${drag.dropRequest ? 'drop' : 'drag'}${drag.variant === undefined ? '' : `:${drag.variant.toString()}`}`
                 : 'idle'}
         </output>
     );
@@ -801,6 +821,23 @@ export function LowSunflowerBalanceItemsHudStory() {
     return (
         <ItemsHudTestProviders accountSunflowers={20}>
             <div className="relative h-screen w-screen overflow-hidden">
+                <div
+                    data-testid="bottom-hud"
+                    className={gameHudBottomBarClassName}
+                >
+                    <BottomControlsTestFrame />
+                    <ItemsHudTestFrame />
+                </div>
+            </div>
+        </ItemsHudTestProviders>
+    );
+}
+
+export function HorseItemsHudStory() {
+    return (
+        <ItemsHudTestProviders accountSunflowers={1_000}>
+            <div className="relative h-screen w-screen overflow-hidden">
+                <HudPlacementDragStateProbe />
                 <div
                     data-testid="bottom-hud"
                     className={gameHudBottomBarClassName}

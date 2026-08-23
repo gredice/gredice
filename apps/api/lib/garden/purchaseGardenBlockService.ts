@@ -1,5 +1,9 @@
 type PurchaseGardenBlockDependencies = {
-    createGardenBlock: (gardenId: number, blockName: string) => Promise<string>;
+    createGardenBlock: (
+        gardenId: number,
+        blockName: string,
+        variant: number | null,
+    ) => Promise<string>;
     createGardenStack: (
         gardenId: number,
         position: { x: number; y: number },
@@ -32,6 +36,7 @@ type PurchaseGardenBlockParams = {
     gardenId: number;
     hasTargetStack: boolean;
     placement: PurchasedBlockPlacement;
+    variant: number | null;
     dependencies: PurchaseGardenBlockDependencies;
 };
 
@@ -40,6 +45,7 @@ type PurchaseGardenBlockResult =
           ok: true;
           blockId: string;
           position: { x: number; y: number };
+          variant: number | null;
       }
     | {
           ok: false;
@@ -57,6 +63,7 @@ export async function purchaseGardenBlock(
         gardenId,
         hasTargetStack,
         placement,
+        variant,
         dependencies,
     } = params;
     const { x, y, existingBlocks } = placement;
@@ -68,7 +75,11 @@ export async function purchaseGardenBlock(
     let blockId: string | undefined;
     let didUpdateStack = false;
     try {
-        blockId = await dependencies.createGardenBlock(gardenId, blockName);
+        blockId = await dependencies.createGardenBlock(
+            gardenId,
+            blockName,
+            variant ?? null,
+        );
         await dependencies.updateGardenStack(gardenId, {
             x,
             y,
@@ -146,5 +157,6 @@ export async function purchaseGardenBlock(
         ok: true,
         blockId,
         position: { x, y },
+        variant: variant ?? null,
     };
 }

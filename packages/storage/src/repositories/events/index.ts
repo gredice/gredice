@@ -78,6 +78,7 @@ export type {
     // Generic
     Event,
     GardenBlockPlacePayload,
+    GardenBlockPlacePayloadV2,
     GardenBlockRemovePayload,
     // Garden
     GardenCreatePayload,

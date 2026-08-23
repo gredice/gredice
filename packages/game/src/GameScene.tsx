@@ -19,6 +19,7 @@ import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFa
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvatarInteractions';
+import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -33,6 +34,7 @@ import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { Frogs } from './entities/frogs/Frogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
+import { Ladybugs } from './entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -691,6 +693,17 @@ export function GameScene({
                                 )}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
+                                        <Bats
+                                            farmId={garden?.farmId}
+                                            gardenId={garden?.id}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
                                         <Cats
                                             farmId={garden?.farmId}
                                             stacks={garden?.stacks}
@@ -787,6 +800,12 @@ export function GameScene({
                                             groundDecorationDensity={
                                                 qualityProfile.groundDecorationDensity
                                             }
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Ladybugs
+                                            farmId={garden?.farmId}
+                                            garden={garden}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />

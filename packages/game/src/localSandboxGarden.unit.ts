@@ -53,12 +53,19 @@ test('persists local sandbox stacks in local storage', () => {
                             id: createLocalSandboxBlockId('Tree'),
                             name: 'Tree',
                             rotation: 2,
+                            variant: 1,
                         },
                         {
                             id: createLocalSandboxBlockId('WoodenSign'),
                             name: 'WoodenSign',
                             rotation: 0,
                             message: '  ABCDEFGHIJKL\nMNOPQRSTUVWX  ',
+                        },
+                        {
+                            id: createLocalSandboxBlockId('Horse'),
+                            name: 'Horse',
+                            rotation: 0,
+                            variant: 5,
                         },
                     ],
                 },
@@ -75,10 +82,12 @@ test('persists local sandbox stacks in local storage', () => {
         assert.equal(loadedGarden.stacks[0]?.position.z, -1);
         assert.equal(loadedGarden.stacks[0]?.blocks[0]?.name, 'Tree');
         assert.equal(loadedGarden.stacks[0]?.blocks[0]?.rotation, 2);
+        assert.equal(loadedGarden.stacks[0]?.blocks[0]?.variant, 1);
         assert.equal(
             loadedGarden.stacks[0]?.blocks[1]?.message,
             'ABCDEFGHIJKL\nMNOPQRSTUVWX',
         );
+        assert.equal(loadedGarden.stacks[0]?.blocks[2]?.variant, 5);
     });
 });
 

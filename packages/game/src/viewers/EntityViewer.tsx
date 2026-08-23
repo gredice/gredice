@@ -26,6 +26,8 @@ const position = new Vector3(0.5, 0, 0.5);
 
 export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     entityName: string;
+    /** Optional durable appearance value for entities with placement variants. */
+    appearanceVariant?: number;
     /** Optional per-placement message used by editable sign previews. */
     message?: string | null;
     appBaseUrl?: string;
@@ -46,6 +48,8 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * @default 0
      */
     rotation?: number;
+    /** Optional persisted appearance variant for deterministic previews. */
+    variant?: number;
     /**
      * Optional render quality override. When omitted the scene auto-detects the
      * quality profile. Used by snapshot generation to render at a higher dpr.
@@ -87,6 +91,7 @@ function CameraLookAt({
 export function EntityViewer({
     appBaseUrl,
     entityName,
+    appearanceVariant,
     message,
     zoom,
     itemPosition,
@@ -97,6 +102,7 @@ export function EntityViewer({
     renderDetails = true,
     showBackground,
     rotation = 0,
+    variant,
     quality,
     cameraPosition,
     cameraTarget,
@@ -122,16 +128,20 @@ export function EntityViewer({
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
-    let variant: number | undefined;
-    if (entityName === 'PineAdvent') {
-        variant = 100;
-    }
+    const resolvedVariant =
+        variant ??
+        appearanceVariant ??
+        (entityName === 'PineAdvent'
+            ? 100
+            : entityName === 'Horse'
+              ? 0
+              : undefined);
     const block: Block = {
         id: uuidv4(),
         name: entityName,
         message,
         rotation: normalizedRotation,
-        variant: variant,
+        variant: resolvedVariant,
     };
     const stack = {
         position: itemPosition
@@ -156,7 +166,7 @@ export function EntityViewer({
                 block={block}
                 noControl={noControl}
                 rotation={normalizedRotation}
-                variant={variant}
+                variant={resolvedVariant}
             />
             {!noControl && (
                 <OrbitControls

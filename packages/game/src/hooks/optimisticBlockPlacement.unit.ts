@@ -32,6 +32,10 @@ const blockData: PlacementBlockData[] = [
         information: { name: 'PotRoundedBowl' },
         attributes: { stackable: false, height: 0.2 },
     },
+    {
+        information: { name: 'Rabbit' },
+        attributes: { stackable: false, height: 0.48 },
+    },
 ];
 
 const maxSpiralSteps = 1000;
@@ -87,6 +91,19 @@ function createWaterOnlyGarden() {
 }
 
 describe('createOptimisticBlockPlacement', () => {
+    it('keeps an explicit appearance variant on the optimistic block', () => {
+        const placement = createOptimisticBlockPlacement(
+            { stacks: [] },
+            blockData,
+            'Shade',
+            'optimistic-variant',
+            { variant: 5 },
+        );
+
+        assert.ok(placement);
+        assert.equal(placement.stacks[0]?.blocks[0]?.variant, 5);
+    });
+
     it('uses the shared placement resolver for new block purchases', () => {
         const placement = createOptimisticBlockPlacement(
             {
@@ -276,6 +293,18 @@ describe('createOptimisticBlockPlacement', () => {
                 ],
             },
         ]);
+    });
+
+    it('stores the placement-time Rabbit coat on the optimistic block', () => {
+        const placement = createOptimisticBlockPlacement(
+            { stacks: [] },
+            blockData,
+            'Rabbit',
+            'optimistic-rabbit',
+            { variant: 1 },
+        );
+
+        assert.equal(placement?.stacks[0]?.blocks[0]?.variant, 1);
     });
 
     it('places a pot on top of the stackable display table', () => {

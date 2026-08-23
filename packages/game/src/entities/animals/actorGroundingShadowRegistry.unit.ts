@@ -34,7 +34,7 @@ describe('actor grounding-shadow projection', () => {
         assert.equal(resolved.z, groundedState.z);
     });
 
-    it('uses compact species footprints for chicken and piglet', () => {
+    it('uses compact species footprints for chicken, rabbit, and piglet', () => {
         const chicken = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'chicken',
@@ -43,6 +43,11 @@ describe('actor grounding-shadow projection', () => {
         const piglet = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'piglet',
+            state: groundedState,
+        });
+        const rabbit = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'rabbit',
             state: groundedState,
         });
 
@@ -56,6 +61,32 @@ describe('actor grounding-shadow projection', () => {
         );
         assert.ok(piglet.halfLength > chicken.halfLength);
         assert.ok(piglet.halfWidth > chicken.halfWidth);
+        assert.equal(
+            rabbit.halfLength,
+            actorGroundingShadowProfiles.rabbit.baseHalfLength,
+        );
+        assert.ok(rabbit.halfLength < piglet.halfLength);
+    });
+
+    it('uses a horse-scale grounding footprint', () => {
+        const horse = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'horse',
+            state: groundedState,
+        });
+
+        assert.equal(
+            horse.halfLength,
+            actorGroundingShadowProfiles.horse.baseHalfLength,
+        );
+        assert.equal(
+            horse.halfWidth,
+            actorGroundingShadowProfiles.horse.baseHalfWidth,
+        );
+        assert.ok(
+            actorGroundingShadowProfiles.horse.baseHalfLength >
+                actorGroundingShadowProfiles.dog.baseHalfLength,
+        );
     });
 
     it('grows and quadratically fades a flying actor footprint', () => {

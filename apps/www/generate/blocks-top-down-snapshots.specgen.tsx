@@ -122,6 +122,9 @@ for (const entity of entities) {
                             entity.information.name,
                         )}
                         rotation={rotation}
+                        variant={
+                            entity.information.name === 'Rabbit' ? 0 : undefined
+                        }
                         staticEnvironment
                         zoom={80 / Math.max(span.width, span.depth)}
                     />

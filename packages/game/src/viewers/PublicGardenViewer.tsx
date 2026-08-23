@@ -35,6 +35,7 @@ import { GardenVisitorAvatar } from '../entities/avatar/GardenVisitorAvatar';
 import type { GardenAvatarInteractionResult } from '../entities/avatar/gardenAvatarInteractions';
 import type { GardenAvatarPoint } from '../entities/avatar/gardenAvatarMovement';
 import type { GardenVisitorPresenceController } from '../entities/avatar/gardenVisitorPresence';
+import { Bats } from '../entities/bats/Bats';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
 import { Cats } from '../entities/cats/Cats';
@@ -46,6 +47,7 @@ import {
 } from '../entities/EntityInstances';
 import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
+import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { Slugs } from '../entities/slugs/Slugs';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
@@ -667,6 +669,17 @@ function PublicGardenScene({
                                             )}
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
+                                                    <Bats
+                                                        farmId={garden?.farmId}
+                                                        gardenId={garden?.id}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
+                                            )}
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
                                                     <Cats
                                                         farmId={garden?.farmId}
                                                         stacks={
@@ -718,6 +731,12 @@ function PublicGardenScene({
                                                             groundDecorationDensity={
                                                                 qualityProfile.groundDecorationDensity
                                                             }
+                                                        />
+                                                        <Ladybugs
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
                                                         />
                                                     </Suspense>
                                                 )}
