@@ -159,10 +159,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.55,
     },
     ladybug: {
-        baseHalfLength: 0.075,
-        baseHalfWidth: 0.052,
+        baseHalfLength: 0.0375,
+        baseHalfWidth: 0.026,
         baseOpacity: 0.2,
-        cutoffHeight: 0.7,
+        cutoffHeight: 0.35,
         maxFootprintScale: 1.5,
     },
     piglet: {
@@ -173,10 +173,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.6,
     },
     rabbit: {
-        baseHalfLength: 0.34,
-        baseHalfWidth: 0.22,
+        baseHalfLength: 0.204,
+        baseHalfWidth: 0.132,
         baseOpacity: 0.32,
-        cutoffHeight: 0.9,
+        cutoffHeight: 0.54,
         maxFootprintScale: 1.6,
     },
     sheep: {
