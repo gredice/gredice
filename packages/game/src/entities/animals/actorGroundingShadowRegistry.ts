@@ -156,10 +156,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.6,
     },
     rabbit: {
-        baseHalfLength: 0.34,
-        baseHalfWidth: 0.22,
+        baseHalfLength: 0.204,
+        baseHalfWidth: 0.132,
         baseOpacity: 0.32,
-        cutoffHeight: 0.9,
+        cutoffHeight: 0.54,
         maxFootprintScale: 1.6,
     },
     slug: {

@@ -218,10 +218,10 @@ test('local sandbox exposes animal blocks used by the item HUD', () => {
         {
             name: 'Rabbit',
             label: 'Zec',
-            height: 0.76,
-            hitboxDepth: 0.72,
-            hitboxHeight: 0.76,
-            hitboxWidth: 0.58,
+            height: 0.456,
+            hitboxDepth: 0.432,
+            hitboxHeight: 0.456,
+            hitboxWidth: 0.348,
         },
     ];
 

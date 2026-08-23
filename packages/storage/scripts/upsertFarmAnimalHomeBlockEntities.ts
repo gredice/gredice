@@ -101,9 +101,9 @@ const blockSpecs = [
             'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
         fullDescription:
             'Postavi zeca izravno u vrt. Skakutat će po sigurnom tlu, zastajati kako bi njuškao, uređivao krzno i kratko grickao travu, a pred avatarom će brzo pobjeći obilazeći prepreke.',
-        height: 0.76,
-        hitboxDepth: 0.72,
-        hitboxWidth: 0.58,
+        height: 0.456,
+        hitboxDepth: 0.432,
+        hitboxWidth: 0.348,
         sunflowers: 350,
     }),
 ] satisfies Array<{

@@ -81,7 +81,7 @@ type RabbitRig = {
     tail: RabbitRigPart;
 };
 
-const rabbitScale = 0.55;
+const rabbitScale = 0.55 * 0.6;
 const rabbitGroundLift = 0.015;
 const rabbitHopStride = 0.42;
 const rabbitRoamCandidateCount = 10;

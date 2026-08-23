@@ -65,6 +65,9 @@ describe('actor grounding-shadow projection', () => {
             rabbit.halfLength,
             actorGroundingShadowProfiles.rabbit.baseHalfLength,
         );
+        assert.equal(rabbit.halfLength, 0.204);
+        assert.equal(rabbit.halfWidth, 0.132);
+        assert.equal(actorGroundingShadowProfiles.rabbit.cutoffHeight, 0.54);
         assert.ok(rabbit.halfLength < piglet.halfLength);
     });
 
