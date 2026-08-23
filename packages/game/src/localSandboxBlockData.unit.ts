@@ -245,6 +245,24 @@ test('local sandbox exposes animal placement blocks used by the item HUD', () =>
     }
 });
 
+test('local sandbox exposes the placeable horse at horse scale', () => {
+    const horse = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'Horse',
+    );
+
+    assert.ok(horse);
+    assert.equal(horse.information.label, 'Konj');
+    assert.match(horse.information.fullDescription, /boju dlake/);
+    assert.equal(horse.attributes.height, 1.46);
+    assert.equal(horse.attributes.hitboxDepth, 1.86);
+    assert.equal(horse.attributes.hitboxHeight, 1.46);
+    assert.equal(horse.attributes.hitboxWidth, 0.76);
+    assert.equal(horse.attributes.placeableOnWater, false);
+    assert.equal(horse.attributes.spanDepth, 2);
+    assert.equal(horse.attributes.spanWidth, 1);
+    assert.equal(horse.attributes.stackable, false);
+});
+
 test('local sandbox exposes the connected white fence with model bounds', () => {
     const whiteFence = getLocalSandboxBlockData().find(
         (block) => block.information.name === 'WhiteFence',

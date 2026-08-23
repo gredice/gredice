@@ -93,11 +93,17 @@ export type HudPlacementDrag = {
     pointerId: number;
     pointerType: string;
     startedAt: number;
+    variant?: number;
 };
 
 export type HudPlacementDragStart = Pick<
     HudPlacementDrag,
-    'blockName' | 'clientX' | 'clientY' | 'pointerId' | 'pointerType'
+    | 'blockName'
+    | 'clientX'
+    | 'clientY'
+    | 'pointerId'
+    | 'pointerType'
+    | 'variant'
 >;
 
 export type HudPlacementPointerUpdate = Pick<

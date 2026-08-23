@@ -68,6 +68,27 @@ describe('actor grounding-shadow projection', () => {
         assert.ok(goat.halfLength > piglet.halfLength);
     });
 
+    it('uses a horse-scale grounding footprint', () => {
+        const horse = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'horse',
+            state: groundedState,
+        });
+
+        assert.equal(
+            horse.halfLength,
+            actorGroundingShadowProfiles.horse.baseHalfLength,
+        );
+        assert.equal(
+            horse.halfWidth,
+            actorGroundingShadowProfiles.horse.baseHalfWidth,
+        );
+        assert.ok(
+            actorGroundingShadowProfiles.horse.baseHalfLength >
+                actorGroundingShadowProfiles.dog.baseHalfLength,
+        );
+    });
+
     it('grows and quadratically fades a flying actor footprint', () => {
         const profile = actorGroundingShadowProfiles.bird;
         const resolved = resolveActorGroundingShadow({

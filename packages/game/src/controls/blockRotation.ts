@@ -1,4 +1,8 @@
-const rotationLockedBlockNames = new Set(['FishingBoat', 'Raised_Bed']);
+const rotationLockedBlockNames = new Set([
+    'FishingBoat',
+    'Horse',
+    'Raised_Bed',
+]);
 
 export function canRotatePlacedBlock(blockName: string) {
     return !rotationLockedBlockNames.has(blockName);

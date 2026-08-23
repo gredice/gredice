@@ -40,7 +40,11 @@ def parse_args() -> argparse.Namespace:
 def reset_scene(asset_name: str) -> None:
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE"
+    scene.render.engine = (
+        "BLENDER_EEVEE"
+        if bpy.app.version >= (5, 0, 0)
+        else "BLENDER_EEVEE_NEXT"
+    )
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1
     scene.world = bpy.data.worlds.new("Gredice World")

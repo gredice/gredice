@@ -10,6 +10,7 @@ import { useStackHeight } from '../utils/getStackHeight';
 import { areEntityFactoryPropsEqual } from './entityFactoryMemo';
 import { entityNameMap } from './entityNameMap';
 import { QueuedPlacementDropAnimation } from './helpers/PlacementDropAnimation';
+import { isEnvironmentAnimalEntityName } from './ladybugs/environmentAnimalPolicy';
 import { UnknownEntityPlaceholder } from './UnknownEntityPlaceholder';
 
 export type EntityFactoryProps = {
@@ -102,8 +103,13 @@ function EntityFactoryComponent({
     noRenderInView,
     ...rest
 }: EntityFactoryComponentProps) {
-    const EntityComponent = entityComponents[name];
     const view = useGameState((state) => state.view);
+
+    if (isEnvironmentAnimalEntityName(name)) {
+        return null;
+    }
+
+    const EntityComponent = entityComponents[name];
     const isInstancedInView = noRenderInView?.includes(name) ?? false;
 
     if (isInstancedInView) {
