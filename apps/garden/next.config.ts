@@ -75,9 +75,15 @@ const nextConfig: NextConfig = {
         const isDev =
             process.env.NODE_ENV === 'development' ||
             process.env.NEXT_PUBLIC_VERCEL_ENV === 'development';
-        const apiHost = isDev
-            ? localAppHostnameUrl(apiApp, 'localhost', getAppDevPort(apiApp))
-            : 'https://api.gredice.com';
+        const apiHost =
+            process.env.GREDICE_API_HOST ??
+            (isDev
+                ? localAppHostnameUrl(
+                      apiApp,
+                      'localhost',
+                      getAppDevPort(apiApp),
+                  )
+                : 'https://api.gredice.com');
 
         return [
             {

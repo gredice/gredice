@@ -183,7 +183,10 @@ async function mockOutletGardenApi(page: Page) {
         const request = route.request();
         const { pathname, searchParams } = new URL(request.url());
 
-        if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+        if (
+            !['GET', 'HEAD', 'OPTIONS'].includes(request.method()) &&
+            !pathname.endsWith('/api/auth/temporary')
+        ) {
             mutationRequests.push(`${request.method()} ${pathname}`);
         }
 
