@@ -36,7 +36,7 @@ export const alliumPlants = {
             },
             phenology: { maturityGeneration: 10 },
             storage: {
-                aboveSoilFraction: 0.34,
+                aboveSoilFraction: 0.4,
                 birthGeneration: 1.5,
                 matureGeneration: 10,
                 sizeScale: 1,
@@ -62,7 +62,7 @@ export const alliumPlants = {
             },
             phenology: { maturityGeneration: 10 },
             storage: {
-                aboveSoilFraction: 0.16,
+                aboveSoilFraction: 0.28,
                 birthGeneration: 1.5,
                 matureGeneration: 10,
                 sizeScale: 1,

@@ -12,7 +12,7 @@ const cucurbitAppearance = {
     leaf: {
         color: '#567f2a',
         size: 0.38,
-        type: 'heart',
+        type: 'palmate',
     },
     flower: {
         enabled: true,

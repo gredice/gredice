@@ -1,4 +1,5 @@
 import { test } from '@playwright/experimental-ct-react';
+import type { Locator } from '@playwright/test';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
 import sharp from 'sharp';
 import { MAX_PLANT_GENERATION } from '../../../packages/game/src/generators/plant/lib/plant-definition-types';
@@ -39,6 +40,22 @@ const snapshotOutputSize = 320;
 const snapshotContentSize = 256;
 const snapshotPadding = (snapshotOutputSize - snapshotContentSize) / 2;
 const transparent = { r: 0, g: 0, b: 0, alpha: 0 };
+
+async function captureTransparentCanvas(canvas: Locator) {
+    const dataUrl = await canvas.evaluate((element) => {
+        if (!(element instanceof HTMLCanvasElement)) {
+            throw new TypeError('Plant snapshot expected a canvas element');
+        }
+
+        return element.toDataURL('image/png');
+    });
+    const encoded = dataUrl.split(',')[1];
+    if (!encoded) {
+        throw new Error('Plant snapshot canvas did not return PNG data');
+    }
+
+    return Buffer.from(encoded, 'base64');
+}
 
 async function writePlantSnapshot(snapshot: Buffer, path: string) {
     await sharp(snapshot)
@@ -122,10 +139,14 @@ test.describe('plant screenshots', () => {
                         >
                             <style>
                                 {`
+                                    html, body, #root {
+                                        background: transparent !important;
+                                    }
                                     .plant-snapshot-canvas {
                                         display: block;
                                         width: ${snapshotRenderSize}px;
                                         height: ${snapshotRenderSize}px;
+                                        background: transparent;
                                     }
                                 `}
                             </style>
@@ -144,14 +165,12 @@ test.describe('plant screenshots', () => {
                     </NuqsTestingAdapter>,
                 );
 
-                await page.locator('canvas').waitFor({ state: 'visible' });
+                const canvas = component.locator('canvas').first();
+                await canvas.waitFor({ state: 'visible' });
                 await page.waitForLoadState('networkidle');
                 await page.waitForTimeout(750);
 
-                const snapshot = await component.screenshot({
-                    omitBackground: true,
-                    animations: 'disabled',
-                });
+                const snapshot = await captureTransparentCanvas(canvas);
                 await writePlantSnapshot(
                     snapshot,
                     `./public/assets/plants/${plantType}_${stage.name}.png`,
