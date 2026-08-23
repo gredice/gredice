@@ -66,7 +66,7 @@ function placeBlock(
     }
 
     stack.blocks.push({
-        id: `animal-debug:${animalDebugStorageVersion}:${name}:${x}:${z}`,
+        id: `animal-debug:${animalDebugStorageVersion}:${name}:${x}:${z}:${stack.blocks.length}`,
         name,
         rotation,
         variant,
@@ -77,7 +77,11 @@ function replaceGround(
     stacks: Map<string, StoredSandboxStack>,
     x: number,
     z: number,
-    name: 'Block_Dry_Ground' | 'Block_Sand' | 'Block_Water',
+    name:
+        | 'Block_Dry_Ground'
+        | 'Block_Sand'
+        | 'Block_Swamp_Ground'
+        | 'Block_Water',
 ) {
     const stack = stacks.get(stackKey(x, z));
     const ground = stack?.blocks[0];
@@ -244,6 +248,35 @@ function createBeeStacks() {
     return serializeStacks(stacks);
 }
 
+function createFrogWetlandStacks() {
+    const stacks = createGroundStacks({
+        minX: -5,
+        maxX: 5,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    for (let x = -4; x <= 3; x += 1) {
+        for (let z = -3; z <= 3; z += 1) {
+            replaceGround(stacks, x, z, 'Block_Swamp_Ground');
+        }
+    }
+
+    for (let x = -2; x <= 1; x += 1) {
+        for (let z = -2; z <= 1; z += 1) {
+            placeBlock(stacks, x, z, 'Block_Swamp_Water');
+        }
+    }
+
+    // One deliberately deep water cell and two blockers make invalid routing
+    // visible from the normal game camera.
+    placeBlock(stacks, -1, -1, 'Block_Swamp_Water');
+    placeBlock(stacks, 2, -1, 'GardenBox');
+    placeBlock(stacks, 2, 0, 'Composter');
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -397,6 +430,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Bees
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createFrogWetlandStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Frog wetland
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
