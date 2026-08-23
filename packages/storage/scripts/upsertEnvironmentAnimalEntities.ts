@@ -23,6 +23,8 @@ import {
 } from '../src';
 import {
     batEnvironmentAnimal,
+    butterflyEnvironmentAnimal,
+    butterflyEnvironmentAnimalAttributeSpecs,
     environmentAnimalEntityTypeName,
     ladybugEnvironmentAnimal,
 } from '../src/data/environmentAnimalDirectory';
@@ -72,6 +74,7 @@ const attributeCategories = [
     { label: 'Pojavljivanje', name: 'spawn', order: 'e' },
     { label: 'Ponašanje', name: 'behavior', order: 'f' },
     { label: 'Model', name: 'model', order: 'g' },
+    { label: 'Izgled', name: 'appearance', order: 'h' },
     { label: 'Slika', name: 'image', order: 'z' },
 ] as const;
 
@@ -276,6 +279,7 @@ const attributeSpecs: AttributeSpec[] = [
         order: 'de',
         required: true,
     },
+    ...butterflyEnvironmentAnimalAttributeSpecs,
     {
         category: 'habitat',
         dataType: 'number',
@@ -400,6 +404,7 @@ const environmentAnimals: EnvironmentAnimalRecord[] = [
     { attributes: frogAttributes, name: 'Frog' },
     batEnvironmentAnimal,
     ladybugEnvironmentAnimal,
+    butterflyEnvironmentAnimal,
 ];
 
 const obsoleteAttributePaths = new Set(['commerce.purchasable', 'spawn.mode']);
