@@ -45,6 +45,7 @@ import {
     instancedBlockNames,
 } from '../entities/EntityInstances';
 import { Chickens, Piglets } from '../entities/farmAnimals/FarmAnimals';
+import { Frogs } from '../entities/frogs/Frogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
@@ -648,6 +649,16 @@ function PublicGardenScene({
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Birds
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
+                                            )}
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
+                                                    <Frogs
+                                                        gardenId={garden?.id}
                                                         stacks={
                                                             normalizedStacks
                                                         }

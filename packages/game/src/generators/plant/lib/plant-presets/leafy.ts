@@ -78,6 +78,7 @@ export const leafyPlants = {
             ...leafyBase.stem,
             color: '#6f9154',
             radius: 0.022,
+            minRadius: 0.006,
         },
         leaf: {
             ...leafyBase.leaf,

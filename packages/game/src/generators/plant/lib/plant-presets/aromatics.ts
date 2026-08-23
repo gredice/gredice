@@ -46,11 +46,11 @@ export const aromaticPlants = {
             color: '#7aa24d',
             radius: 0.018,
             radiusDecay: 0.55,
-            minRadius: 0.003,
+            minRadius: 0.006,
         },
         leaf: {
             color: '#92b95d',
-            size: 0.12,
+            size: 0.14,
             type: 'feathery',
         },
         flower: {

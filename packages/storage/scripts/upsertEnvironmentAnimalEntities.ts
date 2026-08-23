@@ -1,5 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import {
+    attributeDefinitionCategories,
+    attributeDefinitions,
     attributeValues,
     closeStorage,
     createAttributeDefinition,
@@ -17,51 +19,64 @@ import {
     updateEntity,
     upsertAttributeValue,
     upsertEntityType,
+    upsertEntityTypeCategory,
 } from '../src';
 import {
     environmentAnimalEntityTypeName,
     ladybugEnvironmentAnimal,
 } from '../src/data/environmentAnimalDirectory';
+import { assertEnvironmentAnimalDevelopmentDatabase } from './environmentAnimalDatabaseGuard';
 
-type AttributeConfig = {
+type AttributeSpec = {
     category: string;
     dataType: string;
-    display?: boolean;
+    display: boolean;
     label: string;
     name: string;
     order: string;
-    required?: boolean;
+    required: boolean;
     unit?: string;
 };
 
-type ApplyEnvironment = 'development' | 'preview' | 'production' | 'staging';
+type EnvironmentAnimalRecord = {
+    attributes: Readonly<Record<string, string>>;
+    name: string;
+};
 
 const actor = {
-    id: 'codex',
+    id: 'environment-animal-directory-upsert',
     name: 'Environment animal directory upsert',
 };
 
-const entityTypeConfig = {
-    icon: 'Bug',
-    isRoot: true,
-    label: 'Životinja iz okoliša',
-    name: environmentAnimalEntityTypeName,
-    order: 'la',
+const entityTypeCategory = {
+    icon: 'leaf',
+    label: 'Vrt i okoliš',
+    name: 'garden-environment',
+    order: 'w',
 };
 
-const categoryConfigs = [
-    { name: 'information', label: 'Informacije', order: 'a' },
-    { name: 'habitat', label: 'Pojavljivanje', order: 'b' },
-    { name: 'behavior', label: 'Ponašanje', order: 'c' },
-    { name: 'image', label: 'Slika', order: 'z' },
+const entityType = {
+    icon: 'frog',
+    isRoot: true,
+    label: 'Životinje okoliša',
+    name: environmentAnimalEntityTypeName,
+    order: 'a',
+};
+
+const attributeCategories = [
+    { label: 'Informacije', name: 'information', order: 'a' },
+    { label: 'Stanište', name: 'habitat', order: 'b' },
+    { label: 'Pojavljivanje', name: 'spawn', order: 'c' },
+    { label: 'Ponašanje', name: 'behavior', order: 'd' },
+    { label: 'Slika', name: 'image', order: 'z' },
 ] as const;
 
-const attributeConfigs: AttributeConfig[] = [
+const attributeSpecs: AttributeSpec[] = [
     {
         category: 'information',
         dataType: 'text',
         display: true,
-        label: 'Sistemski naziv',
+        label: 'Naziv',
         name: 'name',
         order: 'aa',
         required: true,
@@ -70,7 +85,7 @@ const attributeConfigs: AttributeConfig[] = [
         category: 'information',
         dataType: 'text',
         display: true,
-        label: 'Naziv',
+        label: 'Javni naziv',
         name: 'label',
         order: 'ab',
         required: true,
@@ -87,6 +102,7 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'information',
         dataType: 'markdown',
+        display: false,
         label: 'Opis',
         name: 'fullDescription',
         order: 'ad',
@@ -104,7 +120,7 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'habitat',
         dataType: 'text',
-        display: true,
+        display: false,
         label: 'Prikladne biljke',
         name: 'hosts',
         order: 'bb',
@@ -113,6 +129,7 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'habitat',
         dataType: 'number',
+        display: false,
         label: 'Najniža temperatura',
         name: 'minimumTemperature',
         order: 'bc',
@@ -122,6 +139,7 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'habitat',
         dataType: 'number',
+        display: false,
         label: 'Najviša temperatura',
         name: 'maximumTemperature',
         order: 'bd',
@@ -131,6 +149,7 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'habitat',
         dataType: 'text',
+        display: false,
         label: 'Dio dana',
         name: 'timeOfDay',
         order: 'be',
@@ -139,9 +158,73 @@ const attributeConfigs: AttributeConfig[] = [
     {
         category: 'habitat',
         dataType: 'text',
+        display: false,
         label: 'Trajanje pojave',
         name: 'persistence',
         order: 'bf',
+        required: true,
+    },
+    {
+        category: 'habitat',
+        dataType: 'text',
+        display: true,
+        label: 'Uvjet staništa',
+        name: 'eligibility',
+        order: 'bg',
+        required: true,
+    },
+    {
+        category: 'habitat',
+        dataType: 'text',
+        display: false,
+        label: 'Dopušteni tereni',
+        name: 'allowedTerrain',
+        order: 'bh',
+        required: true,
+    },
+    {
+        category: 'habitat',
+        dataType: 'number',
+        display: false,
+        label: 'Najveća dubina vode',
+        name: 'maxWaterDepth',
+        order: 'bi',
+        required: true,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najveća populacija',
+        name: 'maxPopulation',
+        order: 'ca',
+        required: true,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najveća populacija po staništu',
+        name: 'maxPopulationPerHabitat',
+        order: 'cb',
+        required: true,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najkraća stanka pojavljivanja',
+        name: 'cooldownMinSeconds',
+        order: 'cc',
+        required: true,
+    },
+    {
+        category: 'spawn',
+        dataType: 'number',
+        display: false,
+        label: 'Najduža stanka pojavljivanja',
+        name: 'cooldownMaxSeconds',
+        order: 'cd',
         required: true,
     },
     {
@@ -150,7 +233,7 @@ const attributeConfigs: AttributeConfig[] = [
         display: true,
         label: 'Kretanje',
         name: 'movement',
-        order: 'ca',
+        order: 'da',
         required: true,
     },
     {
@@ -159,7 +242,7 @@ const attributeConfigs: AttributeConfig[] = [
         display: true,
         label: 'Utjecaj na usjev',
         name: 'cropImpact',
-        order: 'cb',
+        order: 'db',
         required: true,
     },
     {
@@ -168,7 +251,25 @@ const attributeConfigs: AttributeConfig[] = [
         display: true,
         label: 'Može se kupiti',
         name: 'purchasable',
-        order: 'cc',
+        order: 'dc',
+        required: true,
+    },
+    {
+        category: 'behavior',
+        dataType: 'text',
+        display: false,
+        label: 'Animacijska stanja',
+        name: 'animationStates',
+        order: 'dd',
+        required: true,
+    },
+    {
+        category: 'behavior',
+        dataType: 'text',
+        display: false,
+        label: 'Reakcija na lika',
+        name: 'avatarReaction',
+        order: 'de',
         required: true,
     },
     {
@@ -178,13 +279,49 @@ const attributeConfigs: AttributeConfig[] = [
         label: 'Slika',
         name: 'cover',
         order: 'za',
+        required: false,
     },
 ];
 
+const frogAttributes = {
+    'behavior.animationStates': 'Frog_Idle,Frog_Blink,Frog_Hop,Frog_Croak',
+    'behavior.avatarReaction': 'quick-safe-hop-away',
+    'behavior.cropImpact': 'neutralan-koristan',
+    'behavior.movement':
+        'Čuči i mirno diše, povremeno trepće ili zakrekeće. Kreće se lukovima skoka uz pripremu i doskok, prednost daje plitkoj vodi te brzo i sigurno odskače od lika bez prolaska kroz prepreke.',
+    'behavior.purchasable': 'false',
+    'habitat.allowedTerrain':
+        'Block_Swamp_Ground,Block_Swamp_Ground_Angle,Block_Swamp_Water',
+    'habitat.eligibility': 'swamp-wetland',
+    'habitat.hosts': 'Nije vezana uz određenu biljku.',
+    'habitat.maximumTemperature': '32',
+    'habitat.maxWaterDepth': '1.35',
+    'habitat.minimumTemperature': '5',
+    'habitat.persistence': 'Dok postoji povezano prikladno močvarno stanište.',
+    'habitat.spawnMode': 'environment',
+    'habitat.timeOfDay': 'jutro,dan,večer,noć',
+    'information.fullDescription':
+        'Žaba je samonikla životinja močvarnog dijela vrta. Miruje u čučnju, diše i trepće, povremeno napuše grlo i zakrekeće te skače između sigurnih vlažnih mjesta i plitke vode. Ako joj se lik previše približi, brzo će odskočiti na prohodno mjesto. Ne može se kupiti ni odabrati među ljubimcima.',
+    'information.label': 'Žaba',
+    'information.name': 'Frog',
+    'information.shortDescription':
+        'Samosvojna močvarna žaba koja voli plitku vodu i sigurno odskače od prolaznika.',
+    'spawn.cooldownMaxSeconds': '32',
+    'spawn.cooldownMinSeconds': '18',
+    'spawn.maxPopulation': '3',
+    'spawn.maxPopulationPerHabitat': '2',
+} satisfies Record<string, string>;
+
+const environmentAnimals: EnvironmentAnimalRecord[] = [
+    { attributes: frogAttributes, name: 'Frog' },
+    ladybugEnvironmentAnimal,
+];
+
+const obsoleteAttributePaths = new Set(['commerce.purchasable', 'spawn.mode']);
+
 function parseOptions(argv: string[]) {
     let apply = false;
-    let allowProduction = false;
-    let environment: ApplyEnvironment | null = null;
+    let environment: string | null = null;
 
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
@@ -193,42 +330,24 @@ function parseOptions(argv: string[]) {
             apply = true;
             continue;
         }
-        if (argument === '--allow-production') {
-            allowProduction = true;
-            continue;
-        }
         if (argument === '--environment') {
-            const value = argv[index + 1];
-            if (
-                value !== 'development' &&
-                value !== 'preview' &&
-                value !== 'production' &&
-                value !== 'staging'
-            ) {
-                throw new Error(
-                    '--environment requires development, preview, staging, or production.',
-                );
-            }
-            environment = value;
+            environment = argv[index + 1] ?? null;
             index += 1;
             continue;
         }
         throw new Error(`Unknown argument: ${argument}`);
     }
 
-    if (apply && !environment) {
-        throw new Error('--apply requires an explicit --environment.');
-    }
-    if (environment === 'production' && !allowProduction) {
+    if (apply && environment !== 'development') {
         throw new Error(
-            'Production writes require the additional --allow-production guard.',
+            'Writes are allowed only with --apply --environment development. This helper intentionally has no production write mode.',
         );
     }
-    if (allowProduction && environment !== 'production') {
-        throw new Error('--allow-production is only valid for production.');
+    if (environment && environment !== 'development') {
+        throw new Error(`Unsupported environment: ${environment}`);
     }
 
-    return { allowProduction, apply, environment };
+    return { apply, environment };
 }
 
 function attributePath(
@@ -246,7 +365,109 @@ function configChanged(
     );
 }
 
-async function findEnvironmentAnimal(nameDefinitionId: number) {
+async function ensureStructure() {
+    let category = (await getEntityTypeCategories()).find(
+        (candidate) => candidate.name === entityTypeCategory.name,
+    );
+    if (!category) {
+        await upsertEntityTypeCategory(entityTypeCategory);
+        category = (await getEntityTypeCategories()).find(
+            (candidate) => candidate.name === entityTypeCategory.name,
+        );
+    } else if (configChanged(category, entityTypeCategory)) {
+        await upsertEntityTypeCategory({
+            id: category.id,
+            ...entityTypeCategory,
+            isDeleted: false,
+        });
+    }
+    if (!category) {
+        throw new Error('Failed to upsert garden environment category.');
+    }
+
+    const currentType = await getEntityTypeByName(entityType.name);
+    const expectedType = { ...entityType, categoryId: category.id };
+    if (!currentType || configChanged(currentType, expectedType)) {
+        await upsertEntityType(
+            currentType
+                ? { id: currentType.id, ...expectedType, isDeleted: false }
+                : expectedType,
+        );
+    }
+
+    const existingCategories = await getAttributeDefinitionCategories(
+        entityType.name,
+    );
+    for (const expected of attributeCategories) {
+        const current = existingCategories.find(
+            (candidate) => candidate.name === expected.name,
+        );
+        const values = { ...expected, entityTypeName: entityType.name };
+        if (!current) {
+            await createAttributeDefinitionCategory(values);
+        } else if (configChanged(current, values)) {
+            await updateAttributeDefinitionCategory({
+                id: current.id,
+                ...values,
+            });
+        }
+    }
+
+    const existingDefinitions = await getAttributeDefinitions(entityType.name);
+    for (const expected of attributeSpecs) {
+        const current = existingDefinitions.find(
+            (candidate) => attributePath(candidate) === attributePath(expected),
+        );
+        const values = {
+            ...expected,
+            entityTypeName: entityType.name,
+            multiple: false,
+        };
+        if (!current) {
+            await createAttributeDefinition(values);
+        } else if (configChanged(current, values)) {
+            await updateAttributeDefinition({
+                id: current.id,
+                ...values,
+            });
+        }
+    }
+}
+
+async function retireObsoleteDefinitions() {
+    const definitions = await storage().query.attributeDefinitions.findMany({
+        where: and(
+            eq(attributeDefinitions.entityTypeName, entityType.name),
+            eq(attributeDefinitions.isDeleted, false),
+        ),
+    });
+    for (const definition of definitions) {
+        if (!obsoleteAttributePaths.has(attributePath(definition))) continue;
+        await storage()
+            .update(attributeValues)
+            .set({ isDeleted: true })
+            .where(eq(attributeValues.attributeDefinitionId, definition.id));
+        await storage()
+            .update(attributeDefinitions)
+            .set({ isDeleted: true })
+            .where(eq(attributeDefinitions.id, definition.id));
+    }
+
+    await storage()
+        .update(attributeDefinitionCategories)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(
+                    attributeDefinitionCategories.entityTypeName,
+                    entityType.name,
+                ),
+                eq(attributeDefinitionCategories.name, 'commerce'),
+            ),
+        );
+}
+
+async function findEnvironmentAnimal(nameDefinitionId: number, name: string) {
     const matches = await storage()
         .select({
             id: entities.id,
@@ -257,22 +478,21 @@ async function findEnvironmentAnimal(nameDefinitionId: number) {
         .innerJoin(attributeValues, eq(attributeValues.entityId, entities.id))
         .where(
             and(
-                eq(entities.entityTypeName, environmentAnimalEntityTypeName),
+                eq(entities.entityTypeName, entityType.name),
                 eq(entities.isDeleted, false),
-                eq(attributeValues.isDeleted, false),
                 eq(attributeValues.attributeDefinitionId, nameDefinitionId),
-                eq(attributeValues.value, ladybugEnvironmentAnimal.name),
+                eq(attributeValues.value, name),
+                eq(attributeValues.isDeleted, false),
             ),
         )
         .limit(2);
-
     if (matches.length > 1) {
-        throw new Error('Multiple active Ladybug environment animals found.');
+        throw new Error(`Multiple active ${name} environment animals found.`);
     }
     return matches[0] ?? null;
 }
 
-async function getStoredValue(entityId: number, definitionId: number) {
+function findAttributeValue(entityId: number, definitionId: number) {
     return storage().query.attributeValues.findFirst({
         where: and(
             eq(attributeValues.entityId, entityId),
@@ -282,231 +502,188 @@ async function getStoredValue(entityId: number, definitionId: number) {
     });
 }
 
-async function ensureStructure(apply: boolean) {
-    const contentCategory = (await getEntityTypeCategories()).find(
-        (category) => category.name === 'content',
-    );
-    if (!contentCategory) {
-        throw new Error('Missing content entity-type category.');
+async function inspectAnimal(
+    animal: EnvironmentAnimalRecord,
+    definitionsByPath: Map<string, SelectAttributeDefinition>,
+) {
+    const nameDefinition = definitionsByPath.get('information.name');
+    const entity = nameDefinition
+        ? await findEnvironmentAnimal(nameDefinition.id, animal.name)
+        : null;
+    const changedAttributes: string[] = [];
+    for (const [path, expected] of Object.entries(animal.attributes)) {
+        const definition = definitionsByPath.get(path);
+        const current =
+            entity && definition
+                ? await findAttributeValue(entity.id, definition.id)
+                : null;
+        if (current?.value !== expected) changedAttributes.push(path);
     }
 
-    let entityType = await getEntityTypeByName(environmentAnimalEntityTypeName);
-    const expectedEntityType = {
-        ...entityTypeConfig,
-        categoryId: contentCategory.id,
+    return {
+        action: !entity
+            ? 'create'
+            : changedAttributes.length > 0 ||
+                entity.state !== 'published' ||
+                !entity.publishedAt
+              ? 'update'
+              : 'unchanged',
+        changedAttributes,
+        entityId: entity?.id ?? null,
+        name: animal.name,
     };
-    const entityTypeAction = !entityType
-        ? 'create'
-        : configChanged(entityType, expectedEntityType)
-          ? 'update'
-          : 'unchanged';
-
-    if (apply && entityTypeAction !== 'unchanged') {
-        await upsertEntityType(
-            entityType
-                ? { id: entityType.id, ...expectedEntityType }
-                : expectedEntityType,
-        );
-        entityType = await getEntityTypeByName(environmentAnimalEntityTypeName);
-    }
-    if (apply && !entityType) {
-        throw new Error('Failed to upsert environmentAnimal entity type.');
-    }
-
-    const existingCategories = entityType
-        ? await getAttributeDefinitionCategories(
-              environmentAnimalEntityTypeName,
-          )
-        : [];
-    const categoryActions: Record<string, string> = {};
-    for (const config of categoryConfigs) {
-        const current = existingCategories.find(
-            (category) => category.name === config.name,
-        );
-        const expected = {
-            ...config,
-            entityTypeName: environmentAnimalEntityTypeName,
-        };
-        const action = !current
-            ? 'create'
-            : configChanged(current, expected)
-              ? 'update'
-              : 'unchanged';
-        categoryActions[config.name] = action;
-        if (!apply || action === 'unchanged') continue;
-        if (current) {
-            await updateAttributeDefinitionCategory({
-                id: current.id,
-                ...expected,
-            });
-        } else {
-            await createAttributeDefinitionCategory(expected);
-        }
-    }
-
-    const existingDefinitions = entityType
-        ? await getAttributeDefinitions(environmentAnimalEntityTypeName)
-        : [];
-    const definitionActions: Record<string, string> = {};
-    for (const config of attributeConfigs) {
-        const path = attributePath(config);
-        const current = existingDefinitions.find(
-            (definition) => attributePath(definition) === path,
-        );
-        const expected = {
-            ...config,
-            entityTypeName: environmentAnimalEntityTypeName,
-        };
-        const action = !current
-            ? 'create'
-            : configChanged(current, expected)
-              ? 'update'
-              : 'unchanged';
-        definitionActions[path] = action;
-        if (!apply || action === 'unchanged') continue;
-        if (current) {
-            await updateAttributeDefinition({ id: current.id, ...expected });
-        } else {
-            await createAttributeDefinition(expected);
-        }
-    }
-
-    return { categoryActions, definitionActions, entityTypeAction };
 }
 
-async function main() {
-    const options = parseOptions(process.argv.slice(2));
-    const structure = await ensureStructure(options.apply);
-    const definitions = await getAttributeDefinitions(
-        environmentAnimalEntityTypeName,
-    );
+async function dryRun() {
+    const definitions = await getAttributeDefinitions(entityType.name);
     const definitionsByPath = new Map(
         definitions.map((definition) => [
             attributePath(definition),
             definition,
         ]),
     );
-    const nameDefinition = definitionsByPath.get('information.name');
-    let entity = nameDefinition
-        ? await findEnvironmentAnimal(nameDefinition.id)
-        : null;
-    let entityId = entity?.id ?? null;
-    const changedAttributes: string[] = [];
-
-    for (const [path, expectedValue] of Object.entries(
-        ladybugEnvironmentAnimal.attributes,
-    )) {
-        const definition = definitionsByPath.get(path);
-        const existingValue =
-            entityId && definition
-                ? await getStoredValue(entityId, definition.id)
-                : null;
-        if (existingValue?.value !== expectedValue) {
-            changedAttributes.push(path);
-        }
+    const animals = [];
+    for (const animal of environmentAnimals) {
+        animals.push(await inspectAnimal(animal, definitionsByPath));
     }
 
-    const publish =
-        entity?.state !== 'published' || entity?.publishedAt === null;
-    const entityAction = !entity
-        ? 'create'
-        : changedAttributes.length > 0 || publish
-          ? 'update'
-          : 'unchanged';
-
-    if (options.apply) {
-        const missingDefinitions = Object.keys(
-            ladybugEnvironmentAnimal.attributes,
-        ).filter((path) => !definitionsByPath.has(path));
-        if (missingDefinitions.length > 0 || !nameDefinition) {
-            throw new Error(
-                `Missing environmentAnimal definitions: ${missingDefinitions.join(', ')}`,
-            );
-        }
-        if (!entityId) {
-            entityId = await createEntity(
-                environmentAnimalEntityTypeName,
-                actor,
-            );
-        }
-
-        const orderedEntries = Object.entries(
-            ladybugEnvironmentAnimal.attributes,
-        ).sort(([left], [right]) =>
-            left === 'information.name'
-                ? -1
-                : right === 'information.name'
-                  ? 1
-                  : left.localeCompare(right),
-        );
-        for (const [path, expectedValue] of orderedEntries) {
-            const definition = definitionsByPath.get(path);
-            if (!definition) throw new Error(`Missing ${path}.`);
-            const current = await getStoredValue(entityId, definition.id);
-            if (current?.value === expectedValue) continue;
-            await upsertAttributeValue(
-                {
-                    id: current?.id,
-                    attributeDefinitionId: definition.id,
-                    entityId,
-                    entityTypeName: environmentAnimalEntityTypeName,
-                    order: definition.order,
-                    value: expectedValue,
-                },
-                actor,
-            );
-        }
-        if (publish) {
-            await updateEntity({ id: entityId, state: 'published' }, actor);
-        }
-
-        entity = await findEnvironmentAnimal(nameDefinition.id);
-        if (
-            !entity ||
-            entity.id !== entityId ||
-            entity.state !== 'published' ||
-            entity.publishedAt === null
-        ) {
-            throw new Error('Ladybug directory readback failed to publish.');
-        }
-        for (const [path, expectedValue] of Object.entries(
-            ladybugEnvironmentAnimal.attributes,
-        )) {
-            const definition = definitionsByPath.get(path);
-            if (!definition) throw new Error(`Missing ${path} in readback.`);
-            const stored = await getStoredValue(entity.id, definition.id);
-            if (stored?.value !== expectedValue) {
-                throw new Error(`Ladybug readback mismatch for ${path}.`);
-            }
-        }
-    }
-
-    const databaseUrl = new URL(
-        process.env.POSTGRES_URL ?? 'postgres://missing',
-    );
     console.log(
         JSON.stringify(
             {
-                database: {
-                    database: databaseUrl.pathname.slice(1),
-                    hostname: databaseUrl.hostname,
-                },
-                entity: {
-                    action: entityAction,
-                    changedAttributes,
-                    id: entityId,
-                    published:
-                        entity?.state === 'published' &&
-                        entity.publishedAt !== null,
-                },
-                environment: options.environment,
-                mode: options.apply ? 'apply' : 'dry-run',
-                structure,
+                animals,
+                entityTypeExists: Boolean(
+                    await getEntityTypeByName(entityType.name),
+                ),
+                missingAttributeDefinitions: attributeSpecs
+                    .map(attributePath)
+                    .filter((path) => !definitionsByPath.has(path)),
+                mode: 'dry-run',
+                target: 'development-only environment animals',
             },
             null,
             2,
         ),
     );
+}
+
+async function applyAnimal(
+    animal: EnvironmentAnimalRecord,
+    definitionsByPath: Map<string, SelectAttributeDefinition>,
+) {
+    const missingDefinitions = Object.keys(animal.attributes).filter(
+        (path) => !definitionsByPath.has(path),
+    );
+    const nameDefinition = definitionsByPath.get('information.name');
+    if (!nameDefinition || missingDefinitions.length > 0) {
+        throw new Error(
+            `Missing ${animal.name} definitions: ${missingDefinitions.join(', ')}`,
+        );
+    }
+
+    let entity = await findEnvironmentAnimal(nameDefinition.id, animal.name);
+    const created = !entity;
+    const entityId = entity?.id ?? (await createEntity(entityType.name, actor));
+    let changedAttributeCount = 0;
+
+    const entries = Object.entries(animal.attributes).sort(([left], [right]) =>
+        left === 'information.name'
+            ? -1
+            : right === 'information.name'
+              ? 1
+              : left.localeCompare(right),
+    );
+    for (const [path, expected] of entries) {
+        const definition = definitionsByPath.get(path);
+        if (!definition) throw new Error(`Missing ${path} after upsert.`);
+        const current = await findAttributeValue(entityId, definition.id);
+        if (current?.value === expected) continue;
+        await upsertAttributeValue(
+            {
+                attributeDefinitionId: definition.id,
+                entityId,
+                entityTypeName: entityType.name,
+                id: current?.id,
+                order: definition.order,
+                value: expected,
+            },
+            actor,
+        );
+        changedAttributeCount += 1;
+    }
+
+    await updateEntity({ id: entityId, state: 'published' }, actor);
+    entity = await findEnvironmentAnimal(nameDefinition.id, animal.name);
+    if (
+        !entity ||
+        entity.id !== entityId ||
+        entity.state !== 'published' ||
+        !entity.publishedAt
+    ) {
+        throw new Error(`${animal.name} directory readback failed.`);
+    }
+
+    for (const [path, expected] of entries) {
+        const definition = definitionsByPath.get(path);
+        if (!definition) throw new Error(`Missing ${path} during readback.`);
+        const value = await findAttributeValue(entityId, definition.id);
+        if (value?.value !== expected) {
+            throw new Error(`${animal.name} readback mismatch for ${path}.`);
+        }
+    }
+
+    return {
+        attributeCount: entries.length,
+        changedAttributeCount,
+        created,
+        entityId,
+        name: animal.name,
+        state: entity.state,
+        verified: true,
+    };
+}
+
+async function applyAndReadBack() {
+    await ensureStructure();
+    await retireObsoleteDefinitions();
+    const definitions = await getAttributeDefinitions(entityType.name);
+    const definitionsByPath = new Map(
+        definitions.map((definition) => [
+            attributePath(definition),
+            definition,
+        ]),
+    );
+    const animals = [];
+    for (const animal of environmentAnimals) {
+        animals.push(await applyAnimal(animal, definitionsByPath));
+    }
+
+    console.log(
+        JSON.stringify(
+            {
+                animals,
+                entityType: entityType.name,
+                environment: 'development',
+                mode: 'apply',
+            },
+            null,
+            2,
+        ),
+    );
+}
+
+async function main() {
+    const options = parseOptions(process.argv.slice(2));
+    if (!options.apply) {
+        await dryRun();
+        return;
+    }
+    if (!process.env.POSTGRES_URL) {
+        throw new Error(
+            'POSTGRES_URL is required for the guarded development write.',
+        );
+    }
+    assertEnvironmentAnimalDevelopmentDatabase(process.env.POSTGRES_URL);
+    await applyAndReadBack();
 }
 
 main()
