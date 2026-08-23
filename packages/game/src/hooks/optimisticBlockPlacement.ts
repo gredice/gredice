@@ -112,6 +112,7 @@ export function createOptimisticBlockPlacement<
     options: {
         preferredPosition?: BlockPlacementPosition | null;
         requestedPosition?: BlockPlacementPosition | null;
+        variant?: number;
     } = {},
 ) {
     const placement = resolveBlockPlacement(garden, blockData, blockName, {
@@ -128,6 +129,7 @@ export function createOptimisticBlockPlacement<
         id: blockId,
         name: blockName,
         rotation: 0,
+        ...(options.variant === undefined ? {} : { variant: options.variant }),
     };
     const stacks = garden.stacks.map((stack) => {
         if (stack.position.x !== x || stack.position.z !== y) {
@@ -160,6 +162,7 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
     garden: TGarden,
     optimisticBlockId: string,
     blockId: string,
+    variant?: number | null,
 ): TGarden {
     let changed = false;
     const stacks = garden.stacks.map((stack) => {
@@ -173,6 +176,7 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
             return {
                 ...block,
                 id: blockId,
+                ...(variant === undefined ? {} : { variant }),
             };
         });
 

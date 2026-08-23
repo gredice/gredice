@@ -32,6 +32,10 @@ const blockData: PlacementBlockData[] = [
         information: { name: 'PotRoundedBowl' },
         attributes: { stackable: false, height: 0.2 },
     },
+    {
+        information: { name: 'Rabbit' },
+        attributes: { stackable: false, height: 0.48 },
+    },
 ];
 
 const maxSpiralSteps = 1000;
@@ -276,6 +280,18 @@ describe('createOptimisticBlockPlacement', () => {
                 ],
             },
         ]);
+    });
+
+    it('stores the placement-time Rabbit coat on the optimistic block', () => {
+        const placement = createOptimisticBlockPlacement(
+            { stacks: [] },
+            blockData,
+            'Rabbit',
+            'optimistic-rabbit',
+            { variant: 1 },
+        );
+
+        assert.equal(placement?.stacks[0]?.blocks[0]?.variant, 1);
     });
 
     it('places a pot on top of the stackable display table', () => {

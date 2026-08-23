@@ -73,6 +73,7 @@ import { PolishedStoneFence } from './PolishedStoneFence';
 import { Pot } from './Pot';
 import { RaisedBed } from './RaisedBed';
 import { RoofTileLantern } from './RoofTileLantern';
+import { Rabbit } from './rabbits/Rabbit';
 import { MulchCoconut } from './raisedBed/MulchCoconut';
 import { MulchHey } from './raisedBed/MulchHey';
 import { MulchWood } from './raisedBed/MulchWood';
@@ -204,6 +205,7 @@ export const entityNameMap = {
     ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
     PigletPen: PigletPen,
+    Rabbit: Rabbit,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,

@@ -1,4 +1,5 @@
 import { clientAuthenticated } from '@gredice/client';
+import { createPersistedAppearanceVariantForPlacement } from '@gredice/js/appearanceVariants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     createLocalSandboxBlockId,
@@ -35,6 +36,7 @@ type BlockPlaceVariables = {
     expectedExistingBlocks?: string[];
     localBlockId?: string;
     position?: BlockPlacePosition;
+    variant?: number;
 };
 
 type BlockPlacePosition = {
@@ -147,11 +149,17 @@ export function useBlockPlace() {
                 throw new Error('No garden selected');
             }
 
+            variables.variant ??= createPersistedAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
+
             if (localSandboxStorageKey) {
                 return {
                     id:
                         variables.localBlockId ??
                         createLocalSandboxBlockId(variables.blockName),
+                    variant: variables.variant ?? null,
                 };
             }
 
@@ -172,6 +180,9 @@ export function useBlockPlace() {
                     ...(variables.position
                         ? { position: variables.position }
                         : {}),
+                    ...(variables.variant === undefined
+                        ? {}
+                        : { variant: variables.variant }),
                 },
             });
             if (!response.ok) {
@@ -184,6 +195,11 @@ export function useBlockPlace() {
             if (!garden) {
                 return;
             }
+
+            variables.variant ??= createPersistedAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
 
             return await runQueuedPlacement(
                 JSON.stringify(gardenQueryKey),
@@ -216,6 +232,7 @@ export function useBlockPlace() {
                                     gameCamera?.getSnapshot(),
                                 ),
                             requestedPosition: variables.position,
+                            variant: variables.variant,
                         },
                     );
                     if (!optimisticPlacement) {
@@ -291,6 +308,7 @@ export function useBlockPlace() {
                               currentGarden,
                               context.optimisticBlockId,
                               data.id,
+                              data.variant,
                           )
                         : currentGarden,
             );

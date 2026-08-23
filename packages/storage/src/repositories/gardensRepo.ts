@@ -9,6 +9,7 @@ import {
     gardenStacks,
     gardens,
     type InsertGarden,
+    type InsertGardenBlock,
     raisedBeds,
     type SelectGardenLike,
     type UpdateGarden,
@@ -581,6 +582,7 @@ export async function createGardenBlock(
     gardenId: number,
     blockName: string,
     db: DatabaseClient = storage(),
+    options: Pick<InsertGardenBlock, 'variant'> = {},
 ) {
     const blockId = uuidV4();
 
@@ -589,6 +591,7 @@ export async function createGardenBlock(
             id: blockId,
             gardenId,
             name: blockName,
+            variant: options.variant,
         }),
         createEvent(
             knownEvents.gardens.blockPlacedV1(gardenId.toString(), {

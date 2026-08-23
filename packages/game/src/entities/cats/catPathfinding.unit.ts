@@ -134,3 +134,44 @@ test('reports an unreachable target without crossing its blocked enclosure', () 
     assert.deepEqual(path.points, [from]);
     assert.equal(path.distance, 0);
 });
+
+test('optional walkable cells keep terrain-bound animals off missing ground', () => {
+    const walkableCells = [
+        { x: -2, z: 0 },
+        { x: -1, z: 0 },
+        { x: -1, z: 1 },
+        { x: 0, z: 1 },
+        { x: 1, z: 1 },
+        { x: 2, z: 1 },
+        { x: 2, z: 0 },
+    ];
+    const path = findCatPath({
+        blockedCells: [{ x: 0, z: 0 }],
+        from: { x: -2, y: 0.42, z: 0 },
+        surfaces: walkableCells.map((cell) => ({ ...cell, y: 0.42 })),
+        to: { x: 2, y: 0.42, z: 0 },
+        walkableCells,
+    });
+
+    assert.equal(path.status, 'path');
+    assert.ok(path.points.some((point) => point.z === 1));
+    assert.equal(
+        path.points.some((point) => point.z < 0),
+        false,
+    );
+});
+
+test('optional walkable cells reject a route across disconnected terrain', () => {
+    const from = { x: -2, y: 0.42, z: 0 };
+    const to = { x: 2, y: 0.42, z: 0 };
+    const path = findCatPath({
+        blockedCells: [{ x: 0, z: 0 }],
+        from,
+        surfaces: [from, { x: -1, y: 0.42, z: 0 }, to],
+        to,
+        walkableCells: [from, { x: -1, z: 0 }, to],
+    });
+
+    assert.equal(path.status, 'unreachable');
+    assert.deepEqual(path.points, [from]);
+});

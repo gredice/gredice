@@ -1,3 +1,9 @@
+import {
+    getPersistedAppearanceVariantDefinition,
+    isPersistedAppearanceVariant,
+    isPersistedAppearanceVariantUpdateAllowed,
+    selectPersistedAppearanceVariant,
+} from '@gredice/js/appearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
@@ -3045,6 +3051,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             z.object({
                 blockName: z.string(),
                 expectedExistingBlocks: z.array(z.string()).optional(),
+                variant: z.number().int().nonnegative().optional(),
                 position: z
                     .object({
                         x: z.number().int(),
@@ -3079,8 +3086,35 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const { blockName, expectedExistingBlocks, position } =
-                context.req.valid('json');
+            const {
+                blockName,
+                expectedExistingBlocks,
+                position,
+                variant: requestedVariant,
+            } = context.req.valid('json');
+
+            const appearanceDefinition =
+                getPersistedAppearanceVariantDefinition(blockName);
+            if (
+                requestedVariant !== undefined &&
+                (!appearanceDefinition ||
+                    !isPersistedAppearanceVariant(
+                        appearanceDefinition,
+                        requestedVariant,
+                    ))
+            ) {
+                return context.json(
+                    { error: 'Invalid persisted appearance variant' },
+                    400,
+                );
+            }
+            const appearanceVariant = appearanceDefinition
+                ? (requestedVariant ??
+                  selectPersistedAppearanceVariant(
+                      appearanceDefinition,
+                      Math.random,
+                  ))
+                : null;
 
             // Retrieve block information (cost)
             const block = blockData.find(
@@ -3170,10 +3204,14 @@ const app = new Hono<{ Variables: AuthVariables }>()
             );
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
+                appearanceVariant,
                 blockName,
                 cost: garden.isSandbox ? 0 : cost,
                 dependencies: {
-                    createGardenBlock,
+                    createGardenBlock: (targetGardenId, name, variant) =>
+                        createGardenBlock(targetGardenId, name, undefined, {
+                            variant,
+                        }),
                     createGardenStack,
                     deleteGardenBlock: storageDeleteGardenBlock,
                     spendSunflowers: garden.isSandbox
@@ -3200,6 +3238,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             return context.json({
                 id: purchaseResult.blockId,
                 position: purchaseResult.position,
+                variant: purchaseResult.variant,
             });
         },
     )
@@ -3245,6 +3284,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (message !== undefined && block.name !== woodenSignBlockName) {
                 return context.json(
                     { error: 'Only wooden signs can have a message' },
+                    400,
+                );
+            }
+            if (
+                variant !== undefined &&
+                !isPersistedAppearanceVariantUpdateAllowed({
+                    blockName: block.name,
+                    currentVariant: block.variant,
+                    requestedVariant: variant,
+                })
+            ) {
+                return context.json(
+                    { error: 'Persisted appearance variant cannot be changed' },
                     400,
                 );
             }

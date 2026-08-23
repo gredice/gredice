@@ -65,10 +65,11 @@ function roundCell(point: Pick<CatPathPoint, 'x' | 'z'>): CatPathCell {
 
 function createSearchBounds(
     blockedCells: CatPathCell[],
+    walkableCells: CatPathCell[],
     startCell: CatPathCell,
     targetCell: CatPathCell,
 ): SearchBounds {
-    const cells = [startCell, targetCell, ...blockedCells];
+    const cells = [startCell, targetCell, ...blockedCells, ...walkableCells];
     const xs = cells.map((cell) => cell.x);
     const zs = cells.map((cell) => cell.z);
 
@@ -162,20 +163,30 @@ function canWalkCell({
     cell,
     startCell,
     targetCell,
+    walkableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
     cell: CatPathCell;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    walkableKeys: Set<string> | null;
 }) {
     if (!isCellInsideBounds(cell, bounds)) {
         return false;
     }
 
+    const key = cellKey(cell);
+    const temporarilyAllowed = isTemporarilyAllowedCell(
+        cell,
+        startCell,
+        targetCell,
+    );
     return (
-        !blockedKeys.has(cellKey(cell)) ||
-        isTemporarilyAllowedCell(cell, startCell, targetCell)
+        (walkableKeys === null ||
+            walkableKeys.has(key) ||
+            temporarilyAllowed) &&
+        (!blockedKeys.has(key) || temporarilyAllowed)
     );
 }
 
@@ -185,12 +196,14 @@ function directPathCrossesBlockedCell({
     startCell,
     targetCell,
     to,
+    walkableKeys,
 }: {
     blockedKeys: Set<string>;
     from: CatPathPoint;
     startCell: CatPathCell;
     targetCell: CatPathCell;
     to: CatPathPoint;
+    walkableKeys: Set<string> | null;
 }) {
     const distance = horizontalDistance(from, to);
     const steps = Math.max(1, Math.ceil(distance / directPathSampleStep));
@@ -202,9 +215,16 @@ function directPathCrossesBlockedCell({
             z: from.z + (to.z - from.z) * progress,
         });
 
+        const temporarilyAllowed = isTemporarilyAllowedCell(
+            cell,
+            startCell,
+            targetCell,
+        );
+        const key = cellKey(cell);
         if (
-            !isTemporarilyAllowedCell(cell, startCell, targetCell) &&
-            blockedKeys.has(cellKey(cell))
+            !temporarilyAllowed &&
+            (blockedKeys.has(key) ||
+                (walkableKeys !== null && !walkableKeys.has(key)))
         ) {
             return true;
         }
@@ -228,6 +248,7 @@ function canWalkDiagonal({
     direction,
     startCell,
     targetCell,
+    walkableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
@@ -235,6 +256,7 @@ function canWalkDiagonal({
     direction: CatPathCell;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    walkableKeys: Set<string> | null;
 }) {
     if (direction.x === 0 || direction.z === 0) {
         return true;
@@ -247,6 +269,7 @@ function canWalkDiagonal({
             cell: { x: cell.x + direction.x, z: cell.z },
             startCell,
             targetCell,
+            walkableKeys,
         }) &&
         canWalkCell({
             blockedKeys,
@@ -254,6 +277,7 @@ function canWalkDiagonal({
             cell: { x: cell.x, z: cell.z + direction.z },
             startCell,
             targetCell,
+            walkableKeys,
         })
     );
 }
@@ -312,11 +336,13 @@ function findCellPath({
     bounds,
     startCell,
     targetCell,
+    walkableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
     startCell: CatPathCell;
     targetCell: CatPathCell;
+    walkableKeys: Set<string> | null;
 }) {
     const startKey = cellKey(startCell);
     const targetKey = cellKey(targetCell);
@@ -368,6 +394,7 @@ function findCellPath({
                     cell: neighborCell,
                     startCell,
                     targetCell,
+                    walkableKeys,
                 }) ||
                 !canWalkDiagonal({
                     blockedKeys,
@@ -376,6 +403,7 @@ function findCellPath({
                     direction,
                     startCell,
                     targetCell,
+                    walkableKeys,
                 })
             ) {
                 continue;
@@ -490,19 +518,29 @@ export function findCatPath({
     from,
     surfaces,
     to,
+    walkableCells,
 }: {
     blockedCells: CatPathCell[];
     from: CatPathPoint;
     surfaces: CatPathSurface[];
     to: CatPathPoint;
+    walkableCells?: CatPathCell[];
 }): CatPathResult {
     const startCell = roundCell(from);
     const targetCell = roundCell(to);
     const surfaceByKey = createSurfaceMap(surfaces, from, to);
     const blockedKeys = new Set(blockedCells.map(cellKey));
+    const walkableKeys = walkableCells
+        ? new Set(walkableCells.map(cellKey))
+        : null;
     const blockedCellCount = blockedKeys.size;
     const directPoints = [from, to];
-    const bounds = createSearchBounds(blockedCells, startCell, targetCell);
+    const bounds = createSearchBounds(
+        blockedCells,
+        walkableCells ?? [],
+        startCell,
+        targetCell,
+    );
 
     if (
         isSameCell(startCell, targetCell) ||
@@ -512,6 +550,7 @@ export function findCatPath({
             startCell,
             targetCell,
             to,
+            walkableKeys,
         })
     ) {
         return {
@@ -530,6 +569,7 @@ export function findCatPath({
         bounds,
         startCell,
         targetCell,
+        walkableKeys,
     });
     if (!cellPath.cells) {
         return {

@@ -335,6 +335,11 @@ test.describe('block screenshots', async () => {
                             quality={snapshotQuality}
                             noControl
                             rotation={rotation}
+                            variant={
+                                entity.information.name === 'Rabbit'
+                                    ? 0
+                                    : undefined
+                            }
                             renderDetails={shouldRenderSnapshotDetails(
                                 entity.information.name,
                             )}
