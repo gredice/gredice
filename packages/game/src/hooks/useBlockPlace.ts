@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import {
+    createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
     isValidEntityAppearanceVariant,
     requiresExplicitAppearanceVariantSelection,
@@ -152,12 +153,17 @@ export function useBlockPlace() {
                 throw new Error('No garden selected');
             }
 
+            variables.variant ??= createEntityAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
+
             if (localSandboxStorageKey) {
                 return {
                     id:
                         variables.localBlockId ??
                         createLocalSandboxBlockId(variables.blockName),
-                    variant: variables.variant,
+                    variant: variables.variant ?? null,
                 };
             }
 
@@ -190,6 +196,10 @@ export function useBlockPlace() {
             return await response.json();
         },
         onMutate: async (variables) => {
+            variables.variant ??= createEntityAppearanceVariantForPlacement(
+                variables.blockName,
+                Math.random,
+            );
             if (!garden) {
                 return;
             }
@@ -325,6 +335,7 @@ export function useBlockPlace() {
                               currentGarden,
                               context.optimisticBlockId,
                               data.id,
+                              data.variant,
                           )
                         : currentGarden,
             );

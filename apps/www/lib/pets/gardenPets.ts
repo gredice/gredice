@@ -7,8 +7,8 @@ export type GardenPet = {
     genitive: string;
     /** Name of the block that brings the animal into the garden. */
     homeBlockName: string;
-    /** Whether the catalog block is the animal itself or its home. */
-    placementMode: 'animal' | 'home';
+    /** Whether this block is the animal itself instead of a separate home. */
+    directlyPlaceable?: boolean;
     /** Sound the animal makes in the garden. */
     sound: string;
     shortDescription: string;
@@ -27,11 +27,35 @@ export type GardenPet = {
 
 export const gardenPets = [
     {
+        slug: 'zec',
+        name: 'Zec',
+        genitive: 'zeca',
+        homeBlockName: 'Rabbit',
+        directlyPlaceable: true,
+        sound: 'Njušk!',
+        shortDescription:
+            'Znatiželjni zec koji skakuće, njuška, uređuje krzno i kratko pase.',
+        fullDescription:
+            'Zec skakuće u kratkim naletima pa zastaje kako bi osluškivao vrt i njuškao okolinu. Sjeda, uređuje krzno i povremeno kratko gricka travu. Kad mu se avatar previše približi, brzo se udalji sigurnom rutom koja obilazi prepreke.',
+        habits: [
+            'Skakuće u kratkim naletima s mirnim stankama',
+            'Njuška i neovisno okreće ili trza ušima',
+            'Sjeda i uređuje krzno',
+            'Kratko gricka travu',
+            'Brzo se udalji od avatara obilazeći prepreke',
+        ],
+        dayRangeBlocks: 5.5,
+        nightRoutine:
+            'Nastavlja skakutati u kratkim naletima unutar svojeg sigurnog raspona.',
+        weatherRoutine:
+            'Nastavlja svoju mirnu rutinu samo po sigurnom, prohodnom tlu.',
+        searchTerms: ['zecic', 'kunić', 'kunic', 'rabbit'],
+    },
+    {
         slug: 'pas',
         name: 'Pas',
         genitive: 'psa',
         homeBlockName: 'DogHouse',
-        placementMode: 'home',
         sound: 'Vau!',
         shortDescription:
             'Veseli čuvar vrta koji obilazi svaki kutak i juri za pticama.',
@@ -54,7 +78,6 @@ export const gardenPets = [
         name: 'Mačka',
         genitive: 'mačke',
         homeBlockName: 'CatPillow',
-        placementMode: 'home',
         sound: 'Mijau!',
         shortDescription:
             'Tiha lovkinja koja vreba ptice i najradije drijema na svom jastuku.',
@@ -77,7 +100,6 @@ export const gardenPets = [
         name: 'Kokoš',
         genitive: 'kokoši',
         homeBlockName: 'ChickenCoop',
-        placementMode: 'home',
         sound: 'Kokoda!',
         shortDescription:
             'Znatiželjna kokoš koja cijeli dan kljuca i istražuje oko kokošinjca.',
@@ -99,7 +121,6 @@ export const gardenPets = [
         name: 'Praščić',
         genitive: 'praščića',
         homeBlockName: 'PigletPen',
-        placementMode: 'home',
         sound: 'Grok-grok!',
         shortDescription:
             'Razigrani praščić koji rije po zemlji i valja se u kaljuži.',
@@ -121,7 +142,7 @@ export const gardenPets = [
         name: 'Krava',
         genitive: 'krave',
         homeBlockName: 'Cow',
-        placementMode: 'animal',
+        directlyPlaceable: true,
         sound: 'Muuu!',
         shortDescription:
             'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',

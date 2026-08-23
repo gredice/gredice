@@ -213,6 +213,24 @@ function createCowHerdStacks() {
     return serializeStacks(stacks);
 }
 
+function createRabbitPathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -5,
+        maxX: 5,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, 1, 0, 'Rabbit', 0, 0);
+    placeBlock(stacks, 4, -2, 'Tree');
+    placeBlock(stacks, -3, 3, 'StoneMedium');
+    for (let z = -4; z <= 1; z += 1) {
+        placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
 function createBirdStacks() {
     const stacks = createGroundStacks({
         minX: -4,
@@ -294,6 +312,26 @@ function createFrogWetlandStacks() {
     return serializeStacks(stacks);
 }
 
+function createBatStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, -3, 'Tree');
+    placeBlock(stacks, 5, 3, 'Pine');
+    placeBlock(stacks, -4, 3, 'Bush');
+    placeBlock(stacks, 4, -3, 'DeadTreeTall');
+    placeBlock(stacks, 0, 0, 'GardenBox');
+    placeBlock(stacks, 1, 0, 'Composter');
+    placeBlock(stacks, -1, 1, 'WaterWell');
+    placeBlock(stacks, 2, -1, 'Tree');
+
+    return serializeStacks(stacks);
+}
+
 function createAllAnimalStacks() {
     const stacks = createGroundStacks({
         minX: -6,
@@ -308,6 +346,7 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -3, 3, 'PigletPen');
     placeBlock(stacks, -3, 0, 'Cow', 0, 0);
     placeBlock(stacks, 4, 1, 'Cow', 2, 1);
+    placeBlock(stacks, -2, 0, 'Rabbit', 0, 0);
     placeBlock(stacks, 2, 0, 'Tree');
     placeBlock(stacks, 3, -2, 'Stool');
     placeBlock(stacks, 3, 2, 'Bucket');
@@ -345,6 +384,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
 
     return (
         <div className="pointer-events-none absolute left-2 top-2 z-20 flex max-w-[calc(100vw-1rem)] flex-wrap gap-1.5">
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createBatStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Bats
+            </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"
                 color="neutral"
@@ -425,6 +475,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Cow herd
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createRabbitPathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Rabbit path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

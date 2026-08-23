@@ -294,7 +294,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (isAppearanceVariantEntityName(blockName)) {
                 return context.json(
                     {
-                        error: 'Konja nije moguće postaviti iz vrtne kutije.',
+                        error: 'Životinju s odabranom bojom nije moguće postaviti iz vrtne kutije.',
                     },
                     400,
                 );

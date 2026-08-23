@@ -162,6 +162,7 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
     garden: TGarden,
     optimisticBlockId: string,
     blockId: string,
+    variant?: number | null,
 ): TGarden {
     let changed = false;
     const stacks = garden.stacks.map((stack) => {
@@ -175,6 +176,7 @@ export function replaceOptimisticBlockId<TGarden extends GardenWithStacks>(
             return {
                 ...block,
                 id: blockId,
+                ...(variant === undefined ? {} : { variant }),
             };
         });
 

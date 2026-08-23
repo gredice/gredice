@@ -192,6 +192,7 @@ const petItems: HudItemEntity[] = [
     { type: 'entity', name: 'Horse' },
     { type: 'entity', name: 'PigletPen' },
     { type: 'entity', name: 'Cow' },
+    { type: 'entity', name: 'Rabbit' },
 ];
 
 const terrainItems: HudItemPicker[] = [

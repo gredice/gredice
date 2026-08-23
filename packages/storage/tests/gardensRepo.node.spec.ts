@@ -20,6 +20,7 @@ import {
     getAccountGardensMetadata,
     getAllEvents,
     getAllRaisedBedsFiltered,
+    getEvents,
     getGarden,
     getGardenBlock,
     getGardenBlocks,
@@ -620,14 +621,28 @@ test('deleteGarden marks garden as deleted', async () => {
     assert.strictEqual(garden, null);
 });
 
-test('createGardenBlock and getGardenBlocks', async () => {
+test('createGardenBlock persists and emits the appearance variant', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
-    const blockId = await createGardenBlock(gardenId, 'BlockA');
+    const blockId = await createGardenBlock(gardenId, 'Rabbit', 1);
     const blocks = await getGardenBlocks(gardenId);
-    assert.ok(blocks.some((b) => b.id === blockId));
+    assert.strictEqual(
+        blocks.find((block) => block.id === blockId)?.variant,
+        1,
+    );
+
+    const placementEvents = await getEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    assert.equal(placementEvents.at(-1)?.version, 2);
+    assert.deepStrictEqual(placementEvents.at(-1)?.data, {
+        id: blockId,
+        name: 'Rabbit',
+        variant: 1,
+    });
 });
 
 test('createGardenBlock persists the Horse variant and records it in the placement event', async () => {

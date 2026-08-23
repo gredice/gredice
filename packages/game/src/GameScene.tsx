@@ -19,6 +19,7 @@ import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFa
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvatarInteractions';
+import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
 import { Cats } from './entities/cats/Cats';
@@ -687,6 +688,17 @@ export function GameScene({
                                         <Frogs
                                             gardenId={garden?.id}
                                             stacks={garden?.stacks}
+                                        />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Bats
+                                            farmId={garden?.farmId}
+                                            gardenId={garden?.id}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
                                         />
                                     </Suspense>
                                 )}

@@ -30,8 +30,6 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
     appearanceVariant?: number;
     /** Optional per-placement message used by editable sign previews. */
     message?: string | null;
-    /** Optional persisted appearance variant used by entity previews. */
-    variant?: number;
     appBaseUrl?: string;
     className?: string;
     noControl?: boolean;
@@ -50,6 +48,8 @@ export type EntityViewerProps = HTMLAttributes<HTMLDivElement> & {
      * @default 0
      */
     rotation?: number;
+    /** Optional persisted appearance variant for deterministic previews. */
+    variant?: number;
     /**
      * Optional render quality override. When omitted the scene auto-detects the
      * quality profile. Used by snapshot generation to render at a higher dpr.
@@ -129,18 +129,20 @@ export function EntityViewer({
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
     const selectedAppearanceVariant = configuredVariant ?? appearanceVariant;
-    const variant =
+    const resolvedVariant =
         entityName === 'PineAdvent'
             ? 100
             : entityName === 'Cow'
               ? (selectedAppearanceVariant ?? 0)
-              : selectedAppearanceVariant;
+              : entityName === 'Horse'
+                ? (selectedAppearanceVariant ?? 0)
+                : selectedAppearanceVariant;
     const block: Block = {
         id: uuidv4(),
         name: entityName,
         message,
         rotation: normalizedRotation,
-        variant: variant,
+        variant: resolvedVariant,
     };
     const stack = {
         position: itemPosition
@@ -165,7 +167,7 @@ export function EntityViewer({
                 block={block}
                 noControl={noControl}
                 rotation={normalizedRotation}
-                variant={variant}
+                variant={resolvedVariant}
             />
             {!noControl && (
                 <OrbitControls

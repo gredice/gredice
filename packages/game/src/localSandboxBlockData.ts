@@ -82,6 +82,7 @@ export const localSandboxBlockNames = [
     'DogHouse',
     'PigletPen',
     'Cow',
+    'Rabbit',
     'Horse',
     'Bush',
     'Tree',
@@ -165,6 +166,13 @@ const localSandboxBlockMetadata: Partial<
             'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
         fullDescription:
             'Smjesti kravu na travnati dio vrta. Mirno će pasti, preživati, prošetati okolicom i držati ugodan razmak od drugih krava.',
+    },
+    Rabbit: {
+        label: 'Zec',
+        shortDescription:
+            'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
+        fullDescription:
+            'Postavi zeca izravno u vrt. Skakutat će po sigurnom tlu, zastajati kako bi njuškao, uređivao krzno i kratko grickao travu, a pred avatarom će brzo pobjeći obilazeći prepreke.',
     },
     Horse: {
         label: 'Konj',
@@ -439,6 +447,7 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         ChickenCoop: 0.86,
         PigletPen: 0.78,
         Cow: 1.26,
+        Rabbit: 0.76,
         Horse: 1.46,
         FishingBoat: 0.62,
         PineAdvent: 2.6,
@@ -628,6 +637,11 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 1.26,
         hitboxWidth: 0.93,
     },
+    Rabbit: {
+        hitboxDepth: 0.72,
+        hitboxHeight: 0.76,
+        hitboxWidth: 0.58,
+    },
     Horse: {
         hitboxDepth: 1.86,
         hitboxHeight: 1.46,
@@ -707,6 +721,11 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
     Cow: {
         placeableOnWater: false,
         spanDepth: 2,
+        spanWidth: 1,
+    },
+    Rabbit: {
+        placeableOnWater: false,
+        spanDepth: 1,
         spanWidth: 1,
     },
     Horse: {

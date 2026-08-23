@@ -30,6 +30,7 @@ export default async function DebugEntityPage({
 }) {
     const [{ entityName }, query] = await Promise.all([params, searchParams]);
     const rotation = resolveNumber(firstValue(query.rotation));
+    const variant = resolveNumber(firstValue(query.variant));
     const storageKey = getEntitySandboxStorageKey(entityName);
 
     return (
@@ -63,6 +64,7 @@ export default async function DebugEntityPage({
                     entityName={entityName}
                     rotation={rotation}
                     storageKey={storageKey}
+                    variant={variant}
                 />
                 <SandboxDebugActions storageKey={storageKey} />
             </div>

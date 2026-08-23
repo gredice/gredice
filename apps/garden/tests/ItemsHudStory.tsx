@@ -412,6 +412,14 @@ const blockFixtures: Record<
         spanWidth: 1,
         stackable: false,
     },
+    Rabbit: {
+        label: 'Zec',
+        shortDescription:
+            'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
+        sunflowers: 350,
+        height: 0.76,
+        stackable: false,
+    },
 };
 
 function createBlockData(name: string, index: number) {
@@ -541,6 +549,7 @@ const blockNames = [
     'Horse',
     'PigletPen',
     'Cow',
+    'Rabbit',
     'Bush',
     'Tree',
     'Pine',
