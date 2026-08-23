@@ -32,6 +32,7 @@ import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
+import { Ladybugs } from './entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -771,6 +772,12 @@ export function GameScene({
                                             groundDecorationDensity={
                                                 qualityProfile.groundDecorationDensity
                                             }
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Ladybugs
+                                            farmId={garden?.farmId}
+                                            garden={garden}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />

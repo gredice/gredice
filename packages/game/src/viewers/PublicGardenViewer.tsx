@@ -45,6 +45,7 @@ import {
     instancedBlockNames,
 } from '../entities/EntityInstances';
 import { Chickens, Piglets } from '../entities/farmAnimals/FarmAnimals';
+import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { useBlockData } from '../hooks/useBlockData';
@@ -700,6 +701,12 @@ function PublicGardenScene({
                                                             groundDecorationDensity={
                                                                 qualityProfile.groundDecorationDensity
                                                             }
+                                                        />
+                                                        <Ladybugs
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
                                                         />
                                                     </Suspense>
                                                 )}
