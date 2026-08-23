@@ -8,6 +8,8 @@ import {
     type Object3D,
     Vector3,
 } from 'three';
+import { PickableGroup } from '../../controls/PickableGroup';
+import { RotatableGroup } from '../../controls/RotatableGroup';
 import { useGameFlags } from '../../GameFlagsContext';
 import { useBlockData } from '../../hooks/useBlockData';
 import { useWeatherNow } from '../../hooks/useWeatherNow';
@@ -97,6 +99,8 @@ export type FarmAnimalHabitat = {
     dustBaths: FarmAnimalTarget[];
     groundSurfaces: AnimalMovementSurface[];
     home: FarmAnimalTarget;
+    homeBlock: Block;
+    homeStack: Stack;
     id: string;
     roamAnchors: FarmAnimalTarget[];
     seed: number;
@@ -408,6 +412,8 @@ function createFarmAnimalHabitats({
     const dustBaths: FarmAnimalTarget[] = [];
     const homes: Array<{
         home: FarmAnimalTarget;
+        homeBlock: Block;
+        homeStack: Stack;
         wallow: FarmAnimalTarget | null;
     }> = [];
     const roamAnchors: FarmAnimalTarget[] = [];
@@ -422,6 +428,8 @@ function createFarmAnimalHabitats({
                         config,
                         stack,
                     }),
+                    homeBlock: block,
+                    homeStack: stack,
                     wallow:
                         config.species === 'Piglet'
                             ? targetForWallow({
@@ -471,13 +479,15 @@ function createFarmAnimalHabitats({
     }
 
     return homes.map(
-        ({ home, wallow }) =>
+        ({ home, homeBlock, homeStack, wallow }) =>
             ({
                 blockedCells,
                 covers,
                 dustBaths,
                 groundSurfaces,
                 home,
+                homeBlock,
+                homeStack,
                 id: `${config.species.toLowerCase()}-${home.id}`,
                 roamAnchors,
                 seed: hashString(`${config.species}:${home.id}`),
@@ -1299,6 +1309,9 @@ function FarmAnimal({
     const groupRef = useRef<Group>(null);
     const targetDebugRef = useRef<Group>(null);
     const runtimeRef = useRef<FarmAnimalRuntimeState | null>(null);
+    const homePlacementSignatureRef = useRef(
+        `${habitat.home.position.x}:${habitat.home.position.y}:${habitat.home.position.z}:${habitat.home.facingYaw ?? 0}`,
+    );
     const randomRef = useRef(createRandom(habitat.seed));
     const lastPresenceUpdateRef = useRef(0);
     const lastDebugUpdateRef = useRef(0);
@@ -1405,13 +1418,20 @@ function FarmAnimal({
         species: config.shadowSpecies,
     });
 
+    const homePlacementSignature = `${habitat.home.position.x}:${habitat.home.position.y}:${habitat.home.position.z}:${habitat.home.facingYaw ?? 0}`;
     useEffect(() => {
+        const placementChanged =
+            homePlacementSignatureRef.current !== homePlacementSignature;
+        homePlacementSignatureRef.current = homePlacementSignature;
+        if (habitat.species === 'Sheep' && placementChanged) {
+            runtimeRef.current = null;
+        }
         initializeAnimalAtHome({
             actor: groupRef.current,
             home: habitat.home,
             runtimeInitialized: runtimeRef.current !== null,
         });
-    }, [habitat.home]);
+    }, [habitat.home, habitat.species, homePlacementSignature]);
 
     useEffect(() => {
         if (!enableDebugHudFlag) {
@@ -1455,11 +1475,15 @@ function FarmAnimal({
     }
 
     function handlePointerDown(event: ThreeEvent<PointerEvent>) {
-        event.stopPropagation();
+        if (habitat.species !== 'Sheep') {
+            event.stopPropagation();
+        }
     }
 
     function handlePointerOver(event: ThreeEvent<PointerEvent>) {
-        event.stopPropagation();
+        if (habitat.species !== 'Sheep') {
+            event.stopPropagation();
+        }
         showSpeechMessage();
     }
 
@@ -1864,18 +1888,32 @@ function FarmAnimal({
         }
     });
 
+    const actor = (
+        // biome-ignore lint/a11y/noStaticElementInteractions: Three.js actor is interactive
+        <group
+            ref={groupRef}
+            onClick={habitat.species === 'Sheep' ? undefined : handleClick}
+            onPointerDown={handlePointerDown}
+            onPointerOver={handlePointerOver}
+            scale={config.scale}
+        >
+            <primitive object={model.scene} />
+        </group>
+    );
+    const controllableActor =
+        habitat.species === 'Sheep' ? (
+            <PickableGroup block={habitat.homeBlock} stack={habitat.homeStack}>
+                <RotatableGroup block={habitat.homeBlock}>
+                    {actor}
+                </RotatableGroup>
+            </PickableGroup>
+        ) : (
+            actor
+        );
+
     return (
         <>
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: Three.js actor is interactive */}
-            <group
-                ref={groupRef}
-                onClick={handleClick}
-                onPointerDown={handlePointerDown}
-                onPointerOver={handlePointerOver}
-                scale={config.scale}
-            >
-                <primitive object={model.scene} />
-            </group>
+            {controllableActor}
             <AnimalPetHearts
                 actorRef={groupRef}
                 offsetY={config.petHeartsOffsetY}

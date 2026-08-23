@@ -26,27 +26,32 @@ function stackWithBlocks(
 }
 
 test('creates one independently seeded habitat for every placed sheep', () => {
+    const stacks = [
+        stackWithBlocks(0, 0, [
+            { id: 'ground-a', name: 'Block_Grass' },
+            { id: 'sheep-a', name: 'Sheep' },
+        ]),
+        stackWithBlocks(2, 0, [
+            { id: 'ground-b', name: 'Block_Grass' },
+            { id: 'sheep-b', name: 'Sheep' },
+        ]),
+        stackWithBlocks(1, 1, [
+            { id: 'water-ground', name: 'Block_Grass' },
+            { id: 'water', name: 'Block_Water' },
+        ]),
+    ];
     const habitats = createFarmAnimalHabitatsForSpecies({
         blockData: undefined,
         species: 'Sheep',
-        stacks: [
-            stackWithBlocks(0, 0, [
-                { id: 'ground-a', name: 'Block_Grass' },
-                { id: 'sheep-a', name: 'Sheep' },
-            ]),
-            stackWithBlocks(2, 0, [
-                { id: 'ground-b', name: 'Block_Grass' },
-                { id: 'sheep-b', name: 'Sheep' },
-            ]),
-            stackWithBlocks(1, 1, [
-                { id: 'water-ground', name: 'Block_Grass' },
-                { id: 'water', name: 'Block_Water' },
-            ]),
-        ],
+        stacks,
     });
 
     assert.equal(habitats.length, 2);
     assert.notEqual(habitats[0]?.seed, habitats[1]?.seed);
+    assert.equal(habitats[0]?.homeBlock.id, 'sheep-a');
+    assert.equal(habitats[0]?.homeStack, stacks[0]);
+    assert.equal(habitats[1]?.homeBlock.id, 'sheep-b');
+    assert.equal(habitats[1]?.homeStack, stacks[1]);
     assert.ok(
         habitats.every((habitat) =>
             habitat.groundSurfaces.every(
