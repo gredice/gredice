@@ -181,12 +181,12 @@ export type GLTFResult = GLTF & {
         Sheep_Muzzle: THREE.Mesh;
         Sheep_Nose: THREE.Mesh;
         Sheep_WoolCap: THREE.Mesh;
-        Icosphere051: THREE.Mesh;
-        Icosphere051_1: THREE.Mesh;
-        Icosphere032: THREE.Mesh;
-        Icosphere032_1: THREE.Mesh;
-        Icosphere033: THREE.Mesh;
-        Icosphere033_1: THREE.Mesh;
+        Sheep_Tail_1: THREE.Mesh;
+        Sheep_Tail_2: THREE.Mesh;
+        Sheep_WoolBody_1: THREE.Mesh;
+        Sheep_WoolBody_2: THREE.Mesh;
+        Sheep_WoolChest_1: THREE.Mesh;
+        Sheep_WoolChest_2: THREE.Mesh;
         Sheep_Hoof_FL: THREE.Mesh;
         Sheep_Leg_FL: THREE.Mesh;
         Sheep_Hoof_FR: THREE.Mesh;

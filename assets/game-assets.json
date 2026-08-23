@@ -535,7 +535,7 @@
             "name": "Sheep",
             "source": "Sheep.blend",
             "output": "Sheep.glb",
-            "version": "8a28754dbd8b",
+            "version": "65950df32c83",
             "preload": "lazy",
             "objects": [
                 "Sheep_Root",

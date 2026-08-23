@@ -143,6 +143,9 @@ describe('farm animal assets', () => {
         const nodeNames = new Set(
             records(document.nodes, 'Sheep.nodes').map((node) => node.name),
         );
+        const meshNames = new Set(
+            records(document.meshes, 'Sheep.meshes').map((mesh) => mesh.name),
+        );
         for (const name of [
             'Sheep_Root',
             'Sheep_BodyPivot',
@@ -160,6 +163,13 @@ describe('farm animal assets', () => {
             'Sheep_Muzzle',
         ]) {
             assert.ok(nodeNames.has(name), `Missing Sheep rig node ${name}`);
+        }
+        for (const name of [
+            'Sheep_WoolBody',
+            'Sheep_WoolChest',
+            'Sheep_Tail',
+        ]) {
+            assert.ok(meshNames.has(name), `Missing Sheep mesh role ${name}`);
         }
     });
 

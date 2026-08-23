@@ -63,7 +63,7 @@ export const gameAssetModels = {
     Dog: { url: '/assets/models/Dog.glb' },
     Chicken: { url: '/assets/models/Chicken.glb?v=2edd7673f7d5' },
     Piglet: { url: '/assets/models/Piglet.glb?v=58f584a6fa21' },
-    Sheep: { url: '/assets/models/Sheep.glb?v=8a28754dbd8b' },
+    Sheep: { url: '/assets/models/Sheep.glb?v=65950df32c83' },
     FarmerAvatar: { url: '/assets/models/FarmerAvatar.glb?v=e59d91f50c94' },
     Bucket: { url: '/assets/models/Bucket.glb?v=651d759c9d56' },
     WateringCan: { url: '/assets/models/WateringCan.glb?v=8b128e30b990' },

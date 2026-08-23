@@ -81,6 +81,7 @@ import {
     getSheepSeparationOffset,
     pickSheepLocomotion,
     type SheepLocomotion,
+    scaleSheepSeparationOffset,
 } from './sheepBehavior';
 
 type FarmAnimalWeatherOverride = Partial<NonNullable<GameState['weather']>>;
@@ -1743,10 +1744,13 @@ function FarmAnimal({
         }
 
         if (habitat.species === 'Sheep') {
-            const separation = getSheepSeparationOffset({
-                animalId: habitat.id,
-                from: group.position,
-                neighbors: getFreshSheepNeighbors(now),
+            const separation = scaleSheepSeparationOffset({
+                delta,
+                offset: getSheepSeparationOffset({
+                    animalId: habitat.id,
+                    from: group.position,
+                    neighbors: getFreshSheepNeighbors(now),
+                }),
             });
             if (separation.x !== 0 || separation.z !== 0) {
                 const separated = group.position.clone();

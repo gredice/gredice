@@ -10,6 +10,7 @@ export type SheepNeighbor = SheepPoint & {
 export type SheepLocomotion = 'trot' | 'walk';
 
 const separationRadius = 0.82;
+const separationReferenceFramesPerSecond = 60;
 const cohesionRadius = 4.8;
 
 function horizontalDistance(left: SheepPoint, right: SheepPoint) {
@@ -130,6 +131,23 @@ export function getSheepSeparationOffset({
     }
 
     return clampVector(x * 0.055, z * 0.055, 0.045);
+}
+
+export function scaleSheepSeparationOffset({
+    delta,
+    offset,
+}: {
+    delta: number;
+    offset: { x: number; z: number };
+}) {
+    const step = Math.min(
+        Math.max(delta * separationReferenceFramesPerSecond, 0),
+        1,
+    );
+    return {
+        x: offset.x * step,
+        z: offset.z * step,
+    };
 }
 
 export function pickSheepLocomotion({

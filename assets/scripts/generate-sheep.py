@@ -128,6 +128,7 @@ def join_objects(
     bpy.ops.object.join()
     result = bpy.context.object
     result.name = name
+    result.data.name = name
     return result
 
 

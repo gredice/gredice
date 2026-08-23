@@ -12,6 +12,7 @@ import {
     adjustSheepTargetForFlock,
     getSheepSeparationOffset,
     pickSheepLocomotion,
+    scaleSheepSeparationOffset,
 } from './sheepBehavior';
 
 function stackWithBlocks(
@@ -119,6 +120,19 @@ test('combines gentle cohesion with deterministic overlap separation', () => {
     });
     assert.deepEqual(first, repeated);
     assert.ok(Math.hypot(first.x, first.z) > 0);
+});
+
+test('keeps separation speed stable across render frame rates', () => {
+    const offset = { x: 0.045, z: -0.03 };
+    assert.deepEqual(
+        scaleSheepSeparationOffset({ delta: 1 / 60, offset }),
+        offset,
+    );
+    assert.deepEqual(scaleSheepSeparationOffset({ delta: 1 / 120, offset }), {
+        x: 0.0225,
+        z: -0.015,
+    });
+    assert.deepEqual(scaleSheepSeparationOffset({ delta: 1, offset }), offset);
 });
 
 test('uses short trots only for suitable journeys', () => {
