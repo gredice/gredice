@@ -189,6 +189,58 @@ describe('animal movement terrain', () => {
         assert.equal(surfaces[0]?.z, 4);
     });
 
+    it('expands complete catalog footprints with reusable clearance', () => {
+        const occupiedStack = stack(3, 4, [
+            block('sand', 'Block_Sand'),
+            block('raised-bed', 'Raised_Bed'),
+        ]);
+        const blockData = getLocalSandboxBlockData().map((candidate) =>
+            candidate.information.name === 'Raised_Bed'
+                ? {
+                      ...candidate,
+                      attributes: {
+                          ...candidate.attributes,
+                          spanDepth: 2,
+                      },
+                  }
+                : candidate,
+        );
+
+        const blockedCells = createAnimalBlockedCells([occupiedStack], {
+            blockData,
+            clearanceCells: 1,
+        });
+        const blockedKeys = new Set(
+            blockedCells.map(({ x, z }) => `${x}:${z}`),
+        );
+
+        // Raised_Bed spans two cells in the catalog. Clearance keeps a large
+        // animal's center out of the immediately adjacent cells as well.
+        for (const key of ['2:3', '3:4', '4:5', '2:5', '3:6', '4:6']) {
+            assert.equal(blockedKeys.has(key), true, key);
+        }
+    });
+
+    it('can ignore an owning block and optionally block water', () => {
+        const horseStack = stack(1, 2, [
+            block('grass', 'Block_Grass'),
+            block('horse', 'Horse'),
+        ]);
+        const waterStack = stack(2, 2, [block('water', 'Block_Water')]);
+
+        assert.deepEqual(
+            createAnimalBlockedCells([horseStack, waterStack], {
+                ignoredBlockIds: ['horse'],
+                blockWater: true,
+            }),
+            [{ x: 2, z: 2 }],
+        );
+    });
+
+    it('does not allow animals to settle outside known terrain', () => {
+        assert.equal(canAnimalSettleAt({ x: 12, z: 8 }, []), false);
+    });
+
     it('blocks closed gates and lets animals path through open gates', () => {
         for (const name of [
             'FenceGate',

@@ -1,4 +1,8 @@
 import { clientAuthenticated } from '@gredice/client';
+import {
+    isAppearanceVariantEntityName,
+    isValidEntityAppearanceVariant,
+} from '@gredice/js/entityAppearanceVariants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     createLocalSandboxBlockId,
@@ -35,6 +39,7 @@ type BlockPlaceVariables = {
     expectedExistingBlocks?: string[];
     localBlockId?: string;
     position?: BlockPlacePosition;
+    variant?: number;
 };
 
 type BlockPlacePosition = {
@@ -61,9 +66,7 @@ async function getBlockPlacementError(response: Response) {
 }
 
 function createOptimisticBlockId(blockName: string) {
-    const timestamp = Date.now().toString(36);
-    const randomSuffix = Math.random().toString(36).slice(2);
-    return `${optimisticBlockIdPrefix}:${blockName}:${timestamp}:${randomSuffix}`;
+    return `${optimisticBlockIdPrefix}:${blockName}:${globalThis.crypto.randomUUID()}`;
 }
 
 function updateCurrentAccountSunflowers(
@@ -152,6 +155,7 @@ export function useBlockPlace() {
                     id:
                         variables.localBlockId ??
                         createLocalSandboxBlockId(variables.blockName),
+                    variant: variables.variant,
                 };
             }
 
@@ -172,6 +176,9 @@ export function useBlockPlace() {
                     ...(variables.position
                         ? { position: variables.position }
                         : {}),
+                    ...(variables.variant === undefined
+                        ? {}
+                        : { variant: variables.variant }),
                 },
             });
             if (!response.ok) {
@@ -181,6 +188,15 @@ export function useBlockPlace() {
             return await response.json();
         },
         onMutate: async (variables) => {
+            if (
+                isAppearanceVariantEntityName(variables.blockName) &&
+                !isValidEntityAppearanceVariant(
+                    variables.blockName,
+                    variables.variant,
+                )
+            ) {
+                throw new Error('Odaberi boju konja prije postavljanja.');
+            }
             if (!garden) {
                 return;
             }
@@ -216,6 +232,7 @@ export function useBlockPlace() {
                                     gameCamera?.getSnapshot(),
                                 ),
                             requestedPosition: variables.position,
+                            variant: variables.variant,
                         },
                     );
                     if (!optimisticPlacement) {

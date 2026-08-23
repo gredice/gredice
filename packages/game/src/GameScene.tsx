@@ -39,6 +39,7 @@ import {
     type SunflowerDropFlyOrigin,
     SunflowerDropReward,
 } from './entities/SunflowerDropReward';
+import { Slugs } from './entities/slugs/Slugs';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -780,6 +781,12 @@ export function GameScene({
                                             groundDecorationDensity={
                                                 qualityProfile.groundDecorationDensity
                                             }
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Slugs
+                                            farmId={garden?.farmId}
+                                            garden={garden}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
