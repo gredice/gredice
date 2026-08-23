@@ -150,6 +150,27 @@ function getGroundSurfaceY({
     return walkwaySurfaceHeight > 0 ? walkwaySurfaceHeight + groundLift : 0;
 }
 
+function getGroundMovementSurfaceBlockName(stack: Stack) {
+    const firstBlockingIndex = stack.blocks.findIndex(
+        (block, blockIndex) =>
+            !isAnimalGroundBlockName(block.name) &&
+            !isWalkwayBlockName(block.name) &&
+            !isWaterCoveredByWalkway(stack, blockIndex),
+    );
+    const surfaceBlocks = stack.blocks.slice(
+        0,
+        firstBlockingIndex === -1 ? stack.blocks.length : firstBlockingIndex,
+    );
+
+    return (
+        surfaceBlocks.findLast(
+            (block) =>
+                isAnimalGroundBlockName(block.name) ||
+                isWalkwayBlockName(block.name),
+        )?.name ?? ''
+    );
+}
+
 function createStairMovementSurfaces({
     blockData,
     groundLift,
@@ -252,8 +273,10 @@ export function createAnimalMovementSurfaces({
                 continue;
             }
 
+            const movementSurfaceBlockName =
+                getGroundMovementSurfaceBlockName(stack);
             surfaces.push({
-                habitat: isAnimalWetlandBlockName(stack.blocks[0]?.name ?? '')
+                habitat: isAnimalWetlandBlockName(movementSurfaceBlockName)
                     ? 'wetland'
                     : 'general',
                 kind: 'ground',

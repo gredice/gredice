@@ -13,6 +13,7 @@ import {
     updateEntity,
     upsertAttributeValue,
 } from '../src';
+import { assertEnvironmentAnimalDevelopmentDatabase } from './environmentAnimalDatabaseGuard';
 
 const actor = {
     id: 'environment-animal-directory-upsert',
@@ -645,6 +646,7 @@ async function main() {
             'POSTGRES_URL is required for the guarded development write.',
         );
     }
+    assertEnvironmentAnimalDevelopmentDatabase(process.env.POSTGRES_URL);
     await applyAndReadBack();
 }
 

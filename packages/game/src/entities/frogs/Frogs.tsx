@@ -57,6 +57,7 @@ import {
     frogMaxShallowWaterDepth,
     hashFrogSeed,
     reconcileFrogSpawns,
+    reconcileFrogTarget,
 } from './frogSpawning';
 
 type FrogAnimationName = 'Frog_Blink' | 'Frog_Croak' | 'Frog_Hop' | 'Frog_Idle';
@@ -401,6 +402,25 @@ function Frog({ candidate }: { candidate: FrogSpawnCandidate }) {
                 random,
                 target: candidate.startTarget,
             });
+            runtimeRef.current = runtime;
+        }
+
+        const reconciledTarget = reconcileFrogTarget(candidate, runtime.target);
+        if (reconciledTarget.requiresReset) {
+            group.position.set(
+                reconciledTarget.target.position.x,
+                reconciledTarget.target.position.y,
+                reconciledTarget.target.position.z,
+            );
+            runtime = makeSettledState({
+                now,
+                random,
+                target: reconciledTarget.target,
+            });
+            runtimeRef.current = runtime;
+            setPathDebugPoints([]);
+        } else if (reconciledTarget.target !== runtime.target) {
+            runtime = { ...runtime, target: reconciledTarget.target };
             runtimeRef.current = runtime;
         }
 

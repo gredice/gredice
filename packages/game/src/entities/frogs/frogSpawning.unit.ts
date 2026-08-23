@@ -11,6 +11,7 @@ import {
     frogSpawnCooldownMaxSeconds,
     frogSpawnCooldownMinSeconds,
     reconcileFrogSpawns,
+    reconcileFrogTarget,
 } from './frogSpawning';
 
 function surface({
@@ -225,5 +226,39 @@ describe('frog wetland spawning', () => {
         });
 
         assert.deepEqual(reconciled.activeCandidateIds, []);
+    });
+
+    it('resets a retained frog when its settled target becomes occupied', () => {
+        const originalHabitat = createFrogHabitats({
+            blockedCells: [],
+            surfaces: Array.from({ length: 6 }, (_, x) =>
+                surface({ kind: 'ground', x, z: 0 }),
+            ),
+        })[0];
+        const editedHabitat = createFrogHabitats({
+            blockedCells: [{ x: 2, z: 0 }],
+            surfaces: Array.from({ length: 6 }, (_, x) =>
+                surface({ kind: 'ground', x, z: 0 }),
+            ),
+        })[0];
+        assert.ok(originalHabitat);
+        assert.ok(editedHabitat);
+        const originalCandidate = createFrogSpawnCandidates([
+            originalHabitat,
+        ])[0];
+        const editedCandidate = createFrogSpawnCandidates([editedHabitat])[0];
+        assert.ok(originalCandidate);
+        assert.ok(editedCandidate);
+        assert.equal(editedCandidate.id, originalCandidate.id);
+        const staleTarget = originalHabitat.targets.find(
+            (target) => target.id === 'ground-2:0',
+        );
+        assert.ok(staleTarget);
+
+        const reconciled = reconcileFrogTarget(editedCandidate, staleTarget);
+
+        assert.equal(reconciled.requiresReset, true);
+        assert.equal(reconciled.target.id, editedCandidate.startTarget.id);
+        assert.notEqual(reconciled.target.id, staleTarget.id);
     });
 });

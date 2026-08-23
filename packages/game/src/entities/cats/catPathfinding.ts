@@ -208,8 +208,9 @@ function directPathCrossesUnavailableCell({
 }) {
     const distance = horizontalDistance(from, to);
     const steps = Math.max(1, Math.ceil(distance / directPathSampleStep));
+    let previousCell = startCell;
 
-    for (let step = 1; step < steps; step += 1) {
+    for (let step = 1; step <= steps; step += 1) {
         const progress = step / steps;
         const cell = roundCell({
             x: from.x + (to.x - from.x) * progress,
@@ -224,6 +225,30 @@ function directPathCrossesUnavailableCell({
         ) {
             return true;
         }
+
+        if (
+            Math.abs(cell.x - previousCell.x) === 1 &&
+            Math.abs(cell.z - previousCell.z) === 1
+        ) {
+            const cornerCells = [
+                { x: cell.x, z: previousCell.z },
+                { x: previousCell.x, z: cell.z },
+            ];
+            if (
+                cornerCells.some((cornerCell) => {
+                    const cornerKey = cellKey(cornerCell);
+                    return (
+                        blockedKeys.has(cornerKey) ||
+                        (traversableKeys !== null &&
+                            !traversableKeys.has(cornerKey))
+                    );
+                })
+            ) {
+                return true;
+            }
+        }
+
+        previousCell = cell;
     }
 
     return false;

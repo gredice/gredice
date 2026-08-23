@@ -42,6 +42,11 @@ export type FrogSpawnState = {
     sequence: number;
 };
 
+export type ReconciledFrogTarget = {
+    requiresReset: boolean;
+    target: FrogTarget;
+};
+
 function cellKey(cell: AnimalMovementCell) {
     return `${Math.round(cell.x)}:${Math.round(cell.z)}`;
 }
@@ -227,6 +232,28 @@ export function createFrogSpawnCandidates(habitats: FrogHabitat[]) {
     return candidates
         .sort((left, right) => left.id.localeCompare(right.id))
         .slice(0, frogMaxPopulation);
+}
+
+export function reconcileFrogTarget(
+    candidate: FrogSpawnCandidate,
+    currentTarget: FrogTarget,
+): ReconciledFrogTarget {
+    const currentHabitatTarget = candidate.habitat.targets.find(
+        (target) => target.id === currentTarget.id,
+    );
+    if (!currentHabitatTarget) {
+        return { requiresReset: true, target: candidate.startTarget };
+    }
+
+    const positionChanged =
+        currentHabitatTarget.position.x !== currentTarget.position.x ||
+        currentHabitatTarget.position.y !== currentTarget.position.y ||
+        currentHabitatTarget.position.z !== currentTarget.position.z;
+    return {
+        requiresReset:
+            positionChanged || currentHabitatTarget.kind !== currentTarget.kind,
+        target: currentHabitatTarget,
+    };
 }
 
 export function createInitialFrogSpawnState(): FrogSpawnState {

@@ -138,6 +138,29 @@ describe('animal movement terrain', () => {
         );
     });
 
+    it('classifies mixed ground stacks from the walkable top surface', () => {
+        const surfaces = createAnimalMovementSurfaces({
+            blockData: getLocalSandboxBlockData(),
+            groundLift: 0.02,
+            stacks: [
+                stack(1, 2, [
+                    block('swamp-under-grass', 'Block_Swamp_Ground'),
+                    block('grass-top', 'Block_Grass'),
+                ]),
+                stack(3, 4, [
+                    block('grass-under-swamp', 'Block_Grass'),
+                    block('swamp-top', 'Block_Swamp_Ground'),
+                ]),
+            ],
+            swimDepth: 0.12,
+        });
+
+        assert.equal(surfaces[0]?.habitat, 'general');
+        assert.equal(surfaces[0]?.sourceBlockName, 'Block_Swamp_Ground');
+        assert.equal(surfaces[1]?.habitat, 'wetland');
+        assert.equal(surfaces[1]?.sourceBlockName, 'Block_Grass');
+    });
+
     it('does not settle animals outside a known movement surface', () => {
         assert.equal(canAnimalSettleAt({ x: 4, z: 5 }, []), false);
     });
