@@ -142,10 +142,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.55,
     },
     ladybug: {
-        baseHalfLength: 0.075,
-        baseHalfWidth: 0.052,
+        baseHalfLength: 0.0375,
+        baseHalfWidth: 0.026,
         baseOpacity: 0.2,
-        cutoffHeight: 0.7,
+        cutoffHeight: 0.35,
         maxFootprintScale: 1.5,
     },
     piglet: {
