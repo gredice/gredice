@@ -78,7 +78,7 @@ export const vegetableMaterialProps: Record<
     leek: { color: '#d9e1b7', roughness: 0.75 },
     broccoli: { color: '#3f7c2c', roughness: 0.85 },
     cauliflower: { color: '#e7e2c8', roughness: 0.86 },
-    cabbage: { color: '#7faa55', roughness: 0.8 },
+    cabbage: { color: '#9fbe62', roughness: 0.8 },
     beanpod: { color: '#4e8a34', roughness: 0.65 },
     peapod: { color: '#6aa848', roughness: 0.62 },
     artichoke: { color: '#6f8c4d', roughness: 0.78 },

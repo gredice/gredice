@@ -22,7 +22,11 @@ type ActionName =
     | 'Dog_Idle'
     | 'Dog_Walk'
     | 'Dog_LyingIdle'
-    | 'Dog_PreyWatch';
+    | 'Dog_PreyWatch'
+    | 'Frog_Idle'
+    | 'Frog_Hop'
+    | 'Frog_Croak'
+    | 'Frog_Blink';
 
 interface GLTFAction extends THREE.AnimationClip {
     name: ActionName;
@@ -207,6 +211,28 @@ export type GLTFResult = GLTF & {
         Piglet_Leg_RL: THREE.Mesh;
         Piglet_Hoof_RR: THREE.Mesh;
         Piglet_Leg_RR: THREE.Mesh;
+        Frog_BackSpots: THREE.Mesh;
+        Frog_Belly: THREE.Mesh;
+        Frog_Body: THREE.Mesh;
+        Frog_FrontArm_L: THREE.Mesh;
+        Frog_FrontFoot_L: THREE.Mesh;
+        Frog_FrontArm_R: THREE.Mesh;
+        Frog_FrontFoot_R: THREE.Mesh;
+        Frog_Eyelid_L: THREE.Mesh;
+        Frog_Eyelid_R: THREE.Mesh;
+        Frog_Eye_L: THREE.Mesh;
+        Frog_Eye_R: THREE.Mesh;
+        Frog_EyeGlint_L: THREE.Mesh;
+        Frog_EyeGlint_R: THREE.Mesh;
+        Frog_Head: THREE.Mesh;
+        Frog_Muzzle: THREE.Mesh;
+        Frog_Pupil_L: THREE.Mesh;
+        Frog_Pupil_R: THREE.Mesh;
+        Frog_RearFoot_L: THREE.Mesh;
+        Frog_RearThigh_L: THREE.Mesh;
+        Frog_RearFoot_R: THREE.Mesh;
+        Frog_RearThigh_R: THREE.Mesh;
+        Frog_Throat: THREE.Mesh;
         FarmerAvatar_Forearm_L: THREE.Mesh;
         FarmerAvatar_Hand_L: THREE.Mesh;
         FarmerAvatar_SleeveStripe_L: THREE.Mesh;
@@ -1481,6 +1507,12 @@ export type GLTFResult = GLTF & {
         'Material.FishingBoat.Ripple': THREE.MeshStandardMaterial;
         'Material.FishingBoat.Rope': THREE.MeshStandardMaterial;
         'Material.FishingBoat.WarmWood': THREE.MeshStandardMaterial;
+        'Material.Frog.Charcoal': THREE.MeshStandardMaterial;
+        'Material.Frog.EyeGlint': THREE.MeshStandardMaterial;
+        'Material.Frog.MossDark': THREE.MeshStandardMaterial;
+        'Material.Frog.MossGreen': THREE.MeshStandardMaterial;
+        'Material.Frog.MossLight': THREE.MeshStandardMaterial;
+        'Material.Frog.ThroatGold': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Center': THREE.MeshStandardMaterial;
         'Material.GardenFlower.Leaf': THREE.MeshStandardMaterial;
         'Material.GardenFlower.PetalGradient': THREE.MeshStandardMaterial;

@@ -32,6 +32,7 @@ import {
 import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
+import { Frogs } from './entities/frogs/Frogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
@@ -678,6 +679,14 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Birds stacks={garden?.stacks} />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Frogs
+                                            gardenId={garden?.id}
+                                            stacks={garden?.stacks}
+                                        />
                                     </Suspense>
                                 )}
                                 {renderDetails && zoom !== 'far' && (

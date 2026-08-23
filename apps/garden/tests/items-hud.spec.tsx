@@ -564,6 +564,12 @@ test('decorations are grouped into summer, furniture, pets, and signs', async ({
     await expect(
         page.getByRole('button', { name: 'Piglet', exact: true }),
     ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Frog', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: 'Žaba', exact: true }),
+    ).toHaveCount(0);
     await page.getByRole('button', { name: 'Natrag' }).click();
 
     await page.getByRole('button', { name: 'Znakovi' }).click();
