@@ -85,7 +85,7 @@ test('getUsersWithBirthdayOn returns users with matching birthdays', async () =>
     );
 });
 
-test('createTemporaryUserAndAccount creates temporary sandbox with standard garden layout', async () => {
+test('createTemporaryUserAndAccount creates a fully featured standard garden', async () => {
     createTestDb();
     await ensureFarmId();
 
@@ -102,8 +102,8 @@ test('createTemporaryUserAndAccount creates temporary sandbox with standard gard
 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
     assert.equal(gardens.length, 1);
-    assert.equal(gardens[0].isSandbox, true);
-    assert.equal(gardens[0].name, 'Vrt za igru');
+    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(gardens[0].name, 'Moj vrt');
 
     const stacks = await getGardenStacks(gardens[0].id);
     assert.equal(stacks.length, 12);

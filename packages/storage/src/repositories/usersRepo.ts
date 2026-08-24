@@ -27,10 +27,7 @@ import {
     users,
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
-import {
-    createDefaultGardenForAccount,
-    createDefaultSandboxGardenForAccount,
-} from './gardensRepo';
+import { createDefaultGardenForAccount } from './gardensRepo';
 
 type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
@@ -335,7 +332,7 @@ export async function createTemporaryUserAndAccount(timeZone?: string) {
         lastActiveAt: now,
     });
     const accountId = await createAccount(timeZone);
-    await createDefaultSandboxGardenForAccount({ accountId });
+    await createDefaultGardenForAccount({ accountId });
 
     await storage().insert(accountUsers).values({
         accountId,
