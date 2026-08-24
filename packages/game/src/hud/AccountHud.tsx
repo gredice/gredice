@@ -45,7 +45,6 @@ import {
 } from '../notificationFilters';
 import { ProfileAvatar } from '../shared-ui/ProfileAvatar';
 import { ProfileInfo } from '../shared-ui/ProfileInfo';
-import { requestTemporaryAccountLogin } from '../temporaryAccountAuth';
 import { HudCard } from './components/HudCard';
 import { GardenAccountMenuItems } from './GardenAccountMenuItems';
 import { GardenOperationsHud } from './GardenOperationsHud';
@@ -313,13 +312,6 @@ export function AccountHud({ viewMode = '3d' }: { viewMode?: GardenViewMode }) {
         (notification) => !notification.readAt,
     );
 
-    const handleTemporaryAccountLogin = () => {
-        track('game_temporary_account_login_opened', {
-            source: 'account_hud',
-        });
-        requestTemporaryAccountLogin();
-    };
-
     return (
         <HudCard open position="floating" className="p-0.5 md:px-2 static">
             <Row spacing={2}>
@@ -364,17 +356,6 @@ export function AccountHud({ viewMode = '3d' }: { viewMode?: GardenViewMode }) {
                         )
                     )}
                 </div>
-                {currentUser?.isTemporary ? (
-                    <div className="md:order-2">
-                        <Button
-                            size="sm"
-                            variant="plain"
-                            onClick={handleTemporaryAccountLogin}
-                        >
-                            Prijava
-                        </Button>
-                    </div>
-                ) : null}
                 <div className="md:order-3">
                     <Popper
                         className="w-[min(24rem,calc(100vw-1rem))] overflow-hidden border-tertiary border-b-4"

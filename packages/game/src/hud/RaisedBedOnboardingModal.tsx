@@ -1073,6 +1073,7 @@ export function RaisedBedOnboardingModal({
     const modal = (
         <GameModal
             title="Brzi plan gredice"
+            modal={false}
             open={open}
             onOpenChange={(nextOpen) => {
                 if (nextOpen) {
