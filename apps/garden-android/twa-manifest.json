@@ -1,0 +1,52 @@
+{
+  "packageId": "com.gredice.vrt.twa",
+  "host": "vrt.gredice.com",
+  "name": "Moj vrt - Gredice",
+  "launcherName": "Gredice",
+  "display": "fullscreen",
+  "themeColor": "#2E6F40",
+  "themeColorDark": "#000000",
+  "navigationColor": "#000000",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#2E6F40",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://vrt.gredice.com/web-app-manifest-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "android"
+  },
+  "appVersionCode": 2,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://vrt.gredice.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://vrt.gredice.com/",
+  "minSdkVersion": 23,
+  "orientation": "any",
+  "fingerprints": [
+    {
+      "name": "Google Play app signing",
+      "value": "33:8A:CB:39:A4:46:2F:AD:42:1B:97:63:F2:76:CE:2E:91:47:01:E0:79:37:61:C2:55:3E:EE:E3:DD:39:77:F2"
+    }
+  ],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "appVersion": "2.0.0",
+  "launchHandlerClientMode": "navigate-existing"
+}

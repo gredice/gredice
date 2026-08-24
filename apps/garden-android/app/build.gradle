@@ -1,0 +1,108 @@
+plugins {
+    id 'com.android.application'
+}
+
+def releaseKeystorePath = System.getenv('ANDROID_UPLOAD_KEYSTORE_PATH')
+def releaseKeystorePassword = System.getenv('ANDROID_UPLOAD_STORE_PASSWORD')
+def releaseKeyAlias = System.getenv('ANDROID_UPLOAD_KEY_ALIAS')
+def releaseKeyPassword = System.getenv('ANDROID_UPLOAD_KEY_PASSWORD')
+def releaseSigningConfigured = [
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { value -> value != null && !value.isBlank() }
+
+def twaManifest = [
+    applicationId: 'com.gredice.vrt.twa',
+    hostName: 'vrt.gredice.com',
+    launchUrl: '/',
+    name: 'Moj vrt - Gredice',
+    launcherName: 'Gredice',
+    themeColor: '#2E6F40',
+    themeColorDark: '#000000',
+    navigationColor: '#000000',
+    navigationColorDark: '#000000',
+    navigationDividerColor: '#000000',
+    navigationDividerColorDark: '#000000',
+    backgroundColor: '#2E6F40',
+    enableNotifications: true,
+    splashScreenFadeOutDuration: 300,
+    generatorApp: 'bubblewrap-cli',
+    fallbackType: 'customtabs',
+    enableSiteSettingsShortcut: true,
+    orientation: 'any',
+]
+
+android {
+    namespace 'com.gredice.vrt.twa'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId twaManifest.applicationId
+        minSdk 23
+        targetSdk 36
+        versionCode providers.gradleProperty('GREDICE_VERSION_CODE').get().toInteger()
+        versionName providers.gradleProperty('GREDICE_VERSION_NAME').get()
+
+        resValue 'string', 'appName', twaManifest.name
+        resValue 'string', 'launcherName', twaManifest.launcherName
+        resValue 'string', 'launchUrl', "https://${twaManifest.hostName}${twaManifest.launchUrl}"
+        resValue 'string', 'webManifestUrl', 'https://vrt.gredice.com/manifest.json'
+        resValue 'string', 'fullScopeUrl', 'https://vrt.gredice.com/'
+        resValue 'string', 'hostName', twaManifest.hostName
+        resValue 'color', 'colorPrimary', twaManifest.themeColor
+        resValue 'color', 'colorPrimaryDark', twaManifest.themeColorDark
+        resValue 'color', 'navigationColor', twaManifest.navigationColor
+        resValue 'color', 'navigationColorDark', twaManifest.navigationColorDark
+        resValue 'color', 'navigationDividerColor', twaManifest.navigationDividerColor
+        resValue 'color', 'navigationDividerColorDark', twaManifest.navigationDividerColorDark
+        resValue 'color', 'backgroundColor', twaManifest.backgroundColor
+        resValue 'string', 'providerAuthority', "${twaManifest.applicationId}.fileprovider"
+        resValue 'bool', 'enableNotification', twaManifest.enableNotifications.toString()
+        resValue 'integer', 'splashScreenFadeOutDuration', twaManifest.splashScreenFadeOutDuration.toString()
+        resValue 'string', 'generatorApp', twaManifest.generatorApp
+        resValue 'string', 'fallbackType', twaManifest.fallbackType
+        resValue 'bool', 'enableSiteSettingsShortcut', twaManifest.enableSiteSettingsShortcut.toString()
+        resValue 'string', 'orientation', twaManifest.orientation
+    }
+
+    signingConfigs {
+        if (releaseSigningConfigured) {
+            release {
+                storeFile file(releaseKeystorePath)
+                storePassword releaseKeystorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildFeatures {
+        resValues true
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.2'
+}
