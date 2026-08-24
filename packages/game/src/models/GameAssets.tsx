@@ -23,6 +23,12 @@ type ActionName =
     | 'Dog_Walk'
     | 'Dog_LyingIdle'
     | 'Dog_PreyWatch'
+    | 'Squirrel_Scamper'
+    | 'Squirrel_Bound'
+    | 'Squirrel_Sit'
+    | 'Squirrel_Forage'
+    | 'Squirrel_Pause'
+    | 'Squirrel_Flee'
     | 'Frog_Idle'
     | 'Frog_Hop'
     | 'Frog_Croak'
@@ -253,6 +259,37 @@ export type GLTFResult = GLTF & {
         Dog_Tail_Mid: THREE.Mesh;
         Dog_Tail_Tip: THREE.Mesh;
         Dog_Tongue: THREE.Mesh;
+        Squirrel_Ear_L: THREE.Mesh;
+        Squirrel_EarTuft_L: THREE.Mesh;
+        Squirrel_InnerEar_L: THREE.Mesh;
+        Squirrel_Ear_R: THREE.Mesh;
+        Squirrel_EarTuft_R: THREE.Mesh;
+        Squirrel_InnerEar_R: THREE.Mesh;
+        Squirrel_Cheek_L: THREE.Mesh;
+        Squirrel_Cheek_R: THREE.Mesh;
+        Squirrel_Eye_L: THREE.Mesh;
+        Squirrel_Eye_R: THREE.Mesh;
+        Squirrel_EyeGlint_L: THREE.Mesh;
+        Squirrel_EyeGlint_R: THREE.Mesh;
+        Squirrel_Head: THREE.Mesh;
+        Squirrel_Muzzle: THREE.Mesh;
+        Squirrel_Nose: THREE.Mesh;
+        Squirrel_Leg_FL: THREE.Mesh;
+        Squirrel_Paw_FL: THREE.Mesh;
+        Squirrel_Leg_FR: THREE.Mesh;
+        Squirrel_Paw_FR: THREE.Mesh;
+        Squirrel_Leg_RL: THREE.Mesh;
+        Squirrel_Paw_RL: THREE.Mesh;
+        Squirrel_Leg_RR: THREE.Mesh;
+        Squirrel_Paw_RR: THREE.Mesh;
+        Squirrel_Tail_Crown: THREE.Mesh;
+        Squirrel_Tail_Tip: THREE.Mesh;
+        Squirrel_Tail_Mid: THREE.Mesh;
+        Squirrel_Tail_Base: THREE.Mesh;
+        Squirrel_Body: THREE.Mesh;
+        Squirrel_Chest: THREE.Mesh;
+        Squirrel_Haunch_L: THREE.Mesh;
+        Squirrel_Haunch_R: THREE.Mesh;
         Chicken_Beak: THREE.Mesh;
         Chicken_Comb: THREE.Mesh;
         Chicken_Eye_L: THREE.Mesh;
@@ -1931,6 +1968,13 @@ export type GLTFResult = GLTF & {
         'Material.SmallWoodenBridge.DeepWood': THREE.MeshStandardMaterial;
         'Material.SmallWoodenBridge.LightWood': THREE.MeshStandardMaterial;
         'Material.SmallWoodenBridge.WarmWood': THREE.MeshStandardMaterial;
+        'Material.Squirrel.Charcoal': THREE.MeshStandardMaterial;
+        'Material.Squirrel.CreamFur': THREE.MeshStandardMaterial;
+        'Material.Squirrel.EarPink': THREE.MeshStandardMaterial;
+        'Material.Squirrel.EyeGlint': THREE.MeshStandardMaterial;
+        'Material.Squirrel.RustFur': THREE.MeshStandardMaterial;
+        'Material.Squirrel.ShadowFur': THREE.MeshStandardMaterial;
+        'Material.Squirrel.WarmFur': THREE.MeshStandardMaterial;
         'Material.Stone': THREE.MeshStandardMaterial;
         'Material.Stone.001': THREE.MeshStandardMaterial;
         'Material.Stone.002': THREE.MeshStandardMaterial;

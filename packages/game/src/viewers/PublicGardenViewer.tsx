@@ -51,6 +51,7 @@ import { Frogs } from '../entities/frogs/Frogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
 import { Slugs } from '../entities/slugs/Slugs';
+import { Squirrels } from '../entities/squirrels/Squirrels';
 import { GameSceneDetailContext } from '../GameSceneDetailContext';
 import { useBlockData } from '../hooks/useBlockData';
 import { currentGardenKeys } from '../hooks/useCurrentGarden';
@@ -652,6 +653,16 @@ function PublicGardenScene({
                                             {renderTransientDetails && (
                                                 <Suspense fallback={null}>
                                                     <Birds
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
+                                                </Suspense>
+                                            )}
+                                            {renderTransientDetails && (
+                                                <Suspense fallback={null}>
+                                                    <Squirrels
+                                                        farmId={garden?.farmId}
                                                         stacks={
                                                             normalizedStacks
                                                         }

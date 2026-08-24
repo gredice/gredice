@@ -43,6 +43,7 @@ import {
     SunflowerDropReward,
 } from './entities/SunflowerDropReward';
 import { Slugs } from './entities/slugs/Slugs';
+import { Squirrels } from './entities/squirrels/Squirrels';
 import type { GameFeatureFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import { useGameLoading } from './GameLoadingContext';
@@ -696,6 +697,14 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <Birds stacks={garden?.stacks} />
+                                    </Suspense>
+                                )}
+                                {renderDetails && zoom !== 'far' && (
+                                    <Suspense fallback={null}>
+                                        <Squirrels
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                        />
                                     </Suspense>
                                 )}
                                 {renderDetails && zoom !== 'far' && (
