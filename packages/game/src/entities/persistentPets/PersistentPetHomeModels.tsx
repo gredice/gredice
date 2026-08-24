@@ -1,13 +1,47 @@
 import { animated } from '@react-spring/three';
-import { useMemo } from 'react';
+import { Mesh, type Object3D } from 'three';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
 import { useAnimatedEntityRotation } from '../helpers/useAnimatedEntityRotation';
+import { WeatheredEntityPart } from '../helpers/WeatheredEntityPart';
 import {
     getPersistentPetHomePlacement,
     type PersistentPetHomeBlockName,
 } from './persistentPetHomes';
+import { getPersistentPetHomeSurfaceWeather } from './persistentPetHomeWeather';
+
+function WeatheredPersistentPetHomeObject({ object }: { object: Object3D }) {
+    const children = object.children.map((child) => (
+        <WeatheredPersistentPetHomeObject key={child.uuid} object={child} />
+    ));
+
+    if (object instanceof Mesh) {
+        const weather = getPersistentPetHomeSurfaceWeather(object.name);
+        return (
+            <WeatheredEntityPart
+                material={object.material}
+                node={object}
+                rain={weather.rain}
+                snow={weather.snow}
+            >
+                {children}
+            </WeatheredEntityPart>
+        );
+    }
+
+    return (
+        <group
+            name={object.name}
+            position={object.position}
+            rotation={object.rotation}
+            scale={object.scale}
+            visible={object.visible}
+        >
+            {children}
+        </group>
+    );
+}
 
 function PersistentPetHome({
     block,
@@ -18,16 +52,6 @@ function PersistentPetHome({
     const gltf = useGameGLTF(modelName);
     const currentStackHeight = useStackHeight(stack, block);
     const [animatedRotation] = useAnimatedEntityRotation(rotation);
-    const model = useMemo(() => {
-        const scene = gltf.scene.clone(true);
-        scene.traverse((object) => {
-            if ('isMesh' in object && object.isMesh) {
-                object.castShadow = true;
-                object.receiveShadow = true;
-            }
-        });
-        return scene;
-    }, [gltf.scene]);
     const placement = getPersistentPetHomePlacement({
         blockName: modelName,
         rotation,
@@ -44,7 +68,12 @@ function PersistentPetHome({
             ]}
             rotation={animatedRotation as unknown as [number, number, number]}
         >
-            <primitive object={model} />
+            {gltf.scene.children.map((object) => (
+                <WeatheredPersistentPetHomeObject
+                    key={object.uuid}
+                    object={object}
+                />
+            ))}
         </animated.group>
     );
 }
