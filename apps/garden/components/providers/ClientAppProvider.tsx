@@ -21,15 +21,26 @@ export type User = {
     userName: string;
 };
 
+function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+}
+
+function isUser(value: unknown): value is User {
+    return (
+        isObject(value) &&
+        typeof value.id === 'string' &&
+        typeof value.isTemporary === 'boolean' &&
+        typeof value.userName === 'string'
+    );
+}
+
 async function currentUserFactory() {
     const response = await fetch('/api/gredice/api/auth/current-claims', {
         cache: 'no-store',
     });
     if (response.status === 401) {
-        const unauthorized = (await response.json().catch(() => null)) as {
-            returningUser?: unknown;
-        } | null;
-        if (unauthorized?.returningUser === true) {
+        const unauthorized: unknown = await response.json().catch(() => null);
+        if (isObject(unauthorized) && unauthorized.returningUser === true) {
             markReturningUser();
         }
         return null;
@@ -40,8 +51,9 @@ async function currentUserFactory() {
         return null;
     }
 
-    const user = (await response.json()) as User | null;
-    if (!user) {
+    const user: unknown = await response.json().catch(() => null);
+    if (!isUser(user)) {
+        console.warn('Received invalid current user claims');
         return null;
     }
     if (!user.isTemporary) {

@@ -186,10 +186,12 @@ async function mockGardenApi(
     page: Page,
     signedIn: boolean,
     {
+        malformedCurrentClaims = false,
         returningUser = false,
         withBlockData = false,
         withGarden = false,
     }: {
+        malformedCurrentClaims?: boolean;
         returningUser?: boolean;
         withBlockData?: boolean;
         withGarden?: boolean;
@@ -198,6 +200,7 @@ async function mockGardenApi(
     let sessionUser: typeof currentUser | typeof temporaryUser | null = signedIn
         ? currentUser
         : null;
+    let shouldReturnMalformedCurrentClaims = malformedCurrentClaims;
     let temporaryAccountRequestCount = 0;
 
     await page.route('**/api/gredice/**', async (route) => {
@@ -214,7 +217,10 @@ async function mockGardenApi(
             sessionUser = currentUser;
             body = { refreshToken: 'refresh-token', token: 'access-token' };
         } else if (pathname.endsWith('/api/auth/current-claims')) {
-            if (sessionUser) {
+            if (shouldReturnMalformedCurrentClaims) {
+                shouldReturnMalformedCurrentClaims = false;
+                body = {};
+            } else if (sessionUser) {
                 body = sessionUser;
             } else {
                 body = { error: 'Unauthorized', returningUser };
@@ -431,6 +437,27 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
         page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
     ).toBeVisible();
     await expectNoImmediateRuntimeFailures(page, failures);
+});
+
+test('rejects malformed current claims before creating a temporary account', async ({
+    page,
+}) => {
+    const api = await mockGardenApi(page, false, {
+        malformedCurrentClaims: true,
+    });
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    await expect(
+        page.getByRole('button', { name: 'Prijava' }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+    expect(api.getTemporaryAccountRequestCount()).toBe(1);
+    expect(
+        await page.evaluate((storageKey) => {
+            return window.localStorage.getItem(storageKey);
+        }, returningUserStorageKey),
+    ).toBeNull();
 });
 
 test('opens and clears a cross-app temporary login request from the URL', async ({
