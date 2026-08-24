@@ -48,7 +48,10 @@ export default function RootLayout({
         <html lang="hr" translate="no" suppressHydrationWarning>
             <body className={`${montserrat.variable} min-h-dvh antialiased`}>
                 <style>{'@view-transition { navigation: auto; }'}</style>
-                <PublicChromeProvider apiBasePath="/novosti/api/gredice">
+                <PublicChromeProvider
+                    apiBasePath="/novosti/api/gredice"
+                    environmentDebugApiPath="/novosti/api/public-environment/debug"
+                >
                     <div className="flex min-h-dvh flex-col [padding-bottom:env(safe-area-inset-bottom,0px)] [padding-left:env(safe-area-inset-left,0px)] [padding-right:env(safe-area-inset-right,0px)]">
                         <PublicHeader
                             apiBasePath="/novosti/api/gredice"

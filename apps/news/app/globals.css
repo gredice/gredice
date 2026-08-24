@@ -51,7 +51,7 @@
     }
 
     .dark {
-        --hue: 212;
+        --hue: var(--environmentHue, 212);
 
         --background: var(--hue) 16% 19%;
         --foreground: var(--hue) 47% 92%;
