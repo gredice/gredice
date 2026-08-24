@@ -31,10 +31,12 @@ type RegistrationSuccessHref =
     | '/prijava/registracija-uspijesna?upgrade=1';
 
 export type LoginModalProps = {
+    continueWithoutLoginLabel?: string;
     defaultTab?: AuthTab;
     description?: ReactNode;
     dismissible?: boolean;
     onAuthenticated?: () => void;
+    onContinueWithoutLogin?: () => void;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
     registrationSuccessHref?: RegistrationSuccessHref;
@@ -51,10 +53,12 @@ const authContentDirectionClassNames = {
 };
 
 export default function LoginModal({
+    continueWithoutLoginLabel = 'Nastavi s privremenim vrtom',
     defaultTab = 'login',
     description,
     dismissible = false,
     onAuthenticated,
+    onContinueWithoutLogin,
     onOpenChange,
     open = true,
     registrationSuccessHref = '/prijava/registracija-uspijesna',
@@ -363,6 +367,17 @@ export default function LoginModal({
                                 )}
                             </div>
                         </div>
+                        {onContinueWithoutLogin ? (
+                            <Button
+                                type="button"
+                                variant="plain"
+                                color="neutral"
+                                fullWidth
+                                onClick={onContinueWithoutLogin}
+                            >
+                                {continueWithoutLoginLabel}
+                            </Button>
+                        ) : null}
                     </Stack>
                 </Tabs>
             </Modal>

@@ -16,6 +16,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { hasReturningUserMarker } from '../../lib/auth/returningUser';
 import LoginModal from './LoginModal';
 
 let temporaryAccountBootstrapPromise: Promise<void> | null = null;
@@ -42,7 +43,12 @@ function bootstrapTemporaryAccount() {
     return temporaryAccountBootstrapPromise;
 }
 
-type BootstrapStatus = 'creating' | 'failed' | 'ready';
+type BootstrapStatus =
+    | 'checking'
+    | 'awaiting-login'
+    | 'creating'
+    | 'failed'
+    | 'ready';
 
 export function TemporaryAccountBootstrap({
     children,
@@ -51,7 +57,7 @@ export function TemporaryAccountBootstrap({
 }) {
     const queryClient = useQueryClient();
     const router = useRouter();
-    const [status, setStatus] = useState<BootstrapStatus>('creating');
+    const [status, setStatus] = useState<BootstrapStatus>('checking');
     const [showLogin, setShowLogin] = useState(false);
     const mountedRef = useRef(false);
 
@@ -84,7 +90,11 @@ export function TemporaryAccountBootstrap({
 
     useEffect(() => {
         mountedRef.current = true;
-        void runBootstrap();
+        if (hasReturningUserMarker()) {
+            setStatus('awaiting-login');
+        } else {
+            void runBootstrap();
+        }
 
         return () => {
             mountedRef.current = false;
@@ -95,14 +105,19 @@ export function TemporaryAccountBootstrap({
         void runBootstrap();
     }
 
-    const showStatus = status !== 'ready';
+    function handleContinueWithoutLogin() {
+        void runBootstrap();
+    }
+
+    const showStatus =
+        status === 'checking' || status === 'creating' || status === 'failed';
 
     return (
         <>
             {children}
             {showStatus && (
                 <div className="fixed inset-x-0 bottom-4 z-[55] flex justify-center px-4 pointer-events-none">
-                    {status === 'creating' ? (
+                    {status === 'checking' || status === 'creating' ? (
                         <Row
                             spacing={3}
                             className="pointer-events-auto rounded-full border bg-background/90 px-4 py-2 shadow-lg backdrop-blur"
@@ -149,9 +164,20 @@ export function TemporaryAccountBootstrap({
                 </div>
             )}
             <LoginModal
-                dismissible
+                description={
+                    status === 'awaiting-login'
+                        ? 'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.'
+                        : undefined
+                }
+                dismissible={status !== 'awaiting-login'}
+                onAuthenticated={() => setStatus('ready')}
+                onContinueWithoutLogin={
+                    status === 'awaiting-login'
+                        ? handleContinueWithoutLogin
+                        : undefined
+                }
                 onOpenChange={setShowLogin}
-                open={showLogin}
+                open={status === 'awaiting-login' || showLogin}
             />
         </>
     );

@@ -1,5 +1,6 @@
 import { type ConsoleMessage, expect, type Page, test } from '@playwright/test';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
+import { returningUserStorageKey } from '../lib/auth/returningUser';
 
 type GardenRenderProbeWindow = Window & {
     __gardenWebglContextRequests?: number;
@@ -185,13 +186,22 @@ async function mockGardenApi(
     page: Page,
     signedIn: boolean,
     {
+        malformedCurrentClaims = false,
+        returningUser = false,
         withBlockData = false,
         withGarden = false,
-    }: { withBlockData?: boolean; withGarden?: boolean } = {},
+    }: {
+        malformedCurrentClaims?: boolean;
+        returningUser?: boolean;
+        withBlockData?: boolean;
+        withGarden?: boolean;
+    } = {},
 ) {
     let sessionUser: typeof currentUser | typeof temporaryUser | null = signedIn
         ? currentUser
         : null;
+    let shouldReturnMalformedCurrentClaims = malformedCurrentClaims;
+    let temporaryAccountRequestCount = 0;
 
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
@@ -199,11 +209,23 @@ async function mockGardenApi(
         let status = 200;
 
         if (pathname.endsWith('/api/auth/temporary')) {
+            temporaryAccountRequestCount += 1;
             sessionUser = temporaryUser;
             body = temporaryUser;
             status = 201;
+        } else if (pathname.endsWith('/api/auth/login')) {
+            sessionUser = currentUser;
+            body = { refreshToken: 'refresh-token', token: 'access-token' };
         } else if (pathname.endsWith('/api/auth/current-claims')) {
-            body = sessionUser;
+            if (shouldReturnMalformedCurrentClaims) {
+                shouldReturnMalformedCurrentClaims = false;
+                body = {};
+            } else if (sessionUser) {
+                body = sessionUser;
+            } else {
+                body = { error: 'Unauthorized', returningUser };
+                status = 401;
+            }
         } else if (pathname.endsWith('/api/auth/last-login')) {
             body = {};
         } else if (pathname.endsWith('/api/users/current')) {
@@ -345,6 +367,10 @@ async function mockGardenApi(
             status,
         });
     });
+
+    return {
+        getTemporaryAccountRequestCount: () => temporaryAccountRequestCount,
+    };
 }
 
 async function expectNoImmediateRuntimeFailures(
@@ -384,7 +410,7 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
     const failures = collectRuntimeFailures(page);
     await page.setViewportSize({ height: 844, width: 390 });
     await emulateSafeArea(page);
-    await mockGardenApi(page, false);
+    const api = await mockGardenApi(page, false);
 
     const response = await page.goto('/');
 
@@ -393,7 +419,8 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expect(
         page.getByRole('button', { name: 'Prijava' }).first(),
-    ).toBeHidden();
+    ).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(1);
     await expect(page.locator('link[rel="manifest"]').first()).toHaveAttribute(
         'href',
         '/manifest.json',
@@ -401,7 +428,101 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
     await expect(
         page.locator('meta[name="apple-mobile-web-app-title"]').first(),
     ).toHaveAttribute('content', 'Gredice');
+
+    await page
+        .getByRole('button', { name: 'Prijava', exact: true })
+        .first()
+        .click();
+    await expect(
+        page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
+    ).toBeVisible();
     await expectNoImmediateRuntimeFailures(page, failures);
+});
+
+test('rejects malformed current claims before creating a temporary account', async ({
+    page,
+}) => {
+    const api = await mockGardenApi(page, false, {
+        malformedCurrentClaims: true,
+    });
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    await expect(
+        page.getByRole('button', { name: 'Prijava' }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+    expect(api.getTemporaryAccountRequestCount()).toBe(1);
+    expect(
+        await page.evaluate((storageKey) => {
+            return window.localStorage.getItem(storageKey);
+        }, returningUserStorageKey),
+    ).toBeNull();
+});
+
+test('opens and clears a cross-app temporary login request from the URL', async ({
+    page,
+}) => {
+    await mockGardenApi(page, false);
+
+    const response = await page.goto('/?prijava=1');
+
+    expect(response?.ok()).toBe(true);
+    await expect(
+        page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Zatvori' }).click();
+    await expect(page).toHaveURL('/');
+});
+
+test('returning user with an expired session sees login before a temporary garden is created', async ({
+    page,
+}) => {
+    const api = await mockGardenApi(page, false, { returningUser: true });
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
+    await expect(
+        page.getByText(
+            'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.',
+        ),
+    ).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+    expect(
+        await page.evaluate((storageKey) => {
+            return window.localStorage.getItem(storageKey);
+        }, returningUserStorageKey),
+    ).toBe('1');
+
+    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByLabel('Email').fill('vrtlar@example.com');
+    await page.getByLabel('Zaporka').fill('sigurna-zaporka');
+    await page.getByRole('button', { name: 'Prijava' }).click();
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+});
+
+test('remembered returning user sees login even when the expired account cookie is unavailable', async ({
+    page,
+}) => {
+    await page.addInitScript((storageKey) => {
+        window.localStorage.setItem(storageKey, '1');
+    }, returningUserStorageKey);
+    const api = await mockGardenApi(page, false);
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+
+    await page
+        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
+        .click();
+    await expect.poll(() => api.getTemporaryAccountRequestCount()).toBe(1);
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
 });
 
 test('loads signed-in landing page HUD without immediate runtime failures', async ({
@@ -415,6 +536,9 @@ test('loads signed-in landing page HUD without immediate runtime failures', asyn
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
+    await expect(
+        page.getByRole('button', { name: 'Prijava', exact: true }),
+    ).toHaveCount(0);
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
