@@ -12,6 +12,7 @@ import {
     createRefreshToken,
     createTemporaryUserAndAccount,
     createUserWithPassword,
+    deleteGardenIfNoActiveRaisedBeds,
     events,
     gardenVisitStates,
     getAccountGardensMetadata,
@@ -357,6 +358,17 @@ test('cleanupInactiveTemporaryAccounts deletes stale temporary accounts', async 
     const now = new Date('2026-06-18T12:00:00.000Z');
     const temporary = await createTemporaryUserAndAccount();
     await createRefreshToken(temporary.userId);
+    const [temporaryGarden] = await getAccountGardensMetadata(
+        temporary.accountId,
+    );
+    assert.ok(temporaryGarden);
+    assert.deepEqual(
+        await deleteGardenIfNoActiveRaisedBeds(temporaryGarden.id),
+        {
+            activeRaisedBedCount: 0,
+            deleted: true,
+        },
+    );
     await storage()
         .update(users)
         .set({ lastActiveAt: new Date('2026-05-01T12:00:00.000Z') })
@@ -375,4 +387,14 @@ test('cleanupInactiveTemporaryAccounts deletes stale temporary accounts', async 
         where: eq(users.id, temporary.userId),
     });
     assert.equal(deletedTemporaryUser, undefined);
+
+    const deletedAccount = await storage().query.accounts.findFirst({
+        where: (accounts, { eq }) => eq(accounts.id, temporary.accountId),
+    });
+    assert.equal(deletedAccount, undefined);
+
+    const deletedGarden = await storage().query.gardens.findFirst({
+        where: (gardens, { eq }) => eq(gardens.id, temporaryGarden.id),
+    });
+    assert.equal(deletedGarden, undefined);
 });

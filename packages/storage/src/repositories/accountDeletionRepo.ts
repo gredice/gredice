@@ -19,7 +19,7 @@ import {
     markAccountDeletionStarted,
 } from './accountDeletionFenceRepo';
 import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
-import { getAccountGardens, getRaisedBeds } from './gardensRepo';
+import { getRaisedBeds } from './gardensRepo';
 import {
     deleteNotification,
     getNotificationsByAccount,
@@ -131,7 +131,12 @@ export async function deleteAccountWithDependencies(
         );
         await fenceAccountShoppingCartsForDeletion(accountId);
 
-        const gardens = await getAccountGardens(accountId);
+        // Account deletion must include soft-deleted gardens. The customer
+        // garden list intentionally excludes them, but they still retain their
+        // account foreign key until this cleanup permanently removes them.
+        const gardens = await storage().query.gardens.findMany({
+            where: eq(dbGardens.accountId, accountId),
+        });
         if (gardens.length > 0) {
             hasScheduleAffectingChanges = true;
         }
