@@ -11,8 +11,10 @@ import {
     createUserPasswordLogin,
     createUserWithPassword,
     doUseRefreshToken,
+    getAccountUsers,
     getLastUserLogin,
     getUser,
+    getUserDefaultGarden,
     getUserWithLogins,
     getUserWithLoginsByLogin,
     incLoginFailedAttempts,
@@ -52,6 +54,7 @@ import {
     resolveOAuthCallback,
     sanitizeOAuthCallbackUrl,
 } from '../../../lib/auth/oauthCallbackContract';
+import { resolvePostLoginAccountId } from '../../../lib/auth/postLoginAccount';
 import {
     clearRefreshCookie,
     setRefreshCookie,
@@ -332,6 +335,27 @@ function setActiveAccountCookie(context: Context, accountId?: string) {
     });
 }
 
+async function getPostLoginAccountId(
+    userId: string,
+    attachedTemporaryAccountIds: string[] | undefined,
+) {
+    if (!attachedTemporaryAccountIds?.length) {
+        return undefined;
+    }
+
+    const [user, defaultGarden] = await Promise.all([
+        getUser(userId),
+        getUserDefaultGarden(userId),
+    ]);
+    return resolvePostLoginAccountId({
+        accountIds:
+            user?.accounts.map((account) => account.accountId) ??
+            attachedTemporaryAccountIds,
+        attachedTemporaryAccountIds,
+        defaultGardenAccountId: defaultGarden?.accountId,
+    });
+}
+
 function getEmailDomain(email?: string) {
     const normalizedEmail = normalizeEmail(email);
     if (!normalizedEmail) {
@@ -608,20 +632,26 @@ const app = new Hono()
             const { accessToken, refreshToken } = await issueSessionTokens(
                 user.id,
             );
-            let attachedTemporaryAccountId: string | undefined;
+            let attachedTemporaryAccountIds: string[] | undefined;
             if (temporaryClaims && temporaryClaims.id !== user.id) {
                 const attached = await attachTemporaryAccountsToUser({
                     temporaryUserId: temporaryClaims.id,
                     targetUserId: user.id,
                 });
-                attachedTemporaryAccountId = attached.accountIds[0];
+                attachedTemporaryAccountIds = attached.accountIds;
             }
             await Promise.all([
                 setCookie(context, accessToken),
                 loginSuccessful(login.id),
                 setRefreshCookie(context, refreshToken),
             ]);
-            setActiveAccountCookie(context, attachedTemporaryAccountId);
+            setActiveAccountCookie(
+                context,
+                await getPostLoginAccountId(
+                    user.id,
+                    attachedTemporaryAccountIds,
+                ),
+            );
 
             await trackAuthEvent({
                 distinctId: user.id,
@@ -630,7 +660,7 @@ const app = new Hono()
                 provider: 'password',
                 properties: {
                     attached_temporary_account: Boolean(
-                        attachedTemporaryAccountId,
+                        attachedTemporaryAccountIds?.length,
                     ),
                 },
             });
@@ -742,7 +772,10 @@ const app = new Hono()
                 ]);
                 setActiveAccountCookie(
                     context,
-                    attachedTemporaryAccountIds?.[0],
+                    await getPostLoginAccountId(
+                        userId,
+                        attachedTemporaryAccountIds,
+                    ),
                 );
 
                 await trackAuthEvent({
@@ -897,7 +930,10 @@ const app = new Hono()
                 ]);
                 setActiveAccountCookie(
                     context,
-                    attachedTemporaryAccountIds?.[0],
+                    await getPostLoginAccountId(
+                        userId,
+                        attachedTemporaryAccountIds,
+                    ),
                 );
 
                 await trackAuthEvent({
@@ -958,9 +994,18 @@ const app = new Hono()
                 'Get current user claims and profile fields from a verified or refreshed session token.',
         }),
         async (context) => {
+            const selectedAccountId = getCookie(context, accountCookieName);
             const claims = await getCurrentClaims(context);
             if (!claims) {
-                return context.json({ error: 'Unauthorized' }, { status: 401 });
+                const returningUser = selectedAccountId
+                    ? (await getAccountUsers(selectedAccountId)).some(
+                          (accountUser) => !accountUser.user.isTemporary,
+                      )
+                    : false;
+                return context.json(
+                    { error: 'Unauthorized', returningUser },
+                    { status: 401 },
+                );
             }
 
             return context.json(claims);

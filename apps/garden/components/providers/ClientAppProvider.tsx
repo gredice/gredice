@@ -7,6 +7,8 @@ import { NuqsAdapter } from '@gredice/ui/nuqs';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import type { PropsWithChildren } from 'react';
+import { markReturningUser } from '../../lib/auth/returningUser';
+import { TemporaryAccountLoginModal } from '../auth/TemporaryAccountLoginModal';
 
 function DayNightThemeSync() {
     useThemeManager();
@@ -24,6 +26,12 @@ async function currentUserFactory() {
         cache: 'no-store',
     });
     if (response.status === 401) {
+        const unauthorized = (await response.json().catch(() => null)) as {
+            returningUser?: unknown;
+        } | null;
+        if (unauthorized?.returningUser === true) {
+            markReturningUser();
+        }
         return null;
     }
 
@@ -32,7 +40,14 @@ async function currentUserFactory() {
         return null;
     }
 
-    return (await response.json()) as User;
+    const user = (await response.json()) as User | null;
+    if (!user) {
+        return null;
+    }
+    if (!user.isTemporary) {
+        markReturningUser();
+    }
+    return user;
 }
 
 const queryClient = new QueryClient();
@@ -45,6 +60,7 @@ export function ClientAppProvider({ children }: PropsWithChildren) {
                     <DayNightThemeSync />
                     <AuthProvider currentUserFactory={currentUserFactory}>
                         {children}
+                        <TemporaryAccountLoginModal />
                         <NotificationsContainer />
                     </AuthProvider>
                 </ThemeProvider>
