@@ -45,7 +45,8 @@ const STAR_TWINKLE = {
     speedRange: 2.4,
     offsetRange: Math.PI * 2,
     opacityBase: 0.16,
-    opacityVisibilityFactor: 0.12,
+    // Keep cloudy-sky stars subtle while making a fully clear sky readable.
+    opacityVisibilityFactor: 0.4,
     intensityBase: 0.15,
     intensityRange: 0.45,
 };
@@ -58,7 +59,8 @@ const STAR_TWINKLE_COLOR = {
 const STAR_RENDERING = {
     renderOrder: -1,
     positionStride: 3,
-    materialSize: 1.65,
+    // CSS-pixel target; the shader receives the drawing-buffer pixel size.
+    pointSize: 1.8,
 };
 
 type StarsProps = {
@@ -68,6 +70,7 @@ type StarsProps = {
 export function Stars({ visibility = 1 }: StarsProps) {
     const pointsRef = useRef<Points>(null);
     const camera = useThree((state) => state.camera);
+    const pixelRatio = useThree((state) => state.viewport.dpr);
     const gameCamera = useGameState((state) => state.gameCamera);
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
     const timeUniform = useSceneTimeUniform();
@@ -261,11 +264,11 @@ export function Stars({ visibility = 1 }: StarsProps) {
                     STAR_TWINKLE.opacityBase +
                     clampedVisibility * STAR_TWINKLE.opacityVisibilityFactor,
             },
-            uPointSize: { value: STAR_RENDERING.materialSize },
+            uPointSize: { value: STAR_RENDERING.pointSize * pixelRatio },
             uTime: timeUniform,
             uVisibility: { value: clampedVisibility },
         }),
-        [clampedVisibility, timeUniform],
+        [clampedVisibility, pixelRatio, timeUniform],
     );
 
     const updateCameraFacing = useCallback(() => {
