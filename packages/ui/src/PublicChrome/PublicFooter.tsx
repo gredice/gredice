@@ -13,6 +13,7 @@ import {
     PublicPagePaths,
     publicChromeHref,
 } from './links';
+import { PublicEnvironmentFooterControls } from './PublicEnvironmentFooterControls';
 
 const publicFooterComponentRegistry = {
     Footer1: memo(Footer1),
@@ -334,6 +335,7 @@ export function PublicFooter({
 }) {
     return (
         <div className="site-footer">
+            <PublicEnvironmentFooterControls />
             <SectionsView
                 sectionsData={sectionsData(linkMode)}
                 componentsRegistry={publicFooterComponentRegistry}

@@ -64,6 +64,7 @@ jobs:
               - turbo.json
             app_news:
               - apps/news/**
+              - packages/js/**
               - packages/storage/**
               - packages/ui/**
               - .github/workflows/**

@@ -228,3 +228,224 @@ body.flex > .gredice-ui-application-root {
         color: inherit;
     }
 }
+
+@keyframes public-environment-drift {
+    from {
+        background-position:
+            0 0,
+            12rem 2rem,
+            28rem -1rem;
+    }
+    to {
+        background-position:
+            24rem 1rem,
+            40rem 3rem,
+            60rem 0;
+    }
+}
+
+@keyframes public-environment-rain {
+    from {
+        background-position: 0 -8rem;
+    }
+    to {
+        background-position: -3rem 8rem;
+    }
+}
+
+@keyframes public-environment-snow {
+    from {
+        background-position:
+            0 -8rem,
+            4rem -4rem;
+    }
+    to {
+        background-position:
+            2rem 8rem,
+            7rem 10rem;
+    }
+}
+
+html[data-public-environment="on"] body {
+    background-color: transparent;
+    isolation: isolate;
+}
+
+.public-environment-backdrop {
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    transition: background 1.2s ease;
+}
+
+.public-environment-stars,
+.public-environment-clouds,
+.public-environment-fog,
+.public-environment-rain,
+.public-environment-snow,
+.public-environment-storm,
+.public-environment-contrast-veil {
+    position: absolute;
+    inset: 0;
+}
+
+.public-environment-stars {
+    background-image:
+        radial-gradient(circle, rgb(255 255 255 / 0.9) 0 1px, transparent 1.5px),
+        radial-gradient(
+            circle,
+            rgb(214 229 255 / 0.72) 0 1px,
+            transparent 1.4px
+        ),
+        radial-gradient(
+            circle,
+            rgb(255 245 210 / 0.72) 0 0.8px,
+            transparent 1.2px
+        );
+    background-position:
+        1rem 2rem,
+        4rem 1rem,
+        2rem 5rem;
+    background-size:
+        8rem 8rem,
+        11rem 11rem,
+        6rem 6rem;
+    transition: opacity 1.2s ease;
+}
+
+.public-environment-sun,
+.public-environment-moon {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transition:
+        left 1.2s ease,
+        opacity 1.2s ease,
+        top 1.2s ease;
+}
+
+.public-environment-sun {
+    width: clamp(3.5rem, 9vw, 7.5rem);
+    aspect-ratio: 1;
+    border-radius: 9999px;
+    background: rgb(255 246 204);
+    box-shadow:
+        0 0 2rem rgb(255 238 167 / 0.85),
+        0 0 7rem rgb(255 215 131 / 0.72);
+}
+
+.public-environment-moon {
+    width: clamp(2.75rem, 7vw, 5.5rem);
+    overflow: visible;
+    filter: drop-shadow(0 0 1.6rem rgb(201 222 255 / 0.54));
+}
+
+.public-environment-clouds {
+    background-image:
+        radial-gradient(
+            ellipse at center,
+            rgb(255 255 255 / 0.58) 0 24%,
+            transparent 68%
+        ),
+        radial-gradient(
+            ellipse at center,
+            rgb(222 230 236 / 0.52) 0 26%,
+            transparent 70%
+        ),
+        radial-gradient(
+            ellipse at center,
+            rgb(255 255 255 / 0.45) 0 20%,
+            transparent 66%
+        );
+    background-position:
+        0 0,
+        12rem 2rem,
+        28rem -1rem;
+    background-size:
+        31rem 13rem,
+        38rem 16rem,
+        27rem 12rem;
+    filter: blur(10px);
+    animation: public-environment-drift 90s linear infinite alternate;
+}
+
+.public-environment-fog {
+    background: linear-gradient(
+        180deg,
+        transparent 12%,
+        rgb(238 241 239 / 0.48) 52%,
+        rgb(244 241 231 / 0.72) 100%
+    );
+    filter: blur(8px);
+}
+
+.public-environment-rain {
+    background-image: repeating-linear-gradient(
+        108deg,
+        transparent 0 18px,
+        rgb(214 228 240 / 0.55) 19px 20px,
+        transparent 21px 34px
+    );
+    background-size: 8rem 8rem;
+    animation: public-environment-rain 0.9s linear infinite;
+}
+
+.public-environment-snow {
+    background-image:
+        radial-gradient(
+            circle,
+            rgb(255 255 255 / 0.92) 0 2px,
+            transparent 2.5px
+        ),
+        radial-gradient(
+            circle,
+            rgb(255 255 255 / 0.72) 0 1.5px,
+            transparent 2px
+        );
+    background-position:
+        0 -8rem,
+        4rem -4rem;
+    background-size:
+        8rem 8rem,
+        6rem 6rem;
+    animation: public-environment-snow 10s linear infinite;
+}
+
+.public-environment-storm {
+    background: radial-gradient(
+        ellipse at 68% 8%,
+        rgb(195 207 234 / 0.32),
+        rgb(13 24 42 / 0.52) 48%,
+        rgb(5 13 25 / 0.7)
+    );
+}
+
+.public-environment-contrast-veil {
+    background: linear-gradient(
+        180deg,
+        hsl(var(--background) / 0.26),
+        hsl(var(--background) / 0.5) 46%,
+        hsl(var(--background) / 0.72)
+    );
+}
+
+.dark .public-environment-contrast-veil {
+    background: linear-gradient(
+        180deg,
+        hsl(var(--background) / 0.16),
+        hsl(var(--background) / 0.42) 48%,
+        hsl(var(--background) / 0.66)
+    );
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-environment-backdrop,
+    .public-environment-sun,
+    .public-environment-moon,
+    .public-environment-clouds,
+    .public-environment-rain,
+    .public-environment-snow {
+        animation: none;
+        transition: none;
+    }
+}
