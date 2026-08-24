@@ -81,8 +81,12 @@ export type {
 } from './sprites/types';
 export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
 export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
+export type { TemporaryAccountLoginOpenChangedDetail } from './temporaryAccountAuth';
 export {
+    isTemporaryAccountLoginOpen,
+    notifyTemporaryAccountLoginOpenChanged,
     requestTemporaryAccountLogin,
+    temporaryAccountLoginOpenChangedEvent,
     temporaryAccountLoginRequestedEvent,
 } from './temporaryAccountAuth';
 export type { EntityGridViewerProps } from './viewers/EntityGridViewer';

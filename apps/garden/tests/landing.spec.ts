@@ -154,6 +154,28 @@ const gardenOverviewDetail = {
     updatedAt: '2026-07-01T00:00:00.000Z',
 };
 
+const onboardingPlantSorts = [
+    [206, 'Rajčica', 'Rajčica saint pierre'],
+    [216, 'Paprika', 'Paprika crvena roga'],
+    [226, 'Krastavac', 'Krastavac pariški kornišon'],
+    [230, 'Mrkva', 'Mrkva nantes'],
+    [284, 'Špinat', 'Špinat matador'],
+    [357, 'Salata', 'Salata vegorka'],
+    [373, 'Luk', 'Luk Stuttgarter'],
+    [353, 'Brokula', 'Brokula gea F1'],
+].map(([id, plantName, sortName]) => ({
+    id,
+    information: {
+        name: sortName,
+        plant: {
+            id: Number(id) + 10_000,
+            information: { name: plantName },
+            relationships: null,
+        },
+    },
+    store: { availableInStore: true },
+}));
+
 const crashPatterns = [
     /Maximum update depth exceeded/u,
     /The result of getSnapshot should be cached/u,
@@ -190,11 +212,13 @@ async function mockGardenApi(
         returningUser = false,
         withBlockData = false,
         withGarden = false,
+        withTemporaryOnboarding = false,
     }: {
         malformedCurrentClaims?: boolean;
         returningUser?: boolean;
         withBlockData?: boolean;
         withGarden?: boolean;
+        withTemporaryOnboarding?: boolean;
     } = {},
 ) {
     let sessionUser: typeof currentUser | typeof temporaryUser | null = signedIn
@@ -202,6 +226,7 @@ async function mockGardenApi(
         : null;
     let shouldReturnMalformedCurrentClaims = malformedCurrentClaims;
     let temporaryAccountRequestCount = 0;
+    let dailyRewardRequestCount = 0;
 
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
@@ -235,31 +260,39 @@ async function mockGardenApi(
             pathname.endsWith('/api/gardens/1/operations')
         ) {
             body = { items: [], nextCursor: null, total: 0 };
+        } else if (/\/api\/gardens\/\d+\/operations$/u.test(pathname)) {
+            body = { items: [], nextCursor: null, total: 0 };
         } else if (
-            withGarden &&
+            (withGarden || sessionUser?.isTemporary) &&
             pathname.endsWith('/api/gardens/1/raised-bed-notifications')
         ) {
             body = { notifications: [] };
         } else if (
-            withGarden &&
+            (withGarden || sessionUser?.isTemporary) &&
             pathname.endsWith('/api/gardens/1/raised-beds/10/ai-history')
         ) {
             body = [];
         } else if (
-            withGarden &&
+            (withGarden || sessionUser?.isTemporary) &&
             pathname.endsWith('/api/gardens/1/raised-beds/10/sensors')
         ) {
             body = [];
         } else if (pathname.endsWith('/api/gardens/1')) {
             body = sessionUser?.isTemporary
-                ? sandboxGarden
+                ? withTemporaryOnboarding
+                    ? gardenOverviewDetail
+                    : sandboxGarden
                 : withGarden
                   ? gardenOverviewDetail
                   : undefined;
         } else if (pathname.endsWith('/api/gardens')) {
             body = sessionUser
                 ? sessionUser.isTemporary
-                    ? [sandboxGarden]
+                    ? [
+                          withTemporaryOnboarding
+                              ? gardenOverviewListItem
+                              : sandboxGarden,
+                      ]
                     : withGarden
                       ? [gardenOverviewListItem]
                       : []
@@ -282,6 +315,8 @@ async function mockGardenApi(
                       },
                   ]
                 : null;
+        } else if (pathname.endsWith('/entities/plantSort')) {
+            body = onboardingPlantSorts;
         } else if (pathname.includes('/api/directories/entities/')) {
             body =
                 withBlockData && pathname.endsWith('/entities/block')
@@ -311,7 +346,9 @@ async function mockGardenApi(
         } else if (
             pathname.endsWith('/api/accounts/current/sunflowers/daily')
         ) {
+            dailyRewardRequestCount += 1;
             body = {
+                canClaim: Boolean(sessionUser?.isTemporary),
                 current: { amount: 0, day: 1 },
                 next: { amount: 1, day: 2 },
             };
@@ -353,6 +390,8 @@ async function mockGardenApi(
             /\/api\/gardens\/\d+\/raised-bed-notifications$/u.test(pathname)
         ) {
             body = { notifications: [] };
+        } else if (pathname.endsWith('/detailed-inspection-reports')) {
+            body = { reports: [] };
         } else if (pathname.endsWith('/api/notifications')) {
             body = [];
         }
@@ -369,6 +408,7 @@ async function mockGardenApi(
     });
 
     return {
+        getDailyRewardRequestCount: () => dailyRewardRequestCount,
         getTemporaryAccountRequestCount: () => temporaryAccountRequestCount,
     };
 }
@@ -404,22 +444,38 @@ async function emulateSafeArea(page: Page) {
     });
 }
 
-test('signed-out landing creates a temporary account and shows the playable HUD', async ({
+test('temporary garden shows onboarding with a separate login HUD and no welcome reward', async ({
     page,
 }) => {
+    test.setTimeout(20_000);
     const failures = collectRuntimeFailures(page);
     await page.setViewportSize({ height: 844, width: 390 });
     await emulateSafeArea(page);
-    const api = await mockGardenApi(page, false);
+    const api = await mockGardenApi(page, false, {
+        withTemporaryOnboarding: true,
+    });
 
     const response = await page.goto('/');
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
+    const loginHud = page.locator('[data-game-hud-temporary-auth="true"]');
+    const loginButton = loginHud.getByRole('button', {
+        name: 'Prijava ili registracija',
+    });
+    await expect(loginHud).toBeVisible();
+    await expect(loginButton).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Prijava' }).first(),
+        page
+            .locator('[data-game-hud-top-left]')
+            .getByRole('button', { name: 'Prijava ili registracija' }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('dialog', { name: 'Brzi plan gredice' }),
     ).toBeVisible();
+    await expect(page.getByText('Kreni u avanturu')).toHaveCount(0);
+    expect(api.getDailyRewardRequestCount()).toBe(0);
     expect(api.getTemporaryAccountRequestCount()).toBe(1);
     await expect(page.locator('link[rel="manifest"]').first()).toHaveAttribute(
         'href',
@@ -429,13 +485,13 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
         page.locator('meta[name="apple-mobile-web-app-title"]').first(),
     ).toHaveAttribute('content', 'Gredice');
 
-    await page
-        .getByRole('button', { name: 'Prijava', exact: true })
-        .first()
-        .click();
+    await loginButton.click();
     await expect(
         page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
     ).toBeVisible();
+    await expect(loginHud).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(loginButton).toBeVisible();
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
@@ -450,7 +506,7 @@ test('rejects malformed current claims before creating a temporary account', asy
 
     expect(response?.ok()).toBe(true);
     await expect(
-        page.getByRole('button', { name: 'Prijava' }).first(),
+        page.getByRole('button', { name: 'Prijava ili registracija' }),
     ).toBeVisible({ timeout: 15_000 });
     expect(api.getTemporaryAccountRequestCount()).toBe(1);
     expect(
@@ -471,7 +527,10 @@ test('opens and clears a cross-app temporary login request from the URL', async 
     await expect(
         page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
     ).toBeVisible();
-    await page.getByRole('button', { name: 'Zatvori' }).click();
+    await page
+        .getByRole('dialog', { name: 'Prijava u postojeći vrt' })
+        .getByRole('button', { name: 'Zatvori' })
+        .click();
     await expect(page).toHaveURL('/');
 });
 

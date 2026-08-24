@@ -27,6 +27,7 @@ import { ShoppingCartHud } from './hud/ShoppingCartHud';
 import { SuncokretChatHud } from './hud/SuncokretChatHud';
 import { SuncokretChatProvider } from './hud/SuncokretChatProvider';
 import { SunflowersHud } from './hud/SunflowersHud';
+import { TemporaryAccountAuthHud } from './hud/TemporaryAccountAuthHud';
 import { TutorialChecklistHud } from './hud/TutorialChecklistHud';
 import { WeatherHud } from './hud/WeatherHud';
 import { WelcomeMessage } from './hud/WelcomeMessage';
@@ -96,18 +97,20 @@ export function GameHud({
         isCloseup && 'hidden md:block',
     );
     const currentGardenId = currentGarden?.id ?? null;
+    const openingWelcomeConfirmed =
+        Boolean(currentUser?.isTemporary) || welcomeConfirmed;
     const raisedBedOnboardingAvailable = !isSandbox;
     const raisedBedOnboardingChecklistResolved =
         raisedBedOnboardingConfirmation.confirmed &&
         raisedBedOnboardingConfirmation.gardenId === currentGardenId;
     const raisedBedOnboardingEnabled =
         !suppressOpeningHud &&
-        welcomeConfirmed &&
+        openingWelcomeConfirmed &&
         !raisedBedOnboardingChecklistResolved &&
         !isSandbox;
     const openingFlowComplete =
         !suppressOpeningHud &&
-        welcomeConfirmed &&
+        openingWelcomeConfirmed &&
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
@@ -117,6 +120,9 @@ export function GameHud({
         // modal right away, so those keep rendering without their HUD shells.
         return (
             <>
+                {!isLocalSandbox && currentUser?.isTemporary ? (
+                    <TemporaryAccountAuthHud />
+                ) : null}
                 <GardenAvatarHud />
                 {showAccountEconomy && <InventoryHud hideTrigger />}
                 <WoodenSignModal />
@@ -127,6 +133,9 @@ export function GameHud({
 
     return (
         <SuncokretChatProvider>
+            {!isLocalSandbox && currentUser?.isTemporary ? (
+                <TemporaryAccountAuthHud />
+            ) : null}
             <div
                 data-game-hud-top-left
                 className={cx(
@@ -254,9 +263,11 @@ export function GameHud({
             <WoodenSignModal />
             {!isLocalSandbox && !suppressOpeningHud && (
                 <>
-                    <WelcomeMessage
-                        onClosed={() => setWelcomeConfirmed(true)}
-                    />
+                    {!currentUser?.isTemporary && currentUser ? (
+                        <WelcomeMessage
+                            onClosed={() => setWelcomeConfirmed(true)}
+                        />
+                    ) : null}
                     <GardenTargetHighlightHud />
                     <WhatsNewWidget
                         enabled={openingFlowComplete}

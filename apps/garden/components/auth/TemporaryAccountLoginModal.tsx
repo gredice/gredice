@@ -1,6 +1,9 @@
 'use client';
 
-import { temporaryAccountLoginRequestedEvent } from '@gredice/game';
+import {
+    notifyTemporaryAccountLoginOpenChanged,
+    temporaryAccountLoginRequestedEvent,
+} from '@gredice/game';
 import { useEffect, useState } from 'react';
 import LoginModal from './LoginModal';
 
@@ -34,6 +37,14 @@ export function TemporaryAccountLoginModal() {
                 temporaryAccountLoginRequestedEvent,
                 handleLoginRequested,
             );
+    }, []);
+
+    useEffect(() => {
+        notifyTemporaryAccountLoginOpenChanged(open);
+    }, [open]);
+
+    useEffect(() => {
+        return () => notifyTemporaryAccountLoginOpenChanged(false);
     }, []);
 
     function handleOpenChange(nextOpen: boolean) {
