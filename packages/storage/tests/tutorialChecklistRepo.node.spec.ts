@@ -7,14 +7,16 @@ import {
     createEntity,
     createRaisedBed,
     createUserWithPassword,
+    earnSunflowers,
     getOrCreateShoppingCart,
     getSunflowers,
     getTutorialChecklistState,
     getUser,
     markTutorialChecklistTaskReady,
     setUserFavorite,
+    storage,
     TutorialChecklistTaskNotClaimableError,
-    updateGarden,
+    tutorialChecklistTaskClaims,
     upsertEntityType,
     upsertOrRemoveCartItem,
 } from '@gredice/storage';
@@ -110,43 +112,26 @@ test('tutorial checklist treats an active raised bed as first plan progress', as
     assert.strictEqual(task.completed, false);
 });
 
-test('tutorial checklist rewards making a garden public once', async () => {
+test('tutorial checklist omits garden sharing and retains previously claimed rewards', async () => {
     createTestDb();
     const { accountId, userId } = await createChecklistTestUser();
-    const farmId = await ensureFarmId();
-    const gardenId = await createTestGarden({ accountId, farmId });
 
-    let state = await getTutorialChecklistState({ accountId, userId });
-    let task = findChecklistTask(state, 'make-garden-public');
-    assert.ok(task);
-    assert.strictEqual(task.rewardSunflowers, 500);
-    assert.strictEqual(task.status, 'available');
-    assert.strictEqual(task.claimable, false);
-
-    await updateGarden({ id: gardenId, isPublic: true });
-
-    state = await getTutorialChecklistState({ accountId, userId });
-    task = findChecklistTask(state, 'make-garden-public');
-    assert.ok(task);
-    assert.strictEqual(task.status, 'ready');
-    assert.strictEqual(task.claimable, true);
-
-    await claimTutorialChecklistTask({
-        accountId,
-        userId,
-        taskKey: 'make-garden-public',
+    await storage().transaction(async (tx) => {
+        await tx.insert(tutorialChecklistTaskClaims).values({
+            accountId,
+            taskKey: 'make-garden-public',
+            rewardSunflowers: 500,
+        });
+        await earnSunflowers(accountId, 500, 'tutorial:make-garden-public', tx);
     });
 
-    assert.strictEqual(await getSunflowers(accountId), 1500);
-    await assert.rejects(
-        () =>
-            claimTutorialChecklistTask({
-                accountId,
-                userId,
-                taskKey: 'make-garden-public',
-            }),
-        TutorialChecklistTaskNotClaimableError,
+    const state = await getTutorialChecklistState({ accountId, userId });
+
+    assert.strictEqual(
+        findChecklistTask(state, 'make-garden-public'),
+        undefined,
     );
+    assert.strictEqual(state.totals.earnedSunflowers, 500);
     assert.strictEqual(await getSunflowers(accountId), 1500);
 });
 

@@ -130,6 +130,7 @@ test('private gardens cannot acquire a preview capture lease', async () => {
         accountId,
         farmId: await ensureFarmId(),
     });
+    await updateGarden({ id: gardenId, isPublic: false });
 
     const lease = await acquireGardenPreviewCaptureLease({
         expiresAt: new Date('2026-07-11T12:01:00.000Z'),

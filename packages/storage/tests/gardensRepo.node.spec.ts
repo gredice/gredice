@@ -177,36 +177,35 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
     );
 });
 
-test('gardens are private by default and public helpers only return public gardens', async () => {
+test('gardens are public by default and can be unlisted', async () => {
     createTestDb();
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
-    const privateGardenId = await createTestGarden({
-        name: 'Private Garden',
-        accountId,
-        farmId,
-    });
     const publicGardenId = await createTestGarden({
         name: 'Public Garden',
         accountId,
         farmId,
     });
+    const unlistedGardenId = await createTestGarden({
+        name: 'Unlisted Garden',
+        accountId,
+        farmId,
+    });
 
-    const privateGarden = await getGarden(privateGardenId);
-    assert.ok(privateGarden);
-    assert.strictEqual(privateGarden.isPublic, false);
+    const publicGarden = await getGarden(publicGardenId);
+    assert.ok(publicGarden);
+    assert.strictEqual(publicGarden.isPublic, true);
 
-    await updateGarden({ id: publicGardenId, isPublic: true });
+    await updateGarden({ id: unlistedGardenId, isPublic: false });
 
     const publicGardens = await getPublicGardens();
-    assert.deepStrictEqual(
-        publicGardens.map((garden) => garden.id),
-        [publicGardenId],
+    assert.ok(publicGardens.some((garden) => garden.id === publicGardenId));
+    assert.ok(publicGardens.every((garden) => garden.id !== unlistedGardenId));
+    assert.strictEqual(await getPublicGarden(unlistedGardenId), null);
+    assert.strictEqual(
+        (await getPublicGarden(publicGardenId))?.name,
+        'Public Garden',
     );
-    assert.strictEqual(await getPublicGarden(privateGardenId), null);
-    const publicGarden = await getPublicGarden(publicGardenId);
-    assert.ok(publicGarden);
-    assert.strictEqual(publicGarden.name, 'Public Garden');
 });
 
 test('garden previews replace atomically and reject older captures', async () => {
@@ -276,6 +275,7 @@ test('garden preview persistence rejects private gardens', async () => {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
     const gardenId = await createTestGarden({ accountId, farmId });
+    await updateGarden({ id: gardenId, isPublic: false });
     const capturedAt = new Date();
 
     const result = await replaceGardenPreview({
@@ -316,7 +316,7 @@ test('garden likes are limited to visible gardens owned by other accounts', asyn
         accountId: ownerAccountId,
         farmId,
     });
-    await updateGarden({ id: publicGardenId, isPublic: true });
+    await updateGarden({ id: privateGardenId, isPublic: false });
 
     await assert.rejects(
         () =>

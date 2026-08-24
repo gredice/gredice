@@ -589,6 +589,13 @@
       "when": 1787497175349,
       "tag": "0083_confused_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1787585983137,
+      "tag": "0084_panoramic_lily_hollister",
+      "breakpoints": true
     }
   ]
 }

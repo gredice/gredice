@@ -40,7 +40,7 @@ export const gardens = pgTable(
         // Sandbox ("play") gardens have no economy: free building, no inventory,
         // no plant-status lifecycle and no weather. Decoration only.
         isSandbox: boolean('is_sandbox').notNull().default(false),
-        isPublic: boolean('is_public').notNull().default(false),
+        isPublic: boolean('is_public').notNull().default(true),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         updatedAt: timestamp('updated_at')
             .notNull()
