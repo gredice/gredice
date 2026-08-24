@@ -50,6 +50,7 @@ import { Fence } from './Fence';
 import { FenceGate } from './FenceGate';
 import { FireflyJar } from './FireflyJar';
 import { FishingBoat } from './FishingBoat';
+import { Goat } from './farmAnimals/FarmAnimals';
 import { GardenBox } from './GardenBox';
 import { GiftBoxBlueWhite } from './GiftBoxBlueWhite';
 import { GiftBoxGoldRed } from './GiftBoxGoldRed';
@@ -82,6 +83,7 @@ import { Seed } from './raisedBed/Seed';
 import { Stick } from './raisedBed/Stick';
 import { SandcastleSmallA } from './SandcastleSmall';
 import { Shade } from './Shade';
+import { Sheep } from './Sheep';
 import { ShovelSmall } from './ShovelSmall';
 import { SmallWoodenBridge } from './SmallWoodenBridge';
 import { Snowman } from './Snowman';
@@ -206,8 +208,10 @@ export const entityNameMap = {
     ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
     PigletPen: PigletPen,
+    Goat: Goat,
     Rabbit: Rabbit,
     Horse: Horse,
+    Sheep,
     SmallWoodenBridge: SmallWoodenBridge,
     WoodenWalkway: WoodenWalkway,
     StoneWalkway: StoneWalkway,

@@ -117,4 +117,19 @@ describe('areEntityFactoryPropsEqual', () => {
 
         assert.equal(areEntityFactoryPropsEqual(previous, next), false);
     });
+
+    it('rerenders entities when their farm weather context changes', () => {
+        const previous = createProps({
+            farmId: 1,
+            weather: { rainy: 0 },
+            weatherDisabled: false,
+        });
+        const next = createProps({
+            farmId: 1,
+            weather: { rainy: 1 },
+            weatherDisabled: false,
+        });
+
+        assert.equal(areEntityFactoryPropsEqual(previous, next), false);
+    });
 });

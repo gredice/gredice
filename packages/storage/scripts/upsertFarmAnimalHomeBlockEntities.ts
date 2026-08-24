@@ -14,7 +14,8 @@ import {
 
 // Deploy the runtime models and public covers before using --apply. The default
 // dry-run prevents animal catalogue entries from pointing at assets that are
-// not live. Rabbit is a directly placeable animal; the other entries are homes.
+// not live. Goat, Rabbit, and Sheep are directly placeable animals; the other
+// entries are homes.
 
 const actor = {
     id: 'codex',
@@ -84,6 +85,17 @@ const blockSpecs = [
         hitboxWidth: 0.76,
     }),
     animalBlockSpec({
+        name: 'Goat',
+        label: 'Koza',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+        fullDescription:
+            'Smjesti kozu na slobodno mjesto u vrtu. Istraživat će prohodne staze, brstiti i preživati, povremeno razigrano poskočiti te ti oprezno prići prije nego što se odmakne na ugodnu udaljenost.',
+        height: 0.72,
+        hitboxDepth: 0.72,
+        hitboxWidth: 0.5,
+    }),
+    animalBlockSpec({
         name: 'PigletPen',
         label: 'Obor za praščića',
         shortDescription:
@@ -95,15 +107,26 @@ const blockSpecs = [
         hitboxWidth: 0.94,
     }),
     animalBlockSpec({
+        name: 'Sheep',
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        fullDescription:
+            'Smjesti vunastu ovcu na travnati dio vrta. Mirno će pasti, preživati i istraživati okolicu, a više ovaca držat će se na ugodnoj udaljenosti bez naguravanja.',
+        height: 0.64,
+        hitboxDepth: 0.92,
+        hitboxWidth: 0.64,
+    }),
+    animalBlockSpec({
         name: 'Rabbit',
         label: 'Zec',
         shortDescription:
             'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
         fullDescription:
             'Postavi zeca izravno u vrt. Skakutat će po sigurnom tlu, zastajati kako bi njuškao, uređivao krzno i kratko grickao travu, a pred avatarom će brzo pobjeći obilazeći prepreke.',
-        height: 0.76,
-        hitboxDepth: 0.72,
-        hitboxWidth: 0.58,
+        height: 0.456,
+        hitboxDepth: 0.432,
+        hitboxWidth: 0.348,
         sunflowers: 350,
     }),
 ] satisfies Array<{
@@ -198,7 +221,12 @@ async function main() {
     const { apply, blockName } = parseOptions(process.argv.slice(2));
     const selectedBlockSpecs = blockName
         ? blockSpecs.filter((spec) => spec.name === blockName)
-        : blockSpecs.filter((spec) => spec.name !== 'Rabbit');
+        : blockSpecs.filter(
+              (spec) =>
+                  spec.name !== 'Goat' &&
+                  spec.name !== 'Rabbit' &&
+                  spec.name !== 'Sheep',
+          );
     if (selectedBlockSpecs.length === 0) {
         throw new Error(`Unknown animal catalogue block: ${blockName}`);
     }

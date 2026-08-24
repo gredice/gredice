@@ -38,6 +38,7 @@ import type { GardenVisitorPresenceController } from '../entities/avatar/gardenV
 import { Bats } from '../entities/bats/Bats';
 import { Bees } from '../entities/bees/Bees';
 import { Birds } from '../entities/birds/Birds';
+import { Butterflies } from '../entities/butterflies/Butterflies';
 import { Cats } from '../entities/cats/Cats';
 import { Dogs } from '../entities/dogs/Dogs';
 import { EntityFactory } from '../entities/EntityFactory';
@@ -45,7 +46,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from '../entities/EntityInstances';
-import { Chickens, Piglets } from '../entities/farmAnimals/FarmAnimals';
+import { Chickens, Piglets, Sheep } from '../entities/farmAnimals/FarmAnimals';
 import { Frogs } from '../entities/frogs/Frogs';
 import { Ladybugs } from '../entities/ladybugs/Ladybugs';
 import { RaisedBedMulchOverlays } from '../entities/raisedBed/RaisedBedMulchOverlays';
@@ -712,6 +713,12 @@ function PublicGardenScene({
                                                             normalizedStacks
                                                         }
                                                     />
+                                                    <Sheep
+                                                        farmId={garden?.farmId}
+                                                        stacks={
+                                                            normalizedStacks
+                                                        }
+                                                    />
                                                 </Suspense>
                                             )}
                                             {renderTransientDetails &&
@@ -731,6 +738,15 @@ function PublicGardenScene({
                                                                 garden.farmId
                                                             }
                                                             garden={garden}
+                                                        />
+                                                        <Butterflies
+                                                            farmId={
+                                                                garden.farmId
+                                                            }
+                                                            garden={garden}
+                                                            groundDecorationDensity={
+                                                                qualityProfile.groundDecorationDensity
+                                                            }
                                                         />
                                                     </Suspense>
                                                 )}

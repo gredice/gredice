@@ -22,6 +22,7 @@ import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvat
 import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
+import { Butterflies } from './entities/butterflies/Butterflies';
 import { Cats } from './entities/cats/Cats';
 import { Dogs } from './entities/dogs/Dogs';
 import { EntityFactory } from './entities/EntityFactory';
@@ -29,7 +30,7 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
-import { Chickens, Piglets } from './entities/farmAnimals/FarmAnimals';
+import { Chickens, Piglets, Sheep } from './entities/farmAnimals/FarmAnimals';
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { Frogs } from './entities/frogs/Frogs';
@@ -270,14 +271,20 @@ function useAdaptiveHighInteractionActivity(enabled: boolean) {
 
 function GameSceneEntitySlot({
     block,
+    farmId,
     noControls,
     stack,
     stacks,
+    weather,
+    weatherDisabled,
 }: {
     block: Block;
+    farmId?: number | null;
     noControls: boolean | undefined;
     stack: Stack;
     stacks: Stack[];
+    weather?: Partial<NonNullable<GameState['weather']>>;
+    weatherDisabled: boolean;
 }) {
     const placementDropAnimationRenderId = useGameState((state) =>
         getBlockPlacementDropAnimationRenderIdForBlockId(
@@ -294,9 +301,12 @@ function GameSceneEntitySlot({
             name={block.name}
             stack={stack}
             block={block}
+            farmId={farmId}
             stacks={stacks}
             rotation={block.rotation}
             variant={block.variant}
+            weather={weather}
+            weatherDisabled={weatherDisabled}
             noRenderInView={instancedBlockNames}
             noControl={noControls}
         />
@@ -636,9 +646,14 @@ export function GameScene({
                                             <GameSceneEntitySlot
                                                 key={slotKey}
                                                 block={block}
+                                                farmId={garden.farmId}
                                                 noControls={noControls}
                                                 stack={stack}
                                                 stacks={garden.stacks}
+                                                weather={weather}
+                                                weatherDisabled={
+                                                    weatherDisabled
+                                                }
                                             />
                                         );
                                     }),
@@ -736,6 +751,12 @@ export function GameScene({
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
+                                        <Sheep
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
                                     </Suspense>
                                 )}
                                 {gardenAvatarEnabled &&
@@ -806,6 +827,15 @@ export function GameScene({
                                         <Slugs
                                             farmId={garden?.farmId}
                                             garden={garden}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <Butterflies
+                                            farmId={garden?.farmId}
+                                            garden={garden}
+                                            groundDecorationDensity={
+                                                qualityProfile.groundDecorationDensity
+                                            }
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />

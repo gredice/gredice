@@ -384,6 +384,14 @@ const blockFixtures: Record<
         height: 0.86,
         stackable: false,
     },
+    Goat: {
+        label: 'Koza',
+        shortDescription:
+            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+        sunflowers: 500,
+        height: 0.72,
+        stackable: false,
+    },
     Horse: {
         label: 'Konj',
         shortDescription:
@@ -408,6 +416,14 @@ const blockFixtures: Record<
             'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
         sunflowers: 350,
         height: 0.76,
+        stackable: false,
+    },
+    Sheep: {
+        label: 'Ovca',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+        sunflowers: 500,
+        height: 0.64,
         stackable: false,
     },
 };
@@ -536,9 +552,11 @@ const blockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
+    'Goat',
     'Horse',
     'PigletPen',
     'Rabbit',
+    'Sheep',
     'Bush',
     'Tree',
     'Pine',

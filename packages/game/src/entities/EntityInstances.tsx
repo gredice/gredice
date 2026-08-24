@@ -65,6 +65,7 @@ export const instancedBlockNames = [
     'StoneSmall',
     'StoneMedium',
     'StoneLarge',
+    'Sheep',
     'DesertStoneSmall',
     'DesertStoneMedium',
     'DesertStoneLarge',

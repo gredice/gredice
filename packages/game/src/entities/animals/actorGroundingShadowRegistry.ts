@@ -3,14 +3,17 @@ export type ActorGroundingShadowSpecies =
     | 'beachBall'
     | 'bee'
     | 'bird'
+    | 'butterfly'
     | 'cat'
     | 'chicken'
     | 'dog'
+    | 'goat'
     | 'frog'
     | 'horse'
     | 'ladybug'
     | 'piglet'
     | 'rabbit'
+    | 'sheep'
     | 'slug';
 
 export type ActorGroundingShadowState = {
@@ -106,6 +109,13 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 2.6,
         maxFootprintScale: 2.1,
     },
+    butterfly: {
+        baseHalfLength: 0.13,
+        baseHalfWidth: 0.09,
+        baseOpacity: 0.18,
+        cutoffHeight: 1.8,
+        maxFootprintScale: 2,
+    },
     cat: {
         baseHalfLength: 0.38,
         baseHalfWidth: 0.23,
@@ -127,6 +137,13 @@ export const actorGroundingShadowProfiles = {
         cutoffHeight: 1.6,
         maxFootprintScale: 1.7,
     },
+    goat: {
+        baseHalfLength: 0.42,
+        baseHalfWidth: 0.25,
+        baseOpacity: 0.35,
+        cutoffHeight: 1.3,
+        maxFootprintScale: 1.65,
+    },
     frog: {
         baseHalfLength: 0.2,
         baseHalfWidth: 0.17,
@@ -142,10 +159,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.55,
     },
     ladybug: {
-        baseHalfLength: 0.075,
-        baseHalfWidth: 0.052,
+        baseHalfLength: 0.0375,
+        baseHalfWidth: 0.026,
         baseOpacity: 0.2,
-        cutoffHeight: 0.7,
+        cutoffHeight: 0.35,
         maxFootprintScale: 1.5,
     },
     piglet: {
@@ -156,11 +173,18 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.6,
     },
     rabbit: {
-        baseHalfLength: 0.34,
-        baseHalfWidth: 0.22,
+        baseHalfLength: 0.204,
+        baseHalfWidth: 0.132,
         baseOpacity: 0.32,
-        cutoffHeight: 0.9,
+        cutoffHeight: 0.54,
         maxFootprintScale: 1.6,
+    },
+    sheep: {
+        baseHalfLength: 0.47,
+        baseHalfWidth: 0.29,
+        baseOpacity: 0.35,
+        cutoffHeight: 1.2,
+        maxFootprintScale: 1.65,
     },
     slug: {
         baseHalfLength: 0.25,

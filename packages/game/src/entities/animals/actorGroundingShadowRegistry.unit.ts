@@ -34,7 +34,12 @@ describe('actor grounding-shadow projection', () => {
         assert.equal(resolved.z, groundedState.z);
     });
 
-    it('uses compact species footprints for chicken, rabbit, and piglet', () => {
+    it('uses compact species footprints for ladybug, chicken, goat, rabbit, and piglet', () => {
+        const ladybug = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'ladybug',
+            state: groundedState,
+        });
         const chicken = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'chicken',
@@ -45,15 +50,27 @@ describe('actor grounding-shadow projection', () => {
             species: 'piglet',
             state: groundedState,
         });
+        const goat = resolveActorGroundingShadow({
+            snowCoverage: 0,
+            species: 'goat',
+            state: groundedState,
+        });
         const rabbit = resolveActorGroundingShadow({
             snowCoverage: 0,
             species: 'rabbit',
             state: groundedState,
         });
 
+        assert.equal(ladybug.halfLength, 0.0375);
+        assert.equal(ladybug.halfWidth, 0.026);
+        assert.equal(actorGroundingShadowProfiles.ladybug.cutoffHeight, 0.35);
         assert.equal(
             chicken.halfLength,
             actorGroundingShadowProfiles.chicken.baseHalfLength,
+        );
+        assert.equal(
+            goat.halfLength,
+            actorGroundingShadowProfiles.goat.baseHalfLength,
         );
         assert.equal(
             piglet.halfLength,
@@ -61,10 +78,14 @@ describe('actor grounding-shadow projection', () => {
         );
         assert.ok(piglet.halfLength > chicken.halfLength);
         assert.ok(piglet.halfWidth > chicken.halfWidth);
+        assert.ok(goat.halfLength > piglet.halfLength);
         assert.equal(
             rabbit.halfLength,
             actorGroundingShadowProfiles.rabbit.baseHalfLength,
         );
+        assert.equal(rabbit.halfLength, 0.204);
+        assert.equal(rabbit.halfWidth, 0.132);
+        assert.equal(actorGroundingShadowProfiles.rabbit.cutoffHeight, 0.54);
         assert.ok(rabbit.halfLength < piglet.halfLength);
     });
 
