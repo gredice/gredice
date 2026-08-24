@@ -347,6 +347,7 @@ export type GardenAvatarPresence = {
 export type PettableAnimalSpecies =
     | 'Cat'
     | 'Chicken'
+    | 'Cow'
     | 'Dog'
     | 'Goat'
     | 'Piglet'

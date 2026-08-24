@@ -41,6 +41,7 @@ import { Cactus } from './Cactus';
 import { CatPillow } from './CatPillow';
 import { ChickenCoop } from './ChickenCoop';
 import { Composter } from './Composter';
+import { Cow } from './Cow';
 import { DeadTree } from './DeadTree';
 import { DesertStone } from './DesertStone';
 import { DogHouse } from './DogHouse';
@@ -144,6 +145,7 @@ export const entityNameMap = {
     Block_Snow_Reverse_Corner: BlockSnowReverseCorner,
     Block_Snow_Falling: BlockSnowFalling,
     Composter: Composter,
+    Cow: Cow,
     Raised_Bed: RaisedBed,
     Shade: Shade,
     BeachUmbrella: BeachUmbrella,

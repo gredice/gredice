@@ -93,6 +93,7 @@ export function EntityViewer({
     entityName,
     appearanceVariant,
     message,
+    variant: configuredVariant,
     zoom,
     itemPosition,
     className,
@@ -102,7 +103,6 @@ export function EntityViewer({
     renderDetails = true,
     showBackground,
     rotation = 0,
-    variant,
     quality,
     cameraPosition,
     cameraTarget,
@@ -128,14 +128,15 @@ export function EntityViewer({
 
     const client = new QueryClient();
     const normalizedRotation = ((rotation % 4) + 4) % 4;
+    const selectedAppearanceVariant = configuredVariant ?? appearanceVariant;
     const resolvedVariant =
-        variant ??
-        appearanceVariant ??
-        (entityName === 'PineAdvent'
+        entityName === 'PineAdvent'
             ? 100
-            : entityName === 'Horse'
-              ? 0
-              : undefined);
+            : entityName === 'Cow'
+              ? (selectedAppearanceVariant ?? 0)
+              : entityName === 'Horse'
+                ? (selectedAppearanceVariant ?? 0)
+                : selectedAppearanceVariant;
     const block: Block = {
         id: uuidv4(),
         name: entityName,

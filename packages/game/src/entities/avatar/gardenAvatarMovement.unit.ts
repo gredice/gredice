@@ -967,6 +967,33 @@ test('centers multi-cell collisions and blocks their complete roaming footprint'
     );
 });
 
+test('does not leave a static collision where a roaming Cow was placed', () => {
+    const world = createGardenAvatarCollisionWorld({
+        blockData: getLocalSandboxBlockData(),
+        stacks: [
+            {
+                blocks: [
+                    { id: 'grass', name: 'Block_Grass', rotation: 0 },
+                    { id: 'cow', name: 'Cow', rotation: 0 },
+                ],
+                position: new Vector3(2, 0, 3),
+            },
+        ],
+    });
+
+    assert.equal(
+        world.surfaces.some((surface) => surface.debugLabel === 'Cow'),
+        false,
+    );
+    assert.equal(
+        world.surfaces.some(
+            (surface) =>
+                surface.roamable === true && surface.x === 2 && surface.z === 3,
+        ),
+        true,
+    );
+});
+
 test('keeps HazelLightArch centered in one cell and lets the avatar pass between its posts', () => {
     const blockData = getLocalSandboxBlockData();
 

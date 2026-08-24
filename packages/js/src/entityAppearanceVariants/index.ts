@@ -100,6 +100,22 @@ export const horseAppearanceVariants = defineAppearanceVariants('Horse', [
     },
 ]);
 
+export const cowAppearanceVariants = defineAppearanceVariants('Cow', [
+    {
+        id: 'brown-and-white',
+        value: 0,
+        label: 'Smeđe-bijela',
+    },
+    {
+        id: 'black-and-white',
+        value: 1,
+        label: 'Crno-bijela',
+    },
+]);
+
+export type CowAppearanceVariant =
+    (typeof cowAppearanceVariants.variants)[number]['value'];
+
 export const rabbitAppearanceVariants = defineAppearanceVariants('Rabbit', [
     { id: 'chestnut-agouti', value: 0 },
     { id: 'cream', value: 1 },
@@ -132,7 +148,12 @@ const horseLegacyFallbackVariants: readonly HorseAppearanceVariant[] = [
     0, 1, 2, 3, 4, 5,
 ];
 
+// Never extend or reorder this tuple. It is the permanent fallback domain for
+// legacy Cow records that predate persisted appearance variants.
+const cowLegacyFallbackVariants: readonly CowAppearanceVariant[] = [0, 1];
+
 const appearanceVariantDefinitions = [
+    cowAppearanceVariants,
     horseAppearanceVariants,
     rabbitAppearanceVariants,
 ] as const;
@@ -159,6 +180,52 @@ export function isValidEntityAppearanceVariant(
     return definition?.isVariant(variant) ?? false;
 }
 
+export function requiresExplicitAppearanceVariantSelection(entityName: string) {
+    return entityName === horseAppearanceVariants.entityName;
+}
+
+export function isAppearanceVariantRotationLocked(entityName: string) {
+    return (
+        entityName === cowAppearanceVariants.entityName ||
+        entityName === horseAppearanceVariants.entityName
+    );
+}
+
+export function selectEntityAppearanceVariant(
+    entityName: string,
+    immutablePlacementId: string,
+): number | null {
+    if (entityName !== cowAppearanceVariants.entityName) {
+        return null;
+    }
+
+    const selected =
+        cowAppearanceVariants.variants[
+            fnv1a32(`${entityName}:${immutablePlacementId}`) %
+                cowAppearanceVariants.variants.length
+        ];
+    return selected?.value ?? null;
+}
+
+export function resolveCowAppearanceVariant(
+    persistedVariant: unknown,
+    immutableBlockId: string,
+): CowAppearanceVariant {
+    if (cowAppearanceVariants.isVariant(persistedVariant)) {
+        return persistedVariant;
+    }
+
+    const fallback =
+        cowLegacyFallbackVariants[
+            fnv1a32(`Cow:${immutableBlockId}`) %
+                cowLegacyFallbackVariants.length
+        ];
+    if (fallback === undefined) {
+        throw new Error('Cow legacy appearance fallback is empty');
+    }
+    return fallback;
+}
+
 function normalizedRandomIndex(randomValue: number, length: number) {
     if (!Number.isFinite(randomValue)) {
         return 0;
@@ -172,18 +239,21 @@ export function createEntityAppearanceVariantForPlacement(
     entityName: string,
     random: () => number,
 ) {
-    if (entityName !== rabbitAppearanceVariants.entityName) {
+    const definition =
+        entityName === cowAppearanceVariants.entityName
+            ? cowAppearanceVariants
+            : entityName === rabbitAppearanceVariants.entityName
+              ? rabbitAppearanceVariants
+              : null;
+    if (!definition) {
         return undefined;
     }
 
-    const definition =
-        rabbitAppearanceVariants.variants[
-            normalizedRandomIndex(
-                random(),
-                rabbitAppearanceVariants.variants.length,
-            )
-        ] ?? rabbitAppearanceVariants.variants[0];
-    return definition.value;
+    const selected =
+        definition.variants[
+            normalizedRandomIndex(random(), definition.variants.length)
+        ] ?? definition.variants[0];
+    return selected.value;
 }
 
 export function isEntityAppearanceVariantUpdateAllowed({

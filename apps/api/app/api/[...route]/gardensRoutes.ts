@@ -1,6 +1,7 @@
 import {
     createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
+    isAppearanceVariantRotationLocked,
     isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
@@ -3313,7 +3314,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             ) {
                 return context.json(
                     {
-                        error: 'Boju životinje nije moguće promijeniti nakon postavljanja.',
+                        error: 'Izgled životinje nije moguće promijeniti nakon postavljanja.',
                     },
                     400,
                 );
@@ -3321,11 +3322,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (
                 rotation !== undefined &&
                 rotation !== block.rotation &&
-                block.name === 'Horse'
+                isAppearanceVariantRotationLocked(block.name)
             ) {
                 return context.json(
                     {
-                        error: 'Konja nije moguće rotirati nakon postavljanja.',
+                        error: 'Životinju nije moguće rotirati nakon postavljanja.',
                     },
                     400,
                 );

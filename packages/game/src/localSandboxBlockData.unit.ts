@@ -261,6 +261,25 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
     }
 });
 
+test('local sandbox exposes the Cow with its catalog footprint and collision', () => {
+    const cow = getLocalSandboxBlockData().find(
+        (block) => block.information.name === 'Cow',
+    );
+
+    assert.ok(cow);
+    assert.equal(cow.information.label, 'Krava');
+    assert.equal(cow.attributes.height, 1.26);
+    assert.equal(cow.attributes.hitboxDepth, 2.08);
+    assert.equal(cow.attributes.hitboxHeight, 1.26);
+    assert.equal(cow.attributes.hitboxWidth, 0.93);
+    assert.equal(cow.attributes.placeableOnWater, false);
+    assert.equal(cow.attributes.spanDepth, 2);
+    assert.equal(cow.attributes.spanWidth, 1);
+    assert.equal(cow.attributes.stackable, false);
+    assert.deepEqual(getGardenBlockSpan(cow, 0), { depth: 2, width: 1 });
+    assert.deepEqual(getGardenBlockSpan(cow, 1), { depth: 1, width: 2 });
+});
+
 test('local sandbox exposes the placeable horse at horse scale', () => {
     const horse = getLocalSandboxBlockData().find(
         (block) => block.information.name === 'Horse',

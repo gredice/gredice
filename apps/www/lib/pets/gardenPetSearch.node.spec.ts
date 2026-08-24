@@ -19,6 +19,7 @@ test('empty search keeps every pet visible', () => {
         'Mačka',
         'Kokoš',
         'Praščić',
+        'Krava',
         'Koza',
     ]);
 });
@@ -26,6 +27,7 @@ test('empty search keeps every pet visible', () => {
 test('searching a pet name matches only that pet', () => {
     assert.deepEqual(matchingPetNames('pas'), ['Pas']);
     assert.deepEqual(matchingPetNames('Mačka'), ['Mačka']);
+    assert.deepEqual(matchingPetNames('krava'), ['Krava']);
     assert.deepEqual(matchingPetNames('kunić'), ['Zec']);
 });
 

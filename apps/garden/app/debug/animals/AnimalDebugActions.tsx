@@ -82,7 +82,8 @@ function replaceGround(
         | 'Block_Gravel'
         | 'Block_Sand'
         | 'Block_Stone'
-        | 'Block_Swamp_Ground',
+        | 'Block_Swamp_Ground'
+        | 'Block_Water',
 ) {
     const stack = stacks.get(stackKey(x, z));
     const ground = stack?.blocks[0];
@@ -179,6 +180,36 @@ function createPigletPathfindingStacks() {
 
     for (let z = -4; z <= 2; z += 1) {
         placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createCowHerdStacks() {
+    const stacks = createGroundStacks({
+        minX: -7,
+        maxX: 7,
+        minZ: -5,
+        maxZ: 5,
+    });
+
+    placeBlock(stacks, -4, -2, 'Cow', 0, 0);
+    placeBlock(stacks, -4, 2, 'Cow', 1, 1);
+    placeBlock(stacks, 4, 0, 'Cow', 2, 0);
+    placeBlock(stacks, 0, -4, 'Tree');
+    placeBlock(stacks, 0, 4, 'WaterWell');
+    placeBlock(stacks, 2, -3, 'StoneLarge');
+    placeBlock(stacks, -1, 3, 'Bucket');
+
+    for (let z = -5; z <= 5; z += 1) {
+        if (z < -1 || z > 1) {
+            replaceGround(stacks, 1, z, 'Block_Water');
+        }
+    }
+    for (let z = -2; z <= 2; z += 1) {
+        if (z !== 0) {
+            placeBlock(stacks, -1, z, 'GardenBox');
+        }
     }
 
     return serializeStacks(stacks);
@@ -377,6 +408,8 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
     placeBlock(stacks, -3, 3, 'PigletPen');
+    placeBlock(stacks, -3, 0, 'Cow', 0, 0);
+    placeBlock(stacks, 4, 1, 'Cow', 2, 1);
     placeBlock(stacks, -3, 1, 'Sheep');
     placeBlock(stacks, -1, 3, 'Sheep');
     placeBlock(stacks, -3, -3, 'Goat', 1);
@@ -498,6 +531,17 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Piglet path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(storageKey, createCowHerdStacks())
+                }
+                size="sm"
+                variant="soft"
+            >
+                Cow herd
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

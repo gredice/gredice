@@ -3,6 +3,8 @@ import {
     createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
     isValidEntityAppearanceVariant,
+    requiresExplicitAppearanceVariantSelection,
+    selectEntityAppearanceVariant,
 } from '@gredice/js/entityAppearanceVariants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -198,18 +200,6 @@ export function useBlockPlace() {
                 variables.blockName,
                 Math.random,
             );
-
-            if (
-                isAppearanceVariantEntityName(variables.blockName) &&
-                !isValidEntityAppearanceVariant(
-                    variables.blockName,
-                    variables.variant,
-                )
-            ) {
-                throw new Error(
-                    'Odaberi valjanu boju životinje prije postavljanja.',
-                );
-            }
             if (!garden) {
                 return;
             }
@@ -233,6 +223,30 @@ export function useBlockPlace() {
                     variables.localBlockId = localSandboxStorageKey
                         ? optimisticBlockId
                         : undefined;
+                    if (
+                        isAppearanceVariantEntityName(variables.blockName) &&
+                        variables.variant === undefined &&
+                        !requiresExplicitAppearanceVariantSelection(
+                            variables.blockName,
+                        )
+                    ) {
+                        variables.variant =
+                            selectEntityAppearanceVariant(
+                                variables.blockName,
+                                optimisticBlockId,
+                            ) ?? undefined;
+                    }
+                    if (
+                        isAppearanceVariantEntityName(variables.blockName) &&
+                        !isValidEntityAppearanceVariant(
+                            variables.blockName,
+                            variables.variant,
+                        )
+                    ) {
+                        throw new Error(
+                            'Odaberi varijantu izgleda prije postavljanja.',
+                        );
+                    }
                     const optimisticPlacement = createOptimisticBlockPlacement(
                         currentGarden,
                         blockData,
