@@ -161,24 +161,30 @@ const appearanceVariantDefinitions = [
     rabbitAppearanceVariants,
 ] as const;
 
-const legacyAppearanceVariantEntityNames = {
-    Cow: cowAppearanceVariants,
-    Horse: horseAppearanceVariants,
-    Rabbit: rabbitAppearanceVariants,
-} as const;
+type RegisteredAppearanceVariantDefinition =
+    (typeof appearanceVariantDefinitions)[number];
+
+type LegacyAppearanceVariantEntityName = 'Cow' | 'Horse' | 'Rabbit';
+
+const legacyAppearanceVariantEntityNames = new Map<
+    string,
+    RegisteredAppearanceVariantDefinition
+>([
+    ['Cow', cowAppearanceVariants],
+    ['Horse', horseAppearanceVariants],
+    ['Rabbit', rabbitAppearanceVariants],
+]);
 
 type AppearanceVariantEntityName =
     | (typeof appearanceVariantDefinitions)[number]['entityName']
-    | keyof typeof legacyAppearanceVariantEntityNames;
+    | LegacyAppearanceVariantEntityName;
 
 export function getEntityAppearanceVariantDefinition(entityName: string) {
     return (
         appearanceVariantDefinitions.find(
             (definition) => definition.entityName === entityName,
         ) ??
-        legacyAppearanceVariantEntityNames[
-            entityName as keyof typeof legacyAppearanceVariantEntityNames
-        ] ??
+        legacyAppearanceVariantEntityNames.get(entityName) ??
         null
     );
 }

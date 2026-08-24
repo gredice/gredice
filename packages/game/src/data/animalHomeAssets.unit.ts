@@ -12,7 +12,24 @@ import {
 
 type JsonRecord = Record<string, unknown>;
 
-const homeSpecs = [
+type HomeName =
+    | 'RabbitHutch'
+    | 'HorseStable'
+    | 'CowShelter'
+    | 'GoatShelter'
+    | 'SheepFold';
+
+type HomeSpec = {
+    name: HomeName;
+    objects: readonly string[];
+    halfWidth: number;
+    frontDepth: number;
+    backDepth: number;
+    height: number;
+    vertexLimit: number;
+};
+
+const homeSpecs: readonly HomeSpec[] = [
     {
         name: 'RabbitHutch',
         objects: [
@@ -90,7 +107,7 @@ const homeSpecs = [
         height: 1.46,
         vertexLimit: 4_000,
     },
-] as const;
+];
 
 const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 const manifestPath = fileURLToPath(
@@ -116,8 +133,10 @@ function records(value: unknown, label: string) {
 }
 
 function numeric(value: unknown, label: string) {
-    assert.equal(typeof value, 'number', `${label} must be numeric`);
-    return value as number;
+    if (typeof value !== 'number') {
+        assert.fail(`${label} must be numeric`);
+    }
+    return value;
 }
 
 function numericArray(value: unknown, label: string, length: number) {
@@ -128,7 +147,7 @@ function numericArray(value: unknown, label: string, length: number) {
     );
 }
 
-function modelPath(name: (typeof homeSpecs)[number]['name']) {
+function modelPath(name: HomeName) {
     return fileURLToPath(
         new URL(
             `../../../../apps/garden/public/assets/models/${name}.glb`,
@@ -137,7 +156,7 @@ function modelPath(name: (typeof homeSpecs)[number]['name']) {
     );
 }
 
-function readModel(name: (typeof homeSpecs)[number]['name']) {
+function readModel(name: HomeName) {
     const model = readFileSync(modelPath(name));
     const jsonLength = model.readUInt32LE(12);
     const document: unknown = JSON.parse(
@@ -153,7 +172,7 @@ function readModel(name: (typeof homeSpecs)[number]['name']) {
     };
 }
 
-function readDocument(name: (typeof homeSpecs)[number]['name']) {
+function readDocument(name: HomeName) {
     return readModel(name).document;
 }
 

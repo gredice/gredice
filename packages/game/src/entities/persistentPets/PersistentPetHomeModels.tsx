@@ -1,6 +1,5 @@
 import { animated } from '@react-spring/three';
 import { useMemo } from 'react';
-import type { Mesh } from 'three';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useStackHeight } from '../../utils/getStackHeight';
 import { useGameGLTF } from '../../utils/useGameGLTF';
@@ -23,9 +22,8 @@ function PersistentPetHome({
         const scene = gltf.scene.clone(true);
         scene.traverse((object) => {
             if ('isMesh' in object && object.isMesh) {
-                const mesh = object as Mesh;
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
+                object.castShadow = true;
+                object.receiveShadow = true;
             }
         });
         return scene;
