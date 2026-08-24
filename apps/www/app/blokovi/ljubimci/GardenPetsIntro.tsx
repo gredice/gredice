@@ -8,15 +8,15 @@ import type { ReactNode } from 'react';
 const steps = [
     {
         icon: <Home aria-hidden className="size-5" />,
-        title: 'Svaki ljubimac ima svoj blok',
+        title: 'Svaki ljubimac ima svoje mjesto',
         description:
-            'Pseća kućica, mačji jastuk, kokošinjac i obor za praščića — svaki blok dovodi svog stanara.',
+            'Neki stižu sa svojim domom, a kravu, kozu i zeca postavljaš izravno u vrt.',
     },
     {
         icon: <PawPrint aria-hidden className="size-5" />,
         title: 'Sami se brinu za svoj dan',
         description:
-            'Istražuju okolicu, traže hranu i odmaraju se, a pred noć i po lošem vremenu vraćaju se svom domu.',
+            'Istražuju okolicu, traže hranu i odmaraju se. Stanovnici s domom pred noć i po lošem vremenu vraćaju se u svoj zaklon.',
     },
     {
         icon: <Heart aria-hidden className="size-5" />,

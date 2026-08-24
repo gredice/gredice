@@ -1,17 +1,67 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    cowAppearanceVariants,
     createEntityAppearanceVariantForPlacement,
     defineAppearanceVariants,
     getHorseAppearanceVariantDefinition,
     horseAppearanceVariants,
     isAppearanceVariantEntityName,
+    isAppearanceVariantRotationLocked,
     isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
     rabbitAppearanceVariants,
+    requiresExplicitAppearanceVariantSelection,
+    resolveCowAppearanceVariant,
     resolveHorseAppearanceVariant,
     resolveRabbitAppearanceVariant,
+    selectEntityAppearanceVariant,
 } from './index';
+
+describe('Cow appearance variants', () => {
+    it('keeps exactly the two durable coat contracts', () => {
+        assert.deepEqual(
+            cowAppearanceVariants.variants.map(({ id, value }) => ({
+                id,
+                value,
+            })),
+            [
+                { id: 'brown-and-white', value: 0 },
+                { id: 'black-and-white', value: 1 },
+            ],
+        );
+    });
+
+    it('selects once from the placement id and resolves legacy records stably', () => {
+        const selected = selectEntityAppearanceVariant('Cow', 'cow-new');
+        assert.equal(cowAppearanceVariants.isVariant(selected), true);
+        assert.equal(selectEntityAppearanceVariant('Cow', 'cow-new'), selected);
+        assert.equal(resolveCowAppearanceVariant(1, 'cow-legacy'), 1);
+
+        const fallback = resolveCowAppearanceVariant(null, 'cow-legacy');
+        assert.equal(cowAppearanceVariants.isVariant(fallback), true);
+        assert.equal(
+            resolveCowAppearanceVariant(undefined, 'cow-legacy'),
+            fallback,
+        );
+        assert.equal(resolveCowAppearanceVariant(99, 'cow-legacy'), fallback);
+    });
+
+    it('auto-selects Cow coats while Horse still requires a picker choice', () => {
+        assert.equal(requiresExplicitAppearanceVariantSelection('Cow'), false);
+        assert.equal(requiresExplicitAppearanceVariantSelection('Horse'), true);
+        assert.equal(isAppearanceVariantEntityName('Cow'), true);
+        assert.equal(isValidEntityAppearanceVariant('Cow', 0), true);
+        assert.equal(isValidEntityAppearanceVariant('Cow', 1), true);
+        assert.equal(isValidEntityAppearanceVariant('Cow', 2), false);
+        assert.equal(
+            createEntityAppearanceVariantForPlacement('Cow', () => 0.999),
+            1,
+        );
+        assert.equal(isAppearanceVariantRotationLocked('Cow'), true);
+        assert.equal(isAppearanceVariantRotationLocked('Rabbit'), false);
+    });
+});
 
 describe('Horse appearance variants', () => {
     it('keeps six distinct append-only coat contracts', () => {

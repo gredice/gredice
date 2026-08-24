@@ -410,6 +410,16 @@ const blockFixtures: Record<
         height: 0.78,
         stackable: false,
     },
+    Cow: {
+        label: 'Krava',
+        shortDescription:
+            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+        sunflowers: 850,
+        height: 1.26,
+        spanDepth: 2,
+        spanWidth: 1,
+        stackable: false,
+    },
     Rabbit: {
         label: 'Zec',
         shortDescription:
@@ -555,6 +565,7 @@ const blockNames = [
     'Goat',
     'Horse',
     'PigletPen',
+    'Cow',
     'Rabbit',
     'Sheep',
     'Bush',

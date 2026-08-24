@@ -1,4 +1,5 @@
 const rotationLockedBlockNames = new Set([
+    'Cow',
     'FishingBoat',
     'Horse',
     'Raised_Bed',

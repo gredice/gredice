@@ -138,6 +138,29 @@ export const gardenPets = [
         searchTerms: ['prase', 'obor', 'svinja'],
     },
     {
+        slug: 'krava',
+        name: 'Krava',
+        genitive: 'krave',
+        homeBlockName: 'Cow',
+        directlyPlaceable: true,
+        sound: 'Muuu!',
+        shortDescription:
+            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+        fullDescription:
+            'Krava je smirena stanovnica vrta. Polako pase i preživa, pomiče uši i glavu te repom tjera dosadne muhe. Povremeno prošeće ili kratko potrči, a više krava drži ugodan razmak dok zajedno istražuju travnate dijelove vrta.',
+        habits: [
+            'Pase i mirno preživa',
+            'Pomiče uši i glavu te zamahuje repom',
+            'Hoda polako, uz povremeni kratki kas',
+            'Drži ugodan razmak od drugih krava',
+        ],
+        dayRangeBlocks: 5.5,
+        nightRoutine: 'Zadržava svoj mirni ritam u istom dijelu vrta.',
+        weatherRoutine:
+            'Ostaje na prohodnom tlu i nastavlja svoje uobičajene aktivnosti.',
+        searchTerms: ['krave', 'govedo', 'kravica'],
+    },
+    {
         slug: 'koza',
         name: 'Koza',
         genitive: 'koze',
