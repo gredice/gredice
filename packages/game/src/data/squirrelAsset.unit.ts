@@ -120,6 +120,32 @@ describe('original squirrel game asset', () => {
         const sit = animatedNodeNames('Squirrel_Sit');
         assert.equal(sit.has('Squirrel_TailPivot_Base'), true);
         assert.equal(sit.has('Squirrel_TailPivot_Tip'), true);
+
+        const body = nodes.find(({ name }) => name === 'Squirrel_BodyPivot');
+        assert.ok(body);
+        assert.ok(Array.isArray(body.children));
+        const bodyChildNames = body.children.map((childIndex) => {
+            const index = numberValue(childIndex, 'Squirrel body child');
+            return nodes[index]?.name;
+        });
+        for (const legName of [
+            'Squirrel_LegPivot_FL',
+            'Squirrel_LegPivot_FR',
+            'Squirrel_LegPivot_RL',
+            'Squirrel_LegPivot_RR',
+        ]) {
+            assert.ok(bodyChildNames.includes(legName), `${legName} parent`);
+            const leg = nodes.find(({ name }) => name === legName);
+            assert.ok(leg);
+            assert.ok(Array.isArray(leg.translation));
+            assert.ok(
+                leg.translation.some(
+                    (channel) =>
+                        typeof channel === 'number' && Math.abs(channel) > 0.1,
+                ),
+                `${legName} must retain its authored hip pivot`,
+            );
+        }
     });
 
     it('cache-busts the typed model URL using the exported GLB hash', () => {

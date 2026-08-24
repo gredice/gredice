@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -37,6 +38,14 @@ function numeric(value: unknown, label: string) {
     return value as number;
 }
 
+function numericVector(value: unknown, label: string) {
+    assert.ok(Array.isArray(value), `${label} must be an array`);
+    assert.equal(value.length, 3, `${label} must have three channels`);
+    return value.map((channel, index) =>
+        numeric(channel, `${label}[${index}]`),
+    );
+}
+
 function readButterflyDocument() {
     const model = readFileSync(modelPath);
     const jsonLength = model.readUInt32LE(12);
@@ -51,6 +60,46 @@ function readButterflyDocument() {
     };
 }
 
+function nodeBounds(nodeName: string) {
+    const { accessors, meshes, nodes } = readButterflyDocument();
+    const node = nodes.find(({ name }) => name === nodeName);
+    assert.ok(node, `Missing ${nodeName}`);
+    const meshIndex = numeric(node.mesh, `${nodeName}.mesh`);
+    const mesh = meshes[meshIndex];
+    assert.ok(mesh, `Missing ${nodeName} mesh`);
+    const bounds = records(mesh.primitives, `${nodeName}.primitives`).map(
+        (primitive, index) => {
+            assert.ok(isRecord(primitive.attributes));
+            const accessorIndex = numeric(
+                primitive.attributes.POSITION,
+                `${nodeName}.primitives[${index}].POSITION`,
+            );
+            const accessor = accessors[accessorIndex];
+            assert.ok(accessor, `Missing ${nodeName} accessor`);
+            return {
+                maximum: numericVector(accessor.max, `${nodeName}.max`),
+                minimum: numericVector(accessor.min, `${nodeName}.min`),
+            };
+        },
+    );
+    return {
+        maximum: [0, 1, 2].map((axis) =>
+            Math.max(...bounds.map(({ maximum }) => maximum[axis] ?? 0)),
+        ),
+        minimum: [0, 1, 2].map((axis) =>
+            Math.min(...bounds.map(({ minimum }) => minimum[axis] ?? 0)),
+        ),
+    };
+}
+
+function span(bounds: { maximum: number[]; minimum: number[] }, axis: number) {
+    const maximum = bounds.maximum[axis];
+    const minimum = bounds.minimum[axis];
+    assert.equal(typeof maximum, 'number');
+    assert.equal(typeof minimum, 'number');
+    return maximum - minimum;
+}
+
 describe('butterfly asset', () => {
     it('keeps the original Blender source, generator, and lazy GLB registration', () => {
         assert.ok(
@@ -58,10 +107,6 @@ describe('butterfly asset', () => {
         );
         assert.ok(
             existsSync(`${repositoryRoot}assets/scripts/generate-butterfly.py`),
-        );
-        assert.equal(
-            gameAssetModels.Butterfly.url,
-            '/assets/models/Butterfly.glb',
         );
         assert.ok(lazyGameAssetNames.includes('Butterfly'));
 
@@ -76,6 +121,34 @@ describe('butterfly asset', () => {
         assert.equal(entry.source, 'Butterfly.blend');
         assert.equal(entry.output, 'Butterfly.glb');
         assert.equal(entry.preload, 'lazy');
+        const expectedVersion = createHash('sha256')
+            .update(readFileSync(modelPath))
+            .digest('hex')
+            .slice(0, 12);
+        assert.equal(entry.version, expectedVersion);
+        assert.equal(
+            gameAssetModels.Butterfly.url,
+            `/assets/models/Butterfly.glb?v=${expectedVersion}`,
+        );
+    });
+
+    it('keeps a compact body beneath broad, readable wings', () => {
+        const abdomen = nodeBounds('Butterfly_Abdomen');
+        const thorax = nodeBounds('Butterfly_Thorax');
+        const foreWing = nodeBounds('Butterfly_WingFore_L');
+        const abdomenWidth = span(abdomen, 0);
+        const thoraxWidth = span(thorax, 0);
+        const foreWingWidth = span(foreWing, 0);
+        const foreWingLength = span(foreWing, 2);
+
+        assert.ok(abdomenWidth <= 0.12, `Abdomen width ${abdomenWidth}`);
+        assert.ok(thoraxWidth <= 0.19, `Thorax width ${thoraxWidth}`);
+        assert.ok(foreWingWidth >= 0.94, `Forewing width ${foreWingWidth}`);
+        assert.ok(foreWingLength >= 0.86, `Forewing length ${foreWingLength}`);
+        assert.ok(
+            foreWingWidth / abdomenWidth >= 8,
+            `Wing/body ratio ${foreWingWidth / abdomenWidth}`,
+        );
     });
 
     it('exports articulated anatomy and independently hinged patterned wings', () => {

@@ -189,12 +189,12 @@ const petItems: HudItemEntity[] = [
     { type: 'entity', name: 'CatPillow' },
     { type: 'entity', name: 'ChickenCoop' },
     { type: 'entity', name: 'DogHouse' },
-    { type: 'entity', name: 'Goat' },
-    { type: 'entity', name: 'Horse' },
     { type: 'entity', name: 'PigletPen' },
-    { type: 'entity', name: 'Cow' },
-    { type: 'entity', name: 'Rabbit' },
-    { type: 'entity', name: 'Sheep' },
+    { type: 'entity', name: 'RabbitHutch' },
+    { type: 'entity', name: 'HorseStable' },
+    { type: 'entity', name: 'CowShelter' },
+    { type: 'entity', name: 'GoatShelter' },
+    { type: 'entity', name: 'SheepFold' },
 ];
 
 const terrainItems: HudItemPicker[] = [
@@ -945,6 +945,8 @@ function PlaceEntityButton({
     const placeBlock = useBlockPlace();
     const entityPlacement = useHudEntityPlacementState(name);
     const isSandbox = useIsSandboxGarden();
+    const requiresVariantSelection =
+        name === horseAppearanceVariants.entityName;
 
     if (!entityPlacement) return null;
 
@@ -964,7 +966,7 @@ function PlaceEntityButton({
             return;
         }
 
-        if (name === 'Horse' && variant === undefined) {
+        if (requiresVariantSelection && variant === undefined) {
             onSelectionRequired?.();
             return;
         }
@@ -994,7 +996,9 @@ function PlaceEntityButton({
                     !isPlaceable ||
                     !isAvailableNow ||
                     !hasEnoughSunflowers ||
-                    (name === 'Horse' && !simple && variant === undefined)
+                    (requiresVariantSelection &&
+                        !simple &&
+                        variant === undefined)
                 }
                 endDecorator={
                     <Row
@@ -1015,11 +1019,11 @@ function PlaceEntityButton({
                 }
             >
                 {!simple && <span className="self-center">Postavi</span>}
-                {simple && name === 'Horse' && variant === undefined ? (
+                {simple && requiresVariantSelection && variant === undefined ? (
                     <span className="sr-only">Odaberi dlaku</span>
                 ) : null}
             </Button>
-            {name === 'Horse' && !simple && variant === undefined ? (
+            {requiresVariantSelection && !simple && variant === undefined ? (
                 <Typography level="body3" className="text-muted-foreground">
                     Odaberi boju dlake prije postavljanja.
                 </Typography>

@@ -4,11 +4,16 @@ import {
     chooseSlugBehavior,
     getSlugAnimationTargets,
     reconcileSlugPopulation,
+    slugActorScale,
     slugArrivalDurationMs,
     slugCreepSpeedBlocksPerSecond,
     slugDepartureDurationMs,
 } from './slugBehavior';
-import type { SlugHabitatCandidate, SlugSpawn } from './slugEcology';
+import {
+    type SlugHabitatCandidate,
+    type SlugSpawn,
+    slugSpawnCooldownMs,
+} from './slugEcology';
 
 function candidate(
     id: string,
@@ -123,7 +128,7 @@ describe('slug behavior and lifecycle', () => {
         assert.equal(suppressed.entries.length, 0);
 
         const returned = reconcileSlugPopulation({
-            nowMs: 60_000,
+            nowMs: 3_000 + slugDepartureDurationMs + slugSpawnCooldownMs,
             plan: [planned],
             previous: suppressed,
         });
@@ -131,6 +136,7 @@ describe('slug behavior and lifecycle', () => {
     });
 
     it('maps each behavior and lifecycle to distinct animation targets', () => {
+        assert.equal(slugActorScale, 0.21);
         assert.equal(slugCreepSpeedBlocksPerSecond, 0.04);
         assert.equal(
             getSlugAnimationTargets({

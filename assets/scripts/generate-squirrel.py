@@ -165,9 +165,14 @@ def empty(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 def parent_keep_transform(
     child: bpy.types.Object, parent: bpy.types.Object
 ) -> None:
+    # Empties are created without an operator call, so Blender's dependency
+    # graph may still expose an all-zero matrix here. Force evaluation before
+    # preserving the authored world-space pivot.
+    bpy.context.view_layer.update()
     world_matrix = child.matrix_world.copy()
     child.parent = parent
     child.matrix_world = world_matrix
+    bpy.context.view_layer.update()
 
 
 def animate_object(

@@ -80,6 +80,12 @@ export const localSandboxBlockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
+    'RabbitHutch',
+    'HorseStable',
+    'CowShelter',
+    'GoatShelter',
+    'SheepFold',
+    // Compatibility aliases for local gardens created before distinct homes.
     'Goat',
     'PigletPen',
     'Cow',
@@ -161,6 +167,41 @@ const localSandboxBlockMetadata: Partial<
             'Mali obor s kaljužom koji u vrt dovodi razigranog praščića.',
         fullDescription:
             'Postavi niski obor od pruća s koritom i kaljužom pa će u vrt stići razigrani praščić. Njuškat će po zemlji, valjati se u blatu i vraćati se u svoj zaklon.',
+    },
+    RabbitHutch: {
+        label: 'Kućica za zeca',
+        shortDescription:
+            'Mala drvena kućica koja u vrt dovodi znatiželjnog zeca.',
+        fullDescription:
+            'Postavi malu drvenu kućicu uz prohodnu stazu i u vrt će stići znatiželjni zec. Skakutat će po sigurnom tlu, njuškati, uređivati krzno i kratko grickati travu.',
+    },
+    HorseStable: {
+        label: 'Staja za konja',
+        shortDescription:
+            'Otvorena drvena staja koja u vrt dovodi konja s bojom dlake po tvojem izboru.',
+        fullDescription:
+            'Postavi otvorenu drvenu staju, odaberi boju konjske dlake i u vrt će stići miran konj. Past će, osluškivati okolinu i obilaziti sigurne staze oko svojega doma.',
+    },
+    CowShelter: {
+        label: 'Zaklon za kravu',
+        shortDescription:
+            'Prostran otvoreni zaklon koji u vrt dovodi mirnu kravu.',
+        fullDescription:
+            'Postavi prostrani drveni zaklon uz travnati dio vrta i u njega će stići mirna krava. Past će, preživati i polako istraživati prohodnu okolicu.',
+    },
+    GoatShelter: {
+        label: 'Zaklon za kozu',
+        shortDescription:
+            'Kompaktan drveni zaklon koji u vrt dovodi znatiželjnu kozu.',
+        fullDescription:
+            'Postavi kompaktni zaklon uz kamenu ili šljunčanu stazu i u vrt će stići znatiželjna koza. Brstit će, preživati i povremeno razigrano poskočiti.',
+    },
+    SheepFold: {
+        label: 'Tor za ovcu',
+        shortDescription:
+            'Ograđeni tor sa zaklonom koji u vrt dovodi pitomu ovcu.',
+        fullDescription:
+            'Postavi ograđeni tor uz travnati dio vrta i u njega će stići pitoma ovca. Mirno će pasti, preživati i držati ugodan razmak od drugih ovaca.',
     },
     Cow: {
         label: 'Krava',
@@ -461,6 +502,11 @@ const localSandboxStackHeights: Partial<Record<LocalSandboxBlockName, number>> =
         WoodenHandLantern: 0.66,
         MoonRainBarrel: 1,
         ChickenCoop: 0.86,
+        RabbitHutch: 0.971,
+        HorseStable: 1.703,
+        CowShelter: 1.485,
+        GoatShelter: 1,
+        SheepFold: 1.445,
         Goat: 0.72,
         PigletPen: 0.78,
         Cow: 1.26,
@@ -650,6 +696,31 @@ const localSandboxHitboxAttributes: LocalSandboxHitboxAttributes = {
         hitboxHeight: 0.78,
         hitboxWidth: 0.94,
     },
+    RabbitHutch: {
+        hitboxDepth: 1.021,
+        hitboxHeight: 0.971,
+        hitboxWidth: 0.89,
+    },
+    HorseStable: {
+        hitboxDepth: 1.72,
+        hitboxHeight: 1.703,
+        hitboxWidth: 1.869,
+    },
+    CowShelter: {
+        hitboxDepth: 1.65,
+        hitboxHeight: 1.485,
+        hitboxWidth: 1.88,
+    },
+    GoatShelter: {
+        hitboxDepth: 0.979,
+        hitboxHeight: 1,
+        hitboxWidth: 0.98,
+    },
+    SheepFold: {
+        hitboxDepth: 1.52,
+        hitboxHeight: 1.445,
+        hitboxWidth: 1.72,
+    },
     Cow: {
         hitboxDepth: 2.08,
         hitboxHeight: 1.26,
@@ -745,6 +816,31 @@ const localSandboxPlacementAttributes: LocalSandboxPlacementAttributes = {
         placeableOnWater: false,
         spanDepth: 1,
         spanWidth: 1,
+    },
+    RabbitHutch: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    HorseStable: {
+        placeableOnWater: false,
+        spanDepth: 2,
+        spanWidth: 2,
+    },
+    CowShelter: {
+        placeableOnWater: false,
+        spanDepth: 2,
+        spanWidth: 2,
+    },
+    GoatShelter: {
+        placeableOnWater: false,
+        spanDepth: 1,
+        spanWidth: 1,
+    },
+    SheepFold: {
+        placeableOnWater: false,
+        spanDepth: 2,
+        spanWidth: 2,
     },
     Cow: {
         placeableOnWater: false,

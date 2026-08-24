@@ -22,6 +22,7 @@ import {
     type SlugBehavior,
     type SlugPopulationEntry,
     type SlugPopulationState,
+    slugActorScale,
     slugArrivalDurationMs,
     slugCreepSpeedBlocksPerSecond,
     slugDepartureDurationMs,
@@ -29,10 +30,15 @@ import {
 import {
     createSlugHabitatCandidates,
     createSlugSpawnPlan,
+    getSlugPostRainWetness,
     hashSlugSeed,
+    quantizeSlugSurfaceWetness,
     type SlugHabitatCandidate,
+    type SlugRainHistory,
     type SlugRaisedBed,
     type SlugWeather,
+    slugPostRainWindowMs,
+    updateSlugRainHistory,
 } from './slugEcology';
 import {
     findSlugPath,
@@ -100,7 +106,6 @@ const clearSlugWeather = {
     snowy: 0,
     temperature: null,
 } satisfies SlugWeather;
-const slugScale = 0.3;
 const slugTurnDamping = 5.5;
 const slugDecisionSeedStep = 0x9e3779b9;
 
@@ -518,7 +523,7 @@ function SlugActor({
             lifecycleProgress,
         });
         const visibleScale =
-            slugScale * (0.72 + animationTargets.visibility * 0.28);
+            slugActorScale * (0.72 + animationTargets.visibility * 0.28);
         group.scale.setScalar(visibleScale);
         group.visible = animationTargets.visibility > 0.01;
         for (const material of model.materials) {
@@ -655,6 +660,11 @@ const emptySlugPopulation: SlugPopulationState = {
     cooldownUntilById: {},
     entries: [],
 };
+const emptySlugRainHistory: SlugRainHistory = {
+    lastRainEndedAtMs: null,
+    qualifyingRainObserved: false,
+    rainActive: false,
+};
 
 export function Slugs({
     farmId,
@@ -688,12 +698,60 @@ export function Slugs({
             }),
         [gameWeather, weather, weatherDisabled, weatherNow],
     );
+    const observedRainIntensity = quantizeSlugSurfaceWetness(
+        Math.max(recentWetness, slugWeather.rainy ?? 0),
+    );
+    const [rainHistory, setRainHistory] =
+        useState<SlugRainHistory>(emptySlugRainHistory);
+    useEffect(() => {
+        if (weatherDisabled) {
+            setRainHistory(emptySlugRainHistory);
+            return;
+        }
+        setRainHistory((previous) =>
+            updateSlugRainHistory({
+                nowMs: Date.now(),
+                previous,
+                rainIntensity: observedRainIntensity,
+            }),
+        );
+    }, [observedRainIntensity, weatherDisabled]);
+    useEffect(() => {
+        const rainEndedAt = rainHistory.lastRainEndedAtMs;
+        if (rainEndedAt === null) {
+            return;
+        }
+        const remaining = rainEndedAt + slugPostRainWindowMs - Date.now();
+        if (remaining <= 0) {
+            setRainHistory((current) =>
+                current.lastRainEndedAtMs === rainEndedAt
+                    ? { ...current, lastRainEndedAtMs: null }
+                    : current,
+            );
+            return;
+        }
+        const timeout = window.setTimeout(() => {
+            setRainHistory((current) =>
+                current.lastRainEndedAtMs === rainEndedAt
+                    ? { ...current, lastRainEndedAtMs: null }
+                    : current,
+            );
+        }, remaining + 1);
+        return () => window.clearTimeout(timeout);
+    }, [rainHistory.lastRainEndedAtMs]);
+    const postRainSurfaceWetness = weatherDisabled
+        ? 0
+        : getSlugPostRainWetness({
+              history: rainHistory,
+              nowMs: Date.now(),
+              rainIntensity: observedRainIntensity,
+          });
     const habitat = useMemo(
         () =>
             createSlugHabitatCandidates({
                 blockData,
                 raisedBeds: garden?.raisedBeds,
-                recentWetness: Math.max(recentWetness, slugWeather.rainy ?? 0),
+                recentWetness: postRainSurfaceWetness,
                 stacks: garden?.stacks,
                 weather: slugWeather,
             }),
@@ -701,7 +759,7 @@ export function Slugs({
             blockData,
             garden?.raisedBeds,
             garden?.stacks,
-            recentWetness,
+            postRainSurfaceWetness,
             slugWeather,
         ],
     );

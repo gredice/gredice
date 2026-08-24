@@ -193,9 +193,9 @@ function createCowHerdStacks() {
         maxZ: 5,
     });
 
-    placeBlock(stacks, -4, -2, 'Cow', 0, 0);
-    placeBlock(stacks, -4, 2, 'Cow', 1, 1);
-    placeBlock(stacks, 4, 0, 'Cow', 2, 0);
+    placeBlock(stacks, -5, -3, 'CowShelter', 0, 0);
+    placeBlock(stacks, -5, 1, 'CowShelter', 1, 1);
+    placeBlock(stacks, 3, -1, 'CowShelter', 2, 0);
     placeBlock(stacks, 0, -4, 'Tree');
     placeBlock(stacks, 0, 4, 'WaterWell');
     placeBlock(stacks, 2, -3, 'StoneLarge');
@@ -223,9 +223,9 @@ function createSheepPathfindingStacks() {
         maxZ: 4,
     });
 
-    placeBlock(stacks, -4, -1, 'Sheep');
-    placeBlock(stacks, -4, 1, 'Sheep');
-    placeBlock(stacks, -2, 0, 'Sheep');
+    placeBlock(stacks, -5, -3, 'SheepFold');
+    placeBlock(stacks, -5, 1, 'SheepFold');
+    placeBlock(stacks, -2, -1, 'SheepFold');
     placeBlock(stacks, 3, -2, 'Tree');
     placeBlock(stacks, 3, 2, 'StoneMedium');
     for (let z = -4; z <= 1; z += 1) {
@@ -246,7 +246,7 @@ function createGoatPathfindingStacks() {
         maxZ: 4,
     });
 
-    placeBlock(stacks, -5, 0, 'Goat', 1);
+    placeBlock(stacks, -5, 0, 'GoatShelter', 1);
     placeBlock(stacks, 4, 0, 'Tree');
     replaceGround(stacks, 3, -2, 'Block_Stone');
     replaceGround(stacks, 3, 2, 'Block_Gravel');
@@ -266,11 +266,32 @@ function createRabbitPathfindingStacks() {
         maxZ: 4,
     });
 
-    placeBlock(stacks, 1, 0, 'Rabbit', 0, 0);
+    placeBlock(stacks, 1, 0, 'RabbitHutch', 0, 0);
     placeBlock(stacks, 4, -2, 'Tree');
     placeBlock(stacks, -3, 3, 'StoneMedium');
     for (let z = -4; z <= 1; z += 1) {
         placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+    }
+
+    return serializeStacks(stacks);
+}
+
+function createHorsePathfindingStacks() {
+    const stacks = createGroundStacks({
+        minX: -6,
+        maxX: 6,
+        minZ: -4,
+        maxZ: 4,
+    });
+
+    placeBlock(stacks, -5, -1, 'HorseStable', 0, 0);
+    placeBlock(stacks, 4, 0, 'Tree');
+    placeBlock(stacks, 3, -2, 'StoneLarge');
+    placeBlock(stacks, -2, 3, 'WaterWell');
+    for (let z = -4; z <= 2; z += 1) {
+        if (z !== -1) {
+            placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
+        }
     }
 
     return serializeStacks(stacks);
@@ -429,18 +450,19 @@ function createAllAnimalStacks() {
     placeBlock(stacks, -5, 0, 'CatPillow');
     placeBlock(stacks, -5, 2, 'DogHouse');
     placeBlock(stacks, -5, -2, 'ChickenCoop');
-    placeBlock(stacks, -3, 3, 'PigletPen');
-    placeBlock(stacks, -3, 0, 'Cow', 0, 0);
-    placeBlock(stacks, 4, 1, 'Cow', 2, 1);
-    placeBlock(stacks, -3, 1, 'Sheep');
-    placeBlock(stacks, -1, 3, 'Sheep');
-    placeBlock(stacks, -3, -3, 'Goat', 1);
-    placeBlock(stacks, -2, 0, 'Rabbit', 0, 0);
-    placeBlock(stacks, 2, 0, 'Tree');
+    placeBlock(stacks, -6, 1, 'PigletPen');
+    placeBlock(stacks, -4, -1, 'CowShelter', 0, 0);
+    placeBlock(stacks, 3, 1, 'CowShelter', 2, 1);
+    placeBlock(stacks, -4, 2, 'SheepFold');
+    placeBlock(stacks, 1, -3, 'SheepFold');
+    placeBlock(stacks, -1, 3, 'GoatShelter', 1);
+    placeBlock(stacks, -2, -3, 'RabbitHutch', 0, 0);
+    placeBlock(stacks, 2, -1, 'HorseStable', 0, 0);
+    placeBlock(stacks, 5, 0, 'Tree');
     placeBlock(stacks, 5, 1, 'Pine');
     placeBlock(stacks, 3, -2, 'Stool');
-    placeBlock(stacks, 3, 2, 'Bucket');
-    placeBlock(stacks, -4, 3, 'StoneMedium');
+    placeBlock(stacks, 5, 2, 'Bucket');
+    placeBlock(stacks, -6, 3, 'StoneMedium');
     for (let z = -4; z <= 1; z += 1) {
         placeBlock(stacks, 0, z, z % 2 === 0 ? 'GardenBox' : 'Composter');
     }
@@ -449,10 +471,10 @@ function createAllAnimalStacks() {
     placeBlock(stacks, 2, 2, 'Bush');
     placeBlock(stacks, 3, 3, 'WaterWell');
     placeBlock(stacks, -2, -2, 'Tulip');
-    placeBlock(stacks, 1, -3, 'Tulip');
+    placeBlock(stacks, 0, -3, 'Tulip');
     placeBlock(stacks, 5, -3, 'Tulip');
-    placeBlock(stacks, -3, 2, 'CactusPricklyPear');
-    placeBlock(stacks, 2, -1, 'CactusBarrel');
+    placeBlock(stacks, -6, 2, 'CactusPricklyPear');
+    placeBlock(stacks, 5, -1, 'CactusBarrel');
     replaceGround(stacks, 4, -1, 'Block_Dry_Ground');
 
     return serializeStacks(stacks);
@@ -607,6 +629,20 @@ export function AnimalDebugActions({ storageKey }: { storageKey: string }) {
                 variant="soft"
             >
                 Rabbit path
+            </Button>
+            <Button
+                className="pointer-events-auto rounded-full shadow-lg"
+                color="neutral"
+                onClick={() =>
+                    persistAnimalDebugStacks(
+                        storageKey,
+                        createHorsePathfindingStacks(),
+                    )
+                }
+                size="sm"
+                variant="soft"
+            >
+                Horse path
             </Button>
             <Button
                 className="pointer-events-auto rounded-full shadow-lg"

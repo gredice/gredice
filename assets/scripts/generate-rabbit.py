@@ -155,9 +155,11 @@ def empty(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 def parent_keep_transform(
     child: bpy.types.Object, parent: bpy.types.Object
 ) -> None:
+    bpy.context.view_layer.update()
     world_matrix = child.matrix_world.copy()
     child.parent = parent
     child.matrix_world = world_matrix
+    bpy.context.view_layer.update()
 
 
 def reset_scene() -> None:
@@ -218,10 +220,10 @@ def create_rabbit(output: Path) -> None:
     parent_keep_transform(nose_pivot, head_pivot)
     parent_keep_transform(ear_left_pivot, head_pivot)
     parent_keep_transform(ear_right_pivot, head_pivot)
-    parent_keep_transform(front_left_pivot, root)
-    parent_keep_transform(front_right_pivot, root)
-    parent_keep_transform(hind_left_pivot, root)
-    parent_keep_transform(hind_right_pivot, root)
+    parent_keep_transform(front_left_pivot, body_pivot)
+    parent_keep_transform(front_right_pivot, body_pivot)
+    parent_keep_transform(hind_left_pivot, body_pivot)
+    parent_keep_transform(hind_right_pivot, body_pivot)
     parent_keep_transform(tail_pivot, body_pivot)
 
     body = add_ico_sphere(

@@ -144,9 +144,11 @@ def empty(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 def parent_keep_transform(
     child: bpy.types.Object, parent: bpy.types.Object
 ) -> None:
+    bpy.context.view_layer.update()
     world_matrix = child.matrix_world.copy()
     child.parent = parent
     child.matrix_world = world_matrix
+    bpy.context.view_layer.update()
 
 
 def create_sheep(output_dir: Path) -> None:
@@ -204,7 +206,7 @@ def create_sheep(output_dir: Path) -> None:
     parent_keep_transform(ear_right_pivot, head_pivot)
     parent_keep_transform(tail_pivot, body_pivot)
     for pivot in leg_pivots.values():
-        parent_keep_transform(pivot, root)
+        parent_keep_transform(pivot, body_pivot)
 
     wool_tuft_specs = [
         ((0, -0.05, 0.79), (0.5, 0.74, 0.5)),

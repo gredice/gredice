@@ -518,6 +518,7 @@
             "name": "Butterfly",
             "source": "Butterfly.blend",
             "output": "Butterfly.glb",
+            "version": "008559d0077f",
             "preload": "lazy",
             "objects": [
                 "Butterfly_Root",
@@ -645,7 +646,7 @@
             "name": "Squirrel",
             "source": "Squirrel.blend",
             "output": "Squirrel.glb",
-            "version": "0de8cec90d5c",
+            "version": "859112d8590d",
             "preload": "lazy",
             "objects": [
                 "Squirrel_Root",
@@ -697,7 +698,7 @@
             "name": "Chicken",
             "source": "Chicken.blend",
             "output": "Chicken.glb",
-            "version": "2edd7673f7d5",
+            "version": "d515764a6eab",
             "preload": "lazy",
             "objects": [
                 "Chicken_Root",
@@ -731,7 +732,7 @@
             "name": "Piglet",
             "source": "Piglet.blend",
             "output": "Piglet.glb",
-            "version": "58f584a6fa21",
+            "version": "082e8d52aaed",
             "preload": "lazy",
             "objects": [
                 "Piglet_Root",
@@ -774,7 +775,7 @@
             "name": "Cow",
             "source": "Cow.blend",
             "output": "Cow.glb",
-            "version": "487689bb07d1",
+            "version": "75060ced5288",
             "preload": "lazy",
             "objects": [
                 "Cow_Root",
@@ -828,7 +829,7 @@
             "name": "Goat",
             "source": "Goat.blend",
             "output": "Goat.glb",
-            "version": "06164344617b",
+            "version": "c489a03d0c6b",
             "preload": "lazy",
             "objects": [
                 "Goat_Root",
@@ -876,7 +877,7 @@
             "name": "Rabbit",
             "source": "Rabbit.blend",
             "output": "Rabbit.glb",
-            "version": "40b7d65b4701",
+            "version": "e5d926614f6c",
             "preload": "lazy",
             "objects": [
                 "Rabbit_Root",
@@ -921,7 +922,7 @@
             "name": "Sheep",
             "source": "Sheep.blend",
             "output": "Sheep.glb",
-            "version": "65950df32c83",
+            "version": "9f76d330d4e4",
             "preload": "lazy",
             "objects": [
                 "Sheep_Root",
@@ -2101,6 +2102,78 @@
                 "PigletPen_Mud",
                 "PigletPen_Straw",
                 "PigletPen_Trough"
+            ]
+        },
+        {
+            "name": "RabbitHutch",
+            "source": "RabbitHutch.blend",
+            "output": "RabbitHutch.glb",
+            "version": "7d1e5f8b7ed0",
+            "preload": "lazy",
+            "objects": [
+                "RabbitHutch_Oak",
+                "RabbitHutch_Walls",
+                "RabbitHutch_Roof",
+                "RabbitHutch_EntranceRamp",
+                "RabbitHutch_Straw"
+            ]
+        },
+        {
+            "name": "HorseStable",
+            "source": "HorseStable.blend",
+            "output": "HorseStable.glb",
+            "version": "7d1293980e9d",
+            "preload": "lazy",
+            "objects": [
+                "HorseStable_Stone",
+                "HorseStable_Frame",
+                "HorseStable_Walls",
+                "HorseStable_Roof",
+                "HorseStable_Trough",
+                "HorseStable_Straw"
+            ]
+        },
+        {
+            "name": "CowShelter",
+            "source": "CowShelter.blend",
+            "output": "CowShelter.glb",
+            "version": "013f2d369dc8",
+            "preload": "lazy",
+            "objects": [
+                "CowShelter_Stone",
+                "CowShelter_Timber",
+                "CowShelter_Walls",
+                "CowShelter_Roof",
+                "CowShelter_Trough"
+            ]
+        },
+        {
+            "name": "GoatShelter",
+            "source": "GoatShelter.blend",
+            "output": "GoatShelter.glb",
+            "version": "270d59461852",
+            "preload": "lazy",
+            "objects": [
+                "GoatShelter_Stone",
+                "GoatShelter_Frame",
+                "GoatShelter_Walls",
+                "GoatShelter_Roof",
+                "GoatShelter_Platform"
+            ]
+        },
+        {
+            "name": "SheepFold",
+            "source": "SheepFold.blend",
+            "output": "SheepFold.glb",
+            "version": "f482286e92d5",
+            "preload": "lazy",
+            "objects": [
+                "SheepFold_Stone",
+                "SheepFold_Wattle",
+                "SheepFold_ShelterFrame",
+                "SheepFold_Roof",
+                "SheepFold_Straw",
+                "SheepFold_Gate"
             ]
         },
         {

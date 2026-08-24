@@ -43,6 +43,7 @@ import {
     getFrogBlinkDelaySeconds,
     getFrogCroakDelaySeconds,
     getFrogDwellSeconds,
+    getFrogFacingYaw,
     getFrogHopDurationSeconds,
     getFrogHopMotion,
     isAvatarNearFrog,
@@ -194,7 +195,7 @@ function facePoint(group: Group, target: Vector3, delta: number) {
     if (Math.hypot(dx, dz) <= 0.001) {
         return;
     }
-    const desiredYaw = Math.atan2(dx, dz);
+    const desiredYaw = getFrogFacingYaw({ from: group.position, to: target });
     const deltaYaw = Math.atan2(
         Math.sin(desiredYaw - group.rotation.y),
         Math.cos(desiredYaw - group.rotation.y),

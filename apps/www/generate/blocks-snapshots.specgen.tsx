@@ -160,7 +160,12 @@ const CLOSEUP_ENTITY_ZOOM = new Map<string, number>([
     ['MoonRainBarrel', 120],
     ['Sheep', 128],
 ]);
-const NORMAL_ENTITY_ZOOM = new Map<string, number>([['FishingBoat', 58]]);
+const NORMAL_ENTITY_ZOOM = new Map<string, number>([
+    ['CowShelter', 56],
+    ['FishingBoat', 58],
+    ['SheepFold', 56],
+]);
+const FAR_ENTITY_ZOOM = new Map<string, number>([['HorseStable', 52]]);
 const FAR_ENTITIES = new Set<string>(['PalmTree']);
 const gameAssetBaseUrl =
     process.env.GAME_ASSET_BASE_URL ?? 'https://vrt.gredice.com';
@@ -244,7 +249,9 @@ function getViewOptions(
     switch (view) {
         case 'far':
             options = {
-                zoom: hasMultiBlockFootprint ? 38 : 60,
+                zoom:
+                    FAR_ENTITY_ZOOM.get(entity.information.name) ??
+                    (hasMultiBlockFootprint ? 38 : 60),
                 itemPosition: hasMultiBlockFootprint
                     ? centeredItemPosition
                     : target,

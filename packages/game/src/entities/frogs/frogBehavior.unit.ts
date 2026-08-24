@@ -7,6 +7,7 @@ import {
     getFrogBlinkDelaySeconds,
     getFrogCroakDelaySeconds,
     getFrogDwellSeconds,
+    getFrogFacingYaw,
     getFrogHopDurationSeconds,
     getFrogHopMotion,
     isAvatarNearFrog,
@@ -52,6 +53,20 @@ function habitat(
 }
 
 describe('frog behavior', () => {
+    it('aims the authored -Z forward axis in the hop direction', () => {
+        const yaw = getFrogFacingYaw({
+            from: { x: 0, z: 0 },
+            to: { x: 1, z: 0 },
+        });
+        const modelForward = {
+            x: -Math.sin(yaw),
+            z: -Math.cos(yaw),
+        };
+
+        assert.ok(modelForward.x > 0.999);
+        assert.ok(Math.abs(modelForward.z) < 0.001);
+    });
+
     it('keeps idle, blink, and croak cadence within bounded windows', () => {
         assert.equal(
             getFrogDwellSeconds(() => 0),

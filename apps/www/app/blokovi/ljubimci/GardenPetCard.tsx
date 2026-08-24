@@ -36,11 +36,7 @@ export function GardenPetCard({
             >
                 <div className="relative aspect-square overflow-hidden rounded-lg border bg-muted/40">
                     <BlockImage
-                        alt={
-                            pet.directlyPlaceable
-                                ? `${pet.name} u 3D vrtu`
-                                : `Dom ${pet.genitive} u 3D vrtu`
-                        }
+                        alt={`Dom ${pet.genitive} u 3D vrtu`}
                         blockName={pet.homeBlockName}
                         fill
                         sizes="(max-width: 768px) 100vw, 224px"
@@ -85,7 +81,7 @@ export function GardenPetCard({
                         <GardenPetRoutine
                             icon={<Sun aria-hidden className="size-4" />}
                             label="Danju"
-                            value={`Obilazi vrt u krugu do ${formatBlockDistance(pet.dayRangeBlocks)} blokova ${pet.directlyPlaceable ? 'od mjesta postavljanja' : 'od doma'}.`}
+                            value={`Obilazi vrt u krugu do ${formatBlockDistance(pet.dayRangeBlocks)} blokova od doma.`}
                         />
                         <GardenPetRoutine
                             icon={<Moon aria-hidden className="size-4" />}
@@ -106,9 +102,7 @@ export function GardenPetCard({
                                     className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                                 />
                                 <Typography level="body2">
-                                    {pet.directlyPlaceable
-                                        ? 'U vrt ga postavljaš izravno blokom '
-                                        : 'U vrt stiže s blokom '}
+                                    U vrt stiže s blokom{' '}
                                     <span className="font-semibold">
                                         {home.label}
                                     </span>
@@ -134,8 +128,7 @@ export function GardenPetCard({
                                 className="mt-0.5 size-4 shrink-0 text-muted-foreground"
                             />
                             <Typography level="body2" secondary>
-                                Blok koji dovodi ovog ljubimca uskoro stiže u
-                                katalog.
+                                Dom ovog ljubimca još nije dostupan u katalogu.
                             </Typography>
                         </Row>
                     )}

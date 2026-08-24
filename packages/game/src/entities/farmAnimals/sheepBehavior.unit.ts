@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Vector3 } from 'three';
+import { getLocalSandboxBlockData } from '../../localSandboxBlockData';
 import type { Stack } from '../../types/Stack';
 import {
     createFarmAnimalHabitatsForSpecies,
+    createLegacySheepHabitats,
     getFarmAnimalBehaviorAvailability,
     getSheepHeadPitch,
     resolveFarmAnimalRuntimeForTarget,
@@ -30,15 +32,19 @@ test('creates one independently seeded habitat for every placed sheep', () => {
     const stacks = [
         stackWithBlocks(0, 0, [
             { id: 'ground-a', name: 'Block_Grass' },
-            { id: 'sheep-a', name: 'Sheep' },
+            { id: 'sheep-a', name: 'SheepFold' },
         ]),
         stackWithBlocks(2, 0, [
             { id: 'ground-b', name: 'Block_Grass' },
-            { id: 'sheep-b', name: 'Sheep' },
+            { id: 'sheep-b', name: 'SheepFold' },
         ]),
         stackWithBlocks(1, 1, [
             { id: 'water-ground', name: 'Block_Grass' },
             { id: 'water', name: 'Block_Water' },
+        ]),
+        stackWithBlocks(4, 0, [
+            { id: 'legacy-ground', name: 'Block_Grass' },
+            { id: 'legacy-sheep', name: 'Sheep' },
         ]),
     ];
     const habitats = createFarmAnimalHabitatsForSpecies({
@@ -69,6 +75,52 @@ test('creates one independently seeded habitat for every placed sheep', () => {
     );
 });
 
+test('keeps one animated actor per legacy direct sheep block', () => {
+    const stacks = [
+        stackWithBlocks(0, 0, [
+            { id: 'legacy-ground-a', name: 'Block_Grass' },
+            { id: 'legacy-sheep-a', name: 'Sheep' },
+        ]),
+        stackWithBlocks(2, 0, [
+            { id: 'legacy-ground-b', name: 'Block_Grass' },
+            { id: 'legacy-sheep-b', name: 'Sheep' },
+        ]),
+        stackWithBlocks(4, 0, [
+            { id: 'canonical-ground', name: 'Block_Grass' },
+            { id: 'canonical-fold', name: 'SheepFold' },
+        ]),
+    ];
+
+    const habitats = createLegacySheepHabitats({
+        blockData: undefined,
+        stacks,
+    });
+
+    assert.deepEqual(
+        habitats.map((habitat) => habitat.homeBlock.id),
+        ['legacy-sheep-a', 'legacy-sheep-b'],
+    );
+});
+
+test('blocks every cell in the 2x2 sheep-fold footprint', () => {
+    const [habitat] = createFarmAnimalHabitatsForSpecies({
+        blockData: getLocalSandboxBlockData(),
+        species: 'Sheep',
+        stacks: [
+            stackWithBlocks(3, 4, [
+                { id: 'ground-home', name: 'Block_Grass' },
+                { id: 'sheep-fold', name: 'SheepFold' },
+            ]),
+        ],
+    });
+    assert.ok(habitat);
+
+    assert.deepEqual(
+        habitat.blockedCells.map(({ x, z }) => `${x}:${z}`).toSorted(),
+        ['3:4', '3:5', '4:4', '4:5'],
+    );
+});
+
 test('makes grazing and cud-chewing available on safe ground', () => {
     const [habitat] = createFarmAnimalHabitatsForSpecies({
         blockData: undefined,
@@ -76,7 +128,7 @@ test('makes grazing and cud-chewing available on safe ground', () => {
         stacks: [
             stackWithBlocks(0, 0, [
                 { id: 'ground-home', name: 'Block_Grass' },
-                { id: 'sheep', name: 'Sheep' },
+                { id: 'sheep', name: 'SheepFold' },
             ]),
             stackWithBlocks(1, 0, [{ id: 'ground-roam', name: 'Block_Grass' }]),
         ],
@@ -151,7 +203,7 @@ test('resolves sheep routes around blockers and exposes a grazing pose', () => {
         stacks: [
             stackWithBlocks(0, 0, [
                 { id: 'ground-home', name: 'Block_Grass' },
-                { id: 'sheep', name: 'Sheep' },
+                { id: 'sheep', name: 'SheepFold' },
             ]),
             stackWithBlocks(1, 0, [
                 { id: 'ground-blocked', name: 'Block_Grass' },

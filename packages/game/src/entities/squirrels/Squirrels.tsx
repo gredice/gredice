@@ -49,6 +49,7 @@ import {
     createSquirrelRandom,
     createSquirrelSpawnPlan,
     getSquirrelCooldownRemainingMs,
+    getSquirrelVisitDurationSeconds,
     reconcileSquirrelCooldowns,
     type SquirrelSpawnCooldown,
 } from './squirrelSpawning';
@@ -104,8 +105,8 @@ type SquirrelAnimationName =
     | 'Squirrel_Pause'
     | 'Squirrel_Flee';
 
-const squirrelScale = 0.39;
-const squirrelSpeechBubbleOffsetY = 0.84;
+export const squirrelActorScale = 0.2;
+const squirrelSpeechBubbleOffsetY = 0.48;
 const squirrelAvatarFleeDistance = 2.2;
 const squirrelFleeReactionCooldownSeconds = 4;
 const squirrelTreeExitSeconds = 0.34;
@@ -306,6 +307,42 @@ function createExitingState({
         startedAt: now,
         target,
     };
+}
+
+export function createScheduledDepartureState({
+    from,
+    habitat,
+    now,
+}: {
+    from: Vector3;
+    habitat: SquirrelHabitat;
+    now: number;
+}) {
+    if (horizontalDistance(from, habitat.spawnTarget.position) <= 0.02) {
+        return createExitingState({
+            from,
+            habitat,
+            now,
+            target: habitat.spawnTarget,
+        });
+    }
+    return (
+        createMovingState({
+            behavior: 'flee',
+            despawnOnArrival: true,
+            from: from.clone(),
+            habitat,
+            now,
+            target: habitat.spawnTarget,
+        }) ?? {
+            behavior: 'flee',
+            destination: from.clone(),
+            from: from.clone(),
+            phase: 'exiting',
+            startedAt: now,
+            target: habitat.spawnTarget,
+        }
+    );
 }
 
 function chooseSettledBehavior(random: () => number): SquirrelSettledBehavior {
@@ -518,6 +555,7 @@ function Squirrel({
     const lastPresenceUpdateRef = useRef(0);
     const lastDebugCommandSequenceRef = useRef(0);
     const lastFleeAtRef = useRef(Number.NEGATIVE_INFINITY);
+    const visitEndsAtRef = useRef<number | null>(null);
     const despawnedRef = useRef(false);
     const pathDebugKeyRef = useRef('');
     const [activeAnimation, setActiveAnimation] =
@@ -705,6 +743,12 @@ function Squirrel({
             });
             runtimeRef.current = runtime;
             group.position.copy(habitat.spawnTarget.position);
+            visitEndsAtRef.current ??=
+                now +
+                getSquirrelVisitDurationSeconds({
+                    habitatSeed: habitat.seed,
+                    spawnSequence,
+                });
         }
 
         if (
@@ -758,6 +802,22 @@ function Squirrel({
                         target: runtime.target,
                     });
                 }
+                runtimeRef.current = runtime;
+            }
+        }
+
+        if (
+            runtime.phase !== 'exiting' &&
+            runtime.behavior !== 'flee' &&
+            now >= (visitEndsAtRef.current ?? Number.POSITIVE_INFINITY)
+        ) {
+            const departure = createScheduledDepartureState({
+                from: group.position,
+                habitat,
+                now,
+            });
+            if (departure) {
+                runtime = departure;
                 runtimeRef.current = runtime;
             }
         }
@@ -838,7 +898,7 @@ function Squirrel({
                 runtime.destination,
                 progress,
             );
-            group.scale.setScalar(squirrelScale * (1 - progress));
+            group.scale.setScalar(squirrelActorScale * (1 - progress));
             setAnimation('Squirrel_Flee');
             if (progress >= 1) {
                 group.visible = false;
@@ -928,7 +988,7 @@ function Squirrel({
                 onClick={handleClick}
                 onPointerDown={handlePointerDown}
                 onPointerOver={handlePointerOver}
-                scale={squirrelScale}
+                scale={squirrelActorScale}
             >
                 <primitive object={squirrelModel.scene} />
             </group>

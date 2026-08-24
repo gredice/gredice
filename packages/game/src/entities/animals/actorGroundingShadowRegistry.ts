@@ -112,10 +112,10 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 2.1,
     },
     butterfly: {
-        baseHalfLength: 0.13,
-        baseHalfWidth: 0.09,
+        baseHalfLength: 0.052,
+        baseHalfWidth: 0.036,
         baseOpacity: 0.18,
-        cutoffHeight: 1.8,
+        cutoffHeight: 0.72,
         maxFootprintScale: 2,
     },
     cat: {
@@ -196,17 +196,17 @@ export const actorGroundingShadowProfiles = {
         maxFootprintScale: 1.65,
     },
     slug: {
-        baseHalfLength: 0.25,
-        baseHalfWidth: 0.1,
+        baseHalfLength: 0.175,
+        baseHalfWidth: 0.07,
         baseOpacity: 0.2,
-        cutoffHeight: 0.22,
+        cutoffHeight: 0.154,
         maxFootprintScale: 1.2,
     },
     squirrel: {
-        baseHalfLength: 0.26,
-        baseHalfWidth: 0.18,
+        baseHalfLength: 0.133,
+        baseHalfWidth: 0.092,
         baseOpacity: 0.3,
-        cutoffHeight: 0.9,
+        cutoffHeight: 0.462,
         maxFootprintScale: 1.55,
     },
 } satisfies Record<ActorGroundingShadowSpecies, GroundingShadowProfile>;

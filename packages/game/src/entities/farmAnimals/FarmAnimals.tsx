@@ -54,6 +54,7 @@ import {
     canAnimalSettleAt,
     createAnimalBlockedCells,
     createAnimalMovementSurfaces,
+    getAnimalMovementSurfaceAt,
     getAnimalMovementYAt,
     isAnimalGroundBlockName,
     isAnimalSwimmingAt,
@@ -68,6 +69,10 @@ import {
     type CatPathResult,
     findCatPath,
 } from '../cats/catPathfinding';
+import {
+    getPersistentPetHomePlacement,
+    isPersistentPetHomeBlockName,
+} from '../persistentPets/persistentPetHomes';
 import {
     type FarmAnimalBehavior,
     type FarmAnimalBehaviorAvailability,
@@ -140,7 +145,13 @@ type FarmAnimalConfig = {
     assetName: 'Chicken' | 'Goat' | 'Piglet' | 'Sheep';
     debugColor: string;
     groundLift: number;
-    homeBlockName: 'ChickenCoop' | 'Goat' | 'PigletPen' | 'Sheep';
+    homeBlockName:
+        | 'ChickenCoop'
+        | 'Goat'
+        | 'GoatShelter'
+        | 'PigletPen'
+        | 'Sheep'
+        | 'SheepFold';
     homeDoorOffset: number;
     petHeartsOffsetY: number;
     scale: number;
@@ -224,8 +235,8 @@ const goatConfig = {
     assetName: 'Goat',
     debugColor: '#a78b67',
     groundLift: 0.024,
-    homeBlockName: 'Goat',
-    homeDoorOffset: 0,
+    homeBlockName: 'GoatShelter',
+    homeDoorOffset: 0.48,
     petHeartsOffsetY: 0.72,
     scale: 0.392,
     shadowSpecies: 'goat',
@@ -237,12 +248,18 @@ const goatConfig = {
     walkSpeed: 0.86,
 } satisfies FarmAnimalConfig;
 
+const legacyGoatConfig = {
+    ...goatConfig,
+    homeBlockName: 'Goat',
+    homeDoorOffset: 0,
+} satisfies FarmAnimalConfig;
+
 const sheepConfig = {
     assetName: 'Sheep',
     debugColor: '#d6c7aa',
     groundLift: 0.025,
-    homeBlockName: 'Sheep',
-    homeDoorOffset: 0,
+    homeBlockName: 'SheepFold',
+    homeDoorOffset: 0.7,
     petHeartsOffsetY: 0.72,
     scale: 0.46,
     shadowSpecies: 'sheep',
@@ -253,6 +270,12 @@ const sheepConfig = {
     trotSpeed: 1.16,
     walkCycleDistance: 0.74,
     walkSpeed: 0.58,
+} satisfies FarmAnimalConfig;
+
+const legacySheepConfig = {
+    ...sheepConfig,
+    homeBlockName: 'Sheep',
+    homeDoorOffset: 0,
 } satisfies FarmAnimalConfig;
 
 function getFarmAnimalConfig(species: FarmAnimalSpecies) {
@@ -311,23 +334,38 @@ function targetForHomeBlock({
     block,
     blockData,
     config,
+    groundSurfaces,
     stack,
 }: {
     block: Block;
     blockData: BlockData[] | null | undefined;
     config: FarmAnimalConfig;
+    groundSurfaces: AnimalMovementSurface[];
     stack: Stack;
 }) {
-    const groundY = Math.max(
-        0,
-        getStackHeight(blockData, stack, block) + config.groundLift,
-    );
-    const facingYaw = blockRotationToYaw(block.rotation);
-    const position = new Vector3(
-        stack.position.x + Math.sin(facingYaw) * config.homeDoorOffset,
-        groundY,
-        stack.position.z + Math.cos(facingYaw) * config.homeDoorOffset,
-    );
+    const placement = isPersistentPetHomeBlockName(block.name)
+        ? getPersistentPetHomePlacement({
+              blockName: block.name,
+              rotation: block.rotation,
+              x: stack.position.x,
+              z: stack.position.z,
+          })
+        : null;
+    const facingYaw =
+        placement?.facingYaw ?? blockRotationToYaw(block.rotation);
+    const homeAnchor = placement?.doorway ?? {
+        x: stack.position.x + Math.sin(facingYaw) * config.homeDoorOffset,
+        z: stack.position.z + Math.cos(facingYaw) * config.homeDoorOffset,
+    };
+    const homeSurface = getAnimalMovementSurfaceAt(homeAnchor, groundSurfaces);
+    const groundY =
+        homeSurface?.kind === 'ground'
+            ? Math.max(config.groundLift, homeSurface.y)
+            : Math.max(
+                  0,
+                  getStackHeight(blockData, stack, block) + config.groundLift,
+              );
+    const position = new Vector3(homeAnchor.x, groundY, homeAnchor.z);
 
     return {
         behavior: 'home',
@@ -432,7 +470,7 @@ function createFarmAnimalHabitats({
     config: FarmAnimalConfig;
     stacks: Stack[] | undefined;
 }) {
-    const blockedCells = createAnimalBlockedCells(stacks);
+    const blockedCells = createAnimalBlockedCells(stacks, { blockData });
     const groundSurfaces = createAnimalMovementSurfaces({
         blockData,
         groundLift: config.groundLift,
@@ -460,6 +498,7 @@ function createFarmAnimalHabitats({
                         block,
                         blockData,
                         config,
+                        groundSurfaces,
                         stack,
                     }),
                     homeBlock: block,
@@ -569,6 +608,20 @@ export function createFarmAnimalHabitatsForSpecies({
     return createFarmAnimalHabitats({
         blockData,
         config: getFarmAnimalConfig(species),
+        stacks,
+    });
+}
+
+export function createLegacySheepHabitats({
+    blockData,
+    stacks,
+}: {
+    blockData: BlockData[] | null | undefined;
+    stacks: Stack[] | undefined;
+}) {
+    return createFarmAnimalHabitats({
+        blockData,
+        config: legacySheepConfig,
         stacks,
     });
 }
@@ -2461,9 +2514,9 @@ function FarmAnimalCollection({
     });
     const habitats = useMemo(
         () =>
-            createFarmAnimalHabitatsForSpecies({
+            createFarmAnimalHabitats({
                 blockData,
-                species: config.species,
+                config,
                 stacks,
             }),
         [blockData, config, stacks],
@@ -2547,6 +2600,50 @@ export function Sheep({
     );
 }
 
+export function LegacySheep({
+    farmId,
+    stacks,
+    weather,
+    weatherDisabled = false,
+}: {
+    farmId?: number | null;
+    stacks: Stack[] | undefined;
+    weather?: FarmAnimalWeatherOverride;
+    weatherDisabled?: boolean;
+}) {
+    return (
+        <FarmAnimalCollection
+            config={legacySheepConfig}
+            farmId={farmId}
+            stacks={stacks}
+            weather={weather}
+            weatherDisabled={weatherDisabled}
+        />
+    );
+}
+
+export function Goats({
+    farmId,
+    stacks,
+    weather,
+    weatherDisabled = false,
+}: {
+    farmId?: number | null;
+    stacks: Stack[] | undefined;
+    weather?: FarmAnimalWeatherOverride;
+    weatherDisabled?: boolean;
+}) {
+    return (
+        <FarmAnimalCollection
+            config={goatConfig}
+            farmId={farmId}
+            stacks={stacks}
+            weather={weather}
+            weatherDisabled={weatherDisabled}
+        />
+    );
+}
+
 export function Goat({
     block,
     farmId,
@@ -2578,9 +2675,9 @@ export function Goat({
     }, [block.id, stack, stacks]);
     const habitat = useMemo(
         () =>
-            createFarmAnimalHabitatsForSpecies({
+            createFarmAnimalHabitats({
                 blockData,
-                species: 'Goat',
+                config: legacyGoatConfig,
                 stacks: habitatStacks,
             }).find((candidate) => candidate.home.id === `home-${block.id}`) ??
             null,
@@ -2592,7 +2689,7 @@ export function Goat({
 
     return (
         <FarmAnimal
-            config={goatConfig}
+            config={legacyGoatConfig}
             habitat={habitat}
             weather={resolvedWeather}
         />

@@ -208,12 +208,22 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             name: 'DogHouse',
         },
         {
-            name: 'Goat',
-            label: 'Koza',
-            height: 0.72,
-            hitboxDepth: 0.72,
-            hitboxHeight: 0.72,
-            hitboxWidth: 0.5,
+            name: 'GoatShelter',
+            label: 'Zaklon za kozu',
+            height: 1,
+            hitboxDepth: 0.979,
+            hitboxHeight: 1,
+            hitboxWidth: 0.98,
+        },
+        {
+            name: 'HorseStable',
+            label: 'Staja za konja',
+            height: 1.703,
+            hitboxDepth: 1.72,
+            hitboxHeight: 1.703,
+            hitboxWidth: 1.869,
+            spanDepth: 2,
+            spanWidth: 2,
         },
         {
             name: 'PigletPen',
@@ -224,20 +234,32 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             hitboxWidth: 0.94,
         },
         {
-            name: 'Rabbit',
-            label: 'Zec',
-            height: 0.456,
-            hitboxDepth: 0.432,
-            hitboxHeight: 0.456,
-            hitboxWidth: 0.348,
+            name: 'RabbitHutch',
+            label: 'Kućica za zeca',
+            height: 0.971,
+            hitboxDepth: 1.021,
+            hitboxHeight: 0.971,
+            hitboxWidth: 0.89,
         },
         {
-            name: 'Sheep',
-            label: 'Ovca',
-            height: 0.64,
-            hitboxDepth: 0.92,
-            hitboxHeight: 0.64,
-            hitboxWidth: 0.64,
+            name: 'CowShelter',
+            label: 'Zaklon za kravu',
+            height: 1.485,
+            hitboxDepth: 1.65,
+            hitboxHeight: 1.485,
+            hitboxWidth: 1.88,
+            spanDepth: 2,
+            spanWidth: 2,
+        },
+        {
+            name: 'SheepFold',
+            label: 'Tor za ovcu',
+            height: 1.445,
+            hitboxDepth: 1.52,
+            hitboxHeight: 1.445,
+            hitboxWidth: 1.72,
+            spanDepth: 2,
+            spanWidth: 2,
         },
     ];
 
@@ -254,8 +276,8 @@ test('local sandbox exposes animal catalogue blocks used by the item HUD', () =>
             assert.equal(home.attributes.hitboxHeight, expected.hitboxHeight);
             assert.equal(home.attributes.hitboxWidth, expected.hitboxWidth);
             assert.equal(home.attributes.placeableOnWater, false);
-            assert.equal(home.attributes.spanDepth, 1);
-            assert.equal(home.attributes.spanWidth, 1);
+            assert.equal(home.attributes.spanDepth, expected.spanDepth ?? 1);
+            assert.equal(home.attributes.spanWidth, expected.spanWidth ?? 1);
             assert.equal(home.attributes.stackable, false);
         }
     }

@@ -20,12 +20,13 @@ import {
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
-    { label: 'Zec', price: 350, picker: 'Ljubimci' },
+    { label: 'Kućica za zeca', price: 350, picker: 'Ljubimci' },
     { label: 'Kokošinjac', price: 500, picker: 'Ljubimci' },
-    { label: 'Koza', price: 500, picker: 'Ljubimci' },
-    { label: 'Konj', price: 500, picker: 'Ljubimci' },
+    { label: 'Zaklon za kozu', price: 500, picker: 'Ljubimci' },
+    { label: 'Staja za konja', price: 500, picker: 'Ljubimci' },
     { label: 'Obor za praščića', price: 500, picker: 'Ljubimci' },
-    { label: 'Krava', price: 850, picker: 'Ljubimci' },
+    { label: 'Zaklon za kravu', price: 850, picker: 'Ljubimci' },
+    { label: 'Tor za ovcu', price: 500, picker: 'Ljubimci' },
     { label: 'Bijela ograda', price: 5, picker: 'Ograde' },
     { label: 'Kamena ograda', price: 5, picker: 'Ograde' },
     { label: 'Ograda od poliranog kamena', price: 5, picker: 'Ograde' },
@@ -559,17 +560,25 @@ test('decorations are grouped into summer, furniture, pets, and signs', async ({
     await expect(
         page.getByRole('button', { name: 'Kokošinjac' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Koza' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Zaklon za kozu' }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: 'DogHouse' })).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Konj', exact: true }),
+        page.getByRole('button', { name: 'Staja za konja' }),
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Krava' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Zec' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Ovca' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Zaklon za kravu' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Kućica za zeca' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Tor za ovcu' }),
+    ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Chicken', exact: true }),
     ).toHaveCount(0);
@@ -880,15 +889,24 @@ test('local sandbox decoration picker includes current decoration blocks', async
     await expect(
         page.getByRole('button', { name: 'Kokošinjac' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Koza' })).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Konj', exact: true }),
+        page.getByRole('button', { name: 'Zaklon za kozu' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Staja za konja' }),
     ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Obor za praščića' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Krava' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Zec' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Zaklon za kravu' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Kućica za zeca' }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Tor za ovcu' }),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Natrag' }).click();
 
     await page.getByRole('button', { name: 'Malč' }).click();
@@ -1146,7 +1164,7 @@ test('horse placement requires and persists one explicit coat variant', async ({
     await mount(<HorseItemsHudStory />);
     await page.getByRole('button', { name: 'Dekoracija' }).click();
     await page.getByRole('button', { name: 'Ljubimci' }).click();
-    await page.getByRole('button', { name: 'Konj', exact: true }).click();
+    await page.getByRole('button', { name: 'Staja za konja' }).click();
 
     const coatPicker = page.getByRole('group', { name: 'Boja dlake' });
     await expect(coatPicker).toBeVisible();
@@ -1167,7 +1185,7 @@ test('horse placement requires and persists one explicit coat variant', async ({
 
     await expect.poll(() => placementBodies.length).toBe(1);
     expect(placementBodies[0]).toMatchObject({
-        blockName: 'Horse',
+        blockName: 'HorseStable',
         variant: 4,
     });
     await expect(coatPicker).toHaveCount(0);
@@ -1182,8 +1200,7 @@ test('horse drag placement is unavailable until a coat is selected and carries i
     await page.getByRole('button', { name: 'Ljubimci' }).click();
 
     const horseButton = page.getByRole('button', {
-        name: 'Konj',
-        exact: true,
+        name: 'Staja za konja',
     });
     await dragLocatorByMouse(page, horseButton);
     await page.mouse.up();
@@ -1198,11 +1215,11 @@ test('horse drag placement is unavailable until a coat is selected and carries i
     await dragLocatorByMouse(page, horseButton);
 
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
-        'Horse:drag:3',
+        'HorseStable:drag:3',
     );
     await page.mouse.up();
     await expect(page.getByTestId('hud-placement-drag-state')).toHaveText(
-        'Horse:drop:3',
+        'HorseStable:drop:3',
     );
 });
 

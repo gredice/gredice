@@ -3,8 +3,13 @@ export type BlockSnapshotCameraView = 'default' | 'orthographic';
 const reversedStandardSnapshotEntities = new Set([
     'BirdHouse',
     'ChickenCoop',
+    'CowShelter',
     'DogHouse',
+    'GoatShelter',
+    'HorseStable',
     'PigletPen',
+    'RabbitHutch',
+    'SheepFold',
 ]);
 
 type GridSpan = {

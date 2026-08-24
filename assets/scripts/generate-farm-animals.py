@@ -323,8 +323,8 @@ def create_chicken(output_dir: Path) -> None:
     parent_keep_transform(head_pivot, body_pivot)
     parent_keep_transform(wing_left_pivot, body_pivot)
     parent_keep_transform(wing_right_pivot, body_pivot)
-    parent_keep_transform(leg_left_pivot, root)
-    parent_keep_transform(leg_right_pivot, root)
+    parent_keep_transform(leg_left_pivot, body_pivot)
+    parent_keep_transform(leg_right_pivot, body_pivot)
     parent_keep_transform(tail_pivot, body_pivot)
 
     body = add_ico_sphere(
@@ -512,7 +512,7 @@ def create_piglet(output_dir: Path) -> None:
     parent_keep_transform(ear_right_pivot, head_pivot)
     parent_keep_transform(tail_pivot, body_pivot)
     for pivot in leg_pivots.values():
-        parent_keep_transform(pivot, root)
+        parent_keep_transform(pivot, body_pivot)
 
     body = add_ico_sphere(
         "Piglet_Body", (0, -0.06, 0.5), (0.43, 0.63, 0.39), pink
@@ -717,7 +717,7 @@ def create_goat(output_dir: Path) -> None:
     parent_keep_transform(ear_right_pivot, head_pivot)
     parent_keep_transform(tail_pivot, body_pivot)
     for pivot in leg_pivots.values():
-        parent_keep_transform(pivot, root)
+        parent_keep_transform(pivot, body_pivot)
 
     body = add_ico_sphere(
         "Goat_Body", (0, -0.08, 0.79), (0.43, 0.7, 0.39), cream
@@ -974,13 +974,13 @@ def create_cow(output_dir: Path) -> None:
     jaw_pivot = empty("Cow_JawPivot", (0, 1.24, 1.16))
     ear_left_pivot = empty("Cow_EarPivot_L", (-0.37, 0.98, 1.43))
     ear_right_pivot = empty("Cow_EarPivot_R", (0.37, 0.98, 1.43))
-    tail_base_pivot = empty("Cow_TailPivot_Base", (0, -1.03, 1.18))
-    tail_tip_pivot = empty("Cow_TailPivot_Tip", (0, -1.04, 0.60))
+    tail_base_pivot = empty("Cow_TailPivot_Base", (0, -1.08, 1.15))
+    tail_tip_pivot = empty("Cow_TailPivot_Tip", (0, -1.23, 0.58))
     leg_pivots = {
-        "FL": empty("Cow_LegPivot_FL", (-0.43, 0.6, 0.65)),
-        "FR": empty("Cow_LegPivot_FR", (0.43, 0.6, 0.65)),
-        "RL": empty("Cow_LegPivot_RL", (-0.43, -0.65, 0.65)),
-        "RR": empty("Cow_LegPivot_RR", (0.43, -0.65, 0.65)),
+        "FL": empty("Cow_LegPivot_FL", (-0.36, 0.57, 0.62)),
+        "FR": empty("Cow_LegPivot_FR", (0.36, 0.57, 0.62)),
+        "RL": empty("Cow_LegPivot_RL", (-0.36, -0.62, 0.62)),
+        "RR": empty("Cow_LegPivot_RR", (0.36, -0.62, 0.62)),
     }
 
     parent_keep_transform(body_pivot, root)
@@ -992,25 +992,25 @@ def create_cow(output_dir: Path) -> None:
     parent_keep_transform(tail_base_pivot, body_pivot)
     parent_keep_transform(tail_tip_pivot, tail_base_pivot)
     for pivot in leg_pivots.values():
-        parent_keep_transform(pivot, root)
+        parent_keep_transform(pivot, body_pivot)
 
     body = add_ico_sphere(
-        "Cow_Body", (0, -0.13, 1.02), (0.68, 1.08, 0.63), cream_light
+        "Cow_Body", (0, -0.13, 1.02), (0.54, 1.0, 0.52), cream_light
     )
     shoulders = add_ico_sphere(
-        "Cow_Shoulders", (0, 0.48, 1.08), (0.7, 0.62, 0.66), cream
+        "Cow_Shoulders", (0, 0.46, 1.06), (0.55, 0.56, 0.56), cream
     )
     chest = add_ico_sphere(
-        "Cow_Chest", (0, 0.67, 0.86), (0.57, 0.44, 0.52), cream_light
+        "Cow_Chest", (0, 0.64, 0.86), (0.46, 0.4, 0.44), cream_light
     )
     neck = add_ico_sphere(
-        "Cow_Neck", (0, 0.76, 1.18), (0.48, 0.5, 0.54), cream
+        "Cow_Neck", (0, 0.75, 1.17), (0.4, 0.46, 0.48), cream
     )
     head = add_ico_sphere(
-        "Cow_Head", (0, 1.05, 1.32), (0.43, 0.48, 0.42), cream_light
+        "Cow_Head", (0, 1.05, 1.31), (0.39, 0.44, 0.38), cream_light
     )
     forehead = add_ico_sphere(
-        "Cow_Forehead", (0, 1.27, 1.43), (0.32, 0.29, 0.28), cream
+        "Cow_Forehead", (0, 1.27, 1.41), (0.29, 0.26, 0.25), cream
     )
     muzzle_mesh = add_ico_sphere(
         "Cow_Muzzle", (0, 1.48, 1.16), (0.37, 0.28, 0.24), muzzle
@@ -1081,10 +1081,10 @@ def create_cow(output_dir: Path) -> None:
     legs = []
     hooves = []
     for key, pivot in leg_pivots.items():
-        x = -0.43 if key.endswith("L") else 0.43
-        y = 0.6 if key.startswith("F") else -0.65
+        x = -0.36 if key.endswith("L") else 0.36
+        y = 0.57 if key.startswith("F") else -0.62
         upper = add_cylinder(
-            f"Cow_Leg_{key}", (x, y, 0.48), 0.13, 0.72, cream, vertices=8
+            f"Cow_Leg_{key}", (x, y, 0.46), 0.115, 0.68, cream, vertices=8
         )
         foot = add_ico_sphere(
             f"Cow_Hoof_{key}", (x, y + 0.025, 0.105), (0.14, 0.18, 0.105), hoof, subdivisions=1
@@ -1095,7 +1095,7 @@ def create_cow(output_dir: Path) -> None:
         hooves.append(foot)
 
     udder_mesh = add_ico_sphere(
-        "Cow_Udder", (0, -0.34, 0.47), (0.31, 0.37, 0.24), udder
+        "Cow_Udder", (0, -0.34, 0.47), (0.26, 0.32, 0.2), udder
     )
     teats = join_objects(
         [
@@ -1109,26 +1109,32 @@ def create_cow(output_dir: Path) -> None:
                 bevel_width=0.005,
             )
             for index, (x, y) in enumerate(
-                ((-0.13, -0.17), (0.13, -0.17), (-0.13, -0.5), (0.13, -0.5))
+                ((-0.11, -0.18), (0.11, -0.18), (-0.11, -0.48), (0.11, -0.48))
             )
         ],
         "Cow_Teats",
     )
 
     tail = add_cylinder(
-        "Cow_Tail", (0, -1.15, 0.89), 0.045, 0.62, cream, rotation=(0.35, 0, 0), vertices=8
+        "Cow_Tail",
+        (0, -1.17, 0.86),
+        0.04,
+        0.62,
+        cream,
+        rotation=(-0.26, 0, 0),
+        vertices=8,
     )
     tail_tuft = add_ico_sphere(
-        "Cow_TailTuft", (0, -1.02, 0.48), (0.13, 0.12, 0.17), brown, subdivisions=1
+        "Cow_TailTuft", (0, -1.24, 0.52), (0.115, 0.13, 0.16), brown, subdivisions=1
     )
 
     patch_transforms = [
-        ((-0.61, -0.25, 1.14), (0.075, 0.46, 0.35)),
-        ((0.61, 0.34, 1.03), (0.075, 0.34, 0.3)),
-        ((-0.52, 0.55, 1.34), (0.08, 0.27, 0.23)),
-        ((0.5, -0.62, 0.97), (0.08, 0.3, 0.28)),
-        ((0, -0.92, 1.22), (0.32, 0.09, 0.24)),
-        ((0, 1.33, 1.48), (0.2, 0.08, 0.16)),
+        ((-0.525, -0.25, 1.12), (0.025, 0.39, 0.27)),
+        ((0.525, 0.3, 1.03), (0.025, 0.3, 0.24)),
+        ((-0.515, 0.5, 1.28), (0.025, 0.23, 0.18)),
+        ((0.515, -0.58, 0.96), (0.025, 0.26, 0.22)),
+        ((0, -1.105, 1.18), (0.25, 0.025, 0.18)),
+        ((0, 1.515, 1.43), (0.17, 0.025, 0.13)),
     ]
     brown_patches = join_objects(
         [

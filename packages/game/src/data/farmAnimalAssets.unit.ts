@@ -110,6 +110,72 @@ function assertLinearMaterial(
 }
 
 describe('farm animal assets', () => {
+    it('keeps walking leg pivots attached to evaluated body pivots', () => {
+        for (const [assetName, legNames] of [
+            ['Chicken', ['Chicken_LegPivot_L', 'Chicken_LegPivot_R']],
+            [
+                'Piglet',
+                [
+                    'Piglet_LegPivot_FL',
+                    'Piglet_LegPivot_FR',
+                    'Piglet_LegPivot_RL',
+                    'Piglet_LegPivot_RR',
+                ],
+            ],
+            [
+                'Goat',
+                [
+                    'Goat_LegPivot_FL',
+                    'Goat_LegPivot_FR',
+                    'Goat_LegPivot_RL',
+                    'Goat_LegPivot_RR',
+                ],
+            ],
+            [
+                'Sheep',
+                [
+                    'Sheep_LegPivot_FL',
+                    'Sheep_LegPivot_FR',
+                    'Sheep_LegPivot_RL',
+                    'Sheep_LegPivot_RR',
+                ],
+            ],
+        ] as const) {
+            const document = readDocument(assetName);
+            const nodes = records(document.nodes, `${assetName}.nodes`);
+            const bodyName = `${assetName}_BodyPivot`;
+            const bodyChildren = nodeChildrenNames(document, bodyName);
+            const body = nodes.find((node) => node.name === bodyName);
+            assert.ok(body);
+            assert.ok(Array.isArray(body.translation));
+            assert.ok(
+                body.translation.some(
+                    (channel) =>
+                        typeof channel === 'number' && Math.abs(channel) > 0.1,
+                ),
+                `${bodyName} must keep its authored pivot`,
+            );
+
+            for (const legName of legNames) {
+                assert.ok(
+                    bodyChildren.includes(legName),
+                    `${legName} must follow ${bodyName}`,
+                );
+                const leg = nodes.find((node) => node.name === legName);
+                assert.ok(leg);
+                assert.ok(Array.isArray(leg.translation));
+                assert.ok(
+                    leg.translation.some(
+                        (channel) =>
+                            typeof channel === 'number' &&
+                            Math.abs(channel) > 0.1,
+                    ),
+                    `${legName} must keep its authored hip pivot`,
+                );
+            }
+        }
+    });
+
     it('exports every animal facing the runtime movement direction', () => {
         for (const assetName of [
             'Chicken',

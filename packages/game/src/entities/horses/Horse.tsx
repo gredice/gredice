@@ -32,6 +32,10 @@ import {
 } from '../animals/animalMovementTerrain';
 import { animalPresenceUpdateIntervalSeconds } from '../animals/animalPresence';
 import type { CatPathPoint } from '../cats/catPathfinding';
+import {
+    createPersistentPetHomeBlockedCells,
+    getPersistentPetHomePlacement,
+} from '../persistentPets/persistentPetHomes';
 import { getHorseMaterialTint } from './horseAppearance';
 import {
     chooseHorseRetreatTarget,
@@ -319,6 +323,15 @@ export function Horse({
     );
     const appearanceVariant = resolveHorseAppearanceVariant(variant, block.id);
     const appearance = getHorseAppearanceVariantDefinition(appearanceVariant);
+    const homePlacement =
+        block.name === 'HorseStable'
+            ? getPersistentPetHomePlacement({
+                  blockName: 'HorseStable',
+                  rotation,
+                  x: stack.position.x,
+                  z: stack.position.z,
+              })
+            : null;
 
     const navigation = useMemo(() => {
         const surfaces = createAnimalMovementSurfaces({
@@ -327,14 +340,27 @@ export function Horse({
             stacks,
             swimDepth: 0,
         });
-        const anchor = { x: stack.position.x, z: stack.position.z };
+        const anchor = homePlacement?.center ?? {
+            x: stack.position.x,
+            z: stack.position.z,
+        };
         const blockedCells = createHorseNavigationBlockedCells({
-            blockedCells: createAnimalBlockedCells(stacks, {
-                blockData,
-                blockWater: true,
-                clearanceCells: horseObstacleClearanceCells,
-                ignoredBlockIds: [block.id],
-            }),
+            blockedCells:
+                block.name === 'HorseStable'
+                    ? createPersistentPetHomeBlockedCells({
+                          block,
+                          blockData,
+                          blockWater: true,
+                          clearanceCells: horseObstacleClearanceCells,
+                          stack,
+                          stacks,
+                      })
+                    : createAnimalBlockedCells(stacks, {
+                          blockData,
+                          blockWater: true,
+                          clearanceCells: horseObstacleClearanceCells,
+                          ignoredBlockIds: [block.id],
+                      }),
             center: anchor,
             radius: horseNavigationRadius,
             surfaces,
@@ -353,19 +379,24 @@ export function Horse({
                 y: surface.y,
                 z: surface.z,
             }));
-        const anchorSurface = getAnimalMovementSurfaceAt(anchor, surfaces);
+        const homeAnchor = homePlacement?.doorway ?? anchor;
+        const anchorSurface = getAnimalMovementSurfaceAt(homeAnchor, surfaces);
         const home = new Vector3(
-            anchor.x,
+            homeAnchor.x,
             anchorSurface?.kind === 'ground'
-                ? anchorSurface.y
+                ? Math.max(horseGroundLift, anchorSurface.y)
                 : anchorHeight + horseGroundLift,
-            anchor.z,
+            homeAnchor.z,
         );
         return { blockedCells, candidates, home, surfaces };
     }, [
         anchorHeight,
+        block,
         block.id,
         blockData,
+        homePlacement?.center,
+        homePlacement?.doorway,
+        stack,
         stack.position.x,
         stack.position.z,
         stacks,
@@ -396,9 +427,10 @@ export function Horse({
         closeAvatarSinceRef.current = null;
         if (group) {
             group.position.set(homeX, homeY, homeZ);
-            group.rotation.y = rotation * (Math.PI / 2);
+            group.rotation.y =
+                homePlacement?.facingYaw ?? rotation * (Math.PI / 2);
         }
-    }, [block.id, homeX, homeY, homeZ, rotation]);
+    }, [block.id, homePlacement?.facingYaw, homeX, homeY, homeZ, rotation]);
 
     useEffect(() => {
         const action = actions[activeAnimation];

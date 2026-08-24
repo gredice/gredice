@@ -29,6 +29,7 @@ export type SlugBehaviorDecision = {
 export const slugArrivalDurationMs = 1_200;
 export const slugDepartureDurationMs = 1_400;
 export const slugCreepSpeedBlocksPerSecond = 0.04;
+export const slugActorScale = 0.21;
 
 function horizontalDistance(
     left: Pick<SlugHabitatCandidate, 'x' | 'z'>,

@@ -47,9 +47,8 @@ describe('Rabbit asset', () => {
     it('keeps the original Blender source and every runtime animation pivot', () => {
         assert.equal(existsSync(sourcePath), true);
         const document = readRabbitDocument();
-        const nodeNames = new Set(
-            records(document.nodes, 'nodes').map((node) => node.name),
-        );
+        const nodes = records(document.nodes, 'nodes');
+        const nodeNames = new Set(nodes.map((node) => node.name));
 
         for (const name of [
             'Rabbit_Root',
@@ -65,6 +64,31 @@ describe('Rabbit asset', () => {
             'Rabbit_TailPivot',
         ]) {
             assert.equal(nodeNames.has(name), true, `Missing ${name}`);
+        }
+        const body = nodes.find(({ name }) => name === 'Rabbit_BodyPivot');
+        assert.ok(body);
+        assert.ok(Array.isArray(body.children));
+        const bodyChildNames = body.children.map((childIndex) => {
+            assert.equal(typeof childIndex, 'number');
+            return nodes[childIndex]?.name;
+        });
+        for (const legName of [
+            'Rabbit_LegPivot_FL',
+            'Rabbit_LegPivot_FR',
+            'Rabbit_LegPivot_HL',
+            'Rabbit_LegPivot_HR',
+        ]) {
+            assert.ok(bodyChildNames.includes(legName), `${legName} parent`);
+            const leg = nodes.find(({ name }) => name === legName);
+            assert.ok(leg);
+            assert.ok(Array.isArray(leg.translation));
+            assert.ok(
+                leg.translation.some(
+                    (channel) =>
+                        typeof channel === 'number' && Math.abs(channel) > 0.1,
+                ),
+                `${legName} must retain its authored hip pivot`,
+            );
         }
         assert.equal(records(document.meshes, 'meshes').length, 25);
     });

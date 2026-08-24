@@ -15,12 +15,14 @@ function matchingPetNames(search: string) {
 test('empty search keeps every pet visible', () => {
     assert.deepEqual(matchingPetNames(''), [
         'Zec',
+        'Konj',
         'Pas',
         'Mačka',
         'Kokoš',
         'Praščić',
         'Krava',
         'Koza',
+        'Ovca',
     ]);
 });
 
@@ -29,6 +31,8 @@ test('searching a pet name matches only that pet', () => {
     assert.deepEqual(matchingPetNames('Mačka'), ['Mačka']);
     assert.deepEqual(matchingPetNames('krava'), ['Krava']);
     assert.deepEqual(matchingPetNames('kunić'), ['Zec']);
+    assert.deepEqual(matchingPetNames('staja'), ['Konj']);
+    assert.deepEqual(matchingPetNames('tor'), ['Ovca']);
 });
 
 test('searching the visible category label keeps the whole group discoverable', () => {

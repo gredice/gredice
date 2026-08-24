@@ -23,8 +23,13 @@ test('standard snapshots show animal houses from their authored front', () => {
     for (const entityName of [
         'BirdHouse',
         'ChickenCoop',
+        'CowShelter',
         'DogHouse',
+        'GoatShelter',
+        'HorseStable',
         'PigletPen',
+        'RabbitHutch',
+        'SheepFold',
     ]) {
         assert.equal(getStandardBlockSnapshotBaseRotation(entityName), 2);
     }

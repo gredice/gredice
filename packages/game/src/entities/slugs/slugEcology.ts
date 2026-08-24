@@ -49,11 +49,23 @@ export type SlugRaisedBed = {
         | null;
 };
 
+export type SlugRainHistory = {
+    lastRainEndedAtMs: number | null;
+    qualifyingRainObserved: boolean;
+    rainActive: boolean;
+};
+
 export const slugSpawnCandidateBudget = 96;
-export const slugMaxGardenPopulation = 4;
-export const slugMaxLocalPopulation = 2;
-export const slugLocalPopulationRadius = 3;
-export const slugSpawnCooldownMs = 45_000;
+export const slugMinimumHabitatAreaCells = 9;
+export const slugMaxGardenPopulation = 2;
+export const slugMaxLocalPopulation = 1;
+export const slugLocalPopulationRadius = 4;
+export const slugSpawnCooldownMs = 5 * 60_000;
+export const slugMaximumActiveRain = 0.08;
+export const slugMinimumPostRainWetness = 0.18;
+export const slugRainObservationThreshold = 0.2;
+export const slugPostRainWindowMs = 3 * 60_000;
+export const slugPostRainSurfaceWetness = 0.8;
 
 const slugGroundLift = 0.018;
 const hotExposedTemperatureC = 26;
@@ -108,6 +120,77 @@ const suitablePlantBlockNames = new Set([
 
 function clampUnit(value: number) {
     return Math.min(1, Math.max(0, value));
+}
+
+export function quantizeSlugSurfaceWetness(value: number) {
+    const clamped = clampUnit(value);
+    if (clamped >= slugRainObservationThreshold) {
+        return Math.max(
+            slugRainObservationThreshold,
+            Math.round(clamped * 10) / 10,
+        );
+    }
+    return clamped > slugMaximumActiveRain ? 0.1 : 0;
+}
+
+export function updateSlugRainHistory({
+    nowMs,
+    previous,
+    rainIntensity,
+}: {
+    nowMs: number;
+    previous: SlugRainHistory;
+    rainIntensity: number;
+}): SlugRainHistory {
+    const rainActive = rainIntensity > slugMaximumActiveRain;
+    const qualifyingRainObserved =
+        previous.qualifyingRainObserved ||
+        rainIntensity >= slugRainObservationThreshold;
+
+    if (rainActive) {
+        if (
+            previous.rainActive &&
+            previous.qualifyingRainObserved === qualifyingRainObserved &&
+            previous.lastRainEndedAtMs === null
+        ) {
+            return previous;
+        }
+        return {
+            lastRainEndedAtMs: null,
+            qualifyingRainObserved,
+            rainActive: true,
+        };
+    }
+
+    if (!previous.rainActive) {
+        return previous;
+    }
+
+    return {
+        lastRainEndedAtMs: previous.qualifyingRainObserved ? nowMs : null,
+        qualifyingRainObserved: false,
+        rainActive: false,
+    };
+}
+
+export function getSlugPostRainWetness({
+    history,
+    nowMs,
+    rainIntensity,
+}: {
+    history: SlugRainHistory;
+    nowMs: number;
+    rainIntensity: number;
+}) {
+    if (
+        history.rainActive ||
+        rainIntensity > slugMaximumActiveRain ||
+        history.lastRainEndedAtMs === null ||
+        nowMs - history.lastRainEndedAtMs > slugPostRainWindowMs
+    ) {
+        return 0;
+    }
+    return slugPostRainSurfaceWetness;
 }
 
 export function hashSlugSeed(value: string | number) {
@@ -178,17 +261,15 @@ export function evaluateSlugHabitatCell({
         cell.water ||
         dryTerrainNames.has(cell.terrainName) ||
         snowyTerrainNames.has(cell.terrainName) ||
-        (weather.snowy ?? 0) > 0.15
+        (weather.snowy ?? 0) > 0.15 ||
+        (weather.rainy ?? 0) > slugMaximumActiveRain ||
+        recentWetness < slugMinimumPostRainWetness
     ) {
         return null;
     }
 
-    const rainWetness = clampUnit(weather.rainy ?? 0) * 0.85;
-    const retainedWetness = clampUnit(recentWetness) * 0.75;
-    const moisture = Math.max(
-        baseMoisture(cell.terrainName),
-        rainWetness,
-        retainedWetness,
+    const moisture = clampUnit(
+        baseMoisture(cell.terrainName) + clampUnit(recentWetness) * 0.65,
     );
     const hotExposed =
         (weather.temperature ?? 18) >= hotExposedTemperatureC && !cell.shaded;
@@ -339,22 +420,83 @@ export function createSlugHabitatCandidates({
     return candidates;
 }
 
+export function filterSlugHabitatAreaCandidates(
+    candidates: SlugHabitatCandidate[],
+    minimumAreaCells = slugMinimumHabitatAreaCells,
+) {
+    const boundedMinimum = Math.max(1, Math.floor(minimumAreaCells));
+    if (boundedMinimum <= 1) {
+        return candidates;
+    }
+
+    const candidateByKey = new Map(
+        candidates.map((candidate) => [cellKey(candidate), candidate]),
+    );
+    const visited = new Set<string>();
+    const eligible = new Set<string>();
+
+    for (const candidate of candidates) {
+        const startKey = cellKey(candidate);
+        if (visited.has(startKey)) {
+            continue;
+        }
+
+        const component: SlugHabitatCandidate[] = [];
+        const pending = [candidate];
+        visited.add(startKey);
+        while (pending.length > 0) {
+            const current = pending.pop();
+            if (!current) {
+                continue;
+            }
+            component.push(current);
+            for (const [dx, dz] of [
+                [-1, 0],
+                [1, 0],
+                [0, -1],
+                [0, 1],
+            ]) {
+                const key = `${Math.round(current.x) + dx}:${Math.round(current.z) + dz}`;
+                const neighbor = candidateByKey.get(key);
+                if (neighbor && !visited.has(key)) {
+                    visited.add(key);
+                    pending.push(neighbor);
+                }
+            }
+        }
+
+        if (component.length >= boundedMinimum) {
+            for (const entry of component) {
+                eligible.add(cellKey(entry));
+            }
+        }
+    }
+
+    return candidates.filter((candidate) => eligible.has(cellKey(candidate)));
+}
+
 export function createSlugSpawnPlan({
     candidates,
     localCap = slugMaxLocalPopulation,
     localRadius = slugLocalPopulationRadius,
     maxPopulation = slugMaxGardenPopulation,
+    minimumHabitatAreaCells = slugMinimumHabitatAreaCells,
     seed,
 }: {
     candidates: SlugHabitatCandidate[];
     localCap?: number;
     localRadius?: number;
     maxPopulation?: number;
+    minimumHabitatAreaCells?: number;
     seed: string | number;
 }) {
     const seedNumber = hashSlugSeed(seed);
     const random = createSlugRandom(seedNumber);
-    const ranked = selectEvenlyDistributedSlugCandidates(candidates)
+    const areaEligibleCandidates = filterSlugHabitatAreaCandidates(
+        candidates,
+        minimumHabitatAreaCells,
+    );
+    const ranked = selectEvenlyDistributedSlugCandidates(areaEligibleCandidates)
         .map((candidate) => ({
             candidate,
             rank: candidate.score + random() * 0.09,

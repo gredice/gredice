@@ -132,6 +132,12 @@ export const butterflyPopulationLimits = {
     spawnCooldownSeconds: 14,
 } as const;
 
+export const butterflyFlowerApproachProbability = 0.9;
+export const butterflyFlowerOrbitRadius = {
+    min: 0.3,
+    max: 1.4,
+} as const;
+
 const butterflyDayStart = 0.29;
 const butterflyDayEnd = 0.74;
 const maxButterflyCloudCover = 0.52;
@@ -160,6 +166,23 @@ export function createSeededButterflyRandom(seed: number) {
         result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
         return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
     };
+}
+
+export function createButterflyFlowerOrbitOffset(random: () => number) {
+    const angle = random() * Math.PI * 2;
+    const radius =
+        butterflyFlowerOrbitRadius.min +
+        random() *
+            (butterflyFlowerOrbitRadius.max - butterflyFlowerOrbitRadius.min);
+    return {
+        x: Math.cos(angle) * radius,
+        y: 0.35 + random() * 0.55,
+        z: Math.sin(angle) * radius,
+    };
+}
+
+export function shouldButterflyApproachFlower(random: () => number) {
+    return random() < butterflyFlowerApproachProbability;
 }
 
 export function isButterflyDaytime(timeOfDay: number) {

@@ -47,6 +47,7 @@ import {
     type ButterflySpawnDescriptor,
     type ButterflyWeather,
     canSpawnButterfly,
+    createButterflyFlowerOrbitOffset,
     createButterflySpawnDescriptor,
     createSeededButterflyRandom,
     getButterflyAvatarAvoidanceOffset,
@@ -55,6 +56,7 @@ import {
     getButterflyWingVariant,
     hashButterflySeed,
     isButterflyActive,
+    shouldButterflyApproachFlower,
 } from './butterflyBehavior';
 
 type ButterflyWeatherOverride = Partial<NonNullable<GameState['weather']>>;
@@ -141,7 +143,10 @@ const butterflyDebugBehaviors = [
     'taking-off',
     'departing',
 ];
-const butterflyScale = 0.31;
+// The remodeled GLB has a 1.98-unit maximum silhouette versus the legacy
+// model's 1.72 units. This compensating scale keeps the rendered maximum span
+// at 0.21328 world units: exactly 40% of the legacy 0.5332-unit silhouette.
+export const butterflyActorScale = 0.10771717247127598;
 const butterflyFlightSpeed = 0.78;
 const butterflyApproachHeight = 0.42;
 const butterflyLandingLift = 0.035;
@@ -320,63 +325,90 @@ function advanceFlightPath(
 }
 
 function findSafeMeanderTarget({
+    anchor,
     habitat,
     obstacles,
     random,
 }: {
+    anchor?: PollinatorFlowerTarget | null;
     habitat: ButterflyHabitat;
     obstacles: readonly AnimalFlightObstacle[];
     random: () => number;
 }) {
     for (let attempt = 0; attempt < 8; attempt += 1) {
-        const angle = random() * fullTurn;
-        const radius = 0.75 + random() * 2.9;
+        const selectedAnchor =
+            anchor ?? chooseCandidate(habitat.targets, random);
+        if (!selectedAnchor) {
+            return null;
+        }
+        const offset = createButterflyFlowerOrbitOffset(random);
+        const ignoredBlockIds = new Set(selectedAnchor.blockIds ?? []);
         const candidate = new Vector3(
-            habitat.center.x + Math.cos(angle) * radius,
-            habitat.center.y + 0.45 + random() * 0.8,
-            habitat.center.z + Math.sin(angle) * radius,
+            selectedAnchor.position.x + offset.x,
+            selectedAnchor.position.y + offset.y,
+            selectedAnchor.position.z + offset.z,
         );
-        if (isAnimalFlightPositionSafe({ obstacles, position: candidate })) {
-            return candidate;
+        if (
+            isAnimalFlightPositionSafe({
+                ignoredBlockIds,
+                obstacles,
+                position: candidate,
+            })
+        ) {
+            return { ignoredBlockIds, position: candidate };
         }
     }
 
+    const fallbackAnchor = anchor ?? habitat.targets[0];
+    if (!fallbackAnchor) {
+        return null;
+    }
     const obstacleTop = obstacles.reduce(
         (top, obstacle) => Math.max(top, obstacle.topY),
-        habitat.center.y,
+        fallbackAnchor.position.y,
     );
-    const fallback = habitat.center.clone();
+    const fallback = fallbackAnchor.position.clone();
     fallback.y = obstacleTop + 0.75;
-    return isAnimalFlightPositionSafe({ obstacles, position: fallback })
-        ? fallback
+    const ignoredBlockIds = new Set(fallbackAnchor.blockIds ?? []);
+    return isAnimalFlightPositionSafe({
+        ignoredBlockIds,
+        obstacles,
+        position: fallback,
+    })
+        ? { ignoredBlockIds, position: fallback }
         : null;
 }
 
 export function createMeanderState({
+    anchor,
     from,
     habitat,
-    ignoredBlockIds,
     now,
     obstacles,
     random,
 }: {
+    anchor?: PollinatorFlowerTarget | null;
     from: Vector3;
     habitat: ButterflyHabitat;
-    ignoredBlockIds?: ReadonlySet<string>;
     now: number;
     obstacles: readonly AnimalFlightObstacle[];
     random: () => number;
 }) {
-    const target = findSafeMeanderTarget({ habitat, obstacles, random });
+    const target = findSafeMeanderTarget({
+        anchor,
+        habitat,
+        obstacles,
+        random,
+    });
     return target
         ? makeFlightState({
               from,
-              ignoredBlockIds,
+              ignoredBlockIds: target.ignoredBlockIds,
               now,
               obstacles,
               phase: 'meandering',
               target: null,
-              to: target,
+              to: target.position,
           })
         : null;
 }
@@ -790,9 +822,9 @@ function Butterfly({
                 );
             runtime =
                 createMeanderState({
+                    anchor: target,
                     from: group.position,
                     habitat,
-                    ignoredBlockIds: new Set(target.blockIds ?? []),
                     now,
                     obstacles,
                     random,
@@ -897,11 +929,9 @@ function Butterfly({
                                       target,
                                   })
                                 : createMeanderState({
+                                      anchor: runtime.target ?? target,
                                       from: group.position,
                                       habitat,
-                                      ignoredBlockIds: new Set(
-                                          runtime.target?.blockIds ?? [],
-                                      ),
                                       now,
                                       obstacles,
                                       random,
@@ -1077,7 +1107,7 @@ function Butterfly({
                 } else {
                     const nextTarget = chooseCandidate(habitat.targets, random);
                     const nextRuntime =
-                        nextTarget && random() < 0.72
+                        nextTarget && shouldButterflyApproachFlower(random)
                             ? createApproachState({
                                   from: group.position,
                                   now,
@@ -1085,11 +1115,9 @@ function Butterfly({
                                   target: nextTarget,
                               })
                             : createMeanderState({
+                                  anchor: runtime.target,
                                   from: group.position,
                                   habitat,
-                                  ignoredBlockIds: new Set(
-                                      runtime.target?.blockIds ?? [],
-                                  ),
                                   now,
                                   obstacles,
                                   random,
@@ -1126,7 +1154,7 @@ function Butterfly({
                   )
                 : 1;
         group.scale.setScalar(
-            butterflyScale * emergenceProgress * departingScale,
+            butterflyActorScale * emergenceProgress * departingScale,
         );
 
         const debugTarget = targetDebugRef.current;
