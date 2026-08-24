@@ -670,6 +670,31 @@ test('createGardenBlock persists the Horse variant and records it in the placeme
     });
 });
 
+test('createGardenBlock persists the placement-selected Cow coat in storage and events', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+
+    const blockId = await createGardenBlock(gardenId, 'Cow', 1);
+    const block = await getGardenBlock(gardenId, blockId);
+    const placementEvents = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+    const placementEvent = placementEvents.find(
+        (event) => event.data?.id === blockId,
+    );
+
+    assert.equal(block?.variant, 1);
+    assert.equal(placementEvent?.version, 2);
+    assert.deepEqual(placementEvent?.data, {
+        id: blockId,
+        name: 'Cow',
+        variant: 1,
+    });
+});
+
 test('getGardenBlock returns correct block', async () => {
     createTestDb();
     const accountId = await createAccount();

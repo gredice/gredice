@@ -33,6 +33,15 @@ const blockData: PlacementBlockData[] = [
         attributes: { stackable: false, height: 0.2 },
     },
     {
+        information: { name: 'Cow' },
+        attributes: {
+            stackable: false,
+            height: 1.26,
+            spanDepth: 2,
+            spanWidth: 1,
+        },
+    },
+    {
         information: { name: 'Rabbit' },
         attributes: { stackable: false, height: 0.48 },
     },
@@ -91,6 +100,40 @@ function createWaterOnlyGarden() {
 }
 
 describe('createOptimisticBlockPlacement', () => {
+    it('keeps the placement-selected Cow coat when the server id replaces the optimistic id', () => {
+        const placement = createOptimisticBlockPlacement(
+            {
+                stacks: [
+                    {
+                        position: new Vector3(0, 0, 0),
+                        blocks: [
+                            {
+                                id: 'grass-a',
+                                name: 'Block_Grass',
+                                rotation: 0,
+                            },
+                        ],
+                    },
+                ],
+            },
+            blockData,
+            'Cow',
+            'optimistic-cow',
+            { variant: 1 },
+        );
+
+        assert.ok(placement);
+        const replacedGarden = replaceOptimisticBlockId(
+            { stacks: placement.stacks },
+            'optimistic-cow',
+            'cow-1',
+        );
+        const cow = replacedGarden.stacks
+            .flatMap((stack) => stack.blocks)
+            .find((block) => block.id === 'cow-1');
+        assert.equal(cow?.variant, 1);
+    });
+
     it('keeps an explicit appearance variant on the optimistic block', () => {
         const placement = createOptimisticBlockPlacement(
             { stacks: [] },

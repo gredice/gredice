@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the original Gredice chicken, piglet, goat, and animal homes.
+"""Generate the original Gredice farm animals and their home blocks.
 
 Run with Blender, not the system Python:
 
@@ -263,9 +263,13 @@ def empty(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 def parent_keep_transform(
     child: bpy.types.Object, parent: bpy.types.Object
 ) -> None:
+    # Newly positioned empties need a dependency-graph update before reading
+    # matrix_world, otherwise Blender can collapse authored rig pivots to zero.
+    bpy.context.view_layer.update()
     world_matrix = child.matrix_world.copy()
     child.parent = parent
     child.matrix_world = world_matrix
+    bpy.context.view_layer.update()
 
 
 def save_asset(
@@ -943,6 +947,274 @@ def create_goat(output_dir: Path) -> None:
     save_asset("Goat.blend", expected_names, output_dir)
 
 
+def create_cow(output_dir: Path) -> None:
+    """Create a broad, readable dairy cow for the normal isometric camera.
+
+    The shared cream body plus one visible patch role yields exactly two runtime
+    coats. Separate stable pivots support procedural breathing, grazing, cud
+    chewing, ear/head motion, tail swatting, walking, and trotting.
+    """
+    reset_scene("Cow")
+    cream = material("Material.Cow.Cream", (0.91, 0.86, 0.72, 1))
+    cream_light = material("Material.Cow.CreamLight", (0.98, 0.95, 0.84, 1))
+    brown = material("Material.Cow.Brown", (0.36, 0.14, 0.055, 1))
+    black = material("Material.Cow.Black", (0.035, 0.04, 0.038, 1), roughness=0.76)
+    muzzle = material("Material.Cow.Muzzle", (0.77, 0.47, 0.42, 1))
+    inner_ear = material("Material.Cow.InnerEar", (0.69, 0.35, 0.34, 1))
+    horn = material("Material.Cow.Horn", (0.76, 0.65, 0.45, 1))
+    hoof = material("Material.Cow.Hoof", (0.12, 0.09, 0.07, 1))
+    eye = material("Material.Cow.Eye", (0.018, 0.02, 0.018, 1), roughness=0.64)
+    eye_glint = material("Material.Cow.EyeGlint", (1.0, 0.95, 0.78, 1), roughness=0.4)
+    udder = material("Material.Cow.Udder", (0.82, 0.51, 0.48, 1))
+
+    root = empty("Cow_Root", (0, 0, 0))
+    body_pivot = empty("Cow_BodyPivot", (0, -0.06, 1.02))
+    neck_pivot = empty("Cow_NeckPivot", (0, 0.68, 1.18))
+    head_pivot = empty("Cow_HeadPivot", (0, 0.97, 1.28))
+    jaw_pivot = empty("Cow_JawPivot", (0, 1.24, 1.16))
+    ear_left_pivot = empty("Cow_EarPivot_L", (-0.37, 0.98, 1.43))
+    ear_right_pivot = empty("Cow_EarPivot_R", (0.37, 0.98, 1.43))
+    tail_base_pivot = empty("Cow_TailPivot_Base", (0, -1.03, 1.18))
+    tail_tip_pivot = empty("Cow_TailPivot_Tip", (0, -1.04, 0.60))
+    leg_pivots = {
+        "FL": empty("Cow_LegPivot_FL", (-0.43, 0.6, 0.65)),
+        "FR": empty("Cow_LegPivot_FR", (0.43, 0.6, 0.65)),
+        "RL": empty("Cow_LegPivot_RL", (-0.43, -0.65, 0.65)),
+        "RR": empty("Cow_LegPivot_RR", (0.43, -0.65, 0.65)),
+    }
+
+    parent_keep_transform(body_pivot, root)
+    parent_keep_transform(neck_pivot, body_pivot)
+    parent_keep_transform(head_pivot, neck_pivot)
+    parent_keep_transform(jaw_pivot, head_pivot)
+    parent_keep_transform(ear_left_pivot, head_pivot)
+    parent_keep_transform(ear_right_pivot, head_pivot)
+    parent_keep_transform(tail_base_pivot, body_pivot)
+    parent_keep_transform(tail_tip_pivot, tail_base_pivot)
+    for pivot in leg_pivots.values():
+        parent_keep_transform(pivot, root)
+
+    body = add_ico_sphere(
+        "Cow_Body", (0, -0.13, 1.02), (0.68, 1.08, 0.63), cream_light
+    )
+    shoulders = add_ico_sphere(
+        "Cow_Shoulders", (0, 0.48, 1.08), (0.7, 0.62, 0.66), cream
+    )
+    chest = add_ico_sphere(
+        "Cow_Chest", (0, 0.67, 0.86), (0.57, 0.44, 0.52), cream_light
+    )
+    neck = add_ico_sphere(
+        "Cow_Neck", (0, 0.76, 1.18), (0.48, 0.5, 0.54), cream
+    )
+    head = add_ico_sphere(
+        "Cow_Head", (0, 1.05, 1.32), (0.43, 0.48, 0.42), cream_light
+    )
+    forehead = add_ico_sphere(
+        "Cow_Forehead", (0, 1.27, 1.43), (0.32, 0.29, 0.28), cream
+    )
+    muzzle_mesh = add_ico_sphere(
+        "Cow_Muzzle", (0, 1.48, 1.16), (0.37, 0.28, 0.24), muzzle
+    )
+    nostrils = join_objects(
+        [
+            add_ico_sphere(
+                "Cow_NostrilPart_L", (-0.13, 1.715, 1.18), (0.045, 0.025, 0.035), hoof, subdivisions=1
+            ),
+            add_ico_sphere(
+                "Cow_NostrilPart_R", (0.13, 1.715, 1.18), (0.045, 0.025, 0.035), hoof, subdivisions=1
+            ),
+        ],
+        "Cow_Nostrils",
+    )
+
+    eyes = []
+    glints = []
+    for side, x in (("L", -0.31), ("R", 0.31)):
+        eyes.append(
+            add_ico_sphere(
+                f"Cow_Eye_{side}", (x, 1.39, 1.43), (0.064, 0.038, 0.07), eye
+            )
+        )
+        glints.append(
+            add_ico_sphere(
+                f"Cow_EyeGlint_{side}",
+                (x + (-0.018 if side == "L" else 0.018), 1.423, 1.456),
+                (0.017, 0.012, 0.017),
+                eye_glint,
+                subdivisions=1,
+            )
+        )
+
+    ears = []
+    inner_ears = []
+    for side, x, sign in (("L", -0.48, -1), ("R", 0.48, 1)):
+        ears.append(
+            add_ico_sphere(
+                f"Cow_Ear_{side}", (x, 1.02, 1.47), (0.23, 0.12, 0.105), cream
+            )
+        )
+        inner_ears.append(
+            add_ico_sphere(
+                f"Cow_InnerEar_{side}",
+                (x + sign * 0.015, 1.10, 1.475),
+                (0.15, 0.035, 0.055),
+                inner_ear,
+                subdivisions=1,
+            )
+        )
+
+    horns = []
+    for side, x, tilt in (("L", -0.25, -0.22), ("R", 0.25, 0.22)):
+        horns.append(
+            add_cone(
+                f"Cow_Horn_{side}",
+                (x, 1.02, 1.72),
+                0.085,
+                0.02,
+                0.34,
+                horn,
+                rotation=(0, tilt, 0),
+                vertices=7,
+            )
+        )
+
+    legs = []
+    hooves = []
+    for key, pivot in leg_pivots.items():
+        x = -0.43 if key.endswith("L") else 0.43
+        y = 0.6 if key.startswith("F") else -0.65
+        upper = add_cylinder(
+            f"Cow_Leg_{key}", (x, y, 0.48), 0.13, 0.72, cream, vertices=8
+        )
+        foot = add_ico_sphere(
+            f"Cow_Hoof_{key}", (x, y + 0.025, 0.105), (0.14, 0.18, 0.105), hoof, subdivisions=1
+        )
+        parent_keep_transform(upper, pivot)
+        parent_keep_transform(foot, pivot)
+        legs.append(upper)
+        hooves.append(foot)
+
+    udder_mesh = add_ico_sphere(
+        "Cow_Udder", (0, -0.34, 0.47), (0.31, 0.37, 0.24), udder
+    )
+    teats = join_objects(
+        [
+            add_cylinder(
+                f"Cow_Teat_{index}",
+                (x, y, 0.28),
+                0.035,
+                0.2,
+                udder,
+                vertices=7,
+                bevel_width=0.005,
+            )
+            for index, (x, y) in enumerate(
+                ((-0.13, -0.17), (0.13, -0.17), (-0.13, -0.5), (0.13, -0.5))
+            )
+        ],
+        "Cow_Teats",
+    )
+
+    tail = add_cylinder(
+        "Cow_Tail", (0, -1.15, 0.89), 0.045, 0.62, cream, rotation=(0.35, 0, 0), vertices=8
+    )
+    tail_tuft = add_ico_sphere(
+        "Cow_TailTuft", (0, -1.02, 0.48), (0.13, 0.12, 0.17), brown, subdivisions=1
+    )
+
+    patch_transforms = [
+        ((-0.61, -0.25, 1.14), (0.075, 0.46, 0.35)),
+        ((0.61, 0.34, 1.03), (0.075, 0.34, 0.3)),
+        ((-0.52, 0.55, 1.34), (0.08, 0.27, 0.23)),
+        ((0.5, -0.62, 0.97), (0.08, 0.3, 0.28)),
+        ((0, -0.92, 1.22), (0.32, 0.09, 0.24)),
+        ((0, 1.33, 1.48), (0.2, 0.08, 0.16)),
+    ]
+    brown_patches = join_objects(
+        [
+            add_ico_sphere(
+                f"Cow_BrownPatchPart_{index}", location, scale, brown, subdivisions=1
+            )
+            for index, (location, scale) in enumerate(patch_transforms)
+        ],
+        "Cow_Coat_BrownPatches",
+    )
+    black_patches = join_objects(
+        [
+            add_ico_sphere(
+                f"Cow_BlackPatchPart_{index}", location, scale, black, subdivisions=1
+            )
+            for index, (location, scale) in enumerate(patch_transforms)
+        ],
+        "Cow_Coat_BlackPatches",
+    )
+
+    for obj in (body, shoulders, chest, brown_patches, black_patches, udder_mesh, teats):
+        parent_keep_transform(obj, body_pivot)
+    parent_keep_transform(neck, neck_pivot)
+    for obj in (head, forehead, *eyes, *glints, *horns):
+        parent_keep_transform(obj, head_pivot)
+    for obj in (muzzle_mesh, nostrils):
+        parent_keep_transform(obj, jaw_pivot)
+    for obj in (ears[0], inner_ears[0]):
+        parent_keep_transform(obj, ear_left_pivot)
+    for obj in (ears[1], inner_ears[1]):
+        parent_keep_transform(obj, ear_right_pivot)
+    parent_keep_transform(tail, tail_base_pivot)
+    parent_keep_transform(tail_tuft, tail_tip_pivot)
+
+    root.rotation_euler.z = math.pi
+
+    expected_names = [
+        "Cow_Root",
+        "Cow_BodyPivot",
+        "Cow_NeckPivot",
+        "Cow_HeadPivot",
+        "Cow_JawPivot",
+        "Cow_EarPivot_L",
+        "Cow_EarPivot_R",
+        "Cow_TailPivot_Base",
+        "Cow_TailPivot_Tip",
+        "Cow_LegPivot_FL",
+        "Cow_LegPivot_FR",
+        "Cow_LegPivot_RL",
+        "Cow_LegPivot_RR",
+        "Cow_Body",
+        "Cow_Shoulders",
+        "Cow_Chest",
+        "Cow_Neck",
+        "Cow_Head",
+        "Cow_Forehead",
+        "Cow_Muzzle",
+        "Cow_Nostrils",
+        "Cow_Eye_L",
+        "Cow_Eye_R",
+        "Cow_EyeGlint_L",
+        "Cow_EyeGlint_R",
+        "Cow_Ear_L",
+        "Cow_Ear_R",
+        "Cow_InnerEar_L",
+        "Cow_InnerEar_R",
+        "Cow_Horn_L",
+        "Cow_Horn_R",
+        "Cow_Leg_FL",
+        "Cow_Leg_FR",
+        "Cow_Leg_RL",
+        "Cow_Leg_RR",
+        "Cow_Hoof_FL",
+        "Cow_Hoof_FR",
+        "Cow_Hoof_RL",
+        "Cow_Hoof_RR",
+        "Cow_Udder",
+        "Cow_Teats",
+        "Cow_Tail",
+        "Cow_TailTuft",
+        "Cow_Coat_BrownPatches",
+        "Cow_Coat_BlackPatches",
+    ]
+    save_asset("Cow.blend", expected_names, output_dir)
+
+
 def create_chicken_coop(output_dir: Path) -> None:
     reset_scene("ChickenCoop")
     wood = material("Material.ChickenCoop.Oak", (0.42, 0.23, 0.1, 1))
@@ -1155,6 +1427,7 @@ def create_piglet_pen(output_dir: Path) -> None:
 GENERATORS: dict[str, Callable[[Path], None]] = {
     "Chicken": create_chicken,
     "Piglet": create_piglet,
+    "Cow": create_cow,
     "Goat": create_goat,
     "ChickenCoop": create_chicken_coop,
     "PigletPen": create_piglet_pen,

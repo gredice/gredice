@@ -62,6 +62,7 @@ export const gardenAvatarMaxJumpClimbHeight = 0.95;
 const terrainHalfSize = 0.5;
 const collisionEpsilon = 0.0001;
 const maxMovementSubstep = 0.08;
+const dynamicGardenActorBlockNames = new Set(['Cow']);
 const diagonalSample = gardenAvatarRadius * Math.SQRT1_2;
 const collisionSamples = [
     { x: 0, z: 0 },
@@ -856,6 +857,11 @@ export function createGardenAvatarCollisionWorld({
             }
 
             waterSupportY = null;
+            // Cow roams away at runtime, so its persisted placement must not
+            // leave an invisible obstacle behind.
+            if (dynamicGardenActorBlockNames.has(block.name)) {
+                continue;
+            }
             if (isFenceBlockName(block.name)) {
                 const fenceProfile = fenceCollisionProfiles[block.name];
                 surfaces.push(

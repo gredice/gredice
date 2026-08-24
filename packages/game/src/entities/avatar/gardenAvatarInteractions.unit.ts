@@ -202,6 +202,7 @@ describe('garden avatar world interactions', () => {
         for (const species of [
             'Cat',
             'Chicken',
+            'Cow',
             'Dog',
             'Goat',
             'Piglet',
@@ -234,6 +235,10 @@ describe('garden avatar world interactions', () => {
         assert.ok(
             gardenAvatarAnimalAimProfiles.Chicken.hitRadius <
                 gardenAvatarAnimalAimProfiles.Piglet.hitRadius,
+        );
+        assert.ok(
+            gardenAvatarAnimalAimProfiles.Piglet.hitRadius <
+                gardenAvatarAnimalAimProfiles.Cow.hitRadius,
         );
         assert.equal(
             resolveAimedGardenAvatarAnimal({
