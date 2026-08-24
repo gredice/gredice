@@ -3,8 +3,10 @@
 import { useId } from 'react';
 import { usePublicEnvironment } from './PublicEnvironmentProvider';
 import {
+    getPublicEnvironmentMinutes,
     isPublicEnvironmentWeatherKind,
     type PublicEnvironmentWeatherKind,
+    publicEnvironmentTimeZone,
     publicEnvironmentWeatherKinds,
 } from './publicEnvironment';
 
@@ -22,6 +24,7 @@ function formatTime(date: Date) {
     return new Intl.DateTimeFormat('hr-HR', {
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: publicEnvironmentTimeZone,
     }).format(date);
 }
 
@@ -39,7 +42,7 @@ export function PublicEnvironmentFooterControls() {
     const timeOverrideId = useId();
     const timeSliderId = useId();
     const weatherId = useId();
-    const currentMinutes = date.getHours() * 60 + date.getMinutes();
+    const currentMinutes = getPublicEnvironmentMinutes(date);
     const sliderMinutes =
         debugMinutes ?? (Math.round(currentMinutes / 15) * 15) % (24 * 60);
 

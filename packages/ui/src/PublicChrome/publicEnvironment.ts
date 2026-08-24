@@ -56,6 +56,96 @@ export const publicEnvironmentDefaultLocation = {
     lon: 16.572,
 };
 
+export const publicEnvironmentTimeZone = 'Europe/Zagreb';
+
+const publicEnvironmentDateTimeFormatter = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+    minute: '2-digit',
+    month: '2-digit',
+    second: '2-digit',
+    timeZone: publicEnvironmentTimeZone,
+    year: 'numeric',
+});
+
+function resolvePublicEnvironmentDateTimeParts(date: Date) {
+    const resolved = {
+        day: 0,
+        hour: 0,
+        minute: 0,
+        month: 0,
+        second: 0,
+        year: 0,
+    };
+
+    for (const part of publicEnvironmentDateTimeFormatter.formatToParts(date)) {
+        const value = Number(part.value);
+        if (!Number.isFinite(value)) continue;
+
+        switch (part.type) {
+            case 'day':
+                resolved.day = value;
+                break;
+            case 'hour':
+                resolved.hour = value;
+                break;
+            case 'minute':
+                resolved.minute = value;
+                break;
+            case 'month':
+                resolved.month = value;
+                break;
+            case 'second':
+                resolved.second = value;
+                break;
+            case 'year':
+                resolved.year = value;
+                break;
+        }
+    }
+
+    return resolved;
+}
+
+export function getPublicEnvironmentMinutes(date: Date) {
+    const { hour, minute } = resolvePublicEnvironmentDateTimeParts(date);
+    return hour * 60 + minute;
+}
+
+export function resolvePublicEnvironmentDateAtMinutes(
+    date: Date,
+    minutes: number,
+) {
+    const current = resolvePublicEnvironmentDateTimeParts(date);
+    const normalizedMinutes = Math.min(1439, Math.max(0, Math.trunc(minutes)));
+    const wallClockTimestamp = Date.UTC(
+        current.year,
+        current.month - 1,
+        current.day,
+        Math.floor(normalizedMinutes / 60),
+        normalizedMinutes % 60,
+    );
+    let resolvedDate = new Date(wallClockTimestamp);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        const resolved = resolvePublicEnvironmentDateTimeParts(resolvedDate);
+        const resolvedWallClockTimestamp = Date.UTC(
+            resolved.year,
+            resolved.month - 1,
+            resolved.day,
+            resolved.hour,
+            resolved.minute,
+            resolved.second,
+        );
+        const timeZoneOffset =
+            resolvedWallClockTimestamp - resolvedDate.getTime();
+        resolvedDate = new Date(wallClockTimestamp - timeZoneOffset);
+    }
+
+    return resolvedDate;
+}
+
 export const clearPublicEnvironmentWeather: PublicEnvironmentWeather = {
     cloudy: 0,
     foggy: 0,
@@ -206,7 +296,7 @@ function rgbToCss(color: Rgb) {
 }
 
 function resolveBaseSkyPalette(date: Date, sunAltitude: number) {
-    const morning = date.getHours() < 12;
+    const morning = getPublicEnvironmentMinutes(date) < 12 * 60;
 
     if (morning) {
         if (sunAltitude < -10) return nightPalette;

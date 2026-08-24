@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     createMoonIlluminationPath,
+    getPublicEnvironmentMinutes,
     parsePublicEnvironmentWeather,
+    resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentSnapshot,
 } from './publicEnvironment';
 
@@ -30,6 +32,46 @@ test('resolves real sun positions into the visible Zagreb sky', () => {
     assert.equal(midnight.sun.visible, false);
     assert.equal(midnight.dark, true);
     assert.ok(midnight.nightAmount > 0.9);
+});
+
+test('uses Zagreb civil time independently of the viewer time zone', () => {
+    const instant = new Date('2026-08-24T17:00:00Z');
+    const originalTimeZone = process.env.TZ;
+
+    try {
+        process.env.TZ = 'America/Los_Angeles';
+        const westOfZagreb = resolvePublicEnvironmentSnapshot({
+            date: instant,
+            weather: clearWeather,
+        });
+
+        process.env.TZ = 'Asia/Dubai';
+        const eastOfZagreb = resolvePublicEnvironmentSnapshot({
+            date: instant,
+            weather: clearWeather,
+        });
+
+        assert.equal(getPublicEnvironmentMinutes(instant), 19 * 60);
+        assert.equal(westOfZagreb.horizon, eastOfZagreb.horizon);
+        assert.equal(westOfZagreb.themeHue, eastOfZagreb.themeHue);
+        assert.equal(westOfZagreb.zenith, eastOfZagreb.zenith);
+    } finally {
+        if (originalTimeZone === undefined) {
+            delete process.env.TZ;
+        } else {
+            process.env.TZ = originalTimeZone;
+        }
+    }
+});
+
+test('constructs debug instants from Zagreb clock minutes', () => {
+    const debugDate = resolvePublicEnvironmentDateAtMinutes(
+        new Date('2026-08-24T17:00:00Z'),
+        6 * 60 + 30,
+    );
+
+    assert.equal(debugDate.toISOString(), '2026-08-24T04:30:00.000Z');
+    assert.equal(getPublicEnvironmentMinutes(debugDate), 6 * 60 + 30);
 });
 
 test('changes the atmospheric palette for weather while retaining valid colors', () => {

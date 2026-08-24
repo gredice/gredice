@@ -21,6 +21,7 @@ import {
     parsePublicEnvironmentWeather,
     publicEnvironmentDefaultLocation,
     publicEnvironmentWeatherPresets,
+    resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentSnapshot,
 } from './publicEnvironment';
 import { useWinterMode } from './WinterModeContext';
@@ -170,14 +171,7 @@ export function PublicEnvironmentProvider({
         if (!debugEnabled || debugMinutes === null) {
             return now;
         }
-        const debugDate = new Date(now);
-        debugDate.setHours(
-            Math.floor(debugMinutes / 60),
-            debugMinutes % 60,
-            0,
-            0,
-        );
-        return debugDate;
+        return resolvePublicEnvironmentDateAtMinutes(now, debugMinutes);
     }, [debugEnabled, debugMinutes, now]);
 
     const weather = useMemo(() => {

@@ -2,6 +2,7 @@ import {
     type PublicEnvironmentWeatherKind,
     PublicSkyBackdrop,
     publicEnvironmentWeatherPresets,
+    resolvePublicEnvironmentDateAtMinutes,
     resolvePublicEnvironmentSnapshot,
 } from '@gredice/ui/PublicChrome';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -15,8 +16,10 @@ function PublicEnvironmentPreview({
     hour,
     weatherKind,
 }: PublicEnvironmentPreviewProps) {
-    const date = new Date('2026-08-24T00:00:00+02:00');
-    date.setHours(hour, 0, 0, 0);
+    const date = resolvePublicEnvironmentDateAtMinutes(
+        new Date('2026-08-24T12:00:00Z'),
+        hour * 60,
+    );
     const weather = publicEnvironmentWeatherPresets[weatherKind];
     const snapshot = resolvePublicEnvironmentSnapshot({ date, weather });
 
