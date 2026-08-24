@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import {
     DefaultGardenMutationGateStory,
     DefaultGardenSelectionGateStory,
+    EmptyGardenAccountMenuItemsStory,
     GardenAccountMenuItemsStory,
     PostStartupCrossAccountSelectionStory,
     SandboxFirstGardenAccountMenuItemsStory,
@@ -133,7 +134,7 @@ test.describe('Garden account menu items', () => {
         await expect(page.getByText('Vrt za igru 1')).toBeVisible();
         await expect(
             page.getByRole('menuitem', { name: /Računi/ }),
-        ).toHaveAttribute('href', '/racun/naplata');
+        ).toHaveCount(0);
         await expect(page.getByText('Kreiraj vrt za igru')).toBeVisible();
 
         const sandboxGardenBox = await page
@@ -143,6 +144,20 @@ test.describe('Garden account menu items', () => {
         expect(
             (sandboxGardenBox?.x ?? 0) + (sandboxGardenBox?.width ?? 0),
         ).toBeLessThanOrEqual(600);
+    });
+
+    test('does not show billing when no gardens are available', async ({
+        mount,
+        page,
+    }) => {
+        await mount(<EmptyGardenAccountMenuItemsStory />);
+
+        await page.getByRole('button', { name: 'Otvori izbornik' }).click();
+
+        await expect(page.getByText('Još nemaš svoj vrt')).toBeVisible();
+        await expect(
+            page.getByRole('menuitem', { name: /Računi/ }),
+        ).toHaveCount(0);
     });
 
     test('switches from a raw-first sandbox to a real garden', async ({

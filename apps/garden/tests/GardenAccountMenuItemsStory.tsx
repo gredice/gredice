@@ -308,6 +308,28 @@ export function SingleRealGardenAccountMenuItemsStory() {
     );
 }
 
+export function EmptyGardenAccountMenuItemsStory() {
+    const options = {
+        emptyCurrentAccount: true,
+        includeOtherAccount: false,
+    };
+
+    return (
+        <div className="min-h-96 p-4">
+            <GardenAccountMenuItemsTestProviders options={options}>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button>Otvori izbornik</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-80 p-4" align="start">
+                        <GardenAccountMenuItems />
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </GardenAccountMenuItemsTestProviders>
+        </div>
+    );
+}
+
 export function DefaultGardenSelectionGateStory() {
     const options = {
         defaultGardenId: otherAccountGarden.id,
