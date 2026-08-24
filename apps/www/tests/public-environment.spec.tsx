@@ -39,10 +39,22 @@ test('toggles the sky and applies deterministic debug conditions', async ({
     await expect(page.getByTestId('public-environment-backdrop')).toHaveCount(
         0,
     );
+    await expect
+        .poll(() =>
+            page
+                .locator('html')
+                .evaluate((root) =>
+                    root.style.getPropertyValue('--environmentHue'),
+                ),
+        )
+        .toBe('');
 
     await toggle.click();
     await expect(toggle).toBeChecked();
     await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
+    const starPattern = page.locator('.public-environment-stars pattern');
+    await expect(starPattern).toHaveAttribute('width', '1280');
+    await expect(starPattern).toHaveAttribute('height', '896');
     await expect(page.locator('html')).toHaveAttribute(
         'data-public-environment',
         'on',
@@ -69,6 +81,18 @@ test('toggles the sky and applies deterministic debug conditions', async ({
                 .evaluate((element) => getComputedStyle(element).opacity),
         )
         .toBe('0.34');
+
+    await toggle.click();
+    await expect(toggle).not.toBeChecked();
+    await expect
+        .poll(() =>
+            page
+                .locator('html')
+                .evaluate((root) =>
+                    root.style.getPropertyValue('--environmentHue'),
+                ),
+        )
+        .toBe('');
 });
 
 test('fits the footer controls on mobile and supports keyboard toggling', async ({
