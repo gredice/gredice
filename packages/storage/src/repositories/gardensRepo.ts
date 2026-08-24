@@ -84,15 +84,10 @@ type CreateDefaultGardenOptions = {
     name?: string;
 };
 
-type CreateGardenWithDefaultLayoutOptions = CreateDefaultGardenOptions & {
-    isSandbox: boolean;
-};
-
-async function createGardenWithDefaultLayout({
+export async function createDefaultGardenForAccount({
     accountId,
     name,
-    isSandbox,
-}: CreateGardenWithDefaultLayoutOptions) {
+}: CreateDefaultGardenOptions) {
     const farms = await getFarms();
     const farm = farms.find((f) => !f.isDeleted);
     if (!farm) {
@@ -103,8 +98,7 @@ async function createGardenWithDefaultLayout({
     const gardenId = await createGarden({
         farmId: farm.id,
         accountId,
-        name: trimmedName || (isSandbox ? 'Vrt za igru' : 'Moj vrt'),
-        isSandbox,
+        name: trimmedName || 'Moj vrt',
     });
 
     // Assign a 4x3 grass grid and one 1x2 raised bed near the center.
@@ -143,18 +137,6 @@ async function createGardenWithDefaultLayout({
     }
 
     return gardenId;
-}
-
-export function createDefaultGardenForAccount(
-    options: CreateDefaultGardenOptions,
-) {
-    return createGardenWithDefaultLayout({ ...options, isSandbox: false });
-}
-
-export function createDefaultSandboxGardenForAccount(
-    options: CreateDefaultGardenOptions,
-) {
-    return createGardenWithDefaultLayout({ ...options, isSandbox: true });
 }
 
 export {

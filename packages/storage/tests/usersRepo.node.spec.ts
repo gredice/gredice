@@ -12,6 +12,7 @@ import {
     createRefreshToken,
     createTemporaryUserAndAccount,
     createUserWithPassword,
+    deleteGardenIfNoActiveRaisedBeds,
     events,
     gardenVisitStates,
     getAccountGardensMetadata,
@@ -85,7 +86,7 @@ test('getUsersWithBirthdayOn returns users with matching birthdays', async () =>
     );
 });
 
-test('createTemporaryUserAndAccount creates temporary sandbox with standard garden layout', async () => {
+test('createTemporaryUserAndAccount creates a fully featured standard garden', async () => {
     createTestDb();
     await ensureFarmId();
 
@@ -102,8 +103,8 @@ test('createTemporaryUserAndAccount creates temporary sandbox with standard gard
 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
     assert.equal(gardens.length, 1);
-    assert.equal(gardens[0].isSandbox, true);
-    assert.equal(gardens[0].name, 'Vrt za igru');
+    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(gardens[0].name, 'Moj vrt');
 
     const stacks = await getGardenStacks(gardens[0].id);
     assert.equal(stacks.length, 12);
@@ -120,6 +121,7 @@ test('createTemporaryUserAndAccount creates temporary sandbox with standard gard
 
     const raisedBeds = await getRaisedBeds(gardens[0].id);
     assert.equal(raisedBeds.length, 1);
+    assert.equal(raisedBeds[0]?.status, 'new');
 });
 
 test('promoteTemporaryUser converts a temporary user to email identity', async () => {
@@ -356,6 +358,17 @@ test('cleanupInactiveTemporaryAccounts deletes stale temporary accounts', async 
     const now = new Date('2026-06-18T12:00:00.000Z');
     const temporary = await createTemporaryUserAndAccount();
     await createRefreshToken(temporary.userId);
+    const [temporaryGarden] = await getAccountGardensMetadata(
+        temporary.accountId,
+    );
+    assert.ok(temporaryGarden);
+    assert.deepEqual(
+        await deleteGardenIfNoActiveRaisedBeds(temporaryGarden.id),
+        {
+            activeRaisedBedCount: 0,
+            deleted: true,
+        },
+    );
     await storage()
         .update(users)
         .set({ lastActiveAt: new Date('2026-05-01T12:00:00.000Z') })
@@ -374,4 +387,14 @@ test('cleanupInactiveTemporaryAccounts deletes stale temporary accounts', async 
         where: eq(users.id, temporary.userId),
     });
     assert.equal(deletedTemporaryUser, undefined);
+
+    const deletedAccount = await storage().query.accounts.findFirst({
+        where: (accounts, { eq }) => eq(accounts.id, temporary.accountId),
+    });
+    assert.equal(deletedAccount, undefined);
+
+    const deletedGarden = await storage().query.gardens.findFirst({
+        where: (gardens, { eq }) => eq(gardens.id, temporaryGarden.id),
+    });
+    assert.equal(deletedGarden, undefined);
 });
