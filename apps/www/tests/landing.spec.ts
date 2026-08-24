@@ -22,6 +22,25 @@ async function expectPillBorderRadius(locator: Locator) {
         .toBeGreaterThanOrEqual(0);
 }
 
+async function expectOpaqueBackground(locator: Locator) {
+    await expect
+        .poll(() =>
+            locator.evaluate((element) => {
+                const backgroundColor =
+                    window.getComputedStyle(element).backgroundColor;
+                const channels = backgroundColor.match(/^rgba?\(([^)]+)\)$/u);
+
+                if (!channels) {
+                    return null;
+                }
+
+                const alpha = channels[1]?.split(',')[3];
+                return alpha ? Number.parseFloat(alpha) : 1;
+            }),
+        )
+        .toBe(1);
+}
+
 async function expectMobileNavActionsDoNotOverlap(page: Page) {
     const cta = page.getByRole('link', { name: 'Moj novi vrt' });
     const menuButton = page.getByRole('button', {
@@ -191,9 +210,13 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
     await expect(
         signupCta.getByRole('link', { name: 'Započni svoj vrt' }),
     ).toBeVisible();
-    await expect(
-        signupCta.getByRole('link', { name: 'Otvori aplikaciju' }),
-    ).toBeVisible();
+    const openAppCta = signupCta.getByRole('link', {
+        name: 'Otvori aplikaciju',
+    });
+    await expect(openAppCta).toBeVisible();
+    await expectOpaqueBackground(openAppCta);
+    await openAppCta.hover();
+    await expectOpaqueBackground(openAppCta);
 
     const signupCtaBox = await signupCta.boundingBox();
     expect(signupCtaBox).not.toBeNull();
