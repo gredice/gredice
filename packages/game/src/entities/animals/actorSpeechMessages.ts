@@ -29,6 +29,12 @@ export const birdSpeechMessages = [
 
 export const beeSpeechMessages = ['Bzzz!', 'Zum-zum!', 'Bzz-bzz!'] as const;
 
+export const squirrelSpeechMessages = [
+    'Cik-cik!',
+    'Njušk-njušk!',
+    'Šuš-šuš!',
+] as const;
+
 export const playerSpeechMessages = [
     'Baš je lijep dan u vrtu!',
     'Vrt danas izgleda prekrasno.',

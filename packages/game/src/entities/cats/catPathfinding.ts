@@ -21,6 +21,11 @@ export type CatPathResult = {
     visitedCellCount: number;
 };
 
+export type CatPathEdgeTraversal = (
+    from: CatPathCell,
+    to: CatPathCell,
+) => boolean;
+
 type SearchNode = {
     cell: CatPathCell;
     costFromStart: number;
@@ -193,6 +198,7 @@ function canWalkCell({
 
 function directPathCrossesUnavailableCell({
     blockedKeys,
+    canTraverseEdge,
     from,
     startCell,
     targetCell,
@@ -200,6 +206,7 @@ function directPathCrossesUnavailableCell({
     traversableKeys,
 }: {
     blockedKeys: Set<string>;
+    canTraverseEdge?: CatPathEdgeTraversal;
     from: CatPathPoint;
     startCell: CatPathCell;
     targetCell: CatPathCell;
@@ -219,13 +226,20 @@ function directPathCrossesUnavailableCell({
 
         const key = cellKey(cell);
         if (
+            !isSameCell(cell, previousCell) &&
+            canTraverseEdge &&
+            !canTraverseEdge(previousCell, cell)
+        ) {
+            return true;
+        }
+
+        if (
             !isTemporarilyAllowedCell(cell, startCell, targetCell) &&
             (blockedKeys.has(key) ||
                 (traversableKeys !== null && !traversableKeys.has(key)))
         ) {
             return true;
         }
-
         if (
             Math.abs(cell.x - previousCell.x) === 1 &&
             Math.abs(cell.z - previousCell.z) === 1
@@ -247,11 +261,13 @@ function directPathCrossesUnavailableCell({
                 return true;
             }
         }
-
         previousCell = cell;
     }
 
-    return false;
+    return (
+        !isSameCell(previousCell, targetCell) &&
+        Boolean(canTraverseEdge && !canTraverseEdge(previousCell, targetCell))
+    );
 }
 
 function heuristic(left: CatPathCell, right: CatPathCell) {
@@ -355,12 +371,14 @@ function reconstructPath(
 function findCellPath({
     blockedKeys,
     bounds,
+    canTraverseEdge,
     startCell,
     targetCell,
     traversableKeys,
 }: {
     blockedKeys: Set<string>;
     bounds: SearchBounds;
+    canTraverseEdge?: CatPathEdgeTraversal;
     startCell: CatPathCell;
     targetCell: CatPathCell;
     traversableKeys: Set<string> | null;
@@ -425,7 +443,9 @@ function findCellPath({
                     startCell,
                     targetCell,
                     traversableKeys,
-                })
+                }) ||
+                (canTraverseEdge &&
+                    !canTraverseEdge(current.node.cell, neighborCell))
             ) {
                 continue;
             }
@@ -536,12 +556,14 @@ function cellsToPoints({
 
 export function findCatPath({
     blockedCells,
+    canTraverseEdge,
     from,
     surfaces,
     to,
     traversableCells,
 }: {
     blockedCells: CatPathCell[];
+    canTraverseEdge?: CatPathEdgeTraversal;
     from: CatPathPoint;
     surfaces: CatPathSurface[];
     to: CatPathPoint;
@@ -567,6 +589,7 @@ export function findCatPath({
         isSameCell(startCell, targetCell) ||
         !directPathCrossesUnavailableCell({
             blockedKeys,
+            canTraverseEdge,
             from,
             startCell,
             targetCell,
@@ -588,6 +611,7 @@ export function findCatPath({
     const cellPath = findCellPath({
         blockedKeys,
         bounds,
+        canTraverseEdge,
         startCell,
         targetCell,
         traversableKeys,

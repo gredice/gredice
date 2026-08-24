@@ -10,6 +10,7 @@ import {
     pickActorSpeechMessage,
     pigletSpeechMessages,
     playerSpeechMessages,
+    squirrelSpeechMessages,
 } from './actorSpeechMessages';
 
 test('keeps actor speech visible for five seconds by default', () => {
@@ -23,6 +24,7 @@ test('provides speech for every interactive animal and the player', () => {
     assert.ok(pigletSpeechMessages.length > 1);
     assert.ok(birdSpeechMessages.length > 1);
     assert.ok(beeSpeechMessages.length > 1);
+    assert.ok(squirrelSpeechMessages.length > 1);
     assert.ok(playerSpeechMessages.length > 1);
     assert.ok(
         playerSpeechMessages.every((message) => /vrt|vrtu/i.test(message)),
