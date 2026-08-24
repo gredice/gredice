@@ -120,6 +120,7 @@ test('createTemporaryUserAndAccount creates a fully featured standard garden', a
 
     const raisedBeds = await getRaisedBeds(gardens[0].id);
     assert.equal(raisedBeds.length, 1);
+    assert.equal(raisedBeds[0]?.status, 'new');
 });
 
 test('promoteTemporaryUser converts a temporary user to email identity', async () => {
