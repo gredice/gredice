@@ -15,6 +15,9 @@ import {
     events,
     gardenVisitStates,
     getAccountGardensMetadata,
+    getGardenBlocks,
+    getGardenStacks,
+    getRaisedBeds,
     getUsersWithBirthdayOn,
     listUserFavorites,
     notificationEmailLog,
@@ -82,7 +85,7 @@ test('getUsersWithBirthdayOn returns users with matching birthdays', async () =>
     );
 });
 
-test('createTemporaryUserAndAccount creates playful temporary user with sandbox garden', async () => {
+test('createTemporaryUserAndAccount creates temporary sandbox with standard garden layout', async () => {
     createTestDb();
     await ensureFarmId();
 
@@ -100,6 +103,23 @@ test('createTemporaryUserAndAccount creates playful temporary user with sandbox 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
     assert.equal(gardens.length, 1);
     assert.equal(gardens[0].isSandbox, true);
+    assert.equal(gardens[0].name, 'Vrt za igru');
+
+    const stacks = await getGardenStacks(gardens[0].id);
+    assert.equal(stacks.length, 12);
+
+    const blocks = await getGardenBlocks(gardens[0].id);
+    assert.equal(
+        blocks.filter((block) => block.name === 'Block_Grass').length,
+        12,
+    );
+    assert.equal(
+        blocks.filter((block) => block.name === 'Raised_Bed').length,
+        1,
+    );
+
+    const raisedBeds = await getRaisedBeds(gardens[0].id);
+    assert.equal(raisedBeds.length, 1);
 });
 
 test('promoteTemporaryUser converts a temporary user to email identity', async () => {
