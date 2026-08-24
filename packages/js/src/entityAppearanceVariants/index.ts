@@ -43,7 +43,7 @@ export function defineAppearanceVariants<
     };
 }
 
-export const horseAppearanceVariants = defineAppearanceVariants('Horse', [
+export const horseAppearanceVariants = defineAppearanceVariants('HorseStable', [
     {
         id: 'bay',
         value: 0,
@@ -100,7 +100,7 @@ export const horseAppearanceVariants = defineAppearanceVariants('Horse', [
     },
 ]);
 
-export const cowAppearanceVariants = defineAppearanceVariants('Cow', [
+export const cowAppearanceVariants = defineAppearanceVariants('CowShelter', [
     {
         id: 'brown-and-white',
         value: 0,
@@ -116,10 +116,13 @@ export const cowAppearanceVariants = defineAppearanceVariants('Cow', [
 export type CowAppearanceVariant =
     (typeof cowAppearanceVariants.variants)[number]['value'];
 
-export const rabbitAppearanceVariants = defineAppearanceVariants('Rabbit', [
-    { id: 'chestnut-agouti', value: 0 },
-    { id: 'cream', value: 1 },
-]);
+export const rabbitAppearanceVariants = defineAppearanceVariants(
+    'RabbitHutch',
+    [
+        { id: 'chestnut-agouti', value: 0 },
+        { id: 'cream', value: 1 },
+    ],
+);
 
 export type RabbitAppearanceVariant =
     (typeof rabbitAppearanceVariants.variants)[number]['value'];
@@ -158,17 +161,37 @@ const appearanceVariantDefinitions = [
     rabbitAppearanceVariants,
 ] as const;
 
+type RegisteredAppearanceVariantDefinition =
+    (typeof appearanceVariantDefinitions)[number];
+
+type LegacyAppearanceVariantEntityName = 'Cow' | 'Horse' | 'Rabbit';
+
+const legacyAppearanceVariantEntityNames = new Map<
+    string,
+    RegisteredAppearanceVariantDefinition
+>([
+    ['Cow', cowAppearanceVariants],
+    ['Horse', horseAppearanceVariants],
+    ['Rabbit', rabbitAppearanceVariants],
+]);
+
+type AppearanceVariantEntityName =
+    | (typeof appearanceVariantDefinitions)[number]['entityName']
+    | LegacyAppearanceVariantEntityName;
+
 export function getEntityAppearanceVariantDefinition(entityName: string) {
     return (
         appearanceVariantDefinitions.find(
             (definition) => definition.entityName === entityName,
-        ) ?? null
+        ) ??
+        legacyAppearanceVariantEntityNames.get(entityName) ??
+        null
     );
 }
 
 export function isAppearanceVariantEntityName(
     entityName: string,
-): entityName is (typeof appearanceVariantDefinitions)[number]['entityName'] {
+): entityName is AppearanceVariantEntityName {
     return getEntityAppearanceVariantDefinition(entityName) !== null;
 }
 
@@ -181,21 +204,27 @@ export function isValidEntityAppearanceVariant(
 }
 
 export function requiresExplicitAppearanceVariantSelection(entityName: string) {
-    return entityName === horseAppearanceVariants.entityName;
+    return (
+        getEntityAppearanceVariantDefinition(entityName) ===
+        horseAppearanceVariants
+    );
 }
 
 export function isAppearanceVariantRotationLocked(entityName: string) {
-    return (
-        entityName === cowAppearanceVariants.entityName ||
-        entityName === horseAppearanceVariants.entityName
-    );
+    // Legacy direct-animal blocks must stay fixed because their model footprint
+    // moves with the persisted rotation. The new homes are ordinary rotatable
+    // blocks; the animal keeps its immutable coat while the home turns.
+    return entityName === 'Cow' || entityName === 'Horse';
 }
 
 export function selectEntityAppearanceVariant(
     entityName: string,
     immutablePlacementId: string,
 ): number | null {
-    if (entityName !== cowAppearanceVariants.entityName) {
+    if (
+        getEntityAppearanceVariantDefinition(entityName) !==
+        cowAppearanceVariants
+    ) {
         return null;
     }
 
@@ -239,12 +268,12 @@ export function createEntityAppearanceVariantForPlacement(
     entityName: string,
     random: () => number,
 ) {
+    const candidate = getEntityAppearanceVariantDefinition(entityName);
     const definition =
-        entityName === cowAppearanceVariants.entityName
-            ? cowAppearanceVariants
-            : entityName === rabbitAppearanceVariants.entityName
-              ? rabbitAppearanceVariants
-              : null;
+        candidate === cowAppearanceVariants ||
+        candidate === rabbitAppearanceVariants
+            ? candidate
+            : null;
     if (!definition) {
         return undefined;
     }

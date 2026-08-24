@@ -7,8 +7,6 @@ export type GardenPet = {
     genitive: string;
     /** Name of the block that brings the animal into the garden. */
     homeBlockName: string;
-    /** Whether this block is the animal itself instead of a separate home. */
-    directlyPlaceable?: boolean;
     /** Sound the animal makes in the garden. */
     sound: string;
     shortDescription: string;
@@ -30,8 +28,7 @@ export const gardenPets = [
         slug: 'zec',
         name: 'Zec',
         genitive: 'zeca',
-        homeBlockName: 'Rabbit',
-        directlyPlaceable: true,
+        homeBlockName: 'RabbitHutch',
         sound: 'Njušk!',
         shortDescription:
             'Znatiželjni zec koji skakuće, njuška, uređuje krzno i kratko pase.',
@@ -50,6 +47,30 @@ export const gardenPets = [
         weatherRoutine:
             'Nastavlja svoju mirnu rutinu samo po sigurnom, prohodnom tlu.',
         searchTerms: ['zecic', 'kunić', 'kunic', 'rabbit'],
+    },
+    {
+        slug: 'konj',
+        name: 'Konj',
+        genitive: 'konja',
+        homeBlockName: 'HorseStable',
+        sound: 'Njiha!',
+        shortDescription:
+            'Miran vrtni konj koji pase, osluškuje okolinu i obilazi slobodne staze.',
+        fullDescription:
+            'Konj mirno pase, osluškuje vrt i repom tjera dosadne muhe. Najčešće hoda polako, a kada ima dovoljno prostora nakratko prelazi u kas. Kad mu se avatar previše približi, oprezno se odmakne sigurnom rutom koja obilazi prepreke.',
+        habits: [
+            'Pase i mirno promatra okolicu',
+            'Hoda slobodnim stazama uz povremeni kratki kas',
+            'Repom tjera muhe',
+            'Oprezno se odmakne kad mu se avatar previše približi',
+            'Boju dlake odabireš prije postavljanja staje',
+        ],
+        dayRangeBlocks: 5.5,
+        nightRoutine:
+            'Zadržava mirni ritam na sigurnim i prohodnim dijelovima vrta.',
+        weatherRoutine:
+            'Kreće se samo sigurnim tlom i obilazi prepreke u svojem rasponu.',
+        searchTerms: ['konjić', 'konjic', 'staja', 'horse', 'griva'],
     },
     {
         slug: 'pas',
@@ -141,8 +162,7 @@ export const gardenPets = [
         slug: 'krava',
         name: 'Krava',
         genitive: 'krave',
-        homeBlockName: 'Cow',
-        directlyPlaceable: true,
+        homeBlockName: 'CowShelter',
         sound: 'Muuu!',
         shortDescription:
             'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
@@ -164,7 +184,7 @@ export const gardenPets = [
         slug: 'koza',
         name: 'Koza',
         genitive: 'koze',
-        homeBlockName: 'Goat',
+        homeBlockName: 'GoatShelter',
         sound: 'Mee-e!',
         shortDescription:
             'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim stazama.',
@@ -181,5 +201,27 @@ export const gardenPets = [
         weatherRoutine:
             'Pred jakom kišom, snijegom, grmljavinom i snažnim vjetrom vraća se na svoje sigurno mjesto.',
         searchTerms: ['kozica', 'jarica', 'jare', 'brstenje'],
+    },
+    {
+        slug: 'ovca',
+        name: 'Ovca',
+        genitive: 'ovce',
+        homeBlockName: 'SheepFold',
+        sound: 'Bee!',
+        shortDescription:
+            'Pitoma vunasta ovca koja pase i drži ugodan razmak od svojega malog stada.',
+        fullDescription:
+            'Ovca mirno pase, preživa i polako istražuje travnate dijelove vrta. Više ovaca traži društvo svojega malog stada, ali svaka zadržava ugodan razmak kako se ne bi naguravale. Na duljoj slobodnoj stazi ponekad kratko potrči.',
+        habits: [
+            'Pase i mirno preživa',
+            'Drži se blizu drugih ovaca bez naguravanja',
+            'Polako obilazi prohodne travnate dijelove',
+            'Povremeno kratko potrči po slobodnoj stazi',
+        ],
+        dayRangeBlocks: 6.5,
+        nightRoutine: 'Vraća se u tor i ostaje u njegovoj blizini.',
+        weatherRoutine:
+            'Pred jakom kišom, snijegom, grmljavinom i snažnim vjetrom vraća se u tor.',
+        searchTerms: ['ovčica', 'ovcica', 'janje', 'janjac', 'tor', 'sheep'],
     },
 ] as const satisfies readonly GardenPet[];

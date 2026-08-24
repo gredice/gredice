@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
 import type { AnimalMovementSurface } from '../animals/animalMovementTerrain';
-import { chooseSquirrelFleeState } from './Squirrels';
+import {
+    chooseSquirrelFleeState,
+    createScheduledDepartureState,
+    squirrelActorScale,
+} from './Squirrels';
 import type { SquirrelHabitat, SquirrelTarget } from './squirrelHabitat';
 
 function target(id: string, x: number, z: number): SquirrelTarget {
@@ -39,6 +43,11 @@ function habitat({
 }
 
 describe('squirrel avatar flee response', () => {
+    it('renders at a substantially smaller ambient-animal scale', () => {
+        assert.equal(squirrelActorScale, 0.2);
+        assert.ok(squirrelActorScale < 0.39 * 0.6);
+    });
+
     it('prefers a route-safe tree exit farther from the avatar', () => {
         const safeTree = target('safe-tree', 2, 0);
         const flee = chooseSquirrelFleeState({
@@ -79,5 +88,29 @@ describe('squirrel avatar flee response', () => {
         assert.equal(flee.target.id, 'fallback');
         assert.equal(flee.despawnOnArrival, false);
         assert.notEqual(flee.pathfinding.status, 'unreachable');
+    });
+
+    it('still completes a scheduled exit when the spawn tree is unreachable', () => {
+        const from = new Vector3(2, 0.42, 0);
+        const departure = createScheduledDepartureState({
+            from,
+            habitat: habitat({
+                blockedCells: [
+                    { x: 1, z: -2 },
+                    { x: 1, z: -1 },
+                    { x: 1, z: 0 },
+                    { x: 1, z: 1 },
+                    { x: 1, z: 2 },
+                ],
+                escapeTargets: [],
+                roamTargets: [],
+            }),
+            now: 12,
+        });
+
+        assert.equal(departure.phase, 'exiting');
+        if (departure.phase === 'exiting') {
+            assert.deepEqual(departure.destination, from);
+        }
     });
 });

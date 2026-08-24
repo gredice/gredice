@@ -91,11 +91,15 @@ test('uses each placed Goat block as one stable goat home anchor', () => {
     const stacks = [
         stackWithBlocks(0, 0, [
             { id: 'ground-a', name: 'Block_Grass' },
-            { id: 'goat-a', name: 'Goat', rotation: 1 },
+            { id: 'goat-a', name: 'GoatShelter', rotation: 1 },
         ]),
         stackWithBlocks(2, 0, [
             { id: 'ground-b', name: 'Block_Stone' },
-            { id: 'goat-b', name: 'Goat', rotation: 3 },
+            { id: 'goat-b', name: 'GoatShelter', rotation: 3 },
+        ]),
+        stackWithBlocks(4, 0, [
+            { id: 'ground-legacy', name: 'Block_Grass' },
+            { id: 'goat-legacy', name: 'Goat' },
         ]),
     ];
     const habitats = createFarmAnimalHabitatsForSpecies({
@@ -109,10 +113,16 @@ test('uses each placed Goat block as one stable goat home anchor', () => {
         ['goat-home-goat-a', 'goat-home-goat-b'],
     );
     assert.deepEqual(
-        habitats.map((habitat) => habitat.home.position.toArray()),
+        habitats.map((habitat) =>
+            habitat.home.position
+                .toArray()
+                .map(
+                    (coordinate) => Math.round(coordinate * 1_000) / 1_000 || 0,
+                ),
+        ),
         [
-            [0, 0.024, 0],
-            [2, 0.024, 0],
+            [-0.48, 0.024, 0],
+            [2.48, 0.024, 0],
         ],
     );
 });
@@ -124,7 +134,7 @@ test('prefers only connected walkable stone or gravel targets for goat browsing'
         stacks: [
             stackWithBlocks(0, 0, [
                 { id: 'ground-home', name: 'Block_Grass' },
-                { id: 'goat', name: 'Goat' },
+                { id: 'goat', name: 'GoatShelter' },
             ]),
             stackWithBlocks(1, 0, [{ id: 'grass', name: 'Block_Grass' }]),
             stackWithBlocks(2, 0, [{ id: 'stone', name: 'Block_Stone' }]),
@@ -160,7 +170,7 @@ test('keeps goat avatar approach and retreat targets on unoccupied terrain', () 
     );
     groundStacks[3]?.blocks.push({
         id: 'goat',
-        name: 'Goat',
+        name: 'GoatShelter',
         rotation: 0,
     });
     groundStacks[4]?.blocks.push({
@@ -249,7 +259,7 @@ test('keeps goat cover targets outside the occupied tree cell', () => {
     });
     stacks
         .find((stack) => stack.position.x === -2 && stack.position.z === 0)
-        ?.blocks.push({ id: 'goat', name: 'Goat', rotation: 0 });
+        ?.blocks.push({ id: 'goat', name: 'GoatShelter', rotation: 0 });
     stacks
         .find((stack) => stack.position.x === 0 && stack.position.z === 0)
         ?.blocks.push({ id: 'tree', name: 'Tree', rotation: 0 });

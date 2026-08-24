@@ -74,6 +74,13 @@ import { Pine } from './Pine';
 import { PineAdvent } from './PineAdvent';
 import { PolishedStoneFence } from './PolishedStoneFence';
 import { Pot } from './Pot';
+import {
+    CowShelter,
+    GoatShelter,
+    HorseStable,
+    RabbitHutch,
+    SheepFold,
+} from './persistentPets/PersistentPetHomeModels';
 import { RaisedBed } from './RaisedBed';
 import { RoofTileLantern } from './RoofTileLantern';
 import { Rabbit } from './rabbits/Rabbit';
@@ -210,6 +217,11 @@ export const entityNameMap = {
     ChickenCoop: ChickenCoop,
     DogHouse: DogHouse,
     PigletPen: PigletPen,
+    RabbitHutch,
+    HorseStable,
+    CowShelter,
+    GoatShelter,
+    SheepFold,
     Goat: Goat,
     Rabbit: Rabbit,
     Horse: Horse,

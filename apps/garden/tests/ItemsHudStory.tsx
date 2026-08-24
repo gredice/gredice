@@ -384,23 +384,23 @@ const blockFixtures: Record<
         height: 0.86,
         stackable: false,
     },
-    Goat: {
-        label: 'Koza',
+    GoatShelter: {
+        label: 'Zaklon za kozu',
         shortDescription:
-            'Znatiželjna šarena koza koja brsti, preživa i razigrano poskakuje po sigurnim vrtnim stazama.',
+            'Kompaktan drveni zaklon koji u vrt dovodi znatiželjnu kozu.',
         sunflowers: 500,
-        height: 0.72,
+        height: 1,
         stackable: false,
     },
-    Horse: {
-        label: 'Konj',
+    HorseStable: {
+        label: 'Staja za konja',
         shortDescription:
-            'Miran vrtni konj s bojom dlake koju odabireš pri postavljanju.',
+            'Otvorena drvena staja koja u vrt dovodi konja s bojom dlake po tvojem izboru.',
         sunflowers: 500,
-        height: 1.46,
+        height: 1.703,
         stackable: false,
         spanDepth: 2,
-        spanWidth: 1,
+        spanWidth: 2,
     },
     PigletPen: {
         label: 'Obor za praščića',
@@ -410,31 +410,33 @@ const blockFixtures: Record<
         height: 0.78,
         stackable: false,
     },
-    Cow: {
-        label: 'Krava',
+    CowShelter: {
+        label: 'Zaklon za kravu',
         shortDescription:
-            'Mirna krava koja pase, preživa i svojim sporim korakom oživljava vrt.',
+            'Prostran otvoreni zaklon koji u vrt dovodi mirnu kravu.',
         sunflowers: 850,
-        height: 1.26,
+        height: 1.485,
         spanDepth: 2,
-        spanWidth: 1,
+        spanWidth: 2,
         stackable: false,
     },
-    Rabbit: {
-        label: 'Zec',
+    RabbitHutch: {
+        label: 'Kućica za zeca',
         shortDescription:
-            'Znatiželjni zec koji skakuće vrtom, njuška i kratko pase.',
+            'Mala drvena kućica koja u vrt dovodi znatiželjnog zeca.',
         sunflowers: 350,
-        height: 0.76,
+        height: 0.971,
         stackable: false,
     },
-    Sheep: {
-        label: 'Ovca',
+    SheepFold: {
+        label: 'Tor za ovcu',
         shortDescription:
-            'Pitoma vunasta ovca koja pase i drži se blizu svojega malog stada.',
+            'Ograđeni tor sa zaklonom koji u vrt dovodi pitomu ovcu.',
         sunflowers: 500,
-        height: 0.64,
+        height: 1.445,
         stackable: false,
+        spanDepth: 2,
+        spanWidth: 2,
     },
 };
 
@@ -562,12 +564,12 @@ const blockNames = [
     'CatPillow',
     'ChickenCoop',
     'DogHouse',
-    'Goat',
-    'Horse',
+    'GoatShelter',
+    'HorseStable',
     'PigletPen',
-    'Cow',
-    'Rabbit',
-    'Sheep',
+    'CowShelter',
+    'RabbitHutch',
+    'SheepFold',
     'Bush',
     'Tree',
     'Pine',

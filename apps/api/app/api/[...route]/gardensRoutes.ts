@@ -4,6 +4,7 @@ import {
     isAppearanceVariantRotationLocked,
     isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
+    requiresExplicitAppearanceVariantSelection,
 } from '@gredice/js/entityAppearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
@@ -3128,7 +3129,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     Math.random,
                 ) ??
                 null;
-            if (blockName === 'Horse' && appearanceVariant === null) {
+            if (
+                requiresExplicitAppearanceVariantSelection(blockName) &&
+                appearanceVariant === null
+            ) {
                 return context.json(
                     { error: 'Odaberi boju konja prije postavljanja.' },
                     400,

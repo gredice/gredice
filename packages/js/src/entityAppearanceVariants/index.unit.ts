@@ -33,9 +33,12 @@ describe('Cow appearance variants', () => {
     });
 
     it('selects once from the placement id and resolves legacy records stably', () => {
-        const selected = selectEntityAppearanceVariant('Cow', 'cow-new');
+        const selected = selectEntityAppearanceVariant('CowShelter', 'cow-new');
         assert.equal(cowAppearanceVariants.isVariant(selected), true);
-        assert.equal(selectEntityAppearanceVariant('Cow', 'cow-new'), selected);
+        assert.equal(
+            selectEntityAppearanceVariant('CowShelter', 'cow-new'),
+            selected,
+        );
         assert.equal(resolveCowAppearanceVariant(1, 'cow-legacy'), 1);
 
         const fallback = resolveCowAppearanceVariant(null, 'cow-legacy');
@@ -48,18 +51,39 @@ describe('Cow appearance variants', () => {
     });
 
     it('auto-selects Cow coats while Horse still requires a picker choice', () => {
-        assert.equal(requiresExplicitAppearanceVariantSelection('Cow'), false);
-        assert.equal(requiresExplicitAppearanceVariantSelection('Horse'), true);
+        assert.equal(
+            requiresExplicitAppearanceVariantSelection('CowShelter'),
+            false,
+        );
+        assert.equal(
+            requiresExplicitAppearanceVariantSelection('HorseStable'),
+            true,
+        );
+        assert.equal(isAppearanceVariantEntityName('CowShelter'), true);
+        assert.equal(isValidEntityAppearanceVariant('CowShelter', 0), true);
+        assert.equal(isValidEntityAppearanceVariant('CowShelter', 1), true);
+        assert.equal(isValidEntityAppearanceVariant('CowShelter', 2), false);
+        assert.equal(
+            createEntityAppearanceVariantForPlacement(
+                'CowShelter',
+                () => 0.999,
+            ),
+            1,
+        );
+        assert.equal(isAppearanceVariantRotationLocked('CowShelter'), false);
+        assert.equal(isAppearanceVariantRotationLocked('HorseStable'), false);
+        assert.equal(isAppearanceVariantRotationLocked('Cow'), true);
+        assert.equal(isAppearanceVariantRotationLocked('Rabbit'), false);
+    });
+
+    it('keeps legacy direct-animal names as compatibility aliases', () => {
         assert.equal(isAppearanceVariantEntityName('Cow'), true);
-        assert.equal(isValidEntityAppearanceVariant('Cow', 0), true);
         assert.equal(isValidEntityAppearanceVariant('Cow', 1), true);
-        assert.equal(isValidEntityAppearanceVariant('Cow', 2), false);
         assert.equal(
             createEntityAppearanceVariantForPlacement('Cow', () => 0.999),
             1,
         );
-        assert.equal(isAppearanceVariantRotationLocked('Cow'), true);
-        assert.equal(isAppearanceVariantRotationLocked('Rabbit'), false);
+        assert.equal(selectEntityAppearanceVariant('Cow', 'cow-new'), 0);
     });
 });
 
@@ -94,12 +118,13 @@ describe('Horse appearance variants', () => {
     });
 
     it('validates only supported Horse values', () => {
-        assert.equal(isAppearanceVariantEntityName('Horse'), true);
+        assert.equal(isAppearanceVariantEntityName('HorseStable'), true);
         assert.equal(isAppearanceVariantEntityName('Dog'), false);
-        assert.equal(isValidEntityAppearanceVariant('Horse', 0), true);
+        assert.equal(isValidEntityAppearanceVariant('HorseStable', 0), true);
+        assert.equal(isValidEntityAppearanceVariant('HorseStable', 5), true);
+        assert.equal(isValidEntityAppearanceVariant('HorseStable', 6), false);
+        assert.equal(isValidEntityAppearanceVariant('HorseStable', 1.5), false);
         assert.equal(isValidEntityAppearanceVariant('Horse', 5), true);
-        assert.equal(isValidEntityAppearanceVariant('Horse', 6), false);
-        assert.equal(isValidEntityAppearanceVariant('Horse', 1.5), false);
         assert.equal(isValidEntityAppearanceVariant('Dog', 0), false);
     });
 
@@ -131,15 +156,21 @@ describe('Rabbit appearance variants', () => {
 
     it('selects a coat once from the placement random source', () => {
         assert.equal(
-            createEntityAppearanceVariantForPlacement('Rabbit', () => 0),
+            createEntityAppearanceVariantForPlacement('RabbitHutch', () => 0),
             0,
         );
         assert.equal(
-            createEntityAppearanceVariantForPlacement('Rabbit', () => 0.999),
+            createEntityAppearanceVariantForPlacement(
+                'RabbitHutch',
+                () => 0.999,
+            ),
             1,
         );
         assert.equal(
-            createEntityAppearanceVariantForPlacement('Horse', () => 0.999),
+            createEntityAppearanceVariantForPlacement(
+                'HorseStable',
+                () => 0.999,
+            ),
             undefined,
         );
         assert.equal(
@@ -165,7 +196,7 @@ describe('Rabbit appearance variants', () => {
     it('locks the coat while leaving ordinary block variants mutable', () => {
         assert.equal(
             isEntityAppearanceVariantUpdateAllowed({
-                entityName: 'Rabbit',
+                entityName: 'RabbitHutch',
                 currentVariant: 0,
                 requestedVariant: 0,
             }),
@@ -173,11 +204,19 @@ describe('Rabbit appearance variants', () => {
         );
         assert.equal(
             isEntityAppearanceVariantUpdateAllowed({
-                entityName: 'Rabbit',
+                entityName: 'RabbitHutch',
                 currentVariant: 0,
                 requestedVariant: 1,
             }),
             false,
+        );
+        assert.equal(
+            isEntityAppearanceVariantUpdateAllowed({
+                entityName: 'Rabbit',
+                currentVariant: 1,
+                requestedVariant: 1,
+            }),
+            true,
         );
         assert.equal(
             isEntityAppearanceVariantUpdateAllowed({

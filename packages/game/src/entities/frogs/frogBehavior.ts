@@ -6,6 +6,18 @@ import type { FrogHabitat, FrogTarget } from './frogSpawning';
 export const frogAvatarEscapeDistance = 1.45;
 export const frogEscapeRepathCooldownSeconds = 1.2;
 
+export function getFrogFacingYaw({
+    from,
+    to,
+}: {
+    from: { x: number; z: number };
+    to: { x: number; z: number };
+}) {
+    // Frog.glb is authored facing runtime -Z, unlike the +Z convention used by
+    // most animal models. Aim that authored forward axis at the travel target.
+    return Math.atan2(from.x - to.x, from.z - to.z);
+}
+
 export function getFrogDwellSeconds(random: () => number) {
     return 3.5 + random() * 5.5;
 }

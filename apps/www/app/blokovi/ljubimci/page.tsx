@@ -18,7 +18,7 @@ import { GardenPetsIntro } from './GardenPetsIntro';
 import { OtherGardenResidents } from './OtherGardenResidents';
 
 const pageDescription =
-    'Zeca, kravu i kozu postavljaš izravno u vrt, dok pas, mačka, kokoš i praščić stižu sa svojim blokom i sami se brinu za svoj dan.';
+    'Svaki ljubimac stiže u vrt sa svojim domom ili sigurnim početnim mjestom, a zatim sam istražuje okolicu i brine se za svoj dan.';
 
 export const revalidate = 43200; // 12 hours
 

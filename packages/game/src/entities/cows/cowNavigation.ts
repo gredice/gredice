@@ -12,6 +12,7 @@ import {
     getAnimalMovementYAt,
 } from '../animals/animalMovementTerrain';
 import { type CatPathResult, findCatPath } from '../cats/catPathfinding';
+import { getPersistentPetHomePlacement } from '../persistentPets/persistentPetHomes';
 import {
     type CowBehavior,
     getCowDwellSeconds,
@@ -104,19 +105,23 @@ function addBlockedCell(
 }
 
 function createCowNavigationBlockedCells({
+    blockData,
     homeCells,
+    preserveHomeFootprint,
     stacks,
     surfaces,
 }: {
+    blockData: BlockData[] | null | undefined;
     homeCells: AnimalMovementCell[];
+    preserveHomeFootprint: boolean;
     stacks: Stack[] | undefined;
     surfaces: AnimalMovementSurface[];
 }) {
     const blockedByKey = new Map<string, AnimalMovementCell>();
     const homeKeys = new Set(homeCells.map(cellKey));
-    const obstacleCells = createAnimalBlockedCells(stacks).filter(
-        (cell) => !homeKeys.has(cellKey(cell)),
-    );
+    const obstacleCells = createAnimalBlockedCells(stacks, {
+        blockData,
+    }).filter((cell) => !homeKeys.has(cellKey(cell)));
 
     for (const obstacle of obstacleCells) {
         for (let x = obstacle.x - 1; x <= obstacle.x + 1; x += 1) {
@@ -156,8 +161,12 @@ function createCowNavigationBlockedCells({
         addBlockedCell(blockedByKey, maxX + 1, z);
     }
 
-    for (const homeKey of homeKeys) {
-        blockedByKey.delete(homeKey);
+    for (const homeCell of homeCells) {
+        if (preserveHomeFootprint) {
+            blockedByKey.set(cellKey(homeCell), homeCell);
+        } else {
+            blockedByKey.delete(cellKey(homeCell));
+        }
     }
     return [...blockedByKey.values()];
 }
@@ -186,31 +195,66 @@ export function createCowHabitat({
         stacks,
         swimDepth: 0,
     });
-    const placementCenter = getCowPlacementCenter({
-        rotation: block.rotation,
-        x: stack.position.x,
-        z: stack.position.z,
-    });
+    const shelterPlacement =
+        block.name === 'CowShelter'
+            ? getPersistentPetHomePlacement({
+                  blockName: 'CowShelter',
+                  rotation: block.rotation,
+                  x: stack.position.x,
+                  z: stack.position.z,
+              })
+            : null;
+    const placementCenter =
+        shelterPlacement?.center ??
+        getCowPlacementCenter({
+            rotation: block.rotation,
+            x: stack.position.x,
+            z: stack.position.z,
+        });
     const normalizedRotation = ((Math.round(block.rotation) % 2) + 2) % 2;
-    const homeCells = [
-        { x: stack.position.x, z: stack.position.z },
-        normalizedRotation === 0
-            ? { x: stack.position.x, z: stack.position.z + 1 }
-            : { x: stack.position.x + 1, z: stack.position.z },
-    ];
+    const homeCells = shelterPlacement
+        ? Array.from(
+              {
+                  length:
+                      shelterPlacement.spanWidth * shelterPlacement.spanDepth,
+              },
+              (_, index) => ({
+                  x: stack.position.x + (index % shelterPlacement.spanWidth),
+                  z:
+                      stack.position.z +
+                      Math.floor(index / shelterPlacement.spanWidth),
+              }),
+          )
+        : [
+              { x: stack.position.x, z: stack.position.z },
+              normalizedRotation === 0
+                  ? { x: stack.position.x, z: stack.position.z + 1 }
+                  : { x: stack.position.x + 1, z: stack.position.z },
+          ];
+    const homeAnchor = shelterPlacement?.doorway ?? placementCenter;
+    const homeSurface = getAnimalMovementSurfaceAt(homeAnchor, groundSurfaces);
     const homePosition = new Vector3(
-        placementCenter.x,
-        Math.max(0, getStackHeight(blockData, stack, block) + cowGroundLift),
-        placementCenter.z,
+        homeAnchor.x,
+        homeSurface?.kind === 'ground'
+            ? Math.max(cowGroundLift, homeSurface.y)
+            : Math.max(
+                  0,
+                  getStackHeight(blockData, stack, block) + cowGroundLift,
+              ),
+        homeAnchor.z,
     );
     const home = {
         behavior: 'idle',
-        facingYaw: block.rotation * (Math.PI / 2) + Math.PI,
+        facingYaw:
+            shelterPlacement?.facingYaw ??
+            block.rotation * (Math.PI / 2) + Math.PI,
         id: `home-${block.id}`,
         position: homePosition,
     } satisfies CowTarget;
     const blockedCells = createCowNavigationBlockedCells({
+        blockData,
         homeCells,
+        preserveHomeFootprint: shelterPlacement !== null,
         stacks,
         surfaces: groundSurfaces,
     });
@@ -238,7 +282,7 @@ export function createCowHabitat({
         home,
         id: `cow:${block.id}`,
         roamAnchors,
-        seed: hashCowSeed(`Cow:${block.id}`),
+        seed: hashCowSeed(`${block.name}:${block.id}`),
     } satisfies CowHabitat;
 }
 

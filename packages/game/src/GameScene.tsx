@@ -30,12 +30,19 @@ import {
     EntityInstances,
     instancedBlockNames,
 } from './entities/EntityInstances';
-import { Chickens, Piglets, Sheep } from './entities/farmAnimals/FarmAnimals';
+import {
+    Chickens,
+    Goats,
+    LegacySheep,
+    Piglets,
+    Sheep,
+} from './entities/farmAnimals/FarmAnimals';
 import { isFenceGateBlockName } from './entities/fenceConnections';
 import { getToggledFenceGateVariant } from './entities/fenceGateState';
 import { Frogs } from './entities/frogs/Frogs';
 import { PlacementGroundingShadows } from './entities/helpers/PlacementGroundingShadows';
 import { Ladybugs } from './entities/ladybugs/Ladybugs';
+import { HomeSpawnedPersistentPets } from './entities/persistentPets/HomeSpawnedPetActors';
 import { RaisedBedMulchOverlays } from './entities/raisedBed/RaisedBedMulchOverlays';
 import {
     SunflowerDropFlyAnimation,
@@ -760,11 +767,26 @@ export function GameScene({
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
                                         />
+                                        <Goats
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
                                         <Sheep
                                             farmId={garden?.farmId}
                                             stacks={garden?.stacks}
                                             weather={weather}
                                             weatherDisabled={weatherDisabled}
+                                        />
+                                        <LegacySheep
+                                            farmId={garden?.farmId}
+                                            stacks={garden?.stacks}
+                                            weather={weather}
+                                            weatherDisabled={weatherDisabled}
+                                        />
+                                        <HomeSpawnedPersistentPets
+                                            stacks={garden?.stacks}
                                         />
                                     </Suspense>
                                 )}

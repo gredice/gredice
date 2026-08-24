@@ -40,6 +40,7 @@ export function WeatheredEntityPart({
             receiveShadow={receiveShadow}
             rotation={node.rotation}
             scale={node.scale}
+            visible={node.visible}
         >
             {children}
             {snow ? <SnowOverlay geometry={node.geometry} {...snow} /> : null}

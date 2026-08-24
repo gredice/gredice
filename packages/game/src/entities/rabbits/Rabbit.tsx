@@ -27,6 +27,10 @@ import {
     getAnimalMovementSurfaceAt,
 } from '../animals/animalMovementTerrain';
 import {
+    createPersistentPetHomeBlockedCells,
+    getPersistentPetHomePlacement,
+} from '../persistentPets/persistentPetHomes';
+import {
     getRabbitDwellSeconds,
     pickRabbitSettledBehavior,
     type RabbitSettledBehavior,
@@ -402,14 +406,29 @@ export function Rabbit({
     const runtimeRef = useRef<RabbitRuntimeState | null>(null);
     const nextFleeAttemptAtRef = useRef(Number.NEGATIVE_INFINITY);
     const randomRef = useRef(createRandom(hashString(block.id)));
-    const home = useMemo(
+    const homePlacement =
+        block.name === 'RabbitHutch'
+            ? getPersistentPetHomePlacement({
+                  blockName: 'RabbitHutch',
+                  rotation,
+                  x: stack.position.x,
+                  z: stack.position.z,
+              })
+            : null;
+    const homeAnchor = useMemo(
         () =>
             new ThreeVector3(
-                stack.position.x,
+                homePlacement?.doorway.x ?? stack.position.x,
                 currentStackHeight + rabbitGroundLift,
-                stack.position.z,
+                homePlacement?.doorway.z ?? stack.position.z,
             ),
-        [currentStackHeight, stack.position.x, stack.position.z],
+        [
+            currentStackHeight,
+            homePlacement?.doorway.x,
+            homePlacement?.doorway.z,
+            stack.position.x,
+            stack.position.z,
+        ],
     );
     const persistedVariant = resolveRabbitAppearanceVariant(
         block.variant ?? variant,
@@ -446,16 +465,29 @@ export function Rabbit({
         if (surfaces.length === 0) {
             surfaces.push({
                 kind: 'ground',
-                x: home.x,
-                y: home.y,
-                z: home.z,
+                x: homeAnchor.x,
+                y: homeAnchor.y,
+                z: homeAnchor.z,
             });
         }
 
+        const home = homeAnchor.clone();
+        const homeSurface = getAnimalMovementSurfaceAt(home, surfaces);
+        if (homeSurface?.kind === 'ground') {
+            home.y = Math.max(rabbitGroundLift, homeSurface.y);
+        }
         const homeCellKey = cellKey(home);
-        const blockedCells = createAnimalBlockedCells(stacks).filter(
-            (cell) => cellKey(cell) !== homeCellKey,
-        );
+        const blockedCells =
+            block.name === 'RabbitHutch'
+                ? createPersistentPetHomeBlockedCells({
+                      block,
+                      blockData,
+                      stack,
+                      stacks,
+                  })
+                : createAnimalBlockedCells(stacks, { blockData }).filter(
+                      (cell) => cellKey(cell) !== homeCellKey,
+                  );
         const blockedKeys = new Set(blockedCells.map(cellKey));
         const candidates = surfaces
             .filter(
@@ -465,8 +497,9 @@ export function Rabbit({
             )
             .map(({ x, y, z }) => ({ x, y, z }));
 
-        return { blockedCells, candidates, groundSurfaces: surfaces };
-    }, [blockData, home, stacks]);
+        return { blockedCells, candidates, groundSurfaces: surfaces, home };
+    }, [block, blockData, homeAnchor, stack, stacks]);
+    const home = habitat.home;
     const updateActorGroundingShadow = useActorGroundingShadow({
         id: `rabbit:${block.id}`,
         primaryCasterCount: rabbitModel.primaryCasterCount,
@@ -479,14 +512,14 @@ export function Rabbit({
             return;
         }
         group.position.copy(home);
-        group.rotation.y = rotation * (Math.PI / 2);
+        group.rotation.y = homePlacement?.facingYaw ?? rotation * (Math.PI / 2);
         runtimeRef.current = makeSettledState(
             randomRef.current,
             clock.getElapsedTime(),
             'sniff',
         );
         nextFleeAttemptAtRef.current = Number.NEGATIVE_INFINITY;
-    }, [clock, home, rotation]);
+    }, [clock, home, homePlacement?.facingYaw, rotation]);
 
     useEffect(
         () => () => {

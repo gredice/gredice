@@ -1,9 +1,13 @@
 export const squirrelPopulationCaps = {
-    perGarden: 2,
+    perGarden: 1,
     perHabitat: 1,
 } as const;
 
-export const squirrelRespawnCooldownMs = 45_000;
+export const squirrelRespawnCooldownMs = 4 * 60_000;
+export const squirrelVisitDurationRangeSeconds = {
+    max: 65,
+    min: 35,
+} as const;
 
 export type SquirrelSpawnHabitat = {
     id: string;
@@ -38,6 +42,26 @@ export function createSquirrelRandom(seed: number) {
         result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
         return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
     };
+}
+
+export function getSquirrelVisitDurationSeconds({
+    habitatSeed,
+    spawnSequence,
+}: {
+    habitatSeed: number;
+    spawnSequence: number;
+}) {
+    const random = createSquirrelRandom(
+        hashSquirrelSeed(
+            `${habitatSeed.toString()}:${spawnSequence.toString()}`,
+        ),
+    );
+    return (
+        squirrelVisitDurationRangeSeconds.min +
+        random() *
+            (squirrelVisitDurationRangeSeconds.max -
+                squirrelVisitDurationRangeSeconds.min)
+    );
 }
 
 export function getSquirrelCooldownRemainingMs({

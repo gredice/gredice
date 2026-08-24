@@ -180,8 +180,11 @@ def empty(name: str, location: tuple[float, float, float]) -> bpy.types.Object:
 def parent_keep_transform(
     child: bpy.types.Object, parent: bpy.types.Object
 ) -> None:
+    bpy.context.view_layer.update()
+    world_matrix = child.matrix_world.copy()
     child.parent = parent
-    child.matrix_parent_inverse = parent.matrix_world.inverted()
+    child.matrix_world = world_matrix
+    bpy.context.view_layer.update()
 
 
 def mirror_points(
@@ -236,10 +239,10 @@ def create_butterfly(output: Path) -> None:
     )
 
     root = empty("Butterfly_Root", (0, 0, 0))
-    body_pivot = empty("Butterfly_BodyPivot", (0, 0, 0.34))
-    head_pivot = empty("Butterfly_HeadPivot", (0, 0.39, 0.36))
-    wing_left_pivot = empty("Butterfly_WingPivot_L", (-0.08, 0.04, 0.37))
-    wing_right_pivot = empty("Butterfly_WingPivot_R", (0.08, 0.04, 0.37))
+    body_pivot = empty("Butterfly_BodyPivot", (0, 0, 0.31))
+    head_pivot = empty("Butterfly_HeadPivot", (0, 0.28, 0.32))
+    wing_left_pivot = empty("Butterfly_WingPivot_L", (-0.045, 0.02, 0.32))
+    wing_right_pivot = empty("Butterfly_WingPivot_R", (0.045, 0.02, 0.32))
 
     parent_keep_transform(body_pivot, root)
     parent_keep_transform(head_pivot, body_pivot)
@@ -247,69 +250,69 @@ def create_butterfly(output: Path) -> None:
     parent_keep_transform(wing_right_pivot, body_pivot)
 
     abdomen = add_ico_sphere(
-        "Butterfly_Abdomen", (0, -0.14, 0.34), (0.1, 0.38, 0.1), body_brown
+        "Butterfly_Abdomen", (0, -0.08, 0.31), (0.06, 0.27, 0.06), body_brown
     )
     abdomen_tip = add_ico_sphere(
         "Butterfly_AbdomenTip",
-        (0, -0.48, 0.34),
-        (0.065, 0.14, 0.065),
+        (0, -0.32, 0.31),
+        (0.04, 0.09, 0.04),
         charcoal,
         subdivisions=1,
     )
     thorax = add_ico_sphere(
-        "Butterfly_Thorax", (0, 0.12, 0.36), (0.16, 0.22, 0.15), body_warm
+        "Butterfly_Thorax", (0, 0.08, 0.32), (0.095, 0.14, 0.09), body_warm
     )
     head = add_ico_sphere(
-        "Butterfly_Head", (0, 0.39, 0.37), (0.13, 0.12, 0.13), body_brown
+        "Butterfly_Head", (0, 0.29, 0.33), (0.08, 0.075, 0.08), body_brown
     )
     eye_left = add_ico_sphere(
-        "Butterfly_Eye_L", (-0.105, 0.455, 0.4), (0.045, 0.052, 0.052), charcoal
+        "Butterfly_Eye_L", (-0.062, 0.335, 0.35), (0.027, 0.03, 0.03), charcoal
     )
     eye_right = add_ico_sphere(
-        "Butterfly_Eye_R", (0.105, 0.455, 0.4), (0.045, 0.052, 0.052), charcoal
+        "Butterfly_Eye_R", (0.062, 0.335, 0.35), (0.027, 0.03, 0.03), charcoal
     )
     glint_left = add_ico_sphere(
         "Butterfly_EyeGlint_L",
-        (-0.123, 0.492, 0.424),
-        (0.012, 0.014, 0.014),
+        (-0.071, 0.357, 0.364),
+        (0.008, 0.008, 0.008),
         eye_glint,
         subdivisions=1,
     )
     glint_right = add_ico_sphere(
         "Butterfly_EyeGlint_R",
-        (0.123, 0.492, 0.424),
-        (0.012, 0.014, 0.014),
+        (0.071, 0.357, 0.364),
+        (0.008, 0.008, 0.008),
         eye_glint,
         subdivisions=1,
     )
 
     antenna_left = add_cylinder_between(
         "Butterfly_Antenna_L",
-        (-0.055, 0.48, 0.43),
-        (-0.2, 0.72, 0.56),
-        0.012,
+        (-0.035, 0.34, 0.38),
+        (-0.14, 0.57, 0.49),
+        0.007,
         charcoal,
         vertices=6,
     )
     antenna_right = add_cylinder_between(
         "Butterfly_Antenna_R",
-        (0.055, 0.48, 0.43),
-        (0.2, 0.72, 0.56),
-        0.012,
+        (0.035, 0.34, 0.38),
+        (0.14, 0.57, 0.49),
+        0.007,
         charcoal,
         vertices=6,
     )
     antenna_tip_left = add_ico_sphere(
         "Butterfly_AntennaTip_L",
-        (-0.205, 0.73, 0.565),
-        (0.026, 0.035, 0.026),
+        (-0.142, 0.58, 0.495),
+        (0.016, 0.021, 0.016),
         body_warm,
         subdivisions=1,
     )
     antenna_tip_right = add_ico_sphere(
         "Butterfly_AntennaTip_R",
-        (0.205, 0.73, 0.565),
-        (0.026, 0.035, 0.026),
+        (0.142, 0.58, 0.495),
+        (0.016, 0.021, 0.016),
         body_warm,
         subdivisions=1,
     )
@@ -317,50 +320,50 @@ def create_butterfly(output: Path) -> None:
     legs: list[bpy.types.Object] = []
     for side, sign in (("L", -1), ("R", 1)):
         for index, (start_y, end_y) in enumerate(
-            ((0.22, 0.35), (0.1, 0.08), (-0.02, -0.2)), start=1
+            ((0.16, 0.27), (0.07, 0.05), (-0.01, -0.14)), start=1
         ):
             leg = add_cylinder_between(
                 f"Butterfly_Leg_{side}{index}",
-                (sign * 0.08, start_y, 0.31),
-                (sign * (0.23 + index * 0.025), end_y, 0.16),
-                0.01,
+                (sign * 0.05, start_y, 0.285),
+                (sign * (0.16 + index * 0.02), end_y, 0.17),
+                0.006,
                 charcoal,
                 vertices=5,
             )
             legs.append(leg)
 
     fore_left_points = [
-        (-0.06, 0.16),
-        (-0.25, 0.58),
-        (-0.72, 0.72),
-        (-0.86, 0.37),
-        (-0.66, 0.02),
-        (-0.2, -0.03),
+        (-0.04, 0.12),
+        (-0.3, 0.64),
+        (-0.82, 0.83),
+        (-0.99, 0.43),
+        (-0.75, 0.0),
+        (-0.14, -0.04),
     ]
     hind_left_points = [
-        (-0.08, 0.08),
-        (-0.3, -0.05),
-        (-0.69, -0.12),
-        (-0.75, -0.5),
-        (-0.42, -0.62),
-        (-0.15, -0.35),
+        (-0.05, 0.06),
+        (-0.35, -0.08),
+        (-0.79, -0.17),
+        (-0.86, -0.58),
+        (-0.48, -0.72),
+        (-0.11, -0.38),
     ]
     edge_left_points = [
-        (-0.53, 0.07),
-        (-0.72, 0.25),
-        (-0.81, 0.4),
-        (-0.7, 0.62),
-        (-0.57, 0.68),
-        (-0.67, 0.42),
-        (-0.57, 0.18),
+        (-0.6, 0.05),
+        (-0.83, 0.28),
+        (-0.93, 0.46),
+        (-0.8, 0.71),
+        (-0.65, 0.78),
+        (-0.77, 0.48),
+        (-0.65, 0.19),
     ]
     band_left_points = [
-        (-0.2, 0.08),
-        (-0.35, 0.46),
-        (-0.47, 0.53),
-        (-0.38, 0.1),
-        (-0.25, -0.28),
-        (-0.17, -0.23),
+        (-0.13, 0.06),
+        (-0.4, 0.52),
+        (-0.54, 0.61),
+        (-0.43, 0.1),
+        (-0.29, -0.32),
+        (-0.12, -0.26),
     ]
 
     wing_objects: list[bpy.types.Object] = []
@@ -369,7 +372,7 @@ def create_butterfly(output: Path) -> None:
         ("R", mirror_points(fore_left_points), wing_right_pivot),
     ):
         wing = add_wing_polygon(
-            f"Butterfly_WingFore_{side}", points, 0.37, wing_primary
+            f"Butterfly_WingFore_{side}", points, 0.32, wing_primary
         )
         parent_keep_transform(wing, pivot)
         wing_objects.append(wing)
@@ -378,7 +381,7 @@ def create_butterfly(output: Path) -> None:
         ("R", mirror_points(hind_left_points), wing_right_pivot),
     ):
         wing = add_wing_polygon(
-            f"Butterfly_WingHind_{side}", points, 0.365, wing_secondary
+            f"Butterfly_WingHind_{side}", points, 0.315, wing_secondary
         )
         parent_keep_transform(wing, pivot)
         wing_objects.append(wing)
@@ -387,7 +390,7 @@ def create_butterfly(output: Path) -> None:
         ("R", mirror_points(edge_left_points), wing_right_pivot),
     ):
         edge = add_wing_polygon(
-            f"Butterfly_WingEdge_{side}", points, 0.386, wing_edge, thickness=0.012
+            f"Butterfly_WingEdge_{side}", points, 0.336, wing_edge, thickness=0.012
         )
         parent_keep_transform(edge, pivot)
         wing_objects.append(edge)
@@ -396,7 +399,7 @@ def create_butterfly(output: Path) -> None:
         ("R", mirror_points(band_left_points), wing_right_pivot),
     ):
         band = add_wing_polygon(
-            f"Butterfly_WingBand_{side}", points, 0.39, wing_band, thickness=0.012
+            f"Butterfly_WingBand_{side}", points, 0.34, wing_band, thickness=0.012
         )
         parent_keep_transform(band, pivot)
         wing_objects.append(band)
@@ -408,22 +411,22 @@ def create_butterfly(output: Path) -> None:
         outer_spots = [
             add_ico_sphere(
                 f"Butterfly_WingSpotOuter_{side}_{index}",
-                (sign * x, y, 0.405),
-                (0.065, 0.095, 0.012),
+                (sign * x, y, 0.355),
+                (0.07, 0.105, 0.012),
                 wing_spot,
                 subdivisions=1,
             )
-            for index, (x, y) in enumerate(((0.63, 0.49), (0.55, -0.3)), start=1)
+            for index, (x, y) in enumerate(((0.72, 0.56), (0.63, -0.35)), start=1)
         ]
         inner_spots = [
             add_ico_sphere(
                 f"Butterfly_WingSpotInner_{side}_{index}",
-                (sign * x, y, 0.406),
-                (0.045, 0.065, 0.012),
+                (sign * x, y, 0.356),
+                (0.05, 0.072, 0.012),
                 wing_spot,
                 subdivisions=1,
             )
-            for index, (x, y) in enumerate(((0.34, 0.3), (0.31, -0.16)), start=1)
+            for index, (x, y) in enumerate(((0.39, 0.34), (0.35, -0.18)), start=1)
         ]
         outer = join_objects(outer_spots, f"Butterfly_WingSpotOuter_{side}")
         inner = join_objects(inner_spots, f"Butterfly_WingSpotInner_{side}")

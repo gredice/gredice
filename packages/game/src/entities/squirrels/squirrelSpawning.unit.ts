@@ -4,9 +4,11 @@ import {
     createSquirrelRandom,
     createSquirrelSpawnPlan,
     getSquirrelCooldownRemainingMs,
+    getSquirrelVisitDurationSeconds,
     reconcileSquirrelCooldowns,
     type SquirrelSpawnCooldown,
     squirrelRespawnCooldownMs,
+    squirrelVisitDurationRangeSeconds,
 } from './squirrelSpawning';
 
 const habitats = [
@@ -37,11 +39,11 @@ describe('seeded squirrel spawning', () => {
             now: 99_000,
         });
 
-        assert.equal(firstPlan.length, 2);
+        assert.equal(firstPlan.length, 1);
         assert.deepEqual(secondPlan, firstPlan);
         assert.equal(
             new Set(firstPlan.map((spawn) => spawn.habitatId)).size,
-            2,
+            1,
         );
     });
 
@@ -64,7 +66,7 @@ describe('seeded squirrel spawning', () => {
             habitats,
             now: 1_000 + squirrelRespawnCooldownMs - 1,
         });
-        assert.equal(coolingPlan.length, 1);
+        assert.equal(coolingPlan.length, 0);
         assert.equal(
             coolingPlan.some(
                 (spawn) => spawn.habitatId === despawned.habitatId,
@@ -85,7 +87,7 @@ describe('seeded squirrel spawning', () => {
             habitats,
             now: 1_000 + squirrelRespawnCooldownMs,
         });
-        assert.equal(recoveredPlan.length, 2);
+        assert.equal(recoveredPlan.length, 1);
         assert.deepEqual(
             recoveredPlan.map((spawn) => spawn.habitatId),
             initial.map((spawn) => spawn.habitatId),
@@ -109,5 +111,24 @@ describe('seeded squirrel spawning', () => {
         });
 
         assert.deepEqual(Array.from(reconciled.keys()), ['oak']);
+    });
+
+    it('uses short deterministic visits separated by a much longer absence', () => {
+        const first = getSquirrelVisitDurationSeconds({
+            habitatSeed: 42,
+            spawnSequence: 1,
+        });
+        const replay = getSquirrelVisitDurationSeconds({
+            habitatSeed: 42,
+            spawnSequence: 1,
+        });
+
+        assert.equal(first, replay);
+        assert.ok(first >= squirrelVisitDurationRangeSeconds.min);
+        assert.ok(first <= squirrelVisitDurationRangeSeconds.max);
+        assert.ok(
+            squirrelRespawnCooldownMs / 1000 >
+                squirrelVisitDurationRangeSeconds.max * 3,
+        );
     });
 });

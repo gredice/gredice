@@ -3,14 +3,18 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+    butterflyFlowerApproachProbability,
+    butterflyFlowerOrbitRadius,
     butterflyPopulationLimits,
     butterflyWingVariants,
     canSpawnButterfly,
+    createButterflyFlowerOrbitOffset,
     createButterflySpawnDescriptor,
     createSeededButterflyRandom,
     getButterflyAvatarAvoidanceOffset,
     getButterflyLifecycleDecision,
     isButterflyActive,
+    shouldButterflyApproachFlower,
 } from './butterflyBehavior';
 
 const clearWeather = {
@@ -212,5 +216,26 @@ describe('butterfly behavior', () => {
         assert.ok(nearby.x > 0);
         assert.ok(nearby.y > 0);
         assert.deepEqual(distant, { x: 0, y: 0, z: 0 });
+    });
+
+    it('keeps meanders flower-adjacent and strongly favors flower visits', () => {
+        const minimum = createButterflyFlowerOrbitOffset(() => 0);
+        const maximum = createButterflyFlowerOrbitOffset(() => 0.999);
+
+        assert.ok(
+            Math.hypot(minimum.x, minimum.z) >= butterflyFlowerOrbitRadius.min,
+        );
+        assert.ok(
+            Math.hypot(maximum.x, maximum.z) <= butterflyFlowerOrbitRadius.max,
+        );
+        assert.equal(
+            shouldButterflyApproachFlower(() => 0.89),
+            true,
+        );
+        assert.equal(
+            shouldButterflyApproachFlower(() => 0.91),
+            false,
+        );
+        assert.equal(butterflyFlowerApproachProbability, 0.9);
     });
 });

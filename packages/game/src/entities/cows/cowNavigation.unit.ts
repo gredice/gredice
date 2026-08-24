@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
+import { getLocalSandboxBlockData } from '../../localSandboxBlockData';
 import type { Stack } from '../../types/Stack';
 import {
     type CowHabitat,
@@ -131,5 +132,57 @@ describe('cow navigation', () => {
             habitat.blockedCells.some((cell) => cell.x === 3 && cell.z === 0),
             true,
         );
+    });
+
+    it('starts a shelter cow at the doorway while blocking the whole two-by-two home', () => {
+        const homeStack = stack(0, 0, ['Block_Grass', 'CowShelter']);
+        const homeBlock = homeStack.blocks[1];
+        assert.ok(homeBlock);
+        const grassInFront = [
+            stack(1, 0, ['Block_Grass']),
+            stack(0, -1, ['Block_Grass']),
+            stack(1, -1, ['Block_Grass']),
+            stack(1, -2, ['Block_Grass']),
+        ];
+        const habitat = createCowHabitat({
+            block: homeBlock,
+            blockData: getLocalSandboxBlockData(),
+            stack: homeStack,
+            stacks: [homeStack, ...grassInFront],
+        });
+
+        assert.deepEqual(
+            habitat.home.position
+                .toArray()
+                .map((coordinate) => Math.round(coordinate * 1_000) / 1_000),
+            [0.5, 0.425, -0.25],
+        );
+        assert.equal(habitat.home.facingYaw, Math.PI);
+        for (const cell of [
+            { x: 0, z: 0 },
+            { x: 0, z: 1 },
+            { x: 1, z: 0 },
+            { x: 1, z: 1 },
+        ]) {
+            assert.equal(
+                habitat.blockedCells.some(
+                    (blocked) => blocked.x === cell.x && blocked.z === cell.z,
+                ),
+                true,
+            );
+        }
+
+        const runtime = resolveCowRuntimeForTarget({
+            from: habitat.home.position,
+            habitat,
+            now: 0,
+            random: () => 0,
+            target: {
+                behavior: 'roam',
+                id: 'outside-shelter',
+                position: new Vector3(1, 0.425, -2),
+            },
+        });
+        assert.equal(runtime.phase, 'moving');
     });
 });
