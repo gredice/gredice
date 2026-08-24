@@ -6,9 +6,22 @@ import LoginModal from './LoginModal';
 
 export function TemporaryAccountLoginModal() {
     const [open, setOpen] = useState(false);
+    const [requestedByUrl, setRequestedByUrl] = useState(false);
 
     useEffect(() => {
-        function handleLoginRequested() {
+        const requested =
+            new URL(window.location.href).searchParams.get('prijava') === '1';
+        if (!requested) {
+            return;
+        }
+
+        setRequestedByUrl(true);
+        setOpen(true);
+    }, []);
+
+    useEffect(() => {
+        function handleLoginRequested(event: Event) {
+            event.preventDefault();
             setOpen(true);
         }
 
@@ -23,12 +36,28 @@ export function TemporaryAccountLoginModal() {
             );
     }, []);
 
+    function handleOpenChange(nextOpen: boolean) {
+        setOpen(nextOpen);
+        if (nextOpen || !requestedByUrl) {
+            return;
+        }
+
+        const url = new URL(window.location.href);
+        url.searchParams.delete('prijava');
+        setRequestedByUrl(false);
+        window.history.replaceState(
+            window.history.state,
+            '',
+            `${url.pathname}${url.search}${url.hash}`,
+        );
+    }
+
     return (
         <LoginModal
             defaultTab="login"
             description="Prijavi se kako bi otvorio postojeći vrt. Napredak iz privremenog vrta ostat će spremljen na tvom računu."
             dismissible
-            onOpenChange={setOpen}
+            onOpenChange={handleOpenChange}
             open={open}
             showBanner={false}
             title="Prijava u postojeći vrt"

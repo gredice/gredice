@@ -433,6 +433,21 @@ test('signed-out landing creates a temporary account and shows the playable HUD'
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
+test('opens and clears a cross-app temporary login request from the URL', async ({
+    page,
+}) => {
+    await mockGardenApi(page, false);
+
+    const response = await page.goto('/?prijava=1');
+
+    expect(response?.ok()).toBe(true);
+    await expect(
+        page.getByRole('dialog', { name: 'Prijava u postojeći vrt' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Zatvori' }).click();
+    await expect(page).toHaveURL('/');
+});
+
 test('returning user with an expired session sees login before a temporary garden is created', async ({
     page,
 }) => {
