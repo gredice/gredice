@@ -18,6 +18,7 @@ import {
 } from './ItemsHudStory';
 
 const TABLET_VIEWPORT = { width: 820, height: 1180 };
+const MOBILE_VIEWPORT = { width: 390, height: 844 };
 const SHORT_MOBILE_VIEWPORT = { width: 414, height: 420 };
 const newBlockCatalogItems = [
     { label: 'Kućica za zeca', price: 350, picker: 'Ljubimci' },
@@ -1189,6 +1190,38 @@ test('horse placement requires and persists one explicit coat variant', async ({
         variant: 4,
     });
     await expect(coatPicker).toHaveCount(0);
+});
+
+test('horse coat picker uses the mobile viewport without overflowing its controls', async ({
+    mount,
+    page,
+}) => {
+    await page.setViewportSize(MOBILE_VIEWPORT);
+    await mount(<HorseItemsHudStory />);
+    await page.getByRole('button', { name: 'Dekoracija' }).click();
+    await page.getByRole('button', { name: 'Ljubimci' }).click();
+    await page.getByRole('button', { name: 'Staja za konja' }).click();
+
+    const coatPicker = page.getByRole('group', { name: 'Boja dlake' });
+    const details = coatPicker.locator(
+        'xpath=ancestor::*[@data-items-hud-surface="true"][1]',
+    );
+    await expect(details).toBeVisible();
+
+    const detailsBox = await details.boundingBox();
+    expect(detailsBox).not.toBeNull();
+    expect(detailsBox?.width ?? 0).toBeGreaterThan(320);
+    expect(detailsBox?.x ?? 0).toBeGreaterThanOrEqual(0);
+    expect((detailsBox?.x ?? 0) + (detailsBox?.width ?? 0)).toBeLessThanOrEqual(
+        MOBILE_VIEWPORT.width,
+    );
+
+    const controlsFit = await coatPicker
+        .locator('label')
+        .evaluateAll((labels) =>
+            labels.every((label) => label.scrollWidth <= label.clientWidth),
+        );
+    expect(controlsFit).toBe(true);
 });
 
 test('horse drag placement is unavailable until a coat is selected and carries it', async ({

@@ -1050,14 +1050,14 @@ function HorseCoatPicker({
     onChange: (variant: HorseAppearanceVariant) => void;
 }) {
     return (
-        <fieldset className="grid gap-2">
+        <fieldset className="grid min-w-0 gap-2">
             <legend className="mb-1 text-sm font-semibold">Boja dlake</legend>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid min-w-0 grid-cols-2 gap-2">
                 {horseAppearanceVariants.variants.map((variant) => (
                     <label
                         key={variant.id}
                         className={cx(
-                            'flex cursor-pointer items-center gap-2 rounded-lg border p-2 text-xs transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
+                            'flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded-lg border p-2 text-xs transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2',
                             selectedVariant === variant.value
                                 ? 'border-primary bg-primary/10'
                                 : 'border-border hover:bg-primary/5',
@@ -1078,7 +1078,12 @@ function HorseCoatPicker({
                                 background: `linear-gradient(135deg, ${variant.coatColor} 0 64%, ${variant.maneColor} 64%)`,
                             }}
                         />
-                        <span>{variant.label}</span>
+                        <span
+                            className="min-w-0 truncate"
+                            title={variant.label}
+                        >
+                            {variant.label}
+                        </span>
                     </label>
                 ))}
             </div>
@@ -1126,7 +1131,12 @@ function EntityItem({
                 sideOffset={12}
                 onOpenChange={(open) => setOpen(open)}
                 data-items-hud-surface="true"
-                className="w-fit p-2 max-w-xs md:w-80 border-tertiary border-b-4"
+                className={cx(
+                    'border-tertiary border-b-4 p-2',
+                    isHorse
+                        ? 'w-[calc(100vw-1rem)] max-w-md'
+                        : 'w-fit max-w-xs md:w-80',
+                )}
                 trigger={
                     <IconButton
                         aria-label={displayLabel}
@@ -1149,15 +1159,18 @@ function EntityItem({
                 }
             >
                 <Stack>
-                    <Row spacing={4} alignItems="start">
+                    <Row spacing={isHorse ? 2 : 4} alignItems="start">
                         <BlockImage
                             blockName={name}
                             alt={displayLabel}
                             width={96}
                             height={96}
-                            className="size-24 z-10 border rounded-lg"
+                            className={cx(
+                                'z-10 shrink-0 rounded-lg border',
+                                isHorse ? 'size-16 sm:size-24' : 'size-24',
+                            )}
                         />
-                        <Stack spacing={2} className="w-full">
+                        <Stack spacing={2} className="w-full min-w-0">
                             <Typography semiBold>{displayLabel}</Typography>
                             <Typography level="body2">
                                 {block.information.shortDescription}
