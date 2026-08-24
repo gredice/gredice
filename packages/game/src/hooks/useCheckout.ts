@@ -5,6 +5,9 @@ import {
     useShoppingCartOpenParam,
 } from '../useUrlState';
 
+export const temporaryAccountUpgradeRequiredEvent =
+    'gredice:temporary-account-upgrade-required';
+
 export interface CheckoutData {
     cartId: number;
     deliveryInfo?: {
@@ -22,26 +25,36 @@ export interface CheckoutData {
 
 type CheckoutResult =
     | { kind: 'completed-in-app' }
+    | { kind: 'upgrade-required' }
     | { kind: 'stripe'; url: string };
 
-async function getCheckoutErrorMessage(response: Response) {
+async function getCheckoutError(response: Response) {
     try {
         const responseData: unknown = await response.json();
-        if (
-            responseData &&
-            typeof responseData === 'object' &&
-            'error' in responseData &&
-            typeof responseData.error === 'string' &&
-            responseData.error.trim()
-        ) {
-            return responseData.error;
+        if (responseData && typeof responseData === 'object') {
+            const errorCode =
+                'errorCode' in responseData &&
+                typeof responseData.errorCode === 'string'
+                    ? responseData.errorCode
+                    : undefined;
+            const message =
+                'error' in responseData &&
+                typeof responseData.error === 'string' &&
+                responseData.error.trim()
+                    ? responseData.error
+                    : undefined;
+
+            return { errorCode, message };
         }
     } catch {
         // The fallback also covers non-JSON gateway responses.
     }
 
-    return 'Nije moguće pokrenuti plaćanje. Provjeri košaricu i pokušaj ponovno.';
+    return {};
 }
+
+const defaultCheckoutErrorMessage =
+    'Nije moguće pokrenuti plaćanje. Provjeri košaricu i pokušaj ponovno.';
 
 // Type guard to check if delivery selection is complete
 export function isCompleteDeliverySelection(
@@ -62,6 +75,14 @@ export function isCompleteDeliverySelection(
     );
 }
 
+export function requestTemporaryAccountUpgrade() {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    window.dispatchEvent(new CustomEvent(temporaryAccountUpgradeRequiredEvent));
+}
+
 export function useCheckout() {
     const queryClient = useQueryClient();
     const [, setShoppingCartOpen] = useShoppingCartOpenParam();
@@ -74,7 +95,15 @@ export function useCheckout() {
                     json: data,
                 });
             if (!response.ok) {
-                throw new Error(await getCheckoutErrorMessage(response));
+                const checkoutError = await getCheckoutError(response);
+                if (checkoutError.errorCode === 'upgrade_required') {
+                    requestTemporaryAccountUpgrade();
+                    return { kind: 'upgrade-required' };
+                }
+
+                throw new Error(
+                    checkoutError.message ?? defaultCheckoutErrorMessage,
+                );
             }
 
             const responseData = await response.json();
@@ -97,6 +126,10 @@ export function useCheckout() {
             return { kind: 'stripe', url: responseData.url };
         },
         onSuccess: (result) => {
+            if (result.kind === 'upgrade-required') {
+                return;
+            }
+
             if (result.kind === 'stripe') {
                 window.location.href = result.url;
                 return;

@@ -183,8 +183,23 @@ async function mockOutletGardenApi(page: Page) {
         const request = route.request();
         const { pathname, searchParams } = new URL(request.url());
 
-        if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+        if (
+            !['GET', 'HEAD', 'OPTIONS'].includes(request.method()) &&
+            !pathname.endsWith('/api/auth/temporary')
+        ) {
             mutationRequests.push(`${request.method()} ${pathname}`);
+        }
+
+        if (
+            pathname.endsWith('/api/auth/temporary') &&
+            request.method() === 'POST'
+        ) {
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
         }
 
         if (pathname.endsWith('/api/auth/current-claims')) {

@@ -13,10 +13,11 @@ import { Mail } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
+import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
     type GardenOAuthProvider,
     getGardenOAuthStartUrl,
@@ -25,13 +26,21 @@ import { EmailPasswordForm } from './EmailPasswordForm';
 import LoginBanner from './LoginBanner';
 
 type AuthTab = 'login' | 'register';
+type RegistrationSuccessHref =
+    | '/prijava/registracija-uspijesna'
+    | '/prijava/registracija-uspijesna?upgrade=1';
 
 export type LoginModalProps = {
+    defaultTab?: AuthTab;
+    description?: ReactNode;
     dismissible?: boolean;
     onAuthenticated?: () => void;
     onOpenChange?: (open: boolean) => void;
     open?: boolean;
+    registrationSuccessHref?: RegistrationSuccessHref;
     returnTo?: string;
+    showBanner?: boolean;
+    title?: string;
 };
 
 const authContentTransitionClassName =
@@ -42,17 +51,22 @@ const authContentDirectionClassNames = {
 };
 
 export default function LoginModal({
+    defaultTab = 'login',
+    description,
     dismissible = false,
     onAuthenticated,
     onOpenChange,
     open = true,
+    registrationSuccessHref = '/prijava/registracija-uspijesna',
     returnTo = '/',
+    showBanner = true,
+    title = 'Prijava',
 }: LoginModalProps = {}) {
     const posthog = usePostHog();
     const router = useRouter();
     const queryClient = useQueryClient();
     const [error, setError] = useState<string>();
-    const [activeTab, setActiveTab] = useState<AuthTab>('login');
+    const [activeTab, setActiveTab] = useState<AuthTab>(defaultTab);
     const [emailExpanded, setEmailExpanded] = useState(false);
     const [shouldAnimateAuthContent, setShouldAnimateAuthContent] =
         useState(false);
@@ -61,6 +75,17 @@ export default function LoginModal({
         [],
     );
     const lastLoginProvider = useLastLoginProvider(fetchLastLogin);
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        setActiveTab(defaultTab);
+        setEmailExpanded(false);
+        setError(undefined);
+        setShouldAnimateAuthContent(false);
+    }, [defaultTab, open]);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -170,7 +195,7 @@ export default function LoginModal({
             return;
         }
 
-        router.push('/prijava/registracija-uspijesna');
+        router.push(registrationSuccessHref);
     };
 
     const handleOAuthLogin = (provider: GardenOAuthProvider) => {
@@ -188,7 +213,7 @@ export default function LoginModal({
 
     function handleOpenChange(nextOpen: boolean) {
         if (!nextOpen) {
-            setActiveTab('login');
+            setActiveTab(defaultTab);
             setEmailExpanded(false);
             setError(undefined);
             setShouldAnimateAuthContent(false);
@@ -215,10 +240,10 @@ export default function LoginModal({
 
     return (
         <>
-            {open ? <LoginBanner /> : null}
+            {open && showBanner ? <LoginBanner /> : null}
             <Modal
                 open={open}
-                title="Prijava"
+                title={title}
                 className="bg-card z-[60] border-tertiary border-b-4 rounded-lg shadow-2xl"
                 dismissible={dismissible}
                 onOpenChange={handleOpenChange}
@@ -236,6 +261,14 @@ export default function LoginModal({
                             </TabsTrigger>
                         </TabsList>
                     </div>
+                    {description && (
+                        <Typography
+                            level="body2"
+                            className="mt-4 text-center text-muted-foreground"
+                        >
+                            {description}
+                        </Typography>
+                    )}
                     <Stack spacing={4} className="mt-4">
                         <div className="w-full">
                             <div

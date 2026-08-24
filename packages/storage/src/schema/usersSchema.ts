@@ -127,6 +127,8 @@ export const users = pgTable(
         whatsNewPopupDisabled: boolean('whats_new_popup_disabled')
             .notNull()
             .default(false),
+        isTemporary: boolean('is_temporary').notNull().default(false),
+        lastActiveAt: timestamp('last_active_at').notNull().defaultNow(),
         farmScheduleGroupedWateringEnabled: boolean(
             'farm_schedule_grouped_watering_enabled',
         )
@@ -143,6 +145,10 @@ export const users = pgTable(
     },
     (table) => [
         index('users_u_username_idx').on(table.userName),
+        index('users_temporary_last_active_idx').on(
+            table.isTemporary,
+            table.lastActiveAt,
+        ),
         index('users_u_default_garden_id_idx').on(table.defaultGardenId),
     ],
 );
@@ -162,7 +168,13 @@ export const usersRelations = relations(users, ({ many }) => ({
 export type InsertUser = typeof users.$inferInsert;
 export type UpdateUserInfo = Omit<
     typeof users.$inferInsert,
-    'id' | 'createdAt' | 'updatedAt' | 'role' | 'defaultGardenId'
+    | 'id'
+    | 'createdAt'
+    | 'updatedAt'
+    | 'role'
+    | 'isTemporary'
+    | 'lastActiveAt'
+    | 'defaultGardenId'
 >;
 export type SelectUser = typeof users.$inferSelect;
 

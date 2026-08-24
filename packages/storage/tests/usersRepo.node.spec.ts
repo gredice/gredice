@@ -3,14 +3,47 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountUsers,
+    aiChatConversations,
+    aiUsageLedger,
+    attachTemporaryAccountsToUser,
+    cleanupInactiveTemporaryAccounts,
+    createEntity,
+    createOrUpdateUserPasswordLogin,
+    createRefreshToken,
+    createTemporaryUserAndAccount,
+    createUserWithPassword,
+    events,
+    gardenVisitStates,
+    getAccountGardensMetadata,
+    getGardenBlocks,
+    getGardenStacks,
+    getRaisedBeds,
     getUsersWithBirthdayOn,
+    listUserFavorites,
+    notificationEmailLog,
+    notifications,
+    promoteTemporaryUser,
+    refreshTokens,
+    setUserFavorite,
     storage,
+    upsertEntityType,
+    userLogins,
     users,
 } from '@gredice/storage';
-import { createTestAccount } from './helpers/testHelpers';
+import { eq } from 'drizzle-orm';
+import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 const TEST_USER_EMAIL = 'birthday@example.com';
+
+async function createFavoriteTarget(entityTypeName: 'plant' | 'plantSort') {
+    await upsertEntityType({
+        name: entityTypeName,
+        label: entityTypeName,
+    });
+
+    return await createEntity(entityTypeName);
+}
 
 test('getUsersWithBirthdayOn returns users with matching birthdays', async () => {
     createTestDb();
@@ -50,4 +83,295 @@ test('getUsersWithBirthdayOn returns users with matching birthdays', async () =>
         !nonMatchingUsers.some((user) => user.id === userId),
         'Unexpectedly found user in non-matching query',
     );
+});
+
+test('createTemporaryUserAndAccount creates temporary sandbox with standard garden layout', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const temporary = await createTemporaryUserAndAccount();
+    const user = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.ok(user);
+    assert.equal(user.isTemporary, true);
+    assert.equal(user.role, 'user');
+    assert.equal(user.userName, temporary.displayName);
+    assert.match(user.userName, /\d{4}$/u);
+    assert.doesNotMatch(user.userName, /@/u);
+
+    const gardens = await getAccountGardensMetadata(temporary.accountId);
+    assert.equal(gardens.length, 1);
+    assert.equal(gardens[0].isSandbox, true);
+    assert.equal(gardens[0].name, 'Vrt za igru');
+
+    const stacks = await getGardenStacks(gardens[0].id);
+    assert.equal(stacks.length, 12);
+
+    const blocks = await getGardenBlocks(gardens[0].id);
+    assert.equal(
+        blocks.filter((block) => block.name === 'Block_Grass').length,
+        12,
+    );
+    assert.equal(
+        blocks.filter((block) => block.name === 'Raised_Bed').length,
+        1,
+    );
+
+    const raisedBeds = await getRaisedBeds(gardens[0].id);
+    assert.equal(raisedBeds.length, 1);
+});
+
+test('promoteTemporaryUser converts a temporary user to email identity', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const temporary = await createTemporaryUserAndAccount();
+    const promotedEmail = `promoted-temp-${randomUUID()}@example.com`;
+    await createOrUpdateUserPasswordLogin(
+        temporary.userId,
+        promotedEmail,
+        'secret-password',
+    );
+
+    await promoteTemporaryUser({
+        userId: temporary.userId,
+        userName: promotedEmail,
+    });
+
+    const user = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.ok(user);
+    assert.equal(user.isTemporary, false);
+    assert.equal(user.userName, promotedEmail);
+
+    const login = await storage().query.userLogins.findFirst({
+        where: eq(userLogins.userId, temporary.userId),
+    });
+    assert.equal(login?.loginId, promotedEmail);
+
+    const gardens = await getAccountGardensMetadata(temporary.accountId);
+    assert.equal(gardens[0].isSandbox, false);
+});
+
+test('attachTemporaryAccountsToUser moves accounts, favorites, and deletes temporary auth rows', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const targetUserId = await createUserWithPassword(
+        `target-${randomUUID()}@example.com`,
+        'secret-password',
+    );
+    const temporary = await createTemporaryUserAndAccount();
+    await createOrUpdateUserPasswordLogin(
+        temporary.userId,
+        `temp-${randomUUID()}@example.com`,
+        'secret-password',
+    );
+    await createRefreshToken(temporary.userId);
+    const plantId = await createFavoriteTarget('plant');
+    const plantSortId = await createFavoriteTarget('plantSort');
+    await setUserFavorite({
+        userId: temporary.userId,
+        entityType: 'plant',
+        entityId: plantId,
+        favorited: true,
+    });
+    const [temporaryGarden] = await getAccountGardensMetadata(
+        temporary.accountId,
+    );
+    const conversationId = randomUUID();
+    const notificationId = randomUUID();
+    await storage().insert(aiChatConversations).values({
+        id: conversationId,
+        accountId: temporary.accountId,
+        userId: temporary.userId,
+        gardenId: temporaryGarden.id,
+    });
+    await storage().insert(aiUsageLedger).values({
+        id: randomUUID(),
+        accountId: temporary.accountId,
+        userId: temporary.userId,
+        conversationId,
+        requestId: randomUUID(),
+        model: 'test-model',
+        usageDate: '2026-08-23',
+        status: 'completed',
+    });
+    await storage().insert(notifications).values({
+        id: notificationId,
+        header: 'Temporary notification',
+        content: 'Temporary content',
+        accountId: temporary.accountId,
+        userId: temporary.userId,
+        timestamp: new Date(),
+    });
+    await storage().insert(notificationEmailLog).values({
+        userId: temporary.userId,
+        notificationId,
+    });
+    await storage().insert(gardenVisitStates).values({
+        userId: temporary.userId,
+        accountId: temporary.accountId,
+        gardenId: temporaryGarden.id,
+    });
+    await storage().insert(events).values({
+        type: 'user.temporary-test',
+        version: 1,
+        aggregateId: temporary.userId,
+        data: null,
+    });
+    await setUserFavorite({
+        userId: temporary.userId,
+        entityType: 'plantSort',
+        entityId: plantSortId,
+        favorited: true,
+    });
+    await setUserFavorite({
+        userId: targetUserId,
+        entityType: 'plantSort',
+        entityId: plantSortId,
+        favorited: true,
+    });
+
+    const attached = await attachTemporaryAccountsToUser({
+        temporaryUserId: temporary.userId,
+        targetUserId,
+    });
+
+    assert.deepEqual(attached.accountIds, [temporary.accountId]);
+
+    const movedLink = await storage().query.accountUsers.findFirst({
+        where: eq(accountUsers.accountId, temporary.accountId),
+    });
+    assert.equal(movedLink?.userId, targetUserId);
+
+    const gardens = await getAccountGardensMetadata(temporary.accountId);
+    assert.equal(gardens[0].isSandbox, false);
+
+    const targetFavorites = await listUserFavorites({ userId: targetUserId });
+    assert.deepEqual(
+        targetFavorites
+            .map((favorite) => `${favorite.entityType}:${favorite.entityId}`)
+            .sort(),
+        [`plant:${plantId}`, `plantSort:${plantSortId}`].sort(),
+    );
+
+    const temporaryFavorites = await listUserFavorites({
+        userId: temporary.userId,
+    });
+    assert.deepEqual(temporaryFavorites, []);
+
+    const deletedTemporaryUser = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.equal(deletedTemporaryUser, undefined);
+
+    const leftoverLogin = await storage().query.userLogins.findFirst({
+        where: eq(userLogins.userId, temporary.userId),
+    });
+    assert.equal(leftoverLogin, undefined);
+
+    const leftoverRefreshToken = await storage().query.refreshTokens.findFirst({
+        where: eq(refreshTokens.userId, temporary.userId),
+    });
+    assert.equal(leftoverRefreshToken, undefined);
+
+    const movedConversation =
+        await storage().query.aiChatConversations.findFirst({
+            where: eq(aiChatConversations.id, conversationId),
+        });
+    assert.equal(movedConversation?.userId, targetUserId);
+    const movedUsage = await storage().query.aiUsageLedger.findFirst({
+        where: eq(aiUsageLedger.conversationId, conversationId),
+    });
+    assert.equal(movedUsage?.userId, targetUserId);
+    const movedNotification = await storage().query.notifications.findFirst({
+        where: eq(notifications.id, notificationId),
+    });
+    assert.equal(movedNotification?.userId, targetUserId);
+    const movedEmailLog = await storage().query.notificationEmailLog.findFirst({
+        where: eq(notificationEmailLog.notificationId, notificationId),
+    });
+    assert.equal(movedEmailLog?.userId, targetUserId);
+    const leftoverVisit = await storage().query.gardenVisitStates.findFirst({
+        where: eq(gardenVisitStates.userId, temporary.userId),
+    });
+    assert.equal(leftoverVisit, undefined);
+    const leftoverUserEvent = await storage().query.events.findFirst({
+        where: eq(events.aggregateId, temporary.userId),
+    });
+    assert.equal(leftoverUserEvent, undefined);
+});
+
+test('createOrUpdateUserPasswordLogin preserves verified login state', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const email = `verified-${randomUUID()}@example.com`;
+    const userId = await createUserWithPassword(email, 'initial-password');
+    const existingLogin = await storage().query.userLogins.findFirst({
+        where: eq(userLogins.userId, userId),
+    });
+    assert.ok(existingLogin);
+    const initialLoginData: unknown = JSON.parse(existingLogin.loginData);
+    assert.ok(
+        typeof initialLoginData === 'object' && initialLoginData !== null,
+    );
+    await storage()
+        .update(userLogins)
+        .set({
+            loginData: JSON.stringify({
+                ...initialLoginData,
+                isVerified: true,
+            }),
+        })
+        .where(eq(userLogins.id, existingLogin.id));
+
+    await createOrUpdateUserPasswordLogin(
+        userId,
+        email,
+        'replacement-password',
+    );
+
+    const updatedLogin = await storage().query.userLogins.findFirst({
+        where: eq(userLogins.id, existingLogin.id),
+    });
+    assert.ok(updatedLogin);
+    const updatedLoginData: unknown = JSON.parse(updatedLogin.loginData);
+    assert.ok(
+        typeof updatedLoginData === 'object' && updatedLoginData !== null,
+    );
+    assert.equal(
+        'isVerified' in updatedLoginData && updatedLoginData.isVerified,
+        true,
+    );
+});
+
+test('cleanupInactiveTemporaryAccounts deletes stale temporary accounts', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const now = new Date('2026-06-18T12:00:00.000Z');
+    const temporary = await createTemporaryUserAndAccount();
+    await createRefreshToken(temporary.userId);
+    await storage()
+        .update(users)
+        .set({ lastActiveAt: new Date('2026-05-01T12:00:00.000Z') })
+        .where(eq(users.id, temporary.userId));
+
+    const result = await cleanupInactiveTemporaryAccounts({
+        now,
+        inactiveDays: 30,
+    });
+
+    assert.equal(result.deletedUsers, 1);
+    assert.equal(result.deletedAccounts, 1);
+    assert.deepEqual(result.failedUserIds, []);
+
+    const deletedTemporaryUser = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.equal(deletedTemporaryUser, undefined);
 });

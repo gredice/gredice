@@ -357,6 +357,7 @@ export function createTestAuthMiddleware({
             user: {
                 id: userId,
                 accountIds: [accountId],
+                isTemporary: false,
                 role: 'user',
             },
         });

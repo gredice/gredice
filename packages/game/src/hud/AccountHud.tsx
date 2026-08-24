@@ -12,6 +12,7 @@ import {
     Joystick,
     LayoutGrid,
     LogOut,
+    Save,
     Sprout,
     User,
 } from '@gredice/ui/icons';
@@ -31,6 +32,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { type GardenViewMode, getGardenViewModeHref } from '../gardenViewMode';
+import { requestTemporaryAccountUpgrade } from '../hooks/useCheckout';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useMarkAllNotificationsRead } from '../hooks/useMarkAllNotificationsRead';
@@ -179,9 +181,38 @@ function ProfileCard({ viewMode }: { viewMode: GardenViewMode }) {
         searchParams.entries(),
     );
 
+    const handleSaveTemporaryAccount = () => {
+        track('game_temporary_account_upgrade_opened', {
+            source: 'profile_menu',
+        });
+        requestTemporaryAccountUpgrade();
+    };
+
     return (
         <DropdownMenuContent className="w-80 p-4" align="end" sideOffset={12}>
             <ProfileInfo />
+            {currentUser?.isTemporary && (
+                <Stack
+                    spacing={2}
+                    className="mt-3 rounded-md bg-primary/10 p-3"
+                >
+                    <Typography level="body3" semiBold>
+                        Privremeni vrt
+                    </Typography>
+                    <Typography level="body3">
+                        Spremi račun za plaćanje i povratak kasnije.
+                    </Typography>
+                    <Button
+                        size="sm"
+                        variant="soft"
+                        fullWidth
+                        startDecorator={<Save className="size-4" />}
+                        onClick={handleSaveTemporaryAccount}
+                    >
+                        Spremi račun
+                    </Button>
+                </Stack>
+            )}
             <DropdownMenuSeparator className="my-4" />
             <GardenAccountMenuItems
                 onGardenOverviewOpen={() => setProfileModalOpen('vrt')}

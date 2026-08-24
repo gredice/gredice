@@ -2,7 +2,8 @@ import { SignedIn, SignedOut } from '@gredice/ui/auth';
 import type { Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
-import LoginModal from '../components/auth/LoginModal';
+import { TemporaryAccountBootstrap } from '../components/auth/TemporaryAccountBootstrap';
+import { TemporaryAccountUpgradeModal } from '../components/auth/TemporaryAccountUpgradeModal';
 import { GameSceneWithAnalytics } from '../components/game/GameSceneWithAnalytics';
 import { GardenRouteLoading } from '../components/game/GardenRouteLoading';
 import { getGardenGameFlags } from './getGardenGameFlags';
@@ -44,18 +45,16 @@ async function GardenHome() {
                 />
             </SignedIn>
             <SignedOut>
-                <GameSceneWithAnalytics
-                    flags={flags}
-                    mockGarden
-                    hideHud
-                    deferDetails
-                />
+                <TemporaryAccountBootstrap>
+                    <GameSceneWithAnalytics
+                        flags={flags}
+                        mockGarden
+                        hideHud
+                        deferDetails
+                    />
+                </TemporaryAccountBootstrap>
             </SignedOut>
-            <SignedOut>
-                <div className="relative h-full">
-                    <LoginModal />
-                </div>
-            </SignedOut>
+            <TemporaryAccountUpgradeModal />
         </div>
     );
 }

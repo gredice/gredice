@@ -11,6 +11,7 @@ type ButtonConfirmPaymentProps = {
     checkout: ReturnType<typeof useCheckout>;
     onConfirm: () => void;
     disabled?: boolean;
+    requiresAccountUpgrade?: boolean;
 };
 
 export function ButtonConfirmPayment({
@@ -18,7 +19,39 @@ export function ButtonConfirmPayment({
     checkout,
     disabled,
     onConfirm,
+    requiresAccountUpgrade,
 }: ButtonConfirmPaymentProps) {
+    const paymentLabel = requiresAccountUpgrade
+        ? 'Spremi račun i plati'
+        : 'Plati';
+    const confirmPaymentLabel = requiresAccountUpgrade
+        ? 'Spremi račun i plati'
+        : 'Potvrdi i plati';
+    const buttonDisabled =
+        disabled ||
+        !cart?.items.length ||
+        checkout.isPending ||
+        !cart?.allowPurchase;
+
+    if (requiresAccountUpgrade) {
+        return (
+            <Button
+                variant="solid"
+                onClick={onConfirm}
+                disabled={buttonDisabled}
+                loading={checkout.isPending}
+                startDecorator={
+                    !cart?.allowPurchase ? (
+                        <Info className="size-5 shrink-0" />
+                    ) : undefined
+                }
+                endDecorator={<Navigate className="size-5 shrink-0" />}
+            >
+                {cart?.totalSunflowers ? confirmPaymentLabel : paymentLabel}
+            </Button>
+        );
+    }
+
     return (
         <>
             {cart?.totalSunflowers ? (
@@ -29,12 +62,7 @@ export function ButtonConfirmPayment({
                     trigger={
                         <Button
                             variant="solid"
-                            disabled={
-                                disabled ||
-                                !cart?.items.length ||
-                                checkout.isPending ||
-                                !cart.allowPurchase
-                            }
+                            disabled={buttonDisabled}
                             loading={checkout.isPending}
                             startDecorator={
                                 !cart?.allowPurchase ? (
@@ -45,7 +73,7 @@ export function ButtonConfirmPayment({
                                 <Navigate className="size-5 shrink-0" />
                             }
                         >
-                            Potvrdi i plati
+                            {confirmPaymentLabel}
                         </Button>
                     }
                 >
@@ -55,12 +83,7 @@ export function ButtonConfirmPayment({
                 <Button
                     variant="solid"
                     onClick={onConfirm}
-                    disabled={
-                        disabled ||
-                        !cart?.items.length ||
-                        checkout.isPending ||
-                        !cart.allowPurchase
-                    }
+                    disabled={buttonDisabled}
                     loading={checkout.isPending}
                     startDecorator={
                         !cart?.allowPurchase ? (
@@ -69,7 +92,7 @@ export function ButtonConfirmPayment({
                     }
                     endDecorator={<Navigate className="size-5 shrink-0" />}
                 >
-                    Plati
+                    {paymentLabel}
                 </Button>
             )}
         </>

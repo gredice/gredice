@@ -134,6 +134,12 @@ export async function revokeRefreshToken(token: string) {
         .where(eq(refreshTokens.id, parsed.tokenId));
 }
 
+export async function deleteRefreshTokensForUser(userId: string) {
+    await storage()
+        .delete(refreshTokens)
+        .where(eq(refreshTokens.userId, userId));
+}
+
 /**
  * Cleanup expired refresh tokens from the database.
  * This should be called periodically (e.g., via a cron job) to prevent

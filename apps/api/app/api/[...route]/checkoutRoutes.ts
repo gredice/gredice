@@ -241,9 +241,22 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
         ),
         async (context) => {
             const checkoutTiming = context.get('checkoutTiming');
-            const { accountId, userId } = context.get('authContext');
+            const {
+                accountId,
+                user: authUser,
+                userId,
+            } = context.get('authContext');
             const { cartId, deliveryInfo, harvestDates } =
                 context.req.valid('json');
+            if (authUser.isTemporary) {
+                return context.json(
+                    {
+                        error: 'Upgrade required before checkout',
+                        errorCode: 'upgrade_required',
+                    },
+                    403,
+                );
+            }
 
             // Retrieve data
             const [account, user, initialCart] = await checkoutTiming.measure(
@@ -1560,9 +1573,23 @@ const app = new Hono<{ Variables: CheckoutVariables }>()
         ),
         zValidator('json', packageCheckoutBodySchema),
         async (context) => {
-            const { accountId, userId } = context.get('authContext');
+            const {
+                accountId,
+                user: authUser,
+                userId,
+            } = context.get('authContext');
             const { code } = context.req.valid('param');
             const { returnContext } = context.req.valid('json');
+
+            if (authUser.isTemporary) {
+                return context.json(
+                    {
+                        error: 'Upgrade required before checkout',
+                        errorCode: 'upgrade_required',
+                    },
+                    403,
+                );
+            }
 
             const [account, user, packages] = await Promise.all([
                 getAccount(accountId),

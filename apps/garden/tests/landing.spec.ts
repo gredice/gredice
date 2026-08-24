@@ -14,7 +14,39 @@ const currentUser = {
     displayName: 'Test User',
     email: 'test@example.com',
     id: 'test-user',
+    isTemporary: false,
     userName: 'test-user',
+};
+
+const temporaryUser = {
+    ...currentUser,
+    displayName: 'Mali Suncokret 4821',
+    id: 'temporary-user',
+    isTemporary: true,
+    userName: 'Mali Suncokret 4821',
+};
+
+const sandboxGarden = {
+    backgroundPalette: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    farmId: 1,
+    id: 1,
+    isSandbox: true,
+    latitude: 45.739,
+    longitude: 16.572,
+    name: 'Vrt za igru',
+    raisedBeds: [],
+    stacks: {
+        '0': {
+            '0': [
+                {
+                    id: 'block-1',
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+        },
+    },
 };
 
 const adventCalendar = {
@@ -157,18 +189,27 @@ async function mockGardenApi(
         withGarden = false,
     }: { withBlockData?: boolean; withGarden?: boolean } = {},
 ) {
+    let sessionUser: typeof currentUser | typeof temporaryUser | null = signedIn
+        ? currentUser
+        : null;
+
     await page.route('**/api/gredice/**', async (route) => {
         const { pathname } = new URL(route.request().url());
         let body: unknown;
+        let status = 200;
 
-        if (pathname.endsWith('/api/auth/current-claims')) {
-            body = signedIn ? currentUser : null;
+        if (pathname.endsWith('/api/auth/temporary')) {
+            sessionUser = temporaryUser;
+            body = temporaryUser;
+            status = 201;
+        } else if (pathname.endsWith('/api/auth/current-claims')) {
+            body = sessionUser;
         } else if (pathname.endsWith('/api/auth/last-login')) {
             body = {};
         } else if (pathname.endsWith('/api/users/current')) {
-            body = signedIn ? currentUser : null;
+            body = sessionUser;
         } else if (
-            withGarden &&
+            (withGarden || sessionUser?.isTemporary) &&
             pathname.endsWith('/api/gardens/1/operations')
         ) {
             body = { items: [], nextCursor: null, total: 0 };
@@ -187,16 +228,22 @@ async function mockGardenApi(
             pathname.endsWith('/api/gardens/1/raised-beds/10/sensors')
         ) {
             body = [];
-        } else if (withGarden && pathname.endsWith('/api/gardens/1')) {
-            body = gardenOverviewDetail;
+        } else if (pathname.endsWith('/api/gardens/1')) {
+            body = sessionUser?.isTemporary
+                ? sandboxGarden
+                : withGarden
+                  ? gardenOverviewDetail
+                  : undefined;
         } else if (pathname.endsWith('/api/gardens')) {
-            body = signedIn
-                ? withGarden
-                    ? [gardenOverviewListItem]
-                    : []
+            body = sessionUser
+                ? sessionUser.isTemporary
+                    ? [sandboxGarden]
+                    : withGarden
+                      ? [gardenOverviewListItem]
+                      : []
                 : null;
         } else if (pathname.endsWith('/api/accounts/gardens')) {
-            body = signedIn
+            body = sessionUser
                 ? [
                       {
                           accountId: 'test-account',
@@ -259,7 +306,7 @@ async function mockGardenApi(
         ) {
             body = tutorialChecklist;
         } else if (pathname.endsWith('/api/accounts/current')) {
-            body = signedIn
+            body = sessionUser
                 ? { id: 'test-account', name: 'Test Account' }
                 : null;
         } else if (pathname.endsWith('/api/shopping-cart')) {
@@ -295,7 +342,7 @@ async function mockGardenApi(
         await route.fulfill({
             body: JSON.stringify(body),
             contentType: 'application/json',
-            status: 200,
+            status,
         });
     });
 }
@@ -331,7 +378,7 @@ async function emulateSafeArea(page: Page) {
     });
 }
 
-test('loads signed-out landing page without immediate runtime failures', async ({
+test('signed-out landing creates a temporary account and shows the playable HUD', async ({
     page,
 }) => {
     const failures = collectRuntimeFailures(page);
@@ -343,22 +390,17 @@ test('loads signed-out landing page without immediate runtime failures', async (
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     await expect(
         page.getByRole('button', { name: 'Prijava' }).first(),
-    ).toBeVisible();
-    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    ).toBeHidden();
+    await expect(page.locator('link[rel="manifest"]').first()).toHaveAttribute(
         'href',
         '/manifest.json',
     );
     await expect(
-        page.locator('meta[name="apple-mobile-web-app-title"]'),
+        page.locator('meta[name="apple-mobile-web-app-title"]').first(),
     ).toHaveAttribute('content', 'Gredice');
-    const loginBannerBounds = await page
-        .getByText('Posjeti gredice.com')
-        .locator('..')
-        .boundingBox();
-    expect(loginBannerBounds).not.toBeNull();
-    expect(loginBannerBounds?.y).toBeGreaterThanOrEqual(safeAreaInsets.top);
     await expectNoImmediateRuntimeFailures(page, failures);
 });
 
