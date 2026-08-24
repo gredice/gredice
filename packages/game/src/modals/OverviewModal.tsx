@@ -4,6 +4,7 @@ import { ListItem } from '@gredice/ui/ListItem';
 import { SelectItems } from '@gredice/ui/SelectItems';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useRef } from 'react';
 import { useGameAnalytics } from '../analytics/GameAnalyticsContext';
 import { useMarkTutorialChecklistTaskReady } from '../hooks/useTutorialChecklist';
@@ -27,7 +28,20 @@ import { SecurityTab } from './components/SecurityTab';
 import { SoundTab } from './components/SoundTab';
 import { SunflowersTab } from './components/SunflowersTab';
 
-const navGroups = [
+type OverviewNavItem = {
+    nodeId: string;
+    icon: string;
+    label: string;
+    value: string;
+    href?: '/racun/naplata';
+};
+
+type OverviewNavGroup = {
+    label: string;
+    items: OverviewNavItem[];
+};
+
+const navGroups: OverviewNavGroup[] = [
     {
         label: 'Profil',
         items: [
@@ -84,6 +98,13 @@ const navGroups = [
                 label: 'Korisnici',
                 value: 'korisnici',
             },
+            {
+                nodeId: 'account-billing',
+                icon: '🧾',
+                label: 'Računi i plaćanja',
+                value: 'racuni',
+                href: '/racun/naplata',
+            },
         ],
     },
     {
@@ -114,6 +135,7 @@ const navGroups = [
 const allNavItems = navGroups.flatMap((g) => g.items);
 
 export function OverviewModal() {
+    const router = useRouter();
     const [settingsMode, setProfileModalOpen] = useSearchParam('pregled');
     const [notificationsFilterParam] = useSearchParam(
         notificationsFilterSearchParam,
@@ -167,6 +189,16 @@ export function OverviewModal() {
         }
     };
 
+    const handleNavSelection = (value: string) => {
+        const selectedItem = allNavItems.find((item) => item.value === value);
+        if (selectedItem?.href) {
+            router.push(selectedItem.href);
+            return;
+        }
+
+        setProfileModalOpen(value);
+    };
+
     return (
         <GameModal
             open={Boolean(settingsMode)}
@@ -180,7 +212,7 @@ export function OverviewModal() {
                     <SelectItems
                         className="md:hidden bg-card rounded-lg"
                         value={settingsMode}
-                        onValueChange={setProfileModalOpen}
+                        onValueChange={handleNavSelection}
                         items={allNavItems.map((item) => ({
                             label: `${item.icon} ${item.label}`,
                             value: item.value,
@@ -198,18 +230,33 @@ export function OverviewModal() {
                                     {group.label}
                                 </Typography>
                                 {group.items.map((item) => (
-                                    <ListItem
-                                        key={item.nodeId}
-                                        nodeId={item.nodeId}
-                                        label={item.label}
-                                        startDecorator={
-                                            <span>{item.icon}</span>
-                                        }
-                                        selected={settingsMode === item.value}
-                                        onSelected={() =>
-                                            setProfileModalOpen(item.value)
-                                        }
-                                    />
+                                    <Fragment key={item.nodeId}>
+                                        {item.href ? (
+                                            <ListItem
+                                                href={item.href}
+                                                label={item.label}
+                                                startDecorator={
+                                                    <span>{item.icon}</span>
+                                                }
+                                            />
+                                        ) : (
+                                            <ListItem
+                                                nodeId={item.nodeId}
+                                                label={item.label}
+                                                startDecorator={
+                                                    <span>{item.icon}</span>
+                                                }
+                                                selected={
+                                                    settingsMode === item.value
+                                                }
+                                                onSelected={() =>
+                                                    handleNavSelection(
+                                                        item.value,
+                                                    )
+                                                }
+                                            />
+                                        )}
+                                    </Fragment>
                                 ))}
                             </Fragment>
                         ))}
