@@ -1,5 +1,6 @@
 'use client';
 
+import { temporaryAccountLoginOpenChangedEvent } from '@gredice/game';
 import { Alert } from '@gredice/ui/Alert';
 import { authCurrentUserQueryKeys } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
@@ -58,7 +59,9 @@ export function TemporaryAccountBootstrap({
     const queryClient = useQueryClient();
     const router = useRouter();
     const [status, setStatus] = useState<BootstrapStatus>('checking');
+    const [returningUser, setReturningUser] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
+    const [crossAppLoginOpen, setCrossAppLoginOpen] = useState(false);
     const mountedRef = useRef(false);
 
     const runBootstrap = useCallback(async () => {
@@ -90,16 +93,52 @@ export function TemporaryAccountBootstrap({
 
     useEffect(() => {
         mountedRef.current = true;
-        if (hasReturningUserMarker()) {
-            setStatus('awaiting-login');
-        } else {
-            void runBootstrap();
-        }
+        setReturningUser(hasReturningUserMarker());
+        setCrossAppLoginOpen(
+            new URL(window.location.href).searchParams.get('prijava') === '1',
+        );
+        setStatus('awaiting-login');
 
         return () => {
             mountedRef.current = false;
         };
-    }, [runBootstrap]);
+    }, []);
+
+    useEffect(() => {
+        function handleCrossAppLoginOpenChanged(event: Event) {
+            if (!(event instanceof CustomEvent)) {
+                return;
+            }
+
+            const detail: unknown = event.detail;
+            if (
+                typeof detail !== 'object' ||
+                detail === null ||
+                !('open' in detail) ||
+                typeof detail.open !== 'boolean'
+            ) {
+                return;
+            }
+
+            const requestedByUrl =
+                new URL(window.location.href).searchParams.get('prijava') ===
+                '1';
+            if (!detail.open && requestedByUrl) {
+                return;
+            }
+            setCrossAppLoginOpen(detail.open);
+        }
+
+        window.addEventListener(
+            temporaryAccountLoginOpenChangedEvent,
+            handleCrossAppLoginOpenChanged,
+        );
+        return () =>
+            window.removeEventListener(
+                temporaryAccountLoginOpenChangedEvent,
+                handleCrossAppLoginOpenChanged,
+            );
+    }, []);
 
     function handleRetry() {
         void runBootstrap();
@@ -166,7 +205,9 @@ export function TemporaryAccountBootstrap({
             <LoginModal
                 description={
                     status === 'awaiting-login'
-                        ? 'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.'
+                        ? returningUser
+                            ? 'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.'
+                            : 'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.'
                         : undefined
                 }
                 dismissible={status !== 'awaiting-login'}
@@ -177,7 +218,10 @@ export function TemporaryAccountBootstrap({
                         : undefined
                 }
                 onOpenChange={setShowLogin}
-                open={status === 'awaiting-login' || showLogin}
+                open={
+                    (status === 'awaiting-login' || showLogin) &&
+                    !crossAppLoginOpen
+                }
             />
         </>
     );

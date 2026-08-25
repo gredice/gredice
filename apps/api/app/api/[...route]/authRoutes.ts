@@ -1,7 +1,6 @@
 import { pbkdf2Sync, randomUUID } from 'node:crypto';
 import { notifyNewUserRegistered } from '@gredice/notifications';
 import {
-    attachTemporaryAccountsToUser,
     blockLogin,
     changePassword,
     clearLoginFailedAttempts,
@@ -20,6 +19,7 @@ import {
     incLoginFailedAttempts,
     loginSuccessful,
     promoteTemporaryUser,
+    retireTemporaryUserForCleanup,
     updateLoginData,
 } from '@gredice/storage';
 import { type Context, Hono } from 'hono';
@@ -54,7 +54,10 @@ import {
     resolveOAuthCallback,
     sanitizeOAuthCallbackUrl,
 } from '../../../lib/auth/oauthCallbackContract';
-import { resolvePostLoginAccountId } from '../../../lib/auth/postLoginAccount';
+import {
+    resolvePostLoginAccountId,
+    resolveTemporaryUserIdToRetire,
+} from '../../../lib/auth/postLoginAccount';
 import {
     clearRefreshCookie,
     setRefreshCookie,
@@ -337,23 +340,35 @@ function setActiveAccountCookie(context: Context, accountId?: string) {
 
 async function getPostLoginAccountId(
     userId: string,
-    attachedTemporaryAccountIds: string[] | undefined,
+    selectedAccountId: string | undefined,
 ) {
-    if (!attachedTemporaryAccountIds?.length) {
-        return undefined;
-    }
-
     const [user, defaultGarden] = await Promise.all([
         getUser(userId),
         getUserDefaultGarden(userId),
     ]);
     return resolvePostLoginAccountId({
-        accountIds:
-            user?.accounts.map((account) => account.accountId) ??
-            attachedTemporaryAccountIds,
-        attachedTemporaryAccountIds,
+        accountIds: user?.accounts.map((account) => account.accountId) ?? [],
         defaultGardenAccountId: defaultGarden?.accountId,
+        selectedAccountId,
     });
+}
+
+async function retireTemporaryUserBestEffort(userId?: string) {
+    if (!userId) {
+        return false;
+    }
+
+    try {
+        return await retireTemporaryUserForCleanup(userId);
+    } catch (error) {
+        console.warn(
+            'Unable to retire temporary user after existing-user login',
+            {
+                error,
+            },
+        );
+        return false;
+    }
 }
 
 function getEmailDomain(email?: string) {
@@ -632,24 +647,23 @@ const app = new Hono()
             const { accessToken, refreshToken } = await issueSessionTokens(
                 user.id,
             );
-            let attachedTemporaryAccountIds: string[] | undefined;
-            if (temporaryClaims && temporaryClaims.id !== user.id) {
-                const attached = await attachTemporaryAccountsToUser({
-                    temporaryUserId: temporaryClaims.id,
-                    targetUserId: user.id,
-                });
-                attachedTemporaryAccountIds = attached.accountIds;
-            }
+            const temporaryUserIdToRetire = resolveTemporaryUserIdToRetire({
+                authenticatedUserId: user.id,
+                currentTemporaryUserId: temporaryClaims?.id,
+            });
             await Promise.all([
                 setCookie(context, accessToken),
                 loginSuccessful(login.id),
                 setRefreshCookie(context, refreshToken),
             ]);
+            const retiredTemporaryUser = await retireTemporaryUserBestEffort(
+                temporaryUserIdToRetire,
+            );
             setActiveAccountCookie(
                 context,
                 await getPostLoginAccountId(
                     user.id,
-                    attachedTemporaryAccountIds,
+                    getCookie(context, accountCookieName),
                 ),
             );
 
@@ -659,9 +673,7 @@ const app = new Hono()
                 event: 'user_logged_in',
                 provider: 'password',
                 properties: {
-                    attached_temporary_account: Boolean(
-                        attachedTemporaryAccountIds?.length,
-                    ),
+                    retired_temporary_account: retiredTemporaryUser,
                 },
             });
 
@@ -752,12 +764,8 @@ const app = new Hono()
                     currentUserId,
                     timeZone,
                 );
-                const {
-                    userId,
-                    loginId,
-                    isNewUser,
-                    attachedTemporaryAccountIds,
-                } = oauthResult;
+                const { userId, loginId, isNewUser, temporaryUserIdToRetire } =
+                    oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -770,11 +778,15 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                const retiredTemporaryUser =
+                    await retireTemporaryUserBestEffort(
+                        temporaryUserIdToRetire,
+                    );
                 setActiveAccountCookie(
                     context,
                     await getPostLoginAccountId(
                         userId,
-                        attachedTemporaryAccountIds,
+                        getCookie(context, accountCookieName),
                     ),
                 );
 
@@ -783,6 +795,9 @@ const app = new Hono()
                     email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     provider: 'google',
+                    properties: {
+                        retired_temporary_account: retiredTemporaryUser,
+                    },
                     setProperties: {
                         name: userInfo.name,
                     },
@@ -910,12 +925,8 @@ const app = new Hono()
                     currentUserId,
                     timeZone,
                 );
-                const {
-                    userId,
-                    loginId,
-                    isNewUser,
-                    attachedTemporaryAccountIds,
-                } = oauthResult;
+                const { userId, loginId, isNewUser, temporaryUserIdToRetire } =
+                    oauthResult;
 
                 if (isNewUser) {
                     await notifyNewUserRegistered(userId);
@@ -928,11 +939,15 @@ const app = new Hono()
                     loginSuccessful(loginId),
                     setRefreshCookie(context, refreshToken),
                 ]);
+                const retiredTemporaryUser =
+                    await retireTemporaryUserBestEffort(
+                        temporaryUserIdToRetire,
+                    );
                 setActiveAccountCookie(
                     context,
                     await getPostLoginAccountId(
                         userId,
-                        attachedTemporaryAccountIds,
+                        getCookie(context, accountCookieName),
                     ),
                 );
 
@@ -941,6 +956,9 @@ const app = new Hono()
                     email: userInfo.email,
                     event: isNewUser ? 'user_signed_up' : 'user_logged_in',
                     provider: 'facebook',
+                    properties: {
+                        retired_temporary_account: retiredTemporaryUser,
+                    },
                     setProperties: {
                         name: userInfo.name,
                     },

@@ -264,9 +264,13 @@ async function createUser(
     return userId;
 }
 
-async function ensureUserNameIsUnique(userName: string, exceptUserId?: string) {
+async function ensureUserNameIsUnique(
+    userName: string,
+    exceptUserId?: string,
+    db: DatabaseClient = storage(),
+) {
     const userNameExists = Boolean(
-        await storage().query.users.findFirst({
+        await db.query.users.findFirst({
             where: exceptUserId
                 ? and(eq(users.userName, userName), ne(users.id, exceptUserId))
                 : eq(users.userName, userName),
@@ -369,9 +373,37 @@ export async function touchTemporaryUserActivity(
             and(
                 eq(users.id, userId),
                 eq(users.isTemporary, true),
+                ne(users.lastActiveAt, new Date(0)),
                 options?.force ? sql`true` : lt(users.lastActiveAt, threshold),
             ),
         );
+}
+
+export async function retireTemporaryUserForCleanup(userId: string) {
+    return storage().transaction(async (db) => {
+        const [temporaryUser] = await db
+            .select({
+                isTemporary: users.isTemporary,
+                lastActiveAt: users.lastActiveAt,
+            })
+            .from(users)
+            .where(eq(users.id, userId))
+            .for('update')
+            .limit(1);
+        if (
+            !temporaryUser?.isTemporary ||
+            temporaryUser.lastActiveAt.getTime() === 0
+        ) {
+            return false;
+        }
+
+        await deleteUserAuthenticationData(userId, db);
+        await db
+            .update(users)
+            .set({ lastActiveAt: new Date(0) })
+            .where(and(eq(users.id, userId), eq(users.isTemporary, true)));
+        return true;
+    });
 }
 
 export async function promoteTemporaryUser({
@@ -383,29 +415,40 @@ export async function promoteTemporaryUser({
     userId: string;
     userName: string;
 }) {
-    const user = await storage().query.users.findFirst({
-        where: eq(users.id, userId),
-        with: {
-            accounts: true,
-        },
-    });
-    if (!user?.isTemporary) {
-        throw new Error('Temporary user not found');
-    }
+    await storage().transaction(async (db) => {
+        const [user] = await db
+            .select({
+                displayName: users.displayName,
+                isTemporary: users.isTemporary,
+                lastActiveAt: users.lastActiveAt,
+            })
+            .from(users)
+            .where(eq(users.id, userId))
+            .for('update')
+            .limit(1);
+        if (!user?.isTemporary || user.lastActiveAt.getTime() === 0) {
+            throw new Error('Temporary user not found');
+        }
 
-    await ensureUserNameIsUnique(userName, userId);
-    await storage()
-        .update(users)
-        .set({
-            userName,
-            displayName: displayName ?? user.displayName ?? userName,
-            isTemporary: false,
-            lastActiveAt: new Date(),
-        })
-        .where(eq(users.id, userId));
-    await convertTemporaryAccountGardensToAccountGardens(
-        user.accounts.map((accountUser) => accountUser.accountId),
-    );
+        const userAccounts = await db
+            .select({ accountId: accountUsers.accountId })
+            .from(accountUsers)
+            .where(eq(accountUsers.userId, userId));
+        await ensureUserNameIsUnique(userName, userId, db);
+        await db
+            .update(users)
+            .set({
+                userName,
+                displayName: displayName ?? user.displayName ?? userName,
+                isTemporary: false,
+                lastActiveAt: new Date(),
+            })
+            .where(eq(users.id, userId));
+        await convertTemporaryAccountGardensToAccountGardens(
+            userAccounts.map((accountUser) => accountUser.accountId),
+            db,
+        );
+    });
 }
 
 export async function deleteUserAuthenticationData(
@@ -711,15 +754,11 @@ export async function createOrUpdateUserWithOauth(
             loggedInUserId &&
             loggedInUserId !== existingLogin.userId
         ) {
-            const attached = await attachTemporaryAccountsToUser({
-                temporaryUserId: loggedInUserId,
-                targetUserId: existingLogin.userId,
-            });
             return {
                 userId: existingLogin.userId,
                 loginId: existingLogin.id,
                 isNewUser: false,
-                attachedTemporaryAccountIds: attached.accountIds,
+                temporaryUserIdToRetire: loggedInUserId,
             };
         }
 
@@ -731,7 +770,7 @@ export async function createOrUpdateUserWithOauth(
             userId: existingLogin.userId,
             loginId: existingLogin.id,
             isNewUser: false,
-            attachedTemporaryAccountIds: undefined,
+            temporaryUserIdToRetire: undefined,
         };
     }
 
@@ -743,7 +782,7 @@ export async function createOrUpdateUserWithOauth(
         },
     });
     let isNewUser = false;
-    let attachedTemporaryAccountIds: string[] | undefined;
+    let temporaryUserIdToRetire: string | undefined;
 
     if (loggedInUserIsTemporary && loggedInUserId) {
         if (!existingUser) {
@@ -760,11 +799,7 @@ export async function createOrUpdateUserWithOauth(
             });
             isNewUser = true;
         } else if (existingUser.id !== loggedInUserId) {
-            const attached = await attachTemporaryAccountsToUser({
-                temporaryUserId: loggedInUserId,
-                targetUserId: existingUser.id,
-            });
-            attachedTemporaryAccountIds = attached.accountIds;
+            temporaryUserIdToRetire = loggedInUserId;
         }
     }
 
@@ -811,7 +846,7 @@ export async function createOrUpdateUserWithOauth(
         userId: existingUser.id,
         loginId,
         isNewUser,
-        attachedTemporaryAccountIds,
+        temporaryUserIdToRetire,
     };
 }
 

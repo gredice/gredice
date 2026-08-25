@@ -444,7 +444,7 @@ async function emulateSafeArea(page: Page) {
     });
 }
 
-test('temporary garden shows onboarding with a separate login HUD and no welcome reward', async ({
+test('guest explicitly starts a temporary garden with separate login HUD and no welcome reward', async ({
     page,
 }) => {
     test.setTimeout(20_000);
@@ -459,6 +459,17 @@ test('temporary garden shows onboarding with a separate login HUD and no welcome
 
     expect(response?.ok()).toBe(true);
     await expect(page).toHaveTitle(/Gredice/);
+    const initialLogin = page.getByRole('dialog', { name: 'Prijava' });
+    await expect(initialLogin).toBeVisible();
+    await expect(
+        initialLogin.getByText(
+            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
+        ),
+    ).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+    await initialLogin
+        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
+        .click();
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     const loginHud = page.locator('[data-game-hud-temporary-auth="true"]');
     const loginButton = loginHud.getByRole('button', {
@@ -505,6 +516,12 @@ test('rejects malformed current claims before creating a temporary account', asy
     const response = await page.goto('/');
 
     expect(response?.ok()).toBe(true);
+    const loginDialog = page.getByRole('dialog', { name: 'Prijava' });
+    await expect(loginDialog).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+    await loginDialog
+        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
+        .click();
     await expect(
         page.getByRole('button', { name: 'Prijava ili registracija' }),
     ).toBeVisible({ timeout: 15_000 });
@@ -514,6 +531,27 @@ test('rejects malformed current claims before creating a temporary account', asy
             return window.localStorage.getItem(storageKey);
         }, returningUserStorageKey),
     ).toBeNull();
+});
+
+test('fresh signed-out visitor can log in without creating a temporary account', async ({
+    page,
+}) => {
+    const api = await mockGardenApi(page, false);
+
+    const response = await page.goto('/');
+
+    expect(response?.ok()).toBe(true);
+    const loginDialog = page.getByRole('dialog', { name: 'Prijava' });
+    await expect(loginDialog).toBeVisible();
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
+
+    await loginDialog.getByRole('button', { name: 'Email prijava' }).click();
+    await loginDialog.getByLabel('Email').fill('vrtlar@example.com');
+    await loginDialog.getByLabel('Zaporka').fill('sigurna-zaporka');
+    await loginDialog.getByRole('button', { name: 'Prijava' }).click();
+
+    await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
+    expect(api.getTemporaryAccountRequestCount()).toBe(0);
 });
 
 test('opens and clears a cross-app temporary login request from the URL', async ({

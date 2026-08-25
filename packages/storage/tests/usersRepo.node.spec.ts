@@ -9,6 +9,7 @@ import {
     cleanupInactiveTemporaryAccounts,
     createEntity,
     createOrUpdateUserPasswordLogin,
+    createOrUpdateUserWithOauth,
     createRefreshToken,
     createTemporaryUserAndAccount,
     createUserWithPassword,
@@ -25,8 +26,10 @@ import {
     notifications,
     promoteTemporaryUser,
     refreshTokens,
+    retireTemporaryUserForCleanup,
     setUserFavorite,
     storage,
+    touchTemporaryUserActivity,
     upsertEntityType,
     userLogins,
     users,
@@ -124,6 +127,114 @@ test('createTemporaryUserAndAccount creates a fully featured standard garden', a
     assert.equal(raisedBeds[0]?.status, 'new');
 });
 
+test('existing-user OAuth login leaves the temporary account isolated', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const email = `existing-oauth-${randomUUID()}@example.com`;
+    const targetUserId = await createUserWithPassword(email, 'secret-password');
+    const temporary = await createTemporaryUserAndAccount();
+
+    const result = await createOrUpdateUserWithOauth(
+        {
+            name: 'Existing user',
+            email,
+            provider: 'google',
+            providerUserId: `google-${randomUUID()}`,
+        },
+        temporary.userId,
+    );
+
+    assert.equal(result.userId, targetUserId);
+    assert.equal(result.isNewUser, false);
+    assert.equal(result.temporaryUserIdToRetire, temporary.userId);
+
+    const targetLinks = await storage().query.accountUsers.findMany({
+        where: eq(accountUsers.userId, targetUserId),
+    });
+    assert.equal(targetLinks.length, 1);
+    assert.equal(
+        targetLinks.some((link) => link.accountId === temporary.accountId),
+        false,
+    );
+
+    const temporaryLink = await storage().query.accountUsers.findFirst({
+        where: eq(accountUsers.accountId, temporary.accountId),
+    });
+    assert.equal(temporaryLink?.userId, temporary.userId);
+});
+
+test('retiring a temporary user revokes authentication and makes cleanup eligible', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const temporary = await createTemporaryUserAndAccount();
+    await createRefreshToken(temporary.userId);
+
+    assert.equal(await retireTemporaryUserForCleanup(temporary.userId), true);
+
+    const retiredUser = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.equal(retiredUser?.isTemporary, true);
+    assert.equal(retiredUser?.lastActiveAt.getTime(), 0);
+
+    await touchTemporaryUserActivity(temporary.userId, {
+        force: true,
+        now: new Date('2026-08-25T11:59:59.000Z'),
+    });
+    const userAfterInFlightTouch = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.equal(userAfterInFlightTouch?.lastActiveAt.getTime(), 0);
+
+    const remainingRefreshToken = await storage().query.refreshTokens.findFirst(
+        {
+            where: eq(refreshTokens.userId, temporary.userId),
+        },
+    );
+    assert.equal(remainingRefreshToken, undefined);
+
+    const temporaryLink = await storage().query.accountUsers.findFirst({
+        where: eq(accountUsers.accountId, temporary.accountId),
+    });
+    assert.equal(temporaryLink?.userId, temporary.userId);
+
+    const cleanup = await cleanupInactiveTemporaryAccounts({
+        now: new Date('2026-08-25T12:00:00.000Z'),
+    });
+    assert.equal(cleanup.deletedUsers, 1);
+    assert.equal(cleanup.deletedAccounts, 1);
+});
+
+test('promotion cannot revive an identity after retirement wins the row lock', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const temporary = await createTemporaryUserAndAccount();
+    assert.equal(await retireTemporaryUserForCleanup(temporary.userId), true);
+
+    await assert.rejects(
+        promoteTemporaryUser({
+            userId: temporary.userId,
+            userName: `retired-${randomUUID()}@example.com`,
+        }),
+        /Temporary user not found/,
+    );
+
+    const retiredUser = await storage().query.users.findFirst({
+        where: eq(users.id, temporary.userId),
+    });
+    assert.equal(retiredUser?.isTemporary, true);
+    assert.equal(retiredUser?.lastActiveAt.getTime(), 0);
+
+    const cleanup = await cleanupInactiveTemporaryAccounts({
+        now: new Date('2026-08-25T12:00:00.000Z'),
+    });
+    assert.equal(cleanup.deletedUsers, 1);
+    assert.equal(cleanup.deletedAccounts, 1);
+});
+
 test('promoteTemporaryUser converts a temporary user to email identity', async () => {
     createTestDb();
     await ensureFarmId();
@@ -152,6 +263,13 @@ test('promoteTemporaryUser converts a temporary user to email identity', async (
         where: eq(userLogins.userId, temporary.userId),
     });
     assert.equal(login?.loginId, promotedEmail);
+
+    assert.equal(await retireTemporaryUserForCleanup(temporary.userId), false);
+    const loginAfterRetirementAttempt =
+        await storage().query.userLogins.findFirst({
+            where: eq(userLogins.userId, temporary.userId),
+        });
+    assert.equal(loginAfterRetirementAttempt?.id, login?.id);
 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
     assert.equal(gardens[0].isSandbox, false);
