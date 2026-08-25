@@ -131,7 +131,7 @@ The workflow:
    the app-specific Garden TWA or Delivery car contract.
 2. Verifies the upload certificate fingerprint against the protected
    environment variable.
-3. Runs `lintRelease`, `testReleaseUnitTest`, `bundleRelease`, and
+3. Runs `lintRelease`, `testDebugUnitTest`, `bundleRelease`, and
    `assembleRelease` with JDK 17, Android Platform 36, and Build Tools 36.0.0.
 4. Verifies the AAB with `jarsigner` and the APK with `apksigner`.
 5. Produces build provenance attestations for the signed AAB and APK.

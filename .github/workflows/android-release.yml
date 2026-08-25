@@ -137,7 +137,7 @@ jobs:
           ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
           ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
-        run: ./gradlew --no-daemon --stacktrace lintRelease testReleaseUnitTest bundleRelease assembleRelease
+        run: ./gradlew --no-daemon --stacktrace lintRelease testDebugUnitTest bundleRelease assembleRelease
 
       - name: 🔍 Verify signatures and stage Play handoff
         id: stage
