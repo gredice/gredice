@@ -291,26 +291,6 @@ html[data-public-environment="on"] body {
 }
 
 .public-environment-stars {
-    background-image:
-        radial-gradient(circle, rgb(255 255 255 / 0.9) 0 1px, transparent 1.5px),
-        radial-gradient(
-            circle,
-            rgb(214 229 255 / 0.72) 0 1px,
-            transparent 1.4px
-        ),
-        radial-gradient(
-            circle,
-            rgb(255 245 210 / 0.72) 0 0.8px,
-            transparent 1.2px
-        );
-    background-position:
-        1rem 2rem,
-        4rem 1rem,
-        2rem 5rem;
-    background-size:
-        8rem 8rem,
-        11rem 11rem,
-        6rem 6rem;
     transition: opacity 1.2s ease;
 }
 

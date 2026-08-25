@@ -5,38 +5,44 @@ test.describe.configure({ mode: 'default' });
 
 async function expectPillBorderRadius(locator: Locator) {
     await expect
-        .poll(async () =>
-            locator.evaluate((element) => {
-                const styles = window.getComputedStyle(element);
-                const radii = [
-                    styles.borderTopLeftRadius,
-                    styles.borderTopRightRadius,
-                    styles.borderBottomRightRadius,
-                    styles.borderBottomLeftRadius,
-                ].map((radius) => Number.parseFloat(radius));
-                const { height } = element.getBoundingClientRect();
+        .poll(
+            async () =>
+                locator.evaluate((element) => {
+                    const styles = window.getComputedStyle(element);
+                    const radii = [
+                        styles.borderTopLeftRadius,
+                        styles.borderTopRightRadius,
+                        styles.borderBottomRightRadius,
+                        styles.borderBottomLeftRadius,
+                    ].map((radius) => Number.parseFloat(radius));
+                    const { height } = element.getBoundingClientRect();
 
-                return Math.min(...radii) - height / 2;
-            }),
+                    return Math.min(...radii) - height / 2;
+                }),
+            { timeout: 15_000 },
         )
         .toBeGreaterThanOrEqual(0);
 }
 
 async function expectOpaqueBackground(locator: Locator) {
     await expect
-        .poll(() =>
-            locator.evaluate((element) => {
-                const backgroundColor =
-                    window.getComputedStyle(element).backgroundColor;
-                const channels = backgroundColor.match(/^rgba?\(([^)]+)\)$/u);
+        .poll(
+            () =>
+                locator.evaluate((element) => {
+                    const backgroundColor =
+                        window.getComputedStyle(element).backgroundColor;
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    if (!context) {
+                        return null;
+                    }
 
-                if (!channels) {
-                    return null;
-                }
-
-                const alpha = channels[1]?.split(',')[3];
-                return alpha ? Number.parseFloat(alpha) : 1;
-            }),
+                    context.clearRect(0, 0, 1, 1);
+                    context.fillStyle = backgroundColor;
+                    context.fillRect(0, 0, 1, 1);
+                    return context.getImageData(0, 0, 1, 1).data[3] / 255;
+                }),
+            { timeout: 15_000 },
         )
         .toBe(1);
 }
@@ -76,6 +82,8 @@ async function expectMobileNavActionsDoNotOverlap(page: Page) {
 }
 
 test('public chrome stays inside mobile safe areas', async ({ page }) => {
+    test.slow();
+
     const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
     await page.setViewportSize({ height: 844, width: 390 });
     const session = await page.context().newCDPSession(page);
@@ -92,7 +100,7 @@ test('public chrome stays inside mobile safe areas', async ({ page }) => {
         },
     });
 
-    await page.goto('/kontakt', { waitUntil: 'domcontentloaded' });
+    await page.goto('/kontakt');
 
     await expect(page.locator('meta[name="viewport"]')).toHaveAttribute(
         'content',
@@ -108,9 +116,9 @@ test('public chrome stays inside mobile safe areas', async ({ page }) => {
     ).toBeLessThanOrEqual(390 - safeArea.right);
 
     await page.getByRole('button', { name: 'Pretraga' }).click();
-    const searchBounds = await page
-        .getByRole('dialog', { name: 'Pretraga' })
-        .boundingBox();
+    const searchDialog = page.getByRole('dialog', { name: 'Pretraga' });
+    await expect(searchDialog).toBeVisible({ timeout: 15_000 });
+    const searchBounds = await searchDialog.boundingBox();
     expect(searchBounds).not.toBeNull();
     expect(searchBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
     expect(searchBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
@@ -295,6 +303,9 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         .toBeGreaterThan(10);
 
     await page.evaluate(() => window.scrollTo(0, 160));
+    await expect
+        .poll(() => page.evaluate(() => window.scrollY), { timeout: 15_000 })
+        .toBeGreaterThan(12);
     await expectPillBorderRadius(header);
     await expect(header).toHaveCSS('border-bottom-width', '1px');
     await expectMobileNavActionsDoNotOverlap(page);

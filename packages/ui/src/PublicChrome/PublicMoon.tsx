@@ -13,7 +13,6 @@ export function PublicMoon({
             style={{ left: `${moon.left}%`, top: `${moon.top}%` }}
             viewBox="0 0 100 100"
         >
-            <circle cx="50" cy="50" fill="#253247" r="48" />
             <g transform={`rotate(${moon.brightLimbAngle} 50 50)`}>
                 <path d={moon.illuminationPath} fill="#f4f0dc" />
             </g>
