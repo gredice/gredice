@@ -317,8 +317,8 @@ export async function ensureRegisteredUserAccount(
             return existingAccount.accountId;
         }
 
-        const accountId = await createAccount(timeZone);
-        await createDefaultGardenForAccount({ accountId });
+        const accountId = await createAccount(timeZone, db);
+        await createDefaultGardenForAccount({ accountId }, db);
         await db.insert(accountUsers).values({ accountId, userId });
         await createEvent(
             knownEvents.accounts.assignedUserV1(accountId, { userId }),

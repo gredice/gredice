@@ -23,6 +23,12 @@ import {
 import { getEntitiesFormatted } from './entitiesRepo';
 import type { RaisedBedFieldPlantEventsPayload } from './events/types';
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 interface CreateAchievementOptions {
     earnedAt?: Date;
     progressValue?: number | null;
@@ -88,6 +94,7 @@ async function createAccountAchievement(
     accountId: string,
     key: string,
     options: CreateAchievementOptions = {},
+    db: DatabaseClient = storage(),
 ): Promise<EnsureAchievementResult> {
     const definition = definitionForKey(key);
     const status =
@@ -101,7 +108,7 @@ async function createAccountAchievement(
     const threshold = options.threshold ?? definition.threshold ?? null;
     const progressValue = options.progressValue ?? threshold ?? null;
 
-    const insertResult = await storage()
+    const insertResult = await db
         .insert(accountAchievements)
         .values({
             accountId,
@@ -124,7 +131,7 @@ async function createAccountAchievement(
         .returning();
 
     if (insertResult.length === 0) {
-        const existing = await storage().query.accountAchievements.findFirst({
+        const existing = await db.query.accountAchievements.findFirst({
             where: and(
                 eq(accountAchievements.accountId, accountId),
                 eq(accountAchievements.achievementKey, key),
@@ -144,8 +151,9 @@ async function createAccountAchievement(
                 accountId,
                 rewardSunflowers,
                 `achievement:${key}`,
+                db,
             );
-            const [updated] = await storage()
+            const [updated] = await db
                 .update(accountAchievements)
                 .set({
                     rewardGrantedAt: new Date(),
@@ -155,7 +163,7 @@ async function createAccountAchievement(
                 .returning();
             if (updated) achievement = updated;
         } else if (options.skipReward) {
-            const [updated] = await storage()
+            const [updated] = await db
                 .update(accountAchievements)
                 .set({
                     rewardGrantedAt: earnedAt,
@@ -174,8 +182,9 @@ export async function ensureAccountAchievement(
     accountId: string,
     key: string,
     options: CreateAchievementOptions = {},
+    db: DatabaseClient = storage(),
 ) {
-    return createAccountAchievement(accountId, key, options);
+    return createAccountAchievement(accountId, key, options, db);
 }
 
 export async function approveAchievement(

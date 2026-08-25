@@ -76,9 +76,12 @@ export type GardenLikeState = {
     likeCount: number;
 };
 
-export async function createGarden(garden: InsertGarden) {
+export async function createGarden(
+    garden: InsertGarden,
+    db: DatabaseClient = storage(),
+) {
     const createdGarden = (
-        await storage().insert(gardens).values(garden).returning({
+        await db.insert(gardens).values(garden).returning({
             id: gardens.id,
             name: gardens.name,
             accountId: gardens.accountId,
@@ -93,6 +96,7 @@ export async function createGarden(garden: InsertGarden) {
             name: createdGarden.name,
             accountId: createdGarden.accountId,
         }),
+        db,
     );
     await bustScheduleCache();
 
@@ -104,22 +108,25 @@ type CreateDefaultGardenOptions = {
     name?: string;
 };
 
-export async function createDefaultGardenForAccount({
-    accountId,
-    name,
-}: CreateDefaultGardenOptions) {
-    const farms = await getFarms();
+export async function createDefaultGardenForAccount(
+    { accountId, name }: CreateDefaultGardenOptions,
+    db: DatabaseClient = storage(),
+) {
+    const farms = await getFarms(db);
     const farm = farms.find((f) => !f.isDeleted);
     if (!farm) {
         throw new Error('No farm found');
     }
 
     const trimmedName = name?.trim();
-    const gardenId = await createGarden({
-        farmId: farm.id,
-        accountId,
-        name: trimmedName || 'Moj vrt',
-    });
+    const gardenId = await createGarden(
+        {
+            farmId: farm.id,
+            accountId,
+            name: trimmedName || 'Moj vrt',
+        },
+        db,
+    );
 
     // Assign a 4x3 grass grid and one 1x2 raised bed near the center.
     // Grid: x = -1..2, y = -1..1
@@ -127,32 +134,44 @@ export async function createDefaultGardenForAccount({
     for (let x = -1; x < 3; x++) {
         for (let y = -1; y < 2; y++) {
             // Create base block
-            const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+            const blockId = await createGardenBlock(
+                gardenId,
+                'Block_Grass',
+                db,
+            );
 
             // Create stack if not exists
-            await createGardenStack(gardenId, { x, y });
+            await createGardenStack(gardenId, { x, y }, db);
 
             const blockIds = [blockId];
             if (x === 0 && y === 0) {
                 const raisedBedBlockId = await createGardenBlock(
                     gardenId,
                     'Raised_Bed',
+                    db,
                 );
-                await updateGardenBlock(gardenId, {
-                    id: raisedBedBlockId,
-                    rotation: 1,
-                });
-                await createRaisedBed({
-                    accountId,
+                await updateGardenBlock(
                     gardenId,
-                    blockId: raisedBedBlockId,
-                    status: 'new',
-                });
+                    {
+                        id: raisedBedBlockId,
+                        rotation: 1,
+                    },
+                    db,
+                );
+                await createRaisedBed(
+                    {
+                        accountId,
+                        gardenId,
+                        blockId: raisedBedBlockId,
+                        status: 'new',
+                    },
+                    db,
+                );
                 blockIds.push(raisedBedBlockId);
             }
 
             // Assign block to stack
-            await updateGardenStack(gardenId, { x, y, blocks: blockIds });
+            await updateGardenStack(gardenId, { x, y, blocks: blockIds }, db);
         }
     }
 

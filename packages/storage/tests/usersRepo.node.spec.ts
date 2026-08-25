@@ -16,6 +16,7 @@ import {
     deleteGardenIfNoActiveRaisedBeds,
     ensureRegisteredUserAccount,
     events,
+    farms,
     gardenVisitStates,
     getAccountGardensMetadata,
     getGardenBlocks,
@@ -130,13 +131,39 @@ test('createTemporaryUserAndAccount creates a fully featured standard garden', a
 
 test('ensureRegisteredUserAccount repairs an accountless login once', async () => {
     createTestDb();
-    await ensureFarmId();
+    const farmId = await ensureFarmId();
 
     const userId = await createUserWithPassword(
         `accountless-${randomUUID()}@example.com`,
         'secret-password',
     );
     await storage().delete(accountUsers).where(eq(accountUsers.userId, userId));
+
+    const accountCountBeforeFailedRepair = (
+        await storage().query.accounts.findMany()
+    ).length;
+    const gardenCountBeforeFailedRepair = (
+        await storage().query.gardens.findMany()
+    ).length;
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.id, farmId));
+
+    await assert.rejects(ensureRegisteredUserAccount(userId), /No farm found/);
+    assert.equal(
+        (await storage().query.accounts.findMany()).length,
+        accountCountBeforeFailedRepair,
+    );
+    assert.equal(
+        (await storage().query.gardens.findMany()).length,
+        gardenCountBeforeFailedRepair,
+    );
+
+    await storage()
+        .update(farms)
+        .set({ isDeleted: false })
+        .where(eq(farms.id, farmId));
 
     const [firstAccountId, secondAccountId] = await Promise.all([
         ensureRegisteredUserAccount(userId),

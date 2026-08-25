@@ -72,6 +72,12 @@ import { lockAndAssertCartItemsMutable } from './stripeCheckoutAttemptRepo';
 
 const RAISED_BED_FIELDS_PER_BLOCK = 9;
 
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
 type RaisedBedFieldPlantCycleEvent = typeof events.$inferSelect;
 export type RaisedBedLatestPhotoOperation = {
     id: number;
@@ -280,9 +286,10 @@ export async function createRaisedBed(
     raisedBed: Omit<InsertRaisedBed, 'name'> & {
         orientation?: RaisedBedOrientation;
     },
+    db: DatabaseClient = storage(),
 ) {
     const result = (
-        await storage()
+        await db
             .insert(raisedBeds)
             .values({
                 ...raisedBed,
