@@ -2297,6 +2297,18 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             stageName: 'maintenance',
             stageLabel: 'Održavanje',
         });
+        const internalPlantPhotoOperation = {
+            ...plantPhotoOperation,
+            id: 551,
+            attributes: {
+                ...plantPhotoOperation.attributes,
+                internal: true,
+            },
+            information: {
+                ...plantPhotoOperation.information,
+                label: 'Interna fotografija biljke',
+            },
+        };
         const scenario = plantedGrowingWithOperationHistoryScenario();
 
         await page.route('**/*', async (route) => {
@@ -2322,6 +2334,7 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                     ...scenario,
                     operations: [
                         ...(scenario.operations ?? []),
+                        internalPlantPhotoOperation,
                         plantPhotoOperation,
                     ],
                 }}

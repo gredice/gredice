@@ -170,7 +170,8 @@ export function RaisedBedPhotosModal({
         ? operationsData?.find(
               (operation) =>
                   operation.information.name === PLANT_PHOTO_OPERATION_NAME &&
-                  operation.attributes.application === 'plant',
+                  operation.attributes.application === 'plant' &&
+                  operation.attributes.internal !== true,
           )
         : undefined;
     const triggerLabel = isFieldScoped
