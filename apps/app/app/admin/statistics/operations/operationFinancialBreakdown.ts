@@ -44,6 +44,22 @@ function centsToMoney(value: number) {
     return value / 100;
 }
 
+export function resolveOperationUserCost({
+    isInternal,
+    isUserRequested,
+    userPrice,
+}: {
+    isInternal: boolean;
+    isUserRequested: boolean;
+    userPrice: number | null;
+}) {
+    if (isInternal || !isUserRequested) {
+        return 0;
+    }
+
+    return userPrice && userPrice > 0 ? userPrice : null;
+}
+
 function finalizeRow(
     row: MutableOperationFinancialBreakdownRow,
 ): OperationFinancialBreakdownRow {

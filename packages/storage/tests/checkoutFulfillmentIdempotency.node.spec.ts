@@ -20,6 +20,7 @@ import {
     getCheckoutInventorySnapshot,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
+    getCheckoutRequestedOperationIds,
     getInventory,
     getOrCreateCheckoutOperation,
     getOrCreateDeliveryRequest,
@@ -110,6 +111,18 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
             (await getCheckoutOperationMappings([cartItemId])).entries(),
         ),
         [[cartItemId, mappingEvents[0]?.data]],
+    );
+    const adminCreatedOperationId = await createOperation({
+        accountId,
+        entityId: 18,
+        entityTypeName: 'operation',
+    });
+    assert.deepEqual(
+        await getCheckoutRequestedOperationIds([
+            operationId,
+            adminCreatedOperationId,
+        ]),
+        new Set([operationId]),
     );
 
     await acceptOperation(operationId);

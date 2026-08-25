@@ -2291,6 +2291,36 @@ export async function getCheckoutOperationMappings(
     return mappings;
 }
 
+export async function getCheckoutRequestedOperationIds(
+    operationIds: number[],
+    db: DatabaseClient = storage(),
+): Promise<ReadonlySet<number>> {
+    const uniqueOperationIds = Array.from(new Set(operationIds));
+    if (uniqueOperationIds.length === 0) {
+        return new Set();
+    }
+
+    const operationIdExpression = sql<string>`${events.data}->>'operationId'`;
+    const mappingEvents = await db
+        .select({ operationId: operationIdExpression })
+        .from(events)
+        .where(
+            and(
+                eq(events.type, knownEventTypes.checkout.operationCreated),
+                inArray(
+                    operationIdExpression,
+                    uniqueOperationIds.map((operationId) =>
+                        operationId.toString(),
+                    ),
+                ),
+            ),
+        );
+
+    return new Set(
+        mappingEvents.map((event) => Number.parseInt(event.operationId, 10)),
+    );
+}
+
 export async function getCheckoutOperationMapping(
     cartItemId: number,
     db: DatabaseClient = storage(),

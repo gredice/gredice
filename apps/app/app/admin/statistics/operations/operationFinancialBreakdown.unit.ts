@@ -1,6 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildOperationFinancialBreakdown } from './operationFinancialBreakdown';
+import {
+    buildOperationFinancialBreakdown,
+    resolveOperationUserCost,
+} from './operationFinancialBreakdown';
+
+test('only customer-requested operations include the customer price', () => {
+    assert.equal(
+        resolveOperationUserCost({
+            isInternal: false,
+            isUserRequested: true,
+            userPrice: 1.5,
+        }),
+        1.5,
+    );
+    assert.equal(
+        resolveOperationUserCost({
+            isInternal: false,
+            isUserRequested: false,
+            userPrice: 1.5,
+        }),
+        0,
+    );
+    assert.equal(
+        resolveOperationUserCost({
+            isInternal: true,
+            isUserRequested: true,
+            userPrice: 1.5,
+        }),
+        0,
+    );
+    assert.equal(
+        resolveOperationUserCost({
+            isInternal: false,
+            isUserRequested: true,
+            userPrice: null,
+        }),
+        null,
+    );
+});
 
 test('groups task occurrences and totals money using cents', () => {
     const breakdown = buildOperationFinancialBreakdown([
