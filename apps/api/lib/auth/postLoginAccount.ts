@@ -1,27 +1,32 @@
 export function resolvePostLoginAccountId({
     accountIds,
-    attachedTemporaryAccountIds,
     defaultGardenAccountId,
+    selectedAccountId,
 }: {
     accountIds: readonly string[];
-    attachedTemporaryAccountIds: readonly string[] | undefined;
     defaultGardenAccountId: string | undefined;
+    selectedAccountId: string | undefined;
 }) {
-    if (!attachedTemporaryAccountIds?.length) {
-        return undefined;
+    if (selectedAccountId && accountIds.includes(selectedAccountId)) {
+        return selectedAccountId;
     }
 
-    const attachedAccountIds = new Set(attachedTemporaryAccountIds);
-    const existingAccountIds = accountIds.filter(
-        (accountId) => !attachedAccountIds.has(accountId),
-    );
-
-    if (
-        defaultGardenAccountId &&
-        existingAccountIds.includes(defaultGardenAccountId)
-    ) {
+    if (defaultGardenAccountId && accountIds.includes(defaultGardenAccountId)) {
         return defaultGardenAccountId;
     }
 
-    return existingAccountIds[0] ?? attachedTemporaryAccountIds[0];
+    return accountIds[0];
+}
+
+export function resolveTemporaryUserIdToRetire({
+    authenticatedUserId,
+    currentTemporaryUserId,
+}: {
+    authenticatedUserId: string;
+    currentTemporaryUserId: string | undefined;
+}) {
+    return currentTemporaryUserId &&
+        currentTemporaryUserId !== authenticatedUserId
+        ? currentTemporaryUserId
+        : undefined;
 }

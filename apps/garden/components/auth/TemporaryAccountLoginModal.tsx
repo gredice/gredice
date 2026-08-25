@@ -66,7 +66,7 @@ export function TemporaryAccountLoginModal() {
     return (
         <LoginModal
             defaultTab="login"
-            description="Prijavi se kako bi otvorio postojeći vrt. Napredak iz privremenog vrta ostat će spremljen na tvom računu."
+            description="Prijava otvara tvoj postojeći vrt bez dodavanja privremenog računa. Registracijom spremaš privremeni vrt kao novi račun."
             dismissible
             onOpenChange={handleOpenChange}
             open={open}
