@@ -3,6 +3,7 @@ import test from 'node:test';
 import type { PublicGardenResponse } from '@gredice/client';
 import {
     calculatePublicGardenStackStats,
+    comparePublicGardensByPopularity,
     formatGardenAreaSquareMeters,
     formatGardenSunflowerPrice,
 } from './publicGardenFormatting.ts';
@@ -70,4 +71,20 @@ test('garden stat formatters include Croatian units and unknown fallbacks', () =
     assert.equal(formatGardenAreaSquareMeters(6), '6 m²');
     assert.equal(formatGardenSunflowerPrice(1440), '1.440 🌻');
     assert.equal(formatGardenSunflowerPrice(null), '—');
+});
+
+test('comparePublicGardensByPopularity orders likes before active plants', () => {
+    const gardens = [
+        { id: 1, likeCount: 1, activePlantCount: 12 },
+        { id: 2, likeCount: 3, activePlantCount: 2 },
+        { id: 3, likeCount: 3, activePlantCount: 20 },
+        { id: 4, likeCount: 0, activePlantCount: 100 },
+    ];
+
+    gardens.sort(comparePublicGardensByPopularity);
+
+    assert.deepEqual(
+        gardens.map((garden) => garden.id),
+        [3, 2, 1, 4],
+    );
 });

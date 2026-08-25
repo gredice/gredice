@@ -1,7 +1,10 @@
 import { clientPublic } from '@gredice/client';
 import { notFound } from 'next/navigation';
 import { getBlocksData } from '../../lib/blocks/getBlocksData';
-import { countActivePlantsFromPublicGarden } from './publicGardenFormatting';
+import {
+    comparePublicGardensByPopularity,
+    countActivePlantsFromPublicGarden,
+} from './publicGardenFormatting';
 
 async function getActivePlantCountFallback(gardenId: number) {
     const response = await clientPublic().api.gardens[':gardenId'].public.$get({
@@ -53,6 +56,7 @@ export async function getPublicGardensForWww() {
             };
         }),
     );
+    items.sort(comparePublicGardensByPopularity);
 
     return {
         ...publicGardens,

@@ -161,7 +161,7 @@ export function PublicGardenLikeButton({
                     aria-disabled={isLoadingUser || isUpdating}
                     aria-label={actionLabel}
                     className={cx(
-                        'flex h-full w-full min-w-0 items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'flex h-full w-full min-w-0 items-center justify-center gap-2 px-3 py-3 transition-colors hover:bg-muted/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                         !currentUser && 'text-muted-foreground',
                     )}
                     onClick={handleClick}
@@ -182,20 +182,13 @@ export function PublicGardenLikeButton({
                             )}
                         />
                     )}
-                    <span className="min-w-0">
-                        <Typography
-                            level="body3"
-                            className="text-muted-foreground"
-                        >
-                            Sviđa se
-                        </Typography>
-                        <Typography
-                            level="body2"
-                            className="truncate font-medium"
-                        >
-                            {formatGardenNumber(likeCount)}
-                        </Typography>
-                    </span>
+                    <Typography
+                        component="span"
+                        level="body2"
+                        className="truncate font-medium"
+                    >
+                        {formatGardenNumber(likeCount)}
+                    </Typography>
                 </button>
                 {error ? (
                     <Typography
