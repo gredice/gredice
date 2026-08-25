@@ -79,11 +79,13 @@ type useCurrentGardenResponse = Omit<
     | 'createdAt'
     | 'updatedAt'
     | 'previewImage'
+    | 'previewImages'
     | 'previewSourceRevision'
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
     previewImage?: GardenPreviewImage | null;
+    previewImages?: GardenResponse['previewImages'];
     previewSourceRevision?: string | null;
     stacks: GardenStack[];
     location: {
@@ -1389,6 +1391,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                     lon: garden.longitude,
                 },
                 previewImage: garden.previewImage,
+                previewImages: garden.previewImages,
                 previewSourceRevision: garden.previewSourceRevision,
                 raisedBeds: garden.raisedBeds,
             };

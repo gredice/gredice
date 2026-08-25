@@ -3,8 +3,10 @@
 import type { GardenResponse } from '@gredice/client';
 import type { PublicGardenViewerProps } from '@gredice/game';
 import {
+    type GardenPreviewPhase,
     gardenPreviewContentType,
     gardenPreviewHeight,
+    gardenPreviewPhaseHeader,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
@@ -65,6 +67,7 @@ function gardenForCapture(garden: GardenResponse): BackfillGarden {
 
 async function loadGardenForBackfill(
     gardenId: number,
+    phase: GardenPreviewPhase,
     signal: AbortSignal,
 ): Promise<BackfillSource> {
     const response = await fetch(
@@ -86,13 +89,17 @@ async function loadGardenForBackfill(
 
     return {
         garden: gardenForCapture(garden),
-        previewImage: garden.previewImage,
+        phase,
+        previewImage:
+            garden.previewImages?.[phase] ??
+            (phase === 'day' ? garden.previewImage : null),
         sourceRevision: garden.previewSourceRevision,
     };
 }
 
 async function uploadGardenPreview(
     gardenId: number,
+    phase: GardenPreviewPhase,
     sourceRevision: string,
     blob: Blob,
     signal: AbortSignal,
@@ -104,6 +111,7 @@ async function uploadGardenPreview(
             credentials: 'include',
             headers: {
                 'Content-Type': gardenPreviewContentType,
+                [gardenPreviewPhaseHeader]: phase,
                 [gardenPreviewRendererVersionHeader]:
                     gardenPreviewRendererVersion,
                 [gardenPreviewSourceRevisionHeader]: sourceRevision,
@@ -168,7 +176,7 @@ export function PublicGardenPreviewBackfill({
             new Promise<Blob>((resolve, reject) => {
                 signal.throwIfAborted();
                 captureSequenceRef.current += 1;
-                const key = `${source.garden.id.toString()}:${source.sourceRevision}:${captureSequenceRef.current.toString()}`;
+                const key = `${source.garden.id.toString()}:${source.phase}:${source.sourceRevision}:${captureSequenceRef.current.toString()}`;
                 const handleAbort = () => {
                     const pending = pendingCaptureRef.current;
                     if (pending?.key === key) {
@@ -238,10 +246,11 @@ export function PublicGardenPreviewBackfill({
             captureGarden: requestCapture,
             gardenIds: queuedGardenIds,
             loadGarden: loadGardenForBackfill,
-            onGardenError: (gardenId, error) => {
+            onGardenError: (gardenId, phase, error) => {
                 console.error('Failed to backfill public garden preview', {
                     error,
                     gardenId,
+                    phase,
                 });
             },
             onGardenSuccess: () => {
@@ -297,6 +306,7 @@ export function PublicGardenPreviewBackfill({
                     key: activeCapture.key,
                     onCapture: handleCapture,
                     onError: handleCaptureError,
+                    phase: activeCapture.phase,
                 }}
                 className="size-full"
                 deferDetails={false}

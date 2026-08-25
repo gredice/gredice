@@ -18,8 +18,9 @@ import {
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import {
+    getGardenPreviewsForGardenIds,
     removeGardenPreviewAndQueueBlobDeletionUsing,
-    toGardenPreviewImage,
+    toGardenPreviewImages,
 } from './gardenPreviewsRepo';
 import {
     createRaisedBed,
@@ -36,6 +37,25 @@ type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
 type DatabaseClient = TransactionClient | StorageClient;
+type GardenPreviewRows = Awaited<
+    ReturnType<typeof getGardenPreviewsForGardenIds>
+>;
+
+function gardenPreviewImagesByGardenId(previews: GardenPreviewRows) {
+    const previewsByGardenId = new Map<number, GardenPreviewRows>();
+    for (const preview of previews) {
+        const gardenPreviews = previewsByGardenId.get(preview.gardenId) ?? [];
+        gardenPreviews.push(preview);
+        previewsByGardenId.set(preview.gardenId, gardenPreviews);
+    }
+
+    return new Map(
+        [...previewsByGardenId].map(([gardenId, gardenPreviews]) => [
+            gardenId,
+            toGardenPreviewImages(gardenPreviews),
+        ]),
+    );
+}
 
 export class PublicGardenLikeTargetNotFoundError extends Error {
     constructor(gardenId: number) {
@@ -159,15 +179,22 @@ export async function getPublicGardens() {
     const publicGardens = await storage().query.gardens.findMany({
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
-        with: {
-            preview: true,
-        },
     });
+    const previewImagesByGardenId = gardenPreviewImagesByGardenId(
+        await getGardenPreviewsForGardenIds(
+            publicGardens.map((garden) => garden.id),
+        ),
+    );
 
-    return publicGardens.map(({ preview, ...garden }) => ({
-        ...garden,
-        previewImage: toGardenPreviewImage(preview),
-    }));
+    return publicGardens.map((garden) => {
+        const previewImages =
+            previewImagesByGardenId.get(garden.id) ?? toGardenPreviewImages([]);
+        return {
+            ...garden,
+            previewImage: previewImages.day,
+            previewImages,
+        };
+    });
 }
 
 export async function getAccountGardensMetadata(accountId: string) {
@@ -243,34 +270,35 @@ export async function getAccountGardens(
 }
 
 export async function getGarden(gardenId: number) {
-    const [garden, raisedBeds] = await Promise.all([
+    const [garden, raisedBeds, previews] = await Promise.all([
         storage().query.gardens.findFirst({
             where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
             with: {
                 farm: true,
-                preview: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
             },
         }),
         getRaisedBeds(gardenId),
+        getGardenPreviewsForGardenIds([gardenId]),
     ]);
     if (!garden) {
         return null;
     }
-    const { preview, ...gardenData } = garden;
+    const previewImages = toGardenPreviewImages(previews);
 
     // Attach raised beds with event-sourced info
     return {
-        ...gardenData,
-        previewImage: toGardenPreviewImage(preview),
+        ...garden,
+        previewImage: previewImages.day,
+        previewImages,
         raisedBeds,
     };
 }
 
 export async function getPublicGarden(gardenId: number) {
-    const [garden, raisedBeds] = await Promise.all([
+    const [garden, raisedBeds, previews] = await Promise.all([
         storage().query.gardens.findFirst({
             where: and(
                 eq(gardens.id, gardenId),
@@ -279,23 +307,24 @@ export async function getPublicGarden(gardenId: number) {
             ),
             with: {
                 farm: true,
-                preview: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
             },
         }),
         getRaisedBeds(gardenId),
+        getGardenPreviewsForGardenIds([gardenId]),
     ]);
     if (!garden) {
         return null;
     }
 
-    const { preview, ...gardenData } = garden;
+    const previewImages = toGardenPreviewImages(previews);
 
     return {
-        ...gardenData,
-        previewImage: toGardenPreviewImage(preview),
+        ...garden,
+        previewImage: previewImages.day,
+        previewImages,
         raisedBeds,
     };
 }

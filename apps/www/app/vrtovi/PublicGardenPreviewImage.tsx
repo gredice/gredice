@@ -1,23 +1,32 @@
 'use client';
 
 import { Sprout } from '@gredice/ui/icons';
+import { usePublicEnvironment } from '@gredice/ui/PublicChrome';
 import Image from 'next/image';
 import { useState } from 'react';
 
 export function PublicGardenPreviewImage({
+    dayPreviewImageUrl,
     gardenName,
-    previewImageUrl,
+    nightPreviewImageUrl,
     priority = false,
 }: {
+    dayPreviewImageUrl?: string | null;
     gardenName: string;
-    previewImageUrl?: string | null;
+    nightPreviewImageUrl?: string | null;
     priority?: boolean;
 }) {
-    const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
-    const visibleImageUrl =
-        previewImageUrl && previewImageUrl !== failedImageUrl
-            ? previewImageUrl
-            : null;
+    const { snapshot } = usePublicEnvironment();
+    const [failedImageUrls, setFailedImageUrls] = useState<string[]>([]);
+    const preferredImageUrl = snapshot.dark
+        ? nightPreviewImageUrl
+        : dayPreviewImageUrl;
+    const fallbackImageUrl = snapshot.dark
+        ? dayPreviewImageUrl
+        : nightPreviewImageUrl;
+    const visibleImageUrl = [preferredImageUrl, fallbackImageUrl].find(
+        (imageUrl) => imageUrl && !failedImageUrls.includes(imageUrl),
+    );
 
     return (
         <div className="relative aspect-[1200/630] w-full overflow-hidden bg-muted">
@@ -42,7 +51,12 @@ export function PublicGardenPreviewImage({
                     sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                     priority={priority}
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    onError={() => setFailedImageUrl(visibleImageUrl)}
+                    onError={() =>
+                        setFailedImageUrls((current) => [
+                            ...current,
+                            visibleImageUrl,
+                        ])
+                    }
                 />
             ) : null}
         </div>

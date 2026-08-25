@@ -147,6 +147,10 @@ describe('shareCurrentGardenData', () => {
     it('keeps preview metadata updates without discarding the garden change', () => {
         const previousGarden = createGarden({
             previewImage: null,
+            previewImages: {
+                day: null,
+                night: null,
+            },
             previewSourceRevision: 'revision-1',
         });
         const previewImage = {
@@ -159,6 +163,10 @@ describe('shareCurrentGardenData', () => {
         };
         const nextGarden = createGarden({
             previewImage,
+            previewImages: {
+                day: null,
+                night: previewImage,
+            },
             previewSourceRevision: 'revision-1',
         });
 
@@ -166,6 +174,7 @@ describe('shareCurrentGardenData', () => {
 
         assert.notEqual(sharedGarden, previousGarden);
         assert.equal(sharedGarden?.previewImage, previewImage);
+        assert.equal(sharedGarden?.previewImages?.night, previewImage);
         assert.equal(sharedGarden?.stacks, previousGarden.stacks);
     });
 });

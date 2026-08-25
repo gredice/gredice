@@ -1,5 +1,19 @@
 import 'server-only';
-import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import {
+    type GardenPreviewPhase,
+    gardenPreviewDefaultPhase,
+} from '@gredice/js/gardenPreviews';
+import {
+    and,
+    asc,
+    eq,
+    getTableColumns,
+    inArray,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     gardenPreviewBlobDeletions,
     gardenPreviewBlobScanStates,
@@ -23,6 +37,12 @@ const GARDEN_PREVIEW_BLOB_SCAN_STATE_NAME = 'garden-previews';
 const DEFAULT_BLOB_DELETION_BATCH_SIZE = 100;
 const MAX_BLOB_DELETION_BATCH_SIZE = 1_000;
 const MAX_BLOB_DELETION_ERROR_LENGTH = 2_000;
+const { phase: _gardenPreviewPhase, ...legacyGardenPreviewColumns } =
+    getTableColumns(gardenPreviews);
+const compatibleGardenPreviewColumns = {
+    ...legacyGardenPreviewColumns,
+    phase: sql<GardenPreviewPhase>`coalesce(to_jsonb(${gardenPreviews})->>'phase', ${gardenPreviewDefaultPhase})`,
+};
 
 export type GardenPreviewBlobDeletionReason =
     | 'garden_deleted'
@@ -39,6 +59,11 @@ export type GardenPreviewImage = {
     rendererVersion: string;
     capturedAt: Date;
 };
+
+export type GardenPreviewImages = Record<
+    GardenPreviewPhase,
+    GardenPreviewImage | null
+>;
 
 export function toGardenPreviewImage(
     preview: SelectGardenPreview | null | undefined,
@@ -57,12 +82,42 @@ export function toGardenPreviewImage(
     };
 }
 
-export async function getGardenPreview(gardenId: number) {
-    return (
-        (await storage().query.gardenPreviews.findFirst({
-            where: eq(gardenPreviews.gardenId, gardenId),
-        })) ?? null
-    );
+export function toGardenPreviewImages(
+    previews: SelectGardenPreview[],
+): GardenPreviewImages {
+    return {
+        day: toGardenPreviewImage(
+            previews.find((preview) => preview.phase === 'day'),
+        ),
+        night: toGardenPreviewImage(
+            previews.find((preview) => preview.phase === 'night'),
+        ),
+    };
+}
+
+export async function getGardenPreview(
+    gardenId: number,
+    phase: GardenPreviewPhase = gardenPreviewDefaultPhase,
+) {
+    const previews = await getGardenPreviews(gardenId);
+    return previews.find((preview) => preview.phase === phase) ?? null;
+}
+
+export async function getGardenPreviewsForGardenIds(
+    gardenIds: number[],
+): Promise<SelectGardenPreview[]> {
+    if (gardenIds.length === 0) {
+        return [];
+    }
+
+    return await storage()
+        .select(compatibleGardenPreviewColumns)
+        .from(gardenPreviews)
+        .where(inArray(gardenPreviews.gardenId, gardenIds));
+}
+
+export function getGardenPreviews(gardenId: number) {
+    return getGardenPreviewsForGardenIds([gardenId]);
 }
 
 export async function listGardenPreviewPathnames() {
@@ -209,22 +264,30 @@ export async function removeGardenPreviewAndQueueBlobDeletionUsing(
     gardenId: number,
     reason: GardenPreviewBlobDeletionReason,
 ) {
-    const [preview] = await db
+    const previews = await db
         .delete(gardenPreviews)
         .where(eq(gardenPreviews.gardenId, gardenId))
         .returning();
 
-    if (!preview) {
+    if (previews.length === 0) {
         return null;
     }
 
-    await queueGardenPreviewBlobDeletionUsing(db, {
-        imageUrl: preview.imageUrl,
-        pathname: preview.pathname,
-        reason,
-    });
+    for (const preview of previews) {
+        await queueGardenPreviewBlobDeletionUsing(db, {
+            imageUrl: preview.imageUrl,
+            pathname: preview.pathname,
+            reason,
+        });
+    }
 
-    return preview;
+    return (
+        previews.find(
+            (preview) => preview.phase === gardenPreviewDefaultPhase,
+        ) ??
+        previews[0] ??
+        null
+    );
 }
 
 export async function removeGardenPreviewAndQueueBlobDeletion(
@@ -498,6 +561,7 @@ export async function replaceGardenPreview(
     input: ReplaceGardenPreviewInput,
 ): Promise<ReplaceGardenPreviewResult> {
     return storage().transaction(async (tx) => {
+        const phase = input.phase ?? gardenPreviewDefaultPhase;
         const [garden] = await tx
             .select({ id: gardens.id })
             .from(gardens)
@@ -521,7 +585,10 @@ export async function replaceGardenPreview(
 
         const existing =
             (await tx.query.gardenPreviews.findFirst({
-                where: eq(gardenPreviews.gardenId, input.gardenId),
+                where: and(
+                    eq(gardenPreviews.gardenId, input.gardenId),
+                    eq(gardenPreviews.phase, phase),
+                ),
             })) ?? null;
 
         if (
@@ -549,9 +616,9 @@ export async function replaceGardenPreview(
 
         const [preview] = await tx
             .insert(gardenPreviews)
-            .values(input)
+            .values({ ...input, phase })
             .onConflictDoUpdate({
-                target: gardenPreviews.gardenId,
+                target: [gardenPreviews.gardenId, gardenPreviews.phase],
                 set: {
                     captureRequestId: input.captureRequestId,
                     imageUrl: input.imageUrl,

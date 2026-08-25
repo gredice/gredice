@@ -47,10 +47,12 @@ async function createPublicGarden() {
 
 function previewInput({
     gardenId,
+    phase,
     requestedAt,
     pathname,
 }: {
     gardenId: number;
+    phase?: 'day' | 'night';
     requestedAt: Date;
     pathname: string;
 }) {
@@ -61,6 +63,7 @@ function previewInput({
         capturedAt: requestedAt,
         contentType: 'image/webp',
         gardenId,
+        phase,
         height: 630,
         imageUrl: `https://example.test/${pathname}`,
         pathname,
@@ -198,19 +201,35 @@ test('preview replacement and removal enqueue Blob deletion transactionally', as
 
 test('explicit preview removal is idempotent and durably queues its Blob', async () => {
     const gardenId = await createPublicGarden();
-    const pathname = `garden-previews/${gardenId.toString()}/remove.webp`;
+    const pathname = `garden-previews/${gardenId.toString()}/day/remove.webp`;
+    const nightPathname = `garden-previews/${gardenId.toString()}/night/remove.webp`;
     await replaceGardenPreview(
         previewInput({ gardenId, pathname, requestedAt: new Date() }),
+    );
+    await replaceGardenPreview(
+        previewInput({
+            gardenId,
+            pathname: nightPathname,
+            phase: 'night',
+            requestedAt: new Date(),
+        }),
+    );
+
+    assert.equal(
+        (await getGardenPreview(gardenId, 'night'))?.pathname,
+        nightPathname,
     );
 
     const removed = await removeGardenPreviewAndQueueBlobDeletion(gardenId);
     assert.equal(removed?.pathname, pathname);
     assert.equal(await removeGardenPreviewAndQueueBlobDeletion(gardenId), null);
+    assert.equal(await getGardenPreview(gardenId, 'night'), null);
     assert.equal(
         (await listGardenPreviewBlobDeletions()).filter(
-            (row) => row.pathname === pathname,
+            (row) =>
+                row.pathname === pathname || row.pathname === nightPathname,
         ).length,
-        1,
+        2,
     );
 });
 

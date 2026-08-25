@@ -245,6 +245,31 @@ test('garden previews replace atomically and reject older captures', async () =>
         first.preview.imageUrl,
     );
 
+    const night = await replaceGardenPreview({
+        gardenId,
+        phase: 'night',
+        captureRequestId: randomUUID(),
+        imageUrl: 'https://example.test/night.webp',
+        pathname: `garden-previews/${gardenId.toString()}/night.webp`,
+        contentType: 'image/webp',
+        byteSize: 100,
+        width: 1200,
+        height: 630,
+        sourceRevision: 'a'.repeat(64),
+        rendererVersion: 'garden-preview-v1',
+        captureRequestedAt: firstRequestedAt,
+        capturedAt: firstRequestedAt,
+    });
+    assert.equal(night.status, 'accepted');
+    assert.equal(
+        (await getPublicGarden(gardenId))?.previewImages.night?.url,
+        night.preview.imageUrl,
+    );
+    assert.equal(
+        (await getPublicGarden(gardenId))?.previewImage?.url,
+        first.preview.imageUrl,
+    );
+
     const older = await replaceGardenPreview({
         gardenId,
         captureRequestId: randomUUID(),
@@ -268,6 +293,7 @@ test('garden previews replace atomically and reject older captures', async () =>
     const removed = await removeGardenPreview(gardenId);
     assert.equal(removed?.imageUrl, first.preview.imageUrl);
     assert.equal(await getGardenPreview(gardenId), null);
+    assert.equal(await getGardenPreview(gardenId, 'night'), null);
 });
 
 test('garden preview persistence rejects private gardens', async () => {

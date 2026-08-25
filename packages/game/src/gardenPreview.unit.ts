@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
     type GardenPreviewImage,
     gardenPreviewHeight,
+    gardenPreviewPhaseHeader,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
@@ -106,9 +107,16 @@ describe('garden preview API contract', () => {
         );
         assert.deepEqual(getGardenPreviewUploadHeaders('revision-1'), {
             'Content-Type': 'image/webp',
+            [gardenPreviewPhaseHeader]: 'day',
             [gardenPreviewSourceRevisionHeader]: 'revision-1',
             [gardenPreviewRendererVersionHeader]: gardenPreviewRendererVersion,
         });
+        assert.equal(
+            getGardenPreviewUploadHeaders('revision-1', 'night')[
+                gardenPreviewPhaseHeader
+            ],
+            'night',
+        );
     });
 });
 
