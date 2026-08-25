@@ -282,8 +282,9 @@ export function LandingGameScene() {
                     </Button>
                     <NavigatingButton
                         href={gardenBaseUrl}
+                        color="neutral"
                         variant="outlined"
-                        className="rounded-full bg-background shadow-lg"
+                        className="rounded-full bg-background text-primary shadow-lg"
                     >
                         Otvori aplikaciju
                     </NavigatingButton>
@@ -317,8 +318,9 @@ export function LandingGameSignupCta() {
             </NavigatingButton>
             <NavigatingButton
                 href={gardenBaseUrl}
+                color="neutral"
                 variant="outlined"
-                className="rounded-full bg-background shadow-sm"
+                className="rounded-full bg-background text-primary shadow-sm"
             >
                 Otvori aplikaciju
             </NavigatingButton>

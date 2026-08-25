@@ -205,10 +205,11 @@ export function PublicEnvironmentProvider({
               : SUMMER_HUE;
 
         root.style.setProperty('--baseHue', String(hue));
-        root.style.setProperty('--environmentHue', String(hue));
         if (immersive) {
+            root.style.setProperty('--environmentHue', String(hue));
             root.dataset.publicEnvironment = 'on';
         } else {
+            root.style.removeProperty('--environmentHue');
             delete root.dataset.publicEnvironment;
         }
         setTheme(theme);
