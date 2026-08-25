@@ -46,7 +46,7 @@ const publicEnvironmentStars = [
     { x: 729.6, y: 851.2, radius: 1, fill: '#fff', opacity: 0.86 },
     { x: 1203.2, y: 322.6, radius: 0.8, fill: '#fff5d2', opacity: 0.72 },
     { x: 307.2, y: 304.6, radius: 0.7, fill: '#d6e5ff', opacity: 0.64 },
-] as const;
+];
 
 function PublicEnvironmentStars({ opacity }: { opacity: number }) {
     const patternId = useId();
@@ -55,7 +55,9 @@ function PublicEnvironmentStars({ opacity }: { opacity: number }) {
         <svg
             aria-hidden="true"
             className="public-environment-stars"
+            height="100%"
             style={{ opacity }}
+            width="100%"
         >
             <defs>
                 <pattern

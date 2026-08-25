@@ -52,6 +52,9 @@ test('toggles the sky and applies deterministic debug conditions', async ({
     await toggle.click();
     await expect(toggle).toBeChecked();
     await expect(page.getByTestId('public-environment-backdrop')).toBeVisible();
+    const stars = page.locator('.public-environment-stars');
+    await expect(stars).toHaveAttribute('height', '100%');
+    await expect(stars).toHaveAttribute('width', '100%');
     const starPattern = page.locator('.public-environment-stars pattern');
     await expect(starPattern).toHaveAttribute('width', '1280');
     await expect(starPattern).toHaveAttribute('height', '896');
