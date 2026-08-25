@@ -1,6 +1,9 @@
 import {
+    type GardenPreviewPhase,
     gardenPreviewContentType,
+    gardenPreviewDefaultPhase,
     gardenPreviewHeight,
+    gardenPreviewPhaseHeader,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
@@ -8,8 +11,11 @@ import {
 } from '@gredice/js/gardenPreviews';
 
 export {
+    gardenPreviewDefaultPhase,
     gardenPreviewHeight,
     gardenPreviewMaxSizeBytes,
+    gardenPreviewPhaseHeader,
+    gardenPreviewPhases,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
@@ -83,9 +89,13 @@ export function getGardenPreviewUploadUrl(gardenId: number) {
     return `/api/gredice/api/gardens/${gardenId.toString()}/preview`;
 }
 
-export function getGardenPreviewUploadHeaders(sourceRevision: string) {
+export function getGardenPreviewUploadHeaders(
+    sourceRevision: string,
+    phase: GardenPreviewPhase = gardenPreviewDefaultPhase,
+) {
     return {
         'Content-Type': gardenPreviewContentType,
+        [gardenPreviewPhaseHeader]: phase,
         [gardenPreviewSourceRevisionHeader]: sourceRevision,
         [gardenPreviewRendererVersionHeader]: gardenPreviewRendererVersion,
     };

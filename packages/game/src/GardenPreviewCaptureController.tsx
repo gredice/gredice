@@ -1,5 +1,9 @@
 'use client';
 
+import {
+    type GardenPreviewPhase,
+    gardenPreviewPhases,
+} from '@gredice/js/gardenPreviews';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -90,17 +94,19 @@ function publicGardenDetailFromCurrentGarden(
 async function uploadGardenPreview({
     blob,
     gardenId,
+    phase,
     sourceRevision,
 }: {
     blob: Blob;
     gardenId: number;
+    phase: GardenPreviewPhase;
     sourceRevision: string;
 }) {
     const response = await fetch(getGardenPreviewUploadUrl(gardenId), {
         method: 'PUT',
         body: blob,
         credentials: 'include',
-        headers: getGardenPreviewUploadHeaders(sourceRevision),
+        headers: getGardenPreviewUploadHeaders(sourceRevision, phase),
     });
 
     if (!response.ok) {
@@ -153,29 +159,43 @@ export function GardenPreviewCaptureController({
         key: string;
     } | null>(null);
     const [idleReadyKey, setIdleReadyKey] = useState<string | null>(null);
-    const [terminalKey, setTerminalKey] = useState<string | null>(null);
+    const [terminalKeys, setTerminalKeys] = useState<string[]>([]);
     const sourceRevision = garden?.previewSourceRevision ?? null;
-    const captureKey =
+    const capturePhase =
         garden && sourceRevision
-            ? `${garden.id.toString()}:${sourceRevision}`
+            ? (gardenPreviewPhases.find((phase) =>
+                  Boolean(
+                      !terminalKeys.includes(
+                          `${garden.id.toString()}:${phase}:${sourceRevision}`,
+                      ) &&
+                          shouldCaptureGardenPreview({
+                              enabled,
+                              isPublic: garden.isPublic,
+                              previewImage:
+                                  garden.previewImages?.[phase] ??
+                                  (phase === 'day'
+                                      ? garden.previewImage
+                                      : null),
+                              sourceRevision,
+                          }),
+                  ),
+              ) ?? null)
+            : null;
+    const previewImage = capturePhase
+        ? (garden?.previewImages?.[capturePhase] ??
+          (capturePhase === 'day' ? garden?.previewImage : null))
+        : null;
+    const captureKey =
+        garden && sourceRevision && capturePhase
+            ? `${garden.id.toString()}:${capturePhase}:${sourceRevision}`
             : null;
     const captureAttempt =
         captureFailure?.key === captureKey ? captureFailure.count : 0;
     const captureDelayMs = getGardenPreviewCaptureDelayMs({
-        previewImage: garden?.previewImage,
+        previewImage,
         sourceRevision,
     });
-    const captureNeeded = Boolean(
-        garden &&
-            captureKey &&
-            captureKey !== terminalKey &&
-            shouldCaptureGardenPreview({
-                enabled,
-                isPublic: garden.isPublic,
-                previewImage: garden.previewImage,
-                sourceRevision,
-            }),
-    );
+    const captureNeeded = Boolean(garden && captureKey && capturePhase);
     const captureRequestKey =
         captureNeeded && captureKey
             ? `${captureKey}:${captureAttempt.toString()}`
@@ -248,7 +268,11 @@ export function GardenPreviewCaptureController({
 
     const markTerminal = useCallback(() => {
         if (captureKey) {
-            setTerminalKey(captureKey);
+            setTerminalKeys((current) =>
+                current.includes(captureKey)
+                    ? current
+                    : [...current, captureKey],
+            );
         }
     }, [captureKey]);
 
@@ -261,6 +285,7 @@ export function GardenPreviewCaptureController({
             console.error('Failed to capture garden preview', {
                 error,
                 gardenId: garden.id,
+                phase: capturePhase,
             });
             if (captureAttempt < maximumRetryCount) {
                 setCaptureFailure({
@@ -272,37 +297,40 @@ export function GardenPreviewCaptureController({
 
             markTerminal();
         },
-        [captureAttempt, captureKey, garden, markTerminal],
+        [captureAttempt, captureKey, capturePhase, garden, markTerminal],
     );
 
     const handleCapture = useCallback(
         (blob: Blob) => {
-            if (!garden || !sourceRevision) {
+            if (!garden || !sourceRevision || !capturePhase) {
                 return;
             }
 
-            markTerminal();
             void uploadGardenPreviewWithRetry({
                 blob,
                 gardenId: garden.id,
+                phase: capturePhase,
                 sourceRevision,
             })
                 .then(() => {
+                    markTerminal();
                     void queryClient.invalidateQueries({
                         queryKey: useGardensKeys,
                     });
                 })
                 .catch((error) => {
+                    markTerminal();
                     console.error('Failed to upload garden preview', {
                         error,
                         gardenId: garden.id,
+                        phase: capturePhase,
                     });
                     void queryClient.invalidateQueries({
                         queryKey: useGardensKeys,
                     });
                 });
         },
-        [garden, markTerminal, queryClient, sourceRevision],
+        [capturePhase, garden, markTerminal, queryClient, sourceRevision],
     );
 
     if (!captureGarden || !captureRequestKey) {
@@ -330,6 +358,7 @@ export function GardenPreviewCaptureController({
                     key: captureRequestKey,
                     onCapture: handleCapture,
                     onError: handleCaptureError,
+                    phase: capturePhase ?? undefined,
                 }}
                 className="size-full"
                 deferDetails={false}

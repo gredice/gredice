@@ -1,3 +1,4 @@
+import type { GardenPreviewPhase } from '@gredice/js/gardenPreviews';
 import { relations, sql } from 'drizzle-orm';
 import {
     boolean,
@@ -7,6 +8,7 @@ import {
     integer,
     jsonb,
     pgTable,
+    primaryKey,
     serial,
     text,
     timestamp,
@@ -60,8 +62,12 @@ export const gardenPreviews = pgTable(
     'garden_previews',
     {
         gardenId: integer('garden_id')
-            .primaryKey()
+            .notNull()
             .references(() => gardens.id, { onDelete: 'cascade' }),
+        phase: text('phase')
+            .$type<GardenPreviewPhase>()
+            .notNull()
+            .default('day'),
         captureRequestId: text('capture_request_id').notNull(),
         imageUrl: text('image_url').notNull(),
         pathname: text('pathname').notNull(),
@@ -80,6 +86,10 @@ export const gardenPreviews = pgTable(
             .$onUpdate(() => new Date()),
     },
     (table) => [
+        primaryKey({
+            columns: [table.gardenId, table.phase],
+            name: 'garden_previews_garden_id_phase_pk',
+        }),
         uniqueIndex('garden_previews_capture_request_id_uq').on(
             table.captureRequestId,
         ),
@@ -190,9 +200,7 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     likes: many(gardenLikes, {
         relationName: 'gardenLikes',
     }),
-    preview: one(gardenPreviews, {
-        fields: [gardens.id],
-        references: [gardenPreviews.gardenId],
+    previews: many(gardenPreviews, {
         relationName: 'gardenPreview',
     }),
     previewCaptureLease: one(gardenPreviewCaptureLeases, {

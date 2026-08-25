@@ -1,4 +1,8 @@
 import 'server-only';
+import {
+    type GardenPreviewPhase,
+    gardenPreviewDefaultPhase,
+} from '@gredice/js/gardenPreviews';
 import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import {
     gardenPreviewBlobDeletions,
@@ -40,6 +44,11 @@ export type GardenPreviewImage = {
     capturedAt: Date;
 };
 
+export type GardenPreviewImages = Record<
+    GardenPreviewPhase,
+    GardenPreviewImage | null
+>;
+
 export function toGardenPreviewImage(
     preview: SelectGardenPreview | null | undefined,
 ): GardenPreviewImage | null {
@@ -57,12 +66,37 @@ export function toGardenPreviewImage(
     };
 }
 
-export async function getGardenPreview(gardenId: number) {
+export function toGardenPreviewImages(
+    previews: SelectGardenPreview[],
+): GardenPreviewImages {
+    return {
+        day: toGardenPreviewImage(
+            previews.find((preview) => preview.phase === 'day'),
+        ),
+        night: toGardenPreviewImage(
+            previews.find((preview) => preview.phase === 'night'),
+        ),
+    };
+}
+
+export async function getGardenPreview(
+    gardenId: number,
+    phase: GardenPreviewPhase = gardenPreviewDefaultPhase,
+) {
     return (
         (await storage().query.gardenPreviews.findFirst({
-            where: eq(gardenPreviews.gardenId, gardenId),
+            where: and(
+                eq(gardenPreviews.gardenId, gardenId),
+                eq(gardenPreviews.phase, phase),
+            ),
         })) ?? null
     );
+}
+
+export function getGardenPreviews(gardenId: number) {
+    return storage().query.gardenPreviews.findMany({
+        where: eq(gardenPreviews.gardenId, gardenId),
+    });
 }
 
 export async function listGardenPreviewPathnames() {
@@ -209,22 +243,30 @@ export async function removeGardenPreviewAndQueueBlobDeletionUsing(
     gardenId: number,
     reason: GardenPreviewBlobDeletionReason,
 ) {
-    const [preview] = await db
+    const previews = await db
         .delete(gardenPreviews)
         .where(eq(gardenPreviews.gardenId, gardenId))
         .returning();
 
-    if (!preview) {
+    if (previews.length === 0) {
         return null;
     }
 
-    await queueGardenPreviewBlobDeletionUsing(db, {
-        imageUrl: preview.imageUrl,
-        pathname: preview.pathname,
-        reason,
-    });
+    for (const preview of previews) {
+        await queueGardenPreviewBlobDeletionUsing(db, {
+            imageUrl: preview.imageUrl,
+            pathname: preview.pathname,
+            reason,
+        });
+    }
 
-    return preview;
+    return (
+        previews.find(
+            (preview) => preview.phase === gardenPreviewDefaultPhase,
+        ) ??
+        previews[0] ??
+        null
+    );
 }
 
 export async function removeGardenPreviewAndQueueBlobDeletion(
@@ -498,6 +540,7 @@ export async function replaceGardenPreview(
     input: ReplaceGardenPreviewInput,
 ): Promise<ReplaceGardenPreviewResult> {
     return storage().transaction(async (tx) => {
+        const phase = input.phase ?? gardenPreviewDefaultPhase;
         const [garden] = await tx
             .select({ id: gardens.id })
             .from(gardens)
@@ -521,7 +564,10 @@ export async function replaceGardenPreview(
 
         const existing =
             (await tx.query.gardenPreviews.findFirst({
-                where: eq(gardenPreviews.gardenId, input.gardenId),
+                where: and(
+                    eq(gardenPreviews.gardenId, input.gardenId),
+                    eq(gardenPreviews.phase, phase),
+                ),
             })) ?? null;
 
         if (
@@ -549,9 +595,9 @@ export async function replaceGardenPreview(
 
         const [preview] = await tx
             .insert(gardenPreviews)
-            .values(input)
+            .values({ ...input, phase })
             .onConflictDoUpdate({
-                target: gardenPreviews.gardenId,
+                target: [gardenPreviews.gardenId, gardenPreviews.phase],
                 set: {
                     captureRequestId: input.captureRequestId,
                     imageUrl: input.imageUrl,

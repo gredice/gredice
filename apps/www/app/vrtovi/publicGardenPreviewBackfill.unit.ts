@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    type GardenPreviewPhase,
     gardenPreviewHeight,
     gardenPreviewRendererVersion,
     gardenPreviewWidth,
@@ -12,6 +13,7 @@ import {
 
 function source(
     gardenId: number,
+    phase: GardenPreviewPhase,
     previewImage: {
         height: number;
         rendererVersion: string;
@@ -21,6 +23,7 @@ function source(
 ) {
     return {
         garden: { id: gardenId },
+        phase,
         previewImage,
         sourceRevision: `revision-${gardenId.toString()}`,
     };
@@ -36,33 +39,39 @@ function currentPreview(gardenId: number) {
 }
 
 describe('runSequentialPublicGardenPreviewBackfill', () => {
-    it('loads, captures, and uploads exactly one garden at a time', async () => {
+    it('loads, captures, and uploads both phases exactly one at a time', async () => {
         const events: string[] = [];
         const signal = new AbortController().signal;
 
         await runSequentialPublicGardenPreviewBackfill({
             gardenIds: [1, 2],
             signal,
-            loadGarden: async (gardenId) => {
-                events.push(`load:${gardenId.toString()}`);
-                return source(gardenId);
+            loadGarden: async (gardenId, phase) => {
+                events.push(`load:${gardenId.toString()}:${phase}`);
+                return source(gardenId, phase);
             },
-            captureGarden: async ({ garden }) => {
-                events.push(`capture:${garden.id.toString()}`);
+            captureGarden: async ({ garden, phase }) => {
+                events.push(`capture:${garden.id.toString()}:${phase}`);
                 return new Blob(['preview'], { type: 'image/webp' });
             },
-            uploadPreview: async (gardenId) => {
-                events.push(`upload:${gardenId.toString()}`);
+            uploadPreview: async (gardenId, phase) => {
+                events.push(`upload:${gardenId.toString()}:${phase}`);
             },
         });
 
         assert.deepEqual(events, [
-            'load:1',
-            'capture:1',
-            'upload:1',
-            'load:2',
-            'capture:2',
-            'upload:2',
+            'load:1:day',
+            'capture:1:day',
+            'upload:1:day',
+            'load:1:night',
+            'capture:1:night',
+            'upload:1:night',
+            'load:2:day',
+            'capture:2:day',
+            'upload:2:day',
+            'load:2:night',
+            'capture:2:night',
+            'upload:2:night',
         ]);
     });
 
@@ -74,10 +83,11 @@ describe('runSequentialPublicGardenPreviewBackfill', () => {
 
         await runSequentialPublicGardenPreviewBackfill({
             gardenIds: [1, 2],
+            phases: ['day'],
             signal,
-            loadGarden: async (gardenId) => {
+            loadGarden: async (gardenId, phase) => {
                 events.push(`load:${gardenId.toString()}`);
-                return source(gardenId, currentPreview(gardenId));
+                return source(gardenId, phase, currentPreview(gardenId));
             },
             captureGarden: async ({ garden }) => {
                 events.push(`capture:${garden.id.toString()}`);
@@ -133,10 +143,12 @@ describe('runSequentialPublicGardenPreviewBackfill', () => {
 
         await runSequentialPublicGardenPreviewBackfill({
             gardenIds: [1, 2, 3, 4, 5],
+            phases: ['day'],
             signal,
-            loadGarden: async (gardenId) =>
+            loadGarden: async (gardenId, phase) =>
                 source(
                     gardenId,
+                    phase,
                     gardenId === 5
                         ? currentPreview(gardenId)
                         : (previews.get(gardenId) ?? null),
@@ -164,12 +176,13 @@ describe('runSequentialPublicGardenPreviewBackfill', () => {
 
         await runSequentialPublicGardenPreviewBackfill({
             gardenIds: [1, 2, 3],
+            phases: ['day'],
             signal,
-            loadGarden: async (gardenId) => {
+            loadGarden: async (gardenId, phase) => {
                 if (gardenId === 2) {
                     throw new PublicGardenPreviewBackfillHttpError(404, 'load');
                 }
-                return source(gardenId);
+                return source(gardenId, phase);
             },
             captureGarden: async () =>
                 new Blob(['preview'], { type: 'image/webp' }),
@@ -201,8 +214,9 @@ describe('runSequentialPublicGardenPreviewBackfill', () => {
 
         await runSequentialPublicGardenPreviewBackfill({
             gardenIds: [1],
+            phases: ['day'],
             signal,
-            loadGarden: async () => source(1),
+            loadGarden: async (_gardenId, phase) => source(1, phase),
             captureGarden: async () =>
                 new Blob(['preview'], { type: 'image/webp' }),
             uploadPreview: async () => {

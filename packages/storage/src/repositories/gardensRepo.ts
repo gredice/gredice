@@ -19,7 +19,7 @@ import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
 import {
     removeGardenPreviewAndQueueBlobDeletionUsing,
-    toGardenPreviewImage,
+    toGardenPreviewImages,
 } from './gardenPreviewsRepo';
 import {
     createRaisedBed,
@@ -160,14 +160,18 @@ export async function getPublicGardens() {
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
         with: {
-            preview: true,
+            previews: true,
         },
     });
 
-    return publicGardens.map(({ preview, ...garden }) => ({
-        ...garden,
-        previewImage: toGardenPreviewImage(preview),
-    }));
+    return publicGardens.map(({ previews, ...garden }) => {
+        const previewImages = toGardenPreviewImages(previews);
+        return {
+            ...garden,
+            previewImage: previewImages.day,
+            previewImages,
+        };
+    });
 }
 
 export async function getAccountGardensMetadata(accountId: string) {
@@ -248,7 +252,7 @@ export async function getGarden(gardenId: number) {
             where: and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
             with: {
                 farm: true,
-                preview: true,
+                previews: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
@@ -259,12 +263,14 @@ export async function getGarden(gardenId: number) {
     if (!garden) {
         return null;
     }
-    const { preview, ...gardenData } = garden;
+    const { previews, ...gardenData } = garden;
+    const previewImages = toGardenPreviewImages(previews);
 
     // Attach raised beds with event-sourced info
     return {
         ...gardenData,
-        previewImage: toGardenPreviewImage(preview),
+        previewImage: previewImages.day,
+        previewImages,
         raisedBeds,
     };
 }
@@ -279,7 +285,7 @@ export async function getPublicGarden(gardenId: number) {
             ),
             with: {
                 farm: true,
-                preview: true,
+                previews: true,
                 stacks: {
                     where: eq(gardenStacks.isDeleted, false),
                 },
@@ -291,11 +297,13 @@ export async function getPublicGarden(gardenId: number) {
         return null;
     }
 
-    const { preview, ...gardenData } = garden;
+    const { previews, ...gardenData } = garden;
+    const previewImages = toGardenPreviewImages(previews);
 
     return {
         ...gardenData,
-        previewImage: toGardenPreviewImage(preview),
+        previewImage: previewImages.day,
+        previewImages,
         raisedBeds,
     };
 }

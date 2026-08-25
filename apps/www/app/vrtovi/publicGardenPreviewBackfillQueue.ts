@@ -1,5 +1,7 @@
 import {
+    type GardenPreviewPhase,
     gardenPreviewHeight,
+    gardenPreviewPhases,
     gardenPreviewRendererVersion,
     gardenPreviewWidth,
 } from '@gredice/js/gardenPreviews';
@@ -13,6 +15,7 @@ export type PublicGardenPreviewBackfillImage = {
 
 export type PublicGardenPreviewBackfillSource<TGarden> = {
     garden: TGarden;
+    phase: GardenPreviewPhase;
     previewImage: PublicGardenPreviewBackfillImage | null;
     sourceRevision: string;
 };
@@ -25,13 +28,20 @@ type PublicGardenPreviewBackfillOptions<TGarden> = {
     gardenIds: number[];
     loadGarden: (
         gardenId: number,
+        phase: GardenPreviewPhase,
         signal: AbortSignal,
     ) => Promise<PublicGardenPreviewBackfillSource<TGarden>>;
-    onGardenError?: (gardenId: number, error: unknown) => void;
-    onGardenSuccess?: (gardenId: number) => void;
+    onGardenError?: (
+        gardenId: number,
+        phase: GardenPreviewPhase,
+        error: unknown,
+    ) => void;
+    onGardenSuccess?: (gardenId: number, phase: GardenPreviewPhase) => void;
+    phases?: readonly GardenPreviewPhase[];
     signal: AbortSignal;
     uploadPreview: (
         gardenId: number,
+        phase: GardenPreviewPhase,
         sourceRevision: string,
         blob: Blob,
         signal: AbortSignal,
@@ -115,8 +125,9 @@ function defaultWaitBeforeRetry(signal: AbortSignal, error: unknown) {
 }
 
 /**
- * Runs the backfill strictly one garden at a time so only one WebGL renderer is
- * ever mounted. A failed garden is retried once, then the queue continues.
+ * Runs the backfill strictly one garden phase at a time so only one WebGL
+ * renderer is ever mounted. A failed phase is retried once, then the queue
+ * continues.
  */
 export async function runSequentialPublicGardenPreviewBackfill<TGarden>({
     captureGarden,
@@ -124,52 +135,56 @@ export async function runSequentialPublicGardenPreviewBackfill<TGarden>({
     loadGarden,
     onGardenError,
     onGardenSuccess,
+    phases = gardenPreviewPhases,
     signal,
     uploadPreview,
     waitBeforeRetry = defaultWaitBeforeRetry,
 }: PublicGardenPreviewBackfillOptions<TGarden>) {
     for (const gardenId of gardenIds) {
-        let terminalError: unknown;
+        for (const phase of phases) {
+            let terminalError: unknown;
 
-        for (
-            let attempt = 0;
-            attempt < maximumAttemptsPerGarden;
-            attempt += 1
-        ) {
-            signal.throwIfAborted();
-            try {
-                const source = await loadGarden(gardenId, signal);
-                if (isPublicGardenPreviewCurrent(source)) {
+            for (
+                let attempt = 0;
+                attempt < maximumAttemptsPerGarden;
+                attempt += 1
+            ) {
+                signal.throwIfAborted();
+                try {
+                    const source = await loadGarden(gardenId, phase, signal);
+                    if (isPublicGardenPreviewCurrent(source)) {
+                        terminalError = undefined;
+                        break;
+                    }
+                    const blob = await captureGarden(source, signal);
+                    await uploadPreview(
+                        gardenId,
+                        phase,
+                        source.sourceRevision,
+                        blob,
+                        signal,
+                    );
                     terminalError = undefined;
+                    onGardenSuccess?.(gardenId, phase);
                     break;
-                }
-                const blob = await captureGarden(source, signal);
-                await uploadPreview(
-                    gardenId,
-                    source.sourceRevision,
-                    blob,
-                    signal,
-                );
-                terminalError = undefined;
-                onGardenSuccess?.(gardenId);
-                break;
-            } catch (error) {
-                if (isAbortError(error, signal)) {
-                    throw error;
-                }
+                } catch (error) {
+                    if (isAbortError(error, signal)) {
+                        throw error;
+                    }
 
-                terminalError = error;
-                const hasAnotherAttempt =
-                    attempt + 1 < maximumAttemptsPerGarden;
-                if (!hasAnotherAttempt || !shouldRetry(error)) {
-                    break;
+                    terminalError = error;
+                    const hasAnotherAttempt =
+                        attempt + 1 < maximumAttemptsPerGarden;
+                    if (!hasAnotherAttempt || !shouldRetry(error)) {
+                        break;
+                    }
+                    await waitBeforeRetry(signal, error);
                 }
-                await waitBeforeRetry(signal, error);
             }
-        }
 
-        if (terminalError !== undefined) {
-            onGardenError?.(gardenId, terminalError);
+            if (terminalError !== undefined) {
+                onGardenError?.(gardenId, phase, terminalError);
+            }
         }
     }
 }

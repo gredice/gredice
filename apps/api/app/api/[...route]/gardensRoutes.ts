@@ -9,12 +9,15 @@ import {
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
+    gardenPreviewDefaultPhase,
     gardenPreviewHeight,
     gardenPreviewMaxSizeBytes,
+    gardenPreviewPhaseHeader,
     gardenPreviewRendererVersion,
     gardenPreviewRendererVersionHeader,
     gardenPreviewSourceRevisionHeader,
     gardenPreviewWidth,
+    isGardenPreviewPhase,
 } from '@gredice/js/gardenPreviews';
 import { detailedRaisedBedInspectionNotificationType } from '@gredice/js/notifications';
 import { userAllowedPlantStatusTransitions } from '@gredice/js/plants';
@@ -57,6 +60,7 @@ import {
     GardenDiaryRescheduleError,
     type GardenPreviewBlobDeletionReason,
     type GardenPreviewImage,
+    type GardenPreviewImages,
     getAccount,
     getAccountGardensMetadata,
     getAllEvents,
@@ -706,6 +710,15 @@ function serializePublicGardenPreviewImage(
     };
 }
 
+function serializePublicGardenPreviewImages(
+    previewImages: GardenPreviewImages,
+) {
+    return {
+        day: serializePublicGardenPreviewImage(previewImages.day),
+        night: serializePublicGardenPreviewImage(previewImages.night),
+    };
+}
+
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
 type AppliedGardenOperations = Awaited<
@@ -855,6 +868,7 @@ async function serializeGardenDetails(
         backgroundPalette: garden.backgroundPalette,
         homeCamera: garden.homeCamera ?? null,
         previewImage: garden.previewImage,
+        previewImages: garden.previewImages,
         farmId: garden.farmId,
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
@@ -1098,6 +1112,9 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         homeCamera: garden.homeCamera ?? null,
                         previewImage: serializePublicGardenPreviewImage(
                             garden.previewImage,
+                        ),
+                        previewImages: serializePublicGardenPreviewImages(
+                            garden.previewImages,
                         ),
                         activePlantCount:
                             countPublicGardenActivePlants(raisedBeds),
@@ -1675,7 +1692,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/preview',
         describeRoute({
             description:
-                'Upload a current 3D preview for a public garden. Owners may capture their own public gardens; administrators may backfill any public garden.',
+                'Upload a current day or night 3D preview for a public garden. Owners may capture their own public gardens; administrators may backfill any public garden.',
             security: authSecurity,
         }),
         zValidator(
@@ -1712,6 +1729,17 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json(
                     { error: 'Unsupported garden preview renderer version' },
                     409,
+                );
+            }
+
+            const requestedPhase = context.req
+                .header(gardenPreviewPhaseHeader)
+                ?.trim();
+            const phase = requestedPhase ?? gardenPreviewDefaultPhase;
+            if (!isGardenPreviewPhase(phase)) {
+                return context.json(
+                    { error: 'Invalid garden preview phase' },
+                    400,
                 );
             }
 
@@ -1768,7 +1796,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const currentPreview = source.garden.previewImage;
+            const currentPreview = source.garden.previewImages[phase];
             const uploadDecision = getGardenPreviewUploadDecision({
                 currentPreview,
                 height: gardenPreviewHeight,
@@ -1778,7 +1806,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
             if (uploadDecision.status === 'unchanged') {
                 return context.json(
-                    { previewImage: uploadDecision.preview },
+                    { phase, previewImage: uploadDecision.preview },
                     200,
                 );
             }
@@ -1875,7 +1903,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 const leasedUploadDecision = getGardenPreviewUploadDecision({
-                    currentPreview: leasedSource.garden.previewImage,
+                    currentPreview: leasedSource.garden.previewImages[phase],
                     height: gardenPreviewHeight,
                     rendererVersion,
                     sourceRevision,
@@ -1883,7 +1911,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 });
                 if (leasedUploadDecision.status === 'unchanged') {
                     return context.json(
-                        { previewImage: leasedUploadDecision.preview },
+                        { phase, previewImage: leasedUploadDecision.preview },
                         200,
                     );
                 }
@@ -1899,7 +1927,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 }
 
                 const captureRequestedAt = new Date();
-                const pathname = `garden-previews/${gardenIdNumber.toString()}/${captureRequestId}.webp`;
+                const pathname = `garden-previews/${gardenIdNumber.toString()}/${phase}/${captureRequestId}.webp`;
                 let uploadedPreview: Awaited<ReturnType<typeof put>>;
 
                 try {
@@ -1965,6 +1993,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         height: dimensions.height,
                         sourceRevision,
                         rendererVersion,
+                        phase,
                         captureRequestedAt,
                         capturedAt: new Date(),
                     });
@@ -2012,6 +2041,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
                 return context.json(
                     {
+                        phase,
                         previewImage: toGardenPreviewImage(replacement.preview),
                     },
                     201,
@@ -2106,14 +2136,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 operations,
                 { publicView: true },
             );
-            const { previewImage: ownerPreviewImage, ...publicGardenDetails } =
-                gardenDetails;
+            const {
+                previewImage: ownerPreviewImage,
+                previewImages: ownerPreviewImages,
+                ...publicGardenDetails
+            } = gardenDetails;
             const likeCounts = await getGardenLikeCounts([garden.id]);
 
             return context.json({
                 ...publicGardenDetails,
                 previewImage:
                     serializePublicGardenPreviewImage(ownerPreviewImage),
+                previewImages:
+                    serializePublicGardenPreviewImages(ownerPreviewImages),
                 likeCount: likeCounts.get(garden.id) ?? 0,
                 queuedTasks,
             });

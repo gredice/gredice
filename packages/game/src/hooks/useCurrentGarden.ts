@@ -79,11 +79,13 @@ type useCurrentGardenResponse = Omit<
     | 'createdAt'
     | 'updatedAt'
     | 'previewImage'
+    | 'previewImages'
     | 'previewSourceRevision'
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
     previewImage?: GardenPreviewImage | null;
+    previewImages?: GardenResponse['previewImages'];
     previewSourceRevision?: string | null;
     stacks: GardenStack[];
     location: {

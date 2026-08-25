@@ -61,9 +61,13 @@ export default async function PublicGardensPage() {
                             <div className="relative h-full text-card-foreground">
                                 <div className="overflow-hidden bg-muted">
                                     <PublicGardenPreviewImage
-                                        gardenName={garden.name}
-                                        previewImageUrl={
+                                        dayPreviewImageUrl={
+                                            garden.previewImages?.day?.url ??
                                             garden.previewImage?.url
+                                        }
+                                        gardenName={garden.name}
+                                        nightPreviewImageUrl={
+                                            garden.previewImages?.night?.url
                                         }
                                         priority={gardenIndex === 0}
                                     />
