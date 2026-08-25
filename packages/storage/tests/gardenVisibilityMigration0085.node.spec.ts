@@ -32,19 +32,19 @@ async function applyMigration(database: PGlite) {
     }
 }
 
-test('0085 publishes active legacy gardens without changing explicit opt-outs', async () => {
+test('0085 publishes only gardens that predate the visibility control', async () => {
     const database = new PGlite();
     await database.exec(preMigrationSchema);
     await database.exec(`
         INSERT INTO gardens (
             is_sandbox, is_public, created_at, updated_at, is_deleted
         ) VALUES
-            (false, false, '2026-08-24 20:00:00', '2026-08-24 20:00:00', false),
-            (false, true,  '2026-08-24 20:00:00', '2026-08-24 20:00:00', false),
-            (false, false, '2026-08-24 22:00:00', '2026-08-24 22:00:00', false),
-            (false, false, '2026-08-24 20:00:00', '2026-08-24 22:00:00', false),
-            (true,  false, '2026-08-24 20:00:00', '2026-08-24 20:00:00', false),
-            (false, false, '2026-08-24 20:00:00', '2026-08-24 20:00:00', true);
+            (false, false, '2026-07-01 12:00:00', '2026-07-01 12:00:00', false),
+            (false, true,  '2026-07-01 12:00:00', '2026-07-01 12:00:00', false),
+            (false, false, '2026-07-01 14:00:00', '2026-07-01 14:00:00', false),
+            (false, false, '2026-07-01 12:00:00', '2026-07-01 14:00:00', false),
+            (true,  false, '2026-07-01 12:00:00', '2026-07-01 12:00:00', false),
+            (false, false, '2026-07-01 12:00:00', '2026-07-01 12:00:00', true);
     `);
 
     await applyMigration(database);
@@ -57,7 +57,7 @@ test('0085 publishes active legacy gardens without changing explicit opt-outs', 
         SELECT
             id,
             is_public,
-            updated_at > TIMESTAMP '2026-08-24 21:58:09' AS updated
+            updated_at > TIMESTAMP '2026-07-01 13:07:36' AS updated
         FROM gardens
         ORDER BY id
     `);
