@@ -2338,10 +2338,29 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             })
             .click();
 
-        const photosModal = page.locator('[data-raised-bed-photos-modal]');
-        await photosModal
-            .getByRole('button', { name: 'Zatraži fotografiju' })
-            .click();
+        const photosDialog = page.getByRole('dialog', {
+            name: 'Fotografije biljke',
+        });
+        const requestPhotoButton = photosDialog.getByRole('button', {
+            name: 'Zatraži fotografiju',
+        });
+        const closePhotosButton = photosDialog.getByRole('button', {
+            name: 'Zatvori',
+        });
+        const [requestPhotoBox, closePhotosBox] = await Promise.all([
+            requestPhotoButton.boundingBox(),
+            closePhotosButton.boundingBox(),
+        ]);
+
+        if (!requestPhotoBox || !closePhotosBox) {
+            throw new Error('Expected visible photo request and close buttons');
+        }
+
+        expect(requestPhotoBox.x + requestPhotoBox.width).toBeLessThanOrEqual(
+            closePhotosBox.x - 8,
+        );
+
+        await requestPhotoButton.click();
 
         const scheduleDialog = page.getByRole('dialog', {
             name: 'Zakaži radnju: Fotografija biljke',

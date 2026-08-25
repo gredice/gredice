@@ -315,7 +315,7 @@ export function RaisedBedPhotosModal({
             >
                 <Row
                     spacing={4}
-                    className="min-w-0 flex-wrap items-start justify-between gap-y-2"
+                    className="min-w-0 flex-wrap items-start justify-between gap-y-2 md:pr-8"
                 >
                     <Stack spacing={1} className="min-w-0">
                         <Typography level="h4" component="h1">
