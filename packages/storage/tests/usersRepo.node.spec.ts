@@ -150,20 +150,25 @@ test('ensureRegisteredUserAccount repairs an accountless login once', async () =
         .set({ isDeleted: true })
         .where(eq(farms.id, farmId));
 
-    await assert.rejects(ensureRegisteredUserAccount(userId), /No farm found/);
-    assert.equal(
-        (await storage().query.accounts.findMany()).length,
-        accountCountBeforeFailedRepair,
-    );
-    assert.equal(
-        (await storage().query.gardens.findMany()).length,
-        gardenCountBeforeFailedRepair,
-    );
-
-    await storage()
-        .update(farms)
-        .set({ isDeleted: false })
-        .where(eq(farms.id, farmId));
+    try {
+        await assert.rejects(
+            ensureRegisteredUserAccount(userId),
+            /No farm found/,
+        );
+        assert.equal(
+            (await storage().query.accounts.findMany()).length,
+            accountCountBeforeFailedRepair,
+        );
+        assert.equal(
+            (await storage().query.gardens.findMany()).length,
+            gardenCountBeforeFailedRepair,
+        );
+    } finally {
+        await storage()
+            .update(farms)
+            .set({ isDeleted: false })
+            .where(eq(farms.id, farmId));
+    }
 
     const [firstAccountId, secondAccountId] = await Promise.all([
         ensureRegisteredUserAccount(userId),
