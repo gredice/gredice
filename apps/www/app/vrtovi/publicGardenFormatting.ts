@@ -126,6 +126,27 @@ function isFiniteGardenNumber(value: unknown): value is number {
     return typeof value === 'number' && Number.isFinite(value);
 }
 
+function gardenPopularityValue(value: unknown) {
+    return isFiniteGardenNumber(value) ? value : 0;
+}
+
+export function comparePublicGardensByPopularity(
+    left: { activePlantCount?: unknown; likeCount?: unknown },
+    right: { activePlantCount?: unknown; likeCount?: unknown },
+) {
+    const likeCountDifference =
+        gardenPopularityValue(right.likeCount) -
+        gardenPopularityValue(left.likeCount);
+    if (likeCountDifference !== 0) {
+        return likeCountDifference;
+    }
+
+    return (
+        gardenPopularityValue(right.activePlantCount) -
+        gardenPopularityValue(left.activePlantCount)
+    );
+}
+
 export function formatGardenDate(value: Date | string) {
     return gardenDateFormatter.format(new Date(value));
 }

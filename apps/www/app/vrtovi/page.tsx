@@ -1,5 +1,5 @@
 import { Card } from '@gredice/ui/Card';
-import { Calendar, Sprout } from '@gredice/ui/icons';
+import { Sprout } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -11,7 +11,7 @@ import { PublicGardenPreviewBackfill } from './PublicGardenPreviewBackfill';
 import { PublicGardenPreviewImage } from './PublicGardenPreviewImage';
 import { PublicGardenTransitionLink } from './PublicGardenTransitionLink';
 import { getPublicGardensForWww } from './publicGardenData';
-import { formatGardenDate, formatGardenNumber } from './publicGardenFormatting';
+import { formatGardenNumber } from './publicGardenFormatting';
 import { getPublicGardenCardViewTransitionName } from './publicGardenViewTransition';
 
 const pageDescription =
@@ -68,29 +68,7 @@ export default async function PublicGardensPage() {
                                         priority={gardenIndex === 0}
                                     />
                                 </div>
-                                <div className="grid grid-cols-3 divide-x border-t bg-card">
-                                    <div className="flex items-center gap-2 px-3 py-3">
-                                        <Calendar
-                                            aria-hidden
-                                            className="size-4 shrink-0 text-primary"
-                                        />
-                                        <div className="min-w-0">
-                                            <Typography
-                                                level="body3"
-                                                className="text-muted-foreground"
-                                            >
-                                                Stvoren
-                                            </Typography>
-                                            <Typography
-                                                level="body2"
-                                                className="truncate font-medium"
-                                            >
-                                                {formatGardenDate(
-                                                    garden.createdAt,
-                                                )}
-                                            </Typography>
-                                        </div>
-                                    </div>
+                                <div className="grid grid-cols-2 divide-x border-t bg-card">
                                     <div className="flex items-center gap-2 px-3 py-3">
                                         <Sprout
                                             aria-hidden
