@@ -45,15 +45,22 @@ function centsToMoney(value: number) {
 }
 
 export function resolveOperationUserCost({
+    checkoutProvenanceRecordedFrom,
+    hasCheckoutProvenance,
     isInternal,
-    isUserRequested,
+    operationCreatedAt,
     userPrice,
 }: {
+    checkoutProvenanceRecordedFrom: Date;
+    hasCheckoutProvenance: boolean;
     isInternal: boolean;
-    isUserRequested: boolean;
+    operationCreatedAt: Date;
     userPrice: number | null;
 }) {
-    if (isInternal || !isUserRequested) {
+    const predatesCheckoutProvenance =
+        operationCreatedAt < checkoutProvenanceRecordedFrom;
+
+    if (isInternal || (!hasCheckoutProvenance && !predatesCheckoutProvenance)) {
         return 0;
     }
 

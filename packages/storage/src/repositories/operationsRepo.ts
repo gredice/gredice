@@ -68,6 +68,11 @@ type TransactionClient = Parameters<
 type DatabaseClient = StorageClient | TransactionClient;
 
 const checkoutOperationLockTails = new Map<string, Promise<void>>();
+// checkout.operation.created was introduced at this source cutover. When an
+// environment has mappings, its earliest actual event is the stronger boundary.
+const CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS = Date.parse(
+    '2026-08-03T16:16:01.000Z',
+);
 
 export class CheckoutOperationConflictError extends Error {
     override name = 'CheckoutOperationConflictError';
@@ -2291,34 +2296,60 @@ export async function getCheckoutOperationMappings(
     return mappings;
 }
 
-export async function getCheckoutRequestedOperationIds(
+export async function getCheckoutOperationProvenance(
     operationIds: number[],
     db: DatabaseClient = storage(),
-): Promise<ReadonlySet<number>> {
+): Promise<{
+    recordedFrom: Date;
+    requestedOperationIds: ReadonlySet<number>;
+}> {
     const uniqueOperationIds = Array.from(new Set(operationIds));
     if (uniqueOperationIds.length === 0) {
-        return new Set();
+        return {
+            recordedFrom: new Date(
+                CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS,
+            ),
+            requestedOperationIds: new Set(),
+        };
     }
 
     const operationIdExpression = sql<string>`${events.data}->>'operationId'`;
-    const mappingEvents = await db
-        .select({ operationId: operationIdExpression })
-        .from(events)
-        .where(
-            and(
-                eq(events.type, knownEventTypes.checkout.operationCreated),
-                inArray(
-                    operationIdExpression,
-                    uniqueOperationIds.map((operationId) =>
-                        operationId.toString(),
+    const [mappingEvents, [recordingPeriod]] = await Promise.all([
+        db
+            .select({ operationId: operationIdExpression })
+            .from(events)
+            .where(
+                and(
+                    eq(events.type, knownEventTypes.checkout.operationCreated),
+                    inArray(
+                        operationIdExpression,
+                        uniqueOperationIds.map((operationId) =>
+                            operationId.toString(),
+                        ),
                     ),
                 ),
             ),
-        );
+        db
+            .select({
+                recordedFrom:
+                    sql<Date | null>`min(${events.createdAt})`.mapWith(
+                        events.createdAt,
+                    ),
+            })
+            .from(events)
+            .where(eq(events.type, knownEventTypes.checkout.operationCreated)),
+    ]);
 
-    return new Set(
-        mappingEvents.map((event) => Number.parseInt(event.operationId, 10)),
-    );
+    return {
+        recordedFrom:
+            recordingPeriod?.recordedFrom ??
+            new Date(CHECKOUT_OPERATION_PROVENANCE_INTRODUCED_AT_MS),
+        requestedOperationIds: new Set(
+            mappingEvents.map((event) =>
+                Number.parseInt(event.operationId, 10),
+            ),
+        ),
+    };
 }
 
 export async function getCheckoutOperationMapping(

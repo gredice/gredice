@@ -4,7 +4,7 @@ import {
     getAllOperationPrices,
     getAllOperations,
     getAllRaisedBeds,
-    getCheckoutRequestedOperationIds,
+    getCheckoutOperationProvenance,
     getEntitiesFormatted,
     getGardens,
     getPlantUpdateEvents,
@@ -118,7 +118,7 @@ export async function getOperationFinancialBreakdownData({
         getGardens(),
         getAllRaisedBeds(),
     ]);
-    const userRequestedOperationIds = await getCheckoutRequestedOperationIds(
+    const checkoutOperationProvenance = await getCheckoutOperationProvenance(
         completedOperations.map((operation) => operation.id),
     );
 
@@ -224,8 +224,14 @@ export async function getOperationFinancialBreakdownData({
                 : 0,
             materialCost: parsePrice(definition?.prices?.materialCost) ?? 0,
             userCost: resolveOperationUserCost({
+                checkoutProvenanceRecordedFrom:
+                    checkoutOperationProvenance.recordedFrom,
+                hasCheckoutProvenance:
+                    checkoutOperationProvenance.requestedOperationIds.has(
+                        operation.id,
+                    ),
                 isInternal,
-                isUserRequested: userRequestedOperationIds.has(operation.id),
+                operationCreatedAt: operation.createdAt,
                 userPrice,
             }),
         });
