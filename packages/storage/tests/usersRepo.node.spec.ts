@@ -14,6 +14,7 @@ import {
     createTemporaryUserAndAccount,
     createUserWithPassword,
     deleteGardenIfNoActiveRaisedBeds,
+    ensureRegisteredUserAccount,
     events,
     gardenVisitStates,
     getAccountGardensMetadata,
@@ -125,6 +126,36 @@ test('createTemporaryUserAndAccount creates a fully featured standard garden', a
     const raisedBeds = await getRaisedBeds(gardens[0].id);
     assert.equal(raisedBeds.length, 1);
     assert.equal(raisedBeds[0]?.status, 'new');
+});
+
+test('ensureRegisteredUserAccount repairs an accountless login once', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const userId = await createUserWithPassword(
+        `accountless-${randomUUID()}@example.com`,
+        'secret-password',
+    );
+    await storage().delete(accountUsers).where(eq(accountUsers.userId, userId));
+
+    const [firstAccountId, secondAccountId] = await Promise.all([
+        ensureRegisteredUserAccount(userId),
+        ensureRegisteredUserAccount(userId),
+    ]);
+
+    assert.equal(firstAccountId, secondAccountId);
+    const memberships = await storage().query.accountUsers.findMany({
+        where: eq(accountUsers.userId, userId),
+    });
+    assert.deepEqual(
+        memberships.map((membership) => membership.accountId),
+        [firstAccountId],
+    );
+
+    const gardens = await getAccountGardensMetadata(firstAccountId);
+    assert.equal(gardens.length, 1);
+    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(gardens[0].name, 'Moj vrt');
 });
 
 test('existing-user OAuth login leaves the temporary account isolated', async () => {

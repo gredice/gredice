@@ -10,6 +10,7 @@ import {
     createUserPasswordLogin,
     createUserWithPassword,
     doUseRefreshToken,
+    ensureRegisteredUserAccount,
     getAccountUsers,
     getLastUserLogin,
     getUser,
@@ -342,12 +343,15 @@ async function getPostLoginAccountId(
     userId: string,
     selectedAccountId: string | undefined,
 ) {
-    const [user, defaultGarden] = await Promise.all([
-        getUser(userId),
-        getUserDefaultGarden(userId),
-    ]);
+    const user = await getUser(userId);
+    const accountIds = user?.accounts.map((account) => account.accountId) ?? [];
+    if (accountIds.length === 0) {
+        return await ensureRegisteredUserAccount(userId);
+    }
+
+    const defaultGarden = await getUserDefaultGarden(userId);
     return resolvePostLoginAccountId({
-        accountIds: user?.accounts.map((account) => account.accountId) ?? [],
+        accountIds,
         defaultGardenAccountId: defaultGarden?.accountId,
         selectedAccountId,
     });
@@ -1024,6 +1028,12 @@ const app = new Hono()
                     { error: 'Unauthorized', returningUser },
                     { status: 401 },
                 );
+            }
+
+            if (!claims.isTemporary && claims.accountIds.length === 0) {
+                const accountId = await ensureRegisteredUserAccount(claims.id);
+                setActiveAccountCookie(context, accountId);
+                return context.json({ ...claims, accountIds: [accountId] });
             }
 
             return context.json(claims);

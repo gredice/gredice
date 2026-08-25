@@ -17,7 +17,6 @@ import {
     useRef,
     useState,
 } from 'react';
-import { hasReturningUserMarker } from '../../lib/auth/returningUser';
 import LoginModal from './LoginModal';
 
 let temporaryAccountBootstrapPromise: Promise<void> | null = null;
@@ -59,7 +58,6 @@ export function TemporaryAccountBootstrap({
     const queryClient = useQueryClient();
     const router = useRouter();
     const [status, setStatus] = useState<BootstrapStatus>('checking');
-    const [returningUser, setReturningUser] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
     const [crossAppLoginOpen, setCrossAppLoginOpen] = useState(false);
     const mountedRef = useRef(false);
@@ -93,7 +91,6 @@ export function TemporaryAccountBootstrap({
 
     useEffect(() => {
         mountedRef.current = true;
-        setReturningUser(hasReturningUserMarker());
         setCrossAppLoginOpen(
             new URL(window.location.href).searchParams.get('prijava') === '1',
         );
@@ -205,9 +202,7 @@ export function TemporaryAccountBootstrap({
             <LoginModal
                 description={
                     status === 'awaiting-login'
-                        ? returningUser
-                            ? 'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.'
-                            : 'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.'
+                        ? 'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.'
                         : undefined
                 }
                 dismissible={status !== 'awaiting-login'}

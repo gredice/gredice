@@ -5,7 +5,7 @@ import {
     randomInt,
     randomUUID,
 } from 'node:crypto';
-import { and, desc, eq, lt, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, lt, ne, sql } from 'drizzle-orm';
 import { createAccount, storage } from '..';
 import {
     accountUsers,
@@ -287,19 +287,46 @@ async function createUserAndAccount(
     timeZone?: string,
 ) {
     const userId = await createUser(userName, displayName);
-    const accountId = await createAccount(timeZone);
-    await createDefaultGardenForAccount({ accountId });
-
-    // Link user to account
-    await storage().insert(accountUsers).values({
-        accountId,
-        userId,
-    });
-    await createEvent(
-        knownEvents.accounts.assignedUserV1(accountId, { userId }),
-    );
+    await ensureRegisteredUserAccount(userId, timeZone);
 
     return userId;
+}
+
+export async function ensureRegisteredUserAccount(
+    userId: string,
+    timeZone?: string,
+) {
+    return storage().transaction(async (db) => {
+        const [user] = await db
+            .select({ id: users.id, isTemporary: users.isTemporary })
+            .from(users)
+            .where(eq(users.id, userId))
+            .for('update')
+            .limit(1);
+        if (!user || user.isTemporary) {
+            throw new Error('Registered user not found');
+        }
+
+        const [existingAccount] = await db
+            .select({ accountId: accountUsers.accountId })
+            .from(accountUsers)
+            .where(eq(accountUsers.userId, userId))
+            .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id))
+            .limit(1);
+        if (existingAccount) {
+            return existingAccount.accountId;
+        }
+
+        const accountId = await createAccount(timeZone);
+        await createDefaultGardenForAccount({ accountId });
+        await db.insert(accountUsers).values({ accountId, userId });
+        await createEvent(
+            knownEvents.accounts.assignedUserV1(accountId, { userId }),
+            db,
+        );
+
+        return accountId;
+    });
 }
 
 function randomTemporaryUserName() {
