@@ -15,6 +15,7 @@ import { useCurrentGarden } from '../../hooks/useCurrentGarden';
 import { useGardenOperations } from '../../hooks/useGardenOperations';
 import { useOperationDefinitions } from '../../hooks/useOperations';
 import { useRaisedBedAiHistory } from '../../hooks/useRaisedBedAiHistory';
+import { useSetShoppingCartItem } from '../../hooks/useSetShoppingCartItem';
 import { GameModal } from '../../shared-ui/game-modal';
 import { sortOperationTasksNewestFirst } from '../gardenOperationOrdering';
 import { RaisedBedDiaryAiAction } from './RaisedBedDiaryAiAction';
@@ -23,8 +24,10 @@ import {
     getAiHistoryForOperation,
     getOperationReferenceDate,
 } from './raisedBedOperationHistory';
+import { OperationScheduleModal } from './shared/OperationScheduleModal';
 
 const PHOTO_PAGE_SIZE = 20;
+const PLANT_PHOTO_OPERATION_NAME = 'plantPhoto';
 
 type RaisedBedPhotosModalProps = {
     gardenId: number;
@@ -118,6 +121,7 @@ export function RaisedBedPhotosModal({
 }: RaisedBedPhotosModalProps) {
     const { data: currentGarden } = useCurrentGarden();
     const { data: operationsData } = useOperationDefinitions();
+    const setShoppingCartItem = useSetShoppingCartItem();
     const history = useGardenOperations({
         includeCompleted: true,
         pageSize: PHOTO_PAGE_SIZE,
@@ -162,6 +166,13 @@ export function RaisedBedPhotosModal({
     ).slice(0, 3);
     const latestImageUrl = latestImageUrls[0];
     const isFieldScoped = typeof positionIndex === 'number';
+    const plantPhotoOperation = isFieldScoped
+        ? operationsData?.find(
+              (operation) =>
+                  operation.information.name === PLANT_PHOTO_OPERATION_NAME &&
+                  operation.attributes.application === 'plant',
+          )
+        : undefined;
     const triggerLabel = isFieldScoped
         ? `Fotografije biljke ${subjectName}`
         : `Fotografije gredice ${subjectName}`;
@@ -314,10 +325,53 @@ export function RaisedBedPhotosModal({
                             {subjectName}
                         </Typography>
                     </Stack>
-                    {photoCount > 0 && (
-                        <Chip variant="soft">
-                            {getPhotoCountLabel(photoCount)}
-                        </Chip>
+                    {(photoCount > 0 || plantPhotoOperation) && (
+                        <Row spacing={2} className="flex-wrap justify-end">
+                            {photoCount > 0 && (
+                                <Chip variant="soft">
+                                    {getPhotoCountLabel(photoCount)}
+                                </Chip>
+                            )}
+                            {plantPhotoOperation && (
+                                <OperationScheduleModal
+                                    gardenId={gardenId}
+                                    operation={plantPhotoOperation}
+                                    onConfirm={async (scheduledDate) => {
+                                        await setShoppingCartItem.mutateAsync({
+                                            amount: 1,
+                                            entityId:
+                                                plantPhotoOperation.id.toString(),
+                                            entityTypeName:
+                                                plantPhotoOperation.entityType
+                                                    .name,
+                                            gardenId,
+                                            raisedBedId,
+                                            positionIndex,
+                                            additionalData: JSON.stringify({
+                                                scheduledDate:
+                                                    scheduledDate.toISOString(),
+                                            }),
+                                        });
+                                    }}
+                                    positionIndex={positionIndex}
+                                    raisedBedId={raisedBedId}
+                                    trigger={
+                                        <Button
+                                            size="sm"
+                                            disabled={
+                                                setShoppingCartItem.isPending
+                                            }
+                                            startDecorator={
+                                                <Camera className="size-4" />
+                                            }
+                                            data-raised-bed-photo-request
+                                        >
+                                            Zatraži fotografiju
+                                        </Button>
+                                    }
+                                />
+                            )}
+                        </Row>
                     )}
                 </Row>
                 {history.isError && (

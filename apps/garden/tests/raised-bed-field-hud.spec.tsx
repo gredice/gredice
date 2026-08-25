@@ -2285,6 +2285,105 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         ).toHaveCount(0);
     });
 
+    test('plant photos schedule a photo request for the selected field', async ({
+        mount,
+        page,
+    }) => {
+        const plantPhotoOperation = buildOperation({
+            appliesToAllTargets: true,
+            id: 550,
+            name: 'plantPhoto',
+            label: 'Fotografija biljke',
+            stageName: 'maintenance',
+            stageLabel: 'Održavanje',
+        });
+        const scenario = plantedGrowingWithOperationHistoryScenario();
+
+        await page.route('**/*', async (route) => {
+            const request = route.request();
+            if (
+                request.method() !== 'POST' ||
+                !request.url().includes('/shopping-cart')
+            ) {
+                await route.fallback();
+                return;
+            }
+
+            await route.fulfill({
+                body: JSON.stringify({ success: true }),
+                contentType: 'application/json',
+                status: 200,
+            });
+        });
+
+        await mount(
+            <RaisedBedFieldHudStory
+                scenario={{
+                    ...scenario,
+                    operations: [
+                        ...(scenario.operations ?? []),
+                        plantPhotoOperation,
+                    ],
+                }}
+                positionIndex={0}
+            />,
+        );
+
+        await page.getByRole('button').first().click();
+
+        const plantDialog = page.getByRole('dialog');
+        await plantDialog
+            .getByRole('button', {
+                name: /Fotografije biljke Cherry rajčica/u,
+            })
+            .click();
+
+        const photosModal = page.locator('[data-raised-bed-photos-modal]');
+        await photosModal
+            .getByRole('button', { name: 'Zatraži fotografiju' })
+            .click();
+
+        const scheduleDialog = page.getByRole('dialog', {
+            name: 'Zakaži radnju: Fotografija biljke',
+        });
+        await expect(scheduleDialog).toBeVisible();
+
+        const requestPromise = page.waitForRequest(
+            (request) =>
+                request.method() === 'POST' &&
+                request.url().includes('/shopping-cart'),
+        );
+        await scheduleDialog.getByRole('button', { name: 'Potvrdi' }).click();
+
+        const request = await requestPromise;
+        const payload: unknown = request.postDataJSON();
+
+        expect(isRecord(payload)).toBe(true);
+        if (!isRecord(payload)) {
+            throw new Error('Shopping cart payload is not an object');
+        }
+
+        expect(payload).toMatchObject({
+            additionalData: expect.any(String),
+            amount: 1,
+            cartId: 1,
+            entityId: '550',
+            entityTypeName: 'operation',
+            gardenId: 1,
+            positionIndex: 0,
+            raisedBedId: 1,
+        });
+        expect(typeof payload.additionalData).toBe('string');
+        if (typeof payload.additionalData !== 'string') {
+            throw new Error('Scheduled operation data is not a string');
+        }
+
+        const additionalData: unknown = JSON.parse(payload.additionalData);
+        expect(additionalData).toEqual({
+            scheduledDate: expect.any(String),
+        });
+    });
+
     test('diary tab allows rescheduling future active operation cards', async ({
         mount,
         page,
