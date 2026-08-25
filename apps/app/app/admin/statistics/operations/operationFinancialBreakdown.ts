@@ -44,6 +44,29 @@ function centsToMoney(value: number) {
     return value / 100;
 }
 
+export function resolveOperationUserCost({
+    checkoutProvenanceRecordedFrom,
+    hasCheckoutProvenance,
+    isInternal,
+    operationCreatedAt,
+    userPrice,
+}: {
+    checkoutProvenanceRecordedFrom: Date;
+    hasCheckoutProvenance: boolean;
+    isInternal: boolean;
+    operationCreatedAt: Date;
+    userPrice: number | null;
+}) {
+    const predatesCheckoutProvenance =
+        operationCreatedAt < checkoutProvenanceRecordedFrom;
+
+    if (isInternal || (!hasCheckoutProvenance && !predatesCheckoutProvenance)) {
+        return 0;
+    }
+
+    return userPrice && userPrice > 0 ? userPrice : null;
+}
+
 function finalizeRow(
     row: MutableOperationFinancialBreakdownRow,
 ): OperationFinancialBreakdownRow {

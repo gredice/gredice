@@ -4,6 +4,7 @@ import {
     getAllOperationPrices,
     getAllOperations,
     getAllRaisedBeds,
+    getCheckoutOperationProvenance,
     getEntitiesFormatted,
     getGardens,
     getPlantUpdateEvents,
@@ -13,6 +14,7 @@ import { isMissingPayoutSchemaError } from '../../farmers/payoutSchemaStatus';
 import {
     buildOperationFinancialBreakdown,
     type OperationFinancialOccurrence,
+    resolveOperationUserCost,
 } from './operationFinancialBreakdown';
 
 const SOWING_DURATION_MINUTES = 5;
@@ -116,6 +118,9 @@ export async function getOperationFinancialBreakdownData({
         getGardens(),
         getAllRaisedBeds(),
     ]);
+    const checkoutOperationProvenance = await getCheckoutOperationProvenance(
+        completedOperations.map((operation) => operation.id),
+    );
 
     const operationDefinitionById = new Map(
         operationDefinitions.map((operation) => [operation.id, operation]),
@@ -218,11 +223,17 @@ export async function getOperationFinancialBreakdownData({
                   )
                 : 0,
             materialCost: parsePrice(definition?.prices?.materialCost) ?? 0,
-            userCost: isInternal
-                ? 0
-                : userPrice && userPrice > 0
-                  ? userPrice
-                  : null,
+            userCost: resolveOperationUserCost({
+                checkoutProvenanceRecordedFrom:
+                    checkoutOperationProvenance.recordedFrom,
+                hasCheckoutProvenance:
+                    checkoutOperationProvenance.requestedOperationIds.has(
+                        operation.id,
+                    ),
+                isInternal,
+                operationCreatedAt: operation.createdAt,
+                userPrice,
+            }),
         });
     }
 

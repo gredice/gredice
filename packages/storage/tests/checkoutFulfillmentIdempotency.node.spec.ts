@@ -20,6 +20,7 @@ import {
     getCheckoutInventorySnapshot,
     getCheckoutOperationMapping,
     getCheckoutOperationMappings,
+    getCheckoutOperationProvenance,
     getInventory,
     getOrCreateCheckoutOperation,
     getOrCreateDeliveryRequest,
@@ -36,6 +37,24 @@ import { createTestDb } from './testDb';
 function uniqueCartItemId() {
     return randomInt(1_000_000_000, 2_000_000_000);
 }
+
+test('checkout provenance uses the source cutover before mappings exist', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const operationId = await createOperation({
+        accountId,
+        entityId: 16,
+        entityTypeName: 'operation',
+    });
+
+    const provenance = await getCheckoutOperationProvenance([operationId]);
+
+    assert.equal(
+        provenance.recordedFrom.toISOString(),
+        '2026-08-03T16:16:01.000Z',
+    );
+    assert.deepEqual(provenance.requestedOperationIds, new Set());
+});
 
 test('checkout operation ensure atomically maps one scheduled operation and rejects changed fingerprints', async () => {
     createTestDb();
@@ -110,6 +129,23 @@ test('checkout operation ensure atomically maps one scheduled operation and reje
             (await getCheckoutOperationMappings([cartItemId])).entries(),
         ),
         [[cartItemId, mappingEvents[0]?.data]],
+    );
+    const adminCreatedOperationId = await createOperation({
+        accountId,
+        entityId: 18,
+        entityTypeName: 'operation',
+    });
+    const checkoutOperationProvenance = await getCheckoutOperationProvenance([
+        operationId,
+        adminCreatedOperationId,
+    ]);
+    assert.deepEqual(
+        checkoutOperationProvenance.requestedOperationIds,
+        new Set([operationId]),
+    );
+    assert.equal(
+        checkoutOperationProvenance.recordedFrom?.getTime(),
+        mappingEvents[0]?.createdAt.getTime(),
     );
 
     await acceptOperation(operationId);
