@@ -3,7 +3,17 @@ import {
     type GardenPreviewPhase,
     gardenPreviewDefaultPhase,
 } from '@gredice/js/gardenPreviews';
-import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import {
+    and,
+    asc,
+    eq,
+    getTableColumns,
+    inArray,
+    isNull,
+    lte,
+    or,
+    sql,
+} from 'drizzle-orm';
 import {
     gardenPreviewBlobDeletions,
     gardenPreviewBlobScanStates,
@@ -27,6 +37,12 @@ const GARDEN_PREVIEW_BLOB_SCAN_STATE_NAME = 'garden-previews';
 const DEFAULT_BLOB_DELETION_BATCH_SIZE = 100;
 const MAX_BLOB_DELETION_BATCH_SIZE = 1_000;
 const MAX_BLOB_DELETION_ERROR_LENGTH = 2_000;
+const { phase: _gardenPreviewPhase, ...legacyGardenPreviewColumns } =
+    getTableColumns(gardenPreviews);
+const compatibleGardenPreviewColumns = {
+    ...legacyGardenPreviewColumns,
+    phase: sql<GardenPreviewPhase>`coalesce(to_jsonb(${gardenPreviews})->>'phase', ${gardenPreviewDefaultPhase})`,
+};
 
 export type GardenPreviewBlobDeletionReason =
     | 'garden_deleted'
@@ -83,20 +99,25 @@ export async function getGardenPreview(
     gardenId: number,
     phase: GardenPreviewPhase = gardenPreviewDefaultPhase,
 ) {
-    return (
-        (await storage().query.gardenPreviews.findFirst({
-            where: and(
-                eq(gardenPreviews.gardenId, gardenId),
-                eq(gardenPreviews.phase, phase),
-            ),
-        })) ?? null
-    );
+    const previews = await getGardenPreviews(gardenId);
+    return previews.find((preview) => preview.phase === phase) ?? null;
+}
+
+export async function getGardenPreviewsForGardenIds(
+    gardenIds: number[],
+): Promise<SelectGardenPreview[]> {
+    if (gardenIds.length === 0) {
+        return [];
+    }
+
+    return await storage()
+        .select(compatibleGardenPreviewColumns)
+        .from(gardenPreviews)
+        .where(inArray(gardenPreviews.gardenId, gardenIds));
 }
 
 export function getGardenPreviews(gardenId: number) {
-    return storage().query.gardenPreviews.findMany({
-        where: eq(gardenPreviews.gardenId, gardenId),
-    });
+    return getGardenPreviewsForGardenIds([gardenId]);
 }
 
 export async function listGardenPreviewPathnames() {

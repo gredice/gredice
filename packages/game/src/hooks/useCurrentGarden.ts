@@ -1391,6 +1391,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                     lon: garden.longitude,
                 },
                 previewImage: garden.previewImage,
+                previewImages: garden.previewImages,
                 previewSourceRevision: garden.previewSourceRevision,
                 raisedBeds: garden.raisedBeds,
             };

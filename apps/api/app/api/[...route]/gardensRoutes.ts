@@ -69,7 +69,7 @@ import {
     getGardenBlock,
     getGardenBlocks,
     getGardenLikeCounts,
-    getGardenPreview,
+    getGardenPreviews,
     getGardenStack,
     getGardenStackForUpdate,
     getNotification,
@@ -1010,6 +1010,25 @@ async function deleteGardenPreviewBlob({
             gardenId,
             imageUrl,
             pathname,
+            reason,
+        });
+    }
+}
+
+async function deleteGardenPreviewBlobs({
+    gardenId,
+    previews,
+    reason,
+}: {
+    gardenId: number;
+    previews: Awaited<ReturnType<typeof getGardenPreviews>>;
+    reason: GardenPreviewBlobDeletionReason;
+}) {
+    for (const preview of previews) {
+        await deleteGardenPreviewBlob({
+            gardenId,
+            imageUrl: preview.imageUrl,
+            pathname: preview.pathname,
             reason,
         });
     }
@@ -2279,19 +2298,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 updateData.isPublic = isPublic;
             }
 
-            const existingPreview =
+            const existingPreviews =
                 isPublic === false
-                    ? await getGardenPreview(gardenIdNumber)
-                    : null;
+                    ? await getGardenPreviews(gardenIdNumber)
+                    : [];
             await updateGarden(updateData);
-            if (existingPreview) {
-                await deleteGardenPreviewBlob({
-                    gardenId: gardenIdNumber,
-                    imageUrl: existingPreview.imageUrl,
-                    pathname: existingPreview.pathname,
-                    reason: 'garden_unpublished',
-                });
-            }
+            await deleteGardenPreviewBlobs({
+                gardenId: gardenIdNumber,
+                previews: existingPreviews,
+                reason: 'garden_unpublished',
+            });
 
             return context.json({ success: true });
         },
@@ -2329,7 +2345,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
             if (!user.accountIds.includes(garden.accountId)) {
                 return context.json({ error: 'Garden not found' }, 404);
             }
-            const existingPreview = await getGardenPreview(gardenIdNumber);
+            const existingPreviews = await getGardenPreviews(gardenIdNumber);
 
             if (!garden.isSandbox) {
                 const result =
@@ -2344,14 +2360,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     );
                 }
 
-                if (existingPreview) {
-                    await deleteGardenPreviewBlob({
-                        gardenId: gardenIdNumber,
-                        imageUrl: existingPreview.imageUrl,
-                        pathname: existingPreview.pathname,
-                        reason: 'garden_deleted',
-                    });
-                }
+                await deleteGardenPreviewBlobs({
+                    gardenId: gardenIdNumber,
+                    previews: existingPreviews,
+                    reason: 'garden_deleted',
+                });
 
                 return context.json(
                     {
@@ -2364,14 +2377,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const result = await deleteSandboxGardenCompletely(gardenIdNumber);
-            if (existingPreview) {
-                await deleteGardenPreviewBlob({
-                    gardenId: gardenIdNumber,
-                    imageUrl: existingPreview.imageUrl,
-                    pathname: existingPreview.pathname,
-                    reason: 'garden_deleted',
-                });
-            }
+            await deleteGardenPreviewBlobs({
+                gardenId: gardenIdNumber,
+                previews: existingPreviews,
+                reason: 'garden_deleted',
+            });
 
             return context.json(
                 { success: true, ...result },

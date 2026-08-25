@@ -187,13 +187,18 @@ export function shareCurrentGardenData(
         previousGarden.previewImage,
         nextGarden.previewImage,
     );
+    const previewImages = shareJsonValue(
+        previousGarden.previewImages,
+        nextGarden.previewImages,
+    );
 
     if (
         homeCamera === previousGarden.homeCamera &&
         stacks === previousGarden.stacks &&
         location === previousGarden.location &&
         raisedBeds === previousGarden.raisedBeds &&
-        previewImage === previousGarden.previewImage
+        previewImage === previousGarden.previewImage &&
+        previewImages === previousGarden.previewImages
     ) {
         return previousGarden;
     }
@@ -205,6 +210,7 @@ export function shareCurrentGardenData(
         location,
         raisedBeds,
         previewImage,
+        previewImages,
     };
 }
 
