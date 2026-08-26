@@ -126,6 +126,8 @@ jobs:
               - apps/delivery/app/icon.svg
               - apps/delivery/app/manifest.json
               - apps/delivery/public/.well-known/assetlinks.json
+              - scripts/digital-asset-links.mjs
+              - scripts/digital-asset-links.test.mjs
               - scripts/render-svg-png.swift
               - scripts/validate-android-store-listing.mjs
               - scripts/validate-delivery-car-contract.mjs

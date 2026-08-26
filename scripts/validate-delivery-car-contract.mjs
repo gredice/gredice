@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertHandleAllUrlsRelation } from "./digital-asset-links.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath) =>
@@ -79,11 +80,9 @@ assert.equal(launchUrl.protocol, "https:");
 assert.equal(launchUrl.hostname, hostName);
 assert.equal(launchUrl.origin, assetLinksOrigin);
 assert.ok(webAssetStatement, "Android must delegate trust to the web origin");
-assert.ok(
-    webAssetStatement.relation?.includes(
-        "delegate_permission/common.handle_all_urls",
-    ),
-    "Android web asset statements must delegate URL handling",
+assertHandleAllUrlsRelation(
+    webAssetStatement.relation,
+    "Android web asset statement",
 );
 assert.equal(webAssetStatement.target.site, assetLinksOrigin);
 
@@ -92,10 +91,7 @@ const assetLink = assetLinks.find(
 );
 assert.ok(assetLink, "Digital Asset Links must contain the Delivery package");
 assert.equal(assetLink.target.namespace, "android_app");
-assert.ok(
-    assetLink.relation?.includes("delegate_permission/common.handle_all_urls"),
-    "Digital Asset Links must delegate URL handling",
-);
+assertHandleAllUrlsRelation(assetLink.relation, "Digital Asset Links statement");
 assert.ok(
     assetLink.target.sha256_cert_fingerprints?.includes(
         playAppSigningFingerprint,

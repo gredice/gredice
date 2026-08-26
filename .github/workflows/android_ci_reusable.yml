@@ -81,7 +81,9 @@ jobs:
 
       - name: 🚚 Validate Delivery car contract
         if: inputs.validateDeliveryCarContract
-        run: node scripts/validate-delivery-car-contract.mjs
+        run: |
+          node --test scripts/digital-asset-links.test.mjs
+          node scripts/validate-delivery-car-contract.mjs
 
       - name: 🛠️ Lint, test, and build unsigned artifacts
         working-directory: ${{ inputs.path }}
