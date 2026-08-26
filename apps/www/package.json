@@ -16,7 +16,7 @@
         "test:prepare": "turbo build --filter=www && pnpm run test:prepare:routes",
         "test:prepare:routes": "node --experimental-strip-types ./tests/populate-test-cases.ts",
         "test:run": "playwright test --project=chromium",
-        "test:pricing": "node --experimental-strip-types --test ./app/cjenik/pricingRows.node.spec.ts",
+        "test:pricing": "node --experimental-strip-types --test ./app/cjenik/pricingRows.node.spec.ts ./components/attributes/shouldShowThirtyDayLowestPrice.node.spec.ts",
         "test:plant-sowing-price": "node --experimental-strip-types --test ./lib/plants/resolvePlantSowingPrice.node.spec.ts",
         "test:preview-backfill": "node --experimental-strip-types --test ./app/vrtovi/publicGardenPreviewBackfill.unit.ts",
         "test:wallpapers": "node --experimental-strip-types --test ./app/pozadine/wallpaperComposer.node.spec.ts ./app/pozadine/macOSDynamicWallpaper.node.spec.ts",
