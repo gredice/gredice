@@ -17,6 +17,14 @@ on:
         required: true
         default: true
         type: boolean
+      releaseTarget:
+        description: "Validation target for the signed handoff. Delivery internal-test may omit Store screenshots."
+        required: true
+        default: full-handoff
+        type: choice
+        options:
+          - full-handoff
+          - internal-test
 
 concurrency:
   group: android-release-${{ inputs.app }}
@@ -45,6 +53,7 @@ jobs:
         shell: bash
         env:
           APP_NAME: ${{ inputs.app }}
+          RELEASE_TARGET: ${{ inputs.releaseTarget }}
         run: |
           set -euo pipefail
           APP_PATH="apps/${APP_NAME}-android"
@@ -61,10 +70,21 @@ jobs:
             exit 1
           fi
 
+          if [ "${RELEASE_TARGET}" = "internal-test" ] && [ "${APP_NAME}" != "delivery" ]; then
+            echo "::error::internal-test is supported only for delivery." >&2
+            exit 1
+          fi
+
+          ARTIFACT_SUFFIX=""
+          if [ "${RELEASE_TARGET}" = "internal-test" ]; then
+            ARTIFACT_SUFFIX="-internal-test"
+          fi
+
           echo "app_path=${APP_PATH}" >> "${GITHUB_OUTPUT}"
           echo "version_code=${VERSION_CODE}" >> "${GITHUB_OUTPUT}"
           echo "version_name=${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
-          echo "tag=android-${APP_NAME}-v${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_suffix=${ARTIFACT_SUFFIX}" >> "${GITHUB_OUTPUT}"
+          echo "tag=android-${APP_NAME}-v${VERSION_NAME}${ARTIFACT_SUFFIX}" >> "${GITHUB_OUTPUT}"
 
       - name: ☕ Setup JDK 17
         uses: actions/setup-java@v5.7.0
@@ -86,7 +106,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.3.0
 
       - name: 🏪 Validate complete Google Play listing bundle
-        run: node scripts/validate-android-store-listing.mjs "${{ steps.version.outputs.app_path }}"
+        shell: bash
+        env:
+          APP_NAME: ${{ inputs.app }}
+          APP_PATH: ${{ steps.version.outputs.app_path }}
+          RELEASE_TARGET: ${{ inputs.releaseTarget }}
+        run: |
+          set -euo pipefail
+          VALIDATION_ARGS=("${APP_PATH}")
+          if [ "${APP_NAME}" = "delivery" ] && [ "${RELEASE_TARGET}" = "internal-test" ]; then
+            VALIDATION_ARGS+=(--allow-missing-screenshots)
+          fi
+          node scripts/validate-android-store-listing.mjs "${VALIDATION_ARGS[@]}"
 
       - name: 🔗 Validate Garden TWA contract
         if: inputs.app == 'garden'
@@ -147,11 +178,12 @@ jobs:
           APP_PATH: ${{ steps.version.outputs.app_path }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          ARTIFACT_SUFFIX: ${{ steps.version.outputs.artifact_suffix }}
         run: |
           set -euo pipefail
           AAB_PATH="${APP_PATH}/app/build/outputs/bundle/release/app-release.aab"
           APK_PATH="${APP_PATH}/app/build/outputs/apk/release/app-release.apk"
-          ARTIFACT_PREFIX="gredice-${APP_NAME}-android-${VERSION_NAME}-${VERSION_CODE}"
+          ARTIFACT_PREFIX="gredice-${APP_NAME}-android-${VERSION_NAME}-${VERSION_CODE}${ARTIFACT_SUFFIX}"
 
           jarsigner -verify -verbose -certs "${AAB_PATH}"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${APK_PATH}"
@@ -172,6 +204,7 @@ jobs:
             echo "app=${APP_NAME}"
             echo "application_version=${VERSION_NAME}"
             echo "version_code=${VERSION_CODE}"
+            echo "release_target=${{ inputs.releaseTarget }}"
             echo "commit=${GITHUB_SHA}"
             echo "target_sdk=36"
             echo "build_tools=36.0.0"
@@ -201,7 +234,7 @@ jobs:
         if: inputs.createGithubRelease
         uses: softprops/action-gh-release@v2.2.2
         with:
-          name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}"
+          name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}${{ steps.version.outputs.artifact_suffix }}"
           tag_name: ${{ steps.version.outputs.tag }}
           draft: true
           generate_release_notes: true
