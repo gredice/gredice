@@ -15,7 +15,7 @@ export const deliverySummaryHeadingId = 'gredice-ukratko';
 export const deliverySummaryHeading = 'Gredice ukratko';
 
 export const deliverySummaryLead =
-    'Gredice je digitalni vrt s besplatnom dostavom na području Zagreba. Kroz aplikaciju biraš ' +
+    'Gredice je digitalni vrt dostupan u Zagrebu i šire. Kroz aplikaciju biraš ' +
     'što ćeš posaditi u svoju vlastitu gredicu, pratiš rast biljaka i ' +
     'naručuješ berbu. Nakon berbe dostavljamo svježe povrće iz tvoje gredice ' +
     'na tvoju adresu ili ga besplatno preuzimaš osobno u Zagrebu.';
