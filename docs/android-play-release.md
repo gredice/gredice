@@ -215,22 +215,25 @@ node scripts/validate-garden-twa-contract.mjs
 
 ### Delivery
 
-The repository does not yet contain
-`apps/delivery/public/.well-known/assetlinks.json`, and the current repository
-documentation treats the deployed association as pending. Do not guess its
-fingerprint. After `com.gredice.dostava` is enrolled in Play App Signing:
+Delivery's Play association is source controlled in
+`apps/delivery/public/.well-known/assetlinks.json` for package
+`com.gredice.dostava`. The Delivery contract validator and Android CI path
+coverage enforce the package, host, relation, and current Play app-signing
+fingerprint.
 
-1. Copy the SHA-256 fingerprint from the Play **app-signing key certificate**,
-   not the upload certificate.
-2. Add the standard `delegate_permission/common.handle_all_urls` statement for
-   package `com.gredice.dostava` at
-   `apps/delivery/public/.well-known/assetlinks.json`.
-3. Deploy Delivery and confirm
-   `https://dostava.gredice.com/.well-known/assetlinks.json` returns the JSON
-   directly over HTTPS with a successful response.
-4. Add the Delivery DAL file to contract validation and CI path coverage before
-   treating the relationship as enforced. The current Delivery validator only
-   enforces the POI/car contract.
+For an ordinary Delivery release, compare the source-controlled fingerprint
+with Play Console's **app-signing key certificate**, not the upload certificate,
+and run:
+
+```bash
+node scripts/validate-delivery-car-contract.mjs
+```
+
+After deploying a changed association, confirm
+`https://dostava.gredice.com/.well-known/assetlinks.json` returns the JSON
+directly over HTTPS with a successful response before treating the relationship
+as live. Directly installed debug or upload-key-signed builds may use the Custom
+Tab fallback and do not prove the Play-delivered association.
 
 For either host, the
 [Digital Asset Links API](https://developer.android.com/training/app-links/test-applinks#confirm-digital-assets-links-files)

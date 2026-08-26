@@ -6,6 +6,10 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relativePath) =>
     fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+const readJson = (relativePath) => JSON.parse(read(relativePath));
+
+const playAppSigningFingerprint =
+    "BD:05:C5:6A:AB:8C:E4:5D:41:22:4B:06:F9:20:D8:9D:06:5F:4E:E5:9C:D5:69:26:EB:02:6E:C3:7A:44:53:6B";
 
 const appBuild = read("apps/delivery-android/app/build.gradle");
 const manifest = read(
@@ -16,6 +20,9 @@ const carDescriptor = read(
 );
 const strings = read(
     "apps/delivery-android/app/src/main/res/values/strings.xml",
+);
+const assetLinks = readJson(
+    "apps/delivery/public/.well-known/assetlinks.json",
 );
 const navigationUri = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationUri.java",
@@ -42,7 +49,25 @@ assert.deepEqual(permissions, [
 ]);
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
+assert.match(manifest, /<intent-filter android:autoVerify="true">/);
 assert.match(carDescriptor, /<uses name="template" \/>/);
+assert.match(strings, /https:\/\/dostava\.gredice\.com/);
+
+const assetLink = assetLinks.find(
+    (entry) => entry.target?.package_name === "com.gredice.dostava",
+);
+assert.ok(assetLink, "Digital Asset Links must contain the Delivery package");
+assert.equal(assetLink.target.namespace, "android_app");
+assert.ok(
+    assetLink.relation?.includes("delegate_permission/common.handle_all_urls"),
+    "Digital Asset Links must delegate URL handling",
+);
+assert.ok(
+    assetLink.target.sha256_cert_fingerprints?.includes(
+        playAppSigningFingerprint,
+    ),
+    "Digital Asset Links must contain the Play app-signing fingerprint",
+);
 
 assert.match(stopsScreen, /CarContext\.ACTION_NAVIGATE/);
 assert.match(stopsScreen, /startCarApp\(intent\)/);
@@ -61,5 +86,5 @@ assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 
 console.log(
-    "✅ Delivery Android contract is POI-only, permission-minimal, and provider-neutral.",
+    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, and web-associated.",
 );

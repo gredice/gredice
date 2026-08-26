@@ -24,7 +24,9 @@ The complete packaging, signing, Digital Asset Links, Play-track, and recovery p
 
 ## Web trust and authentication
 
-The phone surface falls back to a Custom Tab until the Delivery Play app-signing certificate is added to `https://dostava.gredice.com/.well-known/assetlinks.json`. That certificate does not exist yet and must not be guessed. The synthetic car fixture avoids authentication only for the category-feasibility review. Replacing it with the real route projection is tracked separately and must fail closed when the driver's session is unavailable.
+The Play-delivered phone surface is associated with `https://dostava.gredice.com` through the Play app-signing certificate in `apps/delivery/public/.well-known/assetlinks.json`. `node scripts/validate-delivery-car-contract.mjs` keeps that association aligned with the Android package and verified host. Directly installed debug or upload-key-signed builds are not Play-association evidence and may use the Custom Tab fallback.
+
+The synthetic car fixture avoids authentication only for the category-feasibility review. Replacing it with the real route projection is tracked separately and must fail closed when the driver's session is unavailable.
 
 ## Next integration seam
 
