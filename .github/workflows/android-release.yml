@@ -17,6 +17,14 @@ on:
         required: true
         default: true
         type: boolean
+      releaseTarget:
+        description: "Validation target for the signed handoff. Delivery internal-test may omit Store screenshots."
+        required: true
+        default: full-handoff
+        type: choice
+        options:
+          - full-handoff
+          - internal-test
 
 concurrency:
   group: android-release-${{ inputs.app }}
@@ -86,7 +94,18 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.3.0
 
       - name: 🏪 Validate complete Google Play listing bundle
-        run: node scripts/validate-android-store-listing.mjs "${{ steps.version.outputs.app_path }}"
+        shell: bash
+        env:
+          APP_NAME: ${{ inputs.app }}
+          APP_PATH: ${{ steps.version.outputs.app_path }}
+          RELEASE_TARGET: ${{ inputs.releaseTarget }}
+        run: |
+          set -euo pipefail
+          VALIDATION_ARGS=("${APP_PATH}")
+          if [ "${APP_NAME}" = "delivery" ] && [ "${RELEASE_TARGET}" = "internal-test" ]; then
+            VALIDATION_ARGS+=(--allow-missing-screenshots)
+          fi
+          node scripts/validate-android-store-listing.mjs "${VALIDATION_ARGS[@]}"
 
       - name: 🔗 Validate Garden TWA contract
         if: inputs.app == 'garden'
@@ -172,6 +191,7 @@ jobs:
             echo "app=${APP_NAME}"
             echo "application_version=${VERSION_NAME}"
             echo "version_code=${VERSION_CODE}"
+            echo "release_target=${{ inputs.releaseTarget }}"
             echo "commit=${GITHUB_SHA}"
             echo "target_sdk=36"
             echo "build_tools=36.0.0"

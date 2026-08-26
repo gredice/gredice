@@ -102,9 +102,14 @@ seven days in `garden-android-unsigned-<commit>` or
 are not Play upload candidates.
 
 Delivery's CI currently allows its genuine Store screenshots to remain pending.
-The protected release workflow does not: at least two real screenshots must be
-present before it will produce a signed handoff. Follow
-`apps/delivery-android/store/google-play/hr-HR/graphics/screenshots/README.md`.
+The protected release workflow requires at least two real screenshots for its
+default `full-handoff` target. The narrowly scoped `internal-test` target may
+omit them only for a Delivery candidate that will be installed from Play to
+capture and validate the exact phone and Desktop Head Unit surfaces. An
+`internal-test` handoff is not eligible for a closed test or production. Follow
+`apps/delivery-android/store/google-play/hr-HR/graphics/screenshots/README.md`,
+commit the genuine captures, and use a greater version code for the subsequent
+full handoff.
 
 ## Package the Play handoff
 
@@ -118,12 +123,26 @@ From GitHub CLI, the equivalent dispatch is:
 gh workflow run android-release.yml \
   --ref main \
   -f app=garden \
-  -f createGithubRelease=true
+  -f createGithubRelease=true \
+  -f releaseTarget=full-handoff
 ```
 
 Replace `garden` with `delivery` when packaging Delivery. The boolean input
 controls whether the workflow also creates or updates a draft GitHub release;
 it does not publish anything to Google Play.
+
+For Delivery's first internal-only candidate while genuine captures are still
+pending, dispatch the guarded target explicitly:
+
+```bash
+gh workflow run android-release.yml \
+  --ref main \
+  -f app=delivery \
+  -f createGithubRelease=true \
+  -f releaseTarget=internal-test
+```
+
+Do not upload an `internal-test` handoff to a closed or production track.
 
 The workflow:
 
