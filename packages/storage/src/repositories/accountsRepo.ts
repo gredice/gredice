@@ -189,8 +189,11 @@ export function getAccountUsers(accountId: string) {
     });
 }
 
-export async function createAccount(timeZone?: string) {
-    const account = storage()
+export async function createAccount(
+    timeZone?: string,
+    db: DatabaseClient = storage(),
+) {
+    const account = db
         .insert(accounts)
         .values({
             id: randomUUID(),
@@ -202,11 +205,16 @@ export async function createAccount(timeZone?: string) {
         throw new Error('Failed to create account');
     }
 
-    await createEvent(knownEvents.accounts.createdV1(accountId));
-    await ensureAccountAchievement(accountId, 'registration', {
-        earnedAt: new Date(),
-        autoApprove: true,
-    });
+    await createEvent(knownEvents.accounts.createdV1(accountId), db);
+    await ensureAccountAchievement(
+        accountId,
+        'registration',
+        {
+            earnedAt: new Date(),
+            autoApprove: true,
+        },
+        db,
+    );
 
     return accountId;
 }

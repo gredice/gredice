@@ -572,7 +572,7 @@ test('opens and clears a cross-app temporary login request from the URL', async 
     await expect(page).toHaveURL('/');
 });
 
-test('returning user with an expired session sees login before a temporary garden is created', async ({
+test('returning user with an expired session sees privacy-neutral login copy before a temporary garden is created', async ({
     page,
 }) => {
     const api = await mockGardenApi(page, false, { returningUser: true });
@@ -583,9 +583,10 @@ test('returning user with an expired session sees login before a temporary garde
     await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
     await expect(
         page.getByText(
-            'Prepoznali smo ovaj uređaj. Prijavi se kako bismo otvorili tvoj postojeći vrt.',
+            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
         ),
     ).toBeVisible();
+    await expect(page.getByText(/prepoznali smo ovaj uređaj/iu)).toHaveCount(0);
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
     expect(
         await page.evaluate((storageKey) => {

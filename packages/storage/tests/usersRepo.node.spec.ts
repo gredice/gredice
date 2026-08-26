@@ -14,7 +14,9 @@ import {
     createTemporaryUserAndAccount,
     createUserWithPassword,
     deleteGardenIfNoActiveRaisedBeds,
+    ensureRegisteredUserAccount,
     events,
+    farms,
     gardenVisitStates,
     getAccountGardensMetadata,
     getGardenBlocks,
@@ -34,7 +36,7 @@ import {
     userLogins,
     users,
 } from '@gredice/storage';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { createTestAccount, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
@@ -125,6 +127,77 @@ test('createTemporaryUserAndAccount creates a fully featured standard garden', a
     const raisedBeds = await getRaisedBeds(gardens[0].id);
     assert.equal(raisedBeds.length, 1);
     assert.equal(raisedBeds[0]?.status, 'new');
+});
+
+test('ensureRegisteredUserAccount repairs an accountless login once', async () => {
+    createTestDb();
+    await ensureFarmId();
+
+    const userId = await createUserWithPassword(
+        `accountless-${randomUUID()}@example.com`,
+        'secret-password',
+    );
+    await storage().delete(accountUsers).where(eq(accountUsers.userId, userId));
+
+    const accountCountBeforeFailedRepair = (
+        await storage().query.accounts.findMany()
+    ).length;
+    const gardenCountBeforeFailedRepair = (
+        await storage().query.gardens.findMany()
+    ).length;
+    const activeFarms = await storage().query.farms.findMany({
+        columns: { id: true },
+        where: eq(farms.isDeleted, false),
+    });
+    assert.ok(activeFarms.length > 0);
+    await storage()
+        .update(farms)
+        .set({ isDeleted: true })
+        .where(eq(farms.isDeleted, false));
+
+    try {
+        await assert.rejects(
+            ensureRegisteredUserAccount(userId),
+            /No farm found/,
+        );
+        assert.equal(
+            (await storage().query.accounts.findMany()).length,
+            accountCountBeforeFailedRepair,
+        );
+        assert.equal(
+            (await storage().query.gardens.findMany()).length,
+            gardenCountBeforeFailedRepair,
+        );
+    } finally {
+        await storage()
+            .update(farms)
+            .set({ isDeleted: false })
+            .where(
+                inArray(
+                    farms.id,
+                    activeFarms.map((farm) => farm.id),
+                ),
+            );
+    }
+
+    const [firstAccountId, secondAccountId] = await Promise.all([
+        ensureRegisteredUserAccount(userId),
+        ensureRegisteredUserAccount(userId),
+    ]);
+
+    assert.equal(firstAccountId, secondAccountId);
+    const memberships = await storage().query.accountUsers.findMany({
+        where: eq(accountUsers.userId, userId),
+    });
+    assert.deepEqual(
+        memberships.map((membership) => membership.accountId),
+        [firstAccountId],
+    );
+
+    const gardens = await getAccountGardensMetadata(firstAccountId);
+    assert.equal(gardens.length, 1);
+    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(gardens[0].name, 'Moj vrt');
 });
 
 test('existing-user OAuth login leaves the temporary account isolated', async () => {

@@ -23,8 +23,14 @@ export type UniqueFarmAssignableFarmUser = Omit<
     'farmId'
 >;
 
-export async function getFarms() {
-    return storage().query.farms.findMany({
+type StorageClient = ReturnType<typeof storage>;
+type TransactionClient = Parameters<
+    Parameters<StorageClient['transaction']>[0]
+>[0];
+type DatabaseClient = StorageClient | TransactionClient;
+
+export async function getFarms(db: DatabaseClient = storage()) {
+    return db.query.farms.findMany({
         orderBy: desc(farms.createdAt),
     });
 }

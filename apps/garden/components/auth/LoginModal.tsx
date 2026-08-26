@@ -3,7 +3,6 @@
 import { clientPublic, getBrowserGrediceAppOrigin } from '@gredice/client';
 import { Alert } from '@gredice/ui/Alert';
 import {
-    authCurrentUserQueryKeys,
     FacebookLoginButton,
     GoogleLoginButton,
     useLastLoginProvider,
@@ -106,12 +105,8 @@ export default function LoginModal({
 
         if (response.status === 200) {
             await response.json();
-            await Promise.all([
-                queryClient.invalidateQueries({
-                    queryKey: authCurrentUserQueryKeys,
-                }),
-                queryClient.invalidateQueries({ queryKey: ['currentUser'] }),
-            ]);
+            await queryClient.resetQueries();
+            router.refresh();
             handleOpenChange(false);
             onAuthenticated?.();
             return;
