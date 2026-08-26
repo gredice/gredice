@@ -8,6 +8,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Translucent.NoTitleBar"
@@ -22,6 +23,12 @@
         <meta-data
             android:name="androidx.car.app.minCarApiLevel"
             android:value="1" />
+
+        <activity android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="@string/launchUrl" />
+        </activity>
 
         <activity
             android:name=".DeliveryLauncherActivity"
