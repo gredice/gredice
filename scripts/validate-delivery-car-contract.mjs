@@ -75,6 +75,14 @@ assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
 assert.match(manifest, /<intent-filter android:autoVerify="true">/);
 assert.match(manifest, /android:value="@string\/launchUrl"/);
 assert.match(manifest, /android:host="@string\/hostName"/);
+assert.match(
+    manifest,
+    /android:manageSpaceActivity="com\.google\.androidbrowserhelper\.trusted\.ManageDataLauncherActivity"/,
+);
+assert.match(
+    manifest,
+    /<activity android:name="com\.google\.androidbrowserhelper\.trusted\.ManageDataLauncherActivity">[\s\S]*?android:name="android\.support\.customtabs\.trusted\.MANAGE_SPACE_URL"[\s\S]*?android:value="@string\/launchUrl"[\s\S]*?<\/activity>/,
+);
 assert.match(carDescriptor, /<uses name="template" \/>/);
 assert.equal(launchUrl.protocol, "https:");
 assert.equal(launchUrl.hostname, hostName);
