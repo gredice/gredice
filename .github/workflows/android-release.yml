@@ -70,6 +70,11 @@ jobs:
             exit 1
           fi
 
+          if [ "${RELEASE_TARGET}" = "internal-test" ] && [ "${APP_NAME}" != "delivery" ]; then
+            echo "::error::internal-test is supported only for delivery." >&2
+            exit 1
+          fi
+
           ARTIFACT_SUFFIX=""
           if [ "${RELEASE_TARGET}" = "internal-test" ]; then
             ARTIFACT_SUFFIX="-internal-test"
