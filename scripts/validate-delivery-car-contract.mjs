@@ -10,6 +10,7 @@ const readJson = (relativePath) => JSON.parse(read(relativePath));
 
 const playAppSigningFingerprint =
     "BD:05:C5:6A:AB:8C:E4:5D:41:22:4B:06:F9:20:D8:9D:06:5F:4E:E5:9C:D5:69:26:EB:02:6E:C3:7A:44:53:6B";
+const assetLinksOrigin = "https://dostava.gredice.com";
 
 const appBuild = read("apps/delivery-android/app/build.gradle");
 const manifest = read(
@@ -34,6 +35,27 @@ const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
 );
 
+const readStringResValue = (name) => {
+    const match = appBuild.match(
+        new RegExp(`resValue 'string', '${name}', '([^']+)'`),
+    );
+    assert.ok(match, `Android string resource ${name} must be configured`);
+    return match[1];
+};
+
+const launchUrl = new URL(readStringResValue("launchUrl"));
+const hostName = readStringResValue("hostName");
+const assetStatementsValue = strings.match(
+    /<string name="asset_statements">(.+)<\/string>/,
+)?.[1];
+assert.ok(assetStatementsValue, "Android web asset statements are required");
+const webAssetStatements = JSON.parse(
+    assetStatementsValue.replaceAll('\\"', '"'),
+);
+const webAssetStatement = webAssetStatements.find(
+    (entry) => entry.target?.namespace === "web",
+);
+
 assert.match(appBuild, /applicationId 'com\.gredice\.dostava'/);
 assert.match(appBuild, /minSdk 28/);
 assert.match(appBuild, /targetSdk 36/);
@@ -50,8 +72,20 @@ assert.deepEqual(permissions, [
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
 assert.match(manifest, /<intent-filter android:autoVerify="true">/);
+assert.match(manifest, /android:value="@string\/launchUrl"/);
+assert.match(manifest, /android:host="@string\/hostName"/);
 assert.match(carDescriptor, /<uses name="template" \/>/);
-assert.match(strings, /https:\/\/dostava\.gredice\.com/);
+assert.equal(launchUrl.protocol, "https:");
+assert.equal(launchUrl.hostname, hostName);
+assert.equal(launchUrl.origin, assetLinksOrigin);
+assert.ok(webAssetStatement, "Android must delegate trust to the web origin");
+assert.ok(
+    webAssetStatement.relation?.includes(
+        "delegate_permission/common.handle_all_urls",
+    ),
+    "Android web asset statements must delegate URL handling",
+);
+assert.equal(webAssetStatement.target.site, assetLinksOrigin);
 
 const assetLink = assetLinks.find(
     (entry) => entry.target?.package_name === "com.gredice.dostava",
