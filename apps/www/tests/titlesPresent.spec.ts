@@ -156,7 +156,9 @@ test.describe('public SEO metadata', () => {
 
         expect(response.ok()).toBe(true);
         expect(html).toContain('Gredice ukratko');
-        expect(html).toContain('digitalni vrt za korisnike u Zagrebu');
+        expect(html).toContain(
+            'digitalni vrt s besplatnom dostavom na području Zagreba',
+        );
         expect(html).toContain('svježe povrće');
         expect(html).toContain('vlastitu gredicu');
 
