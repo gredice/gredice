@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { formatPrice } from '../../lib/formatPrice';
 import type { OperationPriceAvailability } from '../../lib/operationPricing';
 import { AttributeCard } from './DetailCard';
+import { shouldShowThirtyDayLowestPrice } from './shouldShowThirtyDayLowestPrice';
 
 const changeDateFormatter = new Intl.DateTimeFormat('hr-HR', {
     day: 'numeric',
@@ -133,12 +134,17 @@ export async function PriceAttributeCard({
                     <span className="block font-semibold">
                         {formatPrice(currentPrice)}
                     </span>
-                    <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                        Najniža cijena u 30 dana:{' '}
-                        <span className="font-medium text-foreground">
-                            {formatPrice(history.lowestPrice)}
+                    {shouldShowThirtyDayLowestPrice(
+                        currentPrice,
+                        history.lowestPrice,
+                    ) && (
+                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                            Najniža cijena u 30 dana:{' '}
+                            <span className="font-medium text-foreground">
+                                {formatPrice(history.lowestPrice)}
+                            </span>
                         </span>
-                    </span>
+                    )}
                     {history.lastChangedAt && (
                         <span className="block text-xs font-normal text-muted-foreground">
                             Zadnja promjena:{' '}
