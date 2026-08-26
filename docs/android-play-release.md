@@ -146,8 +146,10 @@ Do not upload an `internal-test` handoff to a closed or production track.
 
 The workflow:
 
-1. Validates the version, complete Croatian Store bundle, Gradle wrappers, and
-   the app-specific Garden TWA or Delivery car contract.
+1. Validates the version, Croatian Store bundle, Gradle wrappers, and the
+   app-specific Garden TWA or Delivery car contract. A `full-handoff` requires
+   the complete Store bundle with genuine screenshots; only Delivery's guarded
+   `internal-test` target permits the screenshots to remain pending.
 2. Verifies the upload certificate fingerprint against the protected
    environment variable.
 3. Runs `lintRelease`, `testDebugUnitTest`, `bundleRelease`, and
@@ -156,10 +158,14 @@ The workflow:
 5. Produces build provenance attestations for the signed AAB and APK.
 6. Uploads the handoff as an Actions artifact retained for 30 days and,
    optionally, as assets on a draft GitHub release tagged
-   `android-<app>-v<versionName>`.
+   `android-<app>-v<versionName>` for a full handoff or
+   `android-delivery-v<versionName>-internal-test` for Delivery's internal-only
+   candidate.
 
 The artifact prefix is
-`gredice-<app>-android-<versionName>-<versionCode>`. The handoff contains:
+`gredice-<app>-android-<versionName>-<versionCode>`. Delivery's internal-only
+candidate appends `-internal-test` so its artifact and draft release cannot be
+mistaken for a closed or production handoff. The handoff contains:
 
 - `<prefix>.aab` — the signed bundle to upload to Play Console;
 - `<prefix>.apk` — an upload-key-signed diagnostic APK, not the Play-delivered
@@ -276,9 +282,10 @@ listing, including Data safety and app-access answers.
    synthetic public-place stops render, and **Navigacija** hands the selected
    coordinates to an available default navigation provider. Confirm the app
    does not claim turn-by-turn navigation or expose real customer data.
-4. Upload the same or a newer candidate to the designated closed track, supply
-   the checked-in app-access and Data safety review notes, and submit it for the
-   Android Auto POI/category review.
+4. After capturing and committing the evidence, increment the version code and
+   package a newer `full-handoff` candidate. Upload only that newer candidate to
+   the designated closed track, supply the checked-in app-access and Data safety
+   review notes, and submit it for the Android Auto POI/category review.
 5. Keep production and real-route integration blocked until the category is
    accepted and the separate authentication, route-projection, physical-car,
    and privacy gates are complete.

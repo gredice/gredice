@@ -53,6 +53,7 @@ jobs:
         shell: bash
         env:
           APP_NAME: ${{ inputs.app }}
+          RELEASE_TARGET: ${{ inputs.releaseTarget }}
         run: |
           set -euo pipefail
           APP_PATH="apps/${APP_NAME}-android"
@@ -69,10 +70,16 @@ jobs:
             exit 1
           fi
 
+          ARTIFACT_SUFFIX=""
+          if [ "${RELEASE_TARGET}" = "internal-test" ]; then
+            ARTIFACT_SUFFIX="-internal-test"
+          fi
+
           echo "app_path=${APP_PATH}" >> "${GITHUB_OUTPUT}"
           echo "version_code=${VERSION_CODE}" >> "${GITHUB_OUTPUT}"
           echo "version_name=${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
-          echo "tag=android-${APP_NAME}-v${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_suffix=${ARTIFACT_SUFFIX}" >> "${GITHUB_OUTPUT}"
+          echo "tag=android-${APP_NAME}-v${VERSION_NAME}${ARTIFACT_SUFFIX}" >> "${GITHUB_OUTPUT}"
 
       - name: ☕ Setup JDK 17
         uses: actions/setup-java@v5.7.0
@@ -166,11 +173,12 @@ jobs:
           APP_PATH: ${{ steps.version.outputs.app_path }}
           VERSION_CODE: ${{ steps.version.outputs.version_code }}
           VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          ARTIFACT_SUFFIX: ${{ steps.version.outputs.artifact_suffix }}
         run: |
           set -euo pipefail
           AAB_PATH="${APP_PATH}/app/build/outputs/bundle/release/app-release.aab"
           APK_PATH="${APP_PATH}/app/build/outputs/apk/release/app-release.apk"
-          ARTIFACT_PREFIX="gredice-${APP_NAME}-android-${VERSION_NAME}-${VERSION_CODE}"
+          ARTIFACT_PREFIX="gredice-${APP_NAME}-android-${VERSION_NAME}-${VERSION_CODE}${ARTIFACT_SUFFIX}"
 
           jarsigner -verify -verbose -certs "${AAB_PATH}"
           "${ANDROID_HOME}/build-tools/36.0.0/apksigner" verify --verbose "${APK_PATH}"
@@ -221,7 +229,7 @@ jobs:
         if: inputs.createGithubRelease
         uses: softprops/action-gh-release@v2.2.2
         with:
-          name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}"
+          name: "Gredice ${{ inputs.app }} Android ${{ steps.version.outputs.version_name }}${{ steps.version.outputs.artifact_suffix }}"
           tag_name: ${{ steps.version.outputs.tag }}
           draft: true
           generate_release_notes: true
