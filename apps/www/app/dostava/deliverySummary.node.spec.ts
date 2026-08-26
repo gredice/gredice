@@ -29,11 +29,8 @@ test('delivery summary names the concepts people search for', () => {
     }
 });
 
-test('delivery summary does not limit the service to Zagreb users', () => {
-    assert.match(
-        deliverySummaryLead,
-        /besplatnom dostavom na području Zagreba/u,
-    );
+test('delivery summary names Zagreb without limiting service to the city', () => {
+    assert.match(deliverySummaryLead, /dostupan u Zagrebu i šire/u);
     assert.doesNotMatch(deliverySummaryLead, /za korisnike u Zagrebu/u);
     assert.ok(
         deliverySummaryFacts.some((fact) => fact.startsWith('Izvan Zagreba')),
