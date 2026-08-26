@@ -148,6 +148,29 @@ test.describe('public SEO metadata', () => {
         await expect(page.locator('time').first()).toBeAttached();
     });
 
+    test('delivery page ships an AI-quotable summary block in initial HTML', async ({
+        page,
+    }) => {
+        const response = await page.request.get('/dostava');
+        const html = await response.text();
+
+        expect(response.ok()).toBe(true);
+        expect(html).toContain('Gredice ukratko');
+        expect(html).toContain(
+            'digitalni vrt s besplatnom dostavom na području Zagreba',
+        );
+        expect(html).toContain('svježe povrće');
+        expect(html).toContain('vlastitu gredicu');
+
+        await page.goto('/dostava', { waitUntil: 'domcontentloaded' });
+        const summaryHeading = page.getByRole('heading', {
+            level: 2,
+            name: /Gredice ukratko/u,
+        });
+        await expect(summaryHeading).toBeVisible();
+        await expect(page.locator('#gredice-ukratko')).toHaveCount(1);
+    });
+
     test('Zagreb delivery landing is discoverable and links to its supporting cluster', async ({
         page,
     }) => {

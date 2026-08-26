@@ -16,6 +16,12 @@ import { createPublicMetadata } from '../../lib/seo/publicMetadata';
 import { KnownPages } from '../../src/KnownPages';
 import { DeliveryAvailabilityChecker } from './DeliveryAvailabilityChecker';
 import { DeliveryZoneMap } from './DeliveryZoneMap';
+import {
+    deliverySummaryFacts,
+    deliverySummaryHeading,
+    deliverySummaryHeadingId,
+    deliverySummaryLead,
+} from './deliverySummary';
 
 export const metadata = createPublicMetadata({
     title: 'Dostava',
@@ -44,6 +50,15 @@ export default function DeliveryPage() {
                     subHeader="Sve informacije o dostavi povrća iz tvojih gredica"
                 />
                 <StyledHtml>
+                    <h2 id={deliverySummaryHeadingId}>
+                        🌱 {deliverySummaryHeading}
+                    </h2>
+                    <p>{deliverySummaryLead}</p>
+                    <ul>
+                        {deliverySummaryFacts.map((fact) => (
+                            <li key={fact}>{fact}</li>
+                        ))}
+                    </ul>
                     <p>
                         Kad tvoje povrće bude spremno za berbu, mi ćemo se
                         pobrinuti da ga sigurno i svježe dostavimo na tvoju
