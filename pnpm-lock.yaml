@@ -913,6 +913,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.4
         version: 19.2.4(@types/react@19.2.18)
+      nuqs:
+        specifier: 2.9.0
+        version: 2.9.0(next@16.3.0(patch_hash=55aa10de397e0471f31d9dc80e6bc429306bc37a80b4784e4b489290a54ed79f)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.0))(react@19.2.8)
       postcss:
         specifier: 8.5.23
         version: 8.5.23

@@ -7,6 +7,13 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { defaultOperationsListSort } from '../../app/admin/operations/operationsListConfig';
 import {
+    groupOperationsByDay,
+    isOperationsListGroupedSortKey,
+    operationsListDayBubbles,
+    operationsListDayCounts,
+    operationsListDayKey,
+} from '../../app/admin/operations/operationsListGrouping';
+import {
     createOperationsListQueryKey,
     createOperationsListSearchParams,
 } from '../../app/admin/operations/operationsListQuery';
@@ -17,6 +24,7 @@ import type {
 } from '../../app/admin/operations/operationsListTypes';
 import { NoDataPlaceholder } from '../shared/placeholders/NoDataPlaceholder';
 import { OperationListItem } from './OperationListItem';
+import { OperationsDayGroup } from './OperationsDayGroup';
 import { OperationsListToolbar } from './OperationsListToolbar';
 
 async function fetchOperationsPage({
@@ -73,6 +81,11 @@ export function OperationsList({
     const [sort, setSort] = useState<OperationsListSort>(
         defaultOperationsListSort,
     );
+    const [dayExpansionOverrides, setDayExpansionOverrides] = useState<
+        Map<string, boolean>
+    >(() => new Map());
+    // The farm day is resolved after mount so server and client markup stay identical.
+    const [todayKey, setTodayKey] = useState<string | null>(null);
     const shouldUseInitialPage =
         sort.key === defaultOperationsListSort.key &&
         sort.direction === defaultOperationsListSort.direction;
@@ -109,6 +122,34 @@ export function OperationsList({
         [pages],
     );
     const totalCount = pages[0]?.totalCount ?? initialPage.totalCount;
+    const isGrouped = isOperationsListGroupedSortKey(sort.key);
+    const dayGroups = useMemo(
+        () => (isGrouped ? groupOperationsByDay(operations, sort.key) : []),
+        [isGrouped, operations, sort.key],
+    );
+
+    // Days without an explicit choice start open for today and for the newest day.
+    function isDayExpanded(dayKey: string) {
+        const override = dayExpansionOverrides.get(dayKey);
+
+        if (override !== undefined) {
+            return override;
+        }
+
+        return dayKey === dayGroups[0]?.dayKey || dayKey === todayKey;
+    }
+
+    function toggleDay(dayKey: string) {
+        const nextExpanded = !isDayExpanded(dayKey);
+
+        setDayExpansionOverrides((previous) =>
+            new Map(previous).set(dayKey, nextExpanded),
+        );
+    }
+
+    useEffect(() => {
+        setTodayKey(operationsListDayKey(new Date()));
+    }, []);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
@@ -168,12 +209,35 @@ export function OperationsList({
                 </div>
             ) : (
                 <ul className="divide-y">
-                    {operations.map((operation) => (
-                        <OperationListItem
-                            key={operation.rowId}
-                            operation={operation}
-                        />
-                    ))}
+                    {isGrouped
+                        ? dayGroups.map((group) => (
+                              <OperationsDayGroup
+                                  key={group.dayKey}
+                                  bubbles={operationsListDayBubbles(
+                                      group.operations,
+                                  )}
+                                  counts={operationsListDayCounts(
+                                      group.operations,
+                                  )}
+                                  dayKey={group.dayKey}
+                                  isExpanded={isDayExpanded(group.dayKey)}
+                                  isToday={group.dayKey === todayKey}
+                                  onToggle={toggleDay}
+                              >
+                                  {group.operations.map((operation) => (
+                                      <OperationListItem
+                                          key={operation.rowId}
+                                          operation={operation}
+                                      />
+                                  ))}
+                              </OperationsDayGroup>
+                          ))
+                        : operations.map((operation) => (
+                              <OperationListItem
+                                  key={operation.rowId}
+                                  operation={operation}
+                              />
+                          ))}
                 </ul>
             )}
 

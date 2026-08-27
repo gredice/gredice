@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import type { ComponentType, CSSProperties, SVGProps } from 'react';
 import { Droplet, Hammer, Leaf, Sprout, Store, Tally3, Upload } from '../icons';
+import { ShovelIcon } from '../ShovelIcon';
 import { cx } from '../utils';
 
 export type OperationImageProps = {
@@ -42,7 +43,7 @@ const categoryIcons: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
         return <Tally3 {...rest} className={cx('rotate-90 mt-1', className)} />;
     },
     sowing: Sprout,
-    planting: Sprout,
+    planting: ShovelIcon,
     growth: Leaf,
     maintenance: Leaf,
     watering: Droplet,

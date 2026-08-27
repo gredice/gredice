@@ -1,3 +1,4 @@
+import { timeZoneDayKey } from '@gredice/js/dates';
 import { Button } from '@gredice/ui/Button';
 import { Divider } from '@gredice/ui/Divider';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
@@ -63,8 +64,16 @@ import {
 } from '../hooks/useShoppingCart';
 import { GameModal } from '../shared-ui/game-modal';
 import { useShoppingCartOpenParam } from '../useUrlState';
+import type { GardenOperationsBubbleItem } from './GardenOperationsDayBubbles';
+import { GardenOperationsDayGroup } from './GardenOperationsDayGroup';
 import { buildGardenOperationDiaryTarget } from './gardenOperationDiaryTargets';
 import { sortOperationTasksNewestFirst } from './gardenOperationOrdering';
+import {
+    gardenOperationsDayBubbles,
+    gardenOperationsDayCounts,
+    gardenOperationsTimeZone,
+    groupGardenOperationsByDay,
+} from './gardenOperationsDayGrouping';
 import { RaisedBedDiaryCancelAction } from './raisedBed/RaisedBedDiaryCancelAction';
 import { RaisedBedDiaryRescheduleAction } from './raisedBed/RaisedBedDiaryRescheduleAction';
 
@@ -1702,6 +1711,125 @@ function CartOperationCard({
     );
 }
 
+type ResolvedGardenOperationView = {
+    operationData?: OperationData;
+    operationName?: string;
+    plantSortData?: PlantSortData;
+    targetPlantSortData?: PlantSortData;
+    entryName: string;
+};
+
+function resolveGardenOperationView({
+    currentGarden,
+    operation,
+    operationDataById,
+    plantSortById,
+}: {
+    currentGarden?: CurrentGardenData | null;
+    operation: GardenOperationHudItem;
+    operationDataById: Map<number, OperationData>;
+    plantSortById: Map<number, PlantSortData>;
+}): ResolvedGardenOperationView {
+    const operationData =
+        operation.entityTypeName === cartOperationEntityType
+            ? operationDataById.get(operation.entityId)
+            : undefined;
+    const plantSortData =
+        operation.entityTypeName === cartPlantSortEntityType
+            ? plantSortById.get(operation.entityId)
+            : undefined;
+    const operationName = operationData?.information.label;
+
+    return {
+        operationData,
+        operationName,
+        plantSortData,
+        targetPlantSortData:
+            operation.entityTypeName === cartOperationEntityType
+                ? (plantSortById.get(
+                      getOperationFieldPlantSortId(operation, currentGarden) ??
+                          0,
+                  ) ?? undefined)
+                : undefined,
+        entryName: getActiveOperationName({
+            operation,
+            operationName,
+            plantSortName: plantSortData?.information.name,
+        }),
+    };
+}
+
+type GardenOperationDayGroup = {
+    dayKey: string;
+    operations: GardenOperationHudItem[];
+    bubbleItems: GardenOperationsBubbleItem[];
+};
+
+/** Groups an operation list by garden day and summarises each day for its bubbles. */
+function useGardenOperationDayGroups({
+    currentGarden,
+    operationDataById,
+    operations,
+    plantSortById,
+}: {
+    currentGarden?: CurrentGardenData | null;
+    operationDataById: Map<number, OperationData>;
+    operations: GardenOperationHudItem[];
+    plantSortById: Map<number, PlantSortData>;
+}): GardenOperationDayGroup[] {
+    return useMemo(
+        () =>
+            groupGardenOperationsByDay(operations).map((group) => ({
+                ...group,
+                bubbleItems: group.operations.map((operation) => {
+                    const resolved = resolveGardenOperationView({
+                        currentGarden,
+                        operation,
+                        operationDataById,
+                        plantSortById,
+                    });
+
+                    return {
+                        kind:
+                            operation.entityTypeName === cartPlantSortEntityType
+                                ? 'planting'
+                                : 'operation',
+                        label: resolved.entryName,
+                        operationData: resolved.operationData,
+                        plantSortData:
+                            resolved.plantSortData ??
+                            resolved.targetPlantSortData,
+                    };
+                }),
+            })),
+        [currentGarden, operationDataById, operations, plantSortById],
+    );
+}
+
+/**
+ * Tracks which days the viewer opened or closed. Days they have not touched
+ * fall back to `isDefaultExpanded`.
+ */
+function useGardenOperationsDayExpansion(
+    isDefaultExpanded: (dayKey: string) => boolean,
+) {
+    const [overrides, setOverrides] = useState<Map<string, boolean>>(
+        () => new Map(),
+    );
+
+    function isDayExpanded(dayKey: string) {
+        return overrides.get(dayKey) ?? isDefaultExpanded(dayKey);
+    }
+
+    function toggleDay(dayKey: string) {
+        const nextExpanded = !isDayExpanded(dayKey);
+
+        setOverrides((previous) => new Map(previous).set(dayKey, nextExpanded));
+    }
+
+    return { isDayExpanded, toggleDay };
+}
+
 function HistoryModal({
     trigger,
     operations,
@@ -1719,6 +1847,18 @@ function HistoryModal({
     listRef: (node: HTMLDivElement | null) => void;
     referenceDate: Date;
 }) {
+    const todayKey = timeZoneDayKey(referenceDate, gardenOperationsTimeZone);
+    const dayGroups = useGardenOperationDayGroups({
+        currentGarden,
+        operationDataById,
+        operations,
+        plantSortById,
+    });
+    // A long history opens only today and the most recent day.
+    const { isDayExpanded, toggleDay } = useGardenOperationsDayExpansion(
+        (dayKey) => dayKey === todayKey || dayKey === dayGroups[0]?.dayKey,
+    );
+
     return (
         <GameModal
             title="Povijest radnji"
@@ -1745,74 +1885,75 @@ function HistoryModal({
                                 Nema radnji.
                             </Typography>
                         ) : (
-                            operations.map((operation) => {
-                                const operationData =
-                                    operation.entityTypeName ===
-                                    cartOperationEntityType
-                                        ? operationDataById.get(
-                                              operation.entityId,
-                                          )
-                                        : undefined;
-                                const plantSortData =
-                                    operation.entityTypeName ===
-                                    cartPlantSortEntityType
-                                        ? plantSortById.get(operation.entityId)
-                                        : undefined;
-                                const operationName =
-                                    operationData?.information.label;
-                                const entryName = getActiveOperationName({
-                                    operation,
-                                    operationName,
-                                    plantSortName:
-                                        plantSortData?.information.name,
-                                });
-                                const scheduleAction = (
-                                    <GardenOperationScheduleAction
-                                        entryName={entryName}
-                                        garden={currentGarden}
-                                        operation={operation}
-                                        referenceDate={referenceDate}
-                                    />
-                                );
-                                const cancelTarget =
-                                    getGardenOperationCancelTarget(
-                                        operation,
-                                        currentGarden,
-                                    );
-                                const cancelAction = cancelTarget ? (
-                                    <GardenOperationCancelAction
-                                        entryName={entryName}
-                                        garden={currentGarden}
-                                        operation={operation}
-                                        referenceDate={referenceDate}
-                                    />
-                                ) : undefined;
+                            dayGroups.map((group) => (
+                                <GardenOperationsDayGroup
+                                    key={group.dayKey}
+                                    bubbles={gardenOperationsDayBubbles(
+                                        group.bubbleItems,
+                                    )}
+                                    counts={gardenOperationsDayCounts(
+                                        group.bubbleItems,
+                                    )}
+                                    dayKey={group.dayKey}
+                                    isExpanded={isDayExpanded(group.dayKey)}
+                                    isToday={group.dayKey === todayKey}
+                                    onToggle={toggleDay}
+                                >
+                                    {group.operations.map((operation) => {
+                                        const resolved =
+                                            resolveGardenOperationView({
+                                                currentGarden,
+                                                operation,
+                                                operationDataById,
+                                                plantSortById,
+                                            });
+                                        const scheduleAction = (
+                                            <GardenOperationScheduleAction
+                                                entryName={resolved.entryName}
+                                                garden={currentGarden}
+                                                operation={operation}
+                                                referenceDate={referenceDate}
+                                            />
+                                        );
+                                        const cancelTarget =
+                                            getGardenOperationCancelTarget(
+                                                operation,
+                                                currentGarden,
+                                            );
+                                        const cancelAction = cancelTarget ? (
+                                            <GardenOperationCancelAction
+                                                entryName={resolved.entryName}
+                                                garden={currentGarden}
+                                                operation={operation}
+                                                referenceDate={referenceDate}
+                                            />
+                                        ) : undefined;
 
-                                return (
-                                    <GardenOperationCard
-                                        key={`${operation.entityTypeName}-${operation.id}`}
-                                        operation={operation}
-                                        operationName={operationName}
-                                        operationData={operationData}
-                                        plantSortData={plantSortData}
-                                        targetPlantSortData={
-                                            operation.entityTypeName ===
-                                            cartOperationEntityType
-                                                ? (plantSortById.get(
-                                                      getOperationFieldPlantSortId(
-                                                          operation,
-                                                          currentGarden,
-                                                      ) ?? 0,
-                                                  ) ?? undefined)
-                                                : undefined
-                                        }
-                                        currentGarden={currentGarden}
-                                        referenceDate={referenceDate}
-                                        scheduleAction={scheduleAction}
-                                        cancelAction={cancelAction}
-                                    />
-                                );
-                            })
+                                        return (
+                                            <GardenOperationCard
+                                                key={`${operation.entityTypeName}-${operation.id}`}
+                                                operation={operation}
+                                                operationName={
+                                                    resolved.operationName
+                                                }
+                                                operationData={
+                                                    resolved.operationData
+                                                }
+                                                plantSortData={
+                                                    resolved.plantSortData
+                                                }
+                                                targetPlantSortData={
+                                                    resolved.targetPlantSortData
+                                                }
+                                                currentGarden={currentGarden}
+                                                referenceDate={referenceDate}
+                                                scheduleAction={scheduleAction}
+                                                cancelAction={cancelAction}
+                                            />
+                                        );
+                                    })}
+                                </GardenOperationsDayGroup>
+                            ))
                         )}
                         <div ref={listRef} className="h-1" />
                     </Stack>
@@ -1826,7 +1967,12 @@ export function sortNewestFirst(operations: GardenOperationHudItem[]) {
     return sortOperationTasksNewestFirst(operations);
 }
 
-export function GardenOperationsHud() {
+export function GardenOperationsHud({
+    /** Opens the panel on mount. Used by tests and Storybook. */
+    defaultOpen,
+}: {
+    defaultOpen?: boolean;
+} = {}) {
     const { track } = useGameAnalytics();
     const referenceDate = useLiveTime();
     const { data: currentGarden } = useCurrentGarden();
@@ -1969,11 +2115,23 @@ export function GardenOperationsHud() {
                 return dateDiff !== 0 ? dateDiff : b.item.id - a.item.id;
             });
     }, [cart?.items, currentGarden, operationDataById]);
+    const todayKey = timeZoneDayKey(referenceDate, gardenOperationsTimeZone);
+    const pendingDayGroups = useGardenOperationDayGroups({
+        currentGarden,
+        operationDataById,
+        operations: pendingOperations,
+        plantSortById,
+    });
+    // Upcoming work is short and actionable, so every day starts open and the
+    // day header is there to summarise and to collapse what is already handled.
+    const { isDayExpanded: isPendingDayExpanded, toggleDay: togglePendingDay } =
+        useGardenOperationsDayExpansion(() => true);
     const activeOperationCount =
         pendingOperations.length + cartOperations.length;
 
     return (
         <Popper
+            defaultOpen={defaultOpen}
             side="bottom"
             sideOffset={12}
             className="w-[28rem] max-w-[90vw] overflow-hidden border-tertiary border-b-4"
@@ -2055,76 +2213,92 @@ export function GardenOperationsHud() {
                                 )}
                                 {cartOperations.length > 0 &&
                                     pendingOperations.length > 0 && <Divider />}
-                                {pendingOperations.map((operation) => {
-                                    const operationData =
-                                        operation.entityTypeName ===
-                                        cartOperationEntityType
-                                            ? operationDataById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined;
-                                    const plantSortData =
-                                        operation.entityTypeName ===
-                                        cartPlantSortEntityType
-                                            ? plantSortById.get(
-                                                  operation.entityId,
-                                              )
-                                            : undefined;
-                                    const operationName =
-                                        operationData?.information.label;
-                                    const entryName = getActiveOperationName({
-                                        operation,
-                                        operationName,
-                                        plantSortName:
-                                            plantSortData?.information.name,
-                                    });
-                                    const scheduleAction = (
-                                        <GardenOperationScheduleAction
-                                            entryName={entryName}
-                                            garden={currentGarden}
-                                            operation={operation}
-                                            referenceDate={referenceDate}
-                                        />
-                                    );
-                                    const cancelTarget =
-                                        getGardenOperationCancelTarget(
-                                            operation,
-                                            currentGarden,
-                                        );
-                                    const cancelAction = cancelTarget ? (
-                                        <GardenOperationCancelAction
-                                            entryName={entryName}
-                                            garden={currentGarden}
-                                            operation={operation}
-                                            referenceDate={referenceDate}
-                                        />
-                                    ) : undefined;
+                                {pendingDayGroups.map((group) => (
+                                    <GardenOperationsDayGroup
+                                        key={group.dayKey}
+                                        bubbles={gardenOperationsDayBubbles(
+                                            group.bubbleItems,
+                                        )}
+                                        counts={gardenOperationsDayCounts(
+                                            group.bubbleItems,
+                                        )}
+                                        dayKey={group.dayKey}
+                                        isExpanded={isPendingDayExpanded(
+                                            group.dayKey,
+                                        )}
+                                        isToday={group.dayKey === todayKey}
+                                        onToggle={togglePendingDay}
+                                    >
+                                        {group.operations.map((operation) => {
+                                            const resolved =
+                                                resolveGardenOperationView({
+                                                    currentGarden,
+                                                    operation,
+                                                    operationDataById,
+                                                    plantSortById,
+                                                });
+                                            const scheduleAction = (
+                                                <GardenOperationScheduleAction
+                                                    entryName={
+                                                        resolved.entryName
+                                                    }
+                                                    garden={currentGarden}
+                                                    operation={operation}
+                                                    referenceDate={
+                                                        referenceDate
+                                                    }
+                                                />
+                                            );
+                                            const cancelTarget =
+                                                getGardenOperationCancelTarget(
+                                                    operation,
+                                                    currentGarden,
+                                                );
+                                            const cancelAction =
+                                                cancelTarget ? (
+                                                    <GardenOperationCancelAction
+                                                        entryName={
+                                                            resolved.entryName
+                                                        }
+                                                        garden={currentGarden}
+                                                        operation={operation}
+                                                        referenceDate={
+                                                            referenceDate
+                                                        }
+                                                    />
+                                                ) : undefined;
 
-                                    return (
-                                        <GardenOperationCard
-                                            key={`${operation.entityTypeName}-${operation.id}`}
-                                            operation={operation}
-                                            operationName={operationName}
-                                            operationData={operationData}
-                                            plantSortData={plantSortData}
-                                            targetPlantSortData={
-                                                operation.entityTypeName ===
-                                                cartOperationEntityType
-                                                    ? (plantSortById.get(
-                                                          getOperationFieldPlantSortId(
-                                                              operation,
-                                                              currentGarden,
-                                                          ) ?? 0,
-                                                      ) ?? undefined)
-                                                    : undefined
-                                            }
-                                            currentGarden={currentGarden}
-                                            referenceDate={referenceDate}
-                                            scheduleAction={scheduleAction}
-                                            cancelAction={cancelAction}
-                                        />
-                                    );
-                                })}
+                                            return (
+                                                <GardenOperationCard
+                                                    key={`${operation.entityTypeName}-${operation.id}`}
+                                                    operation={operation}
+                                                    operationName={
+                                                        resolved.operationName
+                                                    }
+                                                    operationData={
+                                                        resolved.operationData
+                                                    }
+                                                    plantSortData={
+                                                        resolved.plantSortData
+                                                    }
+                                                    targetPlantSortData={
+                                                        resolved.targetPlantSortData
+                                                    }
+                                                    currentGarden={
+                                                        currentGarden
+                                                    }
+                                                    referenceDate={
+                                                        referenceDate
+                                                    }
+                                                    scheduleAction={
+                                                        scheduleAction
+                                                    }
+                                                    cancelAction={cancelAction}
+                                                />
+                                            );
+                                        })}
+                                    </GardenOperationsDayGroup>
+                                ))}
                             </>
                         )}
                         <div ref={pendingRef} className="h-1" />

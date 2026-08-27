@@ -4,8 +4,23 @@
         {
             "name": "garden",
             "runtimeExecutable": "pnpm",
-            "runtimeArgs": ["--filter", "garden", "dev"],
+            "runtimeArgs": [
+                "--filter",
+                "garden",
+                "dev"
+            ],
             "port": 4171,
+            "autoPort": false
+        },
+        {
+            "name": "storybook",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": [
+                "--filter",
+                "storybook",
+                "storybook"
+            ],
+            "port": 3004,
             "autoPort": false
         }
     ]

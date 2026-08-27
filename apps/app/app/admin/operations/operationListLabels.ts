@@ -49,3 +49,22 @@ export function operationListStatusColor(
 
     return 'warning';
 }
+
+/**
+ * Keeps list dates compact: the year is only rendered for dates outside the
+ * current year, matching how the day groups are labelled.
+ */
+export function operationsListDateFormat(
+    value: Date | string | null | undefined,
+    currentYear = new Date().getFullYear(),
+): Intl.DateTimeFormatOptions {
+    const date = typeof value === 'string' ? new Date(value) : value;
+    const isCurrentYear =
+        date instanceof Date &&
+        !Number.isNaN(date.getTime()) &&
+        date.getFullYear() === currentYear;
+
+    return isCurrentYear
+        ? { day: 'numeric', month: 'numeric' }
+        : { day: 'numeric', month: 'numeric', year: 'numeric' };
+}
