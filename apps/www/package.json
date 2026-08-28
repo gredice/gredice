@@ -23,7 +23,7 @@
         "test:plant-operation-stages": "node --experimental-strip-types --test ./tests/plantOperationStageAvailability.node.spec.ts",
         "test:seeds": "node --experimental-strip-types --test ./app/sjeme/seedPresentation.node.spec.ts ./tests/directoryRevalidationPaths.node.spec.ts ./tests/plantSortSeeds.node.spec.ts",
         "test:block-routes": "node --experimental-strip-types --test ./lib/blocks/blockRoute.node.spec.ts",
-        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts ./app/dostava/termini/deliverySlotFormatting.node.spec.ts",
+        "test:static-data": "node --experimental-strip-types --test ./tests/staticGenerationData.node.spec.ts ./app/dostava/termini/deliverySlotFormatting.node.spec.ts ./app/landingFeaturedGardens.node.spec.ts",
         "test:canonical-urls": "node --import tsx --test ./tests/canonicalUrls.node.spec.ts",
         "test:pets": "node --import tsx --test ./lib/pets/gardenPetSearch.node.spec.ts",
         "test:delivery-summary": "node --import tsx --test ./app/dostava/deliverySummary.node.spec.ts",
@@ -44,6 +44,7 @@
     },
     "dependencies": {
         "@googlemaps/js-api-loader": "2.1.1",
+        "@flags-sdk/vercel": "1.4.6",
         "@mdxeditor/editor": "4.0.4",
         "@opentelemetry/api-logs": "0.220.0",
         "@opentelemetry/exporter-logs-otlp-http": "0.220.0",

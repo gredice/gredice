@@ -1,5 +1,17 @@
+import { vercelAdapter } from '@flags-sdk/vercel';
 import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
+
+export const enableLandingFeaturedGardensFlag = flag<boolean>({
+    key: 'enableLandingFeaturedGardens',
+    description:
+        'Replace the landing demo garden with an animated carousel of owned and featured public gardens.',
+    adapter: vercelAdapter,
+    defaultValue:
+        process.env.NODE_ENV === 'development' ||
+        process.env.VERCEL_ENV === 'preview',
+    options: booleanFlagOptions,
+});
 
 export const enablePublicEnvironmentDebugFlag = flag<boolean>({
     key: 'enablePublicEnvironmentDebug',
