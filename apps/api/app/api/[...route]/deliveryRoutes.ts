@@ -29,6 +29,7 @@ import {
     authValidator,
 } from '../../../lib/hono/authValidator';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import deliveryMobileRoutes from './deliveryMobileRoutes';
 
 // Validation schemas
 const createAddressSchema = z.object({
@@ -79,6 +80,7 @@ const cancelRequestSchema = z.object({
 });
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/mobile/v1', deliveryMobileRoutes)
     // GET /addresses - list current user addresses
     .get(
         '/addresses',
