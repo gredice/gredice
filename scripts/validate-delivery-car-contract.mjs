@@ -35,6 +35,9 @@ const navigationLaunchGate = read(
 const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
 );
+const nativeApiClient = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/auth/DeliveryNativeApiClient.java",
+);
 
 const readStringResValue = (name) => {
     const match = appBuild.match(
@@ -128,6 +131,7 @@ assert.match(navigationLaunchGate, /DEFAULT_SUPPRESSION_WINDOW_MILLIS = 1_500L/)
 assert.match(navigationLaunchGate, /catch \(RuntimeException \| Error failure\)/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
+assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
 
 console.log(
     "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, web-associated, and exact-callback verified.",

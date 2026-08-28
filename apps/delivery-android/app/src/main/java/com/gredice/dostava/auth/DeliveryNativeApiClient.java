@@ -110,6 +110,7 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
             connection.setRequestMethod(method);
             connection.setConnectTimeout(TIMEOUT_MILLIS);
             connection.setReadTimeout(TIMEOUT_MILLIS);
+            connection.setInstanceFollowRedirects(false);
             connection.setUseCaches(false);
             connection.setRequestProperty("Accept", "application/json");
             if (accessToken != null) {
