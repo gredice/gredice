@@ -6,7 +6,7 @@ import {
     randomUUID,
     timingSafeEqual,
 } from 'node:crypto';
-import { and, eq, isNull, lt } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lt } from 'drizzle-orm';
 import { storage } from '..';
 import {
     accounts,
@@ -428,14 +428,76 @@ export async function revokeDeliveryNativeRefreshToken(input: {
     });
 }
 
-export async function cleanupDeliveryNativeAuth(now = new Date()) {
-    await storage()
-        .delete(deliveryNativeAuthorizationGrants)
-        .where(lt(deliveryNativeAuthorizationGrants.expiresAt, now));
-    await storage()
-        .delete(deliveryNativeRefreshTokens)
-        .where(lt(deliveryNativeRefreshTokens.expiresAt, now));
-    await storage()
-        .delete(deliveryNativeSessionFamilies)
-        .where(lt(deliveryNativeSessionFamilies.expiresAt, now));
+export async function cleanupDeliveryNativeAuth(options?: {
+    batchSize?: number;
+    now?: Date;
+}) {
+    const now = options?.now ?? new Date();
+    const batchSize = Math.max(1, Math.min(5_000, options?.batchSize ?? 1_000));
+    const client = storage();
+    const [grantIds, refreshTokenIds, familyIds] = await Promise.all([
+        client
+            .select({ id: deliveryNativeAuthorizationGrants.id })
+            .from(deliveryNativeAuthorizationGrants)
+            .where(lt(deliveryNativeAuthorizationGrants.expiresAt, now))
+            .orderBy(asc(deliveryNativeAuthorizationGrants.expiresAt))
+            .limit(batchSize),
+        client
+            .select({ id: deliveryNativeRefreshTokens.id })
+            .from(deliveryNativeRefreshTokens)
+            .where(lt(deliveryNativeRefreshTokens.expiresAt, now))
+            .orderBy(asc(deliveryNativeRefreshTokens.expiresAt))
+            .limit(batchSize),
+        client
+            .select({ id: deliveryNativeSessionFamilies.id })
+            .from(deliveryNativeSessionFamilies)
+            .where(lt(deliveryNativeSessionFamilies.expiresAt, now))
+            .orderBy(asc(deliveryNativeSessionFamilies.expiresAt))
+            .limit(batchSize),
+    ]);
+
+    return client.transaction(async (tx) => {
+        const deletedGrants =
+            grantIds.length > 0
+                ? await tx
+                      .delete(deliveryNativeAuthorizationGrants)
+                      .where(
+                          inArray(
+                              deliveryNativeAuthorizationGrants.id,
+                              grantIds.map(({ id }) => id),
+                          ),
+                      )
+                      .returning({ id: deliveryNativeAuthorizationGrants.id })
+                : [];
+        const deletedRefreshTokens =
+            refreshTokenIds.length > 0
+                ? await tx
+                      .delete(deliveryNativeRefreshTokens)
+                      .where(
+                          inArray(
+                              deliveryNativeRefreshTokens.id,
+                              refreshTokenIds.map(({ id }) => id),
+                          ),
+                      )
+                      .returning({ id: deliveryNativeRefreshTokens.id })
+                : [];
+        const deletedFamilies =
+            familyIds.length > 0
+                ? await tx
+                      .delete(deliveryNativeSessionFamilies)
+                      .where(
+                          inArray(
+                              deliveryNativeSessionFamilies.id,
+                              familyIds.map(({ id }) => id),
+                          ),
+                      )
+                      .returning({ id: deliveryNativeSessionFamilies.id })
+                : [];
+
+        return {
+            deletedAuthorizationGrants: deletedGrants.length,
+            deletedRefreshTokens: deletedRefreshTokens.length,
+            deletedSessionFamilies: deletedFamilies.length,
+        };
+    });
 }

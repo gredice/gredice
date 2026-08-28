@@ -14,10 +14,10 @@ export const deliveryNativeAuthorizationGrants = pgTable(
         id: text('id').primaryKey(),
         userId: text('user_id')
             .notNull()
-            .references(() => users.id),
+            .references(() => users.id, { onDelete: 'cascade' }),
         accountId: text('account_id')
             .notNull()
-            .references(() => accounts.id),
+            .references(() => accounts.id, { onDelete: 'cascade' }),
         clientId: text('client_id').notNull(),
         redirectUri: text('redirect_uri').notNull(),
         codeChallenge: text('code_challenge').notNull(),
@@ -41,10 +41,10 @@ export const deliveryNativeSessionFamilies = pgTable(
         id: text('id').primaryKey(),
         userId: text('user_id')
             .notNull()
-            .references(() => users.id),
+            .references(() => users.id, { onDelete: 'cascade' }),
         accountId: text('account_id')
             .notNull()
-            .references(() => accounts.id),
+            .references(() => accounts.id, { onDelete: 'cascade' }),
         clientId: text('client_id').notNull(),
         createdAt: timestamp('created_at').notNull().defaultNow(),
         lastUsedAt: timestamp('last_used_at').notNull().defaultNow(),
@@ -66,7 +66,9 @@ export const deliveryNativeRefreshTokens = pgTable(
         id: text('id').primaryKey(),
         sessionFamilyId: text('session_family_id')
             .notNull()
-            .references(() => deliveryNativeSessionFamilies.id),
+            .references(() => deliveryNativeSessionFamilies.id, {
+                onDelete: 'cascade',
+            }),
         tokenHash: text('token_hash').notNull(),
         generation: integer('generation').notNull(),
         createdAt: timestamp('created_at').notNull().defaultNow(),

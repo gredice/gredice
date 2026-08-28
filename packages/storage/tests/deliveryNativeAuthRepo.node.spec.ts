@@ -4,10 +4,13 @@ import test from 'node:test';
 import {
     accounts,
     accountUsers,
+    cleanupDeliveryNativeAuth,
     createDeliveryNativeAuthorizationGrant,
     DeliveryNativeAuthError,
+    deleteAccountWithDependencies,
     deliveryNativeAuthorizationGrants,
     deliveryNativePkceChallenge,
+    deliveryNativeRefreshTokens,
     deliveryNativeSessionFamilies,
     exchangeDeliveryNativeAuthorizationCode,
     revokeDeliveryNativeRefreshToken,
@@ -236,5 +239,87 @@ test('native logout revokes the family and prevents later refresh', async () => 
             clientId,
         }),
         'REFRESH_REVOKED',
+    );
+});
+
+test('account deletion cascades through native grants, families, and refresh tokens', async () => {
+    const subject = await fixture();
+    const authorization = await grant(subject);
+    const session = await exchangeDeliveryNativeAuthorizationCode({
+        code: authorization.code,
+        codeVerifier: verifier,
+        clientId,
+        redirectUri,
+    });
+
+    await deleteAccountWithDependencies(subject.accountId, subject.userId);
+
+    assert.equal(
+        await storage().query.deliveryNativeAuthorizationGrants.findFirst({
+            where: eq(
+                deliveryNativeAuthorizationGrants.accountId,
+                subject.accountId,
+            ),
+        }),
+        undefined,
+    );
+    assert.equal(
+        await storage().query.deliveryNativeSessionFamilies.findFirst({
+            where: eq(deliveryNativeSessionFamilies.id, session.familyId),
+        }),
+        undefined,
+    );
+    assert.equal(
+        await storage().query.deliveryNativeRefreshTokens.findFirst({
+            where: eq(
+                deliveryNativeRefreshTokens.sessionFamilyId,
+                session.familyId,
+            ),
+        }),
+        undefined,
+    );
+});
+
+test('scheduled native auth cleanup removes expired persisted material', async () => {
+    const subject = await fixture();
+    const issuedAt = new Date('2026-01-01T00:00:00.000Z');
+    const authorization = await grant({ ...subject, now: issuedAt });
+    const authorizationId = authorization.code.split('.')[0];
+    assert.ok(authorizationId);
+    const session = await exchangeDeliveryNativeAuthorizationCode({
+        code: authorization.code,
+        codeVerifier: verifier,
+        clientId,
+        redirectUri,
+        now: issuedAt,
+    });
+
+    const cleanup = await cleanupDeliveryNativeAuth({
+        now: new Date('2026-02-01T00:00:00.001Z'),
+    });
+
+    assert.equal(cleanup.deletedAuthorizationGrants, 1);
+    assert.equal(cleanup.deletedSessionFamilies, 1);
+
+    assert.equal(
+        await storage().query.deliveryNativeAuthorizationGrants.findFirst({
+            where: eq(deliveryNativeAuthorizationGrants.id, authorizationId),
+        }),
+        undefined,
+    );
+    assert.equal(
+        await storage().query.deliveryNativeSessionFamilies.findFirst({
+            where: eq(deliveryNativeSessionFamilies.id, session.familyId),
+        }),
+        undefined,
+    );
+    assert.equal(
+        await storage().query.deliveryNativeRefreshTokens.findFirst({
+            where: eq(
+                deliveryNativeRefreshTokens.sessionFamilyId,
+                session.familyId,
+            ),
+        }),
+        undefined,
     );
 });
