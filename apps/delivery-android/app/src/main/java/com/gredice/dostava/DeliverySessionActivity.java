@@ -11,6 +11,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.browser.customtabs.CustomTabsIntent;
+
 import com.gredice.dostava.auth.NativeAuthProtocol;
 import com.gredice.dostava.auth.PairingRequest;
 
@@ -83,12 +85,11 @@ public final class DeliverySessionActivity extends Activity {
                 System.currentTimeMillis()
         );
         services.getCredentialStore().setPairingRequest(request);
-        Intent browser = new Intent(
-                Intent.ACTION_VIEW,
+        CustomTabsIntent browser = new CustomTabsIntent.Builder().build();
+        browser.launchUrl(
+                this,
                 Uri.parse(NativeAuthProtocol.authorizationUrl(request))
         );
-        browser.addCategory(Intent.CATEGORY_BROWSABLE);
-        startActivity(Intent.createChooser(browser, getString(R.string.native_sign_in)));
     }
 
     private Button button(int label) {
