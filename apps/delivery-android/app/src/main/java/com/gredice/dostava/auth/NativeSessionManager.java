@@ -35,6 +35,10 @@ public final class NativeSessionManager {
     public void completePairing(String code, String verifier) throws ApiFailure {
         beginCredentialOperation();
         try {
+            if (hasSession()) {
+                credentialStore.clearPairingRequest();
+                return;
+            }
             acceptSafely(authApi.exchange(code, verifier));
             credentialStore.clearPairingRequest();
         } finally {

@@ -75,10 +75,24 @@ assert.deepEqual(permissions, [
 ]);
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
-assert.match(manifest, /<intent-filter android:autoVerify="true">/);
-assert.match(
-    manifest,
-    /android:name="\.auth\.NativeAuthCallbackActivity"[\s\S]*?android:autoVerify="true"[\s\S]*?android:path="\/android\/auth\/callback"/,
+const callbackActivity = manifest.match(
+    /<activity\b(?=[^>]*android:name="\.auth\.NativeAuthCallbackActivity")[\s\S]*?<\/activity>/,
+)?.[0];
+assert.ok(callbackActivity, "Native callback activity must be declared");
+const callbackFilters = [
+    ...callbackActivity.matchAll(
+        /<intent-filter\b[^>]*>[\s\S]*?<\/intent-filter>/g,
+    ),
+];
+assert.ok(
+    callbackFilters.some(
+        ([filter]) =>
+            /<intent-filter\b[^>]*android:autoVerify="true"/.test(filter) &&
+            /<data\b(?=[^>]*android:host="@string\/hostName")(?=[^>]*android:path="\/android\/auth\/callback")(?=[^>]*android:scheme="https")[^>]*\/>/.test(
+                filter,
+            ),
+    ),
+    "Native callback must use one exact auto-verified HTTPS intent filter",
 );
 assert.match(manifest, /android:allowBackup="false"/);
 assert.match(manifest, /android:dataExtractionRules="@xml\/data_extraction_rules"/);

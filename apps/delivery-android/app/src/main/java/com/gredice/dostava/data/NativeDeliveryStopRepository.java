@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Fetches the server allowlist projection without persisting route/customer details. */
 public final class NativeDeliveryStopRepository implements DeliveryStopRepository {
@@ -14,6 +15,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
     private final DeliveryRouteApi routeApi;
     private final Executor executor;
     private final AtomicBoolean refreshInProgress = new AtomicBoolean();
+    private final AtomicLong generation = new AtomicLong();
     private volatile List<DeliveryStop> stops = Collections.emptyList();
     private volatile DeliveryRouteStatus status;
 
@@ -42,6 +44,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
 
     @Override
     public void refresh(Runnable onComplete) {
+        long requestGeneration = generation.get();
         if (!sessionManager.hasSession()) {
             clear();
             onComplete.run();
@@ -54,15 +57,19 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
                 List<DeliveryStop> nextStops = sessionManager.executeAuthorized(
                         routeApi::getActiveRoute
                 );
-                stops = Collections.unmodifiableList(nextStops);
-                status = nextStops.isEmpty()
-                        ? DeliveryRouteStatus.EMPTY
-                        : DeliveryRouteStatus.READY;
+                if (generation.get() == requestGeneration) {
+                    stops = Collections.unmodifiableList(nextStops);
+                    status = nextStops.isEmpty()
+                            ? DeliveryRouteStatus.EMPTY
+                            : DeliveryRouteStatus.READY;
+                }
             } catch (ApiFailure failure) {
-                if (!sessionManager.hasSession()) {
-                    clear();
-                } else {
-                    status = DeliveryRouteStatus.ERROR;
+                if (generation.get() == requestGeneration) {
+                    if (!sessionManager.hasSession()) {
+                        clear();
+                    } else {
+                        status = DeliveryRouteStatus.ERROR;
+                    }
                 }
             } finally {
                 refreshInProgress.set(false);
@@ -73,6 +80,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
 
     @Override
     public void clear() {
+        generation.incrementAndGet();
         stops = Collections.emptyList();
         status = DeliveryRouteStatus.SIGNED_OUT;
     }

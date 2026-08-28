@@ -44,14 +44,11 @@ export async function authorizeDeliveryNativeAction(
     const selectedAccountId =
         accounts.length === 1
             ? accounts[0]?.id
-            : session.user.role === 'admin' &&
-                accounts.some((account) => account.id === requestedAccountId)
+            : accounts.some((account) => account.id === requestedAccountId)
               ? requestedAccountId
               : null;
     if (!selectedAccountId) {
-        return session.user.role === 'admin'
-            ? 'Odaberite račun koji želite povezati.'
-            : 'Račun dostavljača nije jednoznačno određen.';
+        return 'Odaberite račun koji želite povezati.';
     }
 
     try {

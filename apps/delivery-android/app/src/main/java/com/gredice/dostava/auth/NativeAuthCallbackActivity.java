@@ -23,6 +23,11 @@ public final class NativeAuthCallbackActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         services = DeliveryNativeServices.get(this);
+        boolean recreated = savedInstanceState != null;
+        if (recreated && services.getSessionManager().hasSession()) {
+            returnToSessionShell();
+            return;
+        }
         PairingRequest pairingRequest = services.getCredentialStore().getPairingRequest();
         NativeAuthProtocol.CallbackResult callback =
                 NativeAuthProtocol.validateCallback(
@@ -31,6 +36,10 @@ public final class NativeAuthCallbackActivity extends Activity {
                         System.currentTimeMillis()
                 );
         if (!callback.isSuccess()) {
+            if (recreated && services.getSessionManager().hasSession()) {
+                returnToSessionShell();
+                return;
+            }
             services.getCredentialStore().clearPairingRequest();
             showFailure();
             return;
@@ -44,13 +53,15 @@ public final class NativeAuthCallbackActivity extends Activity {
                         pairingRequest.getVerifier()
                 );
                 runOnUiThread(() -> {
-                    startActivity(new Intent(this, DeliverySessionActivity.class)
-                            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
-                    finish();
+                    if (!isFinishing() && !isDestroyed()) {
+                        returnToSessionShell();
+                    }
                 });
             } catch (ApiFailure | RuntimeException failure) {
                 services.getCredentialStore().clearPairingRequest();
-                runOnUiThread(this::showFailure);
+                runOnUiThread(() -> {
+                    if (!isFinishing() && !isDestroyed()) showFailure();
+                });
             }
         });
     }
@@ -71,11 +82,7 @@ public final class NativeAuthCallbackActivity extends Activity {
         Button retry = new Button(this);
         retry.setText(R.string.native_return_to_app);
         retry.setAllCaps(false);
-        retry.setOnClickListener(view -> {
-            startActivity(new Intent(this, DeliverySessionActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
-            finish();
-        });
+        retry.setOnClickListener(view -> returnToSessionShell());
         content.addView(retry, matchWidth(dp(56)));
         setContentView(content);
     }
@@ -107,5 +114,11 @@ public final class NativeAuthCallbackActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void returnToSessionShell() {
+        startActivity(new Intent(this, DeliverySessionActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        finish();
     }
 }

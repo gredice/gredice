@@ -121,6 +121,19 @@ public final class NativeSessionManagerTest {
         assertFalse(manager.hasSession());
     }
 
+    @Test
+    public void recreatedCallbackDoesNotExchangeAnAlreadyPairedCodeAgain() throws Exception {
+        FakeStore store = new FakeStore();
+        FakeApi api = new FakeApi();
+        NativeSessionManager manager = new NativeSessionManager(store, api, () -> 10_000L);
+
+        manager.completePairing("code", "verifier");
+        manager.completePairing("code", "verifier");
+
+        assertEquals(1, api.exchangeCount.get());
+        assertTrue(manager.hasSession());
+    }
+
     private static final class FakeStore implements NativeCredentialStore {
         private String refreshToken;
         private PairingRequest pairingRequest;
@@ -159,6 +172,7 @@ public final class NativeSessionManagerTest {
 
     private static final class FakeApi implements NativeAuthApi {
         private final AtomicInteger refreshCount = new AtomicInteger();
+        private final AtomicInteger exchangeCount = new AtomicInteger();
         private final CountDownLatch refreshStarted = new CountDownLatch(1);
         private final CountDownLatch releaseRefresh = new CountDownLatch(1);
         private boolean pauseRefresh;
@@ -166,6 +180,7 @@ public final class NativeSessionManagerTest {
 
         @Override
         public NativeTokenResponse exchange(String code, String verifier) {
+            exchangeCount.incrementAndGet();
             return response(1);
         }
 
