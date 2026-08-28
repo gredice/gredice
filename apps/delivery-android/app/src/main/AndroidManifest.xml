@@ -6,6 +6,8 @@
 
     <application
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:manageSpaceActivity="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity"
@@ -33,7 +35,7 @@
         <activity
             android:name=".DeliveryLauncherActivity"
             android:alwaysRetainTaskState="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/app_name">
             <meta-data
                 android:name="android.support.customtabs.trusted.DEFAULT_URL"
@@ -75,17 +77,31 @@
                 android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
                 android:value="@string/orientation" />
 
+        </activity>
+
+        <activity
+            android:name=".DeliverySessionActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
 
+        <activity
+            android:name=".auth.NativeAuthCallbackActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Material.Light.NoActionBar">
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:host="@string/hostName"
+                    android:path="/android/auth/callback"
                     android:scheme="https" />
             </intent-filter>
         </activity>

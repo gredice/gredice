@@ -7,7 +7,7 @@ public final class DeliveryStop {
     private final String markerLabel;
     private final double latitude;
     private final double longitude;
-    private final double plannedDistanceKilometers;
+    private final Double plannedDistanceKilometers;
 
     public DeliveryStop(
             String title,
@@ -15,7 +15,7 @@ public final class DeliveryStop {
             String markerLabel,
             double latitude,
             double longitude,
-            double plannedDistanceKilometers
+            Double plannedDistanceKilometers
     ) {
         this.title = title;
         this.subtitle = subtitle;
@@ -45,7 +45,7 @@ public final class DeliveryStop {
         return longitude;
     }
 
-    public double getPlannedDistanceKilometers() {
+    public Double getPlannedDistanceKilometers() {
         return plannedDistanceKilometers;
     }
 }

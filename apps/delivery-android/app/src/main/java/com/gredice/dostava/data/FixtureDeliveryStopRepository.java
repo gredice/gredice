@@ -29,4 +29,19 @@ public final class FixtureDeliveryStopRepository implements DeliveryStopReposito
     public List<DeliveryStop> getStops() {
         return STOPS;
     }
+
+    @Override
+    public DeliveryRouteStatus getStatus() {
+        return DeliveryRouteStatus.READY;
+    }
+
+    @Override
+    public void refresh(Runnable onComplete) {
+        onComplete.run();
+    }
+
+    @Override
+    public void clear() {
+        // Immutable synthetic fixtures have no cache.
+    }
 }

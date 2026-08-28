@@ -15,6 +15,7 @@ import androidx.car.app.model.CarLocation;
 import androidx.car.app.model.Distance;
 import androidx.car.app.model.DistanceSpan;
 import androidx.car.app.model.ItemList;
+import androidx.car.app.model.MessageTemplate;
 import androidx.car.app.model.Metadata;
 import androidx.car.app.model.Place;
 import androidx.car.app.model.PlaceListMapTemplate;
@@ -27,12 +28,13 @@ import androidx.lifecycle.LifecycleOwner;
 import com.gredice.dostava.R;
 import com.gredice.dostava.data.DeliveryStop;
 import com.gredice.dostava.data.DeliveryStopRepository;
+import com.gredice.dostava.data.DeliveryRouteStatus;
 import com.gredice.dostava.navigation.NavigationLaunchGate;
 import com.gredice.dostava.navigation.NavigationUri;
 
 import java.util.List;
 
-/** Shows privacy-safe delivery fixtures using the host-rendered POI map template. */
+/** Shows the privacy-safe server route projection using the host-rendered POI map template. */
 final class DeliveryStopsScreen extends Screen {
     private final DeliveryStopRepository stopRepository;
     private final NavigationLaunchGate navigationLaunchGate =
@@ -47,13 +49,12 @@ final class DeliveryStopsScreen extends Screen {
         getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override
             public void onStart(@NonNull LifecycleOwner owner) {
-                invalidate();
+                refresh();
             }
 
             @Override
             public void onResume(@NonNull LifecycleOwner owner) {
-                // Refresh the route projection after returning from the navigation app.
-                invalidate();
+                refresh();
             }
         });
     }
@@ -61,6 +62,23 @@ final class DeliveryStopsScreen extends Screen {
     @Override
     @NonNull
     public Template onGetTemplate() {
+        DeliveryRouteStatus status = stopRepository.getStatus();
+        if (status != DeliveryRouteStatus.READY) {
+            int message;
+            if (status == DeliveryRouteStatus.SIGNED_OUT) {
+                message = R.string.car_sign_in_required;
+            } else if (status == DeliveryRouteStatus.LOADING) {
+                message = R.string.car_route_loading;
+            } else if (status == DeliveryRouteStatus.EMPTY) {
+                message = R.string.car_no_active_route;
+            } else {
+                message = R.string.car_route_unavailable;
+            }
+            return new MessageTemplate.Builder(getCarContext().getString(message))
+                    .setTitle(getCarContext().getString(R.string.car_screen_title))
+                    .build();
+        }
+
         List<DeliveryStop> stops = stopRepository.getStops();
         ItemList.Builder rows = new ItemList.Builder();
 
@@ -71,15 +89,17 @@ final class DeliveryStopsScreen extends Screen {
                     : getCarContext().getString(R.string.later_stop);
 
             SpannableStringBuilder detail = new SpannableStringBuilder();
-            detail.append(
-                    " ",
-                    DistanceSpan.create(Distance.create(
-                            stop.getPlannedDistanceKilometers(),
-                            Distance.UNIT_KILOMETERS
-                    )),
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            );
-            detail.append(" · ");
+            if (stop.getPlannedDistanceKilometers() != null) {
+                detail.append(
+                        " ",
+                        DistanceSpan.create(Distance.create(
+                                stop.getPlannedDistanceKilometers(),
+                                Distance.UNIT_KILOMETERS
+                        )),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                );
+                detail.append(" · ");
+            }
             detail.append(stop.getSubtitle());
 
             rows.addItem(new Row.Builder()
@@ -102,6 +122,12 @@ final class DeliveryStopsScreen extends Screen {
                 .setTitle(getCarContext().getString(R.string.car_screen_title))
                 .setItemList(rows.build())
                 .build();
+    }
+
+    private void refresh() {
+        stopRepository.refresh(() -> getCarContext().getMainExecutor().execute(
+                this::invalidate
+        ));
     }
 
     private void startNavigation(DeliveryStop stop) {

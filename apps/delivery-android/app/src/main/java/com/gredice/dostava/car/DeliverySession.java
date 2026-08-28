@@ -6,7 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.car.app.Screen;
 import androidx.car.app.Session;
 
-import com.gredice.dostava.data.FixtureDeliveryStopRepository;
+import com.gredice.dostava.DeliveryNativeServices;
 
 /** Creates the first screen for every Android Auto connection. */
 final class DeliverySession extends Session {
@@ -15,7 +15,7 @@ final class DeliverySession extends Session {
     public Screen onCreateScreen(@NonNull Intent intent) {
         return new DeliveryStopsScreen(
                 getCarContext(),
-                new FixtureDeliveryStopRepository()
+                DeliveryNativeServices.get(getCarContext()).getStopRepository()
         );
     }
 }

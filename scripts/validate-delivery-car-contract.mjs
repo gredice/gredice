@@ -73,6 +73,12 @@ assert.deepEqual(permissions, [
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
 assert.match(manifest, /<intent-filter android:autoVerify="true">/);
+assert.match(
+    manifest,
+    /android:name="\.auth\.NativeAuthCallbackActivity"[\s\S]*?android:autoVerify="true"[\s\S]*?android:path="\/android\/auth\/callback"/,
+);
+assert.match(manifest, /android:allowBackup="false"/);
+assert.match(manifest, /android:dataExtractionRules="@xml\/data_extraction_rules"/);
 assert.match(manifest, /android:value="@string\/launchUrl"/);
 assert.match(manifest, /android:host="@string\/hostName"/);
 assert.match(
@@ -124,5 +130,5 @@ assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 
 console.log(
-    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, and web-associated.",
+    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, web-associated, and exact-callback verified.",
 );

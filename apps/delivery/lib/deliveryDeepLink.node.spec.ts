@@ -148,6 +148,12 @@ test('keeps pathname and search for safe relative return targets', () => {
         safeDeliveryReturnTarget('/deliveries?view=history'),
         '/deliveries?view=history',
     );
+    const nativeAuthorization =
+        '/prijava/android?client_id=gredice-delivery-android&redirect_uri=https%3A%2F%2Fdostava.gredice.com%2Fandroid%2Fauth%2Fcallback&code_challenge=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG&code_challenge_method=S256&state=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
+    assert.equal(
+        safeDeliveryReturnTarget(nativeAuthorization),
+        nativeAuthorization,
+    );
 });
 
 test('falls back for unsafe, looping, or oversized return targets', () => {
@@ -159,6 +165,7 @@ test('falls back for unsafe, looping, or oversized return targets', () => {
         '/api/dashboard',
         '/%61pi/dashboard',
         '/prijava/google-prijava/povratak',
+        '/prijava/android?client_id=attacker',
         '/%70rijava/google-prijava/povratak',
         `/${'a'.repeat(deliveryReturnTargetMaxLength)}`,
     ]) {
