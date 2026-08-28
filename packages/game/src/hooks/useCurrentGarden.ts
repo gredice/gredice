@@ -967,7 +967,7 @@ function operationRewardDebugMockGarden(
     };
 }
 
-function mockGarden(
+export function createMockGarden(
     winterMode: WinterMode,
     profile: MockGardenProfile,
     highTargetOperationVisuals = false,
@@ -999,21 +999,6 @@ function mockGarden(
             blockId: '3',
             physicalId: '42',
             fields: mockRaisedBedFields(1, 0, now),
-            appliedOperations: [],
-            weedState: null,
-            status: 'new',
-            abandonReason: null,
-            updatedAt: now,
-            createdAt: now,
-            isValid: true,
-            orientation: 'vertical',
-        },
-        {
-            id: 2,
-            name: 'Raised Bed 2',
-            physicalId: '42',
-            blockId: '8',
-            fields: mockRaisedBedFields(2, 100, now),
             appliedOperations: [],
             weedState: null,
             status: 'new',
@@ -1139,11 +1124,6 @@ function mockGarden(
                         id: '7',
                         name: 'Block_Grass',
                         rotation: 0,
-                    },
-                    {
-                        id: '8',
-                        name: 'Raised_Bed',
-                        rotation: 1,
                     },
                 ],
             },
@@ -1305,7 +1285,7 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
 
             if (isMock) {
                 console.debug('Using mock garden data');
-                return mockGarden(
+                return createMockGarden(
                     winterMode,
                     mockGardenProfile,
                     highTargetOperationVisuals,
