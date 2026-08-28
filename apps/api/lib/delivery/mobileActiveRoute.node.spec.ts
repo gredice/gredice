@@ -78,7 +78,9 @@ function source({
             id: 'internal-run-id-must-not-leak',
             revision: 7,
             reroutePending,
-            pickupNodes: [pickupNode('pickup-1', 1)],
+            pickupNodes: Array.from({ length: 9 }, (_, index) =>
+                pickupNode(`pickup-${index + 1}`, index + 1),
+            ),
             stops: Array.from({ length: 9 }, (_, index) =>
                 deliveryStop(index + 1, index + 1),
             ),
@@ -119,8 +121,15 @@ test('keeps canonical order, excludes completed and locked steps, and bounds the
                     sequence: 2,
                     pickupConfirmed: false,
                 }),
+                {
+                    kind: 'pickup',
+                    pickupNodeId: 'pickup-8',
+                    itinerarySequence: 8,
+                    manifestIds: ['next-manifest-private'],
+                    state: 'upcoming',
+                },
                 deliveryStep({
-                    sequence: 8,
+                    sequence: 7,
                     retryLaneRank: 1,
                     retryAttempt: 2,
                 }),
@@ -144,10 +153,10 @@ test('keeps canonical order, excludes completed and locked steps, and bounds the
         })),
         [
             { kind: 'pickup', sequence: 1, actionState: 'current' },
-            { kind: 'delivery', sequence: 8, actionState: 'upcoming' },
+            { kind: 'pickup', sequence: 8, actionState: 'upcoming' },
+            { kind: 'delivery', sequence: 7, actionState: 'upcoming' },
             { kind: 'delivery', sequence: 3, actionState: 'upcoming' },
             { kind: 'delivery', sequence: 4, actionState: 'upcoming' },
-            { kind: 'delivery', sequence: 5, actionState: 'upcoming' },
         ],
     );
     assert.equal(route.currentNavigationId, route.stops[0]?.navigationId);
@@ -159,6 +168,11 @@ test('omits invalid navigable coordinates and emits only generic privacy-minimiz
         executionSteps: [
             deliveryStep({ sequence: 1, state: 'current' }),
             deliveryStep({ sequence: 2 }),
+            deliveryStep({ sequence: 3 }),
+            deliveryStep({ sequence: 4 }),
+            deliveryStep({ sequence: 5 }),
+            deliveryStep({ sequence: 6 }),
+            deliveryStep({ sequence: 7 }),
         ],
     });
     const invalidStop = projectionSource.run.stops[0];
@@ -174,7 +188,7 @@ test('omits invalid navigable coordinates and emits only generic privacy-minimiz
     assert.equal(result.omittedInvalidNodeCount, 1);
     assert.deepEqual(
         route.stops.map((stop) => stop.sequence),
-        [2],
+        [2, 3, 4, 5, 6],
     );
     assert.equal(route.currentNavigationId, null);
     assert.match(route.id, /^route:[A-Za-z0-9_-]{32}$/);

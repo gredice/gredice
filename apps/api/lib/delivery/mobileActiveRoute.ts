@@ -115,7 +115,7 @@ function opaqueRouteId(runId: string) {
 
 function isNavigableExecutionStep(step: DeliveryRunExecutionStep) {
     if (step.state === 'completed') return false;
-    if (step.kind === 'pickup') return step.state === 'current';
+    if (step.kind === 'pickup') return true;
     return step.pickupConfirmed && step.actionableStopIds.length > 0;
 }
 
@@ -245,8 +245,7 @@ export function projectDeliveryMobileActiveRoute({
             ? []
             : source.executionSteps
                   .slice(currentIndex)
-                  .filter(isNavigableExecutionStep)
-                  .slice(0, maximumDeliveryMobileStops);
+                  .filter(isNavigableExecutionStep);
     const pickupNodesById = new Map(
         source.run.pickupNodes.map((node) => [node.id, node]),
     );
@@ -280,6 +279,7 @@ export function projectDeliveryMobileActiveRoute({
 
         if (projected) {
             stops.push(projected);
+            if (stops.length === maximumDeliveryMobileStops) break;
         } else {
             omittedInvalidNodeCount += 1;
         }

@@ -29,6 +29,7 @@ export type DeliveryMobileAuthDeps = {
         error?: unknown;
     }>;
     getUser: (userId: string) => Promise<DeliveryMobileAuthUser | null>;
+    onUnexpectedError?: () => void;
 };
 
 const defaultDeps: DeliveryMobileAuthDeps = {
@@ -50,6 +51,11 @@ const defaultDeps: DeliveryMobileAuthDeps = {
                   accountIds: user.accounts.map((account) => account.accountId),
               }
             : null;
+    },
+    onUnexpectedError() {
+        console.error('Delivery mobile authorization dependency failed', {
+            errorCode: 'ROUTE_TEMPORARILY_UNAVAILABLE',
+        });
     },
 };
 
@@ -135,10 +141,23 @@ export function createDeliveryMobileAuthValidator(
     deps: DeliveryMobileAuthDeps = defaultDeps,
 ): MiddlewareHandler<{ Variables: DeliveryMobileAuthVariables }> {
     return async (context, next) => {
-        const result = await authorizeDeliveryMobileBearer({
-            authorization: context.req.header('Authorization'),
-            deps,
-        });
+        let result: DeliveryMobileAuthorizationResult;
+        try {
+            result = await authorizeDeliveryMobileBearer({
+                authorization: context.req.header('Authorization'),
+                deps,
+            });
+        } catch {
+            deps.onUnexpectedError?.();
+            return context.json(
+                {
+                    error: 'Ruta trenutačno nije dostupna.',
+                    code: 'ROUTE_TEMPORARILY_UNAVAILABLE',
+                },
+                503,
+                { 'Cache-Control': 'private, no-store' },
+            );
+        }
         if (!result.authorized) {
             const error =
                 result.code === 'SESSION_REQUIRED'
