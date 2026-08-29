@@ -1651,7 +1651,7 @@ test('expired cached authentication returns to sign-in instead of reporting no f
     ).toHaveCount(0);
 
     await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava', exact: true }).click();

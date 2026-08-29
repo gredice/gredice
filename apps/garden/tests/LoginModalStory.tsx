@@ -17,10 +17,12 @@ function createLoginModalQueryClient() {
 
 export function LoginModalStory({
     controlled = false,
+    defaultTab,
     dismissible = false,
     returnTo,
 }: {
     controlled?: boolean;
+    defaultTab?: 'login' | 'register';
     dismissible?: boolean;
     returnTo?: string;
 }) {
@@ -47,6 +49,7 @@ export function LoginModalStory({
         <AppRouterContext.Provider value={router}>
             <ReactQuery.QueryClientProvider client={queryClient}>
                 <LoginModal
+                    defaultTab={defaultTab}
                     dismissible={dismissible}
                     onAuthenticated={
                         controlled

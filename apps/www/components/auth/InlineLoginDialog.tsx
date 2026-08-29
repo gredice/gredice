@@ -9,13 +9,20 @@ import {
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
 import { Input } from '@gredice/ui/Input';
-import { Mail } from '@gredice/ui/icons';
+import { ArrowLeft, Mail } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import {
+    type FormEvent,
+    useCallback,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+} from 'react';
 import { currentUserQueryKey } from '../../hooks/useCurrentUser';
 
 type AuthTab = 'login' | 'register';
@@ -157,6 +164,8 @@ export function InlineLoginDialog({
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [registrationSent, setRegistrationSent] = useState(false);
+    const emailTriggerId = useId();
+    const restoreEmailTriggerFocusRef = useRef(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
@@ -172,13 +181,26 @@ export function InlineLoginDialog({
         }
     }, [open]);
 
+    useEffect(() => {
+        if (!emailExpanded && restoreEmailTriggerFocusRef.current) {
+            restoreEmailTriggerFocusRef.current = false;
+            document.getElementById(emailTriggerId)?.focus();
+        }
+    }, [emailExpanded, emailTriggerId]);
+
     function handleTabChange(value: string) {
         if (value === 'login' || value === 'register') {
             setActiveTab(value);
-            setEmailExpanded(false);
             setError(null);
             setRegistrationSent(false);
         }
+    }
+
+    function handleProvidersBack() {
+        restoreEmailTriggerFocusRef.current = true;
+        setEmailExpanded(false);
+        setError(null);
+        setRegistrationSent(false);
     }
 
     async function handleLogin(email: string, password: string) {
@@ -263,8 +285,6 @@ export function InlineLoginDialog({
         window.location.href = authUrl.toString();
     }
 
-    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
-
     return (
         <Modal
             className="max-w-md rounded-lg border-tertiary border-b-4 bg-card shadow-2xl"
@@ -286,11 +306,6 @@ export function InlineLoginDialog({
                     onValueChange={handleTabChange}
                     value={activeTab}
                 >
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="login">Prijava</TabsTrigger>
-                        <TabsTrigger value="register">Registracija</TabsTrigger>
-                    </TabsList>
-
                     <Stack spacing={4} className="mt-4">
                         {!emailExpanded ? (
                             <Stack spacing={2}>
@@ -298,17 +313,18 @@ export function InlineLoginDialog({
                                     lastUsed={lastLoginProvider === 'google'}
                                     onClick={() => handleOAuthLogin('google')}
                                 >
-                                    Google {authActionLabel}
+                                    Nastavi sa Google
                                 </GoogleLoginButton>
                                 <FacebookLoginButton
                                     lastUsed={lastLoginProvider === 'facebook'}
                                     onClick={() => handleOAuthLogin('facebook')}
                                 >
-                                    Facebook {authActionLabel}
+                                    Nastavi sa Facebook
                                 </FacebookLoginButton>
                                 <Button
                                     color="neutral"
                                     fullWidth
+                                    id={emailTriggerId}
                                     onClick={() => setEmailExpanded(true)}
                                     startDecorator={
                                         <Mail className="size-4 shrink-0" />
@@ -316,11 +332,19 @@ export function InlineLoginDialog({
                                     type="button"
                                     variant="outlined"
                                 >
-                                    Email {authActionLabel}
+                                    Nastavi s emailom
                                 </Button>
                             </Stack>
                         ) : (
-                            <>
+                            <Stack spacing={4}>
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="login">
+                                        Prijava
+                                    </TabsTrigger>
+                                    <TabsTrigger value="register">
+                                        Registracija
+                                    </TabsTrigger>
+                                </TabsList>
                                 <TabsContent className="mt-0" value="login">
                                     <EmailPasswordForm
                                         loading={isSubmitting}
@@ -336,7 +360,22 @@ export function InlineLoginDialog({
                                         submitText="Registriraj se"
                                     />
                                 </TabsContent>
-                            </>
+                                <Button
+                                    color="neutral"
+                                    fullWidth
+                                    onClick={handleProvidersBack}
+                                    startDecorator={
+                                        <ArrowLeft
+                                            aria-hidden="true"
+                                            className="size-4"
+                                        />
+                                    }
+                                    type="button"
+                                    variant="plain"
+                                >
+                                    Natrag na druge načine prijave
+                                </Button>
+                            </Stack>
                         )}
 
                         {registrationSent ? (

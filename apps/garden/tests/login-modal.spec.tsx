@@ -126,7 +126,6 @@ async function inspectKeyboardFocus(locator: Locator) {
         }
 
         return {
-            boxShadow: window.getComputedStyle(element).boxShadow,
             clippingAncestors,
             focused: document.activeElement === element,
         };
@@ -156,11 +155,15 @@ test('animates login providers into the email form and focuses email', async ({
     await expect(dialog).toBeVisible();
     await expect(page.getByRole('button', { name: 'Zatvori' })).toHaveCount(0);
     await expect(content).toHaveAttribute('data-auth-content', 'providers');
+    await expect(page.getByRole('tab', { name: 'Prijava' })).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: 'Registracija' })).toHaveCount(
+        0,
+    );
     await expect(
-        page.getByRole('button', { name: 'Google prijava' }),
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
     ).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Facebook prijava' }),
+        page.getByRole('button', { name: 'Nastavi sa Facebook' }),
     ).toBeVisible();
     expect(
         await content.evaluate((element) => element.getAnimations().length),
@@ -169,9 +172,11 @@ test('animates login providers into the email form and focuses email', async ({
     await page.waitForTimeout(220);
     const modalCenterBefore = centerY(await dialog.boundingBox());
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
 
     await expect(content).toHaveAttribute('data-auth-content', 'email');
+    await expect(page.getByRole('tab', { name: 'Prijava' })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Registracija' })).toBeVisible();
     await expect(page.getByLabel('Email')).toBeFocused();
     expect(await inspectEnterAnimation(content)).toMatchObject({
         duration: 200,
@@ -187,23 +192,32 @@ test('animates login providers into the email form and focuses email', async ({
     );
 });
 
-test('animates back to registration providers and into registration email', async ({
+test('keeps login and registration inside email and restores provider focus on back', async ({
     mount,
     page,
 }) => {
     await mount(<LoginModalStory />);
 
     const content = page.getByTestId('auth-content-transition');
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await expect(page.getByLabel('Email')).toBeFocused();
 
     await page.getByRole('tab', { name: 'Registracija' }).click();
 
+    await expect(content).toHaveAttribute('data-auth-content', 'email');
+    await expect(page.getByLabel('Ponovi zaporku')).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Registriraj se' }),
+    ).toBeVisible();
+
+    await page
+        .getByRole('button', { name: 'Natrag na druge načine prijave' })
+        .click();
+
     await expect(content).toHaveAttribute('data-auth-content', 'providers');
-    const googleRegistration = page.getByRole('button', {
-        name: 'Google registracija',
-    });
-    await expect(googleRegistration).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
+    ).toBeVisible();
     expect(await inspectEnterAnimation(content)).toMatchObject({
         duration: 200,
         easing: 'cubic-bezier(0, 0, 0.2, 1)',
@@ -213,22 +227,33 @@ test('animates back to registration providers and into registration email', asyn
         initialTranslateY: -8,
     });
 
-    await page.keyboard.press('Tab');
-    const focusPresentation = await inspectKeyboardFocus(googleRegistration);
-    expect(focusPresentation.focused).toBe(true);
-    expect(focusPresentation.boxShadow).not.toBe('none');
-    expect(focusPresentation.clippingAncestors).toEqual([]);
-
-    await page.getByRole('button', { name: 'Email registracija' }).click();
-
-    await expect(content).toHaveAttribute('data-auth-content', 'email');
-    await expect(page.getByLabel('Email')).toBeFocused();
-    await expect(page.getByLabel('Ponovi zaporku')).toBeVisible();
-    expect(await inspectEnterAnimation(content)).toMatchObject({
-        duration: 200,
-        initialOpacity: 0,
-        initialTranslateY: 8,
+    const emailTrigger = page.getByRole('button', {
+        name: 'Nastavi s emailom',
     });
+    const focusPresentation = await inspectKeyboardFocus(emailTrigger);
+    expect(focusPresentation.focused).toBe(true);
+    expect(focusPresentation.clippingAncestors).toEqual([]);
+});
+
+test('keeps a registration default hidden until email is selected', async ({
+    mount,
+    page,
+}) => {
+    await mount(<LoginModalStory defaultTab="register" />);
+
+    await expect(page.getByRole('tab', { name: 'Registracija' })).toHaveCount(
+        0,
+    );
+    await expect(
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
+
+    await expect(
+        page.getByRole('tab', { name: 'Registracija' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByLabel('Ponovi zaporku')).toBeVisible();
 });
 
 test('preserves login submission and error feedback', async ({
@@ -244,7 +269,7 @@ test('preserves login submission and error feedback', async ({
     });
     await mount(<LoginModalStory />);
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('pogresna-zaporka');
     await page.getByRole('button', { name: 'Prijava' }).click();
@@ -267,8 +292,8 @@ test('preserves registration submission and error feedback', async ({
     });
     await mount(<LoginModalStory />);
 
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByRole('tab', { name: 'Registracija' }).click();
-    await page.getByRole('button', { name: 'Email registracija' }).click();
     await page.getByLabel('Email').fill('nova@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByLabel('Ponovi zaporku').fill('sigurna-zaporka');
@@ -291,7 +316,7 @@ test('uses opacity-only 120 ms transitions with reduced motion in both direction
     await mount(<LoginModalStory />);
 
     const content = page.getByTestId('auth-content-transition');
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
 
     expect(await inspectEnterAnimation(content)).toMatchObject({
         duration: 120,
@@ -302,7 +327,9 @@ test('uses opacity-only 120 ms transitions with reduced motion in both direction
         initialTranslateY: 0,
     });
 
-    await page.getByRole('tab', { name: 'Registracija' }).click();
+    await page
+        .getByRole('button', { name: 'Natrag na druge načine prijave' })
+        .click();
 
     await expect(content).toHaveAttribute('data-auth-content', 'providers');
     expect(await inspectEnterAnimation(content)).toMatchObject({
@@ -340,7 +367,7 @@ test('closes controlled mode and reports successful password authentication once
     const recorded = await mockAuthApi(page);
     await mount(<LoginModalStory controlled dismissible />);
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava' }).click();
@@ -380,7 +407,7 @@ for (const provider of ['google', 'facebook'] as const) {
 
         await page
             .getByRole('button', {
-                name: new RegExp(`^${provider}`, 'iu'),
+                name: `Nastavi sa ${provider === 'google' ? 'Google' : 'Facebook'}`,
             })
             .click();
         await expect.poll(() => requestedUrl).not.toBeUndefined();

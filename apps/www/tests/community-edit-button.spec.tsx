@@ -103,10 +103,10 @@ test('loads the same edit context after inline email login', async ({
     await page.getByTitle('Predloži izmjenu').click();
     await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
     await expect(
-        page.getByRole('button', { name: 'Google prijava' }),
+        page.getByRole('button', { name: 'Nastavi sa Google' }),
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.locator('#inline-login-email').fill('ana@example.com');
     await page.locator('#inline-login-password').fill('tajna-lozinka');
     await page.getByRole('button', { name: 'Prijavi se' }).click();
@@ -142,7 +142,7 @@ test('preserves the community edit context in OAuth return paths', async ({
     await page.getByRole('button', { name: 'Prijavi se i nastavi' }).click();
     const authRequestPromise = page.waitForRequest(authRequestPattern);
 
-    await page.getByRole('button', { name: 'Google prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi sa Google' }).click();
 
     const authRequest = await authRequestPromise;
     const authUrl = new URL(authRequest.url());

@@ -552,7 +552,9 @@ test('fresh signed-out visitor can log in without creating a temporary account',
     await expect(loginDialog).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
 
-    await loginDialog.getByRole('button', { name: 'Email prijava' }).click();
+    await loginDialog
+        .getByRole('button', { name: 'Nastavi s emailom' })
+        .click();
     await loginDialog.getByLabel('Email').fill('vrtlar@example.com');
     await loginDialog.getByLabel('Zaporka').fill('sigurna-zaporka');
     await loginDialog.getByRole('button', { name: 'Prijava' }).click();
@@ -599,7 +601,7 @@ test('returning user with an expired session sees simplified login choices befor
         }, returningUserStorageKey),
     ).toBe('1');
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava' }).click();
