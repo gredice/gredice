@@ -7,8 +7,10 @@ import com.gredice.dostava.data.DeliveryRouteStateReducer;
 import com.gredice.dostava.data.DeliveryRouteViewState;
 import com.gredice.dostava.data.DeliveryStopRepository;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 import org.junit.Test;
 
@@ -21,6 +23,7 @@ public final class DeliveryRouteRefreshControllerTest {
         DeliveryRouteRefreshController controller = new DeliveryRouteRefreshController(
                 repository,
                 scheduler,
+                Runnable::run,
                 () -> invalidations[0] += 1
         );
 
@@ -48,6 +51,7 @@ public final class DeliveryRouteRefreshControllerTest {
         DeliveryRouteRefreshController controller = new DeliveryRouteRefreshController(
                 repository,
                 scheduler,
+                Runnable::run,
                 () -> { }
         );
 
@@ -58,6 +62,29 @@ public final class DeliveryRouteRefreshControllerTest {
         assertEquals(1, scheduler.cancelCount);
         assertEquals(1, repository.cancelCount);
         assertNull(scheduler.task);
+    }
+
+    @Test
+    public void completionReturnsToTheLifecycleThreadBeforeScheduling() {
+        FakeRepository repository = new FakeRepository();
+        FakeScheduler scheduler = new FakeScheduler();
+        QueuedExecutor callbackExecutor = new QueuedExecutor();
+        DeliveryRouteRefreshController controller = new DeliveryRouteRefreshController(
+                repository,
+                scheduler,
+                callbackExecutor,
+                () -> { }
+        );
+
+        controller.onResume();
+        repository.complete(0, false);
+        assertNull(scheduler.task);
+
+        controller.onPause();
+        callbackExecutor.runNext();
+
+        assertNull(scheduler.task);
+        assertEquals(1, scheduler.cancelCount);
     }
 
     private static final class FakeRepository implements DeliveryStopRepository {
@@ -109,6 +136,19 @@ public final class DeliveryRouteRefreshControllerTest {
             Runnable value = task;
             task = null;
             value.run();
+        }
+    }
+
+    private static final class QueuedExecutor implements java.util.concurrent.Executor {
+        private final Queue<Runnable> tasks = new ArrayDeque<>();
+
+        @Override
+        public void execute(Runnable command) {
+            tasks.add(command);
+        }
+
+        void runNext() {
+            tasks.remove().run();
         }
     }
 }

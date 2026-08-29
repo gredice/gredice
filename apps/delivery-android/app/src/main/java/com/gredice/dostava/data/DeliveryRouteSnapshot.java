@@ -1,5 +1,6 @@
 package com.gredice.dostava.data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +25,7 @@ public final class DeliveryRouteSnapshot {
         this.routeId = routeId;
         this.revision = revision;
         this.currentNavigationId = currentNavigationId;
-        this.stops = Collections.unmodifiableList(List.copyOf(stops));
+        this.stops = Collections.unmodifiableList(new ArrayList<>(stops));
         this.etag = etag;
         this.verifiedAtMillis = verifiedAtMillis;
     }

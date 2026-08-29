@@ -74,6 +74,18 @@ public final class DeliveryRoutePayloadParserTest {
     }
 
     @Test
+    public void rejectsSequencesThatCannotFitAPlaceMarkerLabel() throws Exception {
+        JSONObject payload = validPayload();
+        payload.getJSONObject("route")
+                .getJSONArray("stops")
+                .getJSONObject(0)
+                .put("sequence", 1_000)
+                .put("label", "Dostava 1000");
+
+        assertInvalid(payload);
+    }
+
+    @Test
     public void encryptedCacheCodecPreservesTheValidatedSnapshot() {
         DeliveryRouteSnapshot snapshot = TestDeliveryRoutes.snapshot(12, 50_000L);
         DeliveryRouteCacheCodec codec = new DeliveryRouteCacheCodec();

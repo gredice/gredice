@@ -24,6 +24,8 @@ import com.gredice.dostava.data.DeliveryRouteViewState;
 import com.gredice.dostava.data.DeliveryStop;
 import com.gredice.dostava.data.DeliveryStopRepository;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.Test;
@@ -76,7 +78,7 @@ public final class DeliveryStopsScreenInstrumentedTest {
 
         FakeRepository signedOutRepository = new FakeRepository(new DeliveryRouteViewState(
                 DeliveryRouteStatus.SIGNED_OUT,
-                List.of(),
+                Collections.emptyList(),
                 null,
                 null
         ));
@@ -94,7 +96,7 @@ public final class DeliveryStopsScreenInstrumentedTest {
     public void loadingUsesTheHostLoadingTemplate() {
         FakeRepository repository = new FakeRepository(new DeliveryRouteViewState(
                 DeliveryRouteStatus.LOADING,
-                List.of(),
+                Collections.emptyList(),
                 null,
                 null
         ));
@@ -176,7 +178,7 @@ public final class DeliveryStopsScreenInstrumentedTest {
     private MessageTemplate message(DeliveryRouteStatus status, String errorCode) {
         FakeRepository repository = new FakeRepository(new DeliveryRouteViewState(
                 status,
-                List.of(),
+                Collections.emptyList(),
                 null,
                 errorCode
         ));
@@ -189,7 +191,7 @@ public final class DeliveryStopsScreenInstrumentedTest {
         DeliveryStop next = stop(2, false, "pickup", "Preuzimanje 2");
         return new DeliveryRouteViewState(
                 status,
-                List.of(current, next),
+                Arrays.asList(current, next),
                 7L,
                 status == DeliveryRouteStatus.READY ? null : "NETWORK_UNAVAILABLE"
         );

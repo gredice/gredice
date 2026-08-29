@@ -25,11 +25,23 @@ public final class NativeDeliveryStopRepositoryTest {
     @Test
     public void restoresFreshCacheAndAgesItToStaleAtRuntime() {
         Fixture fixture = new Fixture(100_000L, TestDeliveryRoutes.snapshot(1, 0));
+        fixture.api.enqueue(new ApiFailure(503, "ROUTE_TEMPORARILY_UNAVAILABLE"));
+
+        assertEquals(DeliveryRouteStatus.LOADING, fixture.repository.getViewState().getStatus());
+        assertEquals(0, fixture.store.readCount);
+        assertEquals(0, fixture.cache.readCount);
+
+        fixture.repository.refresh(changed -> { });
+        assertEquals(0, fixture.store.readCount);
+        assertEquals(0, fixture.cache.readCount);
+        fixture.executor.runNext();
 
         assertEquals(
                 DeliveryRouteStatus.FRESH_OFFLINE,
                 fixture.repository.getViewState().getStatus()
         );
+        assertTrue(fixture.store.readCount > 0);
+        assertEquals(1, fixture.cache.readCount);
 
         fixture.clock.nowMillis = DeliveryRouteStateReducer.FRESH_CACHE_MILLIS + 1;
 
@@ -304,6 +316,7 @@ public final class NativeDeliveryStopRepositoryTest {
 
     private static final class FakeCache implements DeliveryRouteCache {
         private DeliveryRouteSnapshot snapshot;
+        private int readCount;
         private int clearCount;
 
         private FakeCache(DeliveryRouteSnapshot snapshot) {
@@ -312,6 +325,7 @@ public final class NativeDeliveryStopRepositoryTest {
 
         @Override
         public DeliveryRouteSnapshot read() {
+            readCount += 1;
             return snapshot;
         }
 
@@ -388,9 +402,11 @@ public final class NativeDeliveryStopRepositoryTest {
 
     private static final class FakeStore implements NativeCredentialStore {
         private String refreshToken;
+        private int readCount;
 
         @Override
         public String getRefreshToken() {
+            readCount += 1;
             return refreshToken;
         }
 

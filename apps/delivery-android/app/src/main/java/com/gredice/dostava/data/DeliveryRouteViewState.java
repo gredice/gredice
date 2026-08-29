@@ -1,5 +1,6 @@
 package com.gredice.dostava.data;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +19,7 @@ public final class DeliveryRouteViewState {
             String errorCode
     ) {
         this.status = status;
-        this.stops = Collections.unmodifiableList(List.copyOf(stops));
+        this.stops = Collections.unmodifiableList(new ArrayList<>(stops));
         this.routeRevision = routeRevision;
         this.errorCode = errorCode;
     }

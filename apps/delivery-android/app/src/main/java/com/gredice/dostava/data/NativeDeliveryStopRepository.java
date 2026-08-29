@@ -22,6 +22,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
     private long generation;
     private long activeRequestId;
     private Future<?> activeRequest;
+    private boolean storageInitialized;
     private DeliveryRouteSnapshot snapshot;
     private DeliveryRouteViewState viewState;
 
@@ -39,15 +40,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         this.executor = executor;
         this.clock = clock;
         this.telemetry = telemetry;
-        if (!sessionManager.hasSession()) {
-            routeCache.clear();
-            viewState = reducer.signedOut();
-            return;
-        }
-        snapshot = routeCache.read();
-        viewState = snapshot == null
-                ? reducer.loading()
-                : reducer.restored(snapshot, clock.nowMillis());
+        viewState = reducer.loading();
     }
 
     public NativeDeliveryStopRepository(
@@ -103,47 +96,55 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
 
     @Override
     public void refresh(RefreshCallback onComplete) {
-        boolean signedOutChanged = false;
         synchronized (this) {
-            if (!sessionManager.hasSession()) {
-                signedOutChanged = applySignedOut();
-            } else if (activeRequestId != 0) {
+            if (activeRequestId != 0) {
                 pendingCallbacks.add(onComplete);
-                return;
-            } else {
-                if (snapshot == null) viewState = reducer.loading();
-                long requestId = ++generation;
-                activeRequestId = requestId;
-                pendingCallbacks.add(onComplete);
-                String etag = snapshot == null ? null : snapshot.getEtag();
-                long startedAtMillis = clock.nowMillis();
-                try {
-                    activeRequest = executor.submit(
-                            () -> load(requestId, etag, startedAtMillis)
-                    );
-                } catch (RejectedExecutionException failure) {
-                    activeRequestId = 0;
-                    pendingCallbacks.clear();
-                    DeliveryRouteViewState previous = viewState;
-                    viewState = reducer.temporaryFailure(
-                            snapshot,
-                            clock.nowMillis(),
-                            "ROUTE_REFRESH_REJECTED"
-                    );
-                    onComplete.onComplete(!previous.equals(viewState));
-                }
                 return;
             }
+            if (snapshot == null) viewState = reducer.loading();
+            long requestId = ++generation;
+            activeRequestId = requestId;
+            pendingCallbacks.add(onComplete);
+            long startedAtMillis = clock.nowMillis();
+            try {
+                activeRequest = executor.submit(
+                        () -> load(requestId, startedAtMillis)
+                );
+            } catch (RejectedExecutionException failure) {
+                activeRequestId = 0;
+                pendingCallbacks.clear();
+                DeliveryRouteViewState previous = viewState;
+                viewState = reducer.temporaryFailure(
+                        snapshot,
+                        clock.nowMillis(),
+                        "ROUTE_REFRESH_REJECTED"
+                );
+                onComplete.onComplete(!previous.equals(viewState));
+            }
         }
-        onComplete.onComplete(signedOutChanged);
     }
 
-    private void load(long requestId, String etag, long startedAtMillis) {
+    private void load(long requestId, long startedAtMillis) {
         boolean stateChanged = false;
         DeliveryRouteViewState previous = null;
         DeliveryRouteTelemetry.CacheStatus cacheStatus =
                 DeliveryRouteTelemetry.CacheStatus.NONE;
         try {
+            if (!sessionManager.hasSession()) {
+                synchronized (this) {
+                    if (activeRequestId != requestId) return;
+                    previous = viewState;
+                    applySignedOut();
+                    stateChanged = !previous.equals(viewState);
+                }
+                return;
+            }
+            restoreCachedRoute(requestId);
+            String etag;
+            synchronized (this) {
+                if (activeRequestId != requestId) return;
+                etag = snapshot == null ? null : snapshot.getEtag();
+            }
             DeliveryRouteResponse response = sessionManager.executeAuthorized(
                     accessToken -> routeApi.getActiveRoute(accessToken, etag)
             );
@@ -189,6 +190,21 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         }
     }
 
+    private void restoreCachedRoute(long requestId) {
+        synchronized (this) {
+            if (activeRequestId != requestId || storageInitialized) return;
+        }
+        DeliveryRouteSnapshot restored = routeCache.read();
+        synchronized (this) {
+            if (activeRequestId != requestId || storageInitialized) return;
+            storageInitialized = true;
+            snapshot = restored;
+            if (snapshot != null) {
+                viewState = reducer.restored(snapshot, clock.nowMillis());
+            }
+        }
+    }
+
     private DeliveryRouteTelemetry.CacheStatus cacheStatus(
             DeliveryRouteResponse response
     ) {
@@ -229,6 +245,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
     }
 
     private void applyResponse(DeliveryRouteResponse response) {
+        storageInitialized = true;
         if (response.getKind() == DeliveryRouteResponse.Kind.EMPTY) {
             snapshot = null;
             routeCache.clear();
@@ -317,6 +334,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
 
     private boolean applySignedOut() {
         DeliveryRouteViewState previous = viewState;
+        storageInitialized = true;
         snapshot = null;
         routeCache.clear();
         viewState = reducer.signedOut();

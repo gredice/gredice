@@ -68,7 +68,8 @@ final class DeliveryStopsScreen extends Screen {
         refreshController = new DeliveryRouteRefreshController(
                 stopRepository,
                 new HandlerRefreshScheduler(),
-                () -> getCarContext().getMainExecutor().execute(this::invalidate)
+                getCarContext().getMainExecutor(),
+                this::invalidate
         );
         getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override

@@ -9,6 +9,9 @@ import org.json.JSONObject;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -24,12 +27,12 @@ public final class DeliveryRoutePayloadParser {
     private static final Pattern ENTITY_TAG = Pattern.compile(
             "^(W/)?\"[\\x21\\x23-\\x7E]{1,250}\"$"
     );
-    private static final Set<String> ROOT_KEYS = Set.of(
+    private static final Set<String> ROOT_KEYS = immutableSet(
             "schemaVersion",
             "generatedAt",
             "route"
     );
-    private static final Set<String> ROUTE_KEYS = Set.of(
+    private static final Set<String> ROUTE_KEYS = immutableSet(
             "id",
             "revision",
             "state",
@@ -37,7 +40,7 @@ public final class DeliveryRoutePayloadParser {
             "currentNavigationId",
             "stops"
     );
-    private static final Set<String> STOP_KEYS = Set.of(
+    private static final Set<String> STOP_KEYS = immutableSet(
             "navigationId",
             "kind",
             "sequence",
@@ -162,7 +165,7 @@ public final class DeliveryRoutePayloadParser {
         String navigationId = readString(stop, "navigationId", 1, 96);
         String kind = readString(stop, "kind", 1, 16);
         if (!("pickup".equals(kind) || "delivery".equals(kind))) throw invalid();
-        long sequence = readLong(stop, "sequence", 1, Integer.MAX_VALUE);
+        long sequence = readLong(stop, "sequence", 1, 999);
         String actionState = readString(stop, "actionState", 1, 16);
         if (!("current".equals(actionState) || "upcoming".equals(actionState))) {
             throw invalid();
@@ -211,6 +214,10 @@ public final class DeliveryRoutePayloadParser {
             }
         }
         if ((currentNavigationId == null) != !currentSeen) throw invalid();
+    }
+
+    private static Set<String> immutableSet(String... values) {
+        return Collections.unmodifiableSet(new HashSet<>(Arrays.asList(values)));
     }
 
     private void requireOnlyKeys(JSONObject value, Set<String> expected)
