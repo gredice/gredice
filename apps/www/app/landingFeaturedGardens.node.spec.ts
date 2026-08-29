@@ -79,6 +79,14 @@ test('keeps featured gardens enabled without stale rollout flag metadata', () =>
     const flagsSource = readFileSync(new URL('./flags.ts', import.meta.url), {
         encoding: 'utf8',
     });
+    const loaderSource = readFileSync(
+        new URL('./getLandingFeaturedGardens.ts', import.meta.url),
+        { encoding: 'utf8' },
+    );
+    const playwrightConfigSource = readFileSync(
+        new URL('../playwright.config.ts', import.meta.url),
+        { encoding: 'utf8' },
+    );
     const discoverySource = readFileSync(
         new URL('./.well-known/vercel/flags/route.ts', import.meta.url),
         { encoding: 'utf8' },
@@ -90,6 +98,13 @@ test('keeps featured gardens enabled without stale rollout flag metadata', () =>
     );
     assert.doesNotMatch(pageSource, /enableLandingFeaturedGardens/u);
     assert.doesNotMatch(flagsSource, /enableLandingFeaturedGardens/u);
+    assert.match(loaderSource, /AbortSignal\.timeout/u);
+    assert.match(loaderSource, /init: \{ signal \}/u);
+    assert.match(loaderSource, /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE/u);
+    assert.match(
+        playwrightConfigSource,
+        /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE: 'true'/u,
+    );
     assert.match(flagsSource, /key: 'enablePublicEnvironmentDebug'/u);
     assert.match(discoverySource, /getProviderData\(flags\)/u);
     assert.doesNotMatch(discoverySource, /mergeProviderData/u);
