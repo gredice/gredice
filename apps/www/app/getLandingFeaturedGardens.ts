@@ -1,12 +1,12 @@
 import { clientPublic } from '@gredice/client';
-import type { PublicGardenDetail } from '@gredice/game';
 import 'server-only';
+import type { LandingGardenCandidate } from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
 
 const landingFeaturedGardenLimit = 4;
 
 export async function getLandingFeaturedGardens(): Promise<
-    PublicGardenDetail[]
+    LandingGardenCandidate[]
 > {
     try {
         const response = await clientPublic().api.gardens.public.$get();
@@ -37,7 +37,10 @@ export async function getLandingFeaturedGardens(): Promise<
                     return null;
                 }
 
-                return gardenResponse.json();
+                return {
+                    garden: await gardenResponse.json(),
+                    owner: garden.owner ?? null,
+                };
             }),
         );
 

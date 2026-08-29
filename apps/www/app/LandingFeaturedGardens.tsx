@@ -6,16 +6,11 @@ import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
-import {
-    ArrowLeft,
-    ArrowRight,
-    Navigate,
-    Pause,
-    Play,
-} from '@gredice/ui/icons';
+import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
+import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
 import { useQuery } from '@tanstack/react-query';
 import type { FocusEvent, PointerEvent } from 'react';
@@ -26,6 +21,7 @@ import { KnownPages } from '../src/KnownPages';
 import { LandingPublicGardenViewer } from './LandingPublicGardenViewer';
 import {
     getAdjacentLandingGardenIndex,
+    type LandingGardenCandidate,
     orderLandingGardens,
 } from './landingGardenCarousel';
 
@@ -88,7 +84,7 @@ function getOwnedGardenUrl(gardenId: number) {
 export function LandingFeaturedGardens({
     featuredGardens,
 }: {
-    featuredGardens: PublicGardenDetail[];
+    featuredGardens: LandingGardenCandidate[];
 }) {
     const { data: user } = useCurrentUser();
     const ownedGardensQuery = useQuery({
@@ -101,12 +97,24 @@ export function LandingFeaturedGardens({
     const ownedGardens = user
         ? (ownedGardensQuery.data ?? noGardens)
         : noGardens;
-    const gardens = useMemo(
-        () => orderLandingGardens(ownedGardens, featuredGardens),
-        [featuredGardens, ownedGardens],
-    );
+    const gardens = useMemo(() => {
+        const ownedGardenOwner = user
+            ? {
+                  avatarUrl: user.avatarUrl ?? null,
+                  displayName: user.displayName ?? user.userName,
+              }
+            : null;
+
+        return orderLandingGardens(
+            ownedGardens.map((garden) => ({
+                garden,
+                owner: ownedGardenOwner,
+            })),
+            featuredGardens,
+        );
+    }, [featuredGardens, ownedGardens, user]);
     const [displayedGardenId, setDisplayedGardenId] = useState<number | null>(
-        featuredGardens[0]?.id ?? null,
+        featuredGardens[0]?.garden.id ?? null,
     );
     const [sceneVisible, setSceneVisible] = useState(true);
     const [autoplayPaused, setAutoplayPaused] = useState(false);
@@ -117,6 +125,12 @@ export function LandingFeaturedGardens({
     const pendingGardenIdRef = useRef<number | null>(displayedGardenId);
     const promotedOwnedGardenIdRef = useRef<number | null>(null);
     const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+    const autoplayRemainingMsRef = useRef(autoplayDelayMs);
+    const autoplayStartedAtRef = useRef<number | null>(null);
+    const resetAutoplayCycle = useCallback(() => {
+        autoplayRemainingMsRef.current = autoplayDelayMs;
+        autoplayStartedAtRef.current = null;
+    }, []);
 
     const showGarden = useCallback(
         (gardenId: number) => {
@@ -136,6 +150,7 @@ export function LandingFeaturedGardens({
             }
 
             if (prefersReducedMotion) {
+                resetAutoplayCycle();
                 setDisplayedGardenId(gardenId);
                 setSceneVisible(true);
                 return;
@@ -143,6 +158,7 @@ export function LandingFeaturedGardens({
 
             setSceneVisible(false);
             transitionTimeoutRef.current = window.setTimeout(() => {
+                resetAutoplayCycle();
                 setDisplayedGardenId(pendingGardenIdRef.current);
                 transitionFrameRef.current = window.requestAnimationFrame(
                     () => {
@@ -151,7 +167,12 @@ export function LandingFeaturedGardens({
                 );
             }, gardenTransitionDelayMs);
         },
-        [displayedGardenId, prefersReducedMotion, sceneVisible],
+        [
+            displayedGardenId,
+            prefersReducedMotion,
+            resetAutoplayCycle,
+            sceneVisible,
+        ],
     );
 
     useEffect(() => {
@@ -231,27 +252,38 @@ export function LandingFeaturedGardens({
         ],
     );
 
+    const autoplayRunning =
+        gardens.length > 1 &&
+        !autoplayPaused &&
+        !interactionPaused &&
+        !prefersReducedMotion &&
+        sceneVisible;
+
     useEffect(() => {
-        if (
-            gardens.length < 2 ||
-            autoplayPaused ||
-            interactionPaused ||
-            prefersReducedMotion ||
-            !sceneVisible
-        ) {
+        if (!autoplayRunning) {
             return;
         }
 
-        const timeout = window.setTimeout(() => moveGarden(1), autoplayDelayMs);
-        return () => window.clearTimeout(timeout);
-    }, [
-        autoplayPaused,
-        gardens.length,
-        interactionPaused,
-        moveGarden,
-        prefersReducedMotion,
-        sceneVisible,
-    ]);
+        const startedAt = window.performance.now();
+        autoplayStartedAtRef.current = startedAt;
+        const timeout = window.setTimeout(() => {
+            autoplayRemainingMsRef.current = autoplayDelayMs;
+            autoplayStartedAtRef.current = null;
+            moveGarden(1);
+        }, autoplayRemainingMsRef.current);
+
+        return () => {
+            window.clearTimeout(timeout);
+            if (autoplayStartedAtRef.current === startedAt) {
+                autoplayRemainingMsRef.current = Math.max(
+                    0,
+                    autoplayRemainingMsRef.current -
+                        (window.performance.now() - startedAt),
+                );
+                autoplayStartedAtRef.current = null;
+            }
+        };
+    }, [autoplayRunning, moveGarden]);
 
     const handleBlur = useCallback((event: FocusEvent<HTMLDivElement>) => {
         if (!event.currentTarget.contains(event.relatedTarget)) {
@@ -267,6 +299,9 @@ export function LandingFeaturedGardens({
 
             event.currentTarget.setPointerCapture(event.pointerId);
             swipeStartRef.current = { x: event.clientX, y: event.clientY };
+            if (event.pointerType !== 'mouse') {
+                setInteractionPaused(true);
+            }
         },
         [],
     );
@@ -275,6 +310,9 @@ export function LandingFeaturedGardens({
         (event: PointerEvent<HTMLDivElement>) => {
             const swipeStart = swipeStartRef.current;
             swipeStartRef.current = null;
+            if (event.pointerType !== 'mouse') {
+                setInteractionPaused(false);
+            }
             if (!swipeStart) {
                 return;
             }
@@ -317,13 +355,8 @@ export function LandingFeaturedGardens({
             data-testid="landing-featured-gardens"
             onBlur={handleBlur}
             onFocusCapture={() => setInteractionPaused(true)}
-            onPointerCancel={() => {
-                swipeStartRef.current = null;
-            }}
-            onPointerDownCapture={handlePointerDown}
             onPointerEnter={() => setInteractionPaused(true)}
             onPointerLeave={() => setInteractionPaused(false)}
-            onPointerUpCapture={handlePointerUp}
         >
             <div
                 className={cx(
@@ -333,6 +366,14 @@ export function LandingFeaturedGardens({
                         : 'scale-[1.015] opacity-35 blur-[2px]',
                 )}
                 data-scene-visible={sceneVisible}
+                onPointerCancel={(event) => {
+                    swipeStartRef.current = null;
+                    if (event.pointerType !== 'mouse') {
+                        setInteractionPaused(false);
+                    }
+                }}
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
             >
                 <LandingPublicGardenViewer
                     appBaseUrl={getGardenBaseUrl()}
@@ -355,23 +396,31 @@ export function LandingFeaturedGardens({
                                 <Typography level="h3" component="h1">
                                     Vrtovi korisnika Gredica
                                 </Typography>
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <UserAvatar
+                                        avatarUrl={
+                                            displayedGarden.owner?.avatarUrl
+                                        }
+                                        className="ring-2 ring-background"
+                                        displayName={
+                                            displayedGarden.owner
+                                                ?.displayName ??
+                                            'Korisnik Gredica'
+                                        }
+                                        size="sm"
+                                    />
                                     <Typography level="body1" semiBold>
                                         {displayedGarden.garden.name}
                                     </Typography>
-                                    <Chip
-                                        color={
-                                            displayedGarden.source === 'owned'
-                                                ? 'success'
-                                                : 'neutral'
-                                        }
-                                        size="sm"
-                                        variant="soft"
-                                    >
-                                        {displayedGarden.source === 'owned'
-                                            ? 'Tvoj vrt'
-                                            : 'Istaknuti vrt'}
-                                    </Chip>
+                                    {displayedGarden.source === 'owned' ? (
+                                        <Chip
+                                            color="success"
+                                            size="sm"
+                                            variant="soft"
+                                        >
+                                            Tvoj vrt
+                                        </Chip>
+                                    ) : null}
                                 </div>
 
                                 {gardens.length > 1 ? (
@@ -385,9 +434,9 @@ export function LandingFeaturedGardens({
                                             disabled={!sceneVisible}
                                             onClick={() => moveGarden(-1)}
                                             size="sm"
-                                            variant="outlined"
+                                            variant="plain"
                                         >
-                                            <ArrowLeft
+                                            <Left
                                                 aria-hidden
                                                 className="size-4"
                                             />
@@ -406,10 +455,10 @@ export function LandingFeaturedGardens({
                                                         }
                                                         aria-label={`Prikaži vrt ${item.garden.name}`}
                                                         className={cx(
-                                                            'size-2.5 rounded-full border border-primary/40 transition-[width,background-color] motion-reduce:transition-none',
+                                                            'relative h-2.5 overflow-hidden rounded-full border border-primary/40 transition-[width,background-color] motion-reduce:transition-none',
                                                             selected
-                                                                ? 'w-6 bg-primary'
-                                                                : 'bg-background/80 hover:bg-primary/30',
+                                                                ? 'w-8 bg-background/80'
+                                                                : 'w-2.5 bg-background/80 hover:bg-primary/30',
                                                         )}
                                                         disabled={
                                                             !sceneVisible &&
@@ -423,7 +472,36 @@ export function LandingFeaturedGardens({
                                                         }
                                                         title={`${(index + 1).toString()}. ${item.garden.name}`}
                                                         type="button"
-                                                    />
+                                                    >
+                                                        {selected ? (
+                                                            <span
+                                                                aria-hidden
+                                                                className={cx(
+                                                                    'absolute inset-0 origin-left bg-primary',
+                                                                    prefersReducedMotion
+                                                                        ? 'scale-x-100'
+                                                                        : 'animate-landing-garden-progress',
+                                                                )}
+                                                                data-autoplay-state={
+                                                                    autoplayRunning
+                                                                        ? 'running'
+                                                                        : 'paused'
+                                                                }
+                                                                data-testid="landing-garden-progress"
+                                                                style={
+                                                                    prefersReducedMotion
+                                                                        ? undefined
+                                                                        : {
+                                                                              animationDuration: `${autoplayDelayMs.toString()}ms`,
+                                                                              animationPlayState:
+                                                                                  autoplayRunning
+                                                                                      ? 'running'
+                                                                                      : 'paused',
+                                                                          }
+                                                                }
+                                                            />
+                                                        ) : null}
+                                                    </button>
                                                 );
                                             })}
                                         </div>
@@ -433,9 +511,9 @@ export function LandingFeaturedGardens({
                                             disabled={!sceneVisible}
                                             onClick={() => moveGarden(1)}
                                             size="sm"
-                                            variant="outlined"
+                                            variant="plain"
                                         >
-                                            <ArrowRight
+                                            <Navigate
                                                 aria-hidden
                                                 className="size-4"
                                             />

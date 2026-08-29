@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 import {
     accountHasActiveRaisedBed,
+    accountUsers,
     CannotLikeOwnGardenError,
     countActiveRaisedBedsForGarden,
     countRaisedBedsByAccount,
@@ -62,13 +63,21 @@ import {
 } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
-async function createTestUser() {
+async function createTestUser({
+    avatarUrl,
+    displayName,
+}: {
+    avatarUrl?: string;
+    displayName?: string;
+} = {}) {
     const userId = randomUUID();
     await storage()
         .insert(users)
         .values({
             id: userId,
             userName: `${userId}@example.com`,
+            avatarUrl,
+            displayName,
             role: 'user',
         });
     return userId;
@@ -180,6 +189,14 @@ test('getAccountGardensMetadata returns account gardens without raised beds', as
 test('gardens are public by default and can be unlisted', async () => {
     createTestDb();
     const accountId = await createAccount();
+    const ownerId = await createTestUser({
+        avatarUrl: 'https://cdn.example.com/avatar.webp',
+        displayName: 'Vrtlarica Ana',
+    });
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId: ownerId,
+    });
     const farmId = await ensureFarmId();
     const publicGardenId = await createTestGarden({
         name: 'Public Garden',
@@ -200,6 +217,13 @@ test('gardens are public by default and can be unlisted', async () => {
 
     const publicGardens = await getPublicGardens();
     assert.ok(publicGardens.some((garden) => garden.id === publicGardenId));
+    assert.deepEqual(
+        publicGardens.find((garden) => garden.id === publicGardenId)?.owner,
+        {
+            avatarUrl: 'https://cdn.example.com/avatar.webp',
+            displayName: 'Vrtlarica Ana',
+        },
+    );
     assert.ok(publicGardens.every((garden) => garden.id !== unlistedGardenId));
     assert.strictEqual(await getPublicGarden(unlistedGardenId), null);
     assert.strictEqual(

@@ -254,6 +254,8 @@ export default async function Home() {
     const featuredGardens = featuredGardensEnabled
         ? await getLandingFeaturedGardens()
         : [];
+    const showFeaturedGardens =
+        featuredGardensEnabled && featuredGardens.length > 0;
 
     return (
         <Stack>
@@ -273,7 +275,7 @@ export default async function Home() {
                             src="/seo-fallback.png"
                             width={1920}
                         />
-                        {featuredGardensEnabled ? (
+                        {showFeaturedGardens ? (
                             <LandingFeaturedGardens
                                 featuredGardens={featuredGardens}
                             />
@@ -282,7 +284,7 @@ export default async function Home() {
                         )}
                     </div>
                     <LandingGameSignupCta />
-                    {!featuredGardensEnabled ? (
+                    {!showFeaturedGardens ? (
                         <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
                             <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
                                 <Card

@@ -1127,6 +1127,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
                         id: garden.id,
                         name: garden.name,
                         isSandbox: garden.isSandbox,
+                        owner: garden.owner,
                         backgroundPalette: garden.backgroundPalette,
                         homeCamera: garden.homeCamera ?? null,
                         previewImage: serializePublicGardenPreviewImage(

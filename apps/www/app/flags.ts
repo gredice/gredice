@@ -9,7 +9,7 @@ export const enableLandingFeaturedGardensFlag = flag<boolean>({
     adapter: vercelAdapter,
     defaultValue:
         process.env.NODE_ENV === 'development' ||
-        process.env.VERCEL_ENV === 'preview',
+        (process.env.VERCEL_ENV === 'preview' && process.env.CI !== 'true'),
     options: booleanFlagOptions,
 });
 

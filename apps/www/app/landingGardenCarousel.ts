@@ -2,28 +2,41 @@ import type { PublicGardenDetail } from '@gredice/game';
 
 export type LandingGardenSource = 'featured' | 'owned';
 
-export type LandingGarden = {
+export type LandingGardenOwner = {
+    avatarUrl: string | null;
+    displayName: string;
+};
+
+export type LandingGardenCandidate = {
     garden: PublicGardenDetail;
+    owner: LandingGardenOwner | null;
+};
+
+export type LandingGarden = LandingGardenCandidate & {
     source: LandingGardenSource;
 };
 
 export function orderLandingGardens(
-    ownedGardens: PublicGardenDetail[],
-    featuredGardens: PublicGardenDetail[],
+    ownedGardens: LandingGardenCandidate[],
+    featuredGardens: LandingGardenCandidate[],
 ): LandingGarden[] {
-    const ownedGardenIds = new Set(ownedGardens.map((garden) => garden.id));
+    const seenGardenIds = new Set<number>();
+    const appendUniqueGardens = (
+        candidates: LandingGardenCandidate[],
+        source: LandingGardenSource,
+    ) =>
+        candidates.flatMap((candidate) => {
+            if (seenGardenIds.has(candidate.garden.id)) {
+                return [];
+            }
+
+            seenGardenIds.add(candidate.garden.id);
+            return [{ ...candidate, source }];
+        });
 
     return [
-        ...ownedGardens.map((garden) => ({
-            garden,
-            source: 'owned' as const,
-        })),
-        ...featuredGardens
-            .filter((garden) => !ownedGardenIds.has(garden.id))
-            .map((garden) => ({
-                garden,
-                source: 'featured' as const,
-            })),
+        ...appendUniqueGardens(ownedGardens, 'owned'),
+        ...appendUniqueGardens(featuredGardens, 'featured'),
     ];
 }
 

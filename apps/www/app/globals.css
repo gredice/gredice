@@ -164,7 +164,22 @@
     }
 }
 
+@keyframes landing-garden-progress {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
 @layer utilities {
+    .animate-landing-garden-progress {
+        animation-name: landing-garden-progress;
+        animation-timing-function: linear;
+        animation-fill-mode: forwards;
+    }
+
     .animate-scale-in {
         animation: scale-in 0.15s ease-out;
     }
@@ -207,6 +222,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    .animate-landing-garden-progress {
+        animation: none;
+        transform: scaleX(1);
+    }
+
     .animate-scale-in {
         animation: none;
     }

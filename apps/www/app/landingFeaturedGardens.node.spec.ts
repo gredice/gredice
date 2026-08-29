@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { PublicGardenDetail } from '@gredice/game';
 import {
     getAdjacentLandingGardenIndex,
+    type LandingGardenCandidate,
     orderLandingGardens,
 } from './landingGardenCarousel.ts';
 
@@ -24,10 +25,20 @@ function garden(id: number): PublicGardenDetail {
     };
 }
 
+function candidate(id: number): LandingGardenCandidate {
+    return {
+        garden: garden(id),
+        owner: {
+            avatarUrl: null,
+            displayName: `Vrtlar ${id.toString()}`,
+        },
+    };
+}
+
 test('places every owned garden before featured public gardens and removes duplicates', () => {
     const ordered = orderLandingGardens(
-        [garden(7), garden(4)],
-        [garden(4), garden(12), garden(15)],
+        [candidate(7), candidate(4)],
+        [candidate(4), candidate(12), candidate(15), candidate(12)],
     );
 
     assert.deepEqual(
