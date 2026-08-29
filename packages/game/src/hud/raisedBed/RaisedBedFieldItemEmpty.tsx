@@ -163,7 +163,7 @@ export function RaisedBedFieldItemEmpty({
                 {...primaryPlantPickerProps}
             />
             <RaisedBedFieldIconStack>
-                {showOperations && (
+                {showOperations && raisedBed.status === 'active' && (
                     <RaisedBedFieldOperationsModal
                         gardenId={gardenId}
                         positionIndex={positionIndex}

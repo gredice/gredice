@@ -24,7 +24,10 @@ import { useSwapShoppingCartPositions } from '../../hooks/useSwapShoppingCartPos
 import { isRaisedBedAbandoned } from '../../raisedBedConstants';
 import { ButtonGreen } from '../../shared-ui/ButtonGreen';
 import { raisedBedFieldSectionCount } from '../../utils/raisedBedBlocks';
-import { isRaisedBedFieldOccupied } from '../../utils/raisedBedFields';
+import {
+    getRaisedBedFieldPlantHistory,
+    isRaisedBedFieldOccupied,
+} from '../../utils/raisedBedFields';
 import { getPositionIndexFromGrid } from '../../utils/raisedBedOrientation';
 import { buildAdvancedSowingGardenPlantingVisuals } from './advancedSowingGardenVisuals';
 import { getRaisedBedPlantingCountsByPosition } from './advancedSowingSubmission';
@@ -428,6 +431,11 @@ export function RaisedBedField({
             .filter((field) => isRaisedBedFieldOccupied(field))
             .map((field) => field.positionIndex),
     );
+    const hasPlantHistory = raisedBed.fields.some(
+        (field) =>
+            getRaisedBedFieldPlantHistory(raisedBed.fields, field.positionIndex)
+                .length > 0,
+    );
     const relationshipIndicatorsByPosition = new Map<
         number,
         RaisedBedFieldRelationshipIndicatorLayer[]
@@ -530,20 +538,22 @@ export function RaisedBedField({
                 >
                     <PlantingSeedIcon aria-hidden className="size-5" />
                 </RaisedBedFieldLayerToggle>
-                <RaisedBedFieldLayerToggle
-                    isPressed={layerPreferences.showPlantHistoryBadges}
-                    label={plantHistoryToggleLabel}
-                    onClick={() =>
-                        setLayerPreferences((current) => ({
-                            ...current,
-                            showPlantHistoryBadges:
-                                !current.showPlantHistoryBadges,
-                        }))
-                    }
-                    storageName="history"
-                >
-                    <History aria-hidden className="size-5" />
-                </RaisedBedFieldLayerToggle>
+                {hasPlantHistory && (
+                    <RaisedBedFieldLayerToggle
+                        isPressed={layerPreferences.showPlantHistoryBadges}
+                        label={plantHistoryToggleLabel}
+                        onClick={() =>
+                            setLayerPreferences((current) => ({
+                                ...current,
+                                showPlantHistoryBadges:
+                                    !current.showPlantHistoryBadges,
+                            }))
+                        }
+                        storageName="history"
+                    >
+                        <History aria-hidden className="size-5" />
+                    </RaisedBedFieldLayerToggle>
+                )}
                 <RaisedBedFieldLayerToggle
                     isPressed={layerPreferences.showRelationshipIndicators}
                     label={relationshipsToggleLabel}
