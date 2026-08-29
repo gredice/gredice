@@ -301,8 +301,8 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         }
         if ("ANDROID_AUTO_DISABLED".equals(errorCode)) {
             snapshot = null;
-            routeCache.clear();
             viewState = reducer.disabled(sessionBinding);
+            clearCacheSafely();
             return;
         }
         if ("ROUTE_RESPONSE_UNSUPPORTED".equals(errorCode)
@@ -339,6 +339,14 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
             routeCache.write(value);
         } catch (RuntimeException ignored) {
             // A usable in-memory route must not be lost because offline recovery failed.
+        }
+    }
+
+    private void clearCacheSafely() {
+        try {
+            routeCache.clear();
+        } catch (RuntimeException ignored) {
+            // The authoritative in-memory terminal state must survive storage failure.
         }
     }
 
