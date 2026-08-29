@@ -1,9 +1,11 @@
 package com.gredice.dostava.navigation;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 
 /** App-private metadata store containing no address, coordinates, label, or credentials. */
+@SuppressLint("ApplySharedPref") // The marker must reach disk before startCarApp is called.
 public final class SharedPreferencesNavigationHandoffStore
         implements NavigationHandoffStore {
     private static final String PREFERENCES = "delivery_navigation_handoff";
@@ -55,18 +57,23 @@ public final class SharedPreferencesNavigationHandoffStore
 
     @Override
     public synchronized void write(PendingNavigationHandoff pending) {
-        preferences.edit()
+        boolean committed = preferences.edit()
                 .putString(SESSION_BINDING, pending.getSessionBinding())
                 .putString(ROUTE_ID, pending.getRouteId())
                 .putLong(ROUTE_REVISION, pending.getRouteRevision())
                 .putString(NAVIGATION_ID, pending.getNavigationId())
                 .putString(KIND, pending.getKind())
                 .putLong(LAUNCHED_AT, pending.getLaunchedAtMillis())
-                .apply();
+                .commit();
+        if (!committed) {
+            throw new IllegalStateException("Unable to persist navigation handoff");
+        }
     }
 
     @Override
     public synchronized void clear() {
-        preferences.edit().clear().apply();
+        if (!preferences.edit().clear().commit()) {
+            throw new IllegalStateException("Unable to clear navigation handoff");
+        }
     }
 }

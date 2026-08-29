@@ -168,6 +168,8 @@ assert.doesNotMatch(
     navigationHandoffStore,
     /"(?:latitude|longitude|address|label|token|customer)(?:_|\")/i,
 );
+assert.match(navigationHandoffStore, /\.commit\(\)/);
+assert.doesNotMatch(navigationHandoffStore, /\.apply\(\)/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
 
