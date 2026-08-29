@@ -44,6 +44,7 @@
     },
     "dependencies": {
         "@googlemaps/js-api-loader": "2.1.1",
+        "@flags-sdk/vercel": "1.4.6",
         "@mdxeditor/editor": "4.0.4",
         "@opentelemetry/api-logs": "0.220.0",
         "@opentelemetry/exporter-logs-otlp-http": "0.220.0",
