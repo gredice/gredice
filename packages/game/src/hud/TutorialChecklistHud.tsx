@@ -4,7 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, ExpandDown } from '@gredice/ui/icons';
+import { Check, ExpandDown, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -31,6 +31,7 @@ import { useSetRaisedBedCloseupParam } from '../useRaisedBedCloseup';
 import { useBackpackOpenParam, useShoppingCartOpenParam } from '../useUrlState';
 import { formatSunflowers } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
+import { HudListItemPresence } from './components/HudListItemPresence';
 import { RAISED_BED_ONBOARDING_OPEN_EVENT } from './RaisedBedOnboardingModal';
 import {
     findFirstEmptyRaisedBedField,
@@ -828,12 +829,16 @@ function TutorialChecklistContent({
     );
 }
 
-export function TutorialChecklistHud() {
+export function TutorialChecklistHud({
+    enabled = true,
+}: {
+    enabled?: boolean;
+} = {}) {
     const [isOpen, setIsOpen] = useState(false);
     const [animateCompletion, setAnimateCompletion] = useState(false);
     const previouslyObservedCompletion = useRef<boolean | null>(null);
     const queryClient = useQueryClient();
-    const { data } = useTutorialChecklist();
+    const { data, isFetched } = useTutorialChecklist();
     const { track } = useGameAnalytics();
     const claimableCount = data?.totals.claimableCount ?? 0;
     const {
@@ -843,6 +848,7 @@ export function TutorialChecklistHud() {
         isDismissed,
     } = useCompletedChecklistDismissal(data);
     const hasChecklist = Boolean(data);
+    const checklistUnavailable = isFetched && !hasChecklist;
     const completionTransitionObserved =
         hasChecklist &&
         allTasksFinished &&
@@ -882,9 +888,11 @@ export function TutorialChecklistHud() {
         });
     }, [data?.totals.totalCount, dismissCompletedChecklist, track]);
 
-    if ((allTasksFinished && !dismissalReady) || isDismissed) {
-        return null;
-    }
+    const visible =
+        enabled &&
+        (checklistUnavailable ||
+            (hasChecklist &&
+                !((allTasksFinished && !dismissalReady) || isDismissed)));
 
     function handleOpenChange(open: boolean) {
         if (open) {
@@ -905,83 +913,93 @@ export function TutorialChecklistHud() {
     }
 
     return (
-        <HudCard open position="floating" className="relative grid">
-            {claimableCount > 0 && (
-                <div
-                    className="pointer-events-none absolute right-0 top-0 z-20 grid size-4 place-items-center"
-                    data-tutorial-checklist-claim-dot="true"
-                >
-                    <div className="absolute inset-0 -z-10 rounded-full bg-green-500 animate-ping" />
-                    <DotIndicator color="success" size={16} />
-                </div>
-            )}
-            <GameModal
-                className="md:max-w-3xl"
-                hudLayer
-                onOpenChange={handleOpenChange}
-                open={isOpen}
-                title="Zadaci za novi vrt"
-                trigger={
-                    <IconButton
-                        aria-label={
-                            allTasksFinished
-                                ? 'Svi zadaci su dovršeni'
-                                : progressLabel
-                                  ? `Zadaci ${progressLabel}`
-                                  : 'Zadaci'
-                        }
-                        className={cx(
-                            'relative rounded-full w-10 h-10',
-                            allTasksFinished &&
-                                'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600',
-                        )}
-                        data-tutorial-checklist-complete={
-                            allTasksFinished ? 'true' : 'false'
-                        }
-                        data-tutorial-checklist-trigger="true"
-                        title="Zadaci"
-                        variant="plain"
+        <HudListItemPresence visible={visible}>
+            <HudCard open position="floating" className="relative grid">
+                {claimableCount > 0 && (
+                    <div
+                        className="pointer-events-none absolute right-0 top-0 z-20 grid size-4 place-items-center"
+                        data-tutorial-checklist-claim-dot="true"
                     >
-                        {allTasksFinished ? (
-                            <Check
-                                aria-hidden="true"
-                                className="pointer-events-none size-6"
-                                data-tutorial-checklist-complete-icon="true"
-                            />
-                        ) : (
-                            <>
-                                <Image
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="pointer-events-none absolute left-1/2 top-0 size-9 shrink-0 -translate-x-1/2 -translate-y-3.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
-                                    data-tutorial-checklist-trigger-icon="true"
-                                    height={36}
-                                    loading="eager"
-                                    src={tutorialTaskListIconSrc}
-                                    unoptimized
-                                    width={36}
-                                />
-                                <Typography
-                                    aria-hidden="true"
-                                    bold
-                                    className="pointer-events-none text-foreground mt-5"
-                                    data-tutorial-checklist-progress="true"
-                                    level="body3"
-                                >
-                                    {progressLabel ?? '0/0'}
-                                </Typography>
-                            </>
-                        )}
-                    </IconButton>
-                }
-            >
-                <TutorialChecklistContent
-                    allTasksFinished={allTasksFinished}
-                    animateCompletion={shouldAnimateCompletion}
-                    onDismissCompleted={handleDismissCompleted}
+                        <div className="absolute inset-0 -z-10 rounded-full bg-green-500 animate-ping" />
+                        <DotIndicator color="success" size={16} />
+                    </div>
+                )}
+                <GameModal
+                    className="md:max-w-3xl"
+                    hudLayer
                     onOpenChange={handleOpenChange}
-                />
-            </GameModal>
-        </HudCard>
+                    open={isOpen}
+                    title="Zadaci za novi vrt"
+                    trigger={
+                        <IconButton
+                            aria-label={
+                                allTasksFinished
+                                    ? 'Svi zadaci su dovršeni'
+                                    : checklistUnavailable
+                                      ? 'Zadaci nisu učitani'
+                                      : progressLabel
+                                        ? `Zadaci ${progressLabel}`
+                                        : 'Zadaci'
+                            }
+                            className={cx(
+                                'relative rounded-full w-10 h-10',
+                                allTasksFinished &&
+                                    'bg-green-600 text-white hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-600',
+                            )}
+                            data-tutorial-checklist-complete={
+                                allTasksFinished ? 'true' : 'false'
+                            }
+                            data-tutorial-checklist-trigger="true"
+                            title="Zadaci"
+                            variant="plain"
+                        >
+                            {allTasksFinished ? (
+                                <Check
+                                    aria-hidden="true"
+                                    className="pointer-events-none size-6"
+                                    data-tutorial-checklist-complete-icon="true"
+                                />
+                            ) : checklistUnavailable ? (
+                                <Warning
+                                    aria-hidden="true"
+                                    className="pointer-events-none size-5 text-amber-600"
+                                    data-tutorial-checklist-error-icon="true"
+                                />
+                            ) : (
+                                <>
+                                    <Image
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute left-1/2 top-0 size-9 shrink-0 -translate-x-1/2 -translate-y-3.5 object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.35)]"
+                                        data-tutorial-checklist-trigger-icon="true"
+                                        height={36}
+                                        loading="eager"
+                                        src={tutorialTaskListIconSrc}
+                                        unoptimized
+                                        width={36}
+                                    />
+                                    <Typography
+                                        aria-hidden="true"
+                                        bold
+                                        className="pointer-events-none text-foreground mt-5"
+                                        data-tutorial-checklist-progress="true"
+                                        level="body3"
+                                    >
+                                        {progressLabel ?? '0/0'}
+                                    </Typography>
+                                </>
+                            )}
+                        </IconButton>
+                    }
+                >
+                    <TutorialChecklistContent
+                        allTasksFinished={allTasksFinished}
+                        animateCompletion={shouldAnimateCompletion}
+                        onDismissCompleted={handleDismissCompleted}
+                        onOpenChange={handleOpenChange}
+                    />
+                </GameModal>
+            </HudCard>
+        </HudListItemPresence>
     );
 }

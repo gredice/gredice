@@ -88,7 +88,13 @@ function plantedField(positionIndex: number, plantSortId: number) {
     };
 }
 
-function createOutletHudQueryClient() {
+function createOutletHudQueryClient({
+    enabled,
+    loading,
+}: {
+    enabled: boolean;
+    loading: boolean;
+}) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -169,7 +175,14 @@ function createOutletHudQueryClient() {
         currentGardenKeys('summer', TEST_GARDEN_ID),
         garden,
     );
-    queryClient.setQueryData(['outlet-offers'], outletOffers);
+    if (enabled && loading) {
+        void queryClient.prefetchQuery({
+            queryKey: ['outlet-offers'],
+            queryFn: () => new Promise<never>(() => undefined),
+        });
+    } else if (enabled) {
+        queryClient.setQueryData(['outlet-offers'], outletOffers);
+    }
     queryClient.setQueryData(['shopping-cart'], {
         allowPurchase: true,
         hasDeliverableItems: false,
@@ -185,11 +198,18 @@ function createOutletHudQueryClient() {
 
 function OutletHudTestProviders({
     children,
+    enabled,
+    loading,
     searchParams = 'vrt=1',
 }: PropsWithChildren<{
+    enabled: boolean;
+    loading: boolean;
     searchParams?: string;
 }>) {
-    const queryClient = useMemo(() => createOutletHudQueryClient(), []);
+    const queryClient = useMemo(
+        () => createOutletHudQueryClient({ enabled, loading }),
+        [enabled, loading],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -215,13 +235,21 @@ function OutletHudTestProviders({
 }
 
 export function OutletHudStory({
+    enabled = true,
+    loading = false,
     searchParams,
 }: {
+    enabled?: boolean;
+    loading?: boolean;
     searchParams?: string;
 } = {}) {
     return (
-        <OutletHudTestProviders searchParams={searchParams}>
-            <OutletHud />
+        <OutletHudTestProviders
+            enabled={enabled}
+            loading={loading}
+            searchParams={searchParams}
+        >
+            <OutletHud enabled={enabled} />
         </OutletHudTestProviders>
     );
 }

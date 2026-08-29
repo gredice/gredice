@@ -39,6 +39,7 @@ import {
     formatSunflowers,
 } from '../utils/sunflowerPricing';
 import { HudCard } from './components/HudCard';
+import { HudListItemPresence } from './components/HudListItemPresence';
 import { ButtonConfirmPayment } from './components/shopping-cart/ButtonConfirmPayment';
 import { ShoppingCartItemsPresence } from './components/shopping-cart/ShoppingCartItemsPresence';
 import { ShoppingCartStepTransition } from './components/shopping-cart/ShoppingCartStepTransition';
@@ -517,123 +518,134 @@ export function ShoppingCart({
     );
 }
 
-export function ShoppingCartHud() {
-    const { data: cart, refetch: refetchCart } = useShoppingCart();
+export function ShoppingCartHud({
+    enabled = true,
+}: {
+    enabled?: boolean;
+} = {}) {
+    const {
+        data: cart,
+        isPending,
+        refetch: refetchCart,
+    } = useShoppingCart(enabled);
     const { track } = useGameAnalytics();
     const [isOpen, setIsOpen] = useShoppingCartOpenParam();
     const [checkoutStep, setCheckoutStep] =
         useState<ShoppingCartCheckoutStep>('cart');
     const [deliverySummary, setDeliverySummary] =
         useState<DeliveryStepSummary | null>(null);
-    const showTransientHub = useShoppingCartTransientHub(isOpen);
+    const showTransientHub = useShoppingCartTransientHub(enabled && isOpen);
 
     useEffect(() => {
-        if (isOpen) {
+        if (enabled && isOpen) {
             void refetchCart();
         }
-    }, [isOpen, refetchCart]);
+    }, [enabled, isOpen, refetchCart]);
 
-    if (!cart?.items.length && !showTransientHub && !isOpen) {
-        return null;
-    }
+    const visible =
+        enabled &&
+        !isPending &&
+        (Boolean(cart?.items.length) || showTransientHub || isOpen);
 
     return (
-        <HudCard
-            open
-            position="floating"
-            className="static size-12 p-0.5"
-            data-shopping-cart-hud-shell="true"
-        >
-            <Row spacing={2}>
-                <GameModal
-                    open={isOpen}
-                    onOpenChange={(open) => {
-                        if (open) {
-                            track('game_cart_opened', {
-                                item_count: cart?.items.length ?? 0,
-                                total: cart?.total ?? 0,
-                            });
-                        } else {
-                            setCheckoutStep('cart');
-                            setDeliverySummary(null);
+        <HudListItemPresence visible={visible}>
+            <HudCard
+                open
+                position="floating"
+                className="static size-12 p-0.5"
+                data-shopping-cart-hud-shell="true"
+            >
+                <Row spacing={2}>
+                    <GameModal
+                        open={enabled && isOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                track('game_cart_opened', {
+                                    item_count: cart?.items.length ?? 0,
+                                    total: cart?.total ?? 0,
+                                });
+                            } else {
+                                setCheckoutStep('cart');
+                                setDeliverySummary(null);
+                            }
+                            setIsOpen(open);
+                        }}
+                        title={
+                            checkoutStep === 'cart'
+                                ? 'Košara'
+                                : checkoutStep === 'delivery'
+                                  ? 'Dostava'
+                                  : deliverySummary?.mode === 'pickup'
+                                    ? 'Sažetak preuzimanja'
+                                    : 'Sažetak dostave'
                         }
-                        setIsOpen(open);
-                    }}
-                    title={
-                        checkoutStep === 'cart'
-                            ? 'Košara'
-                            : checkoutStep === 'delivery'
-                              ? 'Dostava'
-                              : deliverySummary?.mode === 'pickup'
-                                ? 'Sažetak preuzimanja'
-                                : 'Sažetak dostave'
-                    }
-                    className="md:max-w-2xl"
-                    headerIcon={
-                        checkoutStep === 'delivery' ? (
-                            <Truck className="size-7 shrink-0" />
-                        ) : checkoutStep === 'harvest' ? (
-                            <Calendar className="size-7 shrink-0" />
-                        ) : (
-                            <Image
-                                alt=""
-                                aria-hidden="true"
-                                className="h-auto w-10 max-w-none object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.25)]"
-                                data-shopping-basket-modal-icon="true"
-                                height={40}
-                                src={shoppingBasketIconSrc}
-                                unoptimized
-                                width={40}
-                            />
-                        )
-                    }
-                    hudLayer
-                    trigger={
-                        <IconButton
-                            aria-label={`Košara, broj stavki: ${cart?.items.length ?? 0}`}
-                            title="Košara"
-                            variant="plain"
-                            className="relative size-10 overflow-visible rounded-full"
-                        >
-                            <span className="relative h-6 w-8 shrink-0">
+                        className="md:max-w-2xl"
+                        headerIcon={
+                            checkoutStep === 'delivery' ? (
+                                <Truck className="size-7 shrink-0" />
+                            ) : checkoutStep === 'harvest' ? (
+                                <Calendar className="size-7 shrink-0" />
+                            ) : (
                                 <Image
                                     alt=""
                                     aria-hidden="true"
-                                    className="pointer-events-none absolute left-1/2 top-1/2 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-[60%] object-contain drop-shadow-[0_3px_3px_rgba(31,52,30,0.24)]"
-                                    data-shopping-basket-trigger-icon="true"
-                                    height={45}
-                                    loading="eager"
+                                    className="h-auto w-10 max-w-none object-contain drop-shadow-[0_2px_3px_rgb(15_23_42_/_0.25)]"
+                                    data-shopping-basket-modal-icon="true"
+                                    height={40}
                                     src={shoppingBasketIconSrc}
                                     unoptimized
-                                    width={48}
+                                    width={40}
                                 />
-                            </span>
-                            {Boolean(cart?.items.length) && (
-                                <div
-                                    className={cx(
-                                        'pointer-events-none absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-green-950/30 bg-green-500 px-1.5 text-sm font-semibold leading-none text-green-950 shadow-md',
-                                        (cart?.items.length ?? 0) > 99 &&
-                                            'text-[10px]',
-                                    )}
-                                    aria-hidden="true"
-                                    data-shopping-cart-count-badge="true"
-                                >
-                                    {(cart?.items.length ?? 0) > 99
-                                        ? '99+'
-                                        : cart?.items.length}
-                                </div>
-                            )}
-                        </IconButton>
-                    }
-                >
-                    <ShoppingCart
-                        checkoutStep={checkoutStep}
-                        deliverySummary={deliverySummary}
-                        onCheckoutStepChange={setCheckoutStep}
-                        onDeliverySummaryChange={setDeliverySummary}
-                    />
-                </GameModal>
-            </Row>
-        </HudCard>
+                            )
+                        }
+                        hudLayer
+                        trigger={
+                            <IconButton
+                                aria-label={`Košara, broj stavki: ${cart?.items.length ?? 0}`}
+                                title="Košara"
+                                variant="plain"
+                                className="relative size-10 overflow-visible rounded-full"
+                            >
+                                <span className="relative h-6 w-8 shrink-0">
+                                    <Image
+                                        alt=""
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute left-1/2 top-1/2 h-auto w-12 max-w-none -translate-x-1/2 -translate-y-[60%] object-contain drop-shadow-[0_3px_3px_rgba(31,52,30,0.24)]"
+                                        data-shopping-basket-trigger-icon="true"
+                                        height={45}
+                                        loading="eager"
+                                        src={shoppingBasketIconSrc}
+                                        unoptimized
+                                        width={48}
+                                    />
+                                </span>
+                                {Boolean(cart?.items.length) && (
+                                    <div
+                                        className={cx(
+                                            'pointer-events-none absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-green-950/30 bg-green-500 px-1.5 text-sm font-semibold leading-none text-green-950 shadow-md',
+                                            (cart?.items.length ?? 0) > 99 &&
+                                                'text-[10px]',
+                                        )}
+                                        aria-hidden="true"
+                                        data-shopping-cart-count-badge="true"
+                                    >
+                                        {(cart?.items.length ?? 0) > 99
+                                            ? '99+'
+                                            : cart?.items.length}
+                                    </div>
+                                )}
+                            </IconButton>
+                        }
+                    >
+                        <ShoppingCart
+                            checkoutStep={checkoutStep}
+                            deliverySummary={deliverySummary}
+                            onCheckoutStepChange={setCheckoutStep}
+                            onDeliverySummaryChange={setDeliverySummary}
+                        />
+                    </GameModal>
+                </Row>
+            </HudCard>
+        </HudListItemPresence>
     );
 }
