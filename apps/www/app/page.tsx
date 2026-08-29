@@ -21,6 +21,7 @@ import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
 import { enableLandingFeaturedGardensFlag } from './flags';
 import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
+import { isCiEnvironment } from './isCiEnvironment';
 import { LandingFeaturedGardens } from './LandingFeaturedGardens';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
@@ -250,7 +251,9 @@ function StepsSection() {
 }
 
 export default async function Home() {
-    const featuredGardensEnabled = await enableLandingFeaturedGardensFlag();
+    const featuredGardensEnabled = isCiEnvironment()
+        ? false
+        : await enableLandingFeaturedGardensFlag();
     const featuredGardens = featuredGardensEnabled
         ? await getLandingFeaturedGardens()
         : [];
