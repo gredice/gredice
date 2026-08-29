@@ -1,5 +1,8 @@
 import type { PublicGardenDetail } from '@gredice/game';
 
+export const landingFeaturedGardenLimit = 10;
+export const landingGardenIndicatorLimit = 4;
+
 export type LandingGardenSource = 'featured' | 'owned';
 
 export type LandingGardenOwner = {
@@ -50,4 +53,29 @@ export function getAdjacentLandingGardenIndex(
     }
 
     return (currentIndex + direction + gardenCount) % gardenCount;
+}
+
+export function getVisibleLandingGardenIndexes(
+    currentIndex: number,
+    gardenCount: number,
+    maxVisible = landingGardenIndicatorLimit,
+) {
+    const visibleCount = Math.min(gardenCount, Math.max(0, maxVisible));
+    if (visibleCount < 1) {
+        return [];
+    }
+
+    const safeCurrentIndex = Math.min(
+        Math.max(currentIndex, 0),
+        gardenCount - 1,
+    );
+    const startIndex = Math.min(
+        Math.max(safeCurrentIndex - 1, 0),
+        gardenCount - visibleCount,
+    );
+
+    return Array.from(
+        { length: visibleCount },
+        (_, offset) => startIndex + offset,
+    );
 }

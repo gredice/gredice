@@ -24,6 +24,7 @@ import { KnownPages } from '../src/KnownPages';
 import { LandingPublicGardenViewer } from './LandingPublicGardenViewer';
 import {
     getAdjacentLandingGardenIndex,
+    getVisibleLandingGardenIndexes,
     type LandingGardenCandidate,
     orderLandingGardens,
 } from './landingGardenCarousel';
@@ -103,7 +104,7 @@ export function LandingFeaturedGardens({
         const ownedGardenOwner = user
             ? {
                   avatarUrl: user.avatarUrl ?? null,
-                  displayName: user.displayName ?? user.userName,
+                  displayName: user.displayName ?? 'Korisnik Gredica',
               }
             : null;
 
@@ -228,6 +229,10 @@ export function LandingFeaturedGardens({
               (item) => item.garden.id === displayedGarden.garden.id,
           )
         : -1;
+    const visibleGardenIndexes = getVisibleLandingGardenIndexes(
+        displayedGardenIndex,
+        gardens.length,
+    );
 
     const moveGarden = useCallback(
         (direction: -1 | 1) => {
@@ -398,18 +403,19 @@ export function LandingFeaturedGardens({
                                     Vrtovi korisnika Gredica
                                 </Typography>
                                 <div className="mt-1 flex min-w-0 items-center gap-2 md:mt-3 md:flex-wrap md:gap-2.5">
-                                    <UserAvatar
-                                        avatarUrl={
-                                            displayedGarden.owner?.avatarUrl
-                                        }
-                                        className="shrink-0 ring-2 ring-background"
-                                        displayName={
-                                            displayedGarden.owner
-                                                ?.displayName ??
-                                            'Korisnik Gredica'
-                                        }
-                                        size="sm"
-                                    />
+                                    {displayedGarden.owner ? (
+                                        <UserAvatar
+                                            avatarUrl={
+                                                displayedGarden.owner.avatarUrl
+                                            }
+                                            className="shrink-0 ring-2 ring-background"
+                                            displayName={
+                                                displayedGarden.owner
+                                                    .displayName
+                                            }
+                                            size="sm"
+                                        />
+                                    ) : null}
                                     <Typography
                                         className="min-w-0"
                                         level="body1"
@@ -458,7 +464,12 @@ export function LandingFeaturedGardens({
                                     <Left aria-hidden className="size-4" />
                                 </IconButton>
                                 <div className="flex items-center gap-1.5">
-                                    {gardens.map((item, index) => {
+                                    {visibleGardenIndexes.map((index) => {
+                                        const item = gardens[index];
+                                        if (!item) {
+                                            return null;
+                                        }
+
                                         const selected =
                                             item.garden.id ===
                                             displayedGarden.garden.id;

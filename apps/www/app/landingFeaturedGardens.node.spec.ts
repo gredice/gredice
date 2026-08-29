@@ -4,7 +4,10 @@ import test from 'node:test';
 import type { PublicGardenDetail } from '@gredice/game';
 import {
     getAdjacentLandingGardenIndex,
+    getVisibleLandingGardenIndexes,
     type LandingGardenCandidate,
+    landingFeaturedGardenLimit,
+    landingGardenIndicatorLimit,
     orderLandingGardens,
 } from './landingGardenCarousel.ts';
 
@@ -57,6 +60,16 @@ test('wraps carousel navigation in both directions', () => {
     assert.equal(getAdjacentLandingGardenIndex(3, 4, 1), 0);
     assert.equal(getAdjacentLandingGardenIndex(1, 4, 1), 2);
     assert.equal(getAdjacentLandingGardenIndex(0, 0, 1), -1);
+});
+
+test('keeps the garden indicator strip compact while following the selection', () => {
+    assert.equal(landingFeaturedGardenLimit, 10);
+    assert.equal(landingGardenIndicatorLimit, 4);
+    assert.deepEqual(getVisibleLandingGardenIndexes(0, 3), [0, 1, 2]);
+    assert.deepEqual(getVisibleLandingGardenIndexes(0, 10), [0, 1, 2, 3]);
+    assert.deepEqual(getVisibleLandingGardenIndexes(5, 10), [4, 5, 6, 7]);
+    assert.deepEqual(getVisibleLandingGardenIndexes(9, 10), [6, 7, 8, 9]);
+    assert.deepEqual(getVisibleLandingGardenIndexes(0, 10, 0), []);
 });
 
 test('exposes the landing experiment through managed Vercel flag discovery', () => {

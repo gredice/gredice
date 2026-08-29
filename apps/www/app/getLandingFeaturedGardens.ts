@@ -1,9 +1,10 @@
 import { clientPublic } from '@gredice/client';
 import 'server-only';
-import type { LandingGardenCandidate } from './landingGardenCarousel';
+import {
+    type LandingGardenCandidate,
+    landingFeaturedGardenLimit,
+} from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
-
-const landingFeaturedGardenLimit = 4;
 
 export async function getLandingFeaturedGardens(): Promise<
     LandingGardenCandidate[]
