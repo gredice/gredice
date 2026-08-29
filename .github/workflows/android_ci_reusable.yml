@@ -28,6 +28,11 @@ on:
         required: false
         default: false
         type: boolean
+      compileInstrumentedTests:
+        description: "Compile the app's instrumented Android test APK."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -88,6 +93,11 @@ jobs:
       - name: 🛠️ Lint, test, and build unsigned artifacts
         working-directory: ${{ inputs.path }}
         run: ./gradlew --no-daemon --stacktrace lintRelease testDebugUnitTest assembleDebug bundleRelease
+
+      - name: 🧪 Compile instrumented Android tests
+        if: inputs.compileInstrumentedTests
+        working-directory: ${{ inputs.path }}
+        run: ./gradlew --no-daemon --stacktrace assembleDebugAndroidTest
 
       - name: 📤 Upload unsigned Android artifacts
         uses: actions/upload-artifact@v5.0.0

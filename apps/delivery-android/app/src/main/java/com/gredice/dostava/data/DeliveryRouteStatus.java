@@ -5,5 +5,8 @@ public enum DeliveryRouteStatus {
     LOADING,
     READY,
     EMPTY,
-    ERROR
+    FRESH_OFFLINE,
+    STALE_OFFLINE,
+    ERROR,
+    UNSUPPORTED
 }

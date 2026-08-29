@@ -6,6 +6,9 @@ import com.gredice.dostava.auth.DeliveryNativeApiClient;
 import com.gredice.dostava.auth.EncryptedNativeCredentialStore;
 import com.gredice.dostava.auth.NativeCredentialStore;
 import com.gredice.dostava.auth.NativeSessionManager;
+import com.gredice.dostava.data.EncryptedDeliveryRouteCache;
+import com.gredice.dostava.data.DeliveryRouteTelemetry;
+import com.gredice.dostava.data.LogcatDeliveryRouteTelemetry;
 import com.gredice.dostava.data.NativeDeliveryStopRepository;
 
 import java.util.concurrent.ExecutorService;
@@ -18,6 +21,7 @@ public final class DeliveryNativeServices {
     private final NativeCredentialStore credentialStore;
     private final NativeSessionManager sessionManager;
     private final NativeDeliveryStopRepository stopRepository;
+    private final DeliveryRouteTelemetry routeTelemetry;
     private final ExecutorService executor;
 
     private DeliveryNativeServices(Context context) {
@@ -25,10 +29,14 @@ public final class DeliveryNativeServices {
         DeliveryNativeApiClient apiClient = new DeliveryNativeApiClient();
         sessionManager = new NativeSessionManager(credentialStore, apiClient);
         executor = Executors.newCachedThreadPool();
+        routeTelemetry = new LogcatDeliveryRouteTelemetry();
         stopRepository = new NativeDeliveryStopRepository(
                 sessionManager,
                 apiClient,
-                executor
+                new EncryptedDeliveryRouteCache(context),
+                executor,
+                System::currentTimeMillis,
+                routeTelemetry
         );
     }
 
@@ -53,6 +61,10 @@ public final class DeliveryNativeServices {
 
     public NativeDeliveryStopRepository getStopRepository() {
         return stopRepository;
+    }
+
+    public DeliveryRouteTelemetry getRouteTelemetry() {
+        return routeTelemetry;
     }
 
     public ExecutorService getExecutor() {
