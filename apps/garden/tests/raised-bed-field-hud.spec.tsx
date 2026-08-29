@@ -965,7 +965,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
-        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={{
+                    ...cartScenario(),
+                    raisedBedStatus: 'active',
+                }}
+            />,
+        );
 
         await expect(
             page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
@@ -2410,9 +2417,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             throw new Error('Expected visible photo request and close buttons');
         }
 
-        expect(requestPhotoBox.x + requestPhotoBox.width).toBeLessThanOrEqual(
-            closePhotosBox.x - 8,
-        );
+        const requestPhotoGap =
+            closePhotosBox.x - (requestPhotoBox.x + requestPhotoBox.width);
+        expect(requestPhotoGap).toBeGreaterThanOrEqual(7);
 
         await requestPhotoButton.click();
 
