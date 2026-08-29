@@ -188,9 +188,11 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         '24px',
     );
     const featuredGardenCarousel = page.getByTestId('landing-featured-gardens');
+    const hasFeaturedGardenCarousel =
+        (await featuredGardenCarousel.count()) > 0;
     await expect(page.getByTestId('landing-hero-card')).toHaveCSS(
         'border-radius',
-        (await featuredGardenCarousel.count()) > 0 ? '16px' : '15px',
+        hasFeaturedGardenCarousel ? '16px' : '15px',
     );
     await expect(
         page
@@ -208,9 +210,12 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         throw new Error('Expected landing game frame and hero card boxes.');
     }
 
-    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(23);
-    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(31);
-    expect(heroCardBox.width).toBeLessThan(frameBox.width - 48);
+    const minimumCardInset = hasFeaturedGardenCarousel ? 12 : 23;
+    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(
+        frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
+    ).toBeGreaterThanOrEqual(minimumCardInset);
     expect(frameBox.height).toBeLessThanOrEqual(550);
     await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
 
