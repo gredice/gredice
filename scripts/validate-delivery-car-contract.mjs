@@ -80,6 +80,7 @@ const permissions = [...manifest.matchAll(/<uses-permission android:name="([^"]+
     .sort();
 assert.deepEqual(permissions, [
     "android.permission.INTERNET",
+    "android.permission.POST_NOTIFICATIONS",
     "androidx.car.app.MAP_TEMPLATES",
 ]);
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
@@ -173,6 +174,33 @@ assert.doesNotMatch(navigationHandoffStore, /\.apply\(\)/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
 
+const quickReturnSpec = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/QuickReturnNotificationSpec.java",
+);
+const quickReturnNotifier = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/CarActiveRouteReturnNotifier.java",
+);
+const quickReturnIntent = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/QuickReturnIntent.java",
+);
+assert.match(quickReturnSpec, /CHANNEL_ID = "active-delivery-route"/);
+assert.match(quickReturnSpec, /CHANNEL_NAME = "Aktivna dostava"/);
+assert.match(quickReturnSpec, /TITLE = "Gredice Dostava"/);
+assert.match(quickReturnSpec, /TEXT = "Otvori aktivnu rutu"/);
+assert.match(quickReturnNotifier, /NotificationManagerCompat\.IMPORTANCE_LOW/);
+assert.match(quickReturnNotifier, /CarAppExtender\.Builder/);
+assert.match(quickReturnNotifier, /CarNotificationManager/);
+assert.match(quickReturnNotifier, /CarPendingIntent\.getCarApp/);
+assert.match(quickReturnNotifier, /setOnlyAlertOnce\(true\)/);
+assert.match(quickReturnNotifier, /setSilent\(true\)/);
+assert.match(quickReturnIntent, /DeliveryCarAppService\.class/);
+for (const source of [quickReturnSpec, quickReturnNotifier, quickReturnIntent]) {
+    assert.doesNotMatch(
+        source,
+        /customer|address|latitude|longitude|coordinate|token|routeId|navigationId/i,
+    );
+}
+
 console.log(
-    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, web-associated, and exact-callback verified.",
+    "✅ Delivery Android contract is POI-only, provider-neutral, web-associated, exact-callback verified, and quick-return privacy-safe.",
 );

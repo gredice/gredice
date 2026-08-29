@@ -1,10 +1,14 @@
 package com.gredice.dostava;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -12,12 +16,15 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.NotificationManagerCompat;
 
 import com.gredice.dostava.auth.NativeAuthProtocol;
 import com.gredice.dostava.auth.PairingRequest;
 
 /** Small native pairing/logout shell; operational delivery work remains in the TWA. */
 public final class DeliverySessionActivity extends Activity {
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 4_365;
+
     private DeliveryNativeServices services;
 
     @Override
@@ -62,6 +69,12 @@ public final class DeliverySessionActivity extends Activity {
         content.addView(web, matchWidth(dp(56)));
 
         if (paired) {
+            if (!notificationsEnabled()) {
+                Button quickReturn = button(R.string.native_enable_quick_return);
+                quickReturn.setOnClickListener(view -> enableQuickReturn());
+                content.addView(quickReturn, matchWidth(dp(56)));
+            }
+
             Button logout = button(R.string.native_logout);
             logout.setOnClickListener(view -> {
                 logout.setEnabled(false);
@@ -78,6 +91,39 @@ public final class DeliverySessionActivity extends Activity {
         }
 
         setContentView(content);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) render();
+    }
+
+    private boolean notificationsEnabled() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return false;
+        }
+        return NotificationManagerCompat.from(this).areNotificationsEnabled();
+    }
+
+    private void enableQuickReturn() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                    NOTIFICATION_PERMISSION_REQUEST
+            );
+            return;
+        }
+        startActivity(new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName()));
     }
 
     private void beginPairing() {

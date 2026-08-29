@@ -195,6 +195,18 @@ public final class DeliveryStopsScreenInstrumentedTest {
         assertTrue(repository.refreshCount >= 4);
     }
 
+    @Test
+    public void quickReturnRequestsAnImmediateRootRefresh() {
+        FakeRepository repository = new FakeRepository(
+                readyState(DeliveryRouteStatus.READY)
+        );
+        ScreenController controller = screen(repository);
+
+        ((DeliveryStopsScreen) controller.getScreen()).refreshFromQuickReturn();
+
+        assertEquals(1, repository.refreshCount);
+    }
+
     private ScreenController screen(FakeRepository repository) {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         TestCarContext carContext = TestCarContext.createCarContext(context);
@@ -307,6 +319,12 @@ public final class DeliveryStopsScreenInstrumentedTest {
                 String navigationId,
                 String kind,
                 String resultCode
+        ) { }
+
+        @Override
+        public void recordQuickReturnNotification(
+                QuickReturnEvent event,
+                String errorCode
         ) { }
     }
 }
