@@ -446,10 +446,6 @@ test('logged-in landing promotes the owned garden and links it to the game', asy
     await page.goto('/');
 
     const featuredGardens = page.getByTestId('landing-featured-gardens');
-    test.skip(
-        (await featuredGardens.count()) === 0,
-        'Featured garden data is unavailable in this test environment.',
-    );
     await expect(featuredGardens).toHaveAttribute('data-garden-id', '37', {
         timeout: 15_000,
     });
