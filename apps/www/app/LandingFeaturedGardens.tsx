@@ -8,7 +8,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { IconButton } from '@gredice/ui/IconButton';
 import { Left, Navigate, Pause, Play } from '@gredice/ui/icons';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
-import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import { UserAvatar } from '@gredice/ui/UserAvatar';
 import { cx } from '@gredice/ui/utils';
@@ -385,23 +384,27 @@ export function LandingFeaturedGardens({
                 />
             </div>
 
-            <div className="pointer-events-none absolute top-8 right-8 left-8 z-10 sm:top-10 sm:right-10 sm:left-10 md:top-10 lg:top-12 lg:right-16 lg:left-16">
-                <div className="flex items-start justify-between gap-4">
-                    <Card
-                        className="pointer-events-auto w-fit max-w-[21rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 bg-card/95 backdrop-blur-sm sm:max-w-[26rem]"
-                        data-testid="landing-hero-card"
-                    >
-                        <CardContent noHeader className="p-5 sm:p-6">
-                            <Stack spacing={3}>
-                                <Typography level="h3" component="h1">
+            <div className="pointer-events-none absolute right-3 bottom-3 left-3 z-10 md:top-10 md:right-10 md:bottom-auto md:left-10 lg:top-12 lg:right-16 lg:left-16">
+                <Card
+                    className="pointer-events-auto w-full rounded-2xl border-tertiary/70 bg-card/90 shadow-lg backdrop-blur-md md:w-fit md:max-w-[26rem] md:rounded-[var(--landing-card-radius)] md:border-tertiary md:border-b-4 md:bg-card/95 md:shadow-none"
+                    data-testid="landing-hero-card"
+                >
+                    <CardContent noHeader className="p-3 md:p-6">
+                        <div className="flex items-center gap-3 md:block">
+                            <div className="min-w-0 flex-1">
+                                <Typography
+                                    className="text-xs font-medium tracking-wide text-tertiary-foreground uppercase md:text-3xl md:font-normal md:tracking-normal md:text-foreground md:normal-case"
+                                    component="h1"
+                                    level="h3"
+                                >
                                     Vrtovi korisnika Gredica
                                 </Typography>
-                                <div className="flex flex-wrap items-center gap-2.5">
+                                <div className="mt-1 flex min-w-0 items-center gap-2 md:mt-3 md:flex-wrap md:gap-2.5">
                                     <UserAvatar
                                         avatarUrl={
                                             displayedGarden.owner?.avatarUrl
                                         }
-                                        className="ring-2 ring-background"
+                                        className="shrink-0 ring-2 ring-background"
                                         displayName={
                                             displayedGarden.owner
                                                 ?.displayName ??
@@ -409,11 +412,17 @@ export function LandingFeaturedGardens({
                                         }
                                         size="sm"
                                     />
-                                    <Typography level="body1" semiBold>
+                                    <Typography
+                                        className="min-w-0"
+                                        level="body1"
+                                        noWrap
+                                        semiBold
+                                    >
                                         {displayedGarden.garden.name}
                                     </Typography>
                                     {displayedGarden.source === 'owned' ? (
                                         <Chip
+                                            className="shrink-0"
                                             color="success"
                                             size="sm"
                                             variant="soft"
@@ -422,141 +431,145 @@ export function LandingFeaturedGardens({
                                         </Chip>
                                     ) : null}
                                 </div>
+                            </div>
 
-                                {gardens.length > 1 ? (
-                                    <fieldset className="m-0 flex items-center gap-2 border-0 p-0">
-                                        <legend className="sr-only">
-                                            Odaberi vrt
-                                        </legend>
-                                        <IconButton
-                                            aria-label="Prethodni vrt"
-                                            className="rounded-full"
-                                            disabled={!sceneVisible}
-                                            onClick={() => moveGarden(-1)}
-                                            size="sm"
-                                            variant="plain"
-                                        >
-                                            <Left
-                                                aria-hidden
-                                                className="size-4"
-                                            />
-                                        </IconButton>
-                                        <div className="flex items-center gap-1.5">
-                                            {gardens.map((item, index) => {
-                                                const selected =
-                                                    item.garden.id ===
-                                                    displayedGarden.garden.id;
-                                                return (
-                                                    <button
-                                                        aria-current={
-                                                            selected
-                                                                ? 'true'
-                                                                : undefined
-                                                        }
-                                                        aria-label={`Prikaži vrt ${item.garden.name}`}
-                                                        className={cx(
-                                                            'relative h-2.5 overflow-hidden rounded-full border border-primary/40 transition-[width,background-color] motion-reduce:transition-none',
-                                                            selected
-                                                                ? 'w-8 bg-background/80'
-                                                                : 'w-2.5 bg-background/80 hover:bg-primary/30',
-                                                        )}
-                                                        disabled={
-                                                            !sceneVisible &&
-                                                            !selected
-                                                        }
-                                                        key={item.garden.id}
-                                                        onClick={() =>
-                                                            showGarden(
-                                                                item.garden.id,
-                                                            )
-                                                        }
-                                                        title={`${(index + 1).toString()}. ${item.garden.name}`}
-                                                        type="button"
-                                                    >
-                                                        {selected ? (
-                                                            <span
-                                                                aria-hidden
-                                                                className={cx(
-                                                                    'absolute inset-0 origin-left bg-primary',
-                                                                    prefersReducedMotion
-                                                                        ? 'scale-x-100'
-                                                                        : 'animate-landing-garden-progress',
-                                                                )}
-                                                                data-autoplay-state={
-                                                                    autoplayRunning
-                                                                        ? 'running'
-                                                                        : 'paused'
-                                                                }
-                                                                data-testid="landing-garden-progress"
-                                                                style={
-                                                                    prefersReducedMotion
-                                                                        ? undefined
-                                                                        : {
-                                                                              animationDuration: `${autoplayDelayMs.toString()}ms`,
-                                                                              animationPlayState:
-                                                                                  autoplayRunning
-                                                                                      ? 'running'
-                                                                                      : 'paused',
-                                                                          }
-                                                                }
-                                                            />
-                                                        ) : null}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <IconButton
-                                            aria-label="Sljedeći vrt"
-                                            className="rounded-full"
-                                            disabled={!sceneVisible}
-                                            onClick={() => moveGarden(1)}
-                                            size="sm"
-                                            variant="plain"
-                                        >
-                                            <Navigate
-                                                aria-hidden
-                                                className="size-4"
-                                            />
-                                        </IconButton>
-                                        {!prefersReducedMotion ? (
-                                            <IconButton
-                                                aria-label={
-                                                    autoplayPaused
-                                                        ? 'Pokreni automatsku izmjenu vrtova'
-                                                        : 'Zaustavi automatsku izmjenu vrtova'
+                            <NavigatingButton
+                                className="shrink-0 rounded-full bg-background/95 text-primary shadow-sm md:hidden"
+                                color="neutral"
+                                href={selectedGardenHref}
+                                size="xs"
+                                variant="outlined"
+                            >
+                                {displayedGarden.source === 'owned'
+                                    ? 'Otvori'
+                                    : 'Pogledaj'}
+                            </NavigatingButton>
+                        </div>
+
+                        {gardens.length > 1 ? (
+                            <fieldset className="m-0 mt-2 flex items-center justify-center gap-2 border-0 p-0 md:mt-3 md:justify-start">
+                                <legend className="sr-only">Odaberi vrt</legend>
+                                <IconButton
+                                    aria-label="Prethodni vrt"
+                                    className="rounded-full"
+                                    disabled={!sceneVisible}
+                                    onClick={() => moveGarden(-1)}
+                                    size="sm"
+                                    variant="plain"
+                                >
+                                    <Left aria-hidden className="size-4" />
+                                </IconButton>
+                                <div className="flex items-center gap-1.5">
+                                    {gardens.map((item, index) => {
+                                        const selected =
+                                            item.garden.id ===
+                                            displayedGarden.garden.id;
+                                        return (
+                                            <button
+                                                aria-current={
+                                                    selected
+                                                        ? 'true'
+                                                        : undefined
                                                 }
-                                                className="rounded-full"
-                                                onClick={() =>
-                                                    setAutoplayPaused(
-                                                        (paused) => !paused,
-                                                    )
-                                                }
-                                                size="sm"
-                                                variant="plain"
-                                            >
-                                                {autoplayPaused ? (
-                                                    <Play
-                                                        aria-hidden
-                                                        className="size-4"
-                                                    />
-                                                ) : (
-                                                    <Pause
-                                                        aria-hidden
-                                                        className="size-4"
-                                                    />
+                                                aria-label={`Prikaži vrt ${item.garden.name}`}
+                                                className={cx(
+                                                    'relative h-2.5 overflow-hidden rounded-full border border-primary/40 transition-[width,background-color] motion-reduce:transition-none',
+                                                    selected
+                                                        ? 'w-8 bg-background/80'
+                                                        : 'w-2.5 bg-background/80 hover:bg-primary/30',
                                                 )}
-                                            </IconButton>
-                                        ) : null}
-                                    </fieldset>
+                                                disabled={
+                                                    !sceneVisible && !selected
+                                                }
+                                                key={item.garden.id}
+                                                onClick={() =>
+                                                    showGarden(item.garden.id)
+                                                }
+                                                title={`${(index + 1).toString()}. ${item.garden.name}`}
+                                                type="button"
+                                            >
+                                                {selected ? (
+                                                    <span
+                                                        aria-hidden
+                                                        className={cx(
+                                                            'absolute inset-0 origin-left bg-primary',
+                                                            prefersReducedMotion
+                                                                ? 'scale-x-100'
+                                                                : 'animate-landing-garden-progress',
+                                                        )}
+                                                        data-autoplay-state={
+                                                            autoplayRunning
+                                                                ? 'running'
+                                                                : 'paused'
+                                                        }
+                                                        data-testid="landing-garden-progress"
+                                                        style={
+                                                            prefersReducedMotion
+                                                                ? undefined
+                                                                : {
+                                                                      animationDuration: `${autoplayDelayMs.toString()}ms`,
+                                                                      animationPlayState:
+                                                                          autoplayRunning
+                                                                              ? 'running'
+                                                                              : 'paused',
+                                                                  }
+                                                        }
+                                                    />
+                                                ) : null}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <IconButton
+                                    aria-label="Sljedeći vrt"
+                                    className="rounded-full"
+                                    disabled={!sceneVisible}
+                                    onClick={() => moveGarden(1)}
+                                    size="sm"
+                                    variant="plain"
+                                >
+                                    <Navigate aria-hidden className="size-4" />
+                                </IconButton>
+                                {!prefersReducedMotion ? (
+                                    <IconButton
+                                        aria-label={
+                                            autoplayPaused
+                                                ? 'Pokreni automatsku izmjenu vrtova'
+                                                : 'Zaustavi automatsku izmjenu vrtova'
+                                        }
+                                        className="rounded-full"
+                                        onClick={() =>
+                                            setAutoplayPaused(
+                                                (paused) => !paused,
+                                            )
+                                        }
+                                        size="sm"
+                                        variant="plain"
+                                    >
+                                        {autoplayPaused ? (
+                                            <Play
+                                                aria-hidden
+                                                className="size-4"
+                                            />
+                                        ) : (
+                                            <Pause
+                                                aria-hidden
+                                                className="size-4"
+                                            />
+                                        )}
+                                    </IconButton>
                                 ) : null}
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                    <WinterModeToggle />
-                </div>
+                            </fieldset>
+                        ) : null}
+                    </CardContent>
+                </Card>
             </div>
 
-            <div className="pointer-events-none absolute right-5 bottom-5 left-5 z-10 flex justify-center sm:right-8 sm:bottom-8 sm:left-auto">
+            <div className="pointer-events-auto absolute top-3 right-3 z-10 md:top-10 md:right-10 lg:top-12 lg:right-16">
+                <WinterModeToggle />
+            </div>
+
+            <div className="pointer-events-none absolute right-8 bottom-8 z-10 hidden md:flex">
                 <NavigatingButton
                     className="pointer-events-auto rounded-full bg-background/95 text-primary shadow-lg backdrop-blur-sm"
                     color="neutral"
