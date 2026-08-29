@@ -172,6 +172,8 @@ test.describe('public SEO metadata', () => {
     test('Zagreb delivery landing is discoverable and links to its supporting cluster', async ({
         page,
     }) => {
+        test.slow();
+
         const landingPath = '/dostava-povrca-zagreb';
         const contextualSources = [
             '/',

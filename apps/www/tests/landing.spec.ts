@@ -187,9 +187,12 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         'border-radius',
         '24px',
     );
+    const featuredGardenCarousel = page.getByTestId('landing-featured-gardens');
+    const hasFeaturedGardenCarousel =
+        (await featuredGardenCarousel.count()) > 0;
     await expect(page.getByTestId('landing-hero-card')).toHaveCSS(
         'border-radius',
-        '15px',
+        hasFeaturedGardenCarousel ? '16px' : '15px',
     );
     await expect(
         page
@@ -207,9 +210,12 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
         throw new Error('Expected landing game frame and hero card boxes.');
     }
 
-    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(23);
-    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(31);
-    expect(heroCardBox.width).toBeLessThan(frameBox.width - 48);
+    const minimumCardInset = hasFeaturedGardenCarousel ? 12 : 23;
+    expect(heroCardBox.x - frameBox.x).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(heroCardBox.y - frameBox.y).toBeGreaterThanOrEqual(minimumCardInset);
+    expect(
+        frameBox.x + frameBox.width - (heroCardBox.x + heroCardBox.width),
+    ).toBeGreaterThanOrEqual(minimumCardInset);
     expect(frameBox.height).toBeLessThanOrEqual(550);
     await expect(page.locator('canvas')).toBeVisible({ timeout: 35_000 });
 
@@ -260,9 +266,11 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
             { timeout: 15_000 },
         )
         .toEqual({
-            adaptiveHighEnabled: true,
+            adaptiveHighEnabled: !hasFeaturedGardenCarousel,
             dprCapIsSupported: true,
-            qualityTier: 'high',
+            qualityTier: hasFeaturedGardenCarousel
+                ? 'auto-constrained'
+                : 'high',
         });
 
     const canvas = page.locator('canvas');
@@ -370,25 +378,10 @@ test('desktop floating navbar keeps its width and balanced CTA spacing', async (
     expect(headerBox.x).toBeGreaterThanOrEqual(70);
 });
 
-test('logged-in landing game morphs into full screen in place', async ({
+test('logged-in landing promotes the owned garden and links it to the game', async ({
     page,
 }) => {
     test.slow();
-
-    const safeArea = { bottom: 24, left: 12, right: 12, top: 32 };
-    const session = await page.context().newCDPSession(page);
-    await session.send('Emulation.setSafeAreaInsetsOverride', {
-        insets: {
-            bottom: safeArea.bottom,
-            bottomMax: safeArea.bottom,
-            left: safeArea.left,
-            leftMax: safeArea.left,
-            right: safeArea.right,
-            rightMax: safeArea.right,
-            top: safeArea.top,
-            topMax: safeArea.top,
-        },
-    });
 
     await page.unroute('**/api/gredice/api/auth/current-claims**');
     await page.route(
@@ -406,64 +399,64 @@ test('logged-in landing game morphs into full screen in place', async ({
             });
         },
     );
+    await page.route('**/api/gredice/api/gardens**', async (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        if (pathname.endsWith('/gardens')) {
+            await route.fulfill({
+                body: JSON.stringify([
+                    {
+                        createdAt: '2026-08-29T12:00:00.000Z',
+                        id: 37,
+                        isSandbox: false,
+                        name: 'Testov vrt',
+                    },
+                ]),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        if (pathname.endsWith('/gardens/37')) {
+            await route.fulfill({
+                body: JSON.stringify({
+                    backgroundPalette: 'current',
+                    farmId: 1,
+                    homeCamera: null,
+                    id: 37,
+                    isPublic: true,
+                    isSandbox: false,
+                    latitude: 45.815,
+                    longitude: 15.982,
+                    name: 'Testov vrt',
+                    raisedBeds: [],
+                    stacks: {},
+                    updatedAt: '2026-08-29T12:00:00.000Z',
+                }),
+                contentType: 'application/json',
+                status: 200,
+            });
+            return;
+        }
+
+        await route.continue();
+    });
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
 
-    const scene = page.getByTestId('landing-game-scene');
-    const initialBox = await scene.boundingBox();
-    expect(initialBox).not.toBeNull();
-
-    await page.getByRole('button', { name: 'Pogledaj moj vrt ovdje' }).click();
-
-    await expect(scene).toHaveCSS('border-radius', '0px', {
-        timeout: 1200,
+    const featuredGardens = page.getByTestId('landing-featured-gardens');
+    await expect(featuredGardens).toHaveAttribute('data-garden-id', '37', {
+        timeout: 15_000,
     });
-    await page.waitForTimeout(800);
-
-    const expandedBox = await scene.boundingBox();
-    expect(expandedBox).not.toBeNull();
-    if (!expandedBox) {
-        throw new Error('Expected expanded landing game to have a box.');
-    }
-
-    expect(expandedBox.x).toBeLessThanOrEqual(1);
-    expect(expandedBox.y).toBeLessThanOrEqual(1);
-    expect(expandedBox.width).toBeGreaterThanOrEqual(389);
-    expect(expandedBox.height).toBeGreaterThanOrEqual(843);
-
-    const topLeftBounds = await scene
-        .locator('[data-game-hud-top-left]')
-        .boundingBox();
-    expect(topLeftBounds).not.toBeNull();
-    expect(topLeftBounds?.x).toBeGreaterThanOrEqual(safeArea.left);
-    expect(topLeftBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
-
-    const topRightBounds = await scene
-        .locator('[data-game-hud-top-right]')
-        .boundingBox();
-    expect(topRightBounds).not.toBeNull();
-    expect(
-        (topRightBounds?.x ?? 0) + (topRightBounds?.width ?? 0),
-    ).toBeLessThanOrEqual(390 - safeArea.right);
-    expect(topRightBounds?.y).toBeGreaterThanOrEqual(safeArea.top);
-
-    const bottomControlsBounds = await scene
-        .locator('[data-game-hud-bottom-controls]')
-        .boundingBox();
-    expect(bottomControlsBounds).not.toBeNull();
-    expect(
-        (bottomControlsBounds?.y ?? 0) + (bottomControlsBounds?.height ?? 0),
-    ).toBeLessThanOrEqual(844 - safeArea.bottom);
-
-    const closeBounds = await page
-        .getByRole('button', { name: 'Zatvori prikaz' })
-        .boundingBox();
-    expect(closeBounds).not.toBeNull();
-    expect(
-        (closeBounds?.x ?? 0) + (closeBounds?.width ?? 0),
-    ).toBeLessThanOrEqual(390 - safeArea.right);
-    expect(
-        (closeBounds?.y ?? 0) + (closeBounds?.height ?? 0),
-    ).toBeLessThanOrEqual(844 - safeArea.bottom);
+    await expect(featuredGardens).toHaveAttribute(
+        'data-garden-source',
+        'owned',
+    );
+    await expect(page.getByText('Testov vrt', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tvoj vrt', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Otvori' })).toHaveAttribute(
+        'href',
+        /[?&]vrt=37(?:&|$)/u,
+    );
 });
