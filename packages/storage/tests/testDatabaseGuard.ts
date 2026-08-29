@@ -60,6 +60,7 @@ function parsePostgresDatabaseName(connectionString: string) {
 
     return {
         databaseName: decodeURIComponent(url.pathname.slice(1)),
+        databaseTarget: `${url.hostname}:${url.port || '5432'}${url.pathname}`,
         hostname: url.hostname,
     };
 }
@@ -96,7 +97,7 @@ export function assertDisposableStorageTestDatabase(
         return;
     }
 
-    const { databaseName, hostname } =
+    const { databaseName, databaseTarget, hostname } =
         parsePostgresDatabaseName(connectionString);
     if (provider === 'docker') {
         if (hostname !== '127.0.0.1' || databaseName !== 'gredice_test') {
@@ -112,7 +113,7 @@ export function assertDisposableStorageTestDatabase(
         assertCurrentStorageTestDatabaseRun(
             environment,
             provider,
-            environment.GREDICE_TEST_DB_CONTAINER,
+            `${environment.GREDICE_TEST_DB_CONTAINER}:${databaseTarget}`,
         );
         return;
     }
@@ -130,7 +131,7 @@ export function assertDisposableStorageTestDatabase(
         assertCurrentStorageTestDatabaseRun(
             environment,
             provider,
-            expectedDatabaseName,
+            databaseTarget,
         );
         return;
     }

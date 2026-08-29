@@ -35,7 +35,7 @@ test('assertDisposableStorageTestDatabase accepts generated test databases', () 
         assertDisposableStorageTestDatabase({
             ...createRunMarker(
                 'docker',
-                'gredice-storage-test-db-worktree-run',
+                'gredice-storage-test-db-worktree-run:127.0.0.1:5432/gredice_test',
             ),
             GREDICE_TEST_DB_CONTAINER: 'gredice-storage-test-db-worktree-run',
             GREDICE_TEST_DB_PROVIDER: 'docker',
@@ -46,7 +46,10 @@ test('assertDisposableStorageTestDatabase accepts generated test databases', () 
     );
     assert.doesNotThrow(() =>
         assertDisposableStorageTestDatabase({
-            ...createRunMarker('fallback', 'gredice_test_worktree_run'),
+            ...createRunMarker(
+                'fallback',
+                'database.example.test:5432/gredice_test_worktree_run',
+            ),
             GREDICE_TEST_DB_NAME: 'gredice_test_worktree_run',
             GREDICE_TEST_DB_PROVIDER: 'fallback',
             POSTGRES_URL:
@@ -99,5 +102,24 @@ test('assertDisposableStorageTestDatabase rejects a matching name without the cu
                 TEST_ENV: '1',
             }),
         /setup-owned database marker/,
+    );
+});
+
+test('assertDisposableStorageTestDatabase rejects a Docker target whose port differs from the setup marker', () => {
+    assert.throws(
+        () =>
+            assertDisposableStorageTestDatabase({
+                ...createRunMarker(
+                    'docker',
+                    'gredice-storage-test-db-worktree-run:127.0.0.1:5432/gredice_test',
+                ),
+                GREDICE_TEST_DB_CONTAINER:
+                    'gredice-storage-test-db-worktree-run',
+                GREDICE_TEST_DB_PROVIDER: 'docker',
+                POSTGRES_URL:
+                    'postgres://postgres:postgres@127.0.0.1:5433/gredice_test',
+                TEST_ENV: '1',
+            }),
+        /does not match this test run/,
     );
 });
