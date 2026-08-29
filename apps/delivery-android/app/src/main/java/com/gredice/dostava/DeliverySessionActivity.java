@@ -16,10 +16,12 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.browser.customtabs.CustomTabsIntent;
+import androidx.core.app.NotificationChannelCompat;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.gredice.dostava.auth.NativeAuthProtocol;
 import com.gredice.dostava.auth.PairingRequest;
+import com.gredice.dostava.navigation.QuickReturnNotificationSpec;
 
 /** Small native pairing/logout shell; operational delivery work remains in the TWA. */
 public final class DeliverySessionActivity extends Activity {
@@ -109,7 +111,13 @@ public final class DeliverySessionActivity extends Activity {
                 != PackageManager.PERMISSION_GRANTED) {
             return false;
         }
-        return NotificationManagerCompat.from(this).areNotificationsEnabled();
+        NotificationManagerCompat manager = NotificationManagerCompat.from(this);
+        if (!manager.areNotificationsEnabled()) return false;
+        NotificationChannelCompat channel = manager.getNotificationChannelCompat(
+                QuickReturnNotificationSpec.CHANNEL_ID
+        );
+        return channel == null
+                || channel.getImportance() != NotificationManagerCompat.IMPORTANCE_NONE;
     }
 
     private void enableQuickReturn() {

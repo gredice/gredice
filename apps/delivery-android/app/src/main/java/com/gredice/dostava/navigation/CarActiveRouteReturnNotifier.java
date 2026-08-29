@@ -60,7 +60,10 @@ public final class CarActiveRouteReturnNotifier
     }
 
     @Override
-    public PostResult postOrUpdate(String sessionKey, String activeRunKey) {
+    public synchronized PostResult postOrUpdate(
+            String sessionKey,
+            String activeRunKey
+    ) {
         if (!notificationsEnabled()) return PostResult.DISABLED;
 
         stateStore.markActive(sessionKey, activeRunKey);
@@ -77,7 +80,7 @@ public final class CarActiveRouteReturnNotifier
     }
 
     @Override
-    public boolean matchesActiveIdentity(
+    public synchronized boolean matchesActiveIdentity(
             String sessionKey,
             String activeRunKey
     ) {
@@ -85,7 +88,7 @@ public final class CarActiveRouteReturnNotifier
     }
 
     @Override
-    public boolean cancel() {
+    public synchronized boolean cancel() {
         boolean wasActive = stateStore.isActive();
         notificationManager.cancel(QuickReturnNotificationSpec.NOTIFICATION_ID);
         if (wasActive) stateStore.clear();

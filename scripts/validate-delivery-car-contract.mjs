@@ -193,6 +193,8 @@ assert.match(quickReturnNotifier, /CarNotificationManager/);
 assert.match(quickReturnNotifier, /CarPendingIntent\.getCarApp/);
 assert.match(quickReturnNotifier, /setOnlyAlertOnce\(true\)/);
 assert.match(quickReturnNotifier, /setSilent\(true\)/);
+assert.match(quickReturnNotifier, /public synchronized PostResult postOrUpdate/);
+assert.match(quickReturnNotifier, /public synchronized boolean cancel/);
 assert.match(quickReturnIntent, /DeliveryCarAppService\.class/);
 for (const source of [quickReturnSpec, quickReturnNotifier, quickReturnIntent]) {
     assert.doesNotMatch(
