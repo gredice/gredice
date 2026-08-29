@@ -10,6 +10,8 @@ import com.gredice.dostava.data.EncryptedDeliveryRouteCache;
 import com.gredice.dostava.data.DeliveryRouteTelemetry;
 import com.gredice.dostava.data.LogcatDeliveryRouteTelemetry;
 import com.gredice.dostava.data.NativeDeliveryStopRepository;
+import com.gredice.dostava.navigation.ActiveRouteReturnController;
+import com.gredice.dostava.navigation.CarActiveRouteReturnNotifier;
 import com.gredice.dostava.navigation.NavigationHandoffStore;
 import com.gredice.dostava.navigation.SharedPreferencesNavigationHandoffStore;
 
@@ -25,6 +27,7 @@ public final class DeliveryNativeServices {
     private final NativeDeliveryStopRepository stopRepository;
     private final DeliveryRouteTelemetry routeTelemetry;
     private final NavigationHandoffStore navigationHandoffStore;
+    private final ActiveRouteReturnController quickReturnController;
     private final ExecutorService executor;
 
     private DeliveryNativeServices(Context context) {
@@ -34,6 +37,11 @@ public final class DeliveryNativeServices {
         executor = Executors.newCachedThreadPool();
         routeTelemetry = new LogcatDeliveryRouteTelemetry();
         navigationHandoffStore = new SharedPreferencesNavigationHandoffStore(context);
+        quickReturnController = new ActiveRouteReturnController(
+                new CarActiveRouteReturnNotifier(context),
+                routeTelemetry
+        );
+        quickReturnController.initialize();
         stopRepository = new NativeDeliveryStopRepository(
                 sessionManager,
                 apiClient,
@@ -75,11 +83,16 @@ public final class DeliveryNativeServices {
         return navigationHandoffStore;
     }
 
+    public ActiveRouteReturnController getQuickReturnController() {
+        return quickReturnController;
+    }
+
     public ExecutorService getExecutor() {
         return executor;
     }
 
     public void logout() {
+        quickReturnController.cancelForLogout();
         sessionManager.logout();
         stopRepository.clear();
         navigationHandoffStore.clear();

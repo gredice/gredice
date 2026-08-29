@@ -26,4 +26,10 @@ public final class NoOpDeliveryRouteTelemetry implements DeliveryRouteTelemetry 
             String kind,
             String resultCode
     ) { }
+
+    @Override
+    public void recordQuickReturnNotification(
+            QuickReturnEvent event,
+            String errorCode
+    ) { }
 }

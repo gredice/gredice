@@ -35,6 +35,8 @@ import com.gredice.dostava.data.DeliveryStop;
 import com.gredice.dostava.data.DeliveryStopRepository;
 import com.gredice.dostava.data.DeliveryRouteStatus;
 import com.gredice.dostava.data.NoOpDeliveryRouteTelemetry;
+import com.gredice.dostava.navigation.ActiveRouteReturnController;
+import com.gredice.dostava.navigation.ActiveRouteReturnNotifier;
 import com.gredice.dostava.navigation.NavigationHandoffController;
 import com.gredice.dostava.navigation.NavigationHandoffStore;
 import com.gredice.dostava.navigation.NavigationTarget;
@@ -67,7 +69,11 @@ final class DeliveryStopsScreen extends Screen {
                 carContext,
                 stopRepository,
                 telemetry,
-                NavigationHandoffStore.NO_OP
+                NavigationHandoffStore.NO_OP,
+                new ActiveRouteReturnController(
+                        ActiveRouteReturnNotifier.NO_OP,
+                        telemetry
+                )
         );
     }
 
@@ -77,12 +83,32 @@ final class DeliveryStopsScreen extends Screen {
             @NonNull DeliveryRouteTelemetry telemetry,
             @NonNull NavigationHandoffStore navigationHandoffStore
     ) {
+        this(
+                carContext,
+                stopRepository,
+                telemetry,
+                navigationHandoffStore,
+                new ActiveRouteReturnController(
+                        ActiveRouteReturnNotifier.NO_OP,
+                        telemetry
+                )
+        );
+    }
+
+    DeliveryStopsScreen(
+            @NonNull CarContext carContext,
+            @NonNull DeliveryStopRepository stopRepository,
+            @NonNull DeliveryRouteTelemetry telemetry,
+            @NonNull NavigationHandoffStore navigationHandoffStore,
+            @NonNull ActiveRouteReturnController quickReturnController
+    ) {
         super(carContext);
         this.stopRepository = stopRepository;
         this.telemetry = telemetry;
         navigationHandoffController = new NavigationHandoffController(
                 navigationHandoffStore,
-                telemetry
+                telemetry,
+                quickReturnController
         );
         refreshController = new DeliveryRouteRefreshController(
                 stopRepository,
@@ -116,6 +142,10 @@ final class DeliveryStopsScreen extends Screen {
                 refreshController.onDestroy();
             }
         });
+    }
+
+    void refreshFromQuickReturn() {
+        refreshController.refreshNow();
     }
 
     @Override

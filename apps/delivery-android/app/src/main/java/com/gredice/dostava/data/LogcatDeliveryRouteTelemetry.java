@@ -56,6 +56,16 @@ public final class LogcatDeliveryRouteTelemetry implements DeliveryRouteTelemetr
                 + " result=" + safeErrorCode(resultCode));
     }
 
+    @Override
+    public void recordQuickReturnNotification(
+            QuickReturnEvent event,
+            String errorCode
+    ) {
+        Log.i(TAG, "event=quick_return_notification"
+                + " action=" + event.name()
+                + " error=" + safeErrorCode(errorCode));
+    }
+
     private String safeErrorCode(String errorCode) {
         return errorCode != null && SAFE_ERROR_CODE.matcher(errorCode).matches()
                 ? errorCode

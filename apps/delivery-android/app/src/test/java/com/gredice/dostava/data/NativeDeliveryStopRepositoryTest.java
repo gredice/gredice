@@ -300,6 +300,12 @@ public final class NativeDeliveryStopRepositoryTest {
                 String kind,
                 String resultCode
         ) { }
+
+        @Override
+        public void recordQuickReturnNotification(
+                QuickReturnEvent event,
+                String errorCode
+        ) { }
     }
 
     private static final class FakeRouteApi implements DeliveryRouteApi {

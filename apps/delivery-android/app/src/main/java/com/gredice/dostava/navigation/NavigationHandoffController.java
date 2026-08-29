@@ -11,12 +11,34 @@ public final class NavigationHandoffController {
     private final NavigationLaunchGate launchGate;
     private final NavigationHandoffStore store;
     private final DeliveryRouteTelemetry telemetry;
+    private final ActiveRouteReturnController quickReturnController;
 
     public NavigationHandoffController(
             NavigationHandoffStore store,
             DeliveryRouteTelemetry telemetry
     ) {
-        this(new NavigationLaunchGate(), store, telemetry);
+        this(
+                new NavigationLaunchGate(),
+                store,
+                telemetry,
+                new ActiveRouteReturnController(
+                        ActiveRouteReturnNotifier.NO_OP,
+                        telemetry
+                )
+        );
+    }
+
+    public NavigationHandoffController(
+            NavigationHandoffStore store,
+            DeliveryRouteTelemetry telemetry,
+            ActiveRouteReturnController quickReturnController
+    ) {
+        this(
+                new NavigationLaunchGate(),
+                store,
+                telemetry,
+                quickReturnController
+        );
     }
 
     NavigationHandoffController(
@@ -24,9 +46,30 @@ public final class NavigationHandoffController {
             NavigationHandoffStore store,
             DeliveryRouteTelemetry telemetry
     ) {
+        this(
+                launchGate,
+                store,
+                telemetry,
+                new ActiveRouteReturnController(
+                        ActiveRouteReturnNotifier.NO_OP,
+                        telemetry
+                )
+        );
+    }
+
+    NavigationHandoffController(
+            NavigationLaunchGate launchGate,
+            NavigationHandoffStore store,
+            DeliveryRouteTelemetry telemetry,
+            ActiveRouteReturnController quickReturnController
+    ) {
         this.launchGate = Objects.requireNonNull(launchGate, "launchGate");
         this.store = Objects.requireNonNull(store, "store");
         this.telemetry = Objects.requireNonNull(telemetry, "telemetry");
+        this.quickReturnController = Objects.requireNonNull(
+                quickReturnController,
+                "quickReturnController"
+        );
     }
 
     public Result launch(
@@ -48,12 +91,15 @@ public final class NavigationHandoffController {
             );
             return record(target, launched ? Result.LAUNCHED : Result.SUPPRESSED);
         } catch (LaunchFailure failure) {
+            quickReturnController.cancelAfterFailedNavigation();
             clearSafely();
             return record(target, failure.getResult());
         } catch (IllegalArgumentException failure) {
+            quickReturnController.cancelAfterFailedNavigation();
             clearSafely();
             return record(target, Result.MALFORMED_URI);
         } catch (RuntimeException failure) {
+            quickReturnController.cancelAfterFailedNavigation();
             clearSafely();
             return record(target, Result.UNEXPECTED_FAILURE);
         }
@@ -62,6 +108,8 @@ public final class NavigationHandoffController {
     public void reconcile(DeliveryRouteViewState route) {
         Objects.requireNonNull(route, "route");
         DeliveryRouteStatus status = route.getStatus();
+        PendingNavigationHandoff pending = readSafely();
+        quickReturnController.reconcile(route);
         if (status == DeliveryRouteStatus.SIGNED_OUT
                 || status == DeliveryRouteStatus.EMPTY
                 || status == DeliveryRouteStatus.UNSUPPORTED) {
@@ -69,7 +117,6 @@ public final class NavigationHandoffController {
             return;
         }
 
-        PendingNavigationHandoff pending = readSafely();
         if (pending == null) return;
         String sessionBinding = route.getSessionBinding();
         if (sessionBinding != null
@@ -108,6 +155,10 @@ public final class NavigationHandoffController {
         } catch (RuntimeException failure) {
             throw new LaunchFailure(Result.STORAGE_FAILURE, failure);
         }
+        quickReturnController.beforeNavigation(
+                sessionBinding,
+                target.getRouteId()
+        );
         launcher.launch(NavigationUri.forCoordinates(
                 target.getLatitude(),
                 target.getLongitude()
