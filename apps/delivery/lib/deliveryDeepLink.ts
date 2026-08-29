@@ -2,6 +2,7 @@ import {
     customerDeliveryNotificationLimits,
     isCustomerDeliveryRequestId,
 } from '@gredice/notifications/customer-delivery';
+import { isDeliveryNativeAuthorizationReturnTarget } from './deliveryNativeAuthorization';
 
 export const deliveryDeepLinkRequestIdMaxLength =
     customerDeliveryNotificationLimits.requestIdCharacters;
@@ -129,13 +130,16 @@ export function safeDeliveryReturnTarget(
         const isAuthPath =
             restrictedPathname === '/prijava' ||
             restrictedPathname.startsWith('/prijava/');
+        const isAllowedNativeAuthorization =
+            restrictedPathname === '/prijava/android' &&
+            isDeliveryNativeAuthorizationReturnTarget(target);
 
         if (
             target.origin !== base.origin ||
             decodedPathname.includes('\\') ||
             hasControlCharacter(decodedPathname) ||
             isApiPath ||
-            isAuthPath
+            (isAuthPath && !isAllowedNativeAuthorization)
         )
             return '/';
         return `${target.pathname}${target.search}`;

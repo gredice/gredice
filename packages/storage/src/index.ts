@@ -44,6 +44,7 @@ export * from './repositories/communityEditRequestsRepo';
 export * from './repositories/deliveryAddressesRepo';
 export * from './repositories/deliveryDispatchRepo';
 export * from './repositories/deliveryLifecycleNotificationsRepo';
+export * from './repositories/deliveryNativeAuthRepo';
 export * from './repositories/deliveryNotificationObservabilityRepo';
 export * from './repositories/deliveryOperationalObservabilityRepo';
 export * from './repositories/deliveryRequestsRepo';

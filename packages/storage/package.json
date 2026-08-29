@@ -37,6 +37,7 @@
         "plants:max-harvest-days:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantMaxHarvestDaysBeforeDelivery.ts",
         "plant-cycles:superseded-repair": "tsx --conditions=react-server --env-file=.env ./scripts/repairSupersededPlantCycles.ts",
         "operations:all-targets:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillOperationAppliesToAllTargets.ts",
+        "operations:empty-fields:backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillOperationAppliesToEmptyFields.ts",
         "operations:material-cost:upsert": "tsx --conditions=react-server --env-file=.env ./scripts/upsertOperationMaterialCostAttribute.ts",
         "plant-health:operations-backfill": "tsx --conditions=react-server --env-file=.env ./scripts/backfillPlantHealthOperations.ts",
         "plants:advanced-sowing-attributes": "tsx --conditions=react-server --env-file=.env ./scripts/upsertAdvancedSowingAttributes.ts",

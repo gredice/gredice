@@ -21,6 +21,7 @@ android {
         applicationId 'com.gredice.dostava'
         minSdk 28
         targetSdk 36
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         versionCode providers.gradleProperty('GREDICE_VERSION_CODE').get().toInteger()
         versionName providers.gradleProperty('GREDICE_VERSION_NAME').get()
 
@@ -81,4 +82,9 @@ dependencies {
     implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.2'
 
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20260814'
+
+    androidTestImplementation 'androidx.car.app:app-testing:1.7.0'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.3.0'
 }

@@ -1,8 +1,16 @@
 package com.gredice.dostava.data;
 
-import java.util.List;
-
-/** Boundary that will later be backed by the authenticated route projection. */
+/** Authenticated, cached, lifecycle-cancellable route state boundary. */
 public interface DeliveryStopRepository {
-    List<DeliveryStop> getStops();
+    DeliveryRouteViewState getViewState();
+
+    void refresh(RefreshCallback onComplete);
+
+    void cancelRefresh();
+
+    void clear();
+
+    interface RefreshCallback {
+        void onComplete(boolean stateChanged);
+    }
 }

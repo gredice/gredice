@@ -35,6 +35,9 @@ const navigationLaunchGate = read(
 const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
 );
+const nativeApiClient = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/auth/DeliveryNativeApiClient.java",
+);
 
 const readStringResValue = (name) => {
     const match = appBuild.match(
@@ -72,7 +75,27 @@ assert.deepEqual(permissions, [
 ]);
 assert.match(manifest, /androidx\.car\.app\.category\.POI/);
 assert.doesNotMatch(manifest, /androidx\.car\.app\.category\.NAVIGATION/);
-assert.match(manifest, /<intent-filter android:autoVerify="true">/);
+const callbackActivity = manifest.match(
+    /<activity\b(?=[^>]*android:name="\.auth\.NativeAuthCallbackActivity")[\s\S]*?<\/activity>/,
+)?.[0];
+assert.ok(callbackActivity, "Native callback activity must be declared");
+const callbackFilters = [
+    ...callbackActivity.matchAll(
+        /<intent-filter\b[^>]*>[\s\S]*?<\/intent-filter>/g,
+    ),
+];
+assert.ok(
+    callbackFilters.some(
+        ([filter]) =>
+            /<intent-filter\b[^>]*android:autoVerify="true"/.test(filter) &&
+            /<data\b(?=[^>]*android:host="@string\/hostName")(?=[^>]*android:path="\/android\/auth\/callback")(?=[^>]*android:scheme="https")[^>]*\/>/.test(
+                filter,
+            ),
+    ),
+    "Native callback must use one exact auto-verified HTTPS intent filter",
+);
+assert.match(manifest, /android:allowBackup="false"/);
+assert.match(manifest, /android:dataExtractionRules="@xml\/data_extraction_rules"/);
 assert.match(manifest, /android:value="@string\/launchUrl"/);
 assert.match(manifest, /android:host="@string\/hostName"/);
 assert.match(
@@ -122,7 +145,8 @@ assert.match(navigationLaunchGate, /DEFAULT_SUPPRESSION_WINDOW_MILLIS = 1_500L/)
 assert.match(navigationLaunchGate, /catch \(RuntimeException \| Error failure\)/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
+assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
 
 console.log(
-    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, and web-associated.",
+    "✅ Delivery Android contract is POI-only, permission-minimal, provider-neutral, web-associated, and exact-callback verified.",
 );
