@@ -10,6 +10,7 @@ DB_PROVIDER="${GREDICE_TEST_DB_PROVIDER:-}"
 FALLBACK_DB_NAME="${GREDICE_TEST_DB_NAME:-}"
 FALLBACK_ADMIN_URL="${GREDICE_TEST_DB_ADMIN_URL:-}"
 PGLITE_DIR="${GREDICE_TEST_DB_PGLITE_DIR:-}"
+RUN_MARKER="${GREDICE_TEST_DB_RUN_MARKER:-}"
 if [[ -z "$CONTAINER_NAME" && -f "$ENV_FILE" ]]; then
     CONTAINER_NAME="$(awk -F= '$1 == "GREDICE_TEST_DB_CONTAINER" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
 fi
@@ -25,6 +26,17 @@ fi
 if [[ -z "$PGLITE_DIR" && -f "$ENV_FILE" ]]; then
     PGLITE_DIR="$(awk -F= '$1 == "GREDICE_TEST_DB_PGLITE_DIR" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
 fi
+if [[ -z "$RUN_MARKER" && -f "$ENV_FILE" ]]; then
+    RUN_MARKER="$(awk -F= '$1 == "GREDICE_TEST_DB_RUN_MARKER" { value = substr($0, index($0, "=") + 1) } END { print value }' "$ENV_FILE")"
+fi
+
+cleanup_run_marker() {
+    if [[ -n "$RUN_MARKER" && -f "$RUN_MARKER" ]]; then
+        rm -f "$RUN_MARKER"
+    fi
+}
+
+trap cleanup_run_marker EXIT
 
 if [[ "$DB_PROVIDER" == "pglite" ]]; then
     if [[ -z "$PGLITE_DIR" ]]; then

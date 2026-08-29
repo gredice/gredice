@@ -3,22 +3,37 @@ import test from 'node:test';
 import {
     getGardenPreviewBlobDeletionRetryAt,
     processGardenPreviewBlobDeletions,
+    redactGardenPreviewBlobDeletionError,
 } from './gardenPreviewBlobDeletion';
 
 test('processGardenPreviewBlobDeletions records successes and retryable failures', async () => {
+    const deletionTargets: string[] = [];
     const result = await processGardenPreviewBlobDeletions({
         concurrency: 2,
-        deleteBlob: async (imageUrl) => {
-            if (imageUrl.endsWith('/failed.webp')) {
+        deleteBlob: async (pathname) => {
+            deletionTargets.push(pathname);
+            if (pathname.endsWith('/failed.webp')) {
                 throw new Error('Blob service unavailable');
             }
         },
         deletions: [
-            { id: 2, imageUrl: 'https://blob.test/failed.webp' },
-            { id: 1, imageUrl: 'https://blob.test/deleted.webp' },
+            {
+                id: 2,
+                imageUrl: 'https://example.test/failed.webp',
+                pathname: 'garden-previews/2/failed.webp',
+            },
+            {
+                id: 1,
+                imageUrl: 'https://example.test/deleted.webp',
+                pathname: 'garden-previews/1/deleted.webp',
+            },
         ],
     });
 
+    assert.deepEqual(deletionTargets.sort(), [
+        'garden-previews/1/deleted.webp',
+        'garden-previews/2/failed.webp',
+    ]);
     assert.deepEqual(result, {
         completedIds: [1],
         failures: [
@@ -28,6 +43,15 @@ test('processGardenPreviewBlobDeletions records successes and retryable failures
             },
         ],
     });
+});
+
+test('redactGardenPreviewBlobDeletionError removes Blob URLs from logs', () => {
+    assert.equal(
+        redactGardenPreviewBlobDeletionError(
+            'Error: failed to delete https://private-store.public.blob.vercel-storage.com/garden-previews/1/day.webp',
+        ),
+        'Error: failed to delete [redacted-url]',
+    );
 });
 
 test('getGardenPreviewBlobDeletionRetryAt backs off and caps retries', () => {
