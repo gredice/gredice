@@ -50,7 +50,7 @@ test('allows an open same-day slot while keeping missed days clickable', async (
     await expect(page.getByTestId('selected-delivery-slot')).toHaveText('2');
 });
 
-test('opens on the current week even when its slots are already missed', async ({
+test('keeps the current week and selects its first open delivery slot', async ({
     mount,
     page,
 }) => {
@@ -67,9 +67,15 @@ test('opens on the current week even when its slots are already missed', async (
                     startAt: '2026-07-16T08:00:00.000Z',
                 },
                 {
-                    endAt: '2026-07-20T10:00:00.000Z',
+                    endAt: '2026-07-17T15:00:00.000Z',
                     fulfillment: 'delivery',
                     id: 2,
+                    startAt: '2026-07-17T13:00:00.000Z',
+                },
+                {
+                    endAt: '2026-07-20T10:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 3,
                     startAt: '2026-07-20T08:00:00.000Z',
                 },
             ]}
@@ -79,7 +85,58 @@ test('opens on the current week even when its slots are already missed', async (
     await expect(
         page.getByText('Tjedan 13. srp – 19. srp 2026.'),
     ).toBeVisible();
-    await expect(page.getByTestId('selected-delivery-slot')).toHaveText('');
+    await expect(page.getByTestId('selected-delivery-slot')).toHaveText('2');
+});
+
+test('opens the next available week and selects its first delivery slot when the current week is closed', async ({
+    mount,
+    page,
+}) => {
+    await mount(
+        <DeliverySlotPickerStory
+            autoSelectFirstDeliverySlot
+            referenceDate={referenceDate}
+            slots={[
+                {
+                    disabled: true,
+                    endAt: '2026-07-16T10:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 1,
+                    startAt: '2026-07-16T08:00:00.000Z',
+                },
+                {
+                    disabled: true,
+                    endAt: '2026-07-17T12:00:00.000Z',
+                    fulfillment: 'pickup',
+                    id: 2,
+                    startAt: '2026-07-17T10:00:00.000Z',
+                },
+                {
+                    endAt: '2026-07-20T10:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 3,
+                    startAt: '2026-07-20T08:00:00.000Z',
+                },
+                {
+                    endAt: '2026-07-20T12:00:00.000Z',
+                    fulfillment: 'delivery',
+                    id: 4,
+                    startAt: '2026-07-20T10:00:00.000Z',
+                },
+            ]}
+        />,
+    );
+
+    await expect(
+        page.getByText('Tjedan 20. srp – 26. srp 2026.'),
+    ).toBeVisible();
+    await expect(page.getByTestId('selected-delivery-slot')).toHaveText('3');
+    await expect(
+        page.getByRole('button', { name: /20\. srpnja/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+        page.getByRole('button', { name: /10:00 – 12:00, dostava$/i }),
+    ).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('keeps time slots within a mobile-width container', async ({

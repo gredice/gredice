@@ -78,6 +78,10 @@ function slotCountLabel(count: number) {
     return count === 1 ? '1 termin' : `${count.toString()} termina`;
 }
 
+function isAvailableDeliverySlot(slot: DeliverySlotPickerSlot) {
+    return slot.fulfillment === 'delivery' && !slot.disabled;
+}
+
 export function DeliverySlotPicker({
     slots,
     value,
@@ -229,18 +233,22 @@ export function DeliverySlotPicker({
             : undefined;
     const [preferredWeekKey, setPreferredWeekKey] = useState<string>();
     const [preferredDayKey, setPreferredDayKey] = useState<string>();
-    const firstAvailableWeekKey = weeks.find((week) =>
-        week.days.some((day) =>
-            day.slots.some(
-                (slot) => slot.fulfillment === 'delivery' && !slot.disabled,
-            ),
-        ),
-    )?.key;
     const currentWeekKey = weekKey(formatters.dateKey, currentDate);
+    const currentWeek = weeks.find((week) => week.key === currentWeekKey);
+    const firstAvailableWeekKey = weeks.find((week) =>
+        week.days.some((day) => day.slots.some(isAvailableDeliverySlot)),
+    )?.key;
+    const defaultWeekKey =
+        autoSelectFirstDeliverySlot &&
+        !currentWeek?.days.some((day) =>
+            day.slots.some(isAvailableDeliverySlot),
+        )
+            ? firstAvailableWeekKey
+            : currentWeek?.key;
     const selectedWeekKey =
         selectedSlotWeekKey ??
         weeks.find((week) => week.key === preferredWeekKey)?.key ??
-        weeks.find((week) => week.key === currentWeekKey)?.key ??
+        defaultWeekKey ??
         firstAvailableWeekKey ??
         weeks[0]?.key;
     const selectedWeekIndex = Math.max(
@@ -253,10 +261,7 @@ export function DeliverySlotPicker({
         selectedWeek?.days.find((day) => day.key === preferredDayKey)?.key ??
         (autoSelectFirstDeliverySlot
             ? selectedWeek?.days.find((day) =>
-                  day.slots.some(
-                      (slot) =>
-                          slot.fulfillment === 'delivery' && !slot.disabled,
-                  ),
+                  day.slots.some(isAvailableDeliverySlot),
               )?.key
             : undefined) ??
         selectedWeek?.days.find((day) => day.key === todayKey)?.key ??
@@ -272,7 +277,7 @@ export function DeliverySlotPicker({
     const focusTargetRef = useRef<HTMLButtonElement>(null);
     const autoSelectedSlotRef = useRef<number | undefined>(undefined);
     const firstAvailableDeliverySlotId = selectedDay?.slots.find(
-        (slot) => slot.fulfillment === 'delivery' && !slot.disabled,
+        isAvailableDeliverySlot,
     )?.id;
 
     useEffect(() => {
@@ -317,10 +322,7 @@ export function DeliverySlotPicker({
         setPreferredDayKey(
             (autoSelectFirstDeliverySlot
                 ? nextWeek.days.find((day) =>
-                      day.slots.some(
-                          (slot) =>
-                              slot.fulfillment === 'delivery' && !slot.disabled,
-                      ),
+                      day.slots.some(isAvailableDeliverySlot),
                   )?.key
                 : undefined) ??
                 nextWeek.days.find((day) => day.key === todayKey)?.key ??
