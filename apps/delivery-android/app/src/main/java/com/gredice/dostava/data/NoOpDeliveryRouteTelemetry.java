@@ -18,4 +18,12 @@ public final class NoOpDeliveryRouteTelemetry implements DeliveryRouteTelemetry 
             Long routeRevision,
             int displayedRowCount
     ) { }
+
+    @Override
+    public void recordNavigationHandoff(
+            long routeRevision,
+            String navigationId,
+            String kind,
+            String resultCode
+    ) { }
 }

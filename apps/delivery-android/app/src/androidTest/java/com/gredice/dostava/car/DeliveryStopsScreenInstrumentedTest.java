@@ -160,6 +160,41 @@ public final class DeliveryStopsScreenInstrumentedTest {
         assertTrue(repository.cancelCount >= 1);
     }
 
+    @Test
+    public void returningFromForegroundNavigationRefreshesServerSelectedCurrentStop() {
+        FakeRepository repository = new FakeRepository(
+                readyState(DeliveryRouteStatus.READY)
+        );
+        ScreenController controller = screen(repository);
+        controller.moveToState(Lifecycle.State.RESUMED);
+
+        repository.state = new DeliveryRouteViewState(
+                DeliveryRouteStatus.READY,
+                Collections.singletonList(stop(
+                        2,
+                        true,
+                        "pickup",
+                        "Preuzimanje 2"
+                )),
+                "route:opaque",
+                8L,
+                "session:opaque",
+                null
+        );
+        controller.moveToState(Lifecycle.State.CREATED);
+        controller.moveToState(Lifecycle.State.RESUMED);
+
+        PlaceListMapTemplate returned = (PlaceListMapTemplate) controller
+                .getScreen()
+                .onGetTemplate();
+        assertEquals("Preuzimanje 2", row(returned, 0).getTitle().toString());
+        assertTrue(
+                row(returned, 0).getTexts().get(0).toString()
+                        .startsWith("Trenutačna stanica · ")
+        );
+        assertTrue(repository.refreshCount >= 4);
+    }
+
     private ScreenController screen(FakeRepository repository) {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         TestCarContext carContext = TestCarContext.createCarContext(context);
@@ -192,7 +227,9 @@ public final class DeliveryStopsScreenInstrumentedTest {
         return new DeliveryRouteViewState(
                 status,
                 Arrays.asList(current, next),
+                "route:opaque",
                 7L,
+                "session:opaque",
                 status == DeliveryRouteStatus.READY ? null : "NETWORK_UNAVAILABLE"
         );
     }
@@ -219,7 +256,7 @@ public final class DeliveryStopsScreenInstrumentedTest {
     }
 
     private static final class FakeRepository implements DeliveryStopRepository {
-        private final DeliveryRouteViewState state;
+        private DeliveryRouteViewState state;
         private int refreshCount;
         private int cancelCount;
 
@@ -262,6 +299,14 @@ public final class DeliveryStopsScreenInstrumentedTest {
                 DeliveryRouteStatus status,
                 Long routeRevision,
                 int displayedRowCount
+        ) { }
+
+        @Override
+        public void recordNavigationHandoff(
+                long routeRevision,
+                String navigationId,
+                String kind,
+                String resultCode
         ) { }
     }
 }

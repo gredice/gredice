@@ -6,4 +6,7 @@
     <exclude
         domain="sharedpref"
         path="delivery_native_route_cache.xml" />
+    <exclude
+        domain="sharedpref"
+        path="delivery_navigation_handoff.xml" />
 </full-backup-content>

@@ -5,11 +5,14 @@ import android.content.SharedPreferences;
 
 import com.gredice.dostava.security.KeystoreAesGcmCipher;
 
+import java.util.UUID;
+
 /** AES-GCM credential persistence whose key material never leaves Android Keystore. */
 public final class EncryptedNativeCredentialStore implements NativeCredentialStore {
     private static final String PREFERENCES = "delivery_native_session";
     private static final String KEY_ALIAS = "gredice_delivery_native_session_v1";
     private static final String REFRESH_TOKEN = "refresh_token";
+    private static final String SESSION_BINDING = "session_binding";
     private static final String PAIRING_STATE = "pairing_state";
     private static final String PAIRING_VERIFIER = "pairing_verifier";
     private static final String PAIRING_CHALLENGE = "pairing_challenge";
@@ -33,7 +36,24 @@ public final class EncryptedNativeCredentialStore implements NativeCredentialSto
 
     @Override
     public synchronized void setRefreshToken(String refreshToken) {
-        write(REFRESH_TOKEN, refreshToken);
+        String sessionBinding = read(SESSION_BINDING);
+        if (sessionBinding == null) sessionBinding = UUID.randomUUID().toString();
+        SharedPreferences.Editor editor = preferences.edit()
+                .putString(REFRESH_TOKEN, cipher.encrypt(refreshToken))
+                .putString(SESSION_BINDING, cipher.encrypt(sessionBinding));
+        if (!editor.commit()) {
+            throw new IllegalStateException("Unable to persist native session");
+        }
+    }
+
+    @Override
+    public synchronized String getSessionBinding() {
+        String sessionBinding = read(SESSION_BINDING);
+        if (sessionBinding != null) return sessionBinding;
+        if (read(REFRESH_TOKEN) == null) return null;
+        sessionBinding = UUID.randomUUID().toString();
+        write(SESSION_BINDING, sessionBinding);
+        return sessionBinding;
     }
 
     @Override

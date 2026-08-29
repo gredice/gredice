@@ -1,5 +1,6 @@
 package com.gredice.dostava.car;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.SystemClock;
@@ -34,8 +35,9 @@ import com.gredice.dostava.data.DeliveryStop;
 import com.gredice.dostava.data.DeliveryStopRepository;
 import com.gredice.dostava.data.DeliveryRouteStatus;
 import com.gredice.dostava.data.NoOpDeliveryRouteTelemetry;
-import com.gredice.dostava.navigation.NavigationLaunchGate;
-import com.gredice.dostava.navigation.NavigationUri;
+import com.gredice.dostava.navigation.NavigationHandoffController;
+import com.gredice.dostava.navigation.NavigationHandoffStore;
+import com.gredice.dostava.navigation.NavigationTarget;
 
 import java.util.List;
 
@@ -47,8 +49,7 @@ final class DeliveryStopsScreen extends Screen {
     private final DeliveryRouteRefreshController refreshController;
     private final DeliveryStopFormatter formatter = new DeliveryStopFormatter();
     private final DeliveryStopListLimiter listLimiter = new DeliveryStopListLimiter();
-    private final NavigationLaunchGate navigationLaunchGate =
-            new NavigationLaunchGate();
+    private final NavigationHandoffController navigationHandoffController;
 
     DeliveryStopsScreen(
             @NonNull CarContext carContext,
@@ -62,9 +63,27 @@ final class DeliveryStopsScreen extends Screen {
             @NonNull DeliveryStopRepository stopRepository,
             @NonNull DeliveryRouteTelemetry telemetry
     ) {
+        this(
+                carContext,
+                stopRepository,
+                telemetry,
+                NavigationHandoffStore.NO_OP
+        );
+    }
+
+    DeliveryStopsScreen(
+            @NonNull CarContext carContext,
+            @NonNull DeliveryStopRepository stopRepository,
+            @NonNull DeliveryRouteTelemetry telemetry,
+            @NonNull NavigationHandoffStore navigationHandoffStore
+    ) {
         super(carContext);
         this.stopRepository = stopRepository;
         this.telemetry = telemetry;
+        navigationHandoffController = new NavigationHandoffController(
+                navigationHandoffStore,
+                telemetry
+        );
         refreshController = new DeliveryRouteRefreshController(
                 stopRepository,
                 new HandlerRefreshScheduler(),
@@ -103,6 +122,7 @@ final class DeliveryStopsScreen extends Screen {
     @NonNull
     public Template onGetTemplate() {
         DeliveryRouteViewState viewState = stopRepository.getViewState();
+        navigationHandoffController.reconcile(viewState);
         DeliveryRouteStatus status = viewState.getStatus();
         if (status != DeliveryRouteStatus.READY
                 && status != DeliveryRouteStatus.FRESH_OFFLINE) {
@@ -158,11 +178,20 @@ final class DeliveryStopsScreen extends Screen {
                             .build());
 
             SpannableStringBuilder metric = metric(stop);
-            if (viewState.allowsNavigation()) {
+            NavigationTarget navigationTarget = NavigationTarget.from(
+                    viewState,
+                    stop
+            );
+            if (navigationTarget != null
+                    && viewState.getSessionBinding() != null) {
                 if (metric.length() > 0) metric.append(" · ");
                 metric.append(getCarContext().getString(R.string.navigation_action));
                 row.setBrowsable(true);
-                row.setOnClickListener(() -> startNavigation(stop));
+                String sessionBinding = viewState.getSessionBinding();
+                row.setOnClickListener(() -> startNavigation(
+                        navigationTarget,
+                        sessionBinding
+                ));
             }
             if (metric.length() > 0) row.addText(metric);
             rows.addItem(row.build());
@@ -229,27 +258,55 @@ final class DeliveryStopsScreen extends Screen {
         return detail;
     }
 
-    private void startNavigation(DeliveryStop stop) {
-        try {
-            navigationLaunchGate.launchIfAllowed(
-                    SystemClock.elapsedRealtime(),
-                    () -> {
-                        Intent intent = new Intent(
-                                CarContext.ACTION_NAVIGATE,
-                                Uri.parse(NavigationUri.forCoordinates(
-                                        stop.getLatitude(),
-                                        stop.getLongitude()
-                                ))
-                        );
-
-                        // Implicit: the driver controls the default navigation app.
-                        getCarContext().startCarApp(intent);
-                    });
-        } catch (HostException | SecurityException exception) {
-            showNavigationUnavailable();
-        } catch (RuntimeException exception) {
+    private void startNavigation(
+            NavigationTarget target,
+            String sessionBinding
+    ) {
+        NavigationHandoffController.Result result = navigationHandoffController.launch(
+                target,
+                sessionBinding,
+                SystemClock.elapsedRealtime(),
+                System.currentTimeMillis(),
+                this::launchNavigator
+        );
+        if (result.shouldNotifyUser()) {
             showNavigationUnavailable();
         }
+    }
+
+    private void launchNavigator(String uri) {
+        Intent intent = new Intent(CarContext.ACTION_NAVIGATE, Uri.parse(uri));
+        try {
+            // Implicit: the driver controls the default navigation app.
+            getCarContext().startCarApp(intent);
+        } catch (ActivityNotFoundException exception) {
+            throw launchFailure(
+                    NavigationHandoffController.Result.NO_HANDLER,
+                    exception
+            );
+        } catch (HostException exception) {
+            throw launchFailure(
+                    NavigationHandoffController.Result.HOST_FAILURE,
+                    exception
+            );
+        } catch (SecurityException exception) {
+            throw launchFailure(
+                    NavigationHandoffController.Result.SECURITY_FAILURE,
+                    exception
+            );
+        } catch (RuntimeException exception) {
+            throw launchFailure(
+                    NavigationHandoffController.Result.UNEXPECTED_FAILURE,
+                    exception
+            );
+        }
+    }
+
+    private NavigationHandoffController.LaunchFailure launchFailure(
+            NavigationHandoffController.Result result,
+            RuntimeException cause
+    ) {
+        return new NavigationHandoffController.LaunchFailure(result, cause);
     }
 
     private void showNavigationUnavailable() {
