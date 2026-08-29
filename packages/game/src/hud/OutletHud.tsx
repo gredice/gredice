@@ -16,7 +16,7 @@ export function OutletHud({
     className?: string;
     enabled?: boolean;
 } = {}) {
-    const { data: offers, isPending } = useOutletOffers();
+    const { data: offers, isPending } = useOutletOffers({ enabled });
     const { track } = useGameAnalytics();
     const availableItemsCount = useMemo(
         () =>

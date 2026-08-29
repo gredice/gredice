@@ -194,6 +194,7 @@ const completedChecklistStateWithNewTask: TutorialChecklistState = {
 
 function createTutorialChecklistQueryClient(
     state: TutorialChecklistState | null,
+    error: boolean,
 ) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
@@ -203,6 +204,12 @@ function createTutorialChecklistQueryClient(
 
     if (state) {
         queryClient.setQueryData(tutorialChecklistKeys, state);
+    } else if (error) {
+        void queryClient.prefetchQuery({
+            queryKey: tutorialChecklistKeys,
+            queryFn: () =>
+                Promise.reject(new Error('Tutorial checklist unavailable')),
+        });
     } else {
         void queryClient.prefetchQuery({
             queryKey: tutorialChecklistKeys,
@@ -217,12 +224,13 @@ type TutorialChecklistHudStoryVariant =
     | 'completed'
     | 'completed-with-new-task'
     | 'default'
+    | 'error'
     | 'loading';
 
 function stateForVariant(
     variant: TutorialChecklistHudStoryVariant,
 ): TutorialChecklistState | null {
-    if (variant === 'loading') {
+    if (variant === 'error' || variant === 'loading') {
         return null;
     }
 
@@ -244,7 +252,7 @@ export function TutorialChecklistHudStory({
 }) {
     const state = stateForVariant(variant);
     const [queryClient] = useState(() =>
-        createTutorialChecklistQueryClient(state),
+        createTutorialChecklistQueryClient(state, variant === 'error'),
     );
     const gameStore = useMemo(
         () =>

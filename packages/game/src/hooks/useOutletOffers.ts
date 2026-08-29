@@ -46,17 +46,20 @@ export const useOutletOffersQueryKey = ['outlet-offers'];
 const outletOffersRefetchIntervalMs = 15 * 1000;
 
 export function useOutletOffers({
+    enabled = true,
     includeSoldOut = false,
 }: {
+    enabled?: boolean;
     includeSoldOut?: boolean;
 } = {}) {
     return useQuery({
+        enabled,
         queryKey: includeSoldOut
             ? [...useOutletOffersQueryKey, 'including-sold-out']
             : useOutletOffersQueryKey,
         queryFn: () => getOutletOffers(includeSoldOut),
         staleTime: 0,
         refetchOnMount: 'always',
-        refetchInterval: outletOffersRefetchIntervalMs,
+        refetchInterval: enabled ? outletOffersRefetchIntervalMs : false,
     });
 }

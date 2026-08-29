@@ -13,6 +13,32 @@ test('keeps the Outlet control hidden while offers are loading', async ({
     await expect(page.locator('[data-outlet-hud-shell="true"]')).toHaveCount(0);
 });
 
+test('does not request or poll for Outlet offers while the HUD is disabled', async ({
+    mount,
+    page,
+}) => {
+    let outletRequests = 0;
+    await page.route('**/api/gredice/api/outlet/offers**', async (route) => {
+        outletRequests += 1;
+        await route.fulfill({ json: { items: [] }, status: 200 });
+    });
+
+    await mount(<OutletHudStory enabled={false} />);
+    await page.evaluate(
+        () =>
+            new Promise<void>((resolve) => {
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(() => resolve()),
+                );
+            }),
+    );
+
+    expect(outletRequests).toBe(0);
+    await expect(
+        page.getByRole('link', { name: 'Outlet sadnica' }),
+    ).toHaveCount(0);
+});
+
 test('outlet HUD links directly to the 3D garden and keeps the inventory badge', async ({
     mount,
     page,

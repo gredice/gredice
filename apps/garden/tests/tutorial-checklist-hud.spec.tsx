@@ -26,6 +26,41 @@ test('keeps the checklist hidden until its data loads, then animates it into the
     ).toBeVisible();
 });
 
+test('keeps the checklist error and retry state reachable', async ({
+    mount,
+    page,
+}) => {
+    let checklistRequests = 0;
+    await page.route(
+        '**/api/gredice/api/accounts/current/tutorial-checklist**',
+        async (route) => {
+            checklistRequests += 1;
+            await route.fulfill({ status: 503 });
+        },
+    );
+    await mount(<TutorialChecklistHudStory variant="error" />);
+
+    const trigger = page.getByRole('button', {
+        name: 'Zadaci nisu učitani',
+    });
+    await expect(trigger).toBeVisible();
+    await expect(
+        trigger.locator('[data-tutorial-checklist-error-icon="true"]'),
+    ).toBeVisible();
+    await expect(
+        page.locator('[data-tutorial-checklist-progress="true"]'),
+    ).toHaveCount(0);
+
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog', { name: 'Zadaci za novi vrt' });
+    await expect(dialog).toBeVisible();
+    await expect.poll(() => checklistRequests).toBeGreaterThan(0);
+    await expect(dialog).toContainText('Zadaci se trenutno ne mogu učitati.');
+    await dialog.getByRole('button', { name: 'Zatvori' }).click();
+    await expect(trigger).toBeVisible();
+});
+
 test('tutorial checklist trigger shows icon with progress count below it', async ({
     mount,
     page,

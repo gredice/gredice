@@ -4,7 +4,7 @@ import { Button } from '@gredice/ui/Button';
 import { Chip } from '@gredice/ui/Chip';
 import { DotIndicator } from '@gredice/ui/DotIndicator';
 import { IconButton } from '@gredice/ui/IconButton';
-import { Check, ExpandDown } from '@gredice/ui/icons';
+import { Check, ExpandDown, Warning } from '@gredice/ui/icons';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
@@ -838,7 +838,7 @@ export function TutorialChecklistHud({
     const [animateCompletion, setAnimateCompletion] = useState(false);
     const previouslyObservedCompletion = useRef<boolean | null>(null);
     const queryClient = useQueryClient();
-    const { data } = useTutorialChecklist();
+    const { data, isFetched } = useTutorialChecklist();
     const { track } = useGameAnalytics();
     const claimableCount = data?.totals.claimableCount ?? 0;
     const {
@@ -848,6 +848,7 @@ export function TutorialChecklistHud({
         isDismissed,
     } = useCompletedChecklistDismissal(data);
     const hasChecklist = Boolean(data);
+    const checklistUnavailable = isFetched && !hasChecklist;
     const completionTransitionObserved =
         hasChecklist &&
         allTasksFinished &&
@@ -889,8 +890,9 @@ export function TutorialChecklistHud({
 
     const visible =
         enabled &&
-        hasChecklist &&
-        !((allTasksFinished && !dismissalReady) || isDismissed);
+        (checklistUnavailable ||
+            (hasChecklist &&
+                !((allTasksFinished && !dismissalReady) || isDismissed)));
 
     function handleOpenChange(open: boolean) {
         if (open) {
@@ -933,9 +935,11 @@ export function TutorialChecklistHud({
                             aria-label={
                                 allTasksFinished
                                     ? 'Svi zadaci su dovršeni'
-                                    : progressLabel
-                                      ? `Zadaci ${progressLabel}`
-                                      : 'Zadaci'
+                                    : checklistUnavailable
+                                      ? 'Zadaci nisu učitani'
+                                      : progressLabel
+                                        ? `Zadaci ${progressLabel}`
+                                        : 'Zadaci'
                             }
                             className={cx(
                                 'relative rounded-full w-10 h-10',
@@ -954,6 +958,12 @@ export function TutorialChecklistHud({
                                     aria-hidden="true"
                                     className="pointer-events-none size-6"
                                     data-tutorial-checklist-complete-icon="true"
+                                />
+                            ) : checklistUnavailable ? (
+                                <Warning
+                                    aria-hidden="true"
+                                    className="pointer-events-none size-5 text-amber-600"
+                                    data-tutorial-checklist-error-icon="true"
                                 />
                             ) : (
                                 <>
