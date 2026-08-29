@@ -1,6 +1,7 @@
 package com.gredice.dostava.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -198,6 +199,34 @@ public final class NativeDeliveryStopRepositoryTest {
                 DeliveryRouteStatus.LOADING,
                 fixture.repository.getViewState().getStatus()
         );
+    }
+
+    @Test
+    public void pausedReadyRouteBecomesOfflineAndCannotOutliveTheSafetyWindow() {
+        Fixture fixture = new Fixture(10_000L, null);
+        fixture.api.enqueue(DeliveryRouteResponse.active(
+                TestDeliveryRoutes.snapshot(3, 10_000L)
+        ));
+        fixture.repository.refresh(changed -> { });
+        fixture.executor.runNext();
+        assertEquals(
+                DeliveryRouteStatus.READY,
+                fixture.repository.getViewState().getStatus()
+        );
+
+        fixture.repository.cancelRefresh();
+        assertEquals(
+                DeliveryRouteStatus.FRESH_OFFLINE,
+                fixture.repository.getViewState().getStatus()
+        );
+
+        fixture.clock.nowMillis = 10_001L
+                + DeliveryRouteStateReducer.FRESH_CACHE_MILLIS;
+        assertEquals(
+                DeliveryRouteStatus.STALE_OFFLINE,
+                fixture.repository.getViewState().getStatus()
+        );
+        assertFalse(fixture.repository.getViewState().allowsNavigation());
     }
 
     private static final class Fixture {

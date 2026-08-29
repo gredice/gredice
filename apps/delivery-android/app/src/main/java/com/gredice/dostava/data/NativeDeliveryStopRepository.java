@@ -85,14 +85,17 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
 
     @Override
     public synchronized DeliveryRouteViewState getViewState() {
-        if (viewState.getStatus() == DeliveryRouteStatus.FRESH_OFFLINE
+        if ((viewState.getStatus() == DeliveryRouteStatus.READY
+                || viewState.getStatus() == DeliveryRouteStatus.FRESH_OFFLINE)
                 && snapshot != null
                 && clock.nowMillis() - snapshot.getVerifiedAtMillis()
                 > DeliveryRouteStateReducer.FRESH_CACHE_MILLIS) {
             viewState = reducer.temporaryFailure(
                     snapshot,
                     clock.nowMillis(),
-                    viewState.getErrorCode()
+                    viewState.getErrorCode() == null
+                            ? "CACHE_EXPIRED"
+                            : viewState.getErrorCode()
             );
         }
         return viewState;
@@ -300,6 +303,10 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         pendingCallbacks.clear();
         if (activeRequest != null) activeRequest.cancel(true);
         activeRequest = null;
+        if (viewState.getStatus() == DeliveryRouteStatus.READY
+                && snapshot != null) {
+            viewState = reducer.restored(snapshot, clock.nowMillis());
+        }
     }
 
     @Override
