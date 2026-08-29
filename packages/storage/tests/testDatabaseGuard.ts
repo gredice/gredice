@@ -1,10 +1,46 @@
+import { readFileSync } from 'node:fs';
+
 type StorageTestDatabaseEnvironment = {
+    GREDICE_TEST_DB_CONTAINER?: string;
     GREDICE_TEST_DB_NAME?: string;
     GREDICE_TEST_DB_PGLITE_DIR?: string;
     GREDICE_TEST_DB_PROVIDER?: string;
+    GREDICE_TEST_DB_RUN_MARKER?: string;
+    GREDICE_TEST_DB_RUN_TOKEN?: string;
     POSTGRES_URL?: string;
     TEST_ENV?: string;
 };
+
+function assertCurrentStorageTestDatabaseRun(
+    environment: StorageTestDatabaseEnvironment,
+    provider: string,
+    resource: string,
+) {
+    const markerPath = environment.GREDICE_TEST_DB_RUN_MARKER;
+    const runToken = environment.GREDICE_TEST_DB_RUN_TOKEN;
+    if (!markerPath || !runToken) {
+        throw new Error(
+            'Refusing to run storage tests without the current setup-owned database marker.',
+        );
+    }
+
+    let marker: string;
+    try {
+        marker = readFileSync(markerPath, 'utf8');
+    } catch {
+        throw new Error(
+            'Refusing to run storage tests because the setup-owned database marker is unavailable.',
+        );
+    }
+
+    if (
+        marker !== `gredice-storage-test-v1:${runToken}:${provider}:${resource}`
+    ) {
+        throw new Error(
+            'Refusing to run storage tests because the setup-owned database marker does not match this test run.',
+        );
+    }
+}
 
 function parsePostgresDatabaseName(connectionString: string) {
     let url: URL;
@@ -52,6 +88,11 @@ export function assertDisposableStorageTestDatabase(
                 'Refusing to run storage tests without the generated disposable PGlite database.',
             );
         }
+        assertCurrentStorageTestDatabaseRun(
+            environment,
+            provider,
+            environment.GREDICE_TEST_DB_PGLITE_DIR,
+        );
         return;
     }
 
@@ -63,6 +104,16 @@ export function assertDisposableStorageTestDatabase(
                 'Refusing to run storage tests without the generated local Docker database.',
             );
         }
+        if (!environment.GREDICE_TEST_DB_CONTAINER) {
+            throw new Error(
+                'Refusing to run storage tests without the generated local Docker container identity.',
+            );
+        }
+        assertCurrentStorageTestDatabaseRun(
+            environment,
+            provider,
+            environment.GREDICE_TEST_DB_CONTAINER,
+        );
         return;
     }
 
@@ -76,6 +127,11 @@ export function assertDisposableStorageTestDatabase(
                 'Refusing to run storage tests without the generated fallback database.',
             );
         }
+        assertCurrentStorageTestDatabaseRun(
+            environment,
+            provider,
+            expectedDatabaseName,
+        );
         return;
     }
 

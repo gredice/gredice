@@ -1,10 +1,30 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import test, { after } from 'node:test';
 import { assertDisposableStorageTestDatabase } from './testDatabaseGuard';
+
+const markerDirectory = mkdtempSync(join(tmpdir(), 'gredice-storage-guard-'));
+after(() => rmSync(markerDirectory, { force: true, recursive: true }));
+
+function createRunMarker(provider: string, resource: string) {
+    const runToken = `${provider}-run-token`;
+    const markerPath = join(markerDirectory, `${provider}.marker`);
+    writeFileSync(
+        markerPath,
+        `gredice-storage-test-v1:${runToken}:${provider}:${resource}`,
+    );
+    return {
+        GREDICE_TEST_DB_RUN_MARKER: markerPath,
+        GREDICE_TEST_DB_RUN_TOKEN: runToken,
+    };
+}
 
 test('assertDisposableStorageTestDatabase accepts generated test databases', () => {
     assert.doesNotThrow(() =>
         assertDisposableStorageTestDatabase({
+            ...createRunMarker('pglite', '/tmp/gredice-storage-test'),
             GREDICE_TEST_DB_PGLITE_DIR: '/tmp/gredice-storage-test',
             GREDICE_TEST_DB_PROVIDER: 'pglite',
             POSTGRES_URL: 'pglite://local',
@@ -13,6 +33,11 @@ test('assertDisposableStorageTestDatabase accepts generated test databases', () 
     );
     assert.doesNotThrow(() =>
         assertDisposableStorageTestDatabase({
+            ...createRunMarker(
+                'docker',
+                'gredice-storage-test-db-worktree-run',
+            ),
+            GREDICE_TEST_DB_CONTAINER: 'gredice-storage-test-db-worktree-run',
             GREDICE_TEST_DB_PROVIDER: 'docker',
             POSTGRES_URL:
                 'postgres://postgres:postgres@127.0.0.1:5432/gredice_test',
@@ -21,6 +46,7 @@ test('assertDisposableStorageTestDatabase accepts generated test databases', () 
     );
     assert.doesNotThrow(() =>
         assertDisposableStorageTestDatabase({
+            ...createRunMarker('fallback', 'gredice_test_worktree_run'),
             GREDICE_TEST_DB_NAME: 'gredice_test_worktree_run',
             GREDICE_TEST_DB_PROVIDER: 'fallback',
             POSTGRES_URL:
@@ -59,5 +85,19 @@ test('assertDisposableStorageTestDatabase rejects production-like targets', () =
                 TEST_ENV: '1',
             }),
         /fallback database/,
+    );
+});
+
+test('assertDisposableStorageTestDatabase rejects a matching name without the current setup marker', () => {
+    assert.throws(
+        () =>
+            assertDisposableStorageTestDatabase({
+                GREDICE_TEST_DB_NAME: 'gredice_test_worktree_run',
+                GREDICE_TEST_DB_PROVIDER: 'fallback',
+                POSTGRES_URL:
+                    'postgres://user:secret@database.example.test/gredice_test_worktree_run',
+                TEST_ENV: '1',
+            }),
+        /setup-owned database marker/,
     );
 });
