@@ -1,6 +1,31 @@
 import { expect, test } from '@playwright/experimental-ct-react';
 import { TutorialChecklistHudStory } from './TutorialChecklistHudStory';
 
+test('keeps the checklist hidden until its data loads, then animates it into the HUD list', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(
+        <TutorialChecklistHudStory variant="loading" />,
+    );
+
+    await expect(
+        page.locator('[data-tutorial-checklist-trigger="true"]'),
+    ).toHaveCount(0);
+    await expect(page.getByText('0/0', { exact: true })).toHaveCount(0);
+
+    await component.update(<TutorialChecklistHudStory />);
+
+    const listItem = page.locator('[data-hud-list-item-presence]');
+    await expect(listItem).toHaveAttribute(
+        'data-hud-list-item-presence',
+        'visible',
+    );
+    await expect(
+        page.locator('[data-tutorial-checklist-trigger="true"]'),
+    ).toBeVisible();
+});
+
 test('tutorial checklist trigger shows icon with progress count below it', async ({
     mount,
     page,

@@ -88,7 +88,7 @@ function plantedField(positionIndex: number, plantSortId: number) {
     };
 }
 
-function createOutletHudQueryClient() {
+function createOutletHudQueryClient(loading: boolean) {
     const queryClient = new ReactQuery.QueryClient({
         defaultOptions: {
             queries: { retry: false, staleTime: Infinity },
@@ -169,7 +169,14 @@ function createOutletHudQueryClient() {
         currentGardenKeys('summer', TEST_GARDEN_ID),
         garden,
     );
-    queryClient.setQueryData(['outlet-offers'], outletOffers);
+    if (loading) {
+        void queryClient.prefetchQuery({
+            queryKey: ['outlet-offers'],
+            queryFn: () => new Promise<never>(() => undefined),
+        });
+    } else {
+        queryClient.setQueryData(['outlet-offers'], outletOffers);
+    }
     queryClient.setQueryData(['shopping-cart'], {
         allowPurchase: true,
         hasDeliverableItems: false,
@@ -185,11 +192,16 @@ function createOutletHudQueryClient() {
 
 function OutletHudTestProviders({
     children,
+    loading,
     searchParams = 'vrt=1',
 }: PropsWithChildren<{
+    loading: boolean;
     searchParams?: string;
 }>) {
-    const queryClient = useMemo(() => createOutletHudQueryClient(), []);
+    const queryClient = useMemo(
+        () => createOutletHudQueryClient(loading),
+        [loading],
+    );
     const gameStore = useMemo(
         () =>
             createGameState({
@@ -215,12 +227,14 @@ function OutletHudTestProviders({
 }
 
 export function OutletHudStory({
+    loading = false,
     searchParams,
 }: {
+    loading?: boolean;
     searchParams?: string;
 } = {}) {
     return (
-        <OutletHudTestProviders searchParams={searchParams}>
+        <OutletHudTestProviders loading={loading} searchParams={searchParams}>
             <OutletHud />
         </OutletHudTestProviders>
     );
