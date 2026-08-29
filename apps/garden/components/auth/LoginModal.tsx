@@ -8,7 +8,7 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
-import { Mail } from '@gredice/ui/icons';
+import { Mail, Sprout } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -52,7 +52,7 @@ const authContentDirectionClassNames = {
 };
 
 export default function LoginModal({
-    continueWithoutLoginLabel = 'Nastavi s privremenim vrtom',
+    continueWithoutLoginLabel = 'Nastavi kao gost',
     defaultTab = 'login',
     description,
     dismissible = false,
@@ -247,6 +247,20 @@ export default function LoginModal({
                 dismissible={dismissible}
                 onOpenChange={handleOpenChange}
             >
+                {onContinueWithoutLogin ? (
+                    <Button
+                        type="button"
+                        size="lg"
+                        fullWidth
+                        className="mb-4"
+                        startDecorator={
+                            <Sprout aria-hidden className="size-5 shrink-0" />
+                        }
+                        onClick={onContinueWithoutLogin}
+                    >
+                        {continueWithoutLoginLabel}
+                    </Button>
+                ) : null}
                 <Tabs
                     value={activeTab}
                     onValueChange={handleTabChange}
@@ -362,17 +376,6 @@ export default function LoginModal({
                                 )}
                             </div>
                         </div>
-                        {onContinueWithoutLogin ? (
-                            <Button
-                                type="button"
-                                variant="plain"
-                                color="neutral"
-                                fullWidth
-                                onClick={onContinueWithoutLogin}
-                            >
-                                {continueWithoutLoginLabel}
-                            </Button>
-                        ) : null}
                     </Stack>
                 </Tabs>
             </Modal>
