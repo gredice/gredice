@@ -326,11 +326,19 @@ public final class NavigationHandoffControllerTest {
         public void initializeChannel() { }
 
         @Override
-        public PostResult postOrUpdate() {
+        public PostResult postOrUpdate(String sessionKey, String activeRunKey) {
             postCount += 1;
             if (failPost) throw new IllegalStateException("unavailable");
             active = true;
             return PostResult.POSTED;
+        }
+
+        @Override
+        public boolean matchesActiveIdentity(
+                String sessionKey,
+                String activeRunKey
+        ) {
+            return true;
         }
 
         @Override

@@ -109,7 +109,7 @@ public final class NavigationHandoffController {
         Objects.requireNonNull(route, "route");
         DeliveryRouteStatus status = route.getStatus();
         PendingNavigationHandoff pending = readSafely();
-        quickReturnController.reconcile(route, pending);
+        quickReturnController.reconcile(route);
         if (status == DeliveryRouteStatus.SIGNED_OUT
                 || status == DeliveryRouteStatus.EMPTY
                 || status == DeliveryRouteStatus.UNSUPPORTED) {
@@ -155,7 +155,10 @@ public final class NavigationHandoffController {
         } catch (RuntimeException failure) {
             throw new LaunchFailure(Result.STORAGE_FAILURE, failure);
         }
-        quickReturnController.beforeNavigation();
+        quickReturnController.beforeNavigation(
+                sessionBinding,
+                target.getRouteId()
+        );
         launcher.launch(NavigationUri.forCoordinates(
                 target.getLatitude(),
                 target.getLongitude()

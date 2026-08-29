@@ -27,9 +27,12 @@ public final class ActiveRouteReturnController {
         }
     }
 
-    public void beforeNavigation() {
+    public void beforeNavigation(String sessionBinding, String routeId) {
         try {
-            ActiveRouteReturnNotifier.PostResult result = notifier.postOrUpdate();
+            ActiveRouteReturnNotifier.PostResult result = notifier.postOrUpdate(
+                    sessionBinding,
+                    routeId
+            );
             if (result == ActiveRouteReturnNotifier.PostResult.POSTED) {
                 record(DeliveryRouteTelemetry.QuickReturnEvent.POSTED, null);
             } else if (result == ActiveRouteReturnNotifier.PostResult.DISABLED) {
@@ -42,10 +45,7 @@ public final class ActiveRouteReturnController {
         }
     }
 
-    public void reconcile(
-            DeliveryRouteViewState route,
-            PendingNavigationHandoff pending
-    ) {
+    public void reconcile(DeliveryRouteViewState route) {
         Objects.requireNonNull(route, "route");
         DeliveryRouteStatus status = route.getStatus();
         if (status == DeliveryRouteStatus.SIGNED_OUT
@@ -54,21 +54,23 @@ public final class ActiveRouteReturnController {
             cancel();
             return;
         }
-        if (pending == null) return;
-
         String sessionBinding = route.getSessionBinding();
-        if (sessionBinding != null
-                && !sessionBinding.equals(pending.getSessionBinding())) {
-            cancel();
-            return;
-        }
+        if (sessionBinding == null) return;
         String routeId = route.getRouteId();
-        if ((status == DeliveryRouteStatus.READY
+        String comparableRouteId = status == DeliveryRouteStatus.READY
                 || status == DeliveryRouteStatus.FRESH_OFFLINE
-                || status == DeliveryRouteStatus.STALE_OFFLINE)
-                && routeId != null
-                && !routeId.equals(pending.getRouteId())) {
-            cancel();
+                || status == DeliveryRouteStatus.STALE_OFFLINE
+                ? routeId
+                : null;
+        try {
+            if (!notifier.matchesActiveIdentity(
+                    sessionBinding,
+                    comparableRouteId
+            )) {
+                cancel();
+            }
+        } catch (RuntimeException failure) {
+            recordFailure("STATE_READ_FAILED");
         }
     }
 

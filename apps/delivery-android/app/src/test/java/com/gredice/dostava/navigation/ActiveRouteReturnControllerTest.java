@@ -19,7 +19,7 @@ public final class ActiveRouteReturnControllerTest {
         Fixture fixture = new Fixture();
 
         fixture.controller.initialize();
-        fixture.controller.beforeNavigation();
+        fixture.controller.beforeNavigation("session:opaque", "route:opaque");
 
         assertEquals(1, fixture.notifier.initializeCount);
         assertEquals(1, fixture.notifier.postCount);
@@ -31,13 +31,13 @@ public final class ActiveRouteReturnControllerTest {
     public void disabledOrFailedPostingNeverThrowsAndRecordsOnlyGenericCodes() {
         Fixture disabled = new Fixture();
         disabled.notifier.postResult = ActiveRouteReturnNotifier.PostResult.DISABLED;
-        disabled.controller.beforeNavigation();
+        disabled.controller.beforeNavigation("session:opaque", "route:opaque");
         assertEquals(DeliveryRouteTelemetry.QuickReturnEvent.FAILURE, disabled.telemetry.event);
         assertEquals("NOTIFICATIONS_DISABLED", disabled.telemetry.errorCode);
 
         Fixture failed = new Fixture();
         failed.notifier.failPost = true;
-        failed.controller.beforeNavigation();
+        failed.controller.beforeNavigation("session:opaque", "route:opaque");
         assertEquals(DeliveryRouteTelemetry.QuickReturnEvent.FAILURE, failed.telemetry.event);
         assertEquals("POST_FAILED", failed.telemetry.errorCode);
     }
@@ -46,14 +46,13 @@ public final class ActiveRouteReturnControllerTest {
     public void keepsGenericShortcutAcrossRevisionChanges() {
         Fixture fixture = new Fixture();
         fixture.notifier.active = true;
-        PendingNavigationHandoff pending = pending();
 
         fixture.controller.reconcile(route(
                 DeliveryRouteStatus.READY,
                 "route:opaque",
                 8L,
                 "session:opaque"
-        ), pending);
+        ));
         assertEquals(0, fixture.notifier.cancelCount);
     }
 
@@ -73,7 +72,7 @@ public final class ActiveRouteReturnControllerTest {
                     status == DeliveryRouteStatus.SIGNED_OUT
                             ? null
                             : "session:opaque"
-            ), null);
+            ));
             assertEquals(1, fixture.notifier.cancelCount);
             assertEquals(
                     DeliveryRouteTelemetry.QuickReturnEvent.CANCELED,
@@ -92,7 +91,7 @@ public final class ActiveRouteReturnControllerTest {
                 null,
                 null,
                 "another-session"
-        ), pending());
+        ));
         assertEquals(1, account.notifier.cancelCount);
 
         Fixture route = new Fixture();
@@ -102,7 +101,7 @@ public final class ActiveRouteReturnControllerTest {
                 "another-route",
                 7L,
                 "session:opaque"
-        ), pending());
+        ));
         assertEquals(1, route.notifier.cancelCount);
     }
 
@@ -123,17 +122,6 @@ public final class ActiveRouteReturnControllerTest {
         assertEquals(DeliveryRouteTelemetry.QuickReturnEvent.FAILURE, fixture.telemetry.event);
         assertEquals("CANCEL_FAILED", fixture.telemetry.errorCode);
         assertTrue(fixture.notifier.active);
-    }
-
-    private static PendingNavigationHandoff pending() {
-        return new PendingNavigationHandoff(
-                "session:opaque",
-                "route:opaque",
-                7L,
-                "delivery:opaque",
-                "delivery",
-                1_000L
-        );
     }
 
     private static DeliveryRouteViewState route(
@@ -174,11 +162,22 @@ public final class ActiveRouteReturnControllerTest {
         }
 
         @Override
-        public PostResult postOrUpdate() {
+        public PostResult postOrUpdate(String sessionKey, String activeRunKey) {
             postCount += 1;
             if (failPost) throw new IllegalStateException("unavailable");
             active = postResult == PostResult.POSTED;
             return postResult;
+        }
+
+        @Override
+        public boolean matchesActiveIdentity(
+                String sessionKey,
+                String activeRunKey
+        ) {
+            if (!active) return true;
+            return "session:opaque".equals(sessionKey)
+                    && (activeRunKey == null
+                    || "route:opaque".equals(activeRunKey));
         }
 
         @Override

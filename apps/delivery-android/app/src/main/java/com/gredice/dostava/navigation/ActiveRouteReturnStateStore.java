@@ -1,10 +1,12 @@
 package com.gredice.dostava.navigation;
 
-/** Persists only whether the one generic quick-return notification is active. */
+/** Persists the generic active flag and one-way identity fingerprints. */
 interface ActiveRouteReturnStateStore {
     boolean isActive();
 
-    void markActive();
+    boolean matchesIdentity(String sessionKey, String activeRunKey);
+
+    void markActive(String sessionKey, String activeRunKey);
 
     void clear();
 }

@@ -7,8 +7,16 @@ public interface ActiveRouteReturnNotifier {
         public void initializeChannel() { }
 
         @Override
-        public PostResult postOrUpdate() {
+        public PostResult postOrUpdate(String sessionKey, String activeRunKey) {
             return PostResult.SKIPPED;
+        }
+
+        @Override
+        public boolean matchesActiveIdentity(
+                String sessionKey,
+                String activeRunKey
+        ) {
+            return true;
         }
 
         @Override
@@ -19,7 +27,9 @@ public interface ActiveRouteReturnNotifier {
 
     void initializeChannel();
 
-    PostResult postOrUpdate();
+    PostResult postOrUpdate(String sessionKey, String activeRunKey);
+
+    boolean matchesActiveIdentity(String sessionKey, String activeRunKey);
 
     boolean cancel();
 

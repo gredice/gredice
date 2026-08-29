@@ -78,10 +78,22 @@ public final class CarActiveRouteReturnNotifierInstrumentedTest {
         first.clear();
         assertFalse(first.isActive());
 
-        first.markActive();
+        first.markActive("session:opaque", "route:opaque");
         SharedPreferencesActiveRouteReturnStateStore recreated =
                 new SharedPreferencesActiveRouteReturnStateStore(context);
         assertTrue(recreated.isActive());
+        assertTrue(recreated.matchesIdentity("session:opaque", "route:opaque"));
+        assertTrue(recreated.matchesIdentity("session:opaque", null));
+        assertFalse(recreated.matchesIdentity("another-session", "route:opaque"));
+        assertFalse(recreated.matchesIdentity("session:opaque", "another-route"));
+        assertFalse(context.getSharedPreferences(
+                "active_route_return_notification",
+                Context.MODE_PRIVATE
+        ).getAll().containsValue("session:opaque"));
+        assertFalse(context.getSharedPreferences(
+                "active_route_return_notification",
+                Context.MODE_PRIVATE
+        ).getAll().containsValue("route:opaque"));
 
         recreated.clear();
         assertFalse(first.isActive());
