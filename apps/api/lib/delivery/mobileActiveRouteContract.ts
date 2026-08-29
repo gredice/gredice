@@ -43,6 +43,7 @@ export const deliveryMobileActiveRouteResponseSchema = z
     .strict();
 
 export const deliveryMobileErrorCodeSchema = z.enum([
+    'ANDROID_AUTO_DISABLED',
     'SESSION_REQUIRED',
     'DELIVERY_ROLE_REQUIRED',
     'ROUTE_TEMPORARILY_UNAVAILABLE',

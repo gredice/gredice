@@ -146,6 +146,16 @@ public final class DeliveryStopsScreenInstrumentedTest {
                 unsupported.getMessage().toString()
         );
         assertTrue(unsupported.getActions().isEmpty());
+
+        MessageTemplate disabled = message(
+                DeliveryRouteStatus.DISABLED,
+                "ANDROID_AUTO_DISABLED"
+        );
+        assertEquals(
+                "Android Auto trenutačno nije dostupan. Otvorite dostavu na telefonu.",
+                disabled.getMessage().toString()
+        );
+        assertTrue(disabled.getActions().isEmpty());
     }
 
     @Test

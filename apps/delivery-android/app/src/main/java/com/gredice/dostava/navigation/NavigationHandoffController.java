@@ -112,6 +112,7 @@ public final class NavigationHandoffController {
         quickReturnController.reconcile(route);
         if (status == DeliveryRouteStatus.SIGNED_OUT
                 || status == DeliveryRouteStatus.EMPTY
+                || status == DeliveryRouteStatus.DISABLED
                 || status == DeliveryRouteStatus.UNSUPPORTED) {
             clearSafely();
             return;

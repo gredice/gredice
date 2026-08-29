@@ -53,17 +53,20 @@ function activeRouteResult(): DeliveryMobileProjectionResult {
 }
 
 function routeDeps({
+    enabled = true,
     result = noRouteResult(),
     readActiveRoute,
     recordRead = () => undefined,
     onUnexpectedError = () => undefined,
 }: {
+    enabled?: boolean;
     result?: DeliveryMobileProjectionResult;
     readActiveRoute?: DeliveryMobileRouteDeps['readActiveRoute'];
     recordRead?: DeliveryMobileRouteDeps['recordRead'];
     onUnexpectedError?: DeliveryMobileRouteDeps['onUnexpectedError'];
 } = {}): DeliveryMobileRouteDeps {
     return {
+        enabled: () => enabled,
         authValidator: createTestDeliveryMobileAuthMiddleware(),
         now: () => new Date('2026-08-28T10:00:00.000Z'),
         readActiveRoute: readActiveRoute ?? (async () => result),
@@ -71,6 +74,29 @@ function routeDeps({
         onUnexpectedError,
     };
 }
+
+test('disabled Android Auto route fails closed before reading driver data', async () => {
+    let readCount = 0;
+    const app = createDeliveryMobileRoutes(
+        routeDeps({
+            enabled: false,
+            readActiveRoute: async () => {
+                readCount += 1;
+                return activeRouteResult();
+            },
+        }),
+    );
+
+    const response = await app.request('/active-route');
+
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.deepEqual(await response.json(), {
+        error: 'Android Auto trenutačno nije dostupan.',
+        code: 'ANDROID_AUTO_DISABLED',
+    });
+    assert.equal(readCount, 0);
+});
 
 test('active-route derives its driver exclusively from native auth context', async () => {
     const inputs: Array<{ userId: string; generatedAt: Date }> = [];

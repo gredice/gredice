@@ -175,6 +175,28 @@ public final class NativeDeliveryStopRepositoryTest {
     }
 
     @Test
+    public void disabledServiceClearsFreshCacheAndNavigationImmediately() {
+        Fixture fixture = new Fixture(10_000L, TestDeliveryRoutes.snapshot(1, 0));
+        fixture.api.enqueue(new ApiFailure(503, "ANDROID_AUTO_DISABLED"));
+
+        fixture.repository.refresh(changed -> { });
+        fixture.executor.runNext();
+
+        assertEquals(
+                DeliveryRouteStatus.DISABLED,
+                fixture.repository.getViewState().getStatus()
+        );
+        assertEquals(
+                "ANDROID_AUTO_DISABLED",
+                fixture.repository.getViewState().getErrorCode()
+        );
+        assertTrue(fixture.repository.getViewState().getStops().isEmpty());
+        assertFalse(fixture.repository.getViewState().allowsNavigation());
+        assertNull(fixture.cache.snapshot);
+        assertTrue(fixture.cache.clearCount > 0);
+    }
+
+    @Test
     public void ignoresAQueuedResponseAfterLogoutClearsTheRoute() {
         Fixture fixture = new Fixture(10_000L, null);
         fixture.api.enqueue(DeliveryRouteResponse.active(

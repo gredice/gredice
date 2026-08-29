@@ -9,6 +9,7 @@
     <string name="car_no_active_route">Nema aktivne dostavne rute. Otvorite aplikaciju na telefonu.</string>
     <string name="car_offline">Izvan mreže</string>
     <string name="car_route_stale">Podaci o ruti nisu ažurni. Otvorite aplikaciju na telefonu.</string>
+    <string name="car_android_auto_disabled">Android Auto trenutačno nije dostupan. Otvorite dostavu na telefonu.</string>
     <string name="car_route_unavailable">Rutu trenutačno nije moguće učitati. Pokušajte ponovno.</string>
     <string name="car_route_unsupported">Ažurirajte aplikaciju i otvorite dostavu na telefonu.</string>
     <string name="retry_action">Pokušaj ponovno</string>

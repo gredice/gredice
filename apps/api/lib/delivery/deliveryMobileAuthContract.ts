@@ -46,6 +46,7 @@ export const deliveryNativeTokenResponseSchema = z
     .strict();
 
 export const deliveryNativeAuthErrorCodeSchema = z.enum([
+    'ANDROID_AUTO_DISABLED',
     'AUTH_CODE_INVALID',
     'AUTH_CODE_EXPIRED',
     'AUTH_CODE_REPLAYED',

@@ -8,5 +8,6 @@ public enum DeliveryRouteStatus {
     FRESH_OFFLINE,
     STALE_OFFLINE,
     ERROR,
+    DISABLED,
     UNSUPPORTED
 }

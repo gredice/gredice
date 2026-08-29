@@ -299,6 +299,12 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
             applySignedOut();
             return;
         }
+        if ("ANDROID_AUTO_DISABLED".equals(errorCode)) {
+            snapshot = null;
+            routeCache.clear();
+            viewState = reducer.disabled(sessionBinding);
+            return;
+        }
         if ("ROUTE_RESPONSE_UNSUPPORTED".equals(errorCode)
                 || "ROUTE_RESPONSE_INVALID".equals(errorCode)) {
             snapshot = null;
