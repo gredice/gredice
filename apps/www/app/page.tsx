@@ -19,9 +19,7 @@ import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
-import { enableLandingFeaturedGardensFlag } from './flags';
 import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
-import { isCiEnvironment } from './isCiEnvironment';
 import { LandingFeaturedGardens } from './LandingFeaturedGardens';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
@@ -251,14 +249,8 @@ function StepsSection() {
 }
 
 export default async function Home() {
-    const featuredGardensEnabled = isCiEnvironment()
-        ? false
-        : await enableLandingFeaturedGardensFlag();
-    const featuredGardens = featuredGardensEnabled
-        ? await getLandingFeaturedGardens()
-        : [];
-    const showFeaturedGardens =
-        featuredGardensEnabled && featuredGardens.length > 0;
+    const featuredGardens = await getLandingFeaturedGardens();
+    const showFeaturedGardens = featuredGardens.length > 0;
 
     return (
         <Stack>
