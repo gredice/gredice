@@ -3,6 +3,7 @@ export * from './aiChatSchema';
 export * from './automationsSchema';
 export * from './cmsSchema';
 export * from './communityEditsSchema';
+export * from './deliveryNativeAuthSchema';
 export * from './deliverySchema';
 export * from './emailSchema';
 export * from './eventsSchema';

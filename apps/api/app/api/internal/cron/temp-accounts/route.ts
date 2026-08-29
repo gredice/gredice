@@ -1,4 +1,7 @@
-import { cleanupInactiveTemporaryAccounts } from '@gredice/storage';
+import {
+    cleanupDeliveryNativeAuth,
+    cleanupInactiveTemporaryAccounts,
+} from '@gredice/storage';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +16,12 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        const nativeAuthCleanup = await cleanupDeliveryNativeAuth();
         const cleanup = await cleanupInactiveTemporaryAccounts();
 
         return Response.json({
             success: true,
+            nativeAuthCleanup,
             checkedUsers: cleanup.checkedUsers,
             deletedAccounts: cleanup.deletedAccounts,
             deletedUsers: cleanup.deletedUsers,
