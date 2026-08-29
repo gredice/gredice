@@ -2,7 +2,10 @@ package com.gredice.dostava.data;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
 
 import org.junit.Test;
 
@@ -52,5 +55,29 @@ public final class DeliveryRouteStateReducerTest {
         assertEquals(Long.valueOf(8), state.getRouteRevision());
         assertEquals(snapshot.getStops(), state.getStops());
         assertTrue(state.allowsNavigation());
+    }
+
+    @Test
+    public void immutableRouteCopiesRejectNullStops() {
+        assertThrows(
+                NullPointerException.class,
+                () -> new DeliveryRouteSnapshot(
+                        "route",
+                        1,
+                        null,
+                        Collections.singletonList(null),
+                        "\"route-v1\"",
+                        1_000L
+                )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> new DeliveryRouteViewState(
+                        DeliveryRouteStatus.LOADING,
+                        Collections.singletonList(null),
+                        null,
+                        null
+                )
+        );
     }
 }

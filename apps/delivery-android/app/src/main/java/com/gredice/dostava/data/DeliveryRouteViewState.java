@@ -19,7 +19,11 @@ public final class DeliveryRouteViewState {
             String errorCode
     ) {
         this.status = status;
-        this.stops = Collections.unmodifiableList(new ArrayList<>(stops));
+        ArrayList<DeliveryStop> copiedStops = new ArrayList<>(stops.size());
+        for (DeliveryStop stop : stops) {
+            copiedStops.add(Objects.requireNonNull(stop));
+        }
+        this.stops = Collections.unmodifiableList(copiedStops);
         this.routeRevision = routeRevision;
         this.errorCode = errorCode;
     }
