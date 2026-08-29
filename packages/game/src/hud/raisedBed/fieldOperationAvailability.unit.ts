@@ -8,7 +8,7 @@ test('allows plant operations linked to an occupied field', () => {
             {
                 attributes: {
                     application: 'plant',
-                    appliesToAllTargets: false,
+                    appliesToEmptyFields: false,
                 },
             },
             true,
@@ -17,13 +17,13 @@ test('allows plant operations linked to an occupied field', () => {
     );
 });
 
-test('only allows all-target plant operations on an empty field', () => {
+test('only allows explicitly eligible plant operations on an empty field', () => {
     assert.equal(
         isFieldOperationAvailable(
             {
                 attributes: {
                     application: 'plant',
-                    appliesToAllTargets: true,
+                    appliesToEmptyFields: true,
                 },
             },
             false,
@@ -35,7 +35,7 @@ test('only allows all-target plant operations on an empty field', () => {
             {
                 attributes: {
                     application: 'plant',
-                    appliesToAllTargets: false,
+                    appliesToEmptyFields: false,
                 },
             },
             false,
@@ -50,7 +50,7 @@ test('rejects raised-bed operations for field targets', () => {
             {
                 attributes: {
                     application: 'raisedBedFull',
-                    appliesToAllTargets: true,
+                    appliesToEmptyFields: true,
                 },
             },
             false,

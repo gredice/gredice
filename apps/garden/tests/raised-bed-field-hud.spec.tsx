@@ -215,7 +215,7 @@ function emptyFieldOperationsScenario(): RaisedBedScenario {
         fields: [],
         operations: [
             buildOperation({
-                appliesToAllTargets: true,
+                appliesToEmptyFields: true,
                 id: 191,
                 name: 'mock-empty-field-preparation',
                 label: 'Priprema praznog polja',
@@ -223,6 +223,7 @@ function emptyFieldOperationsScenario(): RaisedBedScenario {
                 stageLabel: 'Priprema tla',
             }),
             buildOperation({
+                appliesToAllTargets: true,
                 id: 192,
                 name: 'mock-plant-specific-care',
                 label: 'Njega određene biljke',
