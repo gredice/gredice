@@ -931,6 +931,9 @@ importers:
 
   apps/www:
     dependencies:
+      '@flags-sdk/vercel':
+        specifier: 1.4.6
+        version: 1.4.6(@aws-sdk/credential-provider-web-identity@3.972.63)(flags@4.2.0(@opentelemetry/api@1.9.1)(next@16.3.0(patch_hash=55aa10de397e0471f31d9dc80e6bc429306bc37a80b4784e4b489290a54ed79f)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@24.12.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.0))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(next@16.3.0(patch_hash=55aa10de397e0471f31d9dc80e6bc429306bc37a80b4784e4b489290a54ed79f)(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@24.12.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(sass@1.101.0))(ws@8.21.0)
       '@googlemaps/js-api-loader':
         specifier: 2.1.1
         version: 2.1.1
