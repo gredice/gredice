@@ -22,7 +22,7 @@ public final class DeliveryRouteSnapshot {
             String etag,
             long verifiedAtMillis
     ) {
-        this.routeId = routeId;
+        this.routeId = Objects.requireNonNull(routeId, "routeId");
         this.revision = revision;
         this.currentNavigationId = currentNavigationId;
         ArrayList<DeliveryStop> copiedStops = new ArrayList<>(stops.size());
@@ -30,7 +30,7 @@ public final class DeliveryRouteSnapshot {
             copiedStops.add(Objects.requireNonNull(stop));
         }
         this.stops = Collections.unmodifiableList(copiedStops);
-        this.etag = etag;
+        this.etag = Objects.requireNonNull(etag, "etag");
         this.verifiedAtMillis = verifiedAtMillis;
     }
 

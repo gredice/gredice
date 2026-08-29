@@ -18,7 +18,7 @@ public final class DeliveryRouteViewState {
             Long routeRevision,
             String errorCode
     ) {
-        this.status = status;
+        this.status = Objects.requireNonNull(status, "status");
         ArrayList<DeliveryStop> copiedStops = new ArrayList<>(stops.size());
         for (DeliveryStop stop : stops) {
             copiedStops.add(Objects.requireNonNull(stop));

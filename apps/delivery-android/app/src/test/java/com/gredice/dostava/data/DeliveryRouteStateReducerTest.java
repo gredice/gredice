@@ -58,7 +58,19 @@ public final class DeliveryRouteStateReducerTest {
     }
 
     @Test
-    public void immutableRouteCopiesRejectNullStops() {
+    public void routeModelsRejectInvalidNulls() {
+        DeliveryStop stop = TestDeliveryRoutes.stop(1, true);
+        assertThrows(
+                NullPointerException.class,
+                () -> new DeliveryRouteSnapshot(
+                        null,
+                        1,
+                        null,
+                        Collections.singletonList(stop),
+                        "\"route-v1\"",
+                        1_000L
+                )
+        );
         assertThrows(
                 NullPointerException.class,
                 () -> new DeliveryRouteSnapshot(
@@ -73,11 +85,40 @@ public final class DeliveryRouteStateReducerTest {
         assertThrows(
                 NullPointerException.class,
                 () -> new DeliveryRouteViewState(
+                        null,
+                        Collections.emptyList(),
+                        null,
+                        null
+                )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> new DeliveryRouteViewState(
                         DeliveryRouteStatus.LOADING,
                         Collections.singletonList(null),
                         null,
                         null
                 )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> new DeliveryStop(
+                        null,
+                        "delivery",
+                        1,
+                        "current",
+                        "Dostava 1",
+                        "Testna adresa 1",
+                        45.8,
+                        16.0,
+                        null,
+                        null,
+                        null
+                )
+        );
+        assertThrows(
+                NullPointerException.class,
+                () -> DeliveryRouteResponse.active(null)
         );
     }
 }

@@ -1,5 +1,7 @@
 package com.gredice.dostava.data;
 
+import java.util.Objects;
+
 /** Typed transport outcome for a changed route, no route, or an ETag 304. */
 public final class DeliveryRouteResponse {
     public enum Kind {
@@ -12,12 +14,15 @@ public final class DeliveryRouteResponse {
     private final DeliveryRouteSnapshot snapshot;
 
     private DeliveryRouteResponse(Kind kind, DeliveryRouteSnapshot snapshot) {
-        this.kind = kind;
+        this.kind = Objects.requireNonNull(kind, "kind");
         this.snapshot = snapshot;
     }
 
     public static DeliveryRouteResponse active(DeliveryRouteSnapshot snapshot) {
-        return new DeliveryRouteResponse(Kind.ACTIVE, snapshot);
+        return new DeliveryRouteResponse(
+                Kind.ACTIVE,
+                Objects.requireNonNull(snapshot, "snapshot")
+        );
     }
 
     public static DeliveryRouteResponse empty() {

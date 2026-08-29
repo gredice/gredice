@@ -29,12 +29,12 @@ public final class DeliveryStop {
             Long travelSeconds,
             Long distanceMeters
     ) {
-        this.navigationId = navigationId;
-        this.kind = kind;
+        this.navigationId = Objects.requireNonNull(navigationId, "navigationId");
+        this.kind = Objects.requireNonNull(kind, "kind");
         this.sequence = sequence;
-        this.actionState = actionState;
-        this.title = title;
-        this.address = address;
+        this.actionState = Objects.requireNonNull(actionState, "actionState");
+        this.title = Objects.requireNonNull(title, "title");
+        this.address = Objects.requireNonNull(address, "address");
         this.latitude = latitude;
         this.longitude = longitude;
         this.estimatedArrivalAtMillis = estimatedArrivalAtMillis;
