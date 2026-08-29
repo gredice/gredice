@@ -266,9 +266,11 @@ test('navbar floats on scroll and landing game frame is rounded', async ({
             { timeout: 15_000 },
         )
         .toEqual({
-            adaptiveHighEnabled: true,
+            adaptiveHighEnabled: !hasFeaturedGardenCarousel,
             dprCapIsSupported: true,
-            qualityTier: 'high',
+            qualityTier: hasFeaturedGardenCarousel
+                ? 'auto-constrained'
+                : 'high',
         });
 
     const canvas = page.locator('canvas');
