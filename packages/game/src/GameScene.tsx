@@ -58,6 +58,10 @@ import styles from './GameScene.module.css';
 import { GameSceneDetailContext } from './GameSceneDetailContext';
 import { GardenPreviewCaptureController } from './GardenPreviewCaptureController';
 import {
+    getGardenSceneTransitionClassName,
+    useGardenSceneTransition,
+} from './GardenSceneTransition';
+import {
     defaultGameCameraPosition,
     defaultGameCameraZoom,
     farGameCameraZoom,
@@ -430,9 +434,11 @@ export function GameScene({
     // Start non-critical metadata early, but don't block the first scene frame.
     const { data: blockData } = useBlockData();
     const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const { displayedGarden: transitionedGardenData, sceneVisible } =
+        useGardenSceneTransition(gardenData);
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
-    const garden = useSceneCurrentGarden(gardenData);
+    const garden = useSceneCurrentGarden(transitionedGardenData);
     const fenceGateBlockIds = useMemo(
         () =>
             new Set(
@@ -513,7 +519,7 @@ export function GameScene({
             setGardenAvatarView('overview');
         }
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
-    const isLoading = gardenLoading;
+    const isLoading = gardenLoading && transitionedGardenData === undefined;
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
             if (isFenceGateBlockName(block.name)) {
@@ -613,7 +619,11 @@ export function GameScene({
                     quality={qualityProfile}
                     staticOpaqueCacheEnabled={staticOpaqueCacheEnabled}
                     zoom={sceneCameraZoom}
-                    className="!absolute"
+                    className={getGardenSceneTransitionClassName(
+                        sceneVisible,
+                        '!absolute',
+                    )}
+                    data-scene-visible={sceneVisible}
                 >
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>

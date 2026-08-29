@@ -2,6 +2,10 @@
 
 import { clientAuthenticated, type GardenResponse } from '@gredice/client';
 import type { PublicGardenDetail } from '@gredice/game';
+import {
+    GardenSceneTransitionSurface,
+    gardenSceneTransitionDelayMs,
+} from '@gredice/game/garden-scene-transition';
 import { getGardenBaseUrl } from '@gredice/js/urls';
 import { Card, CardContent } from '@gredice/ui/Card';
 import { Chip } from '@gredice/ui/Chip';
@@ -25,7 +29,6 @@ import {
 } from './landingGardenCarousel';
 
 const autoplayDelayMs = 8_000;
-const gardenTransitionDelayMs = 280;
 const swipeThresholdPx = 44;
 const noGardens: PublicGardenDetail[] = [];
 
@@ -164,7 +167,7 @@ export function LandingFeaturedGardens({
                         setSceneVisible(true);
                     },
                 );
-            }, gardenTransitionDelayMs);
+            }, gardenSceneTransitionDelayMs);
         },
         [
             displayedGardenId,
@@ -357,14 +360,9 @@ export function LandingFeaturedGardens({
             onPointerEnter={() => setInteractionPaused(true)}
             onPointerLeave={() => setInteractionPaused(false)}
         >
-            <div
-                className={cx(
-                    'absolute inset-0 transition-[opacity,transform,filter] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
-                    sceneVisible
-                        ? 'scale-100 opacity-100 blur-none'
-                        : 'scale-[1.015] opacity-35 blur-[2px]',
-                )}
-                data-scene-visible={sceneVisible}
+            <GardenSceneTransitionSurface
+                className="absolute inset-0"
+                visible={sceneVisible}
                 onPointerCancel={(event) => {
                     swipeStartRef.current = null;
                     if (event.pointerType !== 'mouse') {
@@ -382,7 +380,7 @@ export function LandingFeaturedGardens({
                     noControls
                     noSound
                 />
-            </div>
+            </GardenSceneTransitionSurface>
 
             <div className="pointer-events-none absolute right-3 bottom-3 left-3 z-10 md:top-10 md:right-10 md:bottom-auto md:left-10 lg:top-12 lg:right-16 lg:left-16">
                 <Card
