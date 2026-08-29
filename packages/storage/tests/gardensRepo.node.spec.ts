@@ -232,6 +232,29 @@ test('gardens are public by default and can be unlisted', async () => {
     );
 });
 
+test('public garden owners do not expose usernames as display names', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const ownerId = await createTestUser();
+    await storage().insert(accountUsers).values({
+        accountId,
+        userId: ownerId,
+    });
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId: await ensureFarmId(),
+    });
+
+    const garden = (await getPublicGardens()).find(
+        (candidate) => candidate.id === gardenId,
+    );
+
+    assert.deepEqual(garden?.owner, {
+        avatarUrl: null,
+        displayName: 'Korisnik Gredica',
+    });
+});
+
 test('garden previews replace atomically and reject older captures', async () => {
     createTestDb();
     const accountId = await createAccount();

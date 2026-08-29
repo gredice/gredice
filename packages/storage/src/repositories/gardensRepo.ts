@@ -209,7 +209,6 @@ export async function getPublicGardens() {
                       accountId: accountUsers.accountId,
                       avatarUrl: users.avatarUrl,
                       displayName: users.displayName,
-                      userName: users.userName,
                   })
                   .from(accountUsers)
                   .innerJoin(users, eq(accountUsers.userId, users.id))
@@ -231,7 +230,7 @@ export async function getPublicGardens() {
         if (!ownerByAccountId.has(owner.accountId)) {
             ownerByAccountId.set(owner.accountId, {
                 avatarUrl: owner.avatarUrl,
-                displayName: owner.displayName ?? owner.userName,
+                displayName: owner.displayName ?? 'Korisnik Gredica',
             });
         }
     }
