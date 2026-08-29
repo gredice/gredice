@@ -20,6 +20,7 @@ import type {
 } from '../../app/admin/operations/operationsListTypes';
 import { VerifyOperationModal } from '../../app/admin/schedule/VerifyOperationModal';
 import { KnownPages } from '../../src/KnownPages';
+import { FarmerPaperNote } from './FarmerPaperNote';
 import { OperationCancelButton } from './OperationCancelButton';
 import { OperationRescheduleButton } from './OperationRescheduleButton';
 
@@ -150,6 +151,12 @@ export function OperationListItem({
                                 </span>
                             ) : null}
                         </div>
+                        {operation.kind === 'operation' &&
+                        operation.completionNotes ? (
+                            <FarmerPaperNote className="mt-1 max-w-2xl">
+                                {operation.completionNotes}
+                            </FarmerPaperNote>
+                        ) : null}
                     </Stack>
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center justify-start gap-2 md:justify-end">

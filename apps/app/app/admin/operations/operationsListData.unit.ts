@@ -279,6 +279,39 @@ test('operations list entity filter narrows operations and hides sowing rows', (
     );
 });
 
+test('operations list exposes farmer completion notes on operation rows', () => {
+    const page = buildOperationsListPage({
+        context: buildContext(),
+        fromDate: new Date('2026-07-02T00:00:00.000Z'),
+        operations: [
+            {
+                id: 303,
+                entityId: 501,
+                entityTypeName: 'operation',
+                taskVersionEventId: 9103,
+                status: 'completed',
+                timestamp: new Date('2026-07-03T07:00:00.000Z'),
+                completedAt: new Date('2026-07-03T07:15:00.000Z'),
+                completionNotes:
+                    '  Zaliveno nakon berbe.\nTlo je još uvijek vlažno.  ',
+            },
+        ],
+    });
+
+    const operation = page.operations.find(
+        (candidate) => candidate.rowId === 'operation:303',
+    );
+
+    assert.ok(operation);
+    assert.equal(operation.kind, 'operation');
+    if (operation.kind === 'operation') {
+        assert.equal(
+            operation.completionNotes,
+            'Zaliveno nakon berbe.\nTlo je još uvijek vlažno.',
+        );
+    }
+});
+
 test('operations list record type filter selects operation or sowing rows', () => {
     const operations = [
         {
