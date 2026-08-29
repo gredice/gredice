@@ -564,11 +564,26 @@ test.describe('shopping cart item presence', () => {
         const cartIcon = cartTrigger.locator(
             '[data-shopping-basket-trigger-icon]',
         );
+        const cartHudShell = page.locator('[data-shopping-cart-hud-shell]');
+        const cartCountBadge = cartTrigger.locator(
+            '[data-shopping-cart-count-badge]',
+        );
+        await expect(cartTrigger).toHaveAttribute(
+            'aria-label',
+            'Košara, broj stavki: 1',
+        );
+        await expect(cartHudShell).toHaveCSS('width', '48px');
+        await expect(cartHudShell).toHaveCSS('height', '48px');
+        await expect(cartHudShell).toHaveClass(/rounded-full/u);
         await expect(cartIcon).toHaveAttribute(
             'src',
             '/assets/hud/shopping-basket.webp',
         );
         await expect(cartIcon).toHaveClass(/w-12/u);
+        await expect(cartCountBadge).toHaveText('1');
+        await expect(cartCountBadge).toHaveClass(/bg-green-500/u);
+        await expect(cartCountBadge).toHaveClass(/text-green-950/u);
+        await expect(cartTrigger.getByText('2.50 €')).toHaveCount(0);
         await cartTrigger.click();
         const cartDialog = page.getByRole('dialog', { name: 'Košara' });
         await expect(cartDialog).toBeVisible();

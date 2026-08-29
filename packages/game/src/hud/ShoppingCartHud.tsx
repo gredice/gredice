@@ -1,6 +1,6 @@
 import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
-import { DotIndicator } from '@gredice/ui/DotIndicator';
+import { IconButton } from '@gredice/ui/IconButton';
 import { Calendar, Delete, Info, Navigate, Truck } from '@gredice/ui/icons';
 import { ModalConfirm } from '@gredice/ui/ModalConfirm';
 import { Row } from '@gredice/ui/Row';
@@ -538,7 +538,12 @@ export function ShoppingCartHud() {
     }
 
     return (
-        <HudCard open position="floating" className="static p-0.5">
+        <HudCard
+            open
+            position="floating"
+            className="static size-12 p-0.5"
+            data-shopping-cart-hud-shell="true"
+        >
             <Row spacing={2}>
                 <GameModal
                     open={isOpen}
@@ -584,10 +589,11 @@ export function ShoppingCartHud() {
                     }
                     hudLayer
                     trigger={
-                        <Button
+                        <IconButton
+                            aria-label={`Košara, broj stavki: ${cart?.items.length ?? 0}`}
                             title="Košara"
                             variant="plain"
-                            className="relative gap-2 overflow-visible rounded-full p-2"
+                            className="relative size-10 overflow-visible rounded-full"
                         >
                             <span className="relative h-6 w-8 shrink-0">
                                 <Image
@@ -602,28 +608,22 @@ export function ShoppingCartHud() {
                                     width={48}
                                 />
                             </span>
-                            <Typography
-                                level="body2"
-                                semiBold
-                                className="text-foreground"
-                            >
-                                {(cart?.total ?? 0).toFixed(2)} €
-                            </Typography>
                             {Boolean(cart?.items.length) && (
-                                <div className="absolute -right-2 -top-2 z-20">
-                                    <div className="absolute inset-[3.5px] border bg-green-500 border-green-500 size-[17px] rounded-full animate-ping -z-10"></div>
-                                    <DotIndicator
-                                        size={24}
-                                        color={'success'}
-                                        content={
-                                            <Typography>
-                                                {cart?.items.length}
-                                            </Typography>
-                                        }
-                                    />
+                                <div
+                                    className={cx(
+                                        'pointer-events-none absolute -right-4 -top-4 z-20 flex size-6 items-center justify-center rounded-full border border-green-950/30 bg-green-500 px-1.5 text-sm font-semibold leading-none text-green-950 shadow-md',
+                                        (cart?.items.length ?? 0) > 99 &&
+                                            'text-[10px]',
+                                    )}
+                                    aria-hidden="true"
+                                    data-shopping-cart-count-badge="true"
+                                >
+                                    {(cart?.items.length ?? 0) > 99
+                                        ? '99+'
+                                        : cart?.items.length}
                                 </div>
                             )}
-                        </Button>
+                        </IconButton>
                     }
                 >
                     <ShoppingCart
