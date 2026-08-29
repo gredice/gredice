@@ -32,6 +32,10 @@ public final class NativeSessionManager {
         return credentialStore.getRefreshToken() != null;
     }
 
+    public String getSessionBinding() {
+        return hasSession() ? credentialStore.getSessionBinding() : null;
+    }
+
     public void completePairing(String code, String verifier) throws ApiFailure {
         beginCredentialOperation();
         try {

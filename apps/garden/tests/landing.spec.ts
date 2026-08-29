@@ -461,15 +461,24 @@ test('guest explicitly starts a temporary garden with separate login HUD and no 
     await expect(page).toHaveTitle(/Gredice/);
     const initialLogin = page.getByRole('dialog', { name: 'Prijava' });
     await expect(initialLogin).toBeVisible();
-    await expect(
-        initialLogin.getByText(
-            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
-        ),
-    ).toBeVisible();
+    await expect(initialLogin).not.toContainText('privremenim vrtom');
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
-    await initialLogin
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    const guestAction = initialLogin.getByRole('button', {
+        name: 'Nastavi kao gost',
+    });
+    const loginTab = initialLogin.getByRole('tab', { name: 'Prijava' });
+    await expect(guestAction).toBeVisible();
+    await expect(guestAction.locator('svg')).toHaveCount(1);
+    const [guestActionBounds, loginTabBounds] = await Promise.all([
+        guestAction.boundingBox(),
+        loginTab.boundingBox(),
+    ]);
+    if (!guestActionBounds || !loginTabBounds) {
+        throw new Error('Expected guest action and login tab bounds');
+    }
+    expect(guestActionBounds.y).toBeLessThan(loginTabBounds.y);
+    expect(guestActionBounds.height).toBeGreaterThan(loginTabBounds.height);
+    await guestAction.click();
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     const loginHud = page.locator('[data-game-hud-temporary-auth="true"]');
     const loginButton = loginHud.getByRole('button', {
@@ -519,9 +528,7 @@ test('rejects malformed current claims before creating a temporary account', asy
     const loginDialog = page.getByRole('dialog', { name: 'Prijava' });
     await expect(loginDialog).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
-    await loginDialog
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    await loginDialog.getByRole('button', { name: 'Nastavi kao gost' }).click();
     await expect(
         page.getByRole('button', { name: 'Prijava ili registracija' }),
     ).toBeVisible({ timeout: 15_000 });
@@ -572,7 +579,7 @@ test('opens and clears a cross-app temporary login request from the URL', async 
     await expect(page).toHaveURL('/');
 });
 
-test('returning user with an expired session sees privacy-neutral login copy before a temporary garden is created', async ({
+test('returning user with an expired session sees simplified login choices before a temporary garden is created', async ({
     page,
 }) => {
     const api = await mockGardenApi(page, false, { returningUser: true });
@@ -582,10 +589,8 @@ test('returning user with an expired session sees privacy-neutral login copy bef
     expect(response?.ok()).toBe(true);
     await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
     await expect(
-        page.getByText(
-            'Prijavi se kako bismo otvorili tvoj postojeći vrt ili nastavi bez prijave s privremenim vrtom.',
-        ),
-    ).toBeVisible();
+        page.getByRole('dialog', { name: 'Prijava' }),
+    ).not.toContainText('privremenim vrtom');
     await expect(page.getByText(/prepoznali smo ovaj uređaj/iu)).toHaveCount(0);
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
     expect(
@@ -616,9 +621,7 @@ test('remembered returning user sees login even when the expired account cookie 
     await expect(page.getByRole('dialog', { name: 'Prijava' })).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
 
-    await page
-        .getByRole('button', { name: 'Nastavi s privremenim vrtom' })
-        .click();
+    await page.getByRole('button', { name: 'Nastavi kao gost' }).click();
     await expect.poll(() => api.getTemporaryAccountRequestCount()).toBe(1);
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
 });

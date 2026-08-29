@@ -1,9 +1,9 @@
 package com.gredice.dostava.auth;
 
 import com.gredice.dostava.data.DeliveryRouteApi;
-import com.gredice.dostava.data.DeliveryStop;
+import com.gredice.dostava.data.DeliveryRoutePayloadParser;
+import com.gredice.dostava.data.DeliveryRouteResponse;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -14,9 +14,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.regex.Pattern;
 
 /** Minimal HTTPS client for the versioned read-only Delivery Mobile API. */
@@ -26,6 +23,8 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
     private static final int TIMEOUT_MILLIS = 15_000;
     private static final int MAX_BODY_BYTES = 64 * 1024;
     private static final Pattern SAFE_ERROR_CODE = Pattern.compile("^[A-Z_]{1,64}$");
+    private final DeliveryRoutePayloadParser routeParser =
+            new DeliveryRoutePayloadParser();
 
     @Override
     public NativeTokenResponse exchange(String code, String verifier) throws ApiFailure {
@@ -68,41 +67,37 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
     }
 
     @Override
-    public List<DeliveryStop> getActiveRoute(String accessToken) throws ApiFailure {
-        JSONObject response = request("GET", "/active-route", null, accessToken);
-        try {
-            if (response.isNull("route")) return Collections.emptyList();
-            JSONArray source = response.getJSONObject("route").getJSONArray("stops");
-            List<DeliveryStop> stops = new ArrayList<>();
-            for (int index = 0; index < source.length(); index++) {
-                JSONObject stop = source.getJSONObject(index);
-                Double distanceKilometers = stop.isNull("distanceMeters")
-                        ? null
-                        : stop.getDouble("distanceMeters") / 1_000.0;
-                stops.add(new DeliveryStop(
-                        stop.getString("label"),
-                        stop.getString("address"),
-                        Integer.toString(stop.getInt("sequence")),
-                        stop.getDouble("latitude"),
-                        stop.getDouble("longitude"),
-                        distanceKilometers
-                ));
-            }
-            return stops;
-        } catch (JSONException exception) {
-            throw new ApiFailure(502, "ROUTE_RESPONSE_INVALID");
+    public DeliveryRouteResponse getActiveRoute(
+            String accessToken,
+            String etag
+    ) throws ApiFailure {
+        JsonHttpResponse response = request(
+                "GET",
+                "/active-route",
+                null,
+                accessToken,
+                etag
+        );
+        if (response.statusCode == HttpURLConnection.HTTP_NOT_MODIFIED) {
+            return DeliveryRouteResponse.notModified();
         }
+        return routeParser.parse(
+                response.body,
+                response.etag,
+                System.currentTimeMillis()
+        );
     }
 
     private JSONObject post(String path, JSONObject body) throws ApiFailure {
-        return request("POST", path, body, null);
+        return request("POST", path, body, null, null).body;
     }
 
-    private JSONObject request(
+    private JsonHttpResponse request(
             String method,
             String path,
             JSONObject body,
-            String accessToken
+            String accessToken,
+            String etag
     ) throws ApiFailure {
         HttpURLConnection connection = null;
         try {
@@ -116,6 +111,9 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
             if (accessToken != null) {
                 connection.setRequestProperty("Authorization", "Bearer " + accessToken);
             }
+            if (etag != null) {
+                connection.setRequestProperty("If-None-Match", etag);
+            }
             if (body != null) {
                 connection.setDoOutput(true);
                 connection.setRequestProperty("Content-Type", "application/json");
@@ -126,6 +124,10 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
             }
 
             int status = connection.getResponseCode();
+            String responseEtag = connection.getHeaderField("ETag");
+            if (status == HttpURLConnection.HTTP_NOT_MODIFIED) {
+                return new JsonHttpResponse(status, new JSONObject(), responseEtag);
+            }
             InputStream stream = status >= 400
                     ? connection.getErrorStream()
                     : connection.getInputStream();
@@ -133,8 +135,11 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
             if (status < 200 || status >= 300) {
                 throw new ApiFailure(status, safeErrorCode(responseBody, status));
             }
-            if (status == 204 || responseBody.isEmpty()) return new JSONObject();
-            return new JSONObject(responseBody);
+            JSONObject response = status == HttpURLConnection.HTTP_NO_CONTENT
+                    || responseBody.isEmpty()
+                    ? new JSONObject()
+                    : new JSONObject(responseBody);
+            return new JsonHttpResponse(status, response, responseEtag);
         } catch (ApiFailure failure) {
             throw failure;
         } catch (IOException exception) {
@@ -193,6 +198,18 @@ public final class DeliveryNativeApiClient implements NativeAuthApi, DeliveryRou
                 output.write(buffer, 0, read);
             }
             return output.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    private static final class JsonHttpResponse {
+        private final int statusCode;
+        private final JSONObject body;
+        private final String etag;
+
+        private JsonHttpResponse(int statusCode, JSONObject body, String etag) {
+            this.statusCode = statusCode;
+            this.body = body;
+            this.etag = etag;
         }
     }
 }

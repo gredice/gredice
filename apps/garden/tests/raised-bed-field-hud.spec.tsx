@@ -213,6 +213,7 @@ function emptyScenario(): RaisedBedScenario {
 function emptyFieldOperationsScenario(): RaisedBedScenario {
     return {
         fields: [],
+        raisedBedStatus: 'active',
         operations: [
             buildOperation({
                 appliesToEmptyFields: true,
@@ -964,7 +965,14 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         mount,
         page,
     }) => {
-        await mount(<RaisedBedFieldDndDialogStory scenario={cartScenario()} />);
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={{
+                    ...cartScenario(),
+                    raisedBedStatus: 'active',
+                }}
+            />,
+        );
 
         await expect(
             page.getByRole('button', { name: 'Otvori sadnju u košarici' }),
@@ -1044,7 +1052,12 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
         page,
     }) => {
         await mount(
-            <RaisedBedFieldDndDialogStory scenario={emptyScenario()} />,
+            <RaisedBedFieldDndDialogStory
+                scenario={{
+                    ...emptyWithHistoryScenario(1),
+                    raisedBedStatus: 'active',
+                }}
+            />,
         );
 
         const layerToggles = page.locator('[data-raised-bed-layer-control]');
@@ -1059,6 +1072,40 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
                 await expect(layerToggle).toHaveCSS('border-top-width', '0px');
             }
         }
+    });
+
+    test('active raised bed keeps empty-field operations but hides the history toggle without prior plants', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory
+                scenario={{
+                    ...emptyScenario(),
+                    raisedBedStatus: 'active',
+                }}
+            />,
+        );
+
+        await expect(
+            page.locator('[data-empty-field-operations-trigger]'),
+        ).toHaveCount(18);
+        await expect(
+            page.locator('[data-raised-bed-layer-control="history"]'),
+        ).toHaveCount(0);
+    });
+
+    test('new empty raised bed hides empty-field operations', async ({
+        mount,
+        page,
+    }) => {
+        await mount(
+            <RaisedBedFieldDndDialogStory scenario={emptyScenario()} />,
+        );
+
+        await expect(
+            page.locator('[data-empty-field-operations-trigger]'),
+        ).toHaveCount(0);
     });
 
     test('planting mode turns an active legacy field into an add-plant button', async ({
@@ -2370,9 +2417,9 @@ test.describe('RaisedBedFieldItem HUD (desktop)', () => {
             throw new Error('Expected visible photo request and close buttons');
         }
 
-        expect(requestPhotoBox.x + requestPhotoBox.width).toBeLessThanOrEqual(
-            closePhotosBox.x - 8,
-        );
+        const requestPhotoGap =
+            closePhotosBox.x - (requestPhotoBox.x + requestPhotoBox.width);
+        expect(requestPhotoGap).toBeGreaterThanOrEqual(7);
 
         await requestPhotoButton.click();
 

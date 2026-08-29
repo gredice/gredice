@@ -357,6 +357,7 @@ jobs:
       path: "apps/delivery-android"
       allowMissingStoreScreenshots: true
       validateDeliveryCarContract: true
+      compileInstrumentedTests: true
 
   ci_app:
     name: "CI - app"

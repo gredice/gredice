@@ -6,6 +6,8 @@ public interface NativeCredentialStore {
 
     void setRefreshToken(String refreshToken);
 
+    String getSessionBinding();
+
     PairingRequest getPairingRequest();
 
     void setPairingRequest(PairingRequest request);

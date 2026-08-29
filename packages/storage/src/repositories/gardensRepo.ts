@@ -4,6 +4,7 @@ import { v4 as uuidV4 } from 'uuid';
 import { storage } from '..';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import {
+    accountUsers,
     gardenBlocks,
     gardenLikes,
     gardenStacks,
@@ -14,6 +15,7 @@ import {
     type UpdateGarden,
     type UpdateGardenBlock,
     type UpdateGardenStack,
+    users,
 } from '../schema';
 import { createEvent, knownEvents } from './eventsRepo';
 import { getFarms } from './farmsRepo';
@@ -199,17 +201,46 @@ export async function getPublicGardens() {
         where: and(eq(gardens.isDeleted, false), eq(gardens.isPublic, true)),
         orderBy: desc(gardens.updatedAt),
     });
-    const previewImagesByGardenId = gardenPreviewImagesByGardenId(
-        await getGardenPreviewsForGardenIds(
-            publicGardens.map((garden) => garden.id),
-        ),
-    );
+    const [previews, gardenOwners] = await Promise.all([
+        getGardenPreviewsForGardenIds(publicGardens.map((garden) => garden.id)),
+        publicGardens.length > 0
+            ? storage()
+                  .select({
+                      accountId: accountUsers.accountId,
+                      avatarUrl: users.avatarUrl,
+                      displayName: users.displayName,
+                  })
+                  .from(accountUsers)
+                  .innerJoin(users, eq(accountUsers.userId, users.id))
+                  .where(
+                      inArray(
+                          accountUsers.accountId,
+                          publicGardens.map((garden) => garden.accountId),
+                      ),
+                  )
+                  .orderBy(asc(accountUsers.createdAt), asc(accountUsers.id))
+            : Promise.resolve([]),
+    ]);
+    const previewImagesByGardenId = gardenPreviewImagesByGardenId(previews);
+    const ownerByAccountId = new Map<
+        string,
+        { avatarUrl: string | null; displayName: string }
+    >();
+    for (const owner of gardenOwners) {
+        if (!ownerByAccountId.has(owner.accountId)) {
+            ownerByAccountId.set(owner.accountId, {
+                avatarUrl: owner.avatarUrl,
+                displayName: owner.displayName ?? 'Korisnik Gredica',
+            });
+        }
+    }
 
     return publicGardens.map((garden) => {
         const previewImages =
             previewImagesByGardenId.get(garden.id) ?? toGardenPreviewImages([]);
         return {
             ...garden,
+            owner: ownerByAccountId.get(garden.accountId) ?? null,
             previewImage: previewImages.day,
             previewImages,
         };

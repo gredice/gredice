@@ -19,6 +19,10 @@ import { InstagramCard } from '../components/social/InstagramCard';
 import { WhatsAppCard } from '../components/social/WhatsAppCard';
 import { WinterModeToggle } from '../components/WinterModeToggle';
 import { KnownPages } from '../src/KnownPages';
+import { enableLandingFeaturedGardensFlag } from './flags';
+import { getLandingFeaturedGardens } from './getLandingFeaturedGardens';
+import { isCiEnvironment } from './isCiEnvironment';
+import { LandingFeaturedGardens } from './LandingFeaturedGardens';
 import { LandingGameScene, LandingGameSignupCta } from './LandingGameScene';
 import { NewsletterSignUp } from './NewsletterSignUp';
 import { OutletLandingSection } from './outlet/OutletLandingSection';
@@ -246,7 +250,16 @@ function StepsSection() {
     );
 }
 
-export default function Home() {
+export default async function Home() {
+    const featuredGardensEnabled = isCiEnvironment()
+        ? false
+        : await enableLandingFeaturedGardensFlag();
+    const featuredGardens = featuredGardensEnabled
+        ? await getLandingFeaturedGardens()
+        : [];
+    const showFeaturedGardens =
+        featuredGardensEnabled && featuredGardens.length > 0;
+
     return (
         <Stack>
             <div className="relative pb-4">
@@ -265,33 +278,44 @@ export default function Home() {
                             src="/seo-fallback.png"
                             width={1920}
                         />
-                        <LandingGameScene />
+                        {showFeaturedGardens ? (
+                            <LandingFeaturedGardens
+                                featuredGardens={featuredGardens}
+                            />
+                        ) : (
+                            <LandingGameScene />
+                        )}
                     </div>
                     <LandingGameSignupCta />
-                    <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
-                        <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
-                            <Card
-                                className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
-                                data-testid="landing-hero-card"
-                            >
-                                <CardContent
-                                    noHeader
-                                    className="p-5 sm:p-6 lg:pr-10"
+                    {!showFeaturedGardens ? (
+                        <div className="pointer-events-none absolute left-8 right-8 top-8 z-10 sm:left-10 sm:right-10 md:top-10 lg:left-16 lg:right-16 lg:top-12">
+                            <div className="pointer-events-auto flex flex-col items-start sm:flex-row sm:items-start sm:justify-between gap-4">
+                                <Card
+                                    className="w-fit max-w-[19rem] rounded-[var(--landing-card-radius)] border-tertiary border-b-4 sm:max-w-none"
+                                    data-testid="landing-hero-card"
                                 >
-                                    <Stack spacing={4}>
-                                        <Typography level="h2" component="h1">
-                                            Vrt po tvom 🌱
-                                        </Typography>
-                                        <Typography level="body1">
-                                            Dobiješ povrće iz svojih gredica -
-                                            nit oro, nit kopo!
-                                        </Typography>
-                                    </Stack>
-                                </CardContent>
-                            </Card>
-                            <WinterModeToggle />
+                                    <CardContent
+                                        noHeader
+                                        className="p-5 sm:p-6 lg:pr-10"
+                                    >
+                                        <Stack spacing={4}>
+                                            <Typography
+                                                level="h2"
+                                                component="h1"
+                                            >
+                                                Vrt po tvom 🌱
+                                            </Typography>
+                                            <Typography level="body1">
+                                                Dobiješ povrće iz svojih gredica
+                                                - nit oro, nit kopo!
+                                            </Typography>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                                <WinterModeToggle />
+                            </div>
                         </div>
-                    </div>
+                    ) : null}
                 </Container>
             </div>
             <Container>

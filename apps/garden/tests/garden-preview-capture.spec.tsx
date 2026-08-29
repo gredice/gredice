@@ -30,16 +30,16 @@ const captureOperations = [
         attributes: {
             application: 'raisedBedFull',
             internal: false,
-            visualReward: 'mulch',
+            visualReward: 'harvest',
         },
         information: {
-            description: 'Malčiranje cijele gredice slamom.',
+            description: 'Berba cijele gredice.',
             instructions: '',
-            label: 'Malčiranje slamom',
-            name: 'mulchStraw',
-            shortDescription: 'Malčiranje slamom.',
+            label: 'Berba gredice',
+            name: 'raisedBedHarvest',
+            shortDescription: 'Berba cijele gredice.',
         },
-        slug: 'mulch-straw',
+        slug: 'raised-bed-harvest',
     },
 ];
 
@@ -49,6 +49,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
 }) => {
     test.setTimeout(90_000);
     const blockData = getLocalSandboxBlockData();
+    const authenticatedViewerRequests: string[] = [];
     const browserErrors: string[] = [];
     const apiRequests: string[] = [];
     const apiResponses: string[] = [];
@@ -149,10 +150,15 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             },
         }),
     );
-    await page.route('**/api/gredice/api/gardens/8001/operations**', (route) =>
-        route.fulfill({
-            json: { items: [], nextCursor: null, total: 0 },
-        }),
+    await page.route(
+        /\/api\/gredice\/api\/(?:delivery\/requests|gardens\/8001\/operations)/,
+        (route) => {
+            authenticatedViewerRequests.push(route.request().url());
+            return route.fulfill({
+                json: { error: 'Unauthorized' },
+                status: 401,
+            });
+        },
     );
     await page.route('**/api/gredice/api/shopping-cart', (route) =>
         route.fulfill({
@@ -231,6 +237,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.uniqueColorCount).toBeGreaterThan(16);
 
     await page.waitForTimeout(1_000);
+    expect(authenticatedViewerRequests).toEqual([]);
     const settledResult = JSON.parse(
         (await resultOutput.textContent()) ?? '{}',
     );

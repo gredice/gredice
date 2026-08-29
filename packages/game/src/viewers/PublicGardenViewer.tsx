@@ -168,6 +168,7 @@ export type PublicGardenViewerProps = HTMLAttributes<HTMLDivElement> & {
     onLocalVisitorViewChange?: (view: GardenAvatarView) => void;
     onSceneContextLost?: () => void;
     onSceneReady?: () => void;
+    noControls?: boolean;
     noSound?: boolean;
     noWeather?: boolean;
     overlayChildren?: ReactNode;
@@ -463,6 +464,7 @@ function PublicGardenScene({
     loadPlantSorts,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noControls,
     noSound,
     noWeather,
     normalizedStacks,
@@ -488,6 +490,7 @@ function PublicGardenScene({
     loadPlantSorts: boolean;
     localVisitorActivationRequest?: number;
     localVisitorSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
+    noControls: boolean;
     noSound: boolean;
     noWeather: boolean;
     normalizedStacks: Stack[];
@@ -552,7 +555,7 @@ function PublicGardenScene({
             }
             data-public-garden-sound={noSound ? 'disabled' : 'enabled'}
         >
-            {blockDataLoaded && gardenCacheReady ? (
+            {blockDataLoaded ? (
                 <Scene
                     fixedTimeSeconds={
                         capture
@@ -820,7 +823,9 @@ function PublicGardenScene({
                                                 </Suspense>
                                             ) : null}
                                         </group>
-                                        {!capture && !gardenAvatarActive ? (
+                                        {!capture &&
+                                        !gardenAvatarActive &&
+                                        !noControls ? (
                                             <>
                                                 {interactiveBlockIds?.size &&
                                                 onSelectBlock ? (
@@ -853,7 +858,9 @@ function PublicGardenScene({
                                 closeupFocus={selectedBlockFocus}
                                 minZoom={cameraMinZoom}
                                 controlsEnabled={
-                                    !capture && !gardenAvatarActive
+                                    !capture &&
+                                    !gardenAvatarActive &&
+                                    !noControls
                                 }
                                 initialPosition={initialView.cameraPosition}
                                 initialSnapshot={initialSnapshot}
@@ -975,6 +982,7 @@ export function PublicGardenViewer({
     interactiveBlockIds,
     localVisitorActivationRequest,
     localVisitorSpawnPoint,
+    noControls = false,
     noSound = true,
     noWeather = false,
     overlayChildren,
@@ -1247,6 +1255,7 @@ export function PublicGardenViewer({
                                     localVisitorSpawnPoint={
                                         localVisitorSpawnPoint
                                     }
+                                    noControls={noControls}
                                     noSound={Boolean(capture) || noSound}
                                     noWeather={noWeather}
                                     normalizedStacks={normalizedStacks}
@@ -1265,7 +1274,7 @@ export function PublicGardenViewer({
                                     selectedBlockFocus={selectedBlockFocus}
                                     visitorPresence={visitorPresence}
                                 />
-                                {gameGarden && !capture ? (
+                                {gameGarden && !capture && !noControls ? (
                                     <PublicGardenInteractiveOverlays
                                         onCloseRaisedBed={closeRaisedBed}
                                         onSelectRaisedBed={openRaisedBed}
