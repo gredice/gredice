@@ -17,7 +17,8 @@ final class DeliverySession extends Session {
         return new DeliveryStopsScreen(
                 getCarContext(),
                 services.getStopRepository(),
-                services.getRouteTelemetry()
+                services.getRouteTelemetry(),
+                services.getNavigationHandoffStore()
         );
     }
 }

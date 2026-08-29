@@ -23,6 +23,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
     private long activeRequestId;
     private Future<?> activeRequest;
     private boolean storageInitialized;
+    private String sessionBinding;
     private DeliveryRouteSnapshot snapshot;
     private DeliveryRouteViewState viewState;
 
@@ -86,6 +87,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
             viewState = reducer.temporaryFailure(
                     snapshot,
                     clock.nowMillis(),
+                    sessionBinding,
                     viewState.getErrorCode() == null
                             ? "CACHE_EXPIRED"
                             : viewState.getErrorCode()
@@ -117,6 +119,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
                 viewState = reducer.temporaryFailure(
                         snapshot,
                         clock.nowMillis(),
+                        sessionBinding,
                         "ROUTE_REFRESH_REJECTED"
                 );
                 onComplete.onComplete(!previous.equals(viewState));
@@ -138,6 +141,20 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
                     stateChanged = !previous.equals(viewState);
                 }
                 return;
+            }
+            String loadedSessionBinding = sessionManager.getSessionBinding();
+            if (loadedSessionBinding == null) {
+                synchronized (this) {
+                    if (activeRequestId != requestId) return;
+                    previous = viewState;
+                    applySignedOut();
+                    stateChanged = !previous.equals(viewState);
+                }
+                return;
+            }
+            synchronized (this) {
+                if (activeRequestId != requestId) return;
+                sessionBinding = loadedSessionBinding;
             }
             restoreCachedRoute(requestId);
             String etag;
@@ -170,6 +187,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
                 viewState = reducer.temporaryFailure(
                         snapshot,
                         clock.nowMillis(),
+                        sessionBinding,
                         "ROUTE_TEMPORARILY_UNAVAILABLE"
                 );
                 cacheStatus = fallbackCacheStatus();
@@ -200,7 +218,11 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
             storageInitialized = true;
             snapshot = restored;
             if (snapshot != null) {
-                viewState = reducer.restored(snapshot, clock.nowMillis());
+                viewState = reducer.restored(
+                        snapshot,
+                        clock.nowMillis(),
+                        sessionBinding
+                );
             }
         }
     }
@@ -249,13 +271,13 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         if (response.getKind() == DeliveryRouteResponse.Kind.EMPTY) {
             snapshot = null;
             routeCache.clear();
-            viewState = reducer.empty();
+            viewState = reducer.empty(sessionBinding);
             return;
         }
         if (response.getKind() == DeliveryRouteResponse.Kind.NOT_MODIFIED) {
             if (snapshot == null) {
                 routeCache.clear();
-                viewState = reducer.unsupported();
+                viewState = reducer.unsupported(sessionBinding);
                 return;
             }
             snapshot = snapshot.verifiedAt(clock.nowMillis());
@@ -265,11 +287,11 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         if (snapshot.getStops().isEmpty()) {
             snapshot = null;
             routeCache.clear();
-            viewState = reducer.empty();
+            viewState = reducer.empty(sessionBinding);
             return;
         }
         writeCacheSafely(snapshot);
-        viewState = reducer.ready(snapshot);
+        viewState = reducer.ready(snapshot, sessionBinding);
     }
 
     private void applyFailure(String errorCode) {
@@ -281,12 +303,13 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
                 || "ROUTE_RESPONSE_INVALID".equals(errorCode)) {
             snapshot = null;
             routeCache.clear();
-            viewState = reducer.unsupported();
+            viewState = reducer.unsupported(sessionBinding);
             return;
         }
         viewState = reducer.temporaryFailure(
                 snapshot,
                 clock.nowMillis(),
+                sessionBinding,
                 errorCode
         );
     }
@@ -322,7 +345,11 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
         activeRequest = null;
         if (viewState.getStatus() == DeliveryRouteStatus.READY
                 && snapshot != null) {
-            viewState = reducer.restored(snapshot, clock.nowMillis());
+            viewState = reducer.restored(
+                    snapshot,
+                    clock.nowMillis(),
+                    sessionBinding
+            );
         }
     }
 
@@ -335,6 +362,7 @@ public final class NativeDeliveryStopRepository implements DeliveryStopRepositor
     private boolean applySignedOut() {
         DeliveryRouteViewState previous = viewState;
         storageInitialized = true;
+        sessionBinding = null;
         snapshot = null;
         routeCache.clear();
         viewState = reducer.signedOut();

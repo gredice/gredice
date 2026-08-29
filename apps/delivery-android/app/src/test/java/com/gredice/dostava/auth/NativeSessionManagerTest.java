@@ -134,8 +134,31 @@ public final class NativeSessionManagerTest {
         assertTrue(manager.hasSession());
     }
 
+    @Test
+    public void keepsOneLocalSessionBindingAcrossCredentialRotationAndClearsItOnLogout()
+            throws Exception {
+        FakeStore store = new FakeStore();
+        FakeApi api = new FakeApi();
+        NativeSessionManager manager = new NativeSessionManager(store, api, () -> 10_000L);
+
+        manager.completePairing("code", "verifier");
+        String binding = manager.getSessionBinding();
+        AtomicInteger requests = new AtomicInteger();
+        manager.executeAuthorized(token -> {
+            if (requests.incrementAndGet() == 1) {
+                throw new ApiFailure(401, "SESSION_REQUIRED");
+            }
+            return token;
+        });
+
+        assertEquals(binding, manager.getSessionBinding());
+        manager.logout();
+        assertEquals(null, manager.getSessionBinding());
+    }
+
     private static final class FakeStore implements NativeCredentialStore {
         private String refreshToken;
+        private String sessionBinding;
         private PairingRequest pairingRequest;
 
         @Override
@@ -146,6 +169,12 @@ public final class NativeSessionManagerTest {
         @Override
         public synchronized void setRefreshToken(String value) {
             refreshToken = value;
+            if (sessionBinding == null) sessionBinding = "session-1";
+        }
+
+        @Override
+        public synchronized String getSessionBinding() {
+            return sessionBinding;
         }
 
         @Override
@@ -166,6 +195,7 @@ public final class NativeSessionManagerTest {
         @Override
         public synchronized void clearSession() {
             refreshToken = null;
+            sessionBinding = null;
             pairingRequest = null;
         }
     }

@@ -17,6 +17,13 @@ public interface DeliveryRouteTelemetry {
             int displayedRowCount
     );
 
+    void recordNavigationHandoff(
+            long routeRevision,
+            String navigationId,
+            String kind,
+            String resultCode
+    );
+
     enum LatencyBucket {
         UNDER_250_MS,
         UNDER_1_SECOND,

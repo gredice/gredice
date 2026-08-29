@@ -32,6 +32,15 @@ const navigationUri = read(
 const navigationLaunchGate = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationLaunchGate.java",
 );
+const navigationHandoffController = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/NavigationHandoffController.java",
+);
+const pendingNavigationHandoff = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/PendingNavigationHandoff.java",
+);
+const navigationHandoffStore = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/SharedPreferencesNavigationHandoffStore.java",
+);
 const stopsScreen = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/car/DeliveryStopsScreen.java",
 );
@@ -132,18 +141,35 @@ assert.ok(
 
 assert.match(stopsScreen, /CarContext\.ACTION_NAVIGATE/);
 assert.match(stopsScreen, /startCarApp\(intent\)/);
-assert.match(stopsScreen, /navigationLaunchGate\.launchIfAllowed\(/);
+assert.match(stopsScreen, /navigationHandoffController\.launch\(/);
 assert.match(stopsScreen, /SystemClock\.elapsedRealtime\(\)/);
 assert.match(stopsScreen, /void onStart\(/);
 assert.match(stopsScreen, /void onResume\(/);
-assert.match(stopsScreen, /HostException \| SecurityException/);
-assert.match(stopsScreen, /catch \(RuntimeException exception\)/);
-assert.doesNotMatch(stopsScreen, /setPackage\s*\(/);
-assert.doesNotMatch(stopsScreen, /setComponent\s*\(/);
-assert.doesNotMatch(stopsScreen, /com\.google\.android\.apps\.maps/);
+assert.match(stopsScreen, /ActivityNotFoundException/);
+assert.match(stopsScreen, /Result\.NO_HANDLER/);
+assert.match(stopsScreen, /Result\.HOST_FAILURE/);
+assert.match(stopsScreen, /Result\.SECURITY_FAILURE/);
+for (const source of [stopsScreen, navigationHandoffController]) {
+    assert.doesNotMatch(source, /setPackage\s*\(/);
+    assert.doesNotMatch(source, /setComponent\s*\(/);
+    assert.doesNotMatch(source, /com\.google\.android\.apps\.maps/);
+}
 assert.match(navigationLaunchGate, /DEFAULT_SUPPRESSION_WINDOW_MILLIS = 1_500L/);
 assert.match(navigationLaunchGate, /catch \(RuntimeException \| Error failure\)/);
+assert.match(navigationHandoffController, /launchGate\.launchIfAllowed\(/);
+assert.match(navigationHandoffController, /Result\.SUPPRESSED/);
+assert.match(navigationHandoffController, /recordNavigationHandoff\(/);
 assert.match(navigationUri, /"geo:%\.6f,%\.6f"/);
+assert.doesNotMatch(
+    pendingNavigationHandoff,
+    /private final (?:String|double) (?:latitude|longitude|address|label|token|customer)/i,
+);
+assert.doesNotMatch(
+    navigationHandoffStore,
+    /"(?:latitude|longitude|address|label|token|customer)(?:_|\")/i,
+);
+assert.match(navigationHandoffStore, /\.commit\(\)/);
+assert.doesNotMatch(navigationHandoffStore, /\.apply\(\)/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
 

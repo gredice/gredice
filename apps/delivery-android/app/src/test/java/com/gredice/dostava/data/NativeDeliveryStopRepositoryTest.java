@@ -292,6 +292,14 @@ public final class NativeDeliveryStopRepositoryTest {
                 Long routeRevision,
                 int displayedRowCount
         ) { }
+
+        @Override
+        public void recordNavigationHandoff(
+                long routeRevision,
+                String navigationId,
+                String kind,
+                String resultCode
+        ) { }
     }
 
     private static final class FakeRouteApi implements DeliveryRouteApi {
@@ -402,6 +410,7 @@ public final class NativeDeliveryStopRepositoryTest {
 
     private static final class FakeStore implements NativeCredentialStore {
         private String refreshToken;
+        private String sessionBinding = "session-test";
         private int readCount;
 
         @Override
@@ -413,6 +422,11 @@ public final class NativeDeliveryStopRepositoryTest {
         @Override
         public void setRefreshToken(String value) {
             refreshToken = value;
+        }
+
+        @Override
+        public String getSessionBinding() {
+            return sessionBinding;
         }
 
         @Override
@@ -429,6 +443,7 @@ public final class NativeDeliveryStopRepositoryTest {
         @Override
         public void clearSession() {
             refreshToken = null;
+            sessionBinding = null;
         }
     }
 

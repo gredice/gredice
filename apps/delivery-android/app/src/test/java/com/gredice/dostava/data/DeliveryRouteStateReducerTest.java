@@ -31,11 +31,13 @@ public final class DeliveryRouteStateReducerTest {
         DeliveryRouteViewState exactBoundary = reducer.temporaryFailure(
                 snapshot,
                 1_000L + DeliveryRouteStateReducer.FRESH_CACHE_MILLIS,
+                "session:opaque",
                 "OFFLINE"
         );
         DeliveryRouteViewState oneMillisecondLater = reducer.temporaryFailure(
                 snapshot,
                 1_001L + DeliveryRouteStateReducer.FRESH_CACHE_MILLIS,
+                "session:opaque",
                 "OFFLINE"
         );
 
@@ -49,10 +51,12 @@ public final class DeliveryRouteStateReducerTest {
     public void replacesTheWholeReadyRouteAtomically() {
         DeliveryRouteSnapshot snapshot = TestDeliveryRoutes.snapshot(8, 4_000L);
 
-        DeliveryRouteViewState state = reducer.ready(snapshot);
+        DeliveryRouteViewState state = reducer.ready(snapshot, "session:opaque");
 
         assertEquals(DeliveryRouteStatus.READY, state.getStatus());
+        assertEquals(snapshot.getRouteId(), state.getRouteId());
         assertEquals(Long.valueOf(8), state.getRouteRevision());
+        assertEquals("session:opaque", state.getSessionBinding());
         assertEquals(snapshot.getStops(), state.getStops());
         assertTrue(state.allowsNavigation());
     }
