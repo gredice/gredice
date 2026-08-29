@@ -18,6 +18,7 @@
     <string name="open_delivery_web">Otvori dostavu</string>
     <string name="native_pair">Poveži Android Auto</string>
     <string name="native_logout">Odspoji Android Auto</string>
+    <string name="native_enable_quick_return">Omogući brzi povratak</string>
     <string name="native_sign_in">Prijava u Gredice Dostava</string>
     <string name="native_pairing_progress">Dovršavanje sigurnog povezivanja…</string>
     <string name="native_pairing_failed">Povezivanje nije uspjelo. Vratite se u aplikaciju i pokušajte ponovno.</string>

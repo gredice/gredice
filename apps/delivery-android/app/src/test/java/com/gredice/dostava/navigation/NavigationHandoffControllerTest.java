@@ -38,6 +38,7 @@ public final class NavigationHandoffControllerTest {
         assertEquals(20_000L, fixture.store.pending.getLaunchedAtMillis());
         assertEquals("LAUNCHED", fixture.telemetry.resultCode);
         assertEquals("delivery:opaque-1", fixture.telemetry.navigationId);
+        assertEquals(1, fixture.notifier.postCount);
     }
 
     @Test
@@ -64,6 +65,7 @@ public final class NavigationHandoffControllerTest {
         assertEquals(1, launches[0]);
         assertEquals(1, fixture.store.writeCount);
         assertEquals(20_000L, fixture.store.pending.getLaunchedAtMillis());
+        assertEquals(1, fixture.notifier.postCount);
     }
 
     @Test
@@ -144,6 +146,26 @@ public final class NavigationHandoffControllerTest {
         assertEquals(NavigationHandoffController.Result.LAUNCHED, result);
         assertEquals(1, launches[0]);
         assertNotNull(fixture.store.pending);
+    }
+
+    @Test
+    public void notificationFailureCannotPreventTheNavigatorHandoff() {
+        Fixture fixture = new Fixture();
+        fixture.notifier.failPost = true;
+        int[] launches = {0};
+
+        NavigationHandoffController.Result result = fixture.controller.launch(
+                fixture.target,
+                "session:opaque",
+                10_000L,
+                20_000L,
+                ignored -> launches[0] += 1
+        );
+
+        assertEquals(NavigationHandoffController.Result.LAUNCHED, result);
+        assertEquals(1, launches[0]);
+        assertNotNull(fixture.store.pending);
+        assertEquals("POST_FAILED", fixture.telemetry.quickReturnError);
     }
 
     @Test
@@ -259,6 +281,7 @@ public final class NavigationHandoffControllerTest {
     private static final class Fixture {
         private final FakeStore store = new FakeStore();
         private final FakeTelemetry telemetry = new FakeTelemetry();
+        private final FakeNotifier notifier = new FakeNotifier();
         private final NavigationTarget target;
         private final NavigationHandoffController controller;
 
@@ -288,8 +311,41 @@ public final class NavigationHandoffControllerTest {
             controller = new NavigationHandoffController(
                     new NavigationLaunchGate(1_500L),
                     store,
-                    telemetry
+                    telemetry,
+                    new ActiveRouteReturnController(notifier, telemetry)
             );
+        }
+    }
+
+    private static final class FakeNotifier implements ActiveRouteReturnNotifier {
+        private int postCount;
+        private boolean active;
+        private boolean failPost;
+
+        @Override
+        public void initializeChannel() { }
+
+        @Override
+        public PostResult postOrUpdate(String sessionKey, String activeRunKey) {
+            postCount += 1;
+            if (failPost) throw new IllegalStateException("unavailable");
+            active = true;
+            return PostResult.POSTED;
+        }
+
+        @Override
+        public boolean matchesActiveIdentity(
+                String sessionKey,
+                String activeRunKey
+        ) {
+            return true;
+        }
+
+        @Override
+        public boolean cancel() {
+            boolean wasActive = active;
+            active = false;
+            return wasActive;
         }
     }
 
@@ -319,6 +375,7 @@ public final class NavigationHandoffControllerTest {
     private static final class FakeTelemetry implements DeliveryRouteTelemetry {
         private String navigationId;
         private String resultCode;
+        private String quickReturnError;
         private boolean fail;
 
         @Override
@@ -348,6 +405,14 @@ public final class NavigationHandoffControllerTest {
             if (fail) throw new IllegalStateException("telemetry unavailable");
             this.navigationId = navigationId;
             this.resultCode = resultCode;
+        }
+
+        @Override
+        public void recordQuickReturnNotification(
+                QuickReturnEvent event,
+                String errorCode
+        ) {
+            quickReturnError = errorCode;
         }
     }
 }

@@ -24,6 +24,18 @@ public interface DeliveryRouteTelemetry {
             String resultCode
     );
 
+    void recordQuickReturnNotification(
+            QuickReturnEvent event,
+            String errorCode
+    );
+
+    enum QuickReturnEvent {
+        POSTED,
+        TAPPED,
+        CANCELED,
+        FAILURE
+    }
+
     enum LatencyBucket {
         UNDER_250_MS,
         UNDER_1_SECOND,
