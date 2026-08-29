@@ -13,9 +13,11 @@ final class DeliverySession extends Session {
     @Override
     @NonNull
     public Screen onCreateScreen(@NonNull Intent intent) {
+        DeliveryNativeServices services = DeliveryNativeServices.get(getCarContext());
         return new DeliveryStopsScreen(
                 getCarContext(),
-                DeliveryNativeServices.get(getCarContext()).getStopRepository()
+                services.getStopRepository(),
+                services.getRouteTelemetry()
         );
     }
 }

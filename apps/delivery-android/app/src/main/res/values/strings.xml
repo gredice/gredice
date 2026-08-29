@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Gredice Dostava</string>
-    <string name="car_screen_title">Stanice dostave</string>
-    <string name="next_stop">Sljedeća</string>
-    <string name="later_stop">Nakon toga</string>
+    <string name="car_screen_title">Gredice Dostava</string>
+    <string name="current_stop">Trenutačna stanica</string>
     <string name="navigation_action">Navigacija</string>
     <string name="navigation_unavailable">Navigaciju trenutačno nije moguće otvoriti.</string>
-    <string name="car_sign_in_required">Prijavite se u aplikaciji na telefonu</string>
-    <string name="car_route_loading">Učitavanje rute dostave…</string>
-    <string name="car_no_active_route">Trenutačno nema aktivne rute.</string>
-    <string name="car_route_unavailable">Rutu trenutačno nije moguće učitati.</string>
+    <string name="car_sign_in_required">Prijavite se u aplikaciji na telefonu.</string>
+    <string name="car_no_active_route">Nema aktivne dostavne rute. Otvorite aplikaciju na telefonu.</string>
+    <string name="car_offline">Izvan mreže</string>
+    <string name="car_route_stale">Podaci o ruti nisu ažurni. Otvorite aplikaciju na telefonu.</string>
+    <string name="car_route_unavailable">Rutu trenutačno nije moguće učitati. Pokušajte ponovno.</string>
+    <string name="car_route_unsupported">Ažurirajte aplikaciju i otvorite dostavu na telefonu.</string>
+    <string name="retry_action">Pokušaj ponovno</string>
     <string name="native_shell_title">Gredice Dostava</string>
     <string name="native_paired">Android Auto je povezan s vašim računom dostave.</string>
     <string name="native_unpaired">Povežite račun dostave prije uporabe u automobilu.</string>

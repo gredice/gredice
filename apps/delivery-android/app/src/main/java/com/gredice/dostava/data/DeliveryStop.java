@@ -1,40 +1,69 @@
 package com.gredice.dostava.data;
 
-/** Minimal immutable projection consumed by the car UI. */
+import java.util.Objects;
+
+/** Immutable, privacy-minimized navigation stop validated from the mobile route contract. */
 public final class DeliveryStop {
+    private final String navigationId;
+    private final String kind;
+    private final int sequence;
+    private final String actionState;
     private final String title;
-    private final String subtitle;
-    private final String markerLabel;
+    private final String address;
     private final double latitude;
     private final double longitude;
-    private final Double plannedDistanceKilometers;
+    private final Long estimatedArrivalAtMillis;
+    private final Long travelSeconds;
+    private final Long distanceMeters;
 
     public DeliveryStop(
+            String navigationId,
+            String kind,
+            int sequence,
+            String actionState,
             String title,
-            String subtitle,
-            String markerLabel,
+            String address,
             double latitude,
             double longitude,
-            Double plannedDistanceKilometers
+            Long estimatedArrivalAtMillis,
+            Long travelSeconds,
+            Long distanceMeters
     ) {
-        this.title = title;
-        this.subtitle = subtitle;
-        this.markerLabel = markerLabel;
+        this.navigationId = Objects.requireNonNull(navigationId, "navigationId");
+        this.kind = Objects.requireNonNull(kind, "kind");
+        this.sequence = sequence;
+        this.actionState = Objects.requireNonNull(actionState, "actionState");
+        this.title = Objects.requireNonNull(title, "title");
+        this.address = Objects.requireNonNull(address, "address");
         this.latitude = latitude;
         this.longitude = longitude;
-        this.plannedDistanceKilometers = plannedDistanceKilometers;
+        this.estimatedArrivalAtMillis = estimatedArrivalAtMillis;
+        this.travelSeconds = travelSeconds;
+        this.distanceMeters = distanceMeters;
+    }
+
+    public String getNavigationId() {
+        return navigationId;
+    }
+
+    public String getKind() {
+        return kind;
+    }
+
+    public int getSequence() {
+        return sequence;
+    }
+
+    public String getActionState() {
+        return actionState;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public String getSubtitle() {
-        return subtitle;
-    }
-
-    public String getMarkerLabel() {
-        return markerLabel;
+    public String getAddress() {
+        return address;
     }
 
     public double getLatitude() {
@@ -45,7 +74,58 @@ public final class DeliveryStop {
         return longitude;
     }
 
-    public Double getPlannedDistanceKilometers() {
-        return plannedDistanceKilometers;
+    public Long getEstimatedArrivalAtMillis() {
+        return estimatedArrivalAtMillis;
+    }
+
+    public Long getTravelSeconds() {
+        return travelSeconds;
+    }
+
+    public Long getDistanceMeters() {
+        return distanceMeters;
+    }
+
+    public String getMarkerLabel() {
+        return Integer.toString(sequence);
+    }
+
+    public boolean isCurrent() {
+        return "current".equals(actionState);
+    }
+
+    @Override
+    public boolean equals(Object value) {
+        if (this == value) return true;
+        if (!(value instanceof DeliveryStop)) return false;
+        DeliveryStop other = (DeliveryStop) value;
+        return sequence == other.sequence
+                && Double.compare(latitude, other.latitude) == 0
+                && Double.compare(longitude, other.longitude) == 0
+                && navigationId.equals(other.navigationId)
+                && kind.equals(other.kind)
+                && actionState.equals(other.actionState)
+                && title.equals(other.title)
+                && address.equals(other.address)
+                && Objects.equals(estimatedArrivalAtMillis, other.estimatedArrivalAtMillis)
+                && Objects.equals(travelSeconds, other.travelSeconds)
+                && Objects.equals(distanceMeters, other.distanceMeters);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                navigationId,
+                kind,
+                sequence,
+                actionState,
+                title,
+                address,
+                latitude,
+                longitude,
+                estimatedArrivalAtMillis,
+                travelSeconds,
+                distanceMeters
+        );
     }
 }
