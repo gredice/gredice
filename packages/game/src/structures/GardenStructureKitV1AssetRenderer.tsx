@@ -48,6 +48,7 @@ export function isGardenStructureKitV1SemanticFallbackBatch(
 type GardenStructureKitV1AssetBoundaryProps = Readonly<{
     children: ReactNode;
     fallback: ReactNode;
+    onErrorFallbackReady?: () => void;
 }>;
 
 type GardenStructureKitV1AssetBoundaryState = Readonly<{
@@ -65,6 +66,10 @@ export class GardenStructureKitV1AssetErrorBoundary extends Component<
         return { failed: true };
     }
 
+    componentDidCatch() {
+        this.props.onErrorFallbackReady?.();
+    }
+
     render() {
         return this.state.failed ? this.props.fallback : this.props.children;
     }
@@ -73,9 +78,13 @@ export class GardenStructureKitV1AssetErrorBoundary extends Component<
 export function GardenStructureKitV1AssetBoundary({
     children,
     fallback,
+    onErrorFallbackReady,
 }: GardenStructureKitV1AssetBoundaryProps) {
     return (
-        <GardenStructureKitV1AssetErrorBoundary fallback={fallback}>
+        <GardenStructureKitV1AssetErrorBoundary
+            fallback={fallback}
+            onErrorFallbackReady={onErrorFallbackReady}
+        >
             <Suspense fallback={fallback}>{children}</Suspense>
         </GardenStructureKitV1AssetErrorBoundary>
     );

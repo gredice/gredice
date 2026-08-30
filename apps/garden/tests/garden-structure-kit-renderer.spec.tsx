@@ -134,6 +134,7 @@ test('contains a failed GLB load and keeps the full semantic renderer interactiv
     const fixture = await mount(
         <GardenStructureKitV1RendererFixture mode="asset-error" />,
     );
+    await expect(fixture).toHaveAttribute('data-renderer-ready', 'true');
     await expect(fixture).toHaveAttribute('data-render-ready', 'true');
     const result = await readRendererResult(fixture);
 

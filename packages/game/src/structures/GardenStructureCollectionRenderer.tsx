@@ -391,7 +391,10 @@ export function GardenStructureCollectionRenderer({
                 structureCount: plan.structures.length,
             }}
         >
-            <GardenStructureKitV1AssetBoundary fallback={fallback}>
+            <GardenStructureKitV1AssetBoundary
+                fallback={fallback}
+                onErrorFallbackReady={onRendererReady}
+            >
                 <GardenStructureKitV1LoadedInstances
                     batches={batches}
                     castShadows={castShadows}
