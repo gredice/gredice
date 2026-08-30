@@ -4,8 +4,10 @@ import {
     getGardenStructureEditorRecoveryStorageKey,
     readGardenStructureEditorDemolitionRecoveryPointer,
     readGardenStructureEditorRecoveryStorage,
+    readGardenStructureEditorSavedRecoveryIndex,
     writeGardenStructureEditorDemolitionRecoveryPointer,
     writeGardenStructureEditorRecoveryStorage,
+    writeGardenStructureEditorSavedRecoveryIndex,
 } from './gardenStructureEditorRecoveryStorage';
 
 describe('garden structure editor recovery storage', () => {
@@ -150,6 +152,50 @@ describe('garden structure editor recovery storage', () => {
         assert.equal(
             readGardenStructureEditorDemolitionRecoveryPointer(storage, 42),
             null,
+        );
+        assert.equal(values.size, 0);
+    });
+
+    test('keeps a bounded, ordered index of saved-structure recovery slots', () => {
+        const values = new Map<string, string>();
+        const storage = {
+            getItem(key: string) {
+                return values.get(key) ?? null;
+            },
+            removeItem(key: string) {
+                values.delete(key);
+            },
+            setItem(key: string, value: string) {
+                values.set(key, value);
+            },
+        };
+
+        assert.equal(
+            writeGardenStructureEditorSavedRecoveryIndex(storage, 42, [
+                'house-2',
+                'house-1',
+            ]),
+            true,
+        );
+        assert.deepEqual(
+            readGardenStructureEditorSavedRecoveryIndex(storage, 42),
+            ['house-2', 'house-1'],
+        );
+        assert.equal(
+            writeGardenStructureEditorSavedRecoveryIndex(storage, 42, [
+                'house-1',
+                'house-1',
+            ]),
+            false,
+        );
+
+        values.set(
+            'gredice:garden-structure-editor:v1:garden:42:saved-index',
+            JSON.stringify(['valid', ' '.repeat(200)]),
+        );
+        assert.deepEqual(
+            readGardenStructureEditorSavedRecoveryIndex(storage, 42),
+            [],
         );
         assert.equal(values.size, 0);
     });

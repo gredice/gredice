@@ -5,6 +5,7 @@ import type {
     GardenStructureEditorPricingPreview,
 } from './editor';
 import {
+    canCommitGardenStructurePlacement,
     canExitGardenStructureEditorWithoutConfirmation,
     getGardenStructureExitConfirmationPresentation,
     getGardenStructurePricingPresentation,
@@ -34,6 +35,30 @@ function pricing({
 }
 
 describe('garden structure build-mode presentation', () => {
+    test('requires a compiled support plan for real saves while allowing isolated fixtures', () => {
+        assert.equal(
+            canCommitGardenStructurePlacement({
+                fixture: false,
+                planAvailable: false,
+            }),
+            false,
+        );
+        assert.equal(
+            canCommitGardenStructurePlacement({
+                fixture: false,
+                planAvailable: true,
+            }),
+            true,
+        );
+        assert.equal(
+            canCommitGardenStructurePlacement({
+                fixture: true,
+                planAvailable: false,
+            }),
+            true,
+        );
+    });
+
     test('shows create, resize, refund, unchanged, and sandbox pricing', () => {
         assert.equal(
             getGardenStructurePricingPresentation({

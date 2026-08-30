@@ -11,6 +11,16 @@ export type GardenStructureRecoveryAvailability =
     | 'available'
     | 'unavailable';
 
+export function canCommitGardenStructurePlacement({
+    fixture,
+    planAvailable,
+}: {
+    fixture: boolean;
+    planAvailable: boolean;
+}) {
+    return fixture || planAvailable;
+}
+
 export function getGardenStructureSaveStatusLabel({
     demolition = { status: 'idle' },
     originKind,

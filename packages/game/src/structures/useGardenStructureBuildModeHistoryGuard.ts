@@ -23,14 +23,14 @@ export function useGardenStructureBuildModeHistoryGuard({
 }) {
     const markerRef = useRef(`garden-structure-${crypto.randomUUID()}`);
     const guardArmedRef = useRef(false);
-    const intentionalPopRef = useRef(false);
+    const releasePendingRef = useRef(false);
     const activeRef = useRef(active);
     const onBackRef = useRef(onBack);
     activeRef.current = active;
     onBackRef.current = onBack;
 
     const armGuard = useCallback(() => {
-        if (guardArmedRef.current) {
+        if (guardArmedRef.current || releasePendingRef.current) {
             return;
         }
         window.history.pushState(
@@ -45,7 +45,7 @@ export function useGardenStructureBuildModeHistoryGuard({
         if (!guardArmedRef.current) {
             return;
         }
-        intentionalPopRef.current = true;
+        releasePendingRef.current = true;
         guardArmedRef.current = false;
         window.history.back();
     }, []);
@@ -60,8 +60,11 @@ export function useGardenStructureBuildModeHistoryGuard({
 
     useEffect(() => {
         const handlePopState = () => {
-            if (intentionalPopRef.current) {
-                intentionalPopRef.current = false;
+            if (releasePendingRef.current) {
+                releasePendingRef.current = false;
+                if (activeRef.current) {
+                    armGuard();
+                }
                 return;
             }
             if (!activeRef.current) {

@@ -9,6 +9,7 @@ import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
+    createGardenStructureSceneFixtureBuildPreviewCompileInput,
     type GardenStructureCollectionCacheDisposalReason,
     GardenStructureSceneCache,
     GardenStructureSceneLayer,
@@ -305,6 +306,44 @@ describe('GardenStructureSceneCache', () => {
 
         assert.equal(baseHeight, 0.4);
         assert.equal(previewInput?.baseHeight, 0.4);
+    });
+
+    it('limits unsupported preview fallback to the isolated fixture helper', () => {
+        const record = savedStructure();
+        const stacks = [
+            {
+                blocks: [
+                    {
+                        id: 'fixture-ground',
+                        name: 'Block_Grass',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(record.anchorX, 0, record.anchorY),
+            },
+        ];
+        const input = {
+            blockData: getLocalSandboxBlockData(),
+            document: record.document,
+            placement: {
+                anchorX: record.anchorX,
+                anchorY: record.anchorY,
+                rotation: 0 as const,
+            },
+            revision: record.revision,
+            stacks,
+            structureId: record.id,
+        };
+
+        assert.equal(
+            createGardenStructureSceneBuildPreviewCompileInput(input),
+            null,
+        );
+        assert.equal(
+            createGardenStructureSceneFixtureBuildPreviewCompileInput(input)
+                ?.baseHeight,
+            0.4,
+        );
     });
 
     it('excludes unsupported saved structures from render and framing bounds', () => {

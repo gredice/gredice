@@ -36,6 +36,7 @@ import {
     getGardenStructureEditorExitDecision,
     getGardenStructureEditorPricingPreview,
     markGardenStructureEditorConflict,
+    markGardenStructureEditorDemolitionConflict,
     markGardenStructureEditorDemolitionUnknown,
     markGardenStructureEditorOffline,
     markGardenStructureEditorSaveError,
@@ -817,6 +818,34 @@ describe('garden structure editor retry, conflict, and exit safety', () => {
             abandonGardenStructureEditorDemolitionFailure(state, 'demolish-1'),
         );
         assert.deepEqual(state.demolition, { status: 'idle' });
+    });
+
+    test('turns a demolition revision rejection into an explicit conflict flow', () => {
+        let state = createSavedEditor();
+        state = unwrap(
+            beginGardenStructureEditorDemolition(state, 'demolish-1'),
+        );
+        state = unwrap(
+            markGardenStructureEditorDemolitionConflict(state, {
+                actualRevision: 4,
+                operationId: 'demolish-1',
+            }),
+        );
+
+        assert.deepEqual(state.demolition, { status: 'idle' });
+        assert.equal(state.save.status, 'conflict');
+        if (state.save.status === 'conflict') {
+            assert.equal(state.save.expectedRevision, 3);
+            assert.equal(state.save.actualRevision, 4);
+        }
+        assert.deepEqual(getGardenStructureEditorExitDecision(state), {
+            kind: 'resolve-conflict',
+            serverAcknowledged: false,
+        });
+        assertFailure(
+            beginGardenStructureEditorDemolition(state, 'demolish-2'),
+            'invalid-state',
+        );
     });
 
     test('blocks editing on conflict and supports reload or an explicitly new draft', () => {

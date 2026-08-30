@@ -501,6 +501,7 @@ function deriveStaleRecoveryOperation(
 export function restoreGardenStructureEditorRecovery(
     serialized: string,
     scope: Readonly<{
+        baseMissing?: boolean;
         gardenId: number;
         structureId?: string;
         latestRevision?: number;
@@ -697,6 +698,28 @@ export function restoreGardenStructureEditorRecovery(
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation,
     };
+
+    if (
+        scope.baseMissing === true &&
+        state.origin.kind === 'saved-structure' &&
+        state.demolition.status === 'idle'
+    ) {
+        state = {
+            ...state,
+            workflow: { kind: 'editing', tool: 'select' },
+            save: {
+                status: 'conflict',
+                operation: deriveStaleRecoveryOperation(
+                    state.origin,
+                    state.snapshot,
+                ),
+                operationId: staleRecoveryOperationId,
+                expectedRevision: state.origin.revision,
+                actualRevision: null,
+                submittedSnapshot: state.snapshot,
+            },
+        };
+    }
 
     if (scope.latestRevision !== undefined) {
         if (

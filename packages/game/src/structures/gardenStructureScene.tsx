@@ -219,6 +219,45 @@ export function createGardenStructureSceneBuildPreviewCompileInput({
 }
 
 /**
+ * Keeps the isolated debug fixture renderable beyond its deliberately tiny
+ * ground sample. Real editor sessions must use the strict support resolver
+ * above and never receive this fallback.
+ */
+export function createGardenStructureSceneFixtureBuildPreviewCompileInput(
+    input: GardenStructureSceneBuildPreviewInput,
+): GardenStructureCompileInput | null {
+    const supported = createGardenStructureSceneBuildPreviewCompileInput(input);
+    if (supported) {
+        return supported;
+    }
+    if (!input.blockData) {
+        return null;
+    }
+    const knownBlockNames = new Set(
+        input.blockData.map((block) => block.information.name),
+    );
+    const fixtureBaseHeight = Math.min(
+        ...(input.stacks ?? [])
+            .filter(
+                (stack) =>
+                    stack.blocks.length > 0 &&
+                    stack.blocks.every((block) =>
+                        knownBlockNames.has(block.name),
+                    ),
+            )
+            .map(
+                (stack) =>
+                    stack.position.y + getStackHeight(input.blockData, stack),
+            ),
+    );
+    if (!Number.isFinite(fixtureBaseHeight)) {
+        return null;
+    }
+    const { blockData: _blockData, stacks: _stacks, ...compileInput } = input;
+    return { ...compileInput, baseHeight: fixtureBaseHeight };
+}
+
+/**
  * Resolves the authoritative flat support top from the same block catalogue
  * heights used by normal entities and avatar terrain. Missing catalogue data,
  * support cells, or uneven support returns NaN so the saved-record adapter

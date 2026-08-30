@@ -294,6 +294,31 @@ describe('garden structure editor recovery records', () => {
         });
     });
 
+    test('turns a saved recovery with a deleted base into a recoverable conflict', () => {
+        const state = move(createSavedEditor(), 'move-1', 11);
+        const serialized = unwrap(
+            serializeGardenStructureEditorRecovery(state, 1_800_000_000_000),
+        );
+        const restored = unwrap(
+            restoreGardenStructureEditorRecovery(serialized, {
+                baseMissing: true,
+                gardenId: 42,
+                structureId: 'structure-1',
+            }),
+        ).state;
+
+        assert.equal(restored.save.status, 'conflict');
+        if (restored.save.status === 'conflict') {
+            assert.equal(restored.save.operation, 'placement');
+            assert.equal(restored.save.expectedRevision, 3);
+            assert.equal(restored.save.actualRevision, null);
+        }
+        assert.deepEqual(getGardenStructureEditorExitDecision(restored), {
+            kind: 'resolve-conflict',
+            serverAcknowledged: false,
+        });
+    });
+
     test('persists an in-flight demolition as an exact unknown retry even when the structure disappears or advances', () => {
         const state = unwrap(
             beginGardenStructureEditorDemolition(

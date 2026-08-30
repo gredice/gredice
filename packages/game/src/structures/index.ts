@@ -120,6 +120,7 @@ export type {
 export {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
+    createGardenStructureSceneFixtureBuildPreviewCompileInput,
     GardenStructureSceneCache,
     GardenStructureSceneLayer,
     resolveGardenStructureSceneStructureBaseHeight,

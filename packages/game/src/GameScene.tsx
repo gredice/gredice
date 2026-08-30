@@ -112,6 +112,7 @@ import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache'
 import {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
+    createGardenStructureSceneFixtureBuildPreviewCompileInput,
     GardenStructureSceneLayer,
     useGardenStructureSceneSnapshot,
 } from './structures/gardenStructureScene';
@@ -442,16 +443,22 @@ export function GameScene({
             editor.origin.kind === 'saved-structure'
                 ? editor.origin.revision
                 : editor.history.past.length + 1;
-        const compileInput = createGardenStructureSceneBuildPreviewCompileInput(
-            {
-                blockData,
-                document: editor.snapshot.document,
-                placement: editor.snapshot.placement,
-                revision,
-                stacks: garden?.stacks,
-                structureId,
-            },
-        );
+        const previewInput = {
+            blockData,
+            document: editor.snapshot.document,
+            placement: editor.snapshot.placement,
+            revision,
+            stacks: garden?.stacks,
+            structureId,
+        };
+        const compileInput =
+            structureBuildSession.persistence === 'fixture'
+                ? createGardenStructureSceneFixtureBuildPreviewCompileInput(
+                      previewInput,
+                  )
+                : createGardenStructureSceneBuildPreviewCompileInput(
+                      previewInput,
+                  );
         if (!compileInput) {
             return null;
         }
@@ -471,6 +478,7 @@ export function GameScene({
         garden?.stacks,
         gardenStructureVerticalSliceEnabled,
         structureBuildSession?.editor,
+        structureBuildSession?.persistence,
     ]);
     const structureFixtureCollisionWorld = useMemo(
         () =>

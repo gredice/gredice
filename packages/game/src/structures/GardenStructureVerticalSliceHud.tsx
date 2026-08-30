@@ -39,11 +39,13 @@ import {
     getGardenStructureEditorPricingPreview,
     getGardenStructureEditorRecoveryStorageKey,
     markGardenStructureEditorConflict,
+    markGardenStructureEditorDemolitionConflict,
     markGardenStructureEditorDemolitionUnknown,
     markGardenStructureEditorOffline,
     markGardenStructureEditorSaveError,
     readGardenStructureEditorDemolitionRecoveryPointer,
     readGardenStructureEditorRecoveryStorage,
+    readGardenStructureEditorSavedRecoveryIndex,
     redoGardenStructureEditorCommand,
     resolveGardenStructureEditorConflictAsNewDraft,
     resolveGardenStructureEditorConflictWithLatest,
@@ -54,6 +56,7 @@ import {
     updateNewGardenStructureTemplatePlacement,
     writeGardenStructureEditorDemolitionRecoveryPointer,
     writeGardenStructureEditorRecoveryStorage,
+    writeGardenStructureEditorSavedRecoveryIndex,
 } from './editor';
 import {
     gardenStructureBuildModeControlClassName as controlClassName,
@@ -61,6 +64,7 @@ import {
 } from './GardenStructureConfirmationDialog';
 import { GardenStructureConflictResolutionPanel } from './GardenStructureConflictResolutionPanel';
 import {
+    canCommitGardenStructurePlacement,
     canExitGardenStructureEditorWithoutConfirmation,
     type GardenStructureRecoveryAvailability,
     getGardenStructureExitConfirmationPresentation,
@@ -216,7 +220,7 @@ function writeGardenStructureRecovery({
 }: {
     now: number;
     state: GardenStructureEditorState;
-    storage: Pick<Storage, 'removeItem' | 'setItem'>;
+    storage: Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 }) {
     const key = getGardenStructureEditorRecoveryStorageKey(state.origin);
     const recovery = serializeGardenStructureEditorRecovery(state, now);
@@ -242,8 +246,32 @@ function writeGardenStructureRecovery({
                   state.origin.gardenId,
                   null,
               );
+    let savedRecoveryIndexAvailable = true;
+    if (
+        state.origin.kind === 'saved-structure' &&
+        (recovery.ok || recovery.error.code === 'nothing-to-recover') &&
+        recoveryAvailable
+    ) {
+        const structureId = state.origin.structureId;
+        const indexedStructureIds = readGardenStructureEditorSavedRecoveryIndex(
+            storage,
+            state.origin.gardenId,
+        );
+        const withoutCurrent = indexedStructureIds.filter(
+            (indexedStructureId) => indexedStructureId !== structureId,
+        );
+        savedRecoveryIndexAvailable =
+            writeGardenStructureEditorSavedRecoveryIndex(
+                storage,
+                state.origin.gardenId,
+                recovery.ok ? [structureId, ...withoutCurrent] : withoutCurrent,
+            );
+    }
     return {
-        available: recoveryAvailable && demolitionPointerAvailable,
+        available:
+            recoveryAvailable &&
+            demolitionPointerAvailable &&
+            savedRecoveryIndexAvailable,
         editor: state,
         key,
     };
@@ -281,6 +309,10 @@ export function GardenStructureVerticalSliceHud({
     const editor = session?.editor;
     const buildActive = Boolean(session);
     const placingTemplate = editor?.workflow.kind === 'placing-template';
+    const placementSupported = canCommitGardenStructurePlacement({
+        fixture,
+        planAvailable: Boolean(plan),
+    });
     const bounds = editor
         ? getGardenStructureFootprintBounds(
               editor.snapshot.document.footprint.cells,
@@ -342,10 +374,15 @@ export function GardenStructureVerticalSliceHud({
         });
 
     useEffect(() => {
-        if (session && garden && session.editor.origin.gardenId !== garden.id) {
+        if (
+            !fixture &&
+            session &&
+            garden &&
+            session.editor.origin.gardenId !== garden.id
+        ) {
             setSession(null);
         }
-    }, [garden, session, setSession]);
+    }, [fixture, garden, session, setSession]);
 
     function updateSession(
         updates: Partial<
@@ -389,7 +426,28 @@ export function GardenStructureVerticalSliceHud({
                     state.origin.gardenId,
                     null,
                 );
-            return editorRecoveryRemoved && demolitionPointerRemoved;
+            const savedRecoveryIndexUpdated =
+                state.origin.kind === 'saved-structure'
+                    ? (() => {
+                          const structureId = state.origin.structureId;
+                          return writeGardenStructureEditorSavedRecoveryIndex(
+                              localStorage,
+                              state.origin.gardenId,
+                              readGardenStructureEditorSavedRecoveryIndex(
+                                  localStorage,
+                                  state.origin.gardenId,
+                              ).filter(
+                                  (indexedStructureId) =>
+                                      indexedStructureId !== structureId,
+                              ),
+                          );
+                      })()
+                    : true;
+            return (
+                editorRecoveryRemoved &&
+                demolitionPointerRemoved &&
+                savedRecoveryIndexUpdated
+            );
         }
         return true;
     }
@@ -518,7 +576,7 @@ export function GardenStructureVerticalSliceHud({
             draftId: fixture
                 ? 'debug-garden-structure'
                 : createIdentifier('structure'),
-            gardenId: garden.id,
+            gardenId: fixture ? 1 : garden.id,
             persistence: fixture ? 'fixture' : 'remote',
             templateKey,
         });
@@ -629,6 +687,80 @@ export function GardenStructureVerticalSliceHud({
                     null,
                 );
             }
+            const savedRecoveryIds =
+                readGardenStructureEditorSavedRecoveryIndex(
+                    localStorage,
+                    garden.id,
+                );
+            const validSavedRecoveryIds: string[] = [];
+            let savedRecoverySession: GardenStructureBuildSession | null = null;
+            let savedRecoveryAnnouncement = '';
+            for (const structureId of savedRecoveryIds) {
+                const recoveryKey = getGardenStructureEditorRecoveryStorageKey({
+                    gardenId: garden.id,
+                    kind: 'saved-structure',
+                    structureId,
+                });
+                const recovery = readGardenStructureEditorRecoveryStorage(
+                    localStorage,
+                    recoveryKey,
+                );
+                if (!recovery) {
+                    continue;
+                }
+                const latestStructure = ownerStructures.find(
+                    (structure) => structure.id === structureId,
+                );
+                const restored = restoreGardenStructureEditorRecovery(
+                    recovery,
+                    latestStructure
+                        ? {
+                              gardenId: garden.id,
+                              structureId,
+                              latestRevision: latestStructure.revision,
+                          }
+                        : {
+                              baseMissing: true,
+                              gardenId: garden.id,
+                              structureId,
+                          },
+                );
+                if (!restored.ok) {
+                    writeGardenStructureEditorRecoveryStorage(
+                        localStorage,
+                        recoveryKey,
+                        null,
+                    );
+                    continue;
+                }
+                validSavedRecoveryIds.push(structureId);
+                if (!savedRecoverySession) {
+                    savedRecoverySession = {
+                        editor: restored.value.state,
+                        persistence: 'remote',
+                        category: 'structure',
+                        roofCutaway: false,
+                        selectedPartId: null,
+                    };
+                    savedRecoveryAnnouncement = latestStructure
+                        ? restored.value.state.demolition.status === 'unknown'
+                            ? 'Vraćeno je rušenje čiji ishod nije potvrđen. Ponovite ga s istim sigurnosnim identifikatorom.'
+                            : restored.value.state.save.status === 'conflict'
+                              ? 'Lokalni nacrt je stariji od spremljene građevine.'
+                              : 'Vraćene su lokalne promjene građevine.'
+                        : 'Izvorna građevina više ne postoji. Lokalne promjene možete spremiti kao novu građevinu.';
+                }
+            }
+            writeGardenStructureEditorSavedRecoveryIndex(
+                localStorage,
+                garden.id,
+                validSavedRecoveryIds,
+            );
+            if (savedRecoverySession) {
+                setSession(savedRecoverySession);
+                setAnnouncement(savedRecoveryAnnouncement);
+                return;
+            }
         }
         startTemplate('house');
     }
@@ -719,6 +851,12 @@ export function GardenStructureVerticalSliceHud({
     }
 
     function confirmPlacement() {
+        if (!placementSupported) {
+            setAnnouncement(
+                'Položaj mora biti na dostupnim poljima jednake visine.',
+            );
+            return;
+        }
         if (editor) {
             applyEditorResult(
                 confirmGardenStructureTemplatePlacement(editor),
@@ -746,6 +884,12 @@ export function GardenStructureVerticalSliceHud({
 
     async function saveAndExit() {
         if (!editor || !session) {
+            return;
+        }
+        if (!placementSupported) {
+            setAnnouncement(
+                'Građevinu nije moguće spremiti dok položaj nije valjan.',
+            );
             return;
         }
         if (session.persistence === 'fixture') {
@@ -1027,18 +1171,29 @@ export function GardenStructureVerticalSliceHud({
                           'unknown',
                       );
             const next =
-                clientError.outcome === 'unknown'
-                    ? markGardenStructureEditorDemolitionUnknown(begun.value, {
-                          code: clientError.code,
+                clientError.code === 'REVISION_CONFLICT'
+                    ? markGardenStructureEditorDemolitionConflict(begun.value, {
                           operationId,
+                          actualRevision: clientError.currentRevision,
                       })
-                    : abandonGardenStructureEditorDemolitionFailure(
-                          begun.value,
-                          operationId,
-                      );
+                    : clientError.outcome === 'unknown'
+                      ? markGardenStructureEditorDemolitionUnknown(
+                            begun.value,
+                            {
+                                code: clientError.code,
+                                operationId,
+                            },
+                        )
+                      : abandonGardenStructureEditorDemolitionFailure(
+                            begun.value,
+                            operationId,
+                        );
             if (next.ok) {
                 updateSession({ editor: next.value });
                 persistRecovery(next.value);
+                if (next.value.save.status === 'conflict') {
+                    setDemolishConfirmation(false);
+                }
             }
             setAnnouncement(clientError.message);
         }
@@ -1350,7 +1505,11 @@ export function GardenStructureVerticalSliceHud({
                             'border-green-600 bg-green-600 text-white hover:bg-green-700',
                         )}
                         data-testid="garden-structure-build-done"
-                        disabled={placingTemplate || interactionLocked}
+                        disabled={
+                            placingTemplate ||
+                            interactionLocked ||
+                            !placementSupported
+                        }
                         onClick={saveAndExit}
                         ref={doneButtonRef}
                     >
@@ -1513,6 +1672,9 @@ export function GardenStructureVerticalSliceHud({
                                     'mt-2 w-full border-amber-600 bg-amber-500 text-amber-950 hover:bg-amber-400',
                                 )}
                                 data-testid="garden-structure-confirm-placement"
+                                disabled={
+                                    interactionLocked || !placementSupported
+                                }
                                 onClick={confirmPlacement}
                                 ref={placementButtonRef}
                             >
@@ -1520,6 +1682,15 @@ export function GardenStructureVerticalSliceHud({
                             </button>
                         ) : null}
                     </fieldset>
+                ) : null}
+
+                {!placementSupported ? (
+                    <p
+                        className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-2 py-1.5 text-xs text-foreground"
+                        role="alert"
+                    >
+                        Položaj mora biti na dostupnim poljima jednake visine.
+                    </p>
                 ) : null}
 
                 {!placingTemplate ? (

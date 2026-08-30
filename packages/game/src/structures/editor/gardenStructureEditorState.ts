@@ -1177,7 +1177,6 @@ export function markGardenStructureEditorConflict(
             'Revision conflicts apply only to an existing saved structure.',
         );
     }
-
     return success({
         ...state,
         save: {
@@ -1393,7 +1392,6 @@ export function resolveGardenStructureEditorConflictWithLatest(
             'The latest refundable principal exceeds its footprint value.',
         );
     }
-
     return success({
         origin: {
             ...state.origin,
@@ -1544,6 +1542,51 @@ export function markGardenStructureEditorDemolitionUnknown(
             operationId: input.operationId,
             expectedRevision: demolition.value.expectedRevision,
         },
+    });
+}
+
+export function markGardenStructureEditorDemolitionConflict(
+    state: GardenStructureEditorState,
+    input: Readonly<{
+        operationId: string;
+        actualRevision: number | null;
+    }>,
+): GardenStructureEditorResult<GardenStructureEditorState> {
+    const demolition = requireMatchingDemolitionOperation(
+        state,
+        input.operationId,
+    );
+    if (!demolition.ok) {
+        return demolition;
+    }
+    if (
+        state.origin.kind !== 'saved-structure' ||
+        (input.actualRevision !== null &&
+            (!isPositiveSafeInteger(input.actualRevision) ||
+                input.actualRevision <= demolition.value.expectedRevision))
+    ) {
+        return failure(
+            'invalid-state',
+            'A demolition revision conflict requires a newer saved structure revision.',
+        );
+    }
+    const pendingSaveOperation = getSaveSubmission(state)?.operation;
+    const conflictOperation =
+        pendingSaveOperation && pendingSaveOperation !== 'create'
+            ? pendingSaveOperation
+            : 'placement';
+
+    return success({
+        ...state,
+        save: {
+            status: 'conflict',
+            operation: conflictOperation,
+            operationId: input.operationId,
+            expectedRevision: demolition.value.expectedRevision,
+            actualRevision: input.actualRevision,
+            submittedSnapshot: state.snapshot,
+        },
+        demolition: { status: 'idle' },
     });
 }
 

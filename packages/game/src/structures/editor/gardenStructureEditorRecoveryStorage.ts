@@ -1,4 +1,7 @@
-import { gardenStructureMaxIdentifierLength } from '@gredice/js/gardenStructures';
+import {
+    gardenStructureMaxActivePerGarden,
+    gardenStructureMaxIdentifierLength,
+} from '@gredice/js/gardenStructures';
 import type { GardenStructureEditorOrigin } from './gardenStructureEditorTypes';
 
 export const gardenStructureEditorRecoveryStorageVersion = 1;
@@ -33,6 +36,10 @@ function getGardenStructureEditorDemolitionRecoveryPointerKey(
     gardenId: number,
 ) {
     return `${recoveryStoragePrefix}:v${gardenStructureEditorRecoveryStorageVersion.toString()}:garden:${encodeStorageSegment(gardenId)}:demolition`;
+}
+
+function getGardenStructureEditorSavedRecoveryIndexKey(gardenId: number) {
+    return `${recoveryStoragePrefix}:v${gardenStructureEditorRecoveryStorageVersion.toString()}:garden:${encodeStorageSegment(gardenId)}:saved-index`;
 }
 
 function isBoundedIdentifier(value: string) {
@@ -79,6 +86,68 @@ export function writeGardenStructureEditorDemolitionRecoveryPointer(
             storage.removeItem(key);
         } else {
             storage.setItem(key, structureId);
+        }
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function readGardenStructureEditorSavedRecoveryIndex(
+    storage: Pick<Storage, 'getItem' | 'removeItem'>,
+    gardenId: number,
+) {
+    const key = getGardenStructureEditorSavedRecoveryIndexKey(gardenId);
+    try {
+        const serialized = storage.getItem(key);
+        if (serialized === null) {
+            return [];
+        }
+        const parsed: unknown = JSON.parse(serialized);
+        const identifiers = Array.isArray(parsed)
+            ? parsed.filter(
+                  (value): value is string =>
+                      typeof value === 'string' && isBoundedIdentifier(value),
+              )
+            : [];
+        if (
+            Array.isArray(parsed) &&
+            parsed.length <= gardenStructureMaxActivePerGarden &&
+            identifiers.length === parsed.length &&
+            new Set(identifiers).size === identifiers.length
+        ) {
+            return identifiers;
+        }
+        storage.removeItem(key);
+    } catch {
+        try {
+            storage.removeItem(key);
+        } catch {
+            // Storage may be unavailable. The caller treats the index as empty
+            // and keeps any active editor open until its draft is safe.
+        }
+    }
+    return [];
+}
+
+export function writeGardenStructureEditorSavedRecoveryIndex(
+    storage: Pick<Storage, 'removeItem' | 'setItem'>,
+    gardenId: number,
+    structureIds: readonly string[],
+) {
+    if (
+        structureIds.length > gardenStructureMaxActivePerGarden ||
+        structureIds.some((structureId) => !isBoundedIdentifier(structureId)) ||
+        new Set(structureIds).size !== structureIds.length
+    ) {
+        return false;
+    }
+    const key = getGardenStructureEditorSavedRecoveryIndexKey(gardenId);
+    try {
+        if (structureIds.length === 0) {
+            storage.removeItem(key);
+        } else {
+            storage.setItem(key, JSON.stringify(structureIds));
         }
         return true;
     } catch {
