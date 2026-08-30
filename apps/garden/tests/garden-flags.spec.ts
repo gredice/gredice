@@ -46,9 +46,14 @@ test('flag discovery merges all code-defined and managed Vercel metadata', () =>
     );
 
     expect(discoveredFlagKeys).toEqual(gardenFlagKeys);
-    expect(flagsSource).toMatch(
-        /enableGardenBuildingSystemFlag[\s\S]*process\.env\.FLAGS[\s\S]*adapter: vercelAdapter[\s\S]*decide: \(\) => false[\s\S]*defaultValue: false/u,
-    );
+    const buildingFlagDeclaration = flagsSource.match(
+        /export const enableGardenBuildingSystemFlag = flag<boolean>\(\{[\s\S]*?\n\}\);/u,
+    )?.[0];
+    expect(buildingFlagDeclaration).toBeDefined();
+    expect(buildingFlagDeclaration).toContain('process.env.FLAGS');
+    expect(buildingFlagDeclaration).toContain('adapter: vercelAdapter');
+    expect(buildingFlagDeclaration).toContain('decide: () => false');
+    expect(buildingFlagDeclaration).toContain('defaultValue: false');
 });
 
 test('authenticated discovery endpoint exposes every Garden flag', async ({

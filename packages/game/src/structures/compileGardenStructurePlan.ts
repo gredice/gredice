@@ -5,6 +5,7 @@ import type {
     GardenStructureRotation,
 } from '@gredice/js/gardenStructures';
 import {
+    decodeGardenStructureDocument,
     gardenStructureCellKey,
     getGardenStructureAdjacentCells,
     rotateGardenStructureDocument,
@@ -946,7 +947,20 @@ export function compileGardenStructurePlan({
     kit = debugGardenStructureKitMetadata,
     baseHeight = 0,
 }: GardenStructureCompileInput): GardenStructureSemanticPlan {
-    const rotated = rotateGardenStructureDocument(document, placement.rotation);
+    const decodedDocument = decodeGardenStructureDocument(document);
+    if (!decodedDocument.valid) {
+        const issueCodes = [
+            ...new Set(decodedDocument.issues.map((issue) => issue.code)),
+        ].join(', ');
+        throw new Error(
+            `Cannot compile an invalid garden structure document: ${issueCodes}.`,
+        );
+    }
+    const canonicalDocument = decodedDocument.document;
+    const rotated = rotateGardenStructureDocument(
+        canonicalDocument,
+        placement.rotation,
+    );
     const footprintEntries = rotated.footprint.cells
         .map((cell) => ({
             x: cell.x + placement.anchorX,
@@ -1224,7 +1238,7 @@ export function compileGardenStructurePlan({
     const cacheKey = getGardenStructurePlanCacheKey({
         structureId,
         revision,
-        document,
+        document: canonicalDocument,
         placement,
         kit,
         baseHeight,

@@ -84,6 +84,35 @@ function getBatchTransform(
 }
 
 describe('garden structure semantic coordinate compilation', () => {
+    test('rejects duplicate roof cells before compiling collision IDs', () => {
+        const document = createGardenStructureTemplateSeed('house').document;
+        const firstRegion = document.roofRegions[0];
+        const firstCell = firstRegion?.cells[0];
+        assert.ok(firstRegion);
+        assert.ok(firstCell);
+        const invalidDocument: GardenStructureDocumentV1 = {
+            ...document,
+            roofRegions: [
+                {
+                    ...firstRegion,
+                    cells: [...firstRegion.cells, firstCell],
+                },
+                ...document.roofRegions.slice(1),
+            ],
+        };
+
+        assert.throws(
+            () =>
+                compileGardenStructurePlan({
+                    structureId: 'duplicate-roof-cell',
+                    revision: 1,
+                    document: invalidDocument,
+                    placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+                }),
+            /duplicate-roof-cell/u,
+        );
+    });
+
     test('keeps integer anchor cells aligned with garden stack centers', () => {
         const plan = compileGardenStructurePlan({
             structureId: 'anchor-alignment',
