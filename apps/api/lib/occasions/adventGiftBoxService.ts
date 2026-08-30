@@ -17,6 +17,17 @@ export type GiftBoxReward = Readonly<{
     title: string;
 }>;
 
+export type GiftBoxRewardCatalog = Readonly<{
+    operations: readonly Readonly<{
+        entityId: unknown;
+        title: string;
+    }>[];
+    plants: readonly Readonly<{
+        entityId: unknown;
+        title: string;
+    }>[];
+}>;
+
 type GardenGiftBoxSnapshot = Readonly<{
     garden: Readonly<{
         accountId: string;
@@ -100,7 +111,10 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<readonly GardenGiftBoxStructure[]>;
-    pickGiftBoxReward: () => Promise<GiftBoxReward>;
+    loadGiftBoxRewardCatalog: () => Promise<GiftBoxRewardCatalog>;
+    pickGiftBoxReward: (
+        catalog: GiftBoxRewardCatalog,
+    ) => GiftBoxReward | Promise<GiftBoxReward>;
     softDeleteGardenBlockOnce: (
         gardenId: number,
         blockId: string,
@@ -284,6 +298,11 @@ export function createAdventGiftBoxService<Transaction>(
             assertCommand(command);
 
             const operationId = getAdventGiftBoxOperationId(command.blockId);
+            const [blockDataResult, rewardCatalogResult] =
+                await Promise.allSettled([
+                    dependencies.getBlockData(),
+                    dependencies.loadGiftBoxRewardCatalog(),
+                ]);
             const execution =
                 await dependencies.withInventoryAccountTransaction(
                     command.accountId,
@@ -459,8 +478,14 @@ export function createAdventGiftBoxService<Transaction>(
                                                         command.gardenId,
                                                         operationTransaction,
                                                     );
+                                                if (
+                                                    blockDataResult.status ===
+                                                    'rejected'
+                                                ) {
+                                                    throw blockDataResult.reason;
+                                                }
                                                 const blockData =
-                                                    await dependencies.getBlockData();
+                                                    blockDataResult.value;
                                                 const occupancy =
                                                     dependencies.validatePersistedStructuresAfterBlockMutation(
                                                         {
@@ -487,9 +512,21 @@ export function createAdventGiftBoxService<Transaction>(
                                                 }
 
                                                 let reward: GiftBoxReward;
+                                                if (
+                                                    rewardCatalogResult.status ===
+                                                    'rejected'
+                                                ) {
+                                                    fail(
+                                                        'REWARD_UNAVAILABLE',
+                                                        503,
+                                                        'Nagrada poklon kutije trenutačno nije dostupna.',
+                                                    );
+                                                }
                                                 try {
                                                     reward =
-                                                        await dependencies.pickGiftBoxReward();
+                                                        await dependencies.pickGiftBoxReward(
+                                                            rewardCatalogResult.value,
+                                                        );
                                                 } catch {
                                                     fail(
                                                         'REWARD_UNAVAILABLE',

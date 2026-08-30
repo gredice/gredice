@@ -97,8 +97,10 @@ type TestState = {
 };
 
 type HarnessOptions = Readonly<{
+    acquireTransactionClient?: () => Promise<() => void>;
     availableNow?: boolean;
     balance?: number;
+    beforeDirectoryResult?: () => Promise<void>;
     blockName?: string;
     directoryPrice?: number;
     failAfterDebit?: boolean;
@@ -171,6 +173,7 @@ function makeHarness(options: HarnessOptions = {}) {
     const transaction: TestTransaction = { id: 'shared-transaction' };
     const calls: string[] = [];
     let gardenActive = true;
+    let transactionActive = false;
     const blockData = [
         directoryBlock(1, 'Block_Grass', {
             price: 0,
@@ -266,7 +269,9 @@ function makeHarness(options: HarnessOptions = {}) {
             }
         },
         getBlockData: async () => {
+            assert.equal(transactionActive, false);
             calls.push('directory');
+            await options.beforeDirectoryResult?.();
             return blockData;
         },
         getGardenLocation: async (_gardenId, receivedTransaction) => {
@@ -393,8 +398,11 @@ function makeHarness(options: HarnessOptions = {}) {
             return callback(transaction);
         },
         withSunflowerAccountTransaction: async (_accountId, callback) => {
+            const releaseTransactionClient =
+                await options.acquireTransactionClient?.();
             calls.push('sunflower-lock');
             const before = cloneState(state);
+            transactionActive = true;
             try {
                 const result = await callback(transaction);
                 calls.push('transaction-committed');
@@ -402,6 +410,9 @@ function makeHarness(options: HarnessOptions = {}) {
             } catch (error) {
                 state = before;
                 throw error;
+            } finally {
+                transactionActive = false;
+                releaseTransactionClient?.();
             }
         },
     };
@@ -444,13 +455,13 @@ describe('purchaseGardenBlock', () => {
             variant: null,
         });
         assert.deepEqual(harness.calls, [
+            'directory',
             'sunflower-lock',
             'deletion-fence',
             'garden-lock',
             'authority',
             'operation-receipt',
             'snapshot',
-            'directory',
             'location',
             'structures',
             'create-block',
@@ -492,13 +503,141 @@ describe('purchaseGardenBlock', () => {
         assert.equal(state.receipts.size, 1);
         assert.equal(
             harness.calls.filter((call) => call === 'directory').length,
-            1,
+            2,
         );
         assert.equal(
             harness.calls.filter((call) => call === 'snapshot').length,
             1,
         );
         assert.equal(harness.calls.includes('cache-bust'), false);
+    });
+
+    it('resolves concurrent cold directory reads before acquiring pooled transactions', async () => {
+        const requestCount = 10;
+        let availableClients = requestCount;
+        let bypassPool = false;
+        const clientWaiters: Array<(release: () => void) => void> = [];
+        const releaseClient = () => {
+            if (bypassPool) return;
+            const next = clientWaiters.shift();
+            if (next) {
+                next(releaseClient);
+                return;
+            }
+            availableClients += 1;
+        };
+        const acquireClient = async () => {
+            if (bypassPool) return () => {};
+            if (availableClients > 0) {
+                availableClients -= 1;
+                return releaseClient;
+            }
+            return new Promise<() => void>((resolve) => {
+                clientWaiters.push(resolve);
+            });
+        };
+        const releaseBlockedClients = () => {
+            bypassPool = true;
+            for (const resolve of clientWaiters.splice(0)) {
+                resolve(() => {});
+            }
+        };
+        let releaseDirectory = () => {};
+        const directoryGate = new Promise<void>((resolve) => {
+            releaseDirectory = resolve;
+        });
+        let startedDirectoryReads = 0;
+        let markAllDirectoryReadsStarted = () => {};
+        const allDirectoryReadsStarted = new Promise<void>((resolve) => {
+            markAllDirectoryReadsStarted = resolve;
+        });
+        const harnesses = Array.from({ length: requestCount }, () =>
+            makeHarness({
+                acquireTransactionClient: acquireClient,
+                beforeDirectoryResult: async () => {
+                    const releaseDirectoryClient = await acquireClient();
+                    try {
+                        startedDirectoryReads += 1;
+                        if (startedDirectoryReads === requestCount) {
+                            markAllDirectoryReadsStarted();
+                        }
+                        await directoryGate;
+                    } finally {
+                        releaseDirectoryClient();
+                    }
+                },
+            }),
+        );
+
+        const pendingPurchases = harnesses.map((harness, index) =>
+            harness.service(
+                harness.command({
+                    operationId: `cold-purchase-${index.toString()}`,
+                }),
+            ),
+        );
+        let orderingError: Error | undefined;
+        let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+        try {
+            await Promise.race([
+                allDirectoryReadsStarted,
+                new Promise<never>((_resolve, reject) => {
+                    timeoutHandle = setTimeout(
+                        () =>
+                            reject(
+                                new Error(
+                                    'Cold directory reads did not all start before transaction acquisition.',
+                                ),
+                            ),
+                        1_000,
+                    );
+                }),
+            ]);
+
+            assert.equal(availableClients, 0);
+            for (const harness of harnesses) {
+                assert.deepEqual(harness.calls, ['directory']);
+                assert.equal(harness.calls.includes('sunflower-lock'), false);
+            }
+        } catch (error) {
+            orderingError =
+                error instanceof Error ? error : new Error(String(error));
+        } finally {
+            clearTimeout(timeoutHandle);
+            if (orderingError) releaseBlockedClients();
+            releaseDirectory();
+        }
+
+        const results = await Promise.all(pendingPurchases);
+        if (orderingError) throw orderingError;
+        assert.equal(
+            results.every((result) => result.ok),
+            true,
+        );
+        assert.equal(availableClients, requestCount);
+    });
+
+    it('replays a committed purchase when the cold directory read fails', async () => {
+        let directoryUnavailable = false;
+        const harness = makeHarness({
+            beforeDirectoryResult: async () => {
+                if (directoryUnavailable) {
+                    throw new Error('Directory unavailable');
+                }
+            },
+        });
+        const first = await harness.service(harness.command());
+        directoryUnavailable = true;
+
+        const replay = await harness.service(harness.command());
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state().debits.length, 1);
+        assert.equal(
+            harness.calls.filter((call) => call === 'directory').length,
+            2,
+        );
     });
 
     it('denies a foreign account before consulting the operation receipt', async () => {

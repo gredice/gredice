@@ -86,6 +86,10 @@ function integrationService({
             getBlockData: async () => blockData,
             isAdventSeasonOver: () => true,
             listGardenStructuresForUpdate,
+            loadGiftBoxRewardCatalog: async () => ({
+                operations: [],
+                plants: [{ entityId: reward.entityId, title: reward.title }],
+            }),
             pickGiftBoxReward: async () => reward,
             softDeleteGardenBlockOnce: async (
                 gardenId,

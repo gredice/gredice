@@ -68,6 +68,7 @@ type HarnessOptions = Readonly<{
     authorityAccountId?: string;
     blockMessage?: string | null;
     blockName?: string;
+    directoryUnavailable?: () => boolean;
     failInventoryAdd?: boolean;
     structures?: readonly Readonly<{
         anchorX: number;
@@ -81,6 +82,7 @@ type HarnessOptions = Readonly<{
 function makeHarness(options: HarnessOptions = {}) {
     const calls: string[] = [];
     const transaction = { id: 'shared-transaction' };
+    let transactionActive = false;
     const blockName = options.blockName ?? 'Shade';
     const blockData = [
         directoryBlock(1, 'Block_Grass'),
@@ -177,7 +179,11 @@ function makeHarness(options: HarnessOptions = {}) {
             state.blocks = state.blocks.filter((block) => block.id !== blockId);
         },
         getBlockData: async () => {
+            assert.equal(transactionActive, false);
             calls.push('catalog');
+            if (options.directoryUnavailable?.()) {
+                throw new Error('Directory unavailable');
+            }
             return blockData;
         },
         getGardenBlockForUpdate: async (input, receivedTransaction) => {
@@ -208,11 +214,11 @@ function makeHarness(options: HarnessOptions = {}) {
             input,
             receivedTransaction,
         ) => {
-            assert.equal(receivedTransaction, transaction);
             assert.equal(
                 input.operationId,
                 getGardenBoxBlockStorageOperationId(command.blockId),
             );
+            assert.equal(receivedTransaction, transaction);
             calls.push('receipt-read');
             return receipt
                 ? {
@@ -289,6 +295,7 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('inventory-lock');
             calls.push('account-lock');
             const before = cloneState();
+            transactionActive = true;
             try {
                 const result = await callback(transaction);
                 calls.push('commit');
@@ -301,6 +308,8 @@ function makeHarness(options: HarnessOptions = {}) {
                 receipt = before.receipt;
                 calls.push('rollback');
                 throw error;
+            } finally {
+                transactionActive = false;
             }
         },
         withGardenMutationOperation: async (
@@ -387,7 +396,7 @@ describe('storeGardenBlockInGardenBox', () => {
         );
     });
 
-    test('locks inventory before garden and source row, then commits every write once', async () => {
+    test('loads the directory before inventory and garden locks, then commits every write once', async () => {
         const harness = makeHarness();
 
         const result = await harness.service(command);
@@ -403,6 +412,7 @@ describe('storeGardenBlockInGardenBox', () => {
             replayed: false,
         });
         assert.deepEqual(harness.calls, [
+            'catalog',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -412,7 +422,6 @@ describe('storeGardenBlockInGardenBox', () => {
             'snapshot:1',
             'source-row',
             'snapshot:2',
-            'catalog',
             'receipt',
             'update-stack',
             'delete-block',
@@ -435,6 +444,7 @@ describe('storeGardenBlockInGardenBox', () => {
             replayed: true,
         });
         assert.deepEqual(harness.calls, [
+            'catalog',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -453,6 +463,32 @@ describe('storeGardenBlockInGardenBox', () => {
         });
         assert.equal(!conflict.ok && conflict.code, 'OPERATION_CONFLICT');
         assert.equal(harness.state.inventoryAdds, 1);
+    });
+
+    test('replays a committed storage operation when the cold directory read fails', async () => {
+        let directoryUnavailable = false;
+        const harness = makeHarness({
+            directoryUnavailable: () => directoryUnavailable,
+        });
+        const first = await harness.service(command);
+        directoryUnavailable = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
     });
 
     test('rolls stack, block, and inventory changes back when support validation fails', async () => {

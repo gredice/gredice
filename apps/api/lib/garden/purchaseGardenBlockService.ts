@@ -521,6 +521,9 @@ export function createPurchaseGardenBlockService<Transaction>(
     ): Promise<PurchaseGardenBlockResult> {
         try {
             assertCommand(command);
+            const [blockDataResult] = await Promise.allSettled([
+                loadBlockData(dependencies),
+            ]);
             const { withSunflowerAccountTransaction } = dependencies;
             const committed = await withSunflowerAccountTransaction(
                 command.accountId,
@@ -576,10 +579,14 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                         'Garden not found',
                                                     );
                                                 }
+                                                if (
+                                                    blockDataResult.status ===
+                                                    'rejected'
+                                                ) {
+                                                    throw blockDataResult.reason;
+                                                }
                                                 const blockData =
-                                                    await loadBlockData(
-                                                        dependencies,
-                                                    );
+                                                    blockDataResult.value;
                                                 const requestedBlock =
                                                     findRequestedBlock(
                                                         blockData,

@@ -29,6 +29,7 @@ function makeHarness({
     gardenIsSandbox = false,
     occupancyResult = { valid: true } as const,
     remainingBlockIds = ['ground'],
+    blockDirectoryFailure = false,
     rewardFailure = false,
 }: Readonly<{
     adventOver?: boolean;
@@ -49,10 +50,12 @@ function makeHarness({
               }>;
           }>;
     remainingBlockIds?: readonly string[];
+    blockDirectoryFailure?: boolean;
     rewardFailure?: boolean;
 }> = {}) {
     const calls: string[] = [];
     const transaction = { id: 'gift-transaction' };
+    let transactionActive = false;
     let receipt = existingReceipt;
     const service = createAdventGiftBoxService({
         addInventoryItem: async (accountId, payload, receivedTransaction) => {
@@ -117,7 +120,11 @@ function makeHarness({
             };
         },
         getBlockData: async () => {
+            assert.equal(transactionActive, false);
             calls.push('directory');
+            if (blockDirectoryFailure) {
+                throw new Error('Block directory unavailable');
+            }
             return [];
         },
         isAdventSeasonOver: () => adventOver,
@@ -130,11 +137,19 @@ function makeHarness({
             calls.push('structures');
             return [];
         },
-        pickGiftBoxReward: async () => {
-            calls.push('reward');
+        loadGiftBoxRewardCatalog: async () => {
+            assert.equal(transactionActive, false);
+            calls.push('reward-directory');
             if (rewardFailure) {
                 throw new Error('Directory unavailable');
             }
+            return {
+                operations: [],
+                plants: [{ entityId: reward.entityId, title: reward.title }],
+            };
+        },
+        pickGiftBoxReward: async () => {
+            calls.push('reward');
             return reward;
         },
         softDeleteGardenBlockOnce: async (
@@ -226,14 +241,19 @@ function makeHarness({
         withInventoryAccountTransaction: async (accountId, callback) => {
             assert.equal(accountId, command.accountId);
             calls.push('inventory-lock');
-            return callback(transaction);
+            transactionActive = true;
+            try {
+                return await callback(transaction);
+            } finally {
+                transactionActive = false;
+            }
         },
     });
     return { calls, service };
 }
 
 describe('openAdventGiftBoxAtomically', () => {
-    test('locks inventory, account, garden, and receipt before one atomic reward', async () => {
+    test('loads reward directories before inventory, account, and garden locks', async () => {
         const harness = makeHarness();
 
         assert.deepEqual(await harness.service(command), {
@@ -242,6 +262,8 @@ describe('openAdventGiftBoxAtomically', () => {
             reward,
         });
         assert.deepEqual(harness.calls, [
+            'directory',
+            'reward-directory',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -249,7 +271,6 @@ describe('openAdventGiftBoxAtomically', () => {
             'receipt',
             'snapshot',
             'structures',
-            'directory',
             'occupancy',
             'reward',
             'inventory-add',
@@ -272,6 +293,8 @@ describe('openAdventGiftBoxAtomically', () => {
             reward,
         });
         assert.deepEqual(harness.calls, [
+            'directory',
+            'reward-directory',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -293,6 +316,8 @@ describe('openAdventGiftBoxAtomically', () => {
             status: 400,
         });
         assert.deepEqual(harness.calls, [
+            'directory',
+            'reward-directory',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -361,6 +386,12 @@ describe('openAdventGiftBoxAtomically', () => {
                 getBlockData: async () => [],
                 isAdventSeasonOver: () => true,
                 listGardenStructuresForUpdate: async () => [],
+                loadGiftBoxRewardCatalog: async () => ({
+                    operations: [],
+                    plants: [
+                        { entityId: reward.entityId, title: reward.title },
+                    ],
+                }),
                 pickGiftBoxReward: async () => {
                     calls.push('reward');
                     return reward;
@@ -407,6 +438,8 @@ describe('openAdventGiftBoxAtomically', () => {
             status: 400,
         });
         assert.deepEqual(unavailable.calls, [
+            'directory',
+            'reward-directory',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -475,5 +508,41 @@ describe('openAdventGiftBoxAtomically', () => {
             status: 503,
         });
         assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.includes('inventory-lock'), true);
+    });
+
+    test('keeps Advent validation ahead of a prepared reward-directory failure', async () => {
+        const harness = makeHarness({ adventOver: false, rewardFailure: true });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'GIFT_UNAVAILABLE',
+            error: 'Advent još traje. Poklon kutije su dostupne 25.12.',
+            status: 400,
+        });
+        assert.equal(harness.calls.includes('reward'), false);
+    });
+
+    test('replays a committed gift when both cold directory reads fail', async () => {
+        const harness = makeHarness({
+            blockDirectoryFailure: true,
+            existingReceipt: { reward },
+            rewardFailure: true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: true,
+            replayed: true,
+            reward,
+        });
+        assert.deepEqual(harness.calls, [
+            'directory',
+            'reward-directory',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'receipt',
+        ]);
     });
 });

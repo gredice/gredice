@@ -426,6 +426,9 @@ export function createGardenBoxBlockStorageService<Transaction>(
             const operationId = getGardenBoxBlockStorageOperationId(
                 command.blockId,
             );
+            const [blockDataResult] = await Promise.allSettled([
+                dependencies.getBlockData(),
+            ]);
             return await dependencies.withGardenBoxInventoryTransaction(
                 command.accountId,
                 command.gardenId,
@@ -548,8 +551,10 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                         'Garden changed while storing block',
                                     );
                                 }
-                                const blockData =
-                                    await dependencies.getBlockData();
+                                if (blockDataResult.status === 'rejected') {
+                                    throw blockDataResult.reason;
+                                }
+                                const blockData = blockDataResult.value;
                                 const authoritativeEntityId =
                                     findInventoryEntityId(
                                         blockData,

@@ -346,6 +346,9 @@ export function createGardenBoxBlockPlacementService<Transaction>(
     ): Promise<GardenBoxBlockPlacementResult> {
         try {
             assertCommand(command);
+            const [blockDataResult] = await Promise.allSettled([
+                dependencies.getBlockData(),
+            ]);
 
             return await dependencies.withGardenBoxInventoryTransaction(
                 command.accountId,
@@ -429,8 +432,13 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                             );
                                         }
 
-                                        const blockData =
-                                            await dependencies.getBlockData();
+                                        if (
+                                            blockDataResult.status ===
+                                            'rejected'
+                                        ) {
+                                            throw blockDataResult.reason;
+                                        }
+                                        const blockData = blockDataResult.value;
                                         const requestedBlock =
                                             getRequestedBlock(
                                                 blockData,

@@ -68,9 +68,10 @@ const command: GardenBoxBlockPlacementCommand = {
 };
 
 describe('placeGardenBoxBlock', () => {
-    test('locks inventory before garden and skips structure-occupied cells', async () => {
+    test('loads the directory before inventory and garden locks, then skips structure-occupied cells', async () => {
         const calls: string[] = [];
         const transaction = { id: 'shared-transaction' };
+        let transactionActive = false;
         const blockData = [
             directoryBlock(1, 'Block_Grass'),
             directoryBlock(2, 'GardenBox', { stackable: false }),
@@ -111,6 +112,7 @@ describe('placeGardenBoxBlock', () => {
             item: { entityTypeName: 'block', entityId: '101', amount: 1 },
         } as const;
         let storedPayload: unknown;
+        let directoryUnavailable = false;
 
         const place = createGardenBoxBlockPlacementService({
             consumeGardenBoxInventoryItem: async (
@@ -143,7 +145,11 @@ describe('placeGardenBoxBlock', () => {
                 calls.push('create-stack');
             },
             getBlockData: async () => {
+                assert.equal(transactionActive, false);
                 calls.push('catalog');
+                if (directoryUnavailable) {
+                    throw new Error('Directory unavailable');
+                }
                 return blockData;
             },
             getGardenBlockForUpdate: async () => {
@@ -202,7 +208,12 @@ describe('placeGardenBoxBlock', () => {
             ) => {
                 calls.push('inventory-lock');
                 calls.push('account-lock');
-                return callback(transaction);
+                transactionActive = true;
+                try {
+                    return await callback(transaction);
+                } finally {
+                    transactionActive = false;
+                }
             },
             withGardenMutationOperation: async (
                 operation,
@@ -270,6 +281,7 @@ describe('placeGardenBoxBlock', () => {
             replayed: false,
         });
         assert.deepEqual(calls, [
+            'catalog',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -277,7 +289,6 @@ describe('placeGardenBoxBlock', () => {
             'box-authority',
             'receipt',
             'snapshot-pre',
-            'catalog',
             'structures',
             'create-stack',
             'create-block',
@@ -287,12 +298,14 @@ describe('placeGardenBoxBlock', () => {
         ]);
 
         calls.length = 0;
+        directoryUnavailable = true;
         assert.deepEqual(await place(command), {
             ok: true,
             ...storedResponse,
             replayed: true,
         });
         assert.deepEqual(calls, [
+            'catalog',
             'inventory-lock',
             'account-lock',
             'garden-lock',
@@ -308,7 +321,7 @@ describe('placeGardenBoxBlock', () => {
             error: 'Garden mutation operation ID was reused with different input.',
             status: 409,
         });
-        assert.equal(calls.includes('catalog'), false);
+        assert.equal(calls.at(0), 'catalog');
 
         calls.length = 0;
         assert.deepEqual(await place({ ...command, accountId: 'account-2' }), {
@@ -317,6 +330,7 @@ describe('placeGardenBoxBlock', () => {
             error: 'Garden box not found',
             status: 404,
         });
+        assert.equal(calls.at(0), 'catalog');
         assert.equal(calls.includes('receipt'), false);
     });
 
