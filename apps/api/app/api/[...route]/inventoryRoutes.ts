@@ -1,6 +1,5 @@
 import {
     type EntityStandardized,
-    GardenBoxInventoryLimitError,
     getEntitiesFormatted,
     getGarden,
     getGardenBlock,
@@ -8,8 +7,6 @@ import {
     getGardenBoxInventory,
     getInventory,
     type InventoryItem,
-    type InventoryItemInput,
-    setGardenBoxInventory,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
@@ -30,16 +27,6 @@ const gardenBoxInventoryBlockPlacementParamsSchema =
     gardenBoxInventoryParamsSchema.extend({
         entityId: z.string().trim().min(1).max(100),
     });
-
-const inventoryItemSchema = z.object({
-    entityTypeName: z.string().trim().min(1).max(100),
-    entityId: z.string().trim().min(1).max(100),
-    amount: z.number().int().min(0).max(1000),
-});
-
-const gardenBoxInventoryBodySchema = z.object({
-    items: z.array(inventoryItemSchema).max(100),
-});
 
 type EnrichedInventoryItem = InventoryItem & {
     name?: string;
@@ -187,47 +174,21 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/garden-boxes/:gardenId/:blockId',
         describeRoute({
             description:
-                'Replace the inventory contents stored in one garden box owned by the current account.',
+                'Garden box inventory replacement is disabled. Use the atomic garden block place and store routes.',
             security: authSecurity,
             tags: ['Inventory'],
         }),
         authValidator(['user', 'admin']),
         zValidator('param', gardenBoxInventoryParamsSchema),
-        zValidator('json', gardenBoxInventoryBodySchema),
         async (context) => {
-            const { accountId } = context.get('authContext');
-            const { gardenId, blockId } = context.req.valid('param');
-            const { items } = context.req.valid('json');
-            const gardenBox = await getGardenBoxForAccount(
-                accountId,
-                gardenId,
-                blockId,
+            context.header('Allow', 'GET');
+            return context.json(
+                {
+                    error: 'Garden box inventory replacement is disabled. Use the atomic garden block place and store routes.',
+                    code: 'GARDEN_BOX_INVENTORY_REPLACEMENT_DISABLED',
+                },
+                405,
             );
-            if (!gardenBox) {
-                return context.json({ error: 'Garden box not found' }, 404);
-            }
-
-            let inventory: InventoryItem[];
-            try {
-                inventory = await setGardenBoxInventory(
-                    accountId,
-                    gardenId,
-                    blockId,
-                    items satisfies InventoryItemInput[],
-                );
-            } catch (error) {
-                if (error instanceof GardenBoxInventoryLimitError) {
-                    return context.json({ error: error.message }, 400);
-                }
-
-                throw error;
-            }
-            const [enrichedItems] = await enrichInventoryItems([inventory]);
-
-            return context.json({
-                ...gardenBox,
-                items: enrichedItems,
-            });
         },
     )
     .post(
