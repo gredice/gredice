@@ -75,6 +75,24 @@ type Story = StoryObj<typeof meta>;
 
 export const SelectedHouseCell: Story = {};
 
+export const StructureOnly: Story = {
+    args: {
+        section: 'structure',
+    },
+};
+
+export const RoofOnly: Story = {
+    args: {
+        section: 'roof',
+    },
+};
+
+export const InteriorOnly: Story = {
+    args: {
+        section: 'interior',
+    },
+};
+
 export const ConstrainedMobileWidth: Story = {
     decorators: [
         (Story) => (

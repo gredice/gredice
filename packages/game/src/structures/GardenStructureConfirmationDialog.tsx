@@ -3,6 +3,7 @@
 import { cx } from '@gredice/ui/utils';
 import {
     type KeyboardEvent as ReactKeyboardEvent,
+    type ReactNode,
     useEffect,
     useId,
     useRef,
@@ -17,6 +18,7 @@ export function GardenStructureConfirmationDialog({
     confirmDisabled = false,
     confirmLabel,
     description,
+    details,
     destructive = false,
     destructiveAction,
     error,
@@ -30,6 +32,7 @@ export function GardenStructureConfirmationDialog({
     confirmDisabled?: boolean;
     confirmLabel: string;
     description: string;
+    details?: ReactNode;
     destructive?: boolean;
     destructiveAction?: Readonly<{
         disabled?: boolean;
@@ -104,6 +107,7 @@ export function GardenStructureConfirmationDialog({
                 >
                     {description}
                 </p>
+                {details}
                 {error ? (
                     <p
                         className="mt-3 rounded-xl border border-destructive/60 bg-destructive/10 p-3 text-sm text-foreground"

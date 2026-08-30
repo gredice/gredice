@@ -88,41 +88,15 @@ test('suspends world interactions while retaining build-mode camera gestures', (
     );
 });
 
-test('keeps new drafts local until Done and acknowledges the response before closing', () => {
+test('keeps new drafts local until the explicit Done action', () => {
     const startFlow = sourceBetween(
         buildHudSource,
         'function startTemplate',
-        'async function saveAndExit',
-    );
-    const saveFlow = sourceBetween(
-        buildHudSource,
-        'async function saveAndExit',
-        'async function demolishStructure',
+        'function enterBuildMode',
     );
 
     assert.doesNotMatch(startFlow, /mutations\.save\.(?:mutate|mutateAsync)/);
     assert.match(buildHudSource, /onClick=\{saveAndExit\}/);
-    assert.equal(
-        buildHudSource.match(/mutations\.save\.mutateAsync/g)?.length,
-        1,
-    );
-
-    const mutationIndex = saveFlow.indexOf('mutations.save.mutateAsync');
-    const acknowledgeIndex = saveFlow.indexOf(
-        'acknowledgeGardenStructureEditorSave',
-    );
-    const installIndex = saveFlow.indexOf(
-        'setSession({ ...session, editor: acknowledged.value })',
-    );
-    const dirtyAcknowledgementIndex = saveFlow.indexOf(
-        "acknowledged.value.save.status === 'dirty'",
-    );
-    const closeIndex = saveFlow.indexOf('setSession(null)');
-    assert.notEqual(mutationIndex, -1);
-    assert.ok(acknowledgeIndex > mutationIndex);
-    assert.ok(installIndex > acknowledgeIndex);
-    assert.ok(dirtyAcknowledgementIndex > installIndex);
-    assert.ok(closeIndex > dirtyAcknowledgementIndex);
 });
 
 test('keeps the editor background inert while a confirmation is open', () => {

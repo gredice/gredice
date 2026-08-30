@@ -80,6 +80,12 @@ export type GardenStructurePartInspectorPropSelection = Readonly<{
     variantId?: string;
 }>;
 
+export type GardenStructurePartInspectorSection =
+    | 'all'
+    | 'interior'
+    | 'roof'
+    | 'structure';
+
 export type GardenStructurePartInspectorProps = Readonly<{
     disabled?: boolean;
     document: GardenStructureDocumentV1;
@@ -113,6 +119,7 @@ export type GardenStructurePartInspectorProps = Readonly<{
         cell: GardenStructureCoordinate,
         selection: GardenStructurePartInspectorRoofSelection,
     ) => void;
+    section?: GardenStructurePartInspectorSection;
     selectedCellKey: string | null;
 }>;
 
@@ -133,6 +140,7 @@ export function GardenStructurePartInspector({
     onSetEdgePart,
     onSetFloorMaterial,
     onSetRoofCoverage,
+    section = 'all',
     selectedCellKey,
 }: GardenStructurePartInspectorProps) {
     const baseId = useId();
@@ -215,439 +223,477 @@ export function GardenStructurePartInspector({
                 </div>
             ) : selectedCell && selectedCellCoordinate ? (
                 <div className="space-y-3">
-                    <fieldset
-                        className="space-y-2 rounded-xl border border-border/60 p-3"
-                        disabled={disabled}
-                    >
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">
-                            Pod
-                        </legend>
-                        <label
-                            className="block text-xs font-medium text-foreground"
-                            htmlFor={`${baseId}-floor`}
-                        >
-                            Materijal poda
-                        </label>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                            <select
-                                className={controlClassName}
-                                id={`${baseId}-floor`}
-                                onChange={(event) => {
-                                    const materialId =
-                                        event.currentTarget.value;
-                                    if (materialId) {
-                                        onSetFloorMaterial(
-                                            selectedCellCoordinate,
-                                            materialId,
-                                        );
-                                    }
-                                }}
-                                value={floor?.materialId ?? ''}
+                    {section === 'all' || section === 'structure' ? (
+                        <>
+                            <fieldset
+                                className="space-y-2 rounded-xl border border-border/60 p-3"
+                                disabled={disabled}
                             >
-                                <option disabled value="">
-                                    Odaberite materijal
-                                </option>
-                                {floorMaterialIds.map((materialId) => (
-                                    <option key={materialId} value={materialId}>
-                                        {identifierLabel(materialId)}
-                                    </option>
-                                ))}
-                            </select>
-                            <button
-                                className={cx(
-                                    actionClassName,
-                                    'border-destructive/60 text-destructive',
-                                )}
-                                disabled={!floor}
-                                onClick={() =>
-                                    onRemoveFloorMaterial(
-                                        selectedCellCoordinate,
-                                    )
-                                }
-                                type="button"
-                            >
-                                Ukloni pod
-                            </button>
-                        </div>
-                    </fieldset>
-
-                    <fieldset
-                        className="space-y-2 rounded-xl border border-border/60 p-3"
-                        disabled={disabled}
-                    >
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">
-                            Rubovi
-                        </legend>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {edgeSides.map((side) => {
-                                const edgeKey = gardenStructureEdgeKey(
-                                    getCanonicalGardenStructureEdge(
-                                        selectedCellCoordinate,
-                                        side,
-                                    ),
-                                );
-                                const edge = document.edges.find(
-                                    (candidate) =>
-                                        gardenStructureEdgeKey(candidate) ===
-                                        edgeKey,
-                                );
-                                return (
-                                    <label
-                                        className="space-y-1 text-xs font-medium text-foreground"
-                                        key={side}
-                                        htmlFor={`${baseId}-edge-${side}`}
-                                    >
-                                        <span>{sideLabels[side]}</span>
-                                        <select
-                                            aria-label={`${sideLabels[side]} rub polja`}
-                                            className={controlClassName}
-                                            id={`${baseId}-edge-${side}`}
-                                            onChange={(event) => {
-                                                const partId =
-                                                    event.currentTarget.value;
-                                                if (!partId) {
-                                                    if (edge) {
-                                                        onRemoveEdgePart(
-                                                            selectedCellCoordinate,
-                                                            side,
-                                                        );
-                                                    }
-                                                    return;
-                                                }
-                                                const kind =
-                                                    kit.edgeParts[partId];
-                                                if (kind) {
-                                                    onSetEdgePart(
-                                                        selectedCellCoordinate,
-                                                        side,
-                                                        { kind, partId },
-                                                    );
-                                                }
-                                            }}
-                                            value={edge?.partId ?? ''}
-                                        >
-                                            <option value="">Otvoreno</option>
-                                            {edgeKinds.map((kind) => {
-                                                const choices =
-                                                    edgePartEntries.filter(
-                                                        ([, candidateKind]) =>
-                                                            candidateKind ===
-                                                            kind,
-                                                    );
-                                                return choices.length > 0 ? (
-                                                    <optgroup
-                                                        key={kind}
-                                                        label={
-                                                            edgeKindLabels[kind]
-                                                        }
-                                                    >
-                                                        {choices.map(
-                                                            ([partId]) => (
-                                                                <option
-                                                                    key={partId}
-                                                                    value={
-                                                                        partId
-                                                                    }
-                                                                >
-                                                                    {identifierLabel(
-                                                                        partId,
-                                                                    )}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </optgroup>
-                                                ) : null;
-                                            })}
-                                        </select>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                    </fieldset>
-
-                    <fieldset
-                        className="space-y-2 rounded-xl border border-border/60 p-3"
-                        disabled={disabled}
-                    >
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">
-                            Krov
-                        </legend>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <label
-                                className="space-y-1 text-xs font-medium text-foreground"
-                                htmlFor={`${baseId}-roof-style`}
-                            >
-                                <span>Stil krova</span>
-                                <select
-                                    className={controlClassName}
-                                    id={`${baseId}-roof-style`}
-                                    onChange={(event) => {
-                                        const styleId =
-                                            event.currentTarget.value;
-                                        const materialIds =
-                                            kit.roofStyles[styleId] ?? [];
-                                        const materialId =
-                                            roofRegion?.styleId === styleId &&
-                                            materialIds.includes(
-                                                roofRegion.materialId,
-                                            )
-                                                ? roofRegion.materialId
-                                                : materialIds[0];
-                                        if (styleId && materialId) {
-                                            onSetRoofCoverage(
-                                                selectedCellCoordinate,
-                                                {
-                                                    styleId,
-                                                    materialId,
-                                                    rotation:
-                                                        roofRegion?.rotation ??
-                                                        0,
-                                                },
-                                            );
-                                        }
-                                    }}
-                                    value={roofRegion?.styleId ?? ''}
-                                >
-                                    <option disabled value="">
-                                        Odaberite stil
-                                    </option>
-                                    {roofStyleEntries.map(
-                                        ([styleId, materialIds]) => (
-                                            <option
-                                                disabled={
-                                                    materialIds.length === 0
-                                                }
-                                                key={styleId}
-                                                value={styleId}
-                                            >
-                                                {identifierLabel(styleId)}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </label>
-                            <label
-                                className="space-y-1 text-xs font-medium text-foreground"
-                                htmlFor={`${baseId}-roof-material`}
-                            >
-                                <span>Materijal krova</span>
-                                <select
-                                    className={controlClassName}
-                                    disabled={!roofRegion}
-                                    id={`${baseId}-roof-material`}
-                                    onChange={(event) => {
-                                        const materialId =
-                                            event.currentTarget.value;
-                                        if (roofRegion && materialId) {
-                                            onSetRoofCoverage(
-                                                selectedCellCoordinate,
-                                                {
-                                                    styleId: roofRegion.styleId,
-                                                    materialId,
-                                                    rotation:
-                                                        roofRegion.rotation,
-                                                },
-                                            );
-                                        }
-                                    }}
-                                    value={roofRegion?.materialId ?? ''}
-                                >
-                                    <option disabled value="">
-                                        Odaberite materijal
-                                    </option>
-                                    {(roofRegion
-                                        ? (kit.roofStyles[roofRegion.styleId] ??
-                                          [])
-                                        : []
-                                    ).map((materialId) => (
-                                        <option
-                                            key={materialId}
-                                            value={materialId}
-                                        >
-                                            {identifierLabel(materialId)}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
-                        <button
-                            className={cx(
-                                actionClassName,
-                                'w-full border-destructive/60 text-destructive',
-                            )}
-                            disabled={!roofRegion}
-                            onClick={() =>
-                                onRemoveRoofCoverage(selectedCellCoordinate)
-                            }
-                            type="button"
-                        >
-                            Ukloni krov s polja
-                        </button>
-                    </fieldset>
-
-                    <fieldset
-                        className="space-y-3 rounded-xl border border-border/60 p-3"
-                        disabled={disabled}
-                    >
-                        <legend className="px-1 text-xs font-semibold text-muted-foreground">
-                            Namještaj i predmeti
-                        </legend>
-
-                        <div className="space-y-2">
-                            <label
-                                className="block text-xs font-medium text-foreground"
-                                htmlFor={`${baseId}-prop-part`}
-                            >
-                                Predmet
-                            </label>
-                            <select
-                                className={controlClassName}
-                                id={`${baseId}-prop-part`}
-                                onChange={(event) => {
-                                    setRequestedPropPartId(
-                                        event.currentTarget.value,
-                                    );
-                                    setRequestedPropVariantId('');
-                                }}
-                                value={propPartId}
-                            >
-                                {propPartIds.length > 0 ? null : (
-                                    <option value="">
-                                        Nema dostupnih predmeta
-                                    </option>
-                                )}
-                                {propPartIds.map((partId) => (
-                                    <option key={partId} value={partId}>
-                                        {identifierLabel(partId)}
-                                    </option>
-                                ))}
-                            </select>
-                            {propVariantIds.length > 0 ? (
+                                <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                    Pod
+                                </legend>
                                 <label
-                                    className="block space-y-1 text-xs font-medium text-foreground"
-                                    htmlFor={`${baseId}-prop-variant`}
+                                    className="block text-xs font-medium text-foreground"
+                                    htmlFor={`${baseId}-floor`}
                                 >
-                                    <span>Varijanta</span>
+                                    Materijal poda
+                                </label>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                                     <select
                                         className={controlClassName}
-                                        id={`${baseId}-prop-variant`}
-                                        onChange={(event) =>
-                                            setRequestedPropVariantId(
-                                                event.currentTarget.value,
+                                        id={`${baseId}-floor`}
+                                        onChange={(event) => {
+                                            const materialId =
+                                                event.currentTarget.value;
+                                            if (materialId) {
+                                                onSetFloorMaterial(
+                                                    selectedCellCoordinate,
+                                                    materialId,
+                                                );
+                                            }
+                                        }}
+                                        value={floor?.materialId ?? ''}
+                                    >
+                                        <option disabled value="">
+                                            Odaberite materijal
+                                        </option>
+                                        {floorMaterialIds.map((materialId) => (
+                                            <option
+                                                key={materialId}
+                                                value={materialId}
+                                            >
+                                                {identifierLabel(materialId)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        className={cx(
+                                            actionClassName,
+                                            'border-destructive/60 text-destructive',
+                                        )}
+                                        disabled={!floor}
+                                        onClick={() =>
+                                            onRemoveFloorMaterial(
+                                                selectedCellCoordinate,
                                             )
                                         }
-                                        value={propVariantId}
+                                        type="button"
                                     >
-                                        <option value="">Bez varijante</option>
-                                        {propVariantIds.map((variantId) => (
-                                            <option
-                                                key={variantId}
-                                                value={variantId}
+                                        Ukloni pod
+                                    </button>
+                                </div>
+                            </fieldset>
+
+                            <fieldset
+                                className="space-y-2 rounded-xl border border-border/60 p-3"
+                                disabled={disabled}
+                            >
+                                <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                    Rubovi
+                                </legend>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    {edgeSides.map((side) => {
+                                        const edgeKey = gardenStructureEdgeKey(
+                                            getCanonicalGardenStructureEdge(
+                                                selectedCellCoordinate,
+                                                side,
+                                            ),
+                                        );
+                                        const edge = document.edges.find(
+                                            (candidate) =>
+                                                gardenStructureEdgeKey(
+                                                    candidate,
+                                                ) === edgeKey,
+                                        );
+                                        return (
+                                            <label
+                                                className="space-y-1 text-xs font-medium text-foreground"
+                                                key={side}
+                                                htmlFor={`${baseId}-edge-${side}`}
                                             >
-                                                {identifierLabel(variantId)}
+                                                <span>{sideLabels[side]}</span>
+                                                <select
+                                                    aria-label={`${sideLabels[side]} rub polja`}
+                                                    className={controlClassName}
+                                                    id={`${baseId}-edge-${side}`}
+                                                    onChange={(event) => {
+                                                        const partId =
+                                                            event.currentTarget
+                                                                .value;
+                                                        if (!partId) {
+                                                            if (edge) {
+                                                                onRemoveEdgePart(
+                                                                    selectedCellCoordinate,
+                                                                    side,
+                                                                );
+                                                            }
+                                                            return;
+                                                        }
+                                                        const kind =
+                                                            kit.edgeParts[
+                                                                partId
+                                                            ];
+                                                        if (kind) {
+                                                            onSetEdgePart(
+                                                                selectedCellCoordinate,
+                                                                side,
+                                                                {
+                                                                    kind,
+                                                                    partId,
+                                                                },
+                                                            );
+                                                        }
+                                                    }}
+                                                    value={edge?.partId ?? ''}
+                                                >
+                                                    <option value="">
+                                                        Otvoreno
+                                                    </option>
+                                                    {edgeKinds.map((kind) => {
+                                                        const choices =
+                                                            edgePartEntries.filter(
+                                                                ([
+                                                                    ,
+                                                                    candidateKind,
+                                                                ]) =>
+                                                                    candidateKind ===
+                                                                    kind,
+                                                            );
+                                                        return choices.length >
+                                                            0 ? (
+                                                            <optgroup
+                                                                key={kind}
+                                                                label={
+                                                                    edgeKindLabels[
+                                                                        kind
+                                                                    ]
+                                                                }
+                                                            >
+                                                                {choices.map(
+                                                                    ([
+                                                                        partId,
+                                                                    ]) => (
+                                                                        <option
+                                                                            key={
+                                                                                partId
+                                                                            }
+                                                                            value={
+                                                                                partId
+                                                                            }
+                                                                        >
+                                                                            {identifierLabel(
+                                                                                partId,
+                                                                            )}
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </optgroup>
+                                                        ) : null;
+                                                    })}
+                                                </select>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </fieldset>
+                        </>
+                    ) : null}
+
+                    {section === 'all' || section === 'roof' ? (
+                        <fieldset
+                            className="space-y-2 rounded-xl border border-border/60 p-3"
+                            disabled={disabled}
+                        >
+                            <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                Krov
+                            </legend>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <label
+                                    className="space-y-1 text-xs font-medium text-foreground"
+                                    htmlFor={`${baseId}-roof-style`}
+                                >
+                                    <span>Stil krova</span>
+                                    <select
+                                        className={controlClassName}
+                                        id={`${baseId}-roof-style`}
+                                        onChange={(event) => {
+                                            const styleId =
+                                                event.currentTarget.value;
+                                            const materialIds =
+                                                kit.roofStyles[styleId] ?? [];
+                                            const materialId =
+                                                roofRegion?.styleId ===
+                                                    styleId &&
+                                                materialIds.includes(
+                                                    roofRegion.materialId,
+                                                )
+                                                    ? roofRegion.materialId
+                                                    : materialIds[0];
+                                            if (styleId && materialId) {
+                                                onSetRoofCoverage(
+                                                    selectedCellCoordinate,
+                                                    {
+                                                        styleId,
+                                                        materialId,
+                                                        rotation:
+                                                            roofRegion?.rotation ??
+                                                            0,
+                                                    },
+                                                );
+                                            }
+                                        }}
+                                        value={roofRegion?.styleId ?? ''}
+                                    >
+                                        <option disabled value="">
+                                            Odaberite stil
+                                        </option>
+                                        {roofStyleEntries.map(
+                                            ([styleId, materialIds]) => (
+                                                <option
+                                                    disabled={
+                                                        materialIds.length === 0
+                                                    }
+                                                    key={styleId}
+                                                    value={styleId}
+                                                >
+                                                    {identifierLabel(styleId)}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                                <label
+                                    className="space-y-1 text-xs font-medium text-foreground"
+                                    htmlFor={`${baseId}-roof-material`}
+                                >
+                                    <span>Materijal krova</span>
+                                    <select
+                                        className={controlClassName}
+                                        disabled={!roofRegion}
+                                        id={`${baseId}-roof-material`}
+                                        onChange={(event) => {
+                                            const materialId =
+                                                event.currentTarget.value;
+                                            if (roofRegion && materialId) {
+                                                onSetRoofCoverage(
+                                                    selectedCellCoordinate,
+                                                    {
+                                                        styleId:
+                                                            roofRegion.styleId,
+                                                        materialId,
+                                                        rotation:
+                                                            roofRegion.rotation,
+                                                    },
+                                                );
+                                            }
+                                        }}
+                                        value={roofRegion?.materialId ?? ''}
+                                    >
+                                        <option disabled value="">
+                                            Odaberite materijal
+                                        </option>
+                                        {(roofRegion
+                                            ? (kit.roofStyles[
+                                                  roofRegion.styleId
+                                              ] ?? [])
+                                            : []
+                                        ).map((materialId) => (
+                                            <option
+                                                key={materialId}
+                                                value={materialId}
+                                            >
+                                                {identifierLabel(materialId)}
                                             </option>
                                         ))}
                                     </select>
                                 </label>
-                            ) : null}
+                            </div>
                             <button
-                                className={cx(actionClassName, 'w-full')}
-                                disabled={!propPartId || props.length > 0}
+                                className={cx(
+                                    actionClassName,
+                                    'w-full border-destructive/60 text-destructive',
+                                )}
+                                disabled={!roofRegion}
                                 onClick={() =>
-                                    onAddProp(selectedCellCoordinate, {
-                                        partId: propPartId,
-                                        rotation: 0,
-                                        ...(propVariantId
-                                            ? { variantId: propVariantId }
-                                            : {}),
-                                    })
+                                    onRemoveRoofCoverage(selectedCellCoordinate)
                                 }
                                 type="button"
                             >
-                                Dodaj predmet
+                                Ukloni krov s polja
                             </button>
-                        </div>
+                        </fieldset>
+                    ) : null}
 
-                        {props.length > 0 ? (
-                            <ul className="space-y-2">
-                                {props.map((prop) => (
-                                    <li
-                                        className="space-y-2 border-t border-border/60 pt-3 first:border-t-0 first:pt-0"
-                                        key={prop.id}
+                    {section === 'all' || section === 'interior' ? (
+                        <fieldset
+                            className="space-y-3 rounded-xl border border-border/60 p-3"
+                            disabled={disabled}
+                        >
+                            <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                Namještaj i predmeti
+                            </legend>
+
+                            <div className="space-y-2">
+                                <label
+                                    className="block text-xs font-medium text-foreground"
+                                    htmlFor={`${baseId}-prop-part`}
+                                >
+                                    Predmet
+                                </label>
+                                <select
+                                    className={controlClassName}
+                                    id={`${baseId}-prop-part`}
+                                    onChange={(event) => {
+                                        setRequestedPropPartId(
+                                            event.currentTarget.value,
+                                        );
+                                        setRequestedPropVariantId('');
+                                    }}
+                                    value={propPartId}
+                                >
+                                    {propPartIds.length > 0 ? null : (
+                                        <option value="">
+                                            Nema dostupnih predmeta
+                                        </option>
+                                    )}
+                                    {propPartIds.map((partId) => (
+                                        <option key={partId} value={partId}>
+                                            {identifierLabel(partId)}
+                                        </option>
+                                    ))}
+                                </select>
+                                {propVariantIds.length > 0 ? (
+                                    <label
+                                        className="block space-y-1 text-xs font-medium text-foreground"
+                                        htmlFor={`${baseId}-prop-variant`}
                                     >
-                                        <div>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                {identifierLabel(prop.partId)}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                Zakret: {prop.rotation * 90}°
-                                                {prop.variantId
-                                                    ? ` · ${identifierLabel(prop.variantId)}`
-                                                    : ''}
-                                            </p>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                aria-label={`Premjesti ${identifierLabel(prop.partId)}`}
-                                                className={actionClassName}
-                                                onClick={() =>
-                                                    onMoveProp(prop.id)
-                                                }
-                                                type="button"
-                                            >
-                                                Premjesti
-                                            </button>
-                                            <button
-                                                aria-label={`Zakreni ${identifierLabel(prop.partId)} za 90 stupnjeva`}
-                                                className={actionClassName}
-                                                onClick={() =>
-                                                    onRotateProp(
-                                                        prop.id,
-                                                        nextRotation(
-                                                            prop.rotation,
-                                                        ),
-                                                    )
-                                                }
-                                                type="button"
-                                            >
-                                                Zakreni
-                                            </button>
-                                            <button
-                                                aria-label={`Dupliciraj ${identifierLabel(prop.partId)}`}
-                                                className={actionClassName}
-                                                onClick={() =>
-                                                    onDuplicateProp(prop.id)
-                                                }
-                                                type="button"
-                                            >
-                                                Dupliciraj
-                                            </button>
-                                            <button
-                                                aria-label={`Ukloni ${identifierLabel(prop.partId)}`}
-                                                className={cx(
-                                                    actionClassName,
-                                                    'border-destructive/60 text-destructive',
-                                                )}
-                                                onClick={() =>
-                                                    onDeleteProp(prop.id)
-                                                }
-                                                type="button"
-                                            >
-                                                Ukloni
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p
-                                className="text-sm text-muted-foreground"
-                                role="status"
-                            >
-                                Na ovom polju nema predmeta.
-                            </p>
-                        )}
-                    </fieldset>
+                                        <span>Varijanta</span>
+                                        <select
+                                            className={controlClassName}
+                                            id={`${baseId}-prop-variant`}
+                                            onChange={(event) =>
+                                                setRequestedPropVariantId(
+                                                    event.currentTarget.value,
+                                                )
+                                            }
+                                            value={propVariantId}
+                                        >
+                                            <option value="">
+                                                Bez varijante
+                                            </option>
+                                            {propVariantIds.map((variantId) => (
+                                                <option
+                                                    key={variantId}
+                                                    value={variantId}
+                                                >
+                                                    {identifierLabel(variantId)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                ) : null}
+                                <button
+                                    className={cx(actionClassName, 'w-full')}
+                                    disabled={!propPartId || props.length > 0}
+                                    onClick={() =>
+                                        onAddProp(selectedCellCoordinate, {
+                                            partId: propPartId,
+                                            rotation: 0,
+                                            ...(propVariantId
+                                                ? { variantId: propVariantId }
+                                                : {}),
+                                        })
+                                    }
+                                    type="button"
+                                >
+                                    Dodaj predmet
+                                </button>
+                            </div>
+
+                            {props.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {props.map((prop) => (
+                                        <li
+                                            className="space-y-2 border-t border-border/60 pt-3 first:border-t-0 first:pt-0"
+                                            key={prop.id}
+                                        >
+                                            <div>
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {identifierLabel(
+                                                        prop.partId,
+                                                    )}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Zakret: {prop.rotation * 90}
+                                                    °
+                                                    {prop.variantId
+                                                        ? ` · ${identifierLabel(prop.variantId)}`
+                                                        : ''}
+                                                </p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    aria-label={`Premjesti ${identifierLabel(prop.partId)}`}
+                                                    className={actionClassName}
+                                                    onClick={() =>
+                                                        onMoveProp(prop.id)
+                                                    }
+                                                    type="button"
+                                                >
+                                                    Premjesti
+                                                </button>
+                                                <button
+                                                    aria-label={`Zakreni ${identifierLabel(prop.partId)} za 90 stupnjeva`}
+                                                    className={actionClassName}
+                                                    onClick={() =>
+                                                        onRotateProp(
+                                                            prop.id,
+                                                            nextRotation(
+                                                                prop.rotation,
+                                                            ),
+                                                        )
+                                                    }
+                                                    type="button"
+                                                >
+                                                    Zakreni
+                                                </button>
+                                                <button
+                                                    aria-label={`Dupliciraj ${identifierLabel(prop.partId)}`}
+                                                    className={actionClassName}
+                                                    onClick={() =>
+                                                        onDuplicateProp(prop.id)
+                                                    }
+                                                    type="button"
+                                                >
+                                                    Dupliciraj
+                                                </button>
+                                                <button
+                                                    aria-label={`Ukloni ${identifierLabel(prop.partId)}`}
+                                                    className={cx(
+                                                        actionClassName,
+                                                        'border-destructive/60 text-destructive',
+                                                    )}
+                                                    onClick={() =>
+                                                        onDeleteProp(prop.id)
+                                                    }
+                                                    type="button"
+                                                >
+                                                    Ukloni
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p
+                                    className="text-sm text-muted-foreground"
+                                    role="status"
+                                >
+                                    Na ovom polju nema predmeta.
+                                </p>
+                            )}
+                        </fieldset>
+                    ) : null}
                 </div>
             ) : (
                 <p
