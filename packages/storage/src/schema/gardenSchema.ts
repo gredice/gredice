@@ -86,6 +86,76 @@ export type GardenStructureOperationStoredResponse = Readonly<{
     [key: string]: GardenStructureOperationJson;
 }>;
 
+export const gardenMutationOperationKinds = [
+    'block-purchase',
+    'garden-box-block-place',
+    'garden-box-block-store',
+    'gift-open',
+] as const;
+export type GardenMutationOperationKind =
+    (typeof gardenMutationOperationKinds)[number];
+
+export type GardenMutationOperationJson =
+    | null
+    | boolean
+    | number
+    | string
+    | readonly GardenMutationOperationJson[]
+    | Readonly<{ [key: string]: GardenMutationOperationJson }>;
+
+export type GardenMutationOperationStoredResponse = Readonly<{
+    [key: string]: GardenMutationOperationJson;
+}>;
+
+/**
+ * Garden-scoped idempotency receipts for mutations that do not belong to the
+ * structure aggregate itself. The garden/operation primary key deliberately
+ * spans operation kinds so one client command identity cannot be reused for a
+ * different economic effect.
+ */
+export const gardenMutationOperations = pgTable(
+    'garden_mutation_operations',
+    {
+        gardenId: integer('garden_id')
+            .notNull()
+            .references(() => gardens.id, { onDelete: 'cascade' }),
+        operationId: text('operation_id').notNull(),
+        kind: text('kind').$type<GardenMutationOperationKind>().notNull(),
+        payloadHash: text('payload_hash').notNull(),
+        response: jsonb('response')
+            .$type<GardenMutationOperationStoredResponse>()
+            .notNull(),
+        createdAt: timestamp('created_at').notNull().defaultNow(),
+    },
+    (table) => [
+        primaryKey({
+            columns: [table.gardenId, table.operationId],
+            name: 'garden_mutation_operations_garden_operation_pk',
+        }),
+        index('garden_mutation_operations_kind_idx').on(table.kind),
+        check(
+            'garden_mutation_operations_operation_id_length_check',
+            sql`char_length(${table.operationId}) between 1 and 96`,
+        ),
+        check(
+            'garden_mutation_operations_kind_check',
+            sql`${table.kind} in ('block-purchase', 'garden-box-block-place', 'garden-box-block-store', 'gift-open')`,
+        ),
+        check(
+            'garden_mutation_operations_payload_hash_check',
+            sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+        ),
+        check(
+            'garden_mutation_operations_response_shape_check',
+            sql`jsonb_typeof(${table.response}) = 'object'`,
+        ),
+        check(
+            'garden_mutation_operations_response_size_check',
+            sql`octet_length(${table.response}::text) <= 262144`,
+        ),
+    ],
+);
+
 export const gardenStructures = pgTable(
     'garden_structures',
     {
@@ -276,6 +346,22 @@ export const gardenStructureOperationRelations = relations(
     }),
 );
 
+export const gardenMutationOperationRelations = relations(
+    gardenMutationOperations,
+    ({ one }) => ({
+        garden: one(gardens, {
+            fields: [gardenMutationOperations.gardenId],
+            references: [gardens.id],
+            relationName: 'gardenMutationOperations',
+        }),
+    }),
+);
+
+export type InsertGardenMutationOperation =
+    typeof gardenMutationOperations.$inferInsert;
+export type SelectGardenMutationOperation =
+    typeof gardenMutationOperations.$inferSelect;
+
 export type InsertGardenStructure = typeof gardenStructures.$inferInsert;
 export type UpdateGardenStructure = Partial<
     Omit<
@@ -440,6 +526,9 @@ export const gardenRelations = relations(gardens, ({ one, many }) => ({
     }),
     structureOperations: many(gardenStructureOperations, {
         relationName: 'gardenStructureGardenOperations',
+    }),
+    mutationOperations: many(gardenMutationOperations, {
+        relationName: 'gardenMutationOperations',
     }),
     previewCaptureLease: one(gardenPreviewCaptureLeases, {
         fields: [gardens.id],
