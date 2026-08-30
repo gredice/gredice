@@ -791,7 +791,13 @@ Run the established generation pipeline when source assets change:
 
 ```bash
 pnpm generate:game-assets
+pnpm --filter garden generate-playwright:garden-structure-kit-v1-catalog
 ```
+
+The catalogue generator renders the tracked runtime kit with a fixed camera and
+lighting setup, then writes versioned WebP template thumbnails and part/material
+swatches under `apps/garden/public/assets/structures`. Picker cards consume
+those static files and must not mount a WebGL canvas per item.
 
 ### Initial content slice
 

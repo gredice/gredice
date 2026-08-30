@@ -12,6 +12,10 @@ const config: StorybookConfig = {
     stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(ts|tsx)'],
     staticDirs: [
         '../public',
+        {
+            from: '../../garden/public/assets/structures',
+            to: '/assets/structures',
+        },
         { from: '../../www/public/assets/plants', to: '/assets/plants' },
     ],
     addons: [
@@ -32,6 +36,7 @@ const config: StorybookConfig = {
             include: [
                 '../../packages/ui/src/**/*.tsx',
                 '../../packages/game/src/hud/**/*.tsx',
+                '../../packages/game/src/structures/catalog/GardenStructureCatalogThumbnail.tsx',
                 '../../packages/game/src/shared-ui/delivery/DeliverySlotPicker.tsx',
                 '../app/components/admin/cards/FactCard.tsx',
                 '../app/components/operations/FarmerPaperNote.tsx',

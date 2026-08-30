@@ -11,6 +11,7 @@
         ".": "./src/index.ts",
         "./analytics": "./src/analytics/GameAnalyticsContext.tsx",
         "./garden-2d": "./src/GardenOverview2DDynamic.tsx",
+        "./garden-structure-catalog": "./src/structures/catalog/index.ts",
         "./garden-scene-transition": "./src/GardenSceneTransition.tsx",
         "./outlet-garden": "./src/viewers/OutletGardenViewer.tsx",
         "./outlet-garden-browser": "./src/viewers/OutletGardenOfferBrowser.tsx",
