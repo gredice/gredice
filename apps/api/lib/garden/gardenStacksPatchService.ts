@@ -31,6 +31,7 @@ import {
 } from './gardenStacksPatchPlanner';
 
 const maximumAccountIdentifierLength = 128;
+const maximumGardenIdentifier = 2_147_483_647;
 export const gardenStacksPatchServiceMaxErrorLength = 512;
 
 type GardenStacksPatchServiceStatus = 400 | 404 | 409 | 503;
@@ -247,8 +248,9 @@ function normalizeCommand(command: GardenStacksPatchCommand) {
         command.accountId.trim() !== command.accountId ||
         command.accountId.length === 0 ||
         command.accountId.length > maximumAccountIdentifierLength ||
-        !Number.isSafeInteger(command.gardenId) ||
+        !Number.isInteger(command.gardenId) ||
         command.gardenId <= 0 ||
+        command.gardenId > maximumGardenIdentifier ||
         !Array.isArray(command.operations)
     ) {
         fail('INVALID_REQUEST', 400, 'Invalid garden stack patch request');
@@ -488,7 +490,14 @@ export function createGardenStacksPatchService<Transaction>(
                         ),
                 );
             if (committed.bustRaisedBedCache) {
-                await dependencies.bustScheduleCache();
+                try {
+                    await dependencies.bustScheduleCache();
+                } catch (error) {
+                    console.error(
+                        'Failed to invalidate the schedule cache after garden stack recycling',
+                        { gardenId: command.gardenId, error },
+                    );
+                }
             }
             return committed.result;
         } catch (error) {

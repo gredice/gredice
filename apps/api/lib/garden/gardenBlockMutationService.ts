@@ -271,8 +271,9 @@ function assertBaseCommand(command: RecycleGardenBlockCommand) {
     if (
         !assertIdentifier(command.accountId, maximumAccountIdentifierLength) ||
         !assertIdentifier(command.blockId, maximumBlockIdentifierLength) ||
-        !Number.isSafeInteger(command.gardenId) ||
-        command.gardenId <= 0
+        !Number.isInteger(command.gardenId) ||
+        command.gardenId <= 0 ||
+        command.gardenId > maximumStorageInteger
     ) {
         fail('INVALID_REQUEST', 400, 'Invalid garden block mutation request');
     }
@@ -660,7 +661,18 @@ export function createGardenBlockMutationService<Transaction>(
                 },
             );
             if (committed.bustRaisedBedCache) {
-                await dependencies.bustScheduleCache();
+                try {
+                    await dependencies.bustScheduleCache();
+                } catch (error) {
+                    console.error(
+                        'Failed to invalidate the schedule cache after garden block recycling',
+                        {
+                            blockId: command.blockId,
+                            gardenId: command.gardenId,
+                            error,
+                        },
+                    );
+                }
             }
             return committed.result;
         } catch (error) {
@@ -836,7 +848,18 @@ export function createGardenBlockMutationService<Transaction>(
                 },
             );
             if (committed.bustRaisedBedCache) {
-                await dependencies.bustScheduleCache();
+                try {
+                    await dependencies.bustScheduleCache();
+                } catch (error) {
+                    console.error(
+                        'Failed to invalidate the schedule cache after garden block rotation',
+                        {
+                            blockId: command.blockId,
+                            gardenId: command.gardenId,
+                            error,
+                        },
+                    );
+                }
             }
             return committed.result;
         } catch (error) {

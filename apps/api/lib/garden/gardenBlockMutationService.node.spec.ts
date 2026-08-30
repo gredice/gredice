@@ -47,6 +47,7 @@ type HarnessOptions = Readonly<{
         snapshot: GardenOccupancyStorageSnapshotLike,
     ) => ValidatePersistedStructuresAfterBlockMutationResult;
     failRefund?: boolean;
+    failCacheBust?: boolean;
     gardenAccountId?: string;
     price?: number;
     raisedBedStatus?: string;
@@ -149,6 +150,9 @@ function makeHarness(options: HarnessOptions = {}) {
         bustScheduleCache: async () => {
             calls.push('cache-bust');
             state.cacheBusts += 1;
+            if (options.failCacheBust) {
+                throw new Error('schedule cache unavailable');
+            }
         },
         earnSunflowersOnce: async (
             receivedAccountId,
@@ -484,12 +488,37 @@ describe('recycleGardenBlockForAccount', () => {
         assert.deepEqual(harness.state(), before);
         assert.equal(harness.calls.includes('cache-bust'), false);
     });
+
+    it('returns committed success when post-commit cache invalidation fails', async () => {
+        const harness = makeHarness({
+            failCacheBust: true,
+            raisedBedStatus: 'new',
+        });
+        const originalConsoleError = console.error;
+        const reports: unknown[][] = [];
+        console.error = (...args: unknown[]) => reports.push(args);
+
+        try {
+            const result = await harness.service.recycleGardenBlockForAccount({
+                accountId: harness.accountId,
+                blockId: harness.blockId,
+                gardenId: harness.gardenId,
+            });
+
+            assert.equal(result.ok, true);
+            assert.equal(harness.state().blocks.length, 1);
+            assert.equal(reports.length, 1);
+        } finally {
+            console.error = originalConsoleError;
+        }
+    });
 });
 
 describe('updateGardenBlockForAccount', () => {
     it('rejects non-integer and out-of-range storage values as typed failures', async () => {
         const fractionalRotation = makeHarness();
         const oversizedVariant = makeHarness();
+        const oversizedGarden = makeHarness();
 
         const rotationResult =
             await fractionalRotation.service.updateGardenBlockForAccount({
@@ -505,6 +534,13 @@ describe('updateGardenBlockForAccount', () => {
                 gardenId: oversizedVariant.gardenId,
                 variant: 2_147_483_648,
             });
+        const gardenResult =
+            await oversizedGarden.service.updateGardenBlockForAccount({
+                accountId: oversizedGarden.accountId,
+                blockId: oversizedGarden.blockId,
+                gardenId: 2_147_483_648,
+                rotation: 1,
+            });
 
         assert.deepEqual(rotationResult, {
             ok: false,
@@ -518,8 +554,10 @@ describe('updateGardenBlockForAccount', () => {
             error: 'Invalid garden block variant',
             status: 400,
         });
+        assert.equal(!gardenResult.ok && gardenResult.code, 'INVALID_REQUEST');
         assert.deepEqual(fractionalRotation.calls, []);
         assert.deepEqual(oversizedVariant.calls, []);
+        assert.deepEqual(oversizedGarden.calls, []);
     });
 
     it('preserves sign and immutable animal appearance rules', async () => {

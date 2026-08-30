@@ -15,6 +15,8 @@ export const gardenStacksPatchMaxMutations = 128;
 export const gardenStacksPatchMaxPathLength = 256;
 export const gardenStacksPatchMaxBlockIdentifierLength = 128;
 export const gardenStacksPatchRecycleFallbackSunflowers = 10;
+const minimumStorageInteger = -2_147_483_648;
+const maximumStorageInteger = 2_147_483_647;
 
 export type GardenStacksPatchOperation =
     | Readonly<{
@@ -226,7 +228,10 @@ function parseCanonicalInteger(segment: string, allowNegative: boolean) {
     }
 
     const parsed = Number(segment);
-    return Number.isSafeInteger(parsed) && parsed.toString() === segment
+    return Number.isInteger(parsed) &&
+        parsed >= minimumStorageInteger &&
+        parsed <= maximumStorageInteger &&
+        parsed.toString() === segment
         ? parsed
         : null;
 }
@@ -261,7 +266,7 @@ function parsePath(path: unknown, allowedKind: ParsedPath['kind']): ParsedPath {
         fail(
             'INVALID_PATH',
             400,
-            'Garden stack coordinates must be canonical safe integers',
+            'Garden stack coordinates must be canonical storage integers',
         );
     }
 
@@ -578,6 +583,20 @@ function buildPlan(
     const initialStacks = new Map<string, GardenStacksPatchStack>();
     const workingStacks = new Map<string, MutableStack>();
     for (const stack of input.snapshot.stacks) {
+        if (
+            !Number.isInteger(stack.positionX) ||
+            stack.positionX < minimumStorageInteger ||
+            stack.positionX > maximumStorageInteger ||
+            !Number.isInteger(stack.positionY) ||
+            stack.positionY < minimumStorageInteger ||
+            stack.positionY > maximumStorageInteger
+        ) {
+            fail(
+                'INVALID_GARDEN_STATE',
+                409,
+                'Garden stack coordinates are outside storage bounds',
+            );
+        }
         const key = coordinateKey(stack.positionX, stack.positionY);
         initialStacks.set(key, stack);
         workingStacks.set(key, {

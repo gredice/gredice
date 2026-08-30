@@ -79,6 +79,7 @@ type HarnessOptions = Readonly<{
     destinationExists?: boolean;
     directoryFails?: boolean;
     failAfter?: string;
+    failCacheBust?: boolean;
     gardenAccountId?: string;
     kind?: 'move' | 'recycle';
     price?: number;
@@ -194,6 +195,9 @@ function makeHarness(options: HarnessOptions = {}) {
     const service = createGardenStacksPatchService({
         bustScheduleCache: async () => {
             calls.push('schedule-cache-bust');
+            if (options.failCacheBust) {
+                throw new Error('schedule cache unavailable');
+            }
         },
         createGardenStack: async (
             receivedGardenId,
@@ -503,6 +507,28 @@ describe('garden stack patch orchestration', () => {
         assert.deepEqual(harness.state().refunds, []);
     });
 
+    it('returns committed success when post-commit cache invalidation fails', async () => {
+        const harness = makeHarness({
+            failCacheBust: true,
+            kind: 'recycle',
+            raisedBedStatus: 'new',
+        });
+        const originalConsoleError = console.error;
+        const reports: unknown[][] = [];
+        console.error = (...args: unknown[]) => reports.push(args);
+
+        try {
+            const result = await harness.service(harness.recycleCommand());
+
+            assert.equal(result.ok, true);
+            assert.equal(harness.state().blocks[0]?.deleted, true);
+            assert.equal(harness.state().raisedBeds[0]?.deleted, true);
+            assert.equal(reports.length, 1);
+        } finally {
+            console.error = originalConsoleError;
+        }
+    });
+
     it('re-reads ownership before raised-bed, structure, planning, or write work', async () => {
         const harness = makeHarness({ gardenAccountId: 'other-account' });
 
@@ -583,6 +609,10 @@ describe('garden stack patch orchestration', () => {
             ...invalid.moveCommand(),
             accountId: ' account-1',
         });
+        const oversizedGardenResult = await invalid.service({
+            ...invalid.moveCommand(),
+            gardenId: 2_147_483_648,
+        });
         const unsupportedResult = await unsupported.service({
             ...unsupported.moveCommand(),
             operations: [unsupportedOperation],
@@ -596,6 +626,10 @@ describe('garden stack patch orchestration', () => {
             'INVALID_REQUEST',
         );
         assert.deepEqual(invalid.calls, []);
+        assert.equal(
+            !oversizedGardenResult.ok && oversizedGardenResult.code,
+            'INVALID_REQUEST',
+        );
         assert.equal(
             !unsupportedResult.ok && unsupportedResult.code,
             'UNSUPPORTED_PATCH_SHAPE',

@@ -123,8 +123,8 @@ function structureDocument(...cells: readonly [number, number][]) {
 }
 
 describe('planGardenStacksPatch path and operation boundary', () => {
-    test('accepts canonical safe-integer coordinates and indexed scalar tests', () => {
-        const coordinate = Number.MAX_SAFE_INTEGER;
+    test('accepts canonical storage coordinates and indexed scalar tests', () => {
+        const coordinate = 2_147_483_647;
         const plan = expectSuccess(
             planGardenStacksPatch(
                 plannerInput({
@@ -152,6 +152,8 @@ describe('planGardenStacksPatch path and operation boundary', () => {
         '/-0/0/0',
         '/1.0/0/0',
         '/1junk/0/0',
+        '/2147483648/0/0',
+        '/-2147483649/0/0',
         '/9007199254740992/0/0',
         '/0/0/-1',
         '/0/0/01',
@@ -167,6 +169,17 @@ describe('planGardenStacksPatch path and operation boundary', () => {
             );
         });
     }
+
+    test('rejects persisted stack coordinates outside storage bounds', () => {
+        expectFailure(
+            planGardenStacksPatch(
+                plannerInput({
+                    stacks: [stack(2_147_483_648, 0, ['ground'])],
+                }),
+            ),
+            'INVALID_GARDEN_STATE',
+        );
+    });
 
     test('bounds path length and operation count before applying the patch', () => {
         expectFailure(
