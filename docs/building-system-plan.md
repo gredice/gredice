@@ -1029,10 +1029,12 @@ desktop keyboard, and with reduced motion, including failure/conflict recovery.
   The server gate may be enabled for sandbox proving while the commercial gate
   remains off. Footprint-neutral replace and placement edits remain available
   when commerce is paused, and exact operation retries may replay a previously
-  committed canonical result after either gate changes. No gate may hide or
-  stop decoding, read-only rendering, public/2D summaries, or semantic
-  collision for already-saved structures. Fixture-only debug routes may opt in
-  explicitly only while they have no production persistence or currency path.
+  committed canonical result after the commercial gate changes. The emergency
+  server mutation gate is checked before receipt lookup and rejects every
+  mutation, including retries, while disabled. No gate may hide or stop
+  decoding, read-only rendering, public/2D summaries, or semantic collision for
+  already-saved structures. Fixture-only debug routes may opt in explicitly
+  only while they have no production persistence or currency path.
 - Review completion funnel, error/conflict rates, payload sizes, compile/cache
   behavior, and real-device performance.
 
