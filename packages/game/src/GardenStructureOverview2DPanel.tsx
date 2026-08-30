@@ -137,8 +137,10 @@ function GardenStructureOverview2DCard({
 }
 
 export function GardenStructureOverview2DPanel({
+    buildEnabled = false,
     structures,
 }: {
+    buildEnabled?: boolean;
     structures: CurrentGarden['structures'];
 }) {
     const searchParams = useSearchParams();
@@ -159,7 +161,7 @@ export function GardenStructureOverview2DPanel({
     const threeDimensionalHref = getGardenStructureOverview3DHref(
         searchParams.entries(),
     );
-    if (summaries.length === 0) {
+    if (!buildEnabled && summaries.length === 0) {
         return null;
     }
 
@@ -197,6 +199,13 @@ export function GardenStructureOverview2DPanel({
                         </span>
                     </div>
                     <div className="space-y-2">
+                        {summaries.length === 0 ? (
+                            <p className="rounded-xl border border-green-950/10 bg-white/65 p-3 text-sm leading-relaxed text-green-950/75 dark:border-lime-100/10 dark:bg-emerald-950/60 dark:text-lime-50/75">
+                                Građevine se izrađuju u 3D prikazu. Ovaj 2D
+                                pregled ostat će brz i namijenjen pregledu
+                                tlocrta.
+                            </p>
+                        ) : null}
                         {visibleSummaries.map((summary) => (
                             <GardenStructureOverview2DCard
                                 href={getGardenStructureOverview3DHref(
@@ -270,14 +279,22 @@ export function GardenStructureOverview2DPanel({
                         </span>
                     </fieldset>
                     <Button
-                        aria-label="Prebaci na 3D prikaz vrta"
+                        aria-label={
+                            buildEnabled
+                                ? 'Otvori 3D prikaz za gradnju'
+                                : 'Prebaci na 3D prikaz vrta'
+                        }
                         className="mt-3 min-h-11"
                         fullWidth
                         href={threeDimensionalHref}
                         startDecorator={<Joystick className="size-4" />}
                         variant="soft"
                     >
-                        Prebaci na 3D
+                        {buildEnabled
+                            ? summaries.length === 0
+                                ? 'Izradi građevinu u 3D'
+                                : 'Otvori gradnju u 3D'
+                            : 'Prebaci na 3D'}
                     </Button>
                 </div>
             </details>

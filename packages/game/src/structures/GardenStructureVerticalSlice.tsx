@@ -309,11 +309,13 @@ function GardenStructureFootprintPreview({
     );
 }
 
+export type GardenStructureVerticalSliceProps = Readonly<{
+    plan: GardenStructureSemanticPlan;
+}>;
+
 export function GardenStructureVerticalSlice({
     plan,
-}: {
-    plan: GardenStructureSemanticPlan;
-}) {
+}: GardenStructureVerticalSliceProps) {
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
     const geometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
@@ -428,7 +430,7 @@ export function GardenStructureVerticalSlice({
             userData={{
                 assetName: 'GardenStructureKitV1',
                 compilerCacheKey: plan.cacheKey,
-                fixtureOnly: true,
+                fixtureOnly: session?.persistence === 'fixture',
             }}
         >
             {session ? (

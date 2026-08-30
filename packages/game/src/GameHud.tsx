@@ -37,7 +37,7 @@ import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
-import { GardenStructureVerticalSliceHud } from './structures/GardenStructureVerticalSliceHud';
+import { GardenStructureVerticalSliceHudDynamic } from './structures/GardenStructureVerticalSliceHudDynamic';
 import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
@@ -66,6 +66,7 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
+    gardenStructureBuildEnabled = false,
     gardenStructureDebugFixture,
     gardenStructureDebugPlan,
     noWeather,
@@ -73,6 +74,7 @@ export function GameHud({
     viewMode = '3d',
 }: {
     debugHud?: boolean;
+    gardenStructureBuildEnabled?: boolean;
     gardenStructureDebugFixture?: boolean;
     gardenStructureDebugPlan?: GardenStructureSemanticPlan;
     noWeather?: boolean;
@@ -146,10 +148,12 @@ export function GameHud({
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
-    if (gardenStructureDebugFixture && structureBuildSession) {
+    if (gardenStructureBuildEnabled && structureBuildSession) {
         return (
             <>
-                <GardenStructureVerticalSliceHud
+                <GardenStructureVerticalSliceHudDynamic
+                    enabled
+                    fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
                 />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
@@ -328,8 +332,10 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {gardenStructureDebugFixture ? (
-                <GardenStructureVerticalSliceHud
+            {gardenStructureBuildEnabled ? (
+                <GardenStructureVerticalSliceHudDynamic
+                    enabled
+                    fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
                 />
             ) : null}

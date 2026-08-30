@@ -67,10 +67,10 @@ import {
     resolveGameQualityProfile,
 } from '../scene/gameQuality';
 import { Scene } from '../scene/Scene';
+import { GardenStructureSceneLayerDynamic } from '../structures/GardenStructureSceneLayerDynamic';
 import {
     createGardenStructureSceneBaseHeightResolver,
     type GardenStructureSceneDiagnosticStatus,
-    GardenStructureSceneLayer,
     useGardenStructureSceneSnapshot,
 } from '../structures/gardenStructureScene';
 import type { GardenStructureHorizontalBounds } from '../structures/structurePlanTypes';
@@ -472,16 +472,19 @@ export function isPublicGardenStructureCaptureReady({
     diagnosticStatus,
     hasPlan,
     rejectedRecordCount,
+    rendererReady,
     savedStructureCount,
 }: {
     diagnosticStatus: GardenStructureSceneDiagnosticStatus;
     hasPlan: boolean;
     rejectedRecordCount: number;
+    rendererReady: boolean;
     savedStructureCount: number;
 }) {
     return (
         savedStructureCount === 0 ||
         (hasPlan &&
+            rendererReady &&
             rejectedRecordCount === 0 &&
             (diagnosticStatus === 'ready' ||
                 diagnosticStatus === 'rendered-with-diagnostics'))
@@ -661,10 +664,22 @@ function PublicGardenScene({
               structures: structureScene.plan?.structures ?? [],
           })
         : (garden?.id ?? 'stacks');
+    const structurePlanKey = structureScene.plan?.cacheKey ?? null;
+    const [readyStructurePlanKey, setReadyStructurePlanKey] = useState<
+        string | null
+    >(null);
+    const structureRendererReady =
+        structurePlanKey !== null && readyStructurePlanKey === structurePlanKey;
+    const markStructureRendererReady = useCallback(() => {
+        if (structurePlanKey !== null) {
+            setReadyStructurePlanKey(structurePlanKey);
+        }
+    }, [structurePlanKey]);
     const structureCaptureReady = isPublicGardenStructureCaptureReady({
         diagnosticStatus: structureScene.diagnostics.status,
         hasPlan: structureScene.plan !== null,
         rejectedRecordCount: structureScene.diagnostics.rejectedRecordCount,
+        rendererReady: structureRendererReady,
         savedStructureCount,
     });
     const plantSortsQuery = useAllSorts(loadPlantSorts);
@@ -825,16 +840,22 @@ function PublicGardenScene({
                                                     renderLivingDetails
                                                 }
                                             />
-                                            <GardenStructureSceneLayer
-                                                castShadows={
-                                                    qualityProfile.shadows &&
-                                                    !capture?.transparent
-                                                }
-                                                renderProps={
-                                                    renderLivingDetails
-                                                }
-                                                snapshot={structureScene}
-                                            />
+                                            {structureScene.plan?.structures
+                                                .length ? (
+                                                <GardenStructureSceneLayerDynamic
+                                                    castShadows={
+                                                        qualityProfile.shadows &&
+                                                        !capture?.transparent
+                                                    }
+                                                    renderProps={
+                                                        renderLivingDetails
+                                                    }
+                                                    onRendererReady={
+                                                        markStructureRendererReady
+                                                    }
+                                                    snapshot={structureScene}
+                                                />
+                                            ) : null}
                                             {sceneChildren}
                                             {onSceneReady ? (
                                                 <PublicGardenSceneReady

@@ -768,6 +768,25 @@ describe('garden structure application service', () => {
     });
 
     test('keeps normal-garden commerce independently gated while allowing safe edits and exact replay', async () => {
+        const blockedHarness = makeHarness();
+        blockedHarness.controls.commercialEnabled = false;
+        await expectServiceError(
+            blockedHarness.service.create(
+                createCommand({
+                    operationId: 'commercial-create-fresh-blocked',
+                    structureId: 'commercial-structure-fresh-blocked',
+                }),
+            ),
+            'BUILDING_COMMERCIAL_DISABLED',
+            503,
+        );
+        assert.equal(blockedHarness.calls.includes('storage:create'), false);
+        assert.equal(blockedHarness.calls.includes('debit'), false);
+        assert.equal(blockedHarness.state.balance, 1_000);
+        assert.equal(blockedHarness.state.structures.size, 0);
+        assert.equal(blockedHarness.state.receipts.size, 0);
+        assert.equal(blockedHarness.state.ledgerEvents.size, 0);
+
         const harness = makeHarness();
         const create = createCommand({ operationId: 'commercial-create' });
         const created = await harness.service.create(create);

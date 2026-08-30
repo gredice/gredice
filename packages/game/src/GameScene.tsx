@@ -1,9 +1,6 @@
 'use client';
 
-import {
-    createGardenStructureTemplateSeed,
-    getGardenStructurePayloadByteLength,
-} from '@gredice/js/gardenStructures';
+import { getGardenStructurePayloadByteLength } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
 import {
     type HTMLAttributes,
@@ -109,12 +106,14 @@ import {
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
-import { GardenStructureVerticalSlice } from './structures/GardenStructureVerticalSlice';
+import { GardenStructureSceneLayerDynamic } from './structures/GardenStructureSceneLayerDynamic';
+import { GardenStructureVerticalSliceDynamic } from './structures/GardenStructureVerticalSliceDynamic';
 import { createGardenStructureAvatarCollisionWorld } from './structures/gardenStructureAvatarCollision';
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
 import {
     createGardenStructureSceneBaseHeightResolver,
-    GardenStructureSceneLayer,
+    createGardenStructureSceneBuildPreviewCompileInput,
+    createGardenStructureSceneFixtureBuildPreviewCompileInput,
     useGardenStructureSceneSnapshot,
 } from './structures/gardenStructureScene';
 import { resolveGardenStructureBuildCameraFrame } from './structures/structureBuildCamera';
@@ -131,6 +130,8 @@ import {
 } from './useGameState';
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 import { useWoodenSignParam } from './useUrlState';
+
+const gardenStructureCameraFocusAttemptLimit = 30;
 
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
@@ -389,10 +390,8 @@ export function GameScene({
     );
     const gameCamera = useGameState((state) => state.gameCamera);
     const structureCameraSnapshotRef = useRef<GameCameraSnapshot | null>(null);
+    const structureCameraFrameSignatureRef = useRef<string | null>(null);
     const structurePlanCacheRef = useRef<GardenStructurePlanCache | null>(null);
-    if (!structurePlanCacheRef.current) {
-        structurePlanCacheRef.current = new GardenStructurePlanCache();
-    }
     const setGardenAvatarView = useGameState(
         (state) => state.setGardenAvatarView,
     );
@@ -410,48 +409,74 @@ export function GameScene({
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const gardenAvatarEnabled = Boolean(flags?.enableGardenAvatarFlag);
     const gardenStructureVerticalSliceEnabled = Boolean(
-        gardenStructureDebugFixture && flags?.enableGardenBuildingSystemFlag,
+        flags?.enableGardenBuildingSystemFlag,
     );
     const structureBuildActive = Boolean(
         gardenStructureVerticalSliceEnabled && structureBuildSession,
     );
-    const structureFixtureTemplateKey =
-        structureBuildSession?.templateKey ?? 'house';
-    const structureFixtureRotation = structureBuildSession?.rotation ?? 0;
+    const { data: blockData } = useBlockData();
+    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const { displayedGarden: transitionedGardenData, sceneVisible } =
+        useGardenSceneTransition(gardenData);
+    const garden = useSceneCurrentGarden(transitionedGardenData);
+    const editedStructureId =
+        structureBuildActive && structureBuildSession
+            ? structureBuildSession.editor.origin.kind === 'saved-structure'
+                ? structureBuildSession.editor.origin.structureId
+                : structureBuildSession.editor.origin.draftId
+            : null;
     const structureFixtureBundle = useMemo(() => {
-        if (!gardenStructureVerticalSliceEnabled) {
+        const editor = structureBuildSession?.editor;
+        if (!gardenStructureVerticalSliceEnabled || !editor) {
             return null;
         }
-        const seed = createGardenStructureTemplateSeed(
-            structureFixtureTemplateKey,
-        );
-        const cache = structurePlanCacheRef.current;
-        if (!cache) {
+        const cache =
+            structurePlanCacheRef.current ?? new GardenStructurePlanCache();
+        structurePlanCacheRef.current = cache;
+        const structureId =
+            editor.origin.kind === 'new-draft'
+                ? editor.origin.draftId
+                : editor.origin.structureId;
+        const revision =
+            editor.origin.kind === 'saved-structure'
+                ? editor.origin.revision
+                : editor.history.past.length + 1;
+        const previewInput = {
+            blockData,
+            document: editor.snapshot.document,
+            placement: editor.snapshot.placement,
+            revision,
+            stacks: garden?.stacks,
+            structureId,
+        };
+        const compileInput =
+            structureBuildSession.persistence === 'fixture'
+                ? createGardenStructureSceneFixtureBuildPreviewCompileInput(
+                      previewInput,
+                  )
+                : createGardenStructureSceneBuildPreviewCompileInput(
+                      previewInput,
+                  );
+        if (!compileInput) {
             return null;
         }
         const startedAt = performance.now();
-        const plan = cache.getOrCompile({
-            structureId: 'debug-garden-structure',
-            revision: 1,
-            document: seed.document,
-            placement: {
-                anchorX: -1,
-                anchorY: -1,
-                rotation: structureFixtureRotation,
-            },
-        });
+        const plan = cache.getOrCompile(compileInput);
         const cacheSnapshot = cache.snapshot();
         return {
             compileDurationMs: performance.now() - startedAt,
             documentPayloadBytes:
-                getGardenStructurePayloadByteLength(seed.document) ?? 0,
+                getGardenStructurePayloadByteLength(editor.snapshot.document) ??
+                0,
             plan,
             cacheSnapshot,
         };
     }, [
+        blockData,
+        garden?.stacks,
         gardenStructureVerticalSliceEnabled,
-        structureFixtureRotation,
-        structureFixtureTemplateKey,
+        structureBuildSession?.editor,
+        structureBuildSession?.persistence,
     ]);
     const structureFixtureCollisionWorld = useMemo(
         () =>
@@ -502,15 +527,41 @@ export function GameScene({
             return;
         }
 
-        if (structureBuildActive && structureFixtureBundle) {
+        if (structureBuildActive) {
+            if (!structureFixtureBundle) {
+                return;
+            }
             if (!structureCameraSnapshotRef.current) {
                 structureCameraSnapshotRef.current = gameCamera.getSnapshot();
             }
+            let retryFrame: number | null = null;
+            let retryFrameSignature: string | null = null;
+            let focusAttemptCount = 0;
             const frameStructure = () => {
                 const { worldBounds } = structureFixtureBundle.plan;
                 const canvasBounds = gameCamera
                     .getDomElement()
                     ?.getBoundingClientRect();
+                const frameSignature = [
+                    structureFixtureBundle.plan.cacheKey,
+                    canvasBounds?.width ?? 390,
+                    canvasBounds?.height ?? 844,
+                ].join(':');
+                if (
+                    structureCameraFrameSignatureRef.current === frameSignature
+                ) {
+                    return;
+                }
+                if (retryFrameSignature !== frameSignature) {
+                    retryFrameSignature = frameSignature;
+                    focusAttemptCount = 0;
+                }
+                if (
+                    focusAttemptCount >= gardenStructureCameraFocusAttemptLimit
+                ) {
+                    return;
+                }
+                focusAttemptCount += 1;
                 const cameraSnapshot = gameCamera.getSnapshot();
                 const cameraOffset = [
                     cameraSnapshot.position[0] - cameraSnapshot.target[0],
@@ -530,7 +581,10 @@ export function GameScene({
                     (worldBounds.minHeight + worldBounds.maxHeight) / 2,
                     (worldBounds.minY + worldBounds.maxY) / 2,
                 );
-                const publishProjectedBounds = () => {
+                const completeStructureFrame = () => {
+                    structureCameraFrameSignatureRef.current = frameSignature;
+                    focusAttemptCount = 0;
+                    retryFrameSignature = null;
                     const points = [
                         [
                             worldBounds.minX,
@@ -613,21 +667,50 @@ export function GameScene({
                     gardenStructureCameraMode: 'building',
                 });
                 gameCamera.focus(structureCenter, {
-                    onComplete: publishProjectedBounds,
+                    // Build Mode exclusively owns the overview camera. Apply
+                    // its framing atomically so a slow avatar-camera handoff or
+                    // demand-driven frame loop cannot leave the editor waiting
+                    // for an animation that never starts.
+                    immediate: true,
+                    onComplete: completeStructureFrame,
                     screenPosition: frame.screenPosition,
                     zoom: frame.zoom,
                 });
+                // The stable API can briefly outlive the orthographic default
+                // camera while the avatar camera unmounts. A rejected focus has
+                // no completion callback, so retry without caching the frame.
+                if (
+                    structureCameraFrameSignatureRef.current !==
+                        frameSignature &&
+                    retryFrame === null &&
+                    focusAttemptCount < gardenStructureCameraFocusAttemptLimit
+                ) {
+                    retryFrame = window.requestAnimationFrame(() => {
+                        retryFrame = null;
+                        frameStructure();
+                    });
+                }
             };
             frameStructure();
             const canvas = gameCamera.getDomElement();
             if (!canvas || typeof ResizeObserver === 'undefined') {
-                return;
+                return () => {
+                    if (retryFrame !== null) {
+                        window.cancelAnimationFrame(retryFrame);
+                    }
+                };
             }
             const observer = new ResizeObserver(frameStructure);
             observer.observe(canvas);
-            return () => observer.disconnect();
+            return () => {
+                observer.disconnect();
+                if (retryFrame !== null) {
+                    window.cancelAnimationFrame(retryFrame);
+                }
+            };
         }
 
+        structureCameraFrameSignatureRef.current = null;
         const savedSnapshot = structureCameraSnapshotRef.current;
         if (!savedSnapshot) {
             return;
@@ -718,26 +801,28 @@ export function GameScene({
         useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
-    const { data: blockData } = useBlockData();
-    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
-    const { displayedGarden: transitionedGardenData, sceneVisible } =
-        useGardenSceneTransition(gardenData);
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
-    const garden = useSceneCurrentGarden(transitionedGardenData);
+    const browseStructureRecords = useMemo(
+        () =>
+            garden?.structures.filter(
+                (structure) => structure.id !== editedStructureId,
+            ),
+        [editedStructureId, garden?.structures],
+    );
     const structureBaseHeightResolver = useMemo(
         () =>
             createGardenStructureSceneBaseHeightResolver({
                 blockData,
-                records: garden?.structures,
+                records: browseStructureRecords,
                 stacks: garden?.stacks,
             }),
-        [blockData, garden?.stacks, garden?.structures],
+        [blockData, browseStructureRecords, garden?.stacks],
     );
     const savedStructureScene = useGardenStructureSceneSnapshot({
         gardenId: garden?.id,
         includeCollision: gardenAvatarEnabled,
-        records: blockData ? garden?.structures : undefined,
+        records: blockData ? browseStructureRecords : undefined,
         resolveBaseHeight: structureBaseHeightResolver,
     });
     const structureAvatarCollisionWorld = useMemo(() => {
@@ -1013,7 +1098,10 @@ export function GameScene({
                                                 key={slotKey}
                                                 block={block}
                                                 farmId={garden.farmId}
-                                                noControls={noControls}
+                                                noControls={
+                                                    noControls ||
+                                                    structureBuildActive
+                                                }
                                                 stack={stack}
                                                 stacks={garden.stacks}
                                                 weather={weather}
@@ -1041,24 +1129,31 @@ export function GameScene({
                                     renderDetails={renderDetails}
                                     weather={weather}
                                 />
-                                <GardenStructureSceneLayer
-                                    castShadows={
-                                        qualityProfile.shadows && zoom !== 'far'
-                                    }
-                                    renderProps={
-                                        renderDetails && zoom !== 'far'
-                                    }
-                                    snapshot={savedStructureScene}
-                                />
+                                {savedStructureScene.plan?.structures.length ? (
+                                    <GardenStructureSceneLayerDynamic
+                                        castShadows={
+                                            qualityProfile.shadows &&
+                                            zoom !== 'far'
+                                        }
+                                        renderProps={
+                                            renderDetails && zoom !== 'far'
+                                        }
+                                        snapshot={savedStructureScene}
+                                    />
+                                ) : null}
                                 {structureFixtureBundle ? (
-                                    <GardenStructureVerticalSlice
+                                    <GardenStructureVerticalSliceDynamic
                                         plan={structureFixtureBundle.plan}
                                     />
                                 ) : null}
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward
-                                            enabled={!isLocalSandbox && !isMock}
+                                            enabled={
+                                                !isLocalSandbox &&
+                                                !isMock &&
+                                                !structureBuildActive
+                                            }
                                             garden={garden}
                                             onClaimed={
                                                 setSunflowerDropFlyOrigin
@@ -1289,15 +1384,18 @@ export function GameScene({
                 />
             ) : null}
             <GardenPreviewCaptureController
-                enabled={!isLocalSandbox && !isMock}
+                enabled={!isLocalSandbox && !isMock && !structureBuildActive}
                 garden={garden}
             />
             {!hideHud && (
                 <GameHud
                     debugHud={showDebugHud}
-                    gardenStructureDebugFixture={
+                    gardenStructureBuildEnabled={
                         gardenStructureVerticalSliceEnabled
                     }
+                    gardenStructureDebugFixture={Boolean(
+                        gardenStructureDebugFixture,
+                    )}
                     gardenStructureDebugPlan={structureFixtureBundle?.plan}
                     noWeather={noWeather}
                     suppressOpeningHud={suppressOpeningHud}

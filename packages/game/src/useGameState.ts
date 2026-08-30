@@ -1,8 +1,4 @@
 import type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
-import type {
-    GardenStructureRotation,
-    GardenStructureTemplateKey,
-} from '@gredice/js/gardenStructures';
 import {
     createContext,
     useContext,
@@ -39,6 +35,7 @@ import {
     setGameQualitySetting as persistGameQualitySetting,
 } from './scene/gameQuality';
 import { defaultWaterColors, type WaterColors } from './scene/waterColorState';
+import type { GardenStructureEditorState } from './structures/editor';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import { getAudioConfig } from './utils/audioConfig';
@@ -70,10 +67,8 @@ export type GardenStructureBuildCategory =
     | 'roof'
     | 'interior';
 export type GardenStructureBuildSession = Readonly<{
-    phase: 'editing';
-    source: 'fixture';
-    templateKey: GardenStructureTemplateKey;
-    rotation: GardenStructureRotation;
+    editor: GardenStructureEditorState;
+    persistence: 'fixture' | 'remote';
     category: GardenStructureBuildCategory;
     roofCutaway: boolean;
     selectedPartId: string | null;

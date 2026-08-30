@@ -290,6 +290,7 @@ export function GardenStructureKitV1RendererFixture({
     const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
         null,
     );
+    const [rendererReady, setRendererReady] = useState(false);
     const plan = useMemo(
         () => (mode === 'empty' ? null : fixturePlan(mode)),
         [mode],
@@ -298,6 +299,7 @@ export function GardenStructureKitV1RendererFixture({
         (nextReadback: RendererReadback) => setReadback(nextReadback),
         [],
     );
+    const handleRendererReady = useCallback(() => setRendererReady(true), []);
 
     return (
         <div
@@ -306,6 +308,7 @@ export function GardenStructureKitV1RendererFixture({
                     ? 'true'
                     : 'false'
             }
+            data-renderer-ready={rendererReady ? 'true' : 'false'}
             data-testid="garden-structure-kit-v1-renderer-fixture"
             style={{ height: 320, position: 'relative', width: 480 }}
         >
@@ -334,6 +337,7 @@ export function GardenStructureKitV1RendererFixture({
                     <CameraTarget />
                     {plan ? (
                         <GardenStructureCollectionRenderer
+                            onRendererReady={handleRendererReady}
                             onSelect={({ instanceId }) =>
                                 setSelectedInstanceId(instanceId)
                             }

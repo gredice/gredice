@@ -8,9 +8,12 @@ import { Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import {
     createGardenStructureSceneBaseHeightResolver,
+    createGardenStructureSceneBuildPreviewCompileInput,
+    createGardenStructureSceneFixtureBuildPreviewCompileInput,
     type GardenStructureCollectionCacheDisposalReason,
+    type GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCache,
-    GardenStructureSceneLayer,
+    resolveGardenStructureSceneStructureBaseHeight,
 } from './index';
 
 function savedStructure({
@@ -49,7 +52,6 @@ describe('GardenStructureSceneCache', () => {
         assert.equal(snapshot.collisionWorld, undefined);
         assert.equal(snapshot.diagnostics.status, 'ready');
         assert.equal(cache.snapshot(), null);
-        assert.equal(GardenStructureSceneLayer({ snapshot }), null);
     });
 
     it('does not inspect block or stack inputs for a garden without structures', () => {
@@ -256,6 +258,90 @@ describe('GardenStructureSceneCache', () => {
             snapshot.collisionWorld?.surfaces.some(
                 (surface) => surface.y === 0.4 && surface.roamable,
             ),
+        );
+    });
+
+    it('resolves an editor preview to the same ordinary-block support height', () => {
+        const record = savedStructure();
+        const stacks = getGardenStructureWorldFootprintCells(record.document, {
+            anchorX: record.anchorX,
+            anchorY: record.anchorY,
+            rotation: 0,
+        }).map((cell, index) => ({
+            blocks: [
+                {
+                    id: `preview-ground-${index.toString()}`,
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+            position: new Vector3(cell.x, 0, cell.y),
+        }));
+
+        const baseHeight = resolveGardenStructureSceneStructureBaseHeight({
+            blockData: getLocalSandboxBlockData(),
+            document: record.document,
+            placement: {
+                anchorX: record.anchorX,
+                anchorY: record.anchorY,
+                rotation: 0,
+            },
+            stacks,
+        });
+        const previewInput = createGardenStructureSceneBuildPreviewCompileInput(
+            {
+                blockData: getLocalSandboxBlockData(),
+                document: record.document,
+                placement: {
+                    anchorX: record.anchorX,
+                    anchorY: record.anchorY,
+                    rotation: 0,
+                },
+                revision: record.revision,
+                stacks,
+                structureId: record.id,
+            },
+        );
+
+        assert.equal(baseHeight, 0.4);
+        assert.equal(previewInput?.baseHeight, 0.4);
+    });
+
+    it('limits unsupported preview fallback to the isolated fixture helper', () => {
+        const record = savedStructure();
+        const stacks = [
+            {
+                blocks: [
+                    {
+                        id: 'fixture-ground',
+                        name: 'Block_Grass',
+                        rotation: 0,
+                    },
+                ],
+                position: new Vector3(record.anchorX, 0, record.anchorY),
+            },
+        ];
+        const input = {
+            blockData: getLocalSandboxBlockData(),
+            document: record.document,
+            placement: {
+                anchorX: record.anchorX,
+                anchorY: record.anchorY,
+                rotation: 0,
+            },
+            revision: record.revision,
+            stacks,
+            structureId: record.id,
+        } satisfies GardenStructureSceneBuildPreviewInput;
+
+        assert.equal(
+            createGardenStructureSceneBuildPreviewCompileInput(input),
+            null,
+        );
+        assert.equal(
+            createGardenStructureSceneFixtureBuildPreviewCompileInput(input)
+                ?.baseHeight,
+            0.4,
         );
     });
 

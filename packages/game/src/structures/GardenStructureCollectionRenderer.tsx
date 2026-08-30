@@ -35,6 +35,7 @@ export type GardenStructureCollectionSelection = Readonly<{
 export type GardenStructureCollectionRendererProps = Readonly<{
     castShadows?: boolean;
     isStructureVisible?: GardenStructureCollectionVisibilityPredicate;
+    onRendererReady?: () => void;
     onSelect?: (selection: GardenStructureCollectionSelection) => void;
     plan: GardenStructureCollectionPlan;
     renderProps?: boolean;
@@ -285,6 +286,7 @@ function GardenStructureCollectionFallbackRenderer({
 export function GardenStructureCollectionRenderer({
     castShadows = true,
     isStructureVisible,
+    onRendererReady,
     onSelect,
     plan,
     renderProps = true,
@@ -389,12 +391,16 @@ export function GardenStructureCollectionRenderer({
                 structureCount: plan.structures.length,
             }}
         >
-            <GardenStructureKitV1AssetBoundary fallback={fallback}>
+            <GardenStructureKitV1AssetBoundary
+                fallback={fallback}
+                onErrorFallbackReady={onRendererReady}
+            >
                 <GardenStructureKitV1LoadedInstances
                     batches={batches}
                     castShadows={castShadows}
                     getVisibleInstanceIndices={getVisibleIndices}
                     namePrefix="GardenStructureCollectionKitV1Batch"
+                    onInstancesReady={onRendererReady}
                     onSelectInstance={onSelect ? selectInstance : undefined}
                     renderFallback={renderFallback}
                     selectedInstanceId={selectedInstanceId}

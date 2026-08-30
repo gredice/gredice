@@ -149,8 +149,10 @@ export function GardenOverview2DContent({
                 garden={garden}
                 solarEclipseObscuration={solarEclipseObscuration}
             />
-            {garden.structures.length > 0 ? (
+            {garden.structures.length > 0 ||
+            flags.enableGardenBuildingSystemFlag ? (
                 <GardenStructureOverview2DPanel
+                    buildEnabled={Boolean(flags.enableGardenBuildingSystemFlag)}
                     structures={garden.structures}
                 />
             ) : null}
