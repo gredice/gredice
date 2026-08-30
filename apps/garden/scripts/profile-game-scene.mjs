@@ -98,6 +98,11 @@ const gardenSwitchMaximumDisplayedMs = 1_000;
 const gardenSwitchMaximumVisibleMs = 1_200;
 const gardenSwitchMaximumSettledMs = 1_800;
 const gardenSwitchMaximumFrameStallMs = 500;
+const lifecycleExpectedGardenId = 99_996;
+const lifecycleExpectedGardenStackCount = 270;
+const lifecycleExpectedGardenBlockCount = 297;
+const lifecycleExpectedGardenRaisedBedCount = 3;
+const lifecycleContextEventTimeoutMs = 20_000;
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -500,6 +505,20 @@ const gardenSwitchScenarios = [
         isMobile: false,
         budget: 'gameHighTarget',
         gardenSwitchProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
+
+const lifecycleScenarios = [
+    {
+        name: 'game-high-target-runtime-lifecycle-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&lifecycle=1&quality=high&controls=0&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        lifecycleProfile: true,
         repeat: 3,
         screenshotWitness: true,
     },
@@ -1072,6 +1091,7 @@ const scenarioSets = {
     'dense-mobile': denseMobileScenarios,
     fauna: faunaHeavyScenarios,
     'garden-switch': gardenSwitchScenarios,
+    lifecycle: lifecycleScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1373,7 +1393,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -1404,6 +1424,7 @@ function allScenarios() {
         ...denseMobileScenarios,
         ...faunaHeavyScenarios,
         ...gardenSwitchScenarios,
+        ...lifecycleScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -1443,7 +1464,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1552,6 +1573,12 @@ function getScenarioRequest(path) {
         foliageBudget: url.searchParams.get('foliageBudget') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
+        ...(url.searchParams.has('lifecycle')
+            ? {
+                  lifecycle:
+                      url.searchParams.get('lifecycle') === '1' ? '1' : '0',
+              }
+            : {}),
         mode: url.searchParams.get('mode') ?? 'baseline',
         operationVisuals: url.searchParams.get('operationVisuals') ?? '0',
         outline: url.searchParams.get('outline') ?? '0',
@@ -1585,15 +1612,103 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
-function installGardenSwitchContextTracker() {
-    if (globalThis.__grediceGardenSwitchContextEvents) {
+function installLifecycleMilestoneTracker() {
+    if (globalThis.__grediceLifecycleMilestones) {
+        return;
+    }
+
+    const milestones = {
+        canvasAttachmentCount: 0,
+        canvasAttachedMs: null,
+        canvasSizedMs: null,
+        canvasSize: null,
+        domContentLoadedMs: null,
+        firstSubmittedFrameMs: null,
+        installedMs: performance.now(),
+    };
+    globalThis.__grediceLifecycleMilestones = milestones;
+    let observedCanvas = null;
+    let resizeObserver = null;
+    const recordCanvas = () => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            return;
+        }
+        milestones.canvasAttachedMs ??= performance.now();
+        if (canvas !== observedCanvas) {
+            observedCanvas = canvas;
+            milestones.canvasAttachmentCount += 1;
+            globalThis.__grediceLifecycleFirstCanvas ??= canvas;
+            resizeObserver?.disconnect();
+            resizeObserver = new ResizeObserver(recordCanvas);
+            resizeObserver.observe(canvas);
+        }
+        const expectedWidth = Math.round(
+            canvas.clientWidth * globalThis.devicePixelRatio,
+        );
+        const expectedHeight = Math.round(
+            canvas.clientHeight * globalThis.devicePixelRatio,
+        );
+        if (
+            milestones.canvasSizedMs === null &&
+            canvas.clientWidth > 0 &&
+            canvas.clientHeight > 0 &&
+            canvas.width === expectedWidth &&
+            canvas.height === expectedHeight
+        ) {
+            milestones.canvasSizedMs = performance.now();
+            milestones.canvasSize = {
+                clientHeight: canvas.clientHeight,
+                clientWidth: canvas.clientWidth,
+                height: canvas.height,
+                width: canvas.width,
+            };
+        }
+    };
+    globalThis.__grediceLifecycleRecordCanvas = recordCanvas;
+    const mutationObserver = new MutationObserver(recordCanvas);
+    mutationObserver.observe(document, {
+        attributeFilter: ['height', 'style', 'width'],
+        attributes: true,
+        childList: true,
+        subtree: true,
+    });
+    recordCanvas();
+    const recordDomContentLoaded = () => {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        milestones.domContentLoadedMs =
+            navigation?.domContentLoadedEventEnd || performance.now();
+        recordCanvas();
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', recordDomContentLoaded, {
+            capture: true,
+            once: true,
+        });
+    } else {
+        recordDomContentLoaded();
+    }
+}
+
+function installProfileContextTracker() {
+    const installedTracker =
+        globalThis.__grediceGameProfileContextEvents ??
+        globalThis.__grediceGardenSwitchContextEvents;
+    if (installedTracker) {
+        globalThis.__grediceGameProfileContextEvents = installedTracker;
+        globalThis.__grediceGardenSwitchContextEvents = installedTracker;
         return;
     }
 
     const tracker = {
+        lostDefaultPreventedCount: 0,
+        lostDefaultPreventedValues: [],
         lostCount: 0,
+        lostTimestamps: [],
         restoredCount: 0,
+        restoredTimestamps: [],
     };
+    globalThis.__grediceGameProfileContextEvents = tracker;
     globalThis.__grediceGardenSwitchContextEvents = tracker;
 
     document.addEventListener(
@@ -1601,6 +1716,14 @@ function installGardenSwitchContextTracker() {
         (event) => {
             if (event.target instanceof HTMLCanvasElement) {
                 tracker.lostCount += 1;
+                tracker.lostTimestamps.push(performance.now());
+                setTimeout(() => {
+                    const prevented = event.defaultPrevented === true;
+                    tracker.lostDefaultPreventedValues.push(prevented);
+                    if (prevented) {
+                        tracker.lostDefaultPreventedCount += 1;
+                    }
+                }, 0);
             }
         },
         true,
@@ -1610,11 +1733,14 @@ function installGardenSwitchContextTracker() {
         (event) => {
             if (event.target instanceof HTMLCanvasElement) {
                 tracker.restoredCount += 1;
+                tracker.restoredTimestamps.push(performance.now());
             }
         },
         true,
     );
 }
+
+const installGardenSwitchContextTracker = installProfileContextTracker;
 
 function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     if (globalThis.__gameProfileMetrics) {
@@ -1900,6 +2026,20 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         prototype[name] = function patchedDrawCall(...args) {
             const metrics = globalThis.__gameProfileMetrics;
             beginGpuFrame(this);
+            const lifecycleMilestones = globalThis.__grediceLifecycleMilestones;
+            if (lifecycleMilestones?.firstSubmittedFrameMs === null) {
+                globalThis.__grediceLifecycleRecordCanvas?.();
+                const lifecycleCanvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                if (
+                    lifecycleCanvas instanceof HTMLCanvasElement &&
+                    this.canvas === lifecycleCanvas
+                ) {
+                    lifecycleMilestones.firstSubmittedFrameMs =
+                        performance.now();
+                }
+            }
             if (metrics.lastRenderedRafTick !== rafTick) {
                 metrics.lastRenderedRafTick = rafTick;
                 metrics.renderedFrames += 1;
@@ -3466,6 +3606,1841 @@ async function measureGardenSwitchScenario(
             sample: finalArrival?.sample ?? null,
             screenshotPath: finalArrival?.screenshotPath ?? null,
             screenshotWitness: finalArrival?.screenshotWitness ?? null,
+            url,
+        };
+    } finally {
+        await context.close();
+    }
+}
+
+const runtimeFrameLoopBooleanFields = [
+    'canvasVisible',
+    'documentVisible',
+    'effectiveVisible',
+    'loopActive',
+];
+const runtimeFrameLoopNumberFields = [
+    'activeLeaseCount',
+    'targetFramesPerSecond',
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
+const runtimeFrameLoopCounterFields = [
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
+
+async function readRuntimeFrameLoopSnapshot(page) {
+    return page.evaluate(() => {
+        const telemetry =
+            globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+        return telemetry && typeof telemetry === 'object'
+            ? { ...telemetry }
+            : null;
+    });
+}
+
+async function waitForRuntimeFrameLoopState(page, expected) {
+    await page.waitForFunction(
+        (expectedState) => {
+            const telemetry = globalThis.__grediceGameProfile?.runtimeFrameLoop;
+            return Boolean(
+                telemetry &&
+                    Object.entries(expectedState).every(
+                        ([name, value]) => telemetry[name] === value,
+                    ),
+            );
+        },
+        expected,
+        { timeout: 20_000 },
+    );
+}
+
+function runtimeFrameLoopCounterDeltas(before, after) {
+    return Object.fromEntries(
+        runtimeFrameLoopCounterFields.map((field) => [
+            field,
+            typeof before?.[field] === 'number' &&
+            typeof after?.[field] === 'number'
+                ? after[field] - before[field]
+                : null,
+        ]),
+    );
+}
+
+function lifecycleRuntimeSchedulerZeroObserved(deltas) {
+    return runtimeFrameLoopCounterFields.every(
+        (field) => deltas?.[field] === 0,
+    );
+}
+
+function lifecycleZeroWorkObserved(residual, deltas) {
+    return (
+        lifecycleRuntimeSchedulerZeroObserved(deltas) &&
+        residual?.sample?.renderedFrames === 0 &&
+        residual.sample.drawCalls === 0 &&
+        residual.sample.submittedTriangles === 0
+    );
+}
+
+async function measureLifecycleWindow({ cdp, durationMs, page }) {
+    const before = metricsByName(await cdp.send('Performance.getMetrics'));
+    await page.evaluate(beginInteractiveProfileSample);
+    await page.waitForTimeout(durationMs);
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    const after = metricsByName(completion.endpointMetrics);
+    return {
+        cdp: diffCdpMetrics(before, after),
+        sample: roundSample(normalizeRenderWork(completion.sample)),
+    };
+}
+
+async function moveLifecycleCanvasOffscreen(page, offscreen) {
+    await page.evaluate((shouldMoveOffscreen) => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        let spacer = document.querySelector(
+            '[data-game-profile-lifecycle-spacer]',
+        );
+        if (shouldMoveOffscreen) {
+            if (!spacer) {
+                spacer = document.createElement('div');
+                spacer.setAttribute('data-game-profile-lifecycle-spacer', '1');
+                spacer.setAttribute('aria-hidden', 'true');
+                spacer.style.height = 'calc(100vh + 64px)';
+                spacer.style.width = '1px';
+                document.body.insertBefore(spacer, document.body.firstChild);
+            }
+            return;
+        }
+        spacer?.remove();
+    }, offscreen);
+}
+
+async function installLifecycleIntersectionWitness(page) {
+    await page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        globalThis.__grediceLifecycleIntersectionObserver?.disconnect();
+        globalThis.__grediceLifecycleIntersectionEntries = [];
+        globalThis.__grediceLifecycleIntersectionObserver =
+            new IntersectionObserver(([entry]) => {
+                if (!entry) {
+                    return;
+                }
+                globalThis.__grediceLifecycleIntersectionEntries.push({
+                    height: entry.intersectionRect.height,
+                    isIntersecting: entry.isIntersecting,
+                    time: entry.time,
+                    width: entry.intersectionRect.width,
+                });
+            });
+        globalThis.__grediceLifecycleIntersectionObserver.observe(canvas);
+    });
+    await page.waitForFunction(
+        () =>
+            globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                ?.isIntersecting === true,
+        undefined,
+        { timeout: 20_000 },
+    );
+}
+
+async function readLifecycleIntersectionWitness(page) {
+    return page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        const rect = canvas?.getBoundingClientRect();
+        return {
+            boundingRect: rect
+                ? {
+                      bottom: rect.bottom,
+                      height: rect.height,
+                      left: rect.left,
+                      right: rect.right,
+                      top: rect.top,
+                      width: rect.width,
+                  }
+                : null,
+            entry:
+                globalThis.__grediceLifecycleIntersectionEntries?.at(-1) ??
+                null,
+        };
+    });
+}
+
+async function setSyntheticDocumentHidden(page, hidden) {
+    await page.evaluate((nextHidden) => {
+        if (!globalThis.__grediceSyntheticDocumentVisibility) {
+            globalThis.__grediceSyntheticDocumentVisibility = {
+                hidden: false,
+            };
+        }
+        const state = globalThis.__grediceSyntheticDocumentVisibility;
+        state.hidden = nextHidden;
+        Object.defineProperties(document, {
+            hidden: {
+                configurable: true,
+                get: () => state.hidden,
+            },
+            visibilityState: {
+                configurable: true,
+                get: () => (state.hidden ? 'hidden' : 'visible'),
+            },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+    }, hidden);
+}
+
+async function readLifecycleContextState(
+    page,
+    persistentCanvas,
+    persistentContext,
+) {
+    return page.evaluate(
+        ({ persistentCanvas, persistentContext }) => {
+            const canvas = document.querySelector(
+                '[data-scene-garden-id] canvas',
+            );
+            const context =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const events = globalThis.__grediceGameProfileContextEvents;
+            return {
+                canvasCount: document.querySelectorAll('canvas').length,
+                contextLost: context?.isContextLost() ?? null,
+                lostDefaultPreventedCount:
+                    events?.lostDefaultPreventedCount ?? null,
+                lostDefaultPreventedValues: [
+                    ...(events?.lostDefaultPreventedValues ?? []),
+                ],
+                lostEventCount: events?.lostCount ?? null,
+                lostTimestamps: [...(events?.lostTimestamps ?? [])],
+                restoredEventCount: events?.restoredCount ?? null,
+                restoredTimestamps: [...(events?.restoredTimestamps ?? [])],
+                sameCanvas: canvas === persistentCanvas,
+                sameContext: context === persistentContext,
+            };
+        },
+        { persistentCanvas, persistentContext },
+    );
+}
+
+async function forceLifecycleContextLoss(page) {
+    return page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        const context =
+            canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+        const extension = context?.getExtension('WEBGL_lose_context') ?? null;
+        globalThis.__grediceLifecycleContextControl = {
+            context,
+            extension,
+        };
+        extension?.loseContext();
+        return extension !== null;
+    });
+}
+
+async function restoreLifecycleContext(page) {
+    return page.evaluate(() => {
+        const control = globalThis.__grediceLifecycleContextControl;
+        if (!control?.extension) {
+            return false;
+        }
+        control.extension.restoreContext();
+        return true;
+    });
+}
+
+async function hideLifecycleOutline(page) {
+    await page.evaluate(
+        ({ eventName, raisedBedId }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail: { action: 'hide', raisedBedId },
+                }),
+            ),
+        {
+            eventName: gameProfileOutlineCommandEventName,
+            raisedBedId: 2,
+        },
+    );
+    await page.waitForFunction(
+        () => {
+            const profile = globalThis.__grediceGameProfile;
+            return (
+                profile?.hoverOutlineProfileCommandAction === 'hide' &&
+                profile.hoverOutlineProfileTargetBlockId === null &&
+                profile.hoverOutlineProfileTargetRaisedBedId === null &&
+                profile.hoverOutlineActiveTargetCount === 0 &&
+                profile.hoverOutlineStyleGroupCount === 0
+            );
+        },
+        undefined,
+        { timeout: 20_000 },
+    );
+}
+
+async function captureLifecycleActiveControl({
+    page,
+    persistentCanvas,
+    persistentContext,
+    screenshotPath,
+}) {
+    await waitForGardenSwitchFixture(page, 'high-target');
+    await hideLifecycleOutline(page);
+    await page.evaluate(
+        () =>
+            new Promise((resolveFrame) =>
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(resolveFrame),
+                ),
+            ),
+    );
+    const before = await page.evaluate(() => ({
+        drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
+        renderedFrames: globalThis.__gameProfileMetrics?.renderedFrames ?? null,
+        submittedTriangles:
+            globalThis.__gameProfileMetrics?.submittedTriangles ?? null,
+    }));
+    const interaction = await dispatchGardenSwitchInteraction(
+        page,
+        'high-target',
+    );
+    await page.waitForFunction(
+        (start) => {
+            const metrics = globalThis.__gameProfileMetrics;
+            return Boolean(
+                metrics &&
+                    typeof start.drawCalls === 'number' &&
+                    metrics.drawCalls > start.drawCalls &&
+                    typeof start.renderedFrames === 'number' &&
+                    metrics.renderedFrames > start.renderedFrames &&
+                    typeof start.submittedTriangles === 'number' &&
+                    metrics.submittedTriangles > start.submittedTriangles,
+            );
+        },
+        before,
+        { timeout: 20_000 },
+    );
+    const after = await page.evaluate(() => ({
+        drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
+        renderedFrames: globalThis.__gameProfileMetrics?.renderedFrames ?? null,
+        submittedTriangles:
+            globalThis.__gameProfileMetrics?.submittedTriangles ?? null,
+    }));
+    const delta = Object.fromEntries(
+        Object.keys(before).map((field) => [
+            field,
+            typeof before[field] === 'number' &&
+            typeof after[field] === 'number'
+                ? after[field] - before[field]
+                : null,
+        ]),
+    );
+    const fixture = await readGardenSwitchArrival(
+        page,
+        persistentCanvas,
+        persistentContext,
+    );
+    await mkdir(dirname(screenshotPath), { recursive: true });
+    await page.locator('[data-scene-garden-id] canvas').screenshot({
+        animations: 'disabled',
+        path: screenshotPath,
+    });
+
+    return {
+        fixture,
+        interaction,
+        postCommandRender: delta,
+        screenshotPath,
+        screenshotWitness:
+            await measureProfileScreenshotWitness(screenshotPath),
+    };
+}
+
+function evaluateLifecycleAcceptance({
+    active,
+    apiErrors = [],
+    apiRequests = [],
+    cold,
+    consoleMessages = [],
+    context,
+    fixture,
+    hidden,
+    offscreen,
+    pageErrors = [],
+    requested,
+    resolved,
+    restoredInteraction,
+    restoredScreenshotWitness,
+}) {
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const finite = (name, actual) => ({
+        actual,
+        comparison: 'finite',
+        limit: 'finite number',
+        name,
+        pass: typeof actual === 'number' && Number.isFinite(actual),
+    });
+    const runtimeContractChecks = (prefix, telemetry) => [
+        ...runtimeFrameLoopBooleanFields.map((field) =>
+            exact(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
+                typeof telemetry?.[field],
+                'boolean',
+            ),
+        ),
+        ...runtimeFrameLoopNumberFields.map((field) =>
+            finite(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}`,
+                telemetry?.[field],
+            ),
+        ),
+    ];
+    const outlineChecks = (prefix, interaction) => [
+        exact(`${prefix}Kind`, interaction?.kind, 'outline'),
+        exact(`${prefix}Dispatched`, interaction?.dispatched, true),
+        exact(`${prefix}RaisedBedId`, interaction?.targetRaisedBedId, 2),
+        exact(
+            `${prefix}BlockId`,
+            interaction?.targetBlockId,
+            'profile-raised-bed:2:0',
+        ),
+        exact(`${prefix}ActiveTargetCount`, interaction?.activeTargetCount, 2),
+        exact(`${prefix}StyleGroupCount`, interaction?.styleGroupCount, 1),
+    ];
+    const activeControlChecks = (
+        prefix,
+        control,
+        { lostEventCount = 0, restoredEventCount = 0 } = {},
+    ) => [
+        ...outlineChecks(`${prefix}Outline`, control?.interaction),
+        exact(`${prefix}CanvasCount`, control?.fixture?.canvas?.canvasCount, 1),
+        exact(
+            `${prefix}CanvasPersistent`,
+            control?.fixture?.canvas?.sameCanvas,
+            true,
+        ),
+        exact(
+            `${prefix}ContextPersistent`,
+            control?.fixture?.canvas?.sameContext,
+            true,
+        ),
+        exact(
+            `${prefix}ContextHealthy`,
+            control?.fixture?.canvas?.contextLost,
+            false,
+        ),
+        exact(
+            `${prefix}ContextLostEventCount`,
+            control?.fixture?.canvas?.contextLostEventCount,
+            lostEventCount,
+        ),
+        exact(
+            `${prefix}ContextRestoredEventCount`,
+            control?.fixture?.canvas?.contextRestoredEventCount,
+            restoredEventCount,
+        ),
+        exact(
+            `${prefix}GardenId`,
+            control?.fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            `${prefix}FixtureStackCount`,
+            control?.fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            `${prefix}FixtureBlockCount`,
+            control?.fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            `${prefix}FixtureRaisedBedCount`,
+            control?.fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            `${prefix}VisiblePlantFields`,
+            control?.fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            `${prefix}VisiblePlantInstances`,
+            control?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        minimum(
+            `${prefix}PostCommandRenderedFrames`,
+            control?.postCommandRender?.renderedFrames,
+            1,
+        ),
+        minimum(
+            `${prefix}PostCommandDrawCalls`,
+            control?.postCommandRender?.drawCalls,
+            1,
+        ),
+        minimum(
+            `${prefix}PostCommandTriangles`,
+            control?.postCommandRender?.submittedTriangles,
+            1,
+        ),
+        exact(
+            `${prefix}ScreenshotValid`,
+            isProfileScreenshotWitnessValid(control?.screenshotWitness),
+            true,
+        ),
+        exact(
+            `${prefix}ScreenshotWidth`,
+            control?.screenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            `${prefix}ScreenshotHeight`,
+            control?.screenshotWitness?.height,
+            1_440,
+        ),
+    ];
+    const residualWindowChecks = (prefix, phase) => [
+        minimum(
+            `${prefix}ElapsedMs`,
+            phase?.residual?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            `${prefix}RenderedFramesFinite`,
+            phase?.residual?.sample?.renderedFrames,
+            0,
+        ),
+        minimum(
+            `${prefix}DrawCallsFinite`,
+            phase?.residual?.sample?.drawCalls,
+            0,
+        ),
+        minimum(
+            `${prefix}SubmittedTrianglesFinite`,
+            phase?.residual?.sample?.submittedTriangles,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpScriptDuration`,
+            phase?.residual?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpTaskDuration`,
+            phase?.residual?.cdp?.taskDuration,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpLayoutDuration`,
+            phase?.residual?.cdp?.layoutDuration,
+            0,
+        ),
+        ...runtimeFrameLoopCounterFields.map((field) =>
+            minimum(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                phase?.residualDeltas?.[field],
+                0,
+            ),
+        ),
+        exact(
+            `${prefix}ScheduledCallbackDelta`,
+            phase?.residualDeltas?.scheduledCallbackCount,
+            0,
+        ),
+        exact(`${prefix}WakeupDelta`, phase?.residualDeltas?.wakeupCount, 0),
+        exact(
+            `${prefix}OwnedInvalidationDelta`,
+            phase?.residualDeltas?.ownedInvalidationCount,
+            0,
+        ),
+        exact(
+            `${prefix}CancelledCallbackDelta`,
+            phase?.residualDeltas?.cancelledCallbackCount,
+            0,
+        ),
+        exact(
+            `${prefix}SuspendCountDelta`,
+            phase?.residualDeltas?.suspendCount,
+            0,
+        ),
+        exact(
+            `${prefix}ResumeCountDelta`,
+            phase?.residualDeltas?.resumeCount,
+            0,
+        ),
+    ];
+    const minimumActiveFrames = (sample) =>
+        Math.max(1, Math.floor((sample?.elapsedMs ?? 0) / 1_000));
+    const checks = [
+        exact('lifecycleOptIn', requested?.lifecycle, '1'),
+        exact('lifecycleRequestOptIn', requested?.lifecycleRequest, '1'),
+        exact('lifecycleProfile', requested?.lifecycleProfile, true),
+        exact('lifecycleFreshBrowserContext', requested?.freshContext, true),
+        exact('lifecycleFreshContextPageCount', cold?.contextPageCount, 1),
+        exact(
+            'lifecycleColdCanvasAttachmentCount',
+            cold?.canvasAttachmentCount,
+            1,
+        ),
+        exact(
+            'lifecycleColdFirstCanvasPersistent',
+            cold?.firstCanvasPersistent,
+            true,
+        ),
+        exact('lifecycleModeRequest', requested?.mode, 'details'),
+        exact(
+            'lifecycleGardenProfileRequest',
+            requested?.gardenProfile,
+            'high-target',
+        ),
+        exact('lifecycleControlsRequest', requested?.controls, '0'),
+        exact('lifecycleDetailsRequest', requested?.details, '1'),
+        exact('lifecycleHudRequest', requested?.hud, '0'),
+        exact('lifecycleDebugHudRequest', requested?.debugHud, '0'),
+        exact('lifecycleOutlineRequest', requested?.outline, '1'),
+        exact(
+            'lifecycleFixedTimeSecondsRequest',
+            requested?.fixedTimeSeconds,
+            43_200,
+        ),
+        exact('lifecycleQualityRequest', requested?.quality, 'high'),
+        exact('lifecycleResolvedQualityTier', resolved?.qualityTier, 'high'),
+        exact('lifecycleResolvedDprCap', resolved?.dprCap, 2),
+        exact(
+            'lifecycleResolvedShadowsEnabled',
+            resolved?.shadowsEnabled,
+            true,
+        ),
+        exact('lifecycleResolvedShadowMapSize', resolved?.shadowMapSize, 4_096),
+        exact('lifecycleRequestedDpr', requested?.dpr, 2),
+        exact('lifecycleBrowserReportedDpr', resolved?.browserDpr, 2),
+        exact(
+            'lifecycleStaticSceneCacheRequest',
+            requested?.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'lifecycleGardenId',
+            fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            'lifecycleDomGardenId',
+            fixture?.canvas?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact('lifecycleCanvasCount', fixture?.canvas?.canvasCount, 1),
+        exact(
+            'lifecycleCanvasClientWidth',
+            fixture?.canvas?.clientWidth,
+            1_280,
+        ),
+        exact(
+            'lifecycleCanvasClientHeight',
+            fixture?.canvas?.clientHeight,
+            720,
+        ),
+        exact('lifecycleCanvasWidth', fixture?.canvas?.width, 2_560),
+        exact('lifecycleCanvasHeight', fixture?.canvas?.height, 1_440),
+        exact(
+            'lifecycleColdCanvasPersistent',
+            cold?.fixture?.canvas?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleColdContextPersistent',
+            cold?.fixture?.canvas?.sameContext,
+            true,
+        ),
+        exact(
+            'lifecycleColdContextHealthy',
+            cold?.fixture?.canvas?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleColdGardenId',
+            cold?.fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            'lifecycleColdFixtureStackCount',
+            cold?.fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            'lifecycleColdFixtureBlockCount',
+            cold?.fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            'lifecycleColdFixtureRaisedBedCount',
+            cold?.fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            'lifecycleColdVisiblePlantFields',
+            cold?.fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleColdVisiblePlantInstances',
+            cold?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleColdStaticOpaqueSceneCacheEnabled',
+            cold?.fixture?.resources?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'lifecycleColdScreenshotValid',
+            isProfileScreenshotWitnessValid(cold?.screenshotWitness),
+            true,
+        ),
+        exact(
+            'lifecycleColdScreenshotWidth',
+            cold?.screenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            'lifecycleColdScreenshotHeight',
+            cold?.screenshotWitness?.height,
+            1_440,
+        ),
+        exact(
+            'lifecycleFixtureStackCount',
+            fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            'lifecycleFixtureBlockCount',
+            fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            'lifecycleFixtureRaisedBedCount',
+            fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantFieldCount',
+            fixture?.fixture?.generatedPlantFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantInstanceCount',
+            fixture?.fixture?.generatedPlantInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantVisibleFieldCount',
+            fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantVisibleInstanceCount',
+            fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleStaticOpaqueSceneCacheEnabled',
+            fixture?.resources?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        finite('lifecycleColdDomContentLoadedMs', cold?.domContentLoadedMs),
+        finite('lifecycleColdCanvasAttachedMs', cold?.canvasAttachedMs),
+        finite('lifecycleColdCanvasSizedMs', cold?.canvasSizedMs),
+        exact('lifecycleColdCanvasSizedWidth', cold?.canvasSize?.width, 2_560),
+        exact(
+            'lifecycleColdCanvasSizedHeight',
+            cold?.canvasSize?.height,
+            1_440,
+        ),
+        finite(
+            'lifecycleColdFirstSubmittedFrameMs',
+            cold?.firstSubmittedFrameMs,
+        ),
+        finite('lifecycleColdFixtureReadyMs', cold?.fixtureReadyMs),
+        finite('lifecycleColdInteractionReadyMs', cold?.interactionReadyMs),
+        minimum(
+            'lifecycleColdCanvasSizedAfterAttachedMs',
+            cold?.canvasSizedMs - cold?.canvasAttachedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdFixtureAfterCanvasMs',
+            cold?.fixtureReadyMs - cold?.canvasSizedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdFirstSubmissionAfterCanvasSizedMs',
+            cold?.firstSubmittedFrameMs - cold?.canvasSizedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdInteractionAfterFixtureMs',
+            cold?.interactionReadyMs - cold?.fixtureReadyMs,
+            0,
+        ),
+        ...outlineChecks('lifecycleInitialOutline', cold?.interaction),
+        ...runtimeContractChecks('lifecycleActive', active?.runtimeFrameLoop),
+        exact(
+            'lifecycleActiveCanvasVisible',
+            active?.runtimeFrameLoop?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveDocumentVisible',
+            active?.runtimeFrameLoop?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveEffectiveVisible',
+            active?.runtimeFrameLoop?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveLoopActive',
+            active?.runtimeFrameLoop?.loopActive,
+            true,
+        ),
+        minimum(
+            'lifecycleActiveElapsedMs',
+            active?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            'lifecycleActiveRenderedFrames',
+            active?.sample?.renderedFrames,
+            minimumActiveFrames(active?.sample),
+        ),
+        minimum('lifecycleActiveRenderedFps', active?.sample?.renderedFps, 1),
+        minimum('lifecycleActiveDrawCalls', active?.sample?.drawCalls, 1),
+        minimum(
+            'lifecycleActiveSubmittedTriangles',
+            active?.sample?.submittedTriangles,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenSignal',
+            offscreen?.signal,
+            'intersection-observer',
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionObserved',
+            offscreen?.suspendedIntersection?.entry?.isIntersecting,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionWidth',
+            offscreen?.suspendedIntersection?.entry?.width,
+            0,
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionHeight',
+            offscreen?.suspendedIntersection?.entry?.height,
+            0,
+        ),
+        minimum(
+            'lifecycleOffscreenBoundingTop',
+            offscreen?.suspendedIntersection?.boundingRect?.top,
+            requested?.viewport?.height ?? 720,
+        ),
+        exact(
+            'lifecycleOffscreenCanvasVisible',
+            offscreen?.suspended?.canvasVisible,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenDocumentVisible',
+            offscreen?.suspended?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenEffectiveVisible',
+            offscreen?.suspended?.effectiveVisible,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenLoopSuspended',
+            offscreen?.suspended?.loopActive,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenResumedCanvasVisible',
+            offscreen?.resumed?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenResumedIntersectionObserved',
+            offscreen?.resumedIntersection?.entry?.isIntersecting,
+            true,
+        ),
+        minimum(
+            'lifecycleOffscreenResumedIntersectionWidth',
+            offscreen?.resumedIntersection?.entry?.width,
+            1,
+        ),
+        minimum(
+            'lifecycleOffscreenResumedIntersectionHeight',
+            offscreen?.resumedIntersection?.entry?.height,
+            1,
+        ),
+        maximum(
+            'lifecycleOffscreenResumedBoundingTop',
+            offscreen?.resumedIntersection?.boundingRect?.top,
+            requested?.viewport?.height ?? 720,
+        ),
+        exact(
+            'lifecycleOffscreenResumedEffectiveVisible',
+            offscreen?.resumed?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenResumedLoopActive',
+            offscreen?.resumed?.loopActive,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenSuspendCountDelta',
+            offscreen?.transitionDeltas?.suspendCount,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenTransitionResumeCountDelta',
+            offscreen?.transitionDeltas?.resumeCount,
+            0,
+        ),
+        exact(
+            'lifecycleOffscreenResumeCountDelta',
+            offscreen?.resumeDeltas?.resumeCount,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenResumeSuspendCountDelta',
+            offscreen?.resumeDeltas?.suspendCount,
+            0,
+        ),
+        ...residualWindowChecks('lifecycleOffscreenResidual', offscreen),
+        ...activeControlChecks(
+            'lifecycleOffscreenResumed',
+            offscreen?.resumedControl,
+        ),
+        exact(
+            'lifecycleHiddenSignal',
+            hidden?.signal,
+            'synthetic-document-hidden',
+        ),
+        exact(
+            'lifecycleHiddenDocumentGetter',
+            hidden?.suspendedDocument?.hidden,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenVisibilityStateGetter',
+            hidden?.suspendedDocument?.visibilityState,
+            'hidden',
+        ),
+        exact(
+            'lifecycleHiddenCanvasVisible',
+            hidden?.suspended?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenDocumentVisible',
+            hidden?.suspended?.documentVisible,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenEffectiveVisible',
+            hidden?.suspended?.effectiveVisible,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenLoopSuspended',
+            hidden?.suspended?.loopActive,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenResumedDocumentVisible',
+            hidden?.resumed?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedEffectiveVisible',
+            hidden?.resumed?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedLoopActive',
+            hidden?.resumed?.loopActive,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedDocumentGetter',
+            hidden?.resumedDocument?.hidden,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenResumedVisibilityStateGetter',
+            hidden?.resumedDocument?.visibilityState,
+            'visible',
+        ),
+        exact(
+            'lifecycleHiddenSuspendCountDelta',
+            hidden?.transitionDeltas?.suspendCount,
+            1,
+        ),
+        exact(
+            'lifecycleHiddenTransitionResumeCountDelta',
+            hidden?.transitionDeltas?.resumeCount,
+            0,
+        ),
+        exact(
+            'lifecycleHiddenResumeCountDelta',
+            hidden?.resumeDeltas?.resumeCount,
+            1,
+        ),
+        exact(
+            'lifecycleHiddenResumeSuspendCountDelta',
+            hidden?.resumeDeltas?.suspendCount,
+            0,
+        ),
+        ...residualWindowChecks('lifecycleHiddenResidual', hidden),
+        ...activeControlChecks(
+            'lifecycleHiddenResumed',
+            hidden?.resumedControl,
+        ),
+        exact(
+            'lifecycleContextPreconditionHealthy',
+            context?.precondition?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleContextPreconditionCanvasPersistent',
+            context?.precondition?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextPreconditionObjectPersistent',
+            context?.precondition?.sameContext,
+            true,
+        ),
+        exact(
+            'lifecycleContextPreconditionLostEvents',
+            context?.precondition?.lostEventCount,
+            0,
+        ),
+        exact(
+            'lifecycleContextPreconditionRestoredEvents',
+            context?.precondition?.restoredEventCount,
+            0,
+        ),
+        exact('lifecycleContextLossSupported', context?.supported, true),
+        exact(
+            'lifecycleContextRestoreRequested',
+            context?.restoreRequested,
+            true,
+        ),
+        exact(
+            'lifecycleContextLostEventCount',
+            context?.lost?.lostEventCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextLossHandledByRuntime',
+            context?.lost?.lostDefaultPreventedCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextLossDefaultPreventedValue',
+            JSON.stringify(context?.lost?.lostDefaultPreventedValues),
+            JSON.stringify([true]),
+        ),
+        exact('lifecycleContextObservedLost', context?.lost?.contextLost, true),
+        exact(
+            'lifecycleContextLostTimestampCount',
+            context?.lost?.lostTimestamps?.length,
+            1,
+        ),
+        finite(
+            'lifecycleContextLostTimestampMs',
+            context?.lost?.lostTimestamps?.[0],
+        ),
+        exact(
+            'lifecycleContextLostCanvasPersistent',
+            context?.lost?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextLostObjectPersistent',
+            context?.lost?.sameContext,
+            true,
+        ),
+        minimum(
+            'lifecycleContextLostWindowElapsedMs',
+            context?.lostWindow?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        exact(
+            'lifecycleContextLostRenderedFrames',
+            context?.lostWindow?.sample?.renderedFrames,
+            0,
+        ),
+        exact(
+            'lifecycleContextLostDrawCalls',
+            context?.lostWindow?.sample?.drawCalls,
+            0,
+        ),
+        exact(
+            'lifecycleContextLostSubmittedTriangles',
+            context?.lostWindow?.sample?.submittedTriangles,
+            0,
+        ),
+        minimum(
+            'lifecycleContextLostCdpScriptDuration',
+            context?.lostWindow?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            'lifecycleContextLostCdpTaskDuration',
+            context?.lostWindow?.cdp?.taskDuration,
+            0,
+        ),
+        exact(
+            'lifecycleContextRestoredEventCount',
+            context?.restored?.restoredEventCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextRestoredTimestampCount',
+            context?.restored?.restoredTimestamps?.length,
+            1,
+        ),
+        finite(
+            'lifecycleContextRestoredTimestampMs',
+            context?.restored?.restoredTimestamps?.[0],
+        ),
+        exact(
+            'lifecycleContextRestoredHealthy',
+            context?.restored?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleContextCanvasPersistent',
+            context?.restored?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextObjectPersistent',
+            context?.restored?.sameContext,
+            true,
+        ),
+        exact('lifecycleContextCanvasCount', context?.restored?.canvasCount, 1),
+        minimum(
+            'lifecycleContextRestoreDurationMs',
+            context?.restoreDurationMs,
+            0,
+        ),
+        minimum(
+            'lifecycleContextRestoredWindowElapsedMs',
+            context?.restoredWindow?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            'lifecycleContextRestoredRenderedFrames',
+            context?.restoredWindow?.sample?.renderedFrames,
+            minimumActiveFrames(context?.restoredWindow?.sample),
+        ),
+        minimum(
+            'lifecycleContextRestoredRenderedFps',
+            context?.restoredWindow?.sample?.renderedFps,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredDrawCalls',
+            context?.restoredWindow?.sample?.drawCalls,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredSubmittedTriangles',
+            context?.restoredWindow?.sample?.submittedTriangles,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredCdpScriptDuration',
+            context?.restoredWindow?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            'lifecycleContextRestoredCdpTaskDuration',
+            context?.restoredWindow?.cdp?.taskDuration,
+            0,
+        ),
+        ...activeControlChecks(
+            'lifecycleContextRestored',
+            context?.restoredControl,
+            { lostEventCount: 1, restoredEventCount: 1 },
+        ),
+        ...outlineChecks('lifecycleRestoredOutline', restoredInteraction),
+        exact(
+            'lifecycleRestoredScreenshotValid',
+            isProfileScreenshotWitnessValid(restoredScreenshotWitness),
+            true,
+        ),
+        exact(
+            'lifecycleRestoredScreenshotWidth',
+            restoredScreenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            'lifecycleRestoredScreenshotHeight',
+            restoredScreenshotWitness?.height,
+            1_440,
+        ),
+        exact('lifecycleApiErrors', apiErrors.length, 0),
+        exact('lifecycleApiRequests', apiRequests.length, 0),
+        exact(
+            'lifecycleConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('lifecyclePageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+        residualWorkPolicy: {
+            rendererAndCdpGated: false,
+            runtimeSchedulerGated: true,
+            reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+        },
+    };
+}
+
+async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
+    const context = await browser.newContext({
+        deviceScaleFactor: scenario.dpr,
+        hasTouch: scenario.isMobile,
+        isMobile: scenario.isMobile,
+        viewport: scenario.viewport,
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    const apiErrors = [];
+    const apiRequests = [];
+    const consoleMessages = [];
+    const pageErrors = [];
+
+    page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') {
+            const location = message.location();
+            consoleMessages.push({
+                type: message.type(),
+                text: message.text().slice(0, 300),
+                url: location.url || null,
+            });
+        }
+    });
+    page.on('pageerror', (error) => {
+        pageErrors.push(error.message.slice(0, 300));
+    });
+    page.on('response', (response) => {
+        const responseUrl = response.url();
+        if (
+            response.status() >= 400 &&
+            new URL(responseUrl).pathname.includes('/api/')
+        ) {
+            apiErrors.push({ status: response.status(), url: responseUrl });
+        }
+    });
+    page.on('request', (request) => {
+        const requestUrl = request.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({ method: request.method(), url: requestUrl });
+        }
+    });
+
+    await cdp.send('Performance.enable');
+    await page.addInitScript(installLifecycleMilestoneTracker);
+    await page.addInitScript(installProfileContextTracker);
+    await page.addInitScript(installBrowserMetrics, {
+        externalGpuTimer: false,
+    });
+
+    const url = new URL(scenario.path, baseUrl).toString();
+    try {
+        await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60_000,
+        });
+        await page.waitForSelector('[data-scene-garden-id] canvas', {
+            state: 'attached',
+            timeout: 60_000,
+        });
+        await page.waitForFunction(
+            () => {
+                const canvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+            },
+            undefined,
+            { timeout: 60_000 },
+        );
+        const sceneCanvas = await page
+            .locator('[data-scene-garden-id] canvas')
+            .elementHandle();
+        if (!sceneCanvas) {
+            throw new Error('Lifecycle Canvas handle is unavailable.');
+        }
+        const sceneContext = await sceneCanvas.evaluateHandle(
+            (canvas) =>
+                canvas.getContext('webgl2') ?? canvas.getContext('webgl'),
+        );
+        await page.waitForFunction(
+            () => (globalThis.__gameProfileMetrics?.renderedFrames ?? 0) >= 1,
+            undefined,
+            { timeout: 60_000 },
+        );
+        await waitForGardenSwitchFixture(page, 'high-target');
+        const fixtureReadyMs = await page.evaluate(() => performance.now());
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        await installLifecycleIntersectionWitness(page);
+        const interaction = await dispatchGardenSwitchInteraction(
+            page,
+            'high-target',
+        );
+        const interactionReadyMs = await page.evaluate(() => performance.now());
+        const coldFixture = await readGardenSwitchArrival(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const coldScreenshotPath = resolve(
+            options.outDir,
+            'screenshots',
+            `${scenario.name}-cold.png`,
+        );
+        await mkdir(dirname(coldScreenshotPath), { recursive: true });
+        await page.locator('[data-scene-garden-id] canvas').screenshot({
+            animations: 'disabled',
+            path: coldScreenshotPath,
+        });
+        const coldScreenshotWitness =
+            await measureProfileScreenshotWitness(coldScreenshotPath);
+        const milestones = await page.evaluate(() => ({
+            ...globalThis.__grediceLifecycleMilestones,
+            canvasSize: globalThis.__grediceLifecycleMilestones?.canvasSize
+                ? { ...globalThis.__grediceLifecycleMilestones.canvasSize }
+                : null,
+            domContentLoadedMs:
+                performance.getEntriesByType('navigation')[0]
+                    ?.domContentLoadedEventEnd ??
+                globalThis.__grediceLifecycleMilestones?.domContentLoadedMs ??
+                null,
+            firstCanvasPersistent:
+                globalThis.__grediceLifecycleFirstCanvas ===
+                document.querySelector('[data-scene-garden-id] canvas'),
+        }));
+        const cold = {
+            canvasAttachmentCount: milestones.canvasAttachmentCount,
+            canvasAttachedMs: round(milestones.canvasAttachedMs),
+            canvasSize: milestones.canvasSize,
+            canvasSizedMs: round(milestones.canvasSizedMs),
+            contextPageCount: context.pages().length,
+            domContentLoadedMs: round(milestones.domContentLoadedMs),
+            firstSubmittedFrameMs: round(milestones.firstSubmittedFrameMs),
+            fixtureReadyMs: round(fixtureReadyMs),
+            fixture: coldFixture,
+            firstCanvasPersistent: milestones.firstCanvasPersistent,
+            interaction,
+            interactionReadyMs: round(interactionReadyMs),
+            screenshotPath: coldScreenshotPath,
+            screenshotWitness: coldScreenshotWitness,
+        };
+
+        await hideLifecycleOutline(page);
+        await page.waitForTimeout(options.warmupMs);
+        const sampleMs = scenario.sampleMs ?? options.sampleMs;
+        const activeWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const active = {
+            ...activeWindow,
+            runtimeFrameLoop: await readRuntimeFrameLoopSnapshot(page),
+        };
+
+        const offscreenBefore = await readRuntimeFrameLoopSnapshot(page);
+        await moveLifecycleCanvasOffscreen(page, true);
+        await page.waitForFunction(
+            () => {
+                const entry =
+                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1);
+                return Boolean(
+                    entry?.isIntersecting === false &&
+                        entry.width === 0 &&
+                        entry.height === 0,
+                );
+            },
+            undefined,
+            { timeout: 20_000 },
+        );
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: false,
+            documentVisible: true,
+            effectiveVisible: false,
+            loopActive: false,
+        });
+        const offscreenSuspended = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenSuspendedIntersection =
+            await readLifecycleIntersectionWitness(page);
+        const offscreenWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const offscreenSampleEnd = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenResidualDeltas = runtimeFrameLoopCounterDeltas(
+            offscreenSuspended,
+            offscreenSampleEnd,
+        );
+        await moveLifecycleCanvasOffscreen(page, false);
+        await page.waitForFunction(
+            () =>
+                globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                    ?.isIntersecting === true,
+            undefined,
+            { timeout: 20_000 },
+        );
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const offscreenResumed = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenResumedIntersection =
+            await readLifecycleIntersectionWitness(page);
+        const offscreenResumedControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-offscreen-resumed.png`,
+            ),
+        });
+        const offscreen = {
+            before: offscreenBefore,
+            residual: offscreenWindow,
+            residualDeltas: offscreenResidualDeltas,
+            resumeDeltas: runtimeFrameLoopCounterDeltas(
+                offscreenSampleEnd,
+                offscreenResumed,
+            ),
+            resumed: offscreenResumed,
+            resumedControl: offscreenResumedControl,
+            resumedIntersection: offscreenResumedIntersection,
+            signal: 'intersection-observer',
+            suspended: offscreenSuspended,
+            suspendedIntersection: offscreenSuspendedIntersection,
+            transitionDeltas: runtimeFrameLoopCounterDeltas(
+                offscreenBefore,
+                offscreenSuspended,
+            ),
+            runtimeSchedulerZeroObserved: lifecycleRuntimeSchedulerZeroObserved(
+                offscreenResidualDeltas,
+            ),
+            zeroWorkObserved: lifecycleZeroWorkObserved(
+                offscreenWindow,
+                offscreenResidualDeltas,
+            ),
+        };
+
+        await hideLifecycleOutline(page);
+        const hiddenBefore = await readRuntimeFrameLoopSnapshot(page);
+        await setSyntheticDocumentHidden(page, true);
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: false,
+            effectiveVisible: false,
+            loopActive: false,
+        });
+        const hiddenSuspended = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenSuspendedDocument = await page.evaluate(() => ({
+            hidden: document.hidden,
+            visibilityState: document.visibilityState,
+        }));
+        const hiddenWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const hiddenSampleEnd = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenResidualDeltas = runtimeFrameLoopCounterDeltas(
+            hiddenSuspended,
+            hiddenSampleEnd,
+        );
+        await setSyntheticDocumentHidden(page, false);
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const hiddenResumed = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenResumedDocument = await page.evaluate(() => ({
+            hidden: document.hidden,
+            visibilityState: document.visibilityState,
+        }));
+        const hiddenResumedControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-hidden-resumed.png`,
+            ),
+        });
+        const hidden = {
+            before: hiddenBefore,
+            residual: hiddenWindow,
+            residualDeltas: hiddenResidualDeltas,
+            resumeDeltas: runtimeFrameLoopCounterDeltas(
+                hiddenSampleEnd,
+                hiddenResumed,
+            ),
+            resumed: hiddenResumed,
+            resumedControl: hiddenResumedControl,
+            resumedDocument: hiddenResumedDocument,
+            signal: 'synthetic-document-hidden',
+            suspended: hiddenSuspended,
+            suspendedDocument: hiddenSuspendedDocument,
+            transitionDeltas: runtimeFrameLoopCounterDeltas(
+                hiddenBefore,
+                hiddenSuspended,
+            ),
+            runtimeSchedulerZeroObserved:
+                lifecycleRuntimeSchedulerZeroObserved(hiddenResidualDeltas),
+            zeroWorkObserved: lifecycleZeroWorkObserved(
+                hiddenWindow,
+                hiddenResidualDeltas,
+            ),
+        };
+
+        await hideLifecycleOutline(page);
+        const contextPrecondition = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const supported = await forceLifecycleContextLoss(page);
+        if (supported) {
+            await page.waitForFunction(
+                () => {
+                    const control = globalThis.__grediceLifecycleContextControl;
+                    const events = globalThis.__grediceGameProfileContextEvents;
+                    return Boolean(
+                        control?.context?.isContextLost() === true &&
+                            events?.lostCount === 1,
+                    );
+                },
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfileContextEvents
+                        ?.lostDefaultPreventedValues?.length === 1,
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+        }
+        const lost = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const lostWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const restoreRequested = await restoreLifecycleContext(page);
+        if (restoreRequested) {
+            await page.waitForFunction(
+                () => {
+                    const control = globalThis.__grediceLifecycleContextControl;
+                    const events = globalThis.__grediceGameProfileContextEvents;
+                    return Boolean(
+                        control?.context?.isContextLost() === false &&
+                            events?.restoredCount === 1,
+                    );
+                },
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+        }
+        await waitForGardenSwitchFixture(page, 'high-target');
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const restoredControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-restored.png`,
+            ),
+        });
+        const restoredWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const restored = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const contextLifecycle = {
+            lost,
+            lostWindow,
+            precondition: contextPrecondition,
+            restoreDurationMs:
+                typeof lost.lostTimestamps?.at(-1) === 'number' &&
+                typeof restored.restoredTimestamps?.at(-1) === 'number'
+                    ? restored.restoredTimestamps.at(-1) -
+                      lost.lostTimestamps.at(-1)
+                    : null,
+            restored,
+            restoredControl,
+            restoredWindow,
+            restoreRequested,
+            supported,
+        };
+        const fixture = restoredControl.fixture;
+        const screenshotPath = restoredControl.screenshotPath;
+        const screenshotWitness = restoredControl.screenshotWitness;
+        const request = getScenarioRequest(scenario.path);
+        const profileMetadata = await page.evaluate(() => {
+            const element = document.querySelector('[data-game-profile-mode]');
+            if (!(element instanceof HTMLElement)) {
+                return null;
+            }
+            const fixedTimeSeconds = Number.parseFloat(
+                element.dataset.gameProfileFixedTimeSeconds ?? '',
+            );
+            return {
+                controls: element.dataset.gameProfileControls ?? null,
+                debugHud: element.dataset.gameProfileDebugHud ?? null,
+                details: element.dataset.gameProfileDetails ?? null,
+                fixedTimeSeconds: Number.isFinite(fixedTimeSeconds)
+                    ? fixedTimeSeconds
+                    : null,
+                gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
+                hud: element.dataset.gameProfileHud ?? null,
+                lifecycle: element.dataset.gameProfileLifecycle ?? null,
+                mode: element.dataset.gameProfileMode ?? null,
+                outline: element.dataset.gameProfileOutline ?? null,
+                quality: element.dataset.gameProfileQuality ?? null,
+                staticSceneCache:
+                    element.dataset.gameProfileStaticSceneCache ?? null,
+            };
+        });
+        const requested = {
+            controls: profileMetadata?.controls ?? request.controls,
+            debugHud: profileMetadata?.debugHud ?? request.debugHud,
+            details: profileMetadata?.details ?? request.details,
+            dpr: scenario.dpr,
+            fixedTimeSeconds: profileMetadata?.fixedTimeSeconds ?? null,
+            freshContext: true,
+            gardenProfile:
+                profileMetadata?.gardenProfile ?? request.gardenProfile,
+            graphicsBackend: options.graphicsBackend,
+            hud: profileMetadata?.hud ?? request.hud,
+            isMobile: scenario.isMobile,
+            lifecycle: profileMetadata?.lifecycle ?? null,
+            lifecycleProfile: true,
+            lifecycleRequest: request.lifecycle ?? '0',
+            mode: profileMetadata?.mode ?? request.mode,
+            motion: 'runtime-lifecycle',
+            outline: profileMetadata?.outline ?? request.outline,
+            quality: profileMetadata?.quality ?? request.quality,
+            sampleMs,
+            staticSceneCache:
+                profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+            viewport: scenario.viewport,
+        };
+        const resolved = await page.evaluate(() => {
+            const profile = globalThis.__grediceGameProfile;
+            return {
+                browserDpr: globalThis.devicePixelRatio,
+                dprCap: profile?.dprCap ?? null,
+                qualityTier: profile?.qualityTier ?? null,
+                shadowMapSize: profile?.shadowMapSize ?? null,
+                shadowsEnabled: profile?.shadowsEnabled ?? null,
+            };
+        });
+        const acceptance = evaluateLifecycleAcceptance({
+            active,
+            apiErrors,
+            apiRequests,
+            cold,
+            consoleMessages,
+            context: contextLifecycle,
+            fixture,
+            hidden,
+            offscreen,
+            pageErrors,
+            requested,
+            resolved,
+            restoredInteraction: restoredControl.interaction,
+            restoredScreenshotWitness: screenshotWitness,
+        });
+        const performanceBudget = evaluateBudget(
+            active.sample,
+            budgets[scenario.budget],
+        );
+        return {
+            acceptance,
+            apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
+            budget: {
+                checks: [...performanceBudget.checks, ...acceptance.checks],
+                pass: performanceBudget.pass && acceptance.pass,
+            },
+            budgetName: scenario.budget,
+            canvasReadyMs: cold.canvasSizedMs,
+            cdp: active.cdp,
+            consoleMessages: consoleMessages.slice(0, 8),
+            domContentLoadedMs: cold.domContentLoadedMs,
+            environment: await page.evaluate(() => {
+                const canvas = document.querySelector('canvas');
+                const gl =
+                    canvas instanceof HTMLCanvasElement
+                        ? (canvas.getContext('webgl2') ??
+                          canvas.getContext('webgl'))
+                        : null;
+                const rendererInfo = gl?.getExtension(
+                    'WEBGL_debug_renderer_info',
+                );
+                return {
+                    renderer:
+                        gl && rendererInfo
+                            ? gl.getParameter(
+                                  rendererInfo.UNMASKED_RENDERER_WEBGL,
+                              )
+                            : null,
+                    userAgent: window.navigator.userAgent,
+                    vendor:
+                        gl && rendererInfo
+                            ? gl.getParameter(
+                                  rendererInfo.UNMASKED_VENDOR_WEBGL,
+                              )
+                            : null,
+                };
+            }),
+            lifecycle: {
+                active,
+                cold,
+                context: contextLifecycle,
+                hidden,
+                offscreen,
+                restoredInteraction: restoredControl.interaction,
+            },
+            name: scenario.name,
+            pageErrors: pageErrors.slice(0, 8),
+            path: scenario.path,
+            performanceBudget,
+            requested,
+            runtime: {
+                ...fixture.fixture,
+                ...fixture.resources,
+                browserDpr: resolved.browserDpr,
+                dprCap: resolved.dprCap,
+                profileGardenId: fixture.gardenId,
+                qualityTier: resolved.qualityTier,
+                runtimeFrameLoop: await readRuntimeFrameLoopSnapshot(page),
+                shadowMapSize: resolved.shadowMapSize,
+                shadowsEnabled: resolved.shadowsEnabled,
+            },
+            sample: active.sample,
+            screenshotPath,
+            screenshotWitness,
             url,
         };
     } finally {
@@ -6498,6 +8473,83 @@ function buildGardenSwitchSummary(scenarios) {
     };
 }
 
+function buildLifecycleSummary(scenarios) {
+    const lifecycleRuns = scenarios.filter(
+        (scenario) => scenario.requested?.lifecycleProfile === true,
+    );
+    const metric = (select) => {
+        const values = lifecycleRuns
+            .map(select)
+            .filter((value) => Number.isFinite(value));
+        return {
+            max: values.length > 0 ? round(Math.max(...values)) : null,
+            median: round(median(values)),
+            min: values.length > 0 ? round(Math.min(...values)) : null,
+        };
+    };
+    const residual = (phase) => ({
+        drawCalls: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.sample?.drawCalls,
+        ),
+        renderedFrames: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.sample?.renderedFrames,
+        ),
+        scriptDuration: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.cdp?.scriptDuration,
+        ),
+        submittedTriangles: metric(
+            (run) =>
+                run.lifecycle?.[phase]?.residual?.sample?.submittedTriangles,
+        ),
+        runtimeSchedulerZeroObservedRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.[phase]?.runtimeSchedulerZeroObserved === true,
+        ).length,
+        zeroWorkObservedRunCount: lifecycleRuns.filter(
+            (run) => run.lifecycle?.[phase]?.zeroWorkObserved === true,
+        ).length,
+    });
+
+    return {
+        baseScenarioCount: new Set(
+            lifecycleRuns.map((run) => run.baseName ?? run.name),
+        ).size,
+        cold: {
+            canvasAttachedMs: metric(
+                (run) => run.lifecycle?.cold?.canvasAttachedMs,
+            ),
+            canvasSizedMs: metric((run) => run.lifecycle?.cold?.canvasSizedMs),
+            domContentLoadedMs: metric(
+                (run) => run.lifecycle?.cold?.domContentLoadedMs,
+            ),
+            firstSubmittedFrameMs: metric(
+                (run) => run.lifecycle?.cold?.firstSubmittedFrameMs,
+            ),
+            fixtureReadyMs: metric(
+                (run) => run.lifecycle?.cold?.fixtureReadyMs,
+            ),
+            interactionReadyMs: metric(
+                (run) => run.lifecycle?.cold?.interactionReadyMs,
+            ),
+        },
+        contextPersistentRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.context?.restored?.sameCanvas === true &&
+                run.lifecycle?.context?.restored?.sameContext === true,
+        ).length,
+        contextRestoredRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.context?.restored?.restoredEventCount === 1 &&
+                run.lifecycle?.context?.restored?.contextLost === false,
+        ).length,
+        hidden: residual('hidden'),
+        offscreen: residual('offscreen'),
+        passedRunCount: lifecycleRuns.filter((run) => run.budget?.pass === true)
+            .length,
+        runCount: lifecycleRuns.length,
+    };
+}
+
 function evaluateFaunaHeavyAcceptance({
     apiErrors = [],
     apiRequests = [],
@@ -8708,8 +10760,9 @@ function buildHighTargetMedians(scenarios) {
     const groups = Map.groupBy(
         scenarios.filter(
             (scenario) =>
-                scenario.requested?.gardenProfile === 'high-target' ||
-                scenario.requested?.faunaProfile === true,
+                (scenario.requested?.gardenProfile === 'high-target' ||
+                    scenario.requested?.faunaProfile === true) &&
+                scenario.requested?.lifecycleProfile !== true,
         ),
         (scenario) => scenario.baseName ?? scenario.name,
     );
@@ -10042,6 +12095,18 @@ function buildProfileSummary(
             pass: runs.every((run) => run.budget.pass),
         }),
     );
+    const lifecycleResults = Array.from(
+        Map.groupBy(
+            scenarios.filter(
+                (scenario) => scenario.requested?.lifecycleProfile === true,
+            ),
+            (scenario) => scenario.baseName ?? scenario.name,
+        ),
+        ([name, runs]) => ({
+            name,
+            pass: runs.every((run) => run.budget.pass),
+        }),
+    );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(
         buildAdaptiveHighComparisons(highTargetMedians),
@@ -10066,6 +12131,9 @@ function buildProfileSummary(
             ...gardenSwitchResults
                 .filter((result) => !result.pass)
                 .map((result) => result.name),
+            ...lifecycleResults
+                .filter((result) => !result.pass)
+                .map((result) => result.name),
             ...highTargetResults
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
@@ -10077,6 +12145,7 @@ function buildProfileSummary(
     const totalScenarios =
         nonHighTargetScenarios.length +
         gardenSwitchResults.length +
+        lifecycleResults.length +
         highTargetResults.length;
     const failedRuns = scenarios.filter(
         (scenario) => !scenario.budget.pass,
@@ -10841,6 +12910,40 @@ function buildMarkdown(report) {
         }
     }
 
+    const lifecycleProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.lifecycleProfile === true,
+    );
+    if (lifecycleProfiles.length > 0) {
+        const summary =
+            report.lifecycleSummary ?? buildLifecycleSummary(report.scenarios);
+        const formatMetric = (metric) =>
+            `${metric?.median ?? 'n/a'} [${metric?.min ?? 'n/a'}, ${metric?.max ?? 'n/a'}]`;
+        lines.push(
+            '',
+            '## Runtime lifecycle baseline',
+            '',
+            `Fresh-context runs: ${summary.passedRunCount}/${summary.runCount} passed across ${summary.baseScenarioCount} base scenario; persistent Canvas/context after forced restoration: ${summary.contextPersistentRunCount}/${summary.runCount}; restored contexts: ${summary.contextRestoredRunCount}/${summary.runCount}.`,
+            '',
+            `Cold milestone medians [min, max] in ms — DOMContentLoaded ${formatMetric(summary.cold.domContentLoadedMs)}, Canvas attached ${formatMetric(summary.cold.canvasAttachedMs)}, Canvas sized ${formatMetric(summary.cold.canvasSizedMs)}, first submitted frame ${formatMetric(summary.cold.firstSubmittedFrameMs)}, exact fixture ${formatMetric(summary.cold.fixtureReadyMs)}, outline interaction ${formatMetric(summary.cold.interactionReadyMs)}.`,
+            '',
+            'Offscreen and synthetic document-hidden renderer/CDP residuals are recorded honestly. The structural gate covers SceneTime scheduling counters; residual submitted GL work and CDP script time remain observations for the scheduler optimization.',
+            '',
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; scheduler zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; scheduler zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
+            '| --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- |',
+        );
+        for (const scenario of lifecycleProfiles) {
+            const lifecycle = scenario.lifecycle;
+            const offscreenControl = lifecycle?.offscreen?.resumedControl;
+            const hiddenControl = lifecycle?.hidden?.resumedControl;
+            const restoredControl = lifecycle?.context?.restoredControl;
+            const screenshot = (control) =>
+                `${control?.screenshotWitness?.width ?? 'n/a'}x${control?.screenshotWitness?.height ?? 'n/a'}`;
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.offscreen?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.hidden?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const gardenSwitchProfiles = report.scenarios.filter(
         (scenario) => scenario.requested?.gardenSwitchProfile === true,
     );
@@ -11492,19 +13595,26 @@ async function main() {
             console.log(
                 `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
             );
-            const result = baseScenario.gardenSwitchProfile
-                ? await measureGardenSwitchScenario(
+            const result = baseScenario.lifecycleProfile
+                ? await measureLifecycleScenario(
                       browser,
                       options.baseUrl,
                       runScenario,
                       options,
                   )
-                : await measureScenario(
-                      browser,
-                      options.baseUrl,
-                      runScenario,
-                      options,
-                  );
+                : baseScenario.gardenSwitchProfile
+                  ? await measureGardenSwitchScenario(
+                        browser,
+                        options.baseUrl,
+                        runScenario,
+                        options,
+                    )
+                  : await measureScenario(
+                        browser,
+                        options.baseUrl,
+                        runScenario,
+                        options,
+                    );
             result.baseName = baseScenario.name;
             result.profileRun = runIndex;
             scenarios.push(result);
@@ -11552,6 +13662,7 @@ async function main() {
             adaptiveHighComparisons,
             crossTierMedians,
             gardenSwitchSummary: buildGardenSwitchSummary(scenarios),
+            lifecycleSummary: buildLifecycleSummary(scenarios),
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
@@ -11589,6 +13700,7 @@ export {
     buildCrossTierMedians,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleSummary,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
@@ -11603,11 +13715,14 @@ export {
     evaluateFaunaHeavyAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
+    evaluateLifecycleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
+    installLifecycleMilestoneTracker,
+    installProfileContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,

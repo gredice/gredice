@@ -7,6 +7,7 @@ import {
     buildCrossTierMedians,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleSummary,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
@@ -21,11 +22,14 @@ import {
     evaluateFaunaHeavyAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
+    evaluateLifecycleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
+    installLifecycleMilestoneTracker,
+    installProfileContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
@@ -327,6 +331,33 @@ test('garden-switch scenario keeps repeated High and fauna arrivals in one conte
     assert.equal(request.quality, 'high');
     assert.equal(request.staticSceneCache, 'legacy');
     assert.equal(url.searchParams.get('gardenSwitch'), '1');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('lifecycle scenario repeats the exact High workload in fresh contexts', () => {
+    const scenarios = resolveScenarios('lifecycle');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(scenario.name, 'game-high-target-runtime-lifecycle-desktop');
+    assert.equal(scenario.lifecycleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.hud, '0');
+    assert.equal(request.lifecycle, '1');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
     assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
 });
 
@@ -873,10 +904,11 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
     );
 });
 
-test('garden-switch context tracking starts before Canvas discovery and fails closed for every Canvas event', () => {
+test('profile context tracking starts before Canvas discovery without handling loss itself', async () => {
     const keys = [
         'document',
         'HTMLCanvasElement',
+        '__grediceGameProfileContextEvents',
         '__grediceGardenSwitchContextEvents',
     ];
     const descriptors = new Map(
@@ -909,18 +941,29 @@ test('garden-switch context tracking starts before Canvas discovery and fails cl
 
         installGardenSwitchContextTracker();
         assert.equal(listeners.size, 2);
-        listeners.get('webglcontextlost')?.({ target: new ProfileCanvas() });
+        listeners.get('webglcontextlost')?.({
+            defaultPrevented: true,
+            target: new ProfileCanvas(),
+        });
         listeners.get('webglcontextrestored')?.({
             target: new ProfileCanvas(),
         });
-        listeners.get('webglcontextlost')?.({ target: {} });
-
-        assert.deepEqual(globalThis.__grediceGardenSwitchContextEvents, {
-            lostCount: 1,
-            restoredCount: 1,
+        listeners.get('webglcontextlost')?.({
+            defaultPrevented: false,
+            target: {},
         });
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
-        installGardenSwitchContextTracker();
+        const tracker = globalThis.__grediceGardenSwitchContextEvents;
+        assert.equal(globalThis.__grediceGameProfileContextEvents, tracker);
+        assert.equal(tracker.lostCount, 1);
+        assert.equal(tracker.lostDefaultPreventedCount, 1);
+        assert.deepEqual(tracker.lostDefaultPreventedValues, [true]);
+        assert.equal(tracker.lostTimestamps.length, 1);
+        assert.equal(tracker.restoredCount, 1);
+        assert.equal(tracker.restoredTimestamps.length, 1);
+
+        installProfileContextTracker();
         assert.equal(listeners.size, 2);
     } finally {
         for (const key of keys) {
@@ -932,6 +975,21 @@ test('garden-switch context tracking starts before Canvas discovery and fails cl
             }
         }
     }
+});
+
+test('lifecycle cold milestones are captured at document start and first submitted draw', () => {
+    const milestoneSource = installLifecycleMilestoneTracker.toString();
+    const browserMetricSource = installBrowserMetrics.toString();
+
+    assert.match(
+        milestoneSource,
+        /performance\.getEntriesByType\('navigation'\)/,
+    );
+    assert.match(milestoneSource, /new MutationObserver/);
+    assert.match(milestoneSource, /new ResizeObserver/);
+    assert.match(milestoneSource, /canvasAttachedMs \?\?=/);
+    assert.match(milestoneSource, /canvasSizedMs/);
+    assert.match(browserMetricSource, /firstSubmittedFrameMs/);
 });
 
 test('runtime GPU-source scenario disables only the external profiler timer', () => {
@@ -2589,6 +2647,479 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
     assert.match(markdown, /Cow trot #3/);
     assert.match(markdown, /dynamic bee:1 butterfly:3 ladybug:5 squirrel:1/);
 });
+
+test('lifecycle acceptance gates scheduler suspension while keeping residual GL and CDP informational', () => {
+    const residual = (renderedFrames, drawCalls, submittedTriangles) => ({
+        cdp: {
+            layoutDuration: 0,
+            scriptDuration: 0.02,
+            taskDuration: 0.03,
+        },
+        sample: {
+            drawCalls,
+            elapsedMs: 5_000,
+            renderedFrames,
+            submittedTriangles,
+        },
+    });
+    const residualDeltas = {
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    };
+    const result = evaluateLifecycleAcceptance({
+        active: {},
+        cold: {},
+        context: {},
+        fixture: {},
+        hidden: {
+            residual: residual(3, 9, 27),
+            residualDeltas,
+        },
+        offscreen: {
+            residual: residual(2, 8, 24),
+            residualDeltas,
+        },
+        requested: { sampleMs: 5_000 },
+    });
+    const byName = Object.fromEntries(
+        result.checks.map((check) => [check.name, check]),
+    );
+
+    assert.equal(
+        byName.lifecycleOffscreenResidualRenderedFramesFinite.pass,
+        true,
+    );
+    assert.equal(byName.lifecycleOffscreenResidualWakeupDelta.pass, true);
+    assert.equal(
+        byName.lifecycleOffscreenResidualOwnedInvalidationDelta.pass,
+        true,
+    );
+    assert.equal(byName.lifecycleHiddenResidualDrawCallsFinite.pass, true);
+    assert.deepEqual(result.residualWorkPolicy, {
+        rendererAndCdpGated: false,
+        runtimeSchedulerGated: true,
+        reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+    });
+});
+
+test('lifecycle acceptance passes one complete contract and rejects focused evidence mutations', () => {
+    const input = createPassingLifecycleAcceptanceInput();
+    const passing = evaluateLifecycleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+
+    const underRendered = structuredClone(input);
+    underRendered.active.sample.renderedFrames = 1;
+    underRendered.active.sample.renderedFps = 0.2;
+    assert.equal(
+        lifecycleAcceptanceCheck(underRendered, 'lifecycleActiveRenderedFrames')
+            .pass,
+        false,
+    );
+
+    const schedulerWakeup = structuredClone(input);
+    schedulerWakeup.offscreen.residualDeltas.wakeupCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            schedulerWakeup,
+            'lifecycleOffscreenResidualWakeupDelta',
+        ).pass,
+        false,
+    );
+
+    const unhandledContextLoss = structuredClone(input);
+    unhandledContextLoss.context.lost.lostDefaultPreventedCount = 0;
+    unhandledContextLoss.context.lost.lostDefaultPreventedValues = [false];
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            unhandledContextLoss,
+            'lifecycleContextLossHandledByRuntime',
+        ).pass,
+        false,
+    );
+
+    const reversedContextEvents = structuredClone(input);
+    reversedContextEvents.context.restoreDurationMs = -1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            reversedContextEvents,
+            'lifecycleContextRestoreDurationMs',
+        ).pass,
+        false,
+    );
+
+    const replacedColdCanvas = structuredClone(input);
+    replacedColdCanvas.cold.firstCanvasPersistent = false;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            replacedColdCanvas,
+            'lifecycleColdFirstCanvasPersistent',
+        ).pass,
+        false,
+    );
+
+    const invalidRestoredScreenshot = structuredClone(input);
+    invalidRestoredScreenshot.context.restoredControl.screenshotWitness.width = 1_280;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            invalidRestoredScreenshot,
+            'lifecycleContextRestoredScreenshotWidth',
+        ).pass,
+        false,
+    );
+});
+
+function lifecycleAcceptanceCheck(input, name) {
+    return evaluateLifecycleAcceptance(input).checks.find(
+        (check) => check.name === name,
+    );
+}
+
+function createPassingLifecycleAcceptanceInput() {
+    const screenshotWitness = {
+        entropy: 1,
+        height: 1_440,
+        maximumChannelStandardDeviation: 6,
+        opaque: true,
+        sampledLumaRange: 21,
+        sampledUniqueColorCount: 16,
+        width: 2_560,
+    };
+    const outline = {
+        activeTargetCount: 2,
+        dispatched: true,
+        kind: 'outline',
+        styleGroupCount: 1,
+        targetBlockId: 'profile-raised-bed:2:0',
+        targetRaisedBedId: 2,
+    };
+    const arrival = (lostEventCount = 0, restoredEventCount = 0) => ({
+        canvas: {
+            canvasCount: 1,
+            clientHeight: 720,
+            clientWidth: 1_280,
+            contextLost: false,
+            contextLostEventCount: lostEventCount,
+            contextRestoredEventCount: restoredEventCount,
+            gardenId: 99_996,
+            height: 1_440,
+            sameCanvas: true,
+            sameContext: true,
+            sceneVisible: true,
+            width: 2_560,
+        },
+        fixture: {
+            blockCount: 297,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            raisedBedCount: 3,
+            stackCount: 270,
+        },
+        gardenId: 99_996,
+        resources: { staticOpaqueSceneCacheEnabled: false },
+    });
+    const activeSample = () => ({
+        drawCalls: 1_000,
+        elapsedMs: 5_000,
+        renderedFps: 30,
+        renderedFrames: 150,
+        submittedTriangles: 10_000,
+    });
+    const residual = () => ({
+        cdp: {
+            layoutDuration: 0,
+            scriptDuration: 0.01,
+            taskDuration: 0.02,
+        },
+        sample: {
+            drawCalls: 0,
+            elapsedMs: 5_000,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        },
+    });
+    const residualDeltas = () => ({
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    });
+    const control = (lostEventCount = 0, restoredEventCount = 0) => ({
+        fixture: arrival(lostEventCount, restoredEventCount),
+        interaction: { ...outline },
+        postCommandRender: {
+            drawCalls: 10,
+            renderedFrames: 1,
+            submittedTriangles: 100,
+        },
+        screenshotWitness: { ...screenshotWitness },
+    });
+    const activeRuntimeFrameLoop = {
+        activeLeaseCount: 0,
+        cancelledCallbackCount: 0,
+        canvasVisible: true,
+        documentVisible: true,
+        effectiveVisible: true,
+        loopActive: true,
+        ownedInvalidationCount: 10,
+        resumeCount: 0,
+        scheduledCallbackCount: 20,
+        suspendCount: 0,
+        targetFramesPerSecond: 30,
+        wakeupCount: 19,
+    };
+    const offscreenControl = control();
+    const hiddenControl = control();
+    const restoredControl = control(1, 1);
+
+    return {
+        active: {
+            runtimeFrameLoop: activeRuntimeFrameLoop,
+            sample: activeSample(),
+        },
+        cold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 20,
+            canvasSize: { height: 1_440, width: 2_560 },
+            canvasSizedMs: 30,
+            contextPageCount: 1,
+            domContentLoadedMs: 10,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 40,
+            fixture: arrival(),
+            fixtureReadyMs: 50,
+            interaction: { ...outline },
+            interactionReadyMs: 60,
+            screenshotWitness: { ...screenshotWitness },
+        },
+        context: {
+            lost: {
+                contextLost: true,
+                lostDefaultPreventedCount: 1,
+                lostDefaultPreventedValues: [true],
+                lostEventCount: 1,
+                lostTimestamps: [100],
+                sameCanvas: true,
+                sameContext: true,
+            },
+            lostWindow: residual(),
+            precondition: {
+                contextLost: false,
+                lostEventCount: 0,
+                restoredEventCount: 0,
+                sameCanvas: true,
+                sameContext: true,
+            },
+            restoreDurationMs: 20,
+            restored: {
+                canvasCount: 1,
+                contextLost: false,
+                restoredEventCount: 1,
+                restoredTimestamps: [120],
+                sameCanvas: true,
+                sameContext: true,
+            },
+            restoredControl,
+            restoredWindow: {
+                cdp: { scriptDuration: 0.2, taskDuration: 0.3 },
+                sample: activeSample(),
+            },
+            restoreRequested: true,
+            supported: true,
+        },
+        fixture: arrival(1, 1),
+        hidden: {
+            before: activeRuntimeFrameLoop,
+            residual: residual(),
+            residualDeltas: residualDeltas(),
+            resumeDeltas: { resumeCount: 1, suspendCount: 0 },
+            resumed: {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            },
+            resumedControl: hiddenControl,
+            resumedDocument: { hidden: false, visibilityState: 'visible' },
+            signal: 'synthetic-document-hidden',
+            suspended: {
+                canvasVisible: true,
+                documentVisible: false,
+                effectiveVisible: false,
+                loopActive: false,
+            },
+            suspendedDocument: { hidden: true, visibilityState: 'hidden' },
+            transitionDeltas: { resumeCount: 0, suspendCount: 1 },
+        },
+        offscreen: {
+            before: activeRuntimeFrameLoop,
+            residual: residual(),
+            residualDeltas: residualDeltas(),
+            resumeDeltas: { resumeCount: 1, suspendCount: 0 },
+            resumed: {
+                canvasVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            },
+            resumedControl: offscreenControl,
+            resumedIntersection: {
+                boundingRect: { top: 0 },
+                entry: { height: 720, isIntersecting: true, width: 1_280 },
+            },
+            signal: 'intersection-observer',
+            suspended: {
+                canvasVisible: false,
+                documentVisible: true,
+                effectiveVisible: false,
+                loopActive: false,
+            },
+            suspendedIntersection: {
+                boundingRect: { top: 800 },
+                entry: { height: 0, isIntersecting: false, width: 0 },
+            },
+            transitionDeltas: { resumeCount: 0, suspendCount: 1 },
+        },
+        requested: {
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            fixedTimeSeconds: 43_200,
+            freshContext: true,
+            gardenProfile: 'high-target',
+            hud: '0',
+            lifecycle: '1',
+            lifecycleProfile: true,
+            lifecycleRequest: '1',
+            mode: 'details',
+            outline: '1',
+            quality: 'high',
+            sampleMs: 5_000,
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1_280 },
+        },
+        resolved: {
+            browserDpr: 2,
+            dprCap: 2,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+        },
+        restoredInteraction: { ...outline },
+        restoredScreenshotWitness: { ...screenshotWitness },
+    };
+}
+
+test('lifecycle summary groups three fresh-context repeats as one scenario outside High medians', () => {
+    const runs = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-high-target-runtime-lifecycle-desktop',
+        budget: { pass: true },
+        name: `game-high-target-runtime-lifecycle-desktop-run-${profileRun}`,
+        lifecycle: {
+            cold: {
+                canvasAttachedMs: 100 + profileRun,
+                canvasSizedMs: 120 + profileRun,
+                domContentLoadedMs: 80 + profileRun,
+                firstSubmittedFrameMs: 140 + profileRun,
+                fixtureReadyMs: 160 + profileRun,
+                interactionReadyMs: 180 + profileRun,
+            },
+            context: {
+                restored: {
+                    contextLost: false,
+                    restoredEventCount: 1,
+                    sameCanvas: true,
+                    sameContext: true,
+                },
+            },
+            hidden: {
+                residual: residualLifecycleFixture(profileRun),
+                runtimeSchedulerZeroObserved: true,
+                zeroWorkObserved: true,
+            },
+            offscreen: {
+                residual: residualLifecycleFixture(profileRun),
+                runtimeSchedulerZeroObserved: true,
+                zeroWorkObserved: true,
+            },
+        },
+        profileRun,
+        requested: {
+            gardenProfile: 'high-target',
+            lifecycleProfile: true,
+        },
+    }));
+    const summary = buildLifecycleSummary(runs);
+
+    assert.equal(summary.baseScenarioCount, 1);
+    assert.equal(summary.runCount, 3);
+    assert.equal(summary.passedRunCount, 3);
+    assert.equal(summary.contextPersistentRunCount, 3);
+    assert.equal(summary.offscreen.runtimeSchedulerZeroObservedRunCount, 3);
+    assert.equal(summary.offscreen.zeroWorkObservedRunCount, 3);
+    assert.deepEqual(buildHighTargetMedians(runs), {});
+    assert.deepEqual(buildProfileSummary(runs, {}), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const switchRuns = [1, 2, 3].map((profileRun) => ({
+        baseName: 'game-garden-switch-high-fauna-single-context-desktop',
+        budget: { pass: true },
+        name: `game-garden-switch-high-fauna-single-context-desktop-run-${profileRun}`,
+        requested: { gardenSwitchProfile: true },
+    }));
+    const faunaRuns = [1, 2, 3].map((profileRun) => ({
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        requested: { faunaProfile: true, gardenProfile: 'fauna-heavy' },
+    }));
+    assert.deepEqual(
+        buildProfileSummary([...faunaRuns, ...switchRuns, ...runs], {
+            fauna: { pass: true },
+        }),
+        {
+            failedScenarioNames: [],
+            failedScenarios: 0,
+            failedRuns: 0,
+            passedRuns: 9,
+            passedScenarios: 3,
+            totalRuns: 9,
+            totalScenarios: 3,
+        },
+    );
+});
+
+function residualLifecycleFixture(value) {
+    return {
+        cdp: { scriptDuration: value },
+        sample: {
+            drawCalls: value,
+            renderedFrames: value,
+            submittedTriangles: value,
+        },
+    };
+}
 
 test('local profiler console filtering only ignores the known missing analytics asset', () => {
     const knownLocalAnalyticsError = {
