@@ -371,6 +371,73 @@ const regressionBaseNames = [
     'game-high-target-runtime-lifecycle-desktop',
 ];
 
+const crossTierFixturePolicies = [
+    {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 1,
+        groundDecorationDensity: 0,
+        quality: 'low',
+        shadowMapSize: 0,
+        shadows: false,
+        slug: 'low',
+        tier: 'low',
+    },
+    {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        quality: 'medium',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'medium',
+        tier: 'medium',
+    },
+    {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 2,
+        groundDecorationDensity: 1,
+        quality: 'high',
+        shadowMapSize: 4_096,
+        shadows: true,
+        slug: 'high',
+        tier: 'high',
+    },
+    {
+        autoQualityDeviceClass: 'standard',
+        autoQualityMetrics: {
+            coarsePointer: false,
+            coreCount: 8,
+            dpr: 2,
+            memoryGb: 8,
+            narrowViewport: false,
+        },
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        quality: 'auto',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'auto-standard',
+        tier: 'medium',
+    },
+    {
+        autoQualityDeviceClass: 'constrained',
+        autoQualityMetrics: {
+            coarsePointer: false,
+            coreCount: 4,
+            dpr: 2,
+            memoryGb: 4,
+            narrowViewport: false,
+        },
+        dprCap: 1,
+        groundDecorationDensity: 0.25,
+        quality: 'auto',
+        shadowMapSize: 1_024,
+        shadows: true,
+        slug: 'auto-constrained',
+        tier: 'auto-constrained',
+    },
+];
+
 function regressionScenario(baseName, profileRun) {
     let scenario;
     if (baseName === 'game-high-target-runtime-lifecycle-desktop') {
@@ -385,31 +452,45 @@ function regressionScenario(baseName, profileRun) {
     scenario.baseName = baseName;
     scenario.name = `${baseName}-run-${profileRun}`;
     if (baseName.startsWith('game-cross-tier-')) {
+        const policy = crossTierFixturePolicies.find(({ slug }) =>
+            baseName.startsWith(`game-cross-tier-${slug}-`),
+        );
+        if (!policy) {
+            throw new Error(`Missing fixture policy for ${baseName}`);
+        }
         scenario.requested.crossTierProfile = true;
-        scenario.requested.autoQualityDeviceClass = baseName.includes(
-            'auto-constrained',
-        )
-            ? 'constrained'
-            : baseName.includes('auto-standard')
-              ? 'standard'
-              : 'unspecified';
-        scenario.requested.autoQualityMetrics = {
-            coarsePointer: false,
-            coreCount: 8,
-            dpr: 2,
-            memoryGb: 8,
-            narrowViewport: false,
-        };
-        scenario.requested.expectedAutoQualityMetrics = baseName.includes(
-            '-auto-',
-        )
-            ? structuredClone(scenario.requested.autoQualityMetrics)
-            : null;
-        scenario.requested.expectedDprCap = 2;
-        scenario.requested.expectedGroundDecorationDensity = 1;
-        scenario.requested.expectedQualityTier = 'high';
-        scenario.requested.expectedShadowMapSize = 4_096;
-        scenario.requested.expectedShadows = true;
+        scenario.requested.autoQualityDeviceClass =
+            policy.autoQualityDeviceClass;
+        scenario.requested.autoQualityMetrics = structuredClone(
+            policy.autoQualityMetrics ?? {
+                coarsePointer: false,
+                coreCount: 8,
+                dpr: 2,
+                memoryGb: 8,
+                narrowViewport: false,
+            },
+        );
+        scenario.requested.expectedAutoQualityMetrics =
+            policy.autoQualityMetrics
+                ? structuredClone(policy.autoQualityMetrics)
+                : null;
+        scenario.requested.expectedDprCap = policy.dprCap;
+        scenario.requested.expectedGroundDecorationDensity =
+            policy.groundDecorationDensity;
+        scenario.requested.expectedQualityTier = policy.tier;
+        scenario.requested.expectedShadowMapSize = policy.shadowMapSize;
+        scenario.requested.expectedShadows = policy.shadows;
+        scenario.requested.quality = policy.quality;
+        scenario.path = scenario.path.replace(
+            'quality=high',
+            `quality=${policy.quality}`,
+        );
+        scenario.runtime.dprCap = policy.dprCap;
+        scenario.runtime.groundDecorationDensity =
+            policy.groundDecorationDensity;
+        scenario.runtime.qualityTier = policy.tier;
+        scenario.runtime.shadowMapSize = policy.shadowMapSize;
+        scenario.runtime.shadowsEnabled = policy.shadows;
     }
     if (baseName === 'game-fauna-heavy-day-interaction-desktop') {
         scenario.requested.faunaProfile = true;
@@ -511,6 +592,23 @@ test('canonical release comparison requires a symmetric 2x2 matrix through the A
     const baselineConfirmation = independentBaselineRepeat(baseline);
     const confirmation = independentRepeat(candidate);
 
+    for (const policy of crossTierFixturePolicies) {
+        const scenario = baseline.scenarios.find(
+            (item) =>
+                item.baseName.startsWith(`game-cross-tier-${policy.slug}-`) &&
+                item.profileRun === 1,
+        );
+        assert.equal(scenario.requested.quality, policy.quality);
+        assert.equal(scenario.runtime.qualityTier, policy.tier);
+        assert.equal(scenario.runtime.dprCap, policy.dprCap);
+        assert.equal(
+            scenario.runtime.groundDecorationDensity,
+            policy.groundDecorationDensity,
+        );
+        assert.equal(scenario.runtime.shadowMapSize, policy.shadowMapSize);
+        assert.equal(scenario.runtime.shadowsEnabled, policy.shadows);
+    }
+
     const incomplete = compareConfirmedReports(
         baseline,
         candidate,
@@ -546,6 +644,34 @@ test('canonical nested policy and fixture evidence fails closed', async (t) => {
         }
     };
     const cases = {
+        'cross-tier requested tier policy': (pair) => {
+            mutateScenario(
+                pair,
+                'game-cross-tier-low-steady-desktop',
+                (scenario) => {
+                    scenario.requested.quality = 'high';
+                },
+            );
+        },
+        'cross-tier runtime tier policy': (pair) => {
+            mutateScenario(
+                pair,
+                'game-cross-tier-medium-steady-desktop',
+                (scenario) => {
+                    scenario.runtime.qualityTier = 'high';
+                },
+            );
+        },
+        'cross-tier automatic input policy': (pair) => {
+            mutateScenario(
+                pair,
+                'game-cross-tier-auto-constrained-steady-desktop',
+                (scenario) => {
+                    scenario.requested.autoQualityMetrics.coreCount = 8;
+                    scenario.requested.expectedAutoQualityMetrics.coreCount = 8;
+                },
+            );
+        },
         'cross-tier browser DPR': (pair) => {
             mutateScenario(
                 pair,

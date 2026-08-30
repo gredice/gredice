@@ -408,6 +408,10 @@ relative boundary. These are profiler noise floors, not product budgets; each
 raw run must still pass the scenario's checked absolute performance budget
 before either report is comparable. The comparator validates both the aggregate
 budget outcome and every recorded absolute-budget check in every raw run.
+For cross-tier scenarios it also derives the required requested quality,
+Automatic device inputs, DPR cap, decoration density, resolved tier, shadow-map
+size, and shadow state from the canonical scenario name; two reports cannot
+become comparable merely by agreeing on the same incorrect tier policy.
 
 Exit `0` means compatible evidence and all confirmed relative gates passed.
 Exit `1` means either `needs-rerun` or a regression, and exit `2` means the

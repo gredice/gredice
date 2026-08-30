@@ -37,6 +37,72 @@ const regressionScenarioBaseNames = [
 const regressionScenarioRunKeys = regressionScenarioBaseNames.flatMap(
     (baseName) => [1, 2, 3].map((profileRun) => `${baseName}::${profileRun}`),
 );
+const crossTierBaseNamePattern =
+    /^game-cross-tier-(low|medium|high|auto-standard|auto-constrained)-(steady|camera-motion)-desktop$/;
+const canonicalCrossTierPolicies = {
+    low: {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 1,
+        expectedAutoQualityMetrics: null,
+        groundDecorationDensity: 0,
+        quality: 'low',
+        shadowMapSize: 0,
+        shadows: false,
+        tier: 'low',
+    },
+    medium: {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 1.5,
+        expectedAutoQualityMetrics: null,
+        groundDecorationDensity: 0.5,
+        quality: 'medium',
+        shadowMapSize: 2_048,
+        shadows: true,
+        tier: 'medium',
+    },
+    high: {
+        autoQualityDeviceClass: 'unspecified',
+        dprCap: 2,
+        expectedAutoQualityMetrics: null,
+        groundDecorationDensity: 1,
+        quality: 'high',
+        shadowMapSize: 4_096,
+        shadows: true,
+        tier: 'high',
+    },
+    'auto-standard': {
+        autoQualityDeviceClass: 'standard',
+        dprCap: 1.5,
+        expectedAutoQualityMetrics: {
+            coarsePointer: false,
+            coreCount: 8,
+            dpr: 2,
+            memoryGb: 8,
+            narrowViewport: false,
+        },
+        groundDecorationDensity: 0.5,
+        quality: 'auto',
+        shadowMapSize: 2_048,
+        shadows: true,
+        tier: 'medium',
+    },
+    'auto-constrained': {
+        autoQualityDeviceClass: 'constrained',
+        dprCap: 1,
+        expectedAutoQualityMetrics: {
+            coarsePointer: false,
+            coreCount: 4,
+            dpr: 2,
+            memoryGb: 4,
+            narrowViewport: false,
+        },
+        groundDecorationDensity: 0.25,
+        quality: 'auto',
+        shadowMapSize: 1_024,
+        shadows: true,
+        tier: 'auto-constrained',
+    },
+};
 
 // Browser/CDP counters have material same-commit variance. A median regression
 // must exceed both its relative limit and this fixed practical noise floor.
@@ -290,6 +356,14 @@ function validatePositiveNumber(errors, value, path) {
     }
 }
 
+function validateExactValue(errors, value, expected, path) {
+    if (canonicalJson(value) !== canonicalJson(expected)) {
+        errors.push(
+            `${path} must be ${canonicalJson(expected)}; received ${canonicalJson(value)}`,
+        );
+    }
+}
+
 function validatePassingChecks(errors, value, path) {
     if (!isRecord(value)) {
         errors.push(`${path} is missing`);
@@ -438,6 +512,14 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
     }
 
     if (scenario.baseName.startsWith('game-cross-tier-')) {
+        const profileSlug = crossTierBaseNamePattern.exec(
+            scenario.baseName,
+        )?.[1];
+        const policy = canonicalCrossTierPolicies[profileSlug];
+        if (!policy) {
+            errors.push(`${path} has an unsupported cross-tier profile`);
+            return;
+        }
         if (!isNonEmptyString(requested.autoQualityDeviceClass)) {
             errors.push(`${path} requested.autoQualityDeviceClass is missing`);
         }
@@ -477,6 +559,45 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
         );
         if (typeof requested.expectedShadows !== 'boolean') {
             errors.push(`${path} requested.expectedShadows must be a boolean`);
+        }
+        for (const [field, expected] of Object.entries({
+            autoQualityDeviceClass: policy.autoQualityDeviceClass,
+            expectedAutoQualityMetrics: policy.expectedAutoQualityMetrics,
+            expectedDprCap: policy.dprCap,
+            expectedGroundDecorationDensity: policy.groundDecorationDensity,
+            expectedQualityTier: policy.tier,
+            expectedShadowMapSize: policy.shadowMapSize,
+            expectedShadows: policy.shadows,
+            quality: policy.quality,
+        })) {
+            validateExactValue(
+                errors,
+                requested[field],
+                expected,
+                `${path} requested.${field}`,
+            );
+        }
+        if (policy.expectedAutoQualityMetrics) {
+            validateExactValue(
+                errors,
+                requested.autoQualityMetrics,
+                policy.expectedAutoQualityMetrics,
+                `${path} requested.autoQualityMetrics`,
+            );
+        }
+        for (const [field, expected] of Object.entries({
+            dprCap: policy.dprCap,
+            groundDecorationDensity: policy.groundDecorationDensity,
+            qualityTier: policy.tier,
+            shadowMapSize: policy.shadowMapSize,
+            shadowsEnabled: policy.shadows,
+        })) {
+            validateExactValue(
+                errors,
+                runtime[field],
+                expected,
+                `${path} runtime.${field}`,
+            );
         }
     }
 
