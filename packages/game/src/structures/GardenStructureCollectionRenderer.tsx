@@ -27,9 +27,11 @@ export type GardenStructureCollectionSelection = Readonly<{
 }>;
 
 export type GardenStructureCollectionRendererProps = Readonly<{
+    castShadows?: boolean;
     isStructureVisible?: GardenStructureCollectionVisibilityPredicate;
     onSelect?: (selection: GardenStructureCollectionSelection) => void;
     plan: GardenStructureCollectionPlan;
+    renderProps?: boolean;
     selectedInstanceId?: string | null;
     visibleStructureIds?: ReadonlySet<string>;
 }>;
@@ -83,12 +85,14 @@ function getVisibleInstanceIndices(
 
 function GardenStructureCollectionBatchInstances({
     batch,
+    castShadows,
     geometry,
     onSelect,
     selectedInstanceId,
     visibleStructureIds,
 }: {
     batch: GardenStructureCollectionBatchDescription;
+    castShadows: boolean;
     geometry: BoxGeometry;
     onSelect?: GardenStructureCollectionRendererProps['onSelect'];
     selectedInstanceId: string | null;
@@ -213,7 +217,7 @@ function GardenStructureCollectionBatchInstances({
         // biome-ignore lint/a11y/noStaticElementInteractions: R3F instance picking has a DOM alternative.
         <instancedMesh
             args={[geometry, material, batch.instanceIds.length]}
-            castShadow={!transparent}
+            castShadow={castShadows && !transparent}
             frustumCulled
             name={`GardenStructureCollectionBatch:${batch.id}`}
             onClick={onSelect ? handleClick : undefined}
@@ -237,9 +241,11 @@ function GardenStructureCollectionBatchInstances({
  * saved semantic plan.
  */
 export function GardenStructureCollectionRenderer({
+    castShadows = true,
     isStructureVisible,
     onSelect,
     plan,
+    renderProps = true,
     selectedInstanceId = null,
     visibleStructureIds,
 }: GardenStructureCollectionRendererProps) {
@@ -265,9 +271,9 @@ export function GardenStructureCollectionRenderer({
             ...plan.batches.opaque,
             ...plan.batches.transparent,
             ...plan.batches.roof,
-            ...plan.batches.props,
+            ...(renderProps ? plan.batches.props : []),
         ],
-        [plan.batches],
+        [plan.batches, renderProps],
     );
 
     return (
@@ -282,6 +288,7 @@ export function GardenStructureCollectionRenderer({
             {batches.map((batch) => (
                 <GardenStructureCollectionBatchInstances
                     batch={batch}
+                    castShadows={castShadows}
                     geometry={geometry}
                     key={batch.id}
                     onSelect={onSelect}

@@ -24,6 +24,7 @@ import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFa
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvatarInteractions';
+import { mergeGardenAvatarCollisionWorlds } from './entities/avatar/gardenAvatarMovement';
 import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
@@ -111,6 +112,11 @@ import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueScen
 import { GardenStructureVerticalSlice } from './structures/GardenStructureVerticalSlice';
 import { createGardenStructureAvatarCollisionWorld } from './structures/gardenStructureAvatarCollision';
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
+import {
+    createGardenStructureSceneBaseHeightResolver,
+    GardenStructureSceneLayer,
+    useGardenStructureSceneSnapshot,
+} from './structures/gardenStructureScene';
 import { resolveGardenStructureBuildCameraFrame } from './structures/structureBuildCamera';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
@@ -719,6 +725,35 @@ export function GameScene({
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
     const garden = useSceneCurrentGarden(transitionedGardenData);
+    const structureBaseHeightResolver = useMemo(
+        () =>
+            createGardenStructureSceneBaseHeightResolver({
+                blockData,
+                records: garden?.structures,
+                stacks: garden?.stacks,
+            }),
+        [blockData, garden?.stacks, garden?.structures],
+    );
+    const savedStructureScene = useGardenStructureSceneSnapshot({
+        gardenId: garden?.id,
+        includeCollision: gardenAvatarEnabled,
+        records: blockData ? garden?.structures : undefined,
+        resolveBaseHeight: structureBaseHeightResolver,
+    });
+    const structureAvatarCollisionWorld = useMemo(() => {
+        if (
+            savedStructureScene.collisionWorld &&
+            structureFixtureCollisionWorld
+        ) {
+            return mergeGardenAvatarCollisionWorlds(
+                savedStructureScene.collisionWorld,
+                structureFixtureCollisionWorld,
+            );
+        }
+        return (
+            savedStructureScene.collisionWorld ?? structureFixtureCollisionWorld
+        );
+    }, [savedStructureScene.collisionWorld, structureFixtureCollisionWorld]);
     const fenceGateBlockIds = useMemo(
         () =>
             new Set(
@@ -888,6 +923,28 @@ export function GameScene({
                 className,
             )}
             {...rest}
+            data-garden-structure-diagnostic-status={
+                savedStructureScene.diagnostics.status
+            }
+            data-garden-structure-first-id={
+                savedStructureScene.plan?.structures[0]?.structureId
+            }
+            data-garden-structure-collision-status={
+                savedStructureScene.collisionWorld
+                    ? 'ready'
+                    : (garden?.structures?.length ?? 0) > 0
+                      ? 'missing'
+                      : 'empty'
+            }
+            data-garden-structure-rejected-count={
+                savedStructureScene.diagnostics.rejectedRecordCount
+            }
+            data-garden-structure-rendered-count={
+                savedStructureScene.plan?.structures.length ?? 0
+            }
+            data-garden-structure-warning-count={
+                savedStructureScene.diagnostics.warningCount
+            }
         >
             <GameSceneDetailContext.Provider
                 value={{ includePendingCartPlants: true, renderDetails }}
@@ -983,6 +1040,15 @@ export function GameScene({
                                     stacks={garden?.stacks}
                                     renderDetails={renderDetails}
                                     weather={weather}
+                                />
+                                <GardenStructureSceneLayer
+                                    castShadows={
+                                        qualityProfile.shadows && zoom !== 'far'
+                                    }
+                                    renderProps={
+                                        renderDetails && zoom !== 'far'
+                                    }
+                                    snapshot={savedStructureScene}
                                 />
                                 {structureFixtureBundle ? (
                                     <GardenStructureVerticalSlice
@@ -1104,7 +1170,7 @@ export function GameScene({
                                         <Suspense fallback={null}>
                                             <GardenAvatar
                                                 additionalCollisionWorld={
-                                                    structureFixtureCollisionWorld
+                                                    structureAvatarCollisionWorld
                                                 }
                                                 interactionDisabled={
                                                     structureBuildActive

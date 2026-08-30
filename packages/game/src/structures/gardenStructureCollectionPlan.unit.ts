@@ -268,6 +268,28 @@ describe('garden structure collection plans', () => {
         }
     });
 
+    test('keeps material batches spatially local for whole-chunk frustum culling', () => {
+        const result = compileSavedGardenStructureCollection([
+            savedStructure('house', 'far-west', { anchorX: -96 }),
+            savedStructure('house', 'far-east', { anchorX: 96 }),
+        ]);
+        const batches = [
+            ...result.plan.batches.opaque,
+            ...result.plan.batches.transparent,
+            ...result.plan.batches.roof,
+            ...result.plan.batches.props,
+        ];
+
+        assert.ok(batches.length > 0);
+        assert.ok(
+            batches.every((batch) => new Set(batch.structureIds).size === 1),
+        );
+        assert.deepEqual(
+            new Set(batches.flatMap((batch) => batch.structureIds)),
+            new Set(['far-east', 'far-west']),
+        );
+    });
+
     test('preserves a rotated concave footprint and exposes nearby semantic buckets', () => {
         const document: GardenStructureDocumentV1 = {
             schemaVersion: 1,

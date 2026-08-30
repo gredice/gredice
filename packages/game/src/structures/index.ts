@@ -89,6 +89,20 @@ export {
     resolveGardenStructureRuntimeKit,
 } from './gardenStructureSavedRecord';
 export type {
+    GardenStructureSceneBaseHeightInput,
+    GardenStructureSceneCacheOptions,
+    GardenStructureSceneDiagnosticStatus,
+    GardenStructureSceneDiagnostics,
+    GardenStructureSceneResolveInput,
+    GardenStructureSceneSnapshot,
+} from './gardenStructureScene';
+export {
+    createGardenStructureSceneBaseHeightResolver,
+    GardenStructureSceneCache,
+    GardenStructureSceneLayer,
+    useGardenStructureSceneSnapshot,
+} from './gardenStructureScene';
+export type {
     GardenStructureBatchCategory,
     GardenStructureBatchDescription,
     GardenStructureBatchGeometryKind,

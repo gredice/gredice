@@ -273,13 +273,36 @@ function getFallbackGeometry(
     }
 }
 
+const gardenStructureCollectionBatchChunkSize = 32;
+
+function collectionBatchChunk(plan: GardenStructureSemanticPlan) {
+    // Keep material batching local enough for the instanced mesh bounds to be
+    // useful to Three's built-in frustum culling. A structure is never split
+    // across chunks, so its parts still appear and disappear together.
+    return Object.freeze({
+        x: Math.round(
+            (plan.worldBounds.minX + plan.worldBounds.maxX) /
+                2 /
+                gardenStructureCollectionBatchChunkSize,
+        ),
+        y: Math.round(
+            (plan.worldBounds.minY + plan.worldBounds.maxY) /
+                2 /
+                gardenStructureCollectionBatchChunkSize,
+        ),
+    });
+}
+
 function collectionBatchKey(
     plan: GardenStructureSemanticPlan,
     batch: GardenStructureSemanticPlan['batches']['opaque'][number],
 ) {
+    const chunk = collectionBatchChunk(plan);
     return [
         plan.kitKey,
         plan.kitVersion,
+        chunk.x,
+        chunk.y,
         batch.category,
         batch.geometryKind,
         batch.geometryId,
@@ -355,9 +378,12 @@ function createCollectionBatches(
         }
 
         if (emittedInstanceCount === 0) {
+            const chunk = collectionBatchChunk(plan);
             const key = [
                 plan.kitKey,
                 plan.kitVersion,
+                chunk.x,
+                chunk.y,
                 'transparent',
                 'floor-cell',
                 'semantic-footprint',
