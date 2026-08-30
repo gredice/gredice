@@ -17,8 +17,55 @@ const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
 const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
+const gameProfileAnimalCommandEventName = 'gredice:game-profile-animal-command';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
+const faunaHeavyExpectedGardenId = 99_995;
+const faunaHeavyExpectedGardenStackCount = 117;
+const faunaHeavyExpectedGardenBlockCount = 147;
+const faunaHeavyExpectedGardenDetailBlockCount = 30;
+const faunaHeavyExpectedBlockCountsByName = {
+    BirdHouse: 1,
+    Block_Dry_Ground: 1,
+    Block_Grass: 116,
+    Bucket: 1,
+    Bush: 1,
+    CactusBarrel: 1,
+    CactusPricklyPear: 1,
+    CatPillow: 1,
+    ChickenCoop: 1,
+    Composter: 3,
+    CowShelter: 2,
+    DogHouse: 1,
+    GardenBox: 3,
+    GoatShelter: 1,
+    HorseStable: 1,
+    PigletPen: 1,
+    Pine: 1,
+    RabbitHutch: 1,
+    SheepFold: 2,
+    StoneMedium: 1,
+    Stool: 1,
+    Tree: 1,
+    Tulip: 3,
+    WaterWell: 1,
+};
+const faunaHeavyExpectedFixedSpeciesCounts = {
+    bird: 1,
+    cat: 1,
+    chicken: 1,
+    cow: 2,
+    dog: 1,
+    goat: 1,
+    horse: 1,
+    piglet: 1,
+    rabbit: 1,
+    sheep: 2,
+};
+const faunaHeavyExpectedCowActorIds = [
+    'cow:animal-debug:1:CowShelter:-6:-1:1',
+    'cow:animal-debug:1:CowShelter:3:2:1',
+];
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -393,6 +440,24 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
             : {}),
     })),
 );
+
+const faunaHeavyScenarios = [
+    {
+        name: 'game-fauna-heavy-day-interaction-desktop',
+        path: '/debug/profile/game?mode=details&profile=fauna-heavy&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        animalProfileCommand: {
+            behavior: 'trot',
+            species: 'Cow',
+        },
+        faunaProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
 
 const highTargetOperationVisualScenarios = [
     {
@@ -959,6 +1024,7 @@ const scenarioSets = {
     'cross-tier': crossTierScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
+    fauna: faunaHeavyScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1260,7 +1326,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -1289,6 +1355,7 @@ function allScenarios() {
         ...crossTierScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...faunaHeavyScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -1328,7 +1395,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -2690,6 +2757,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const apiErrors = [];
     const consoleMessages = [];
     const pageErrors = [];
+    const apiRequests = [];
 
     await cdp.send('Performance.enable');
     if (scenario.navigatorMetrics) {
@@ -2724,6 +2792,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             apiErrors.push({
                 status: response.status(),
                 url: responseUrl,
+            });
+        }
+    });
+    page.on('request', (pageRequest) => {
+        const requestUrl = pageRequest.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({
+                method: pageRequest.method(),
+                url: requestUrl,
             });
         }
     });
@@ -2804,6 +2881,69 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 operationVisuals: request.operationVisuals === '1',
             },
             { timeout: 60000 },
+        );
+    }
+    if (scenario.faunaProfile === true) {
+        await page.waitForFunction(
+            ({
+                expectedBlockCount,
+                expectedBlockCountsByName,
+                expectedDetailBlockCount,
+                expectedGardenId,
+                expectedSpeciesCounts,
+                expectedStackCount,
+            }) => {
+                const profile = globalThis.__grediceGameProfile;
+                const blockCounts = profile?.profileGardenBlockCountsByName;
+                const speciesCounts =
+                    profile?.actorGroundingShadowSpeciesCounts;
+                const matchesExpectedEntries = (actual, expected) =>
+                    Boolean(
+                        actual &&
+                            typeof actual === 'object' &&
+                            Object.entries(expected).every(
+                                ([name, count]) => actual[name] === count,
+                            ),
+                    );
+                const blockCountKeysMatch =
+                    blockCounts && typeof blockCounts === 'object'
+                        ? Object.keys(blockCounts).length ===
+                          Object.keys(expectedBlockCountsByName).length
+                        : false;
+
+                return Boolean(
+                    profile?.qualityTier === 'high' &&
+                        profile.profileGardenId === expectedGardenId &&
+                        profile.profileGardenStackCount ===
+                            expectedStackCount &&
+                        profile.profileGardenBlockCount ===
+                            expectedBlockCount &&
+                        profile.profileGardenRaisedBedCount === 0 &&
+                        profile.profileGardenBlockCount -
+                            profile.profileGardenStackCount ===
+                            expectedDetailBlockCount &&
+                        blockCountKeysMatch &&
+                        matchesExpectedEntries(
+                            blockCounts,
+                            expectedBlockCountsByName,
+                        ) &&
+                        matchesExpectedEntries(
+                            speciesCounts,
+                            expectedSpeciesCounts,
+                        ) &&
+                        profile.actorGroundingShadowDroppedCount === 0,
+                );
+            },
+            {
+                expectedBlockCount: faunaHeavyExpectedGardenBlockCount,
+                expectedBlockCountsByName: faunaHeavyExpectedBlockCountsByName,
+                expectedDetailBlockCount:
+                    faunaHeavyExpectedGardenDetailBlockCount,
+                expectedGardenId: faunaHeavyExpectedGardenId,
+                expectedSpeciesCounts: faunaHeavyExpectedFixedSpeciesCounts,
+                expectedStackCount: faunaHeavyExpectedGardenStackCount,
+            },
+            { timeout: 60_000 },
         );
     }
 
@@ -3016,6 +3156,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
             budget: evaluateBudget(sample, budgets[scenario.budget]),
             closeup: {
                 cold: closeup.cold,
@@ -3082,12 +3223,16 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const weatherSurfaceTransitionRequest =
         scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
+    const animalProfileCommandRequest = scenario.animalProfileCommand ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
                 adaptiveHighProfileControlEventName,
                 adaptiveHighProfileControlRecovery,
                 adaptiveHighProfileControlStarted,
+                animalProfileCommandEventName,
+                animalProfileCommandRequest,
+                faunaExpectedSpecies,
                 outlineProfileDispatched,
                 outlineProfileTelemetryAvailable,
                 placementProfileEventName,
@@ -3117,6 +3262,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let adaptiveHighInteractionObserved = false;
             let adaptiveHighLevelMax = null;
             let adaptiveHighProfileControlObserved = false;
+            let actorGroundingShadowSpeciesCountsAtStart = null;
+            let actorGroundingShadowSpeciesCountsMin = null;
             let effectiveDprMin = null;
             let gameCameraMotionObserved = false;
             let gameCameraSnapshotAtStart = null;
@@ -3134,6 +3281,41 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const readProfileString = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'string' ? value : null;
+            };
+            const readActorGroundingShadowSpeciesCounts = () => {
+                if (!faunaExpectedSpecies.length) {
+                    return null;
+                }
+                const value =
+                    globalThis.__grediceGameProfile
+                        ?.actorGroundingShadowSpeciesCounts;
+                return Object.fromEntries(
+                    faunaExpectedSpecies.map((species) => {
+                        const count =
+                            value &&
+                            typeof value === 'object' &&
+                            typeof value[species] === 'number' &&
+                            Number.isFinite(value[species])
+                                ? value[species]
+                                : 0;
+                        return [species, count];
+                    }),
+                );
+            };
+            const recordActorGroundingShadowSpeciesCounts = () => {
+                const counts = readActorGroundingShadowSpeciesCounts();
+                if (!counts) {
+                    return null;
+                }
+                actorGroundingShadowSpeciesCountsAtStart ??= { ...counts };
+                actorGroundingShadowSpeciesCountsMin ??= { ...counts };
+                for (const [species, count] of Object.entries(counts)) {
+                    actorGroundingShadowSpeciesCountsMin[species] = Math.min(
+                        actorGroundingShadowSpeciesCountsMin[species],
+                        count,
+                    );
+                }
+                return counts;
             };
             const readGameCameraSnapshot = () => {
                 const snapshot =
@@ -3279,6 +3461,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gameCameraSnapshotVersionMax =
                 gameCameraSnapshotAtStart?.version ?? null;
             recordGameCameraMotion();
+            recordActorGroundingShadowSpeciesCounts();
             recordEffectiveDpr();
             recordGeneratedPlantVisibility();
             recordAdaptiveHighState();
@@ -3338,6 +3521,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ? globalThis.__grediceGameProfile
                           .actorGroundingShadowUpdateCount
                     : null;
+            const animalProfileCommandSequenceAtStart = readProfileNumber(
+                'profileAnimalCommandSequence',
+            );
             const animatedCasterShadowRefreshCountAtStart =
                 typeof globalThis.__grediceGameProfile
                     ?.animatedCasterShadowRefreshCount === 'number'
@@ -3367,6 +3553,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     : null;
             const rainMountedAtStart = (rainParticleCountAtStart ?? 0) > 0;
             let rainUnmountMs = null;
+            const animalProfileCommandDispatched = animalProfileCommandRequest
+                ? globalThis.dispatchEvent(
+                      new CustomEvent(animalProfileCommandEventName, {
+                          detail: animalProfileCommandRequest,
+                      }),
+                  )
+                : false;
             const weatherTransitionDispatched = weatherTransitionRequest
                 ? globalThis.dispatchEvent(
                       new CustomEvent(weatherTransitionEventName, {
@@ -3550,6 +3743,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     intervals.push(now - last);
                     last = now;
                     recordAdaptiveHighState();
+                    recordActorGroundingShadowSpeciesCounts();
                     recordEffectiveDpr();
                     recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
@@ -3661,6 +3855,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
             const sampleEndedAt = performance.now();
             recordGameCameraMotion();
+            const actorGroundingShadowSpeciesCountsAtEnd =
+                recordActorGroundingShadowSpeciesCounts();
             const gameCameraSnapshotAtEnd = readGameCameraSnapshot();
             const gameCameraSnapshotVersionDelta =
                 gameCameraSnapshotAtStart && gameCameraSnapshotAtEnd
@@ -3840,6 +4036,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         ? null
                         : actorGroundingShadowUpdateCountAtEnd -
                           actorGroundingShadowUpdateCountAtStart,
+                actorGroundingShadowSpeciesCountsAtEnd,
+                actorGroundingShadowSpeciesCountsAtStart,
+                actorGroundingShadowSpeciesCountsMin,
+                animalProfileCommandDispatched,
+                animalProfileCommandSequenceAtStart,
                 animatedCasterShadowRefreshCountDelta:
                     animatedCasterShadowRefreshCountAtStart === null ||
                     animatedCasterShadowRefreshCountAtEnd === null
@@ -3991,6 +4192,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             adaptiveHighProfileControlRecovery:
                 scenario.profileControlRecovery === true,
             adaptiveHighProfileControlStarted,
+            animalProfileCommandEventName: gameProfileAnimalCommandEventName,
+            animalProfileCommandRequest,
+            faunaExpectedSpecies:
+                scenario.faunaProfile === true
+                    ? Object.keys(faunaHeavyExpectedFixedSpeciesCounts)
+                    : [],
             outlineProfileDispatched: outlineProfileState.dispatched,
             outlineProfileTelemetryAvailable:
                 outlineProfileState.telemetryAvailable,
@@ -4040,6 +4247,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             typeof value === 'number' ? value : null;
         const stringOrNull = (value) =>
             typeof value === 'string' ? value : null;
+        const numberRecordOrNull = (value) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return null;
+            }
+            const entries = Object.entries(value);
+            if (
+                entries.some(
+                    ([, count]) =>
+                        typeof count !== 'number' ||
+                        !Number.isFinite(count) ||
+                        count < 0,
+                )
+            ) {
+                return null;
+            }
+            return Object.fromEntries(entries);
+        };
+        const stringArrayOrNull = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...value]
+                : null;
 
         return {
             adaptiveHighAmbientFps: numberOrNull(
@@ -4116,6 +4345,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 'number'
                     ? metadata.actorGroundingShadowPrimaryCasterCount
                     : null,
+            actorGroundingShadowSpeciesCounts: numberRecordOrNull(
+                metadata.actorGroundingShadowSpeciesCounts,
+            ),
             actorGroundingShadowUpdateCount:
                 typeof metadata.actorGroundingShadowUpdateCount === 'number'
                     ? metadata.actorGroundingShadowUpdateCount
@@ -4437,6 +4669,40 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.placementShadowFlushCount === 'number'
                     ? metadata.placementShadowFlushCount
                     : null,
+            profileAnimalCommandAcknowledgedIds: stringArrayOrNull(
+                metadata.profileAnimalCommandAcknowledgedIds,
+            ),
+            profileAnimalCommandAcknowledgementCount: numberOrNull(
+                metadata.profileAnimalCommandAcknowledgementCount,
+            ),
+            profileAnimalCommandBehavior: stringOrNull(
+                metadata.profileAnimalCommandBehavior,
+            ),
+            profileAnimalCommandMovingAcknowledgedIds: stringArrayOrNull(
+                metadata.profileAnimalCommandMovingAcknowledgedIds,
+            ),
+            profileAnimalCommandMovingAcknowledgementCount: numberOrNull(
+                metadata.profileAnimalCommandMovingAcknowledgementCount,
+            ),
+            profileAnimalCommandSequence: numberOrNull(
+                metadata.profileAnimalCommandSequence,
+            ),
+            profileAnimalCommandSpecies: stringOrNull(
+                metadata.profileAnimalCommandSpecies,
+            ),
+            profileGardenBlockCount: numberOrNull(
+                metadata.profileGardenBlockCount,
+            ),
+            profileGardenBlockCountsByName: numberRecordOrNull(
+                metadata.profileGardenBlockCountsByName,
+            ),
+            profileGardenId: numberOrNull(metadata.profileGardenId),
+            profileGardenRaisedBedCount: numberOrNull(
+                metadata.profileGardenRaisedBedCount,
+            ),
+            profileGardenStackCount: numberOrNull(
+                metadata.profileGardenStackCount,
+            ),
             qualityTier:
                 typeof metadata.qualityTier === 'string'
                     ? metadata.qualityTier
@@ -4703,17 +4969,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     const screenshotPath =
         options.screenshots ||
+        scenario.screenshotWitness === true ||
         (scenario.staticSceneCacheBenchmark === true &&
             scenario.staticSceneCacheVisualDeterministic !== false)
             ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
             : null;
+    let screenshotWitness = null;
     if (screenshotPath) {
         await mkdir(dirname(screenshotPath), { recursive: true });
-        await page.screenshot({
-            path: screenshotPath,
-            animations: 'disabled',
-            fullPage: false,
-        });
+        if (scenario.screenshotWitness === true) {
+            await page.locator('canvas').first().screenshot({
+                path: screenshotPath,
+                animations: 'disabled',
+            });
+            screenshotWitness =
+                await measureProfileScreenshotWitness(screenshotPath);
+        } else {
+            await page.screenshot({
+                path: screenshotPath,
+                animations: 'disabled',
+                fullPage: false,
+            });
+        }
     }
 
     await context.close();
@@ -4751,6 +5028,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             profileMetadata?.fixedTimeSeconds ??
             scenario.fixedTimeSeconds ??
             null,
+        faunaProfile: scenario.faunaProfile === true,
         gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
         graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
@@ -4766,6 +5044,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
+        animalProfileCommand: animalProfileCommandRequest,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
@@ -4787,16 +5066,19 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
+        apiRequests,
         consoleMessages,
         environment,
         pageErrors,
         requested,
         runtime,
         sample: roundedSample,
+        screenshotWitness,
     });
     return {
         acceptance,
         apiErrors: apiErrors.slice(0, 8),
+        apiRequests: apiRequests.slice(0, 8),
         budget: {
             checks: [...budget.checks, ...acceptance.checks],
             pass: budget.pass && acceptance.pass,
@@ -4828,6 +5110,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         runtime,
         sample: roundedSample,
         screenshotPath,
+        screenshotWitness,
         url,
         name: scenario.name,
     };
@@ -4971,6 +5254,387 @@ function isIgnoredLocalProfilerConsoleError(message) {
     } catch {
         return false;
     }
+}
+
+function isProfileScreenshotWitnessValid(witness) {
+    return Boolean(
+        Number.isFinite(witness?.width) &&
+            Number.isFinite(witness?.height) &&
+            Number.isFinite(witness?.entropy) &&
+            Number.isFinite(witness?.maximumChannelStandardDeviation) &&
+            Number.isFinite(witness?.sampledLumaRange) &&
+            Number.isFinite(witness?.sampledUniqueColorCount) &&
+            witness.width > 0 &&
+            witness.height > 0 &&
+            witness.entropy >= 0.5 &&
+            witness.maximumChannelStandardDeviation >= 5 &&
+            witness.sampledLumaRange >= 20 &&
+            witness.sampledUniqueColorCount >= 16 &&
+            witness.opaque === true,
+    );
+}
+
+async function measureProfileScreenshotWitness(path) {
+    const screenshot = await readFile(path);
+    const [metadata, sampledRgb, stats] = await Promise.all([
+        sharp(screenshot).metadata(),
+        sharp(screenshot)
+            .removeAlpha()
+            .resize({ height: 64, width: 64 })
+            .raw()
+            .toBuffer(),
+        sharp(screenshot).stats(),
+    ]);
+    const sampledColors = new Set();
+    let maximumLuma = Number.NEGATIVE_INFINITY;
+    let minimumLuma = Number.POSITIVE_INFINITY;
+    for (let offset = 0; offset < sampledRgb.length; offset += 3) {
+        const red = sampledRgb[offset];
+        const green = sampledRgb[offset + 1];
+        const blue = sampledRgb[offset + 2];
+        sampledColors.add(`${red}:${green}:${blue}`);
+        const luma = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+        maximumLuma = Math.max(maximumLuma, luma);
+        minimumLuma = Math.min(minimumLuma, luma);
+    }
+
+    return {
+        entropy: round(stats.entropy, 4),
+        height: metadata.height ?? null,
+        maximumChannelStandardDeviation: round(
+            Math.max(
+                0,
+                ...stats.channels.slice(0, 3).map((channel) => channel.stdev),
+            ),
+            4,
+        ),
+        opaque: stats.isOpaque,
+        sampledLumaRange: round(maximumLuma - minimumLuma, 4),
+        sampledUniqueColorCount: sampledColors.size,
+        width: metadata.width ?? null,
+    };
+}
+
+function evaluateFaunaHeavyAcceptance({
+    apiErrors = [],
+    apiRequests = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+}) {
+    if (requested?.faunaProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const exactRecord = (name, actual, expected) => {
+        const normalize = (record) =>
+            record && typeof record === 'object' && !Array.isArray(record)
+                ? Object.fromEntries(
+                      Object.entries(record).sort(([left], [right]) =>
+                          left.localeCompare(right),
+                      ),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-record',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const exactStringSet = (name, actual, expected) => {
+        const normalize = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...new Set(value)].sort((left, right) =>
+                      left.localeCompare(right),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-string-set',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const commandSequenceAtStart = sample.animalProfileCommandSequenceAtStart;
+    const commandSequenceStartedClean =
+        commandSequenceAtStart === null || commandSequenceAtStart === 0;
+    const expectedCommandSequence = (commandSequenceAtStart ?? 0) + 1;
+    const minimumRenderedFrames = Math.max(
+        1,
+        Math.floor((sample.elapsedMs ?? 0) / 1_000),
+    );
+    const expectedFixedActorCount = Object.values(
+        faunaHeavyExpectedFixedSpeciesCounts,
+    ).reduce((total, count) => total + count, 0);
+    const runtimeSpeciesCount = runtime?.actorGroundingShadowSpeciesCounts
+        ? Object.values(runtime.actorGroundingShadowSpeciesCounts).reduce(
+              (total, count) => total + count,
+              0,
+          )
+        : null;
+    const checks = [
+        exact('faunaGardenProfile', requested.gardenProfile, 'fauna-heavy'),
+        exact('faunaMode', requested.mode, 'details'),
+        exact('faunaControls', requested.controls, '0'),
+        exact('faunaDetails', requested.details, '1'),
+        exact('faunaDebugHud', requested.debugHud, '0'),
+        exact('faunaHud', requested.hud, '0'),
+        exact('faunaFixedTimeSeconds', requested.fixedTimeSeconds, 43_200),
+        exact('faunaQualityRequest', requested.quality, 'high'),
+        exact('faunaQualityTier', runtime?.qualityTier, 'high'),
+        exact('faunaShadowsEnabled', runtime?.shadowsEnabled, true),
+        exact('faunaShadowMapSize', runtime?.shadowMapSize, 4_096),
+        exact(
+            'faunaGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            1,
+        ),
+        exact('faunaRequestedDpr', requested.dpr, 2),
+        exact('faunaReportedDpr', sample.reportedDpr, 2),
+        exact('faunaCanvasClientWidth', sample.canvas?.clientWidth, 1_280),
+        exact('faunaCanvasClientHeight', sample.canvas?.clientHeight, 720),
+        exact('faunaCanvasWidth', sample.canvas?.width, 2_560),
+        exact('faunaCanvasHeight', sample.canvas?.height, 1_440),
+        exact(
+            'faunaStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'faunaStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'faunaGardenId',
+            runtime?.profileGardenId,
+            faunaHeavyExpectedGardenId,
+        ),
+        exact(
+            'faunaGardenStackCount',
+            runtime?.profileGardenStackCount,
+            faunaHeavyExpectedGardenStackCount,
+        ),
+        exact(
+            'faunaGardenBlockCount',
+            runtime?.profileGardenBlockCount,
+            faunaHeavyExpectedGardenBlockCount,
+        ),
+        exact(
+            'faunaGardenRaisedBedCount',
+            runtime?.profileGardenRaisedBedCount,
+            0,
+        ),
+        exact(
+            'faunaGardenDetailBlockCount',
+            typeof runtime?.profileGardenBlockCount === 'number' &&
+                typeof runtime?.profileGardenStackCount === 'number'
+                ? runtime.profileGardenBlockCount -
+                      runtime.profileGardenStackCount
+                : null,
+            faunaHeavyExpectedGardenDetailBlockCount,
+        ),
+        exactRecord(
+            'faunaGardenBlockCountsByName',
+            runtime?.profileGardenBlockCountsByName,
+            faunaHeavyExpectedBlockCountsByName,
+        ),
+        minimum(
+            'faunaActorGroundingShadowCount',
+            runtime?.actorGroundingShadowCount,
+            expectedFixedActorCount,
+        ),
+        exact(
+            'faunaActorGroundingShadowSpeciesTotal',
+            runtime?.actorGroundingShadowCount,
+            runtimeSpeciesCount,
+        ),
+        exact(
+            'faunaActorGroundingShadowDroppedCount',
+            runtime?.actorGroundingShadowDroppedCount,
+            0,
+        ),
+        minimum(
+            'faunaActorGroundingShadowUpdateCountDelta',
+            sample.actorGroundingShadowUpdateCountDelta,
+            1,
+        ),
+        minimum(
+            'faunaActorGroundingShadowVisibleCount',
+            runtime?.actorGroundingShadowVisibleCount,
+            1,
+        ),
+        ...Object.entries(faunaHeavyExpectedFixedSpeciesCounts).flatMap(
+            ([species, count]) => [
+                exact(
+                    `faunaSpeciesStart:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsAtStart?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesMinimum:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsMin?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesEnd:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsAtEnd?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesRuntime:${species}`,
+                    runtime?.actorGroundingShadowSpeciesCounts?.[species],
+                    count,
+                ),
+            ],
+        ),
+        exact(
+            'faunaAnimalCommandRequestedSpecies',
+            requested.animalProfileCommand?.species,
+            'Cow',
+        ),
+        exact(
+            'faunaAnimalCommandRequestedBehavior',
+            requested.animalProfileCommand?.behavior,
+            'trot',
+        ),
+        exact(
+            'faunaAnimalCommandDispatched',
+            sample.animalProfileCommandDispatched,
+            true,
+        ),
+        exact(
+            'faunaAnimalCommandSequenceStartedClean',
+            commandSequenceStartedClean,
+            true,
+        ),
+        exact(
+            'faunaAnimalCommandSequence',
+            runtime?.profileAnimalCommandSequence,
+            expectedCommandSequence,
+        ),
+        exact(
+            'faunaAnimalCommandSpecies',
+            runtime?.profileAnimalCommandSpecies,
+            'Cow',
+        ),
+        exact(
+            'faunaAnimalCommandBehavior',
+            runtime?.profileAnimalCommandBehavior,
+            'trot',
+        ),
+        exact(
+            'faunaAnimalCommandAcknowledgementCount',
+            runtime?.profileAnimalCommandAcknowledgementCount,
+            2,
+        ),
+        exactStringSet(
+            'faunaAnimalCommandAcknowledgedIds',
+            runtime?.profileAnimalCommandAcknowledgedIds,
+            faunaHeavyExpectedCowActorIds,
+        ),
+        exact(
+            'faunaAnimalCommandMovingAcknowledgementCount',
+            runtime?.profileAnimalCommandMovingAcknowledgementCount,
+            2,
+        ),
+        exactStringSet(
+            'faunaAnimalCommandMovingAcknowledgedIds',
+            runtime?.profileAnimalCommandMovingAcknowledgedIds,
+            faunaHeavyExpectedCowActorIds,
+        ),
+        exact(
+            'faunaScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'faunaScreenshotWidth',
+            screenshotWitness?.width,
+            sample.canvas?.width,
+        ),
+        exact(
+            'faunaScreenshotHeight',
+            screenshotWitness?.height,
+            sample.canvas?.height,
+        ),
+        exact('faunaScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('faunaScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'faunaScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'faunaScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'faunaScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        minimum('faunaRenderedFps', sample.renderedFps, 1),
+        minimum(
+            'faunaRenderedFrames',
+            sample.renderedFrames,
+            minimumRenderedFrames,
+        ),
+        minimum('faunaDrawCalls', sample.drawCalls, 1),
+        minimum('faunaSubmittedTriangles', sample.submittedTriangles, 1),
+        exact('faunaApiErrors', apiErrors.length, 0),
+        exact('faunaApiRequests', apiRequests.length, 0),
+        exact(
+            'faunaConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('faunaPageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
 }
 
 function evaluateCrossTierAcceptance({
@@ -5193,13 +5857,28 @@ function evaluateCrossTierAcceptance({
 
 function evaluateHighTargetAcceptance({
     apiErrors = [],
+    apiRequests = [],
     consoleMessages = [],
     environment,
     pageErrors,
     requested,
     runtime,
     sample,
+    screenshotWitness,
 }) {
+    if (requested?.faunaProfile === true) {
+        return evaluateFaunaHeavyAcceptance({
+            apiErrors,
+            apiRequests,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+        });
+    }
+
     if (requested?.crossTierProfile === true) {
         return evaluateCrossTierAcceptance({
             apiErrors,
@@ -6845,7 +7524,9 @@ function median(values) {
 function buildHighTargetMedians(scenarios) {
     const groups = Map.groupBy(
         scenarios.filter(
-            (scenario) => scenario.requested?.gardenProfile === 'high-target',
+            (scenario) =>
+                scenario.requested?.gardenProfile === 'high-target' ||
+                scenario.requested?.faunaProfile === true,
         ),
         (scenario) => scenario.baseName ?? scenario.name,
     );
@@ -7064,6 +7745,7 @@ function buildHighTargetMedians(scenarios) {
                     comparisonRole: runs[0]?.requested?.comparisonRole ?? null,
                     crossTierProfile:
                         runs[0]?.requested?.crossTierProfile === true,
+                    faunaProfile: runs[0]?.requested?.faunaProfile === true,
                     drawCallsPerRenderedFrame,
                     effectiveDpr,
                     expectedQualityTier:
@@ -8160,7 +8842,9 @@ function buildProfileSummary(
     ),
 ) {
     const nonHighTargetScenarios = scenarios.filter(
-        (scenario) => scenario.requested?.gardenProfile !== 'high-target',
+        (scenario) =>
+            scenario.requested?.gardenProfile !== 'high-target' &&
+            scenario.requested?.faunaProfile !== true,
     );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(
@@ -8956,6 +9640,41 @@ function buildMarkdown(report) {
         }
     }
 
+    const faunaProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested.faunaProfile === true,
+    );
+    if (faunaProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Fauna daytime evidence',
+            '',
+            '| Scenario / run | Fixture stacks/blocks/raised beds | Fixed-species minimum census | Shadow total/visible/dropped | Cow command sequence / acknowledged / moving | Screenshot witness | API requests/errors | Result |',
+            '| --- | ---: | --- | ---: | --- | --- | ---: | --- |',
+        );
+        for (const scenario of faunaProfiles) {
+            const speciesMinimums = Object.entries(
+                faunaHeavyExpectedFixedSpeciesCounts,
+            )
+                .map(
+                    ([species, expected]) =>
+                        `${species}:${scenario.sample.actorGroundingShadowSpeciesCountsMin?.[species] ?? 'n/a'}/${expected}`,
+                )
+                .join(' ');
+            const acknowledgementIds =
+                scenario.runtime?.profileAnimalCommandAcknowledgedIds?.join(
+                    '<br>',
+                ) ?? 'n/a';
+            const movingIds =
+                scenario.runtime?.profileAnimalCommandMovingAcknowledgedIds?.join(
+                    '<br>',
+                ) ?? 'n/a';
+            const screenshot = scenario.screenshotWitness;
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.profileGardenStackCount ?? 'n/a'}/${scenario.runtime?.profileGardenBlockCount ?? 'n/a'}/${scenario.runtime?.profileGardenRaisedBedCount ?? 'n/a'} | ${speciesMinimums} | ${scenario.runtime?.actorGroundingShadowCount ?? 'n/a'}/${scenario.runtime?.actorGroundingShadowVisibleCount ?? 'n/a'}/${scenario.runtime?.actorGroundingShadowDroppedCount ?? 'n/a'} | ${scenario.sample.animalProfileCommandSequenceAtStart ?? 0}→${scenario.runtime?.profileAnimalCommandSequence ?? 'n/a'} / ${acknowledgementIds} / ${movingIds} | ${screenshot?.width ?? 'n/a'}x${screenshot?.height ?? 'n/a'}, entropy ${screenshot?.entropy ?? 'n/a'}, RGB σ ${screenshot?.maximumChannelStandardDeviation ?? 'n/a'}, colors ${screenshot?.sampledUniqueColorCount ?? 'n/a'}, luma ${screenshot?.sampledLumaRange ?? 'n/a'} | ${scenario.apiRequests?.length ?? 0}/${scenario.apiErrors?.length ?? 0} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const highTargetMedians = Object.entries(
         report.highTargetMedians ?? {},
     ).filter(([, summary]) => summary.crossTierProfile !== true);
@@ -9192,19 +9911,26 @@ function buildMarkdown(report) {
         scenario.budget.checks
             .filter((check) => !check.pass)
             .map((check) => {
+                const display = (value) =>
+                    value && typeof value === 'object'
+                        ? JSON.stringify(value)
+                        : value;
                 if (check.comparison === 'range') {
-                    return `- ${scenario.name}: ${check.name} ${check.actual} outside [${check.limit.minimum}, ${check.limit.maximum}]`;
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} outside [${check.limit.minimum}, ${check.limit.maximum}]`;
                 }
                 if (check.comparison === 'within-pixels') {
-                    return `- ${scenario.name}: ${check.name} ${check.actual} not within 2px of ${check.limit}`;
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} not within 2px of ${display(check.limit)}`;
                 }
                 const operator =
-                    check.comparison === 'minimum'
+                    check.comparison === 'minimum' ||
+                    check.comparison === 'finite-minimum'
                         ? '<'
-                        : check.comparison === 'equal'
+                        : check.comparison === 'equal' ||
+                            check.comparison === 'equal-record' ||
+                            check.comparison === 'equal-string-set'
                           ? '!='
                           : '>';
-                return `- ${scenario.name}: ${check.name} ${check.actual} ${operator} ${check.limit}`;
+                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit)}`;
             }),
     );
     lines.push(...(failures.length ? failures : ['- None']));
@@ -9601,6 +10327,7 @@ export {
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
+    evaluateFaunaHeavyAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
@@ -9608,6 +10335,8 @@ export {
     installBrowserMetrics,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
+    isProfileScreenshotWitnessValid,
+    measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,

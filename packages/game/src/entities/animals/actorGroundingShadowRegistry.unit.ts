@@ -5,6 +5,7 @@ import {
     type ActorGroundingShadowState,
     actorGroundingShadowProfiles,
     actorGroundingShadowSnowLift,
+    countActorGroundingShadowSpecies,
     resolveActorGroundingShadow,
 } from './actorGroundingShadowRegistry';
 
@@ -229,6 +230,39 @@ describe('actor grounding-shadow projection', () => {
 });
 
 describe('ActorGroundingShadowRegistry', () => {
+    it('counts actor species while excluding placement projections', () => {
+        const registry = new ActorGroundingShadowRegistry(4);
+        registry.register({
+            id: 'cow:a',
+            primaryCasterCount: 1,
+            species: 'cow',
+        });
+        registry.register({
+            id: 'cow:b',
+            primaryCasterCount: 1,
+            species: 'cow',
+        });
+        registry.register({
+            id: 'rabbit:a',
+            primaryCasterCount: 1,
+            species: 'rabbit',
+        });
+        registry.register({
+            id: 'placement:a',
+            kind: 'placement',
+            profile: actorGroundingShadowProfiles.cat,
+        });
+
+        assert.deepEqual(registry.getSpeciesCounts(), { cow: 2, rabbit: 1 });
+        assert.deepEqual(
+            countActorGroundingShadowSpecies(registry.getEntries()),
+            {
+                cow: 2,
+                rabbit: 1,
+            },
+        );
+    });
+
     it('keeps live slots stable and reuses a released slot', () => {
         const registry = new ActorGroundingShadowRegistry(3);
         const cat = registry.register({

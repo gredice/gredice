@@ -25,6 +25,7 @@ import { useOptionalGameState } from '../../useGameState';
 import {
     type ActorGroundingShadowRegistration,
     ActorGroundingShadowRegistry,
+    type ActorGroundingShadowSpeciesCounts,
     type ActorGroundingShadowState,
     actorGroundingShadowCapacity,
     actorGroundingShadowProfiles,
@@ -104,6 +105,7 @@ type ActorGroundingShadowProfileSnapshot = {
     placementCount: number;
     placementDroppedCount: number;
     placementPeakCount: number;
+    speciesCounts: ActorGroundingShadowSpeciesCounts;
     updateCount: number;
     visibleCount: number;
 };
@@ -123,6 +125,7 @@ function disableRaycast() {
 }
 
 function publishActorGroundingShadowProfile() {
+    const speciesCounts: Record<string, number> = {};
     const aggregate = {
         batchCount: 0,
         capacity: 0,
@@ -132,6 +135,7 @@ function publishActorGroundingShadowProfile() {
         placementDroppedCount: 0,
         placementPeakCount: 0,
         primaryCasterCount: 0,
+        speciesCounts,
         updateCount: 0,
         visibleCount: 0,
     };
@@ -144,6 +148,10 @@ function publishActorGroundingShadowProfile() {
         aggregate.placementDroppedCount += snapshot.placementDroppedCount;
         aggregate.placementPeakCount += snapshot.placementPeakCount;
         aggregate.primaryCasterCount += snapshot.primaryCasterCount;
+        for (const [species, count] of Object.entries(snapshot.speciesCounts)) {
+            aggregate.speciesCounts[species] =
+                (aggregate.speciesCounts[species] ?? 0) + count;
+        }
         aggregate.updateCount += snapshot.updateCount;
         aggregate.visibleCount += snapshot.visibleCount;
     }
@@ -154,6 +162,7 @@ function publishActorGroundingShadowProfile() {
         actorGroundingShadowCount: aggregate.count,
         actorGroundingShadowDroppedCount: aggregate.droppedCount,
         actorGroundingShadowPrimaryCasterCount: aggregate.primaryCasterCount,
+        actorGroundingShadowSpeciesCounts: aggregate.speciesCounts,
         actorGroundingShadowUpdateCount: aggregate.updateCount,
         actorGroundingShadowVisibleCount: aggregate.visibleCount,
         placementProjectedShadowCount: aggregate.placementCount,
@@ -191,6 +200,7 @@ function reportActorGroundingShadowProfile({
         placementDroppedCount: stats.placementDroppedCount,
         placementPeakCount,
         primaryCasterCount: stats.primaryCasterCount,
+        speciesCounts: registry.getSpeciesCounts(),
         updateCount: stats.updateCount,
         visibleCount,
     });

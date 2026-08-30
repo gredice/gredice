@@ -78,6 +78,24 @@ export type ActorGroundingShadowRegistryStats = {
     updateCount: number;
 };
 
+export type ActorGroundingShadowSpeciesCounts = Partial<
+    Record<ActorGroundingShadowSpecies, number>
+>;
+
+export function countActorGroundingShadowSpecies(
+    entries: readonly ActorGroundingShadowRegistryEntry[],
+) {
+    const counts: ActorGroundingShadowSpeciesCounts = {};
+    for (const entry of entries) {
+        if (entry.kind === 'placement') {
+            continue;
+        }
+        counts[entry.species] = (counts[entry.species] ?? 0) + 1;
+    }
+
+    return counts;
+}
+
 export const actorGroundingShadowCapacity = 128;
 export const actorGroundingShadowSurfaceLift = 0.006;
 export const actorGroundingShadowSnowLift = 0.012;
@@ -331,6 +349,10 @@ export class ActorGroundingShadowRegistry {
         return [...this.entries.values()].sort(
             (left, right) => left.slot - right.slot,
         );
+    }
+
+    getSpeciesCounts() {
+        return countActorGroundingShadowSpecies(this.getEntries());
     }
 
     getStats(): ActorGroundingShadowRegistryStats {

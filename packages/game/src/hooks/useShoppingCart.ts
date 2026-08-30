@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
 import { useOptionalGameState } from '../useGameState';
 import { useCurrentUser } from './useCurrentUser';
 
@@ -12,7 +13,7 @@ export function useShoppingCart(enabled = true) {
         'default',
     );
     const isDeterministicEmptyMock =
-        isMock && mockGardenProfile === 'high-target';
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
     const { data: currentUser } = useCurrentUser(
         enabled && !isDeterministicEmptyMock,
     );

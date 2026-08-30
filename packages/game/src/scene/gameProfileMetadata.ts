@@ -219,6 +219,7 @@ export type GameProfileMetadata = {
     actorGroundingShadowCount?: number;
     actorGroundingShadowDroppedCount?: number;
     actorGroundingShadowPrimaryCasterCount?: number;
+    actorGroundingShadowSpeciesCounts?: Record<string, number>;
     actorGroundingShadowUpdateCount?: number;
     actorGroundingShadowVisibleCount?: number;
     animatedCasterShadowRefreshCount?: number;
@@ -291,6 +292,18 @@ export type GameProfileMetadata = {
     generatedPlantVisibleFieldCount?: number;
     generatedPlantVisibleInstanceCount?: number;
     gameCameraSnapshot?: GameCameraSnapshot;
+    profileAnimalCommandAcknowledgedIds?: string[];
+    profileAnimalCommandAcknowledgementCount?: number;
+    profileAnimalCommandBehavior?: string;
+    profileAnimalCommandMovingAcknowledgedIds?: string[];
+    profileAnimalCommandMovingAcknowledgementCount?: number;
+    profileAnimalCommandSequence?: number;
+    profileAnimalCommandSpecies?: string;
+    profileGardenBlockCount?: number;
+    profileGardenBlockCountsByName?: Record<string, number>;
+    profileGardenId?: number;
+    profileGardenRaisedBedCount?: number;
+    profileGardenStackCount?: number;
     instancedInteractionControllerCount?: number;
     instancedInteractionResolutionCount?: number;
     instancedInteractionResolutionMaxMs?: number;

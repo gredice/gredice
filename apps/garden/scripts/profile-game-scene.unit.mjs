@@ -15,6 +15,7 @@ import {
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
+    evaluateFaunaHeavyAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
@@ -22,6 +23,7 @@ import {
     installBrowserMetrics,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
+    isProfileScreenshotWitnessValid,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,
@@ -264,6 +266,36 @@ test('cross-tier scenario set replays one High-target garden across every tier a
         deviceMemory: 4,
         hardwareConcurrency: 4,
     });
+});
+
+test('fauna scenario set isolates the deterministic daytime High workload', () => {
+    const scenarios = resolveScenarios('fauna');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(scenario.name, 'game-fauna-heavy-day-interaction-desktop');
+    assert.equal(scenario.budget, 'gameHighTarget');
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.faunaProfile, true);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.deepEqual(scenario.animalProfileCommand, {
+        behavior: 'trot',
+        species: 'Cow',
+    });
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '1');
+    assert.equal(request.gardenProfile, 'fauna-heavy');
+    assert.equal(request.hud, '0');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
 });
 
 test('operation-visual High scenario is isolated behind its own opt-in set', () => {
@@ -1637,6 +1669,298 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
         }).pass,
         false,
     );
+});
+
+test('fauna acceptance requires the exact fixture, census, command, network, and visual witnesses', () => {
+    const speciesCounts = {
+        bird: 1,
+        cat: 1,
+        chicken: 1,
+        cow: 2,
+        dog: 1,
+        goat: 1,
+        horse: 1,
+        piglet: 1,
+        rabbit: 1,
+        sheep: 2,
+    };
+    const cowIds = [
+        'cow:animal-debug:1:CowShelter:-6:-1:1',
+        'cow:animal-debug:1:CowShelter:3:2:1',
+    ];
+    const blockCountsByName = {
+        BirdHouse: 1,
+        Block_Dry_Ground: 1,
+        Block_Grass: 116,
+        Bucket: 1,
+        Bush: 1,
+        CactusBarrel: 1,
+        CactusPricklyPear: 1,
+        CatPillow: 1,
+        ChickenCoop: 1,
+        Composter: 3,
+        CowShelter: 2,
+        DogHouse: 1,
+        GardenBox: 3,
+        GoatShelter: 1,
+        HorseStable: 1,
+        PigletPen: 1,
+        Pine: 1,
+        RabbitHutch: 1,
+        SheepFold: 2,
+        StoneMedium: 1,
+        Stool: 1,
+        Tree: 1,
+        Tulip: 3,
+        WaterWell: 1,
+    };
+    const screenshotWitness = {
+        entropy: 5.2,
+        height: 1_440,
+        maximumChannelStandardDeviation: 42,
+        opaque: true,
+        sampledLumaRange: 180,
+        sampledUniqueColorCount: 2_000,
+        width: 2_560,
+    };
+    const input = {
+        apiErrors: [],
+        apiRequests: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            animalProfileCommand: { behavior: 'trot', species: 'Cow' },
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            faunaProfile: true,
+            fixedTimeSeconds: 43_200,
+            gardenProfile: 'fauna-heavy',
+            hud: '0',
+            mode: 'details',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            actorGroundingShadowCount: 12,
+            actorGroundingShadowDroppedCount: 0,
+            actorGroundingShadowSpeciesCounts: speciesCounts,
+            actorGroundingShadowVisibleCount: 12,
+            groundDecorationDensity: 1,
+            profileAnimalCommandAcknowledgedIds: cowIds,
+            profileAnimalCommandAcknowledgementCount: 2,
+            profileAnimalCommandBehavior: 'trot',
+            profileAnimalCommandMovingAcknowledgedIds: cowIds,
+            profileAnimalCommandMovingAcknowledgementCount: 2,
+            profileAnimalCommandSequence: 1,
+            profileAnimalCommandSpecies: 'Cow',
+            profileGardenBlockCount: 147,
+            profileGardenBlockCountsByName: blockCountsByName,
+            profileGardenId: 99_995,
+            profileGardenRaisedBedCount: 0,
+            profileGardenStackCount: 117,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            actorGroundingShadowSpeciesCountsAtEnd: speciesCounts,
+            actorGroundingShadowSpeciesCountsAtStart: speciesCounts,
+            actorGroundingShadowSpeciesCountsMin: speciesCounts,
+            actorGroundingShadowUpdateCountDelta: 120,
+            animalProfileCommandDispatched: true,
+            animalProfileCommandSequenceAtStart: null,
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 1_440,
+                width: 2_560,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            renderedFps: 30,
+            renderedFrames: 150,
+            reportedDpr: 2,
+            submittedTriangles: 100_000,
+        },
+        screenshotWitness,
+    };
+
+    const result = evaluateHighTargetAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.length > 50);
+    assert.equal(evaluateFaunaHeavyAcceptance(input).pass, true);
+    assert.equal(isProfileScreenshotWitnessValid(screenshotWitness), true);
+
+    const reject = (override) =>
+        evaluateHighTargetAcceptance({ ...input, ...override }).pass;
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileGardenBlockCount: 146 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            sample: {
+                ...input.sample,
+                actorGroundingShadowSpeciesCountsMin: {
+                    ...speciesCounts,
+                    cow: 1,
+                },
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileAnimalCommandSequence: 2 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: { ...input.runtime, profileAnimalCommandSequence: 0 },
+            sample: {
+                ...input.sample,
+                animalProfileCommandSequenceAtStart: 0,
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            runtime: {
+                ...input.runtime,
+                profileAnimalCommandAcknowledgedIds: [
+                    cowIds[0],
+                    'cow:wrong-actor',
+                ],
+            },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            apiRequests: [
+                {
+                    method: 'GET',
+                    url: 'http://profile.local/api/game/gardens',
+                },
+            ],
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            screenshotWitness: { ...screenshotWitness, entropy: 0 },
+        }),
+        false,
+    );
+    assert.equal(
+        reject({
+            screenshotWitness: { ...screenshotWitness, width: 1_280 },
+        }),
+        false,
+    );
+
+    const scenarios = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        budgetName: 'gameHighTarget',
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: input.requested,
+        runtime: { qualityTier: 'high' },
+        sample: {
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            effectiveDprAtEnd: 2,
+            gpu: { elapsedP95Ms: null, valid: false },
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+    }));
+    const medians = buildHighTargetMedians(scenarios);
+    const faunaMedian = medians['game-fauna-heavy-day-interaction-desktop'];
+    assert.equal(faunaMedian?.faunaProfile, true);
+    assert.equal(faunaMedian?.runCount, 3);
+    assert.equal(faunaMedian?.pass, true);
+    assert.deepEqual(buildProfileSummary(scenarios, medians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians: {},
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: medians,
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'fauna',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                acceptance: result,
+                apiErrors: [],
+                apiRequests: [],
+                budget: { checks: result.checks, pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-fauna-heavy-day-interaction-desktop',
+                pageErrors: [],
+                profileRun: 1,
+                requested: input.requested,
+                runtime: input.runtime,
+                sample: {
+                    ...input.sample,
+                    drawCallsPerFrame: 2,
+                    drawCallsPerRenderedFrame: 100,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    trianglesPerFrame: 2_000,
+                    trianglesPerRenderedFrame: 100_000,
+                },
+                screenshotPath: '/tmp/fauna.png',
+                screenshotWitness,
+            },
+        ],
+        schemaVersion: 3,
+        sourceCommit: 'test-sha',
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(markdown, /## Fauna daytime evidence/);
+    assert.match(markdown, /cow:2\/2/);
+    assert.match(markdown, /CowShelter:-6:-1:1/);
+    assert.match(markdown, /entropy 5\.2/);
 });
 
 test('local profiler console filtering only ignores the known missing analytics asset', () => {

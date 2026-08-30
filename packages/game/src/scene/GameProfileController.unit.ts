@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { Block } from '../types/Block';
 import {
+    readGameProfileAnimalCommand,
     readGameProfileCloseupCommand,
     readGameProfileOperationVisualHighlightRequest,
     readGameProfileOutlineCommand,
@@ -34,6 +35,40 @@ test('profile closeup command validates the deterministic raised bed id', () => 
     );
     assert.equal(
         readGameProfileCloseupCommand({ action: 'open', raisedBedId: '1' }),
+        null,
+    );
+});
+
+test('profile animal command accepts only the deterministic Cow trot request', () => {
+    assert.deepEqual(
+        readGameProfileAnimalCommand({
+            behavior: 'trot',
+            species: 'Cow',
+        }),
+        { behavior: 'trot', species: 'Cow' },
+    );
+    assert.deepEqual(
+        readGameProfileAnimalCommand({
+            behavior: 'trot',
+            species: 'Cow',
+            targetId: null,
+        }),
+        { behavior: 'trot', species: 'Cow', targetId: null },
+    );
+    assert.equal(
+        readGameProfileAnimalCommand({ behavior: 'idle', species: 'Cow' }),
+        null,
+    );
+    assert.equal(
+        readGameProfileAnimalCommand({ behavior: 'trot', species: 'Horse' }),
+        null,
+    );
+    assert.equal(
+        readGameProfileAnimalCommand({
+            behavior: 'trot',
+            species: 'Cow',
+            targetId: 'cow-a',
+        }),
         null,
     );
 });

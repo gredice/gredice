@@ -10,11 +10,13 @@ import {
     useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import { createAllAnimalDebugStacks } from '../entities/animals/allAnimalDebugStacks';
 import type { GardenPreviewImage } from '../gardenPreview';
 import {
     loadLocalSandboxGarden,
     localSandboxGardenId,
 } from '../localSandboxGarden';
+import { faunaHeavyMockGardenProfile } from '../mockGardenProfilePolicy';
 import {
     highTargetOperationVisualOperationIds,
     isOperationVisualRewardDebugProfile,
@@ -917,6 +919,20 @@ function highTargetMockGarden(
     };
 }
 
+function faunaHeavyMockGarden(): useCurrentGardenResponse {
+    return {
+        id: 99995,
+        name: 'Profile fauna-heavy garden',
+        isSandbox: false,
+        isPublic: false,
+        backgroundPalette: defaultGameBackgroundPaletteKey,
+        homeCamera: null,
+        stacks: createAllAnimalDebugStacks(),
+        location: { lat: 45.739, lon: 16.572 },
+        raisedBeds: [],
+    };
+}
+
 function operationRewardDebugMockGarden(
     winterMode: WinterMode,
 ): useCurrentGardenResponse {
@@ -974,6 +990,10 @@ export function createMockGarden(
 ): useCurrentGardenResponse {
     if (isOperationVisualRewardDebugProfile(profile)) {
         return operationRewardDebugMockGarden(winterMode);
+    }
+
+    if (profile === faunaHeavyMockGardenProfile) {
+        return faunaHeavyMockGarden();
     }
 
     if (profile === 'dense' || profile === 'plant-heavy') {

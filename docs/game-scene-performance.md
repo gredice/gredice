@@ -139,19 +139,21 @@ supports these stable modes:
 - `/debug/profile/game?mode=cloudy&quality=medium`
 - `/debug/profile/game?mode=windy&quality=medium`
 - `/debug/profile/game?mode=details&profile=dense&quality=medium`
+- `/debug/profile/game?mode=details&profile=fauna-heavy&quality=high`
 - `/debug/profile/game?mode=details&profile=plant-heavy&quality=medium`
 
 The `quality` query accepts `low`, `medium`, or `high`. When omitted, the game
 uses the automatic quality resolver. The `profile` query accepts `default`,
-`dense`, or `plant-heavy`. Dense profile scenes use deterministic 25x25 mock
-gardens so larger-scene measurements do not depend on signed-in garden data. The
-`details` query defaults to `1`; use `details=0` only when intentionally
-profiling the reduced scene without detail layers such as mulch, ground
-decorations, and animals. Controls, the regular HUD, and the debug HUD are
-hidden by default; add `controls=1`, `hud=1`, or `debugHud=1` only when needed.
-Mobile profile scenarios use `quality=medium`, matching the automatic resolver
-policy that no longer selects the low tier by default. Use `quality=low` only
-for explicit manual low-tier comparisons.
+`dense`, `fauna-heavy`, or `plant-heavy`. Dense profile scenes use deterministic
+25x25 mock gardens so larger-scene measurements do not depend on signed-in
+garden data. The fauna-heavy profile uses the shared deterministic animal
+fixture described below. The `details` query defaults to `1`; use `details=0`
+only when intentionally profiling the reduced scene without detail layers such
+as mulch, ground decorations, and animals. Controls, the regular HUD, and the
+debug HUD are hidden by default; add `controls=1`, `hud=1`, or `debugHud=1` only
+when needed. Mobile profile scenarios use `quality=medium`, matching the
+automatic resolver policy that no longer selects the low tier by default. Use
+`quality=low` only for explicit manual low-tier comparisons.
 
 Generate the default production report. This builds the garden app, starts it
 with `pnpm start` on `http://localhost:3101`, profiles the scenarios, and then
@@ -202,6 +204,31 @@ Reported results therefore establish a reproducible local production-build
 regression baseline; they do not replace physical-device, sustained thermal,
 or deployed runtime validation. Do not record performance conclusions here
 until a report has been generated and reviewed.
+
+Run the daytime fauna profile to measure the shared all-animal fixture at
+explicit High quality, a reported DPR of 2, and the legacy static-scene-cache
+path:
+
+```bash
+cd apps/garden
+pnpm run profile:game:fauna
+```
+
+The fixture is exact and fresh for every consumer: 117 stack positions contain
+117 ground blocks and 30 detail blocks, for 147 blocks total, with no raised
+bed. The production scenario runs three repeats. After each repeat's warmup it
+dispatches the exact Cow `trot` command once, then requires runtime-resolved
+acknowledgement from both Cow actors, including distinct actor and moving-actor
+IDs for the dispatched sequence. It also captures a canvas screenshot and
+requires a nonblank visual witness alongside the normal performance, error, and
+fauna-presence gates. This keeps fixture presence, actual runtime interaction,
+and rendered output separate pieces of evidence instead of inferring one from
+another.
+
+This is intentionally a clear daytime probe. Bats and other night-only behavior
+need a separate night scenario, while wetland- and rain-dependent fauna such as
+frogs and slugs need separate habitat/weather probes. Passing the daytime
+scenario does not establish those paths or complete fauna coverage.
 
 Run every profiler scenario together:
 
