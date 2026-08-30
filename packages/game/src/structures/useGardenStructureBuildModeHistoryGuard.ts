@@ -45,8 +45,17 @@ export function useGardenStructureBuildModeHistoryGuard({
         if (!guardArmedRef.current) {
             return;
         }
-        releasePendingRef.current = true;
+        const currentHistoryState = window.history.state;
+        const markerIsCurrent =
+            typeof currentHistoryState === 'object' &&
+            currentHistoryState !== null &&
+            currentHistoryState[historyStateKey] === markerRef.current;
         guardArmedRef.current = false;
+        if (!markerIsCurrent) {
+            releasePendingRef.current = false;
+            return;
+        }
+        releasePendingRef.current = true;
         window.history.back();
     }, []);
 

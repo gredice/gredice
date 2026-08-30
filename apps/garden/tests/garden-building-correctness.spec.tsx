@@ -115,3 +115,39 @@ test('unmounting active Build Mode releases its synthetic history entry', async 
         )
         .toBeNull();
 });
+
+test('unmounting Build Mode does not pop a newer client-side route entry', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(
+        <GardenStructureBuildModeHistoryGuardStory />,
+    );
+
+    await expect(page.getByTestId('history-active')).toHaveText('active');
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.history.state?.__grediceGardenStructureBuildMode ??
+                    null,
+            ),
+        )
+        .not.toBeNull();
+
+    await page.evaluate(() => {
+        window.history.pushState(
+            { routeTransition: 'destination' },
+            '',
+            window.location.href,
+        );
+    });
+    await component.unmount();
+    await page.waitForTimeout(100);
+
+    await expect
+        .poll(() =>
+            page.evaluate(() => window.history.state?.routeTransition ?? null),
+        )
+        .toBe('destination');
+});
