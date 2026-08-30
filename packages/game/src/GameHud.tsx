@@ -66,6 +66,7 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
+    gardenStructureBuildEnabled = false,
     gardenStructureDebugFixture,
     gardenStructureDebugPlan,
     noWeather,
@@ -73,6 +74,7 @@ export function GameHud({
     viewMode = '3d',
 }: {
     debugHud?: boolean;
+    gardenStructureBuildEnabled?: boolean;
     gardenStructureDebugFixture?: boolean;
     gardenStructureDebugPlan?: GardenStructureSemanticPlan;
     noWeather?: boolean;
@@ -146,10 +148,12 @@ export function GameHud({
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
 
-    if (gardenStructureDebugFixture && structureBuildSession) {
+    if (gardenStructureBuildEnabled && structureBuildSession) {
         return (
             <>
                 <GardenStructureVerticalSliceHud
+                    enabled
+                    fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
                 />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
@@ -328,8 +332,10 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
-            {gardenStructureDebugFixture ? (
+            {gardenStructureBuildEnabled ? (
                 <GardenStructureVerticalSliceHud
+                    enabled
+                    fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
                 />
             ) : null}

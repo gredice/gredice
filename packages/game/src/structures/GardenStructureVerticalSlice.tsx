@@ -428,7 +428,7 @@ export function GardenStructureVerticalSlice({
             userData={{
                 assetName: 'GardenStructureKitV1',
                 compilerCacheKey: plan.cacheKey,
-                fixtureOnly: true,
+                fixtureOnly: session?.persistence === 'fixture',
             }}
         >
             {session ? (

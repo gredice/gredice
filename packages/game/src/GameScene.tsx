@@ -1,9 +1,6 @@
 'use client';
 
-import {
-    createGardenStructureTemplateSeed,
-    getGardenStructurePayloadByteLength,
-} from '@gredice/js/gardenStructures';
+import { getGardenStructurePayloadByteLength } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
 import {
     type HTMLAttributes,
@@ -410,49 +407,51 @@ export function GameScene({
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const gardenAvatarEnabled = Boolean(flags?.enableGardenAvatarFlag);
     const gardenStructureVerticalSliceEnabled = Boolean(
-        gardenStructureDebugFixture && flags?.enableGardenBuildingSystemFlag,
+        flags?.enableGardenBuildingSystemFlag,
     );
     const structureBuildActive = Boolean(
         gardenStructureVerticalSliceEnabled && structureBuildSession,
     );
-    const structureFixtureTemplateKey =
-        structureBuildSession?.templateKey ?? 'house';
-    const structureFixtureRotation = structureBuildSession?.rotation ?? 0;
+    const editedStructureId =
+        structureBuildActive && structureBuildSession
+            ? structureBuildSession.editor.origin.kind === 'saved-structure'
+                ? structureBuildSession.editor.origin.structureId
+                : structureBuildSession.editor.origin.draftId
+            : null;
     const structureFixtureBundle = useMemo(() => {
-        if (!gardenStructureVerticalSliceEnabled) {
+        const editor = structureBuildSession?.editor;
+        if (!gardenStructureVerticalSliceEnabled || !editor) {
             return null;
         }
-        const seed = createGardenStructureTemplateSeed(
-            structureFixtureTemplateKey,
-        );
         const cache = structurePlanCacheRef.current;
         if (!cache) {
             return null;
         }
+        const structureId =
+            editor.origin.kind === 'new-draft'
+                ? editor.origin.draftId
+                : editor.origin.structureId;
+        const revision =
+            editor.origin.kind === 'saved-structure'
+                ? editor.origin.revision
+                : editor.history.past.length + 1;
         const startedAt = performance.now();
         const plan = cache.getOrCompile({
-            structureId: 'debug-garden-structure',
-            revision: 1,
-            document: seed.document,
-            placement: {
-                anchorX: -1,
-                anchorY: -1,
-                rotation: structureFixtureRotation,
-            },
+            structureId,
+            revision,
+            document: editor.snapshot.document,
+            placement: editor.snapshot.placement,
         });
         const cacheSnapshot = cache.snapshot();
         return {
             compileDurationMs: performance.now() - startedAt,
             documentPayloadBytes:
-                getGardenStructurePayloadByteLength(seed.document) ?? 0,
+                getGardenStructurePayloadByteLength(editor.snapshot.document) ??
+                0,
             plan,
             cacheSnapshot,
         };
-    }, [
-        gardenStructureVerticalSliceEnabled,
-        structureFixtureRotation,
-        structureFixtureTemplateKey,
-    ]);
+    }, [gardenStructureVerticalSliceEnabled, structureBuildSession?.editor]);
     const structureFixtureCollisionWorld = useMemo(
         () =>
             structureFixtureBundle
@@ -725,19 +724,26 @@ export function GameScene({
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
     const garden = useSceneCurrentGarden(transitionedGardenData);
+    const browseStructureRecords = useMemo(
+        () =>
+            garden?.structures.filter(
+                (structure) => structure.id !== editedStructureId,
+            ),
+        [editedStructureId, garden?.structures],
+    );
     const structureBaseHeightResolver = useMemo(
         () =>
             createGardenStructureSceneBaseHeightResolver({
                 blockData,
-                records: garden?.structures,
+                records: browseStructureRecords,
                 stacks: garden?.stacks,
             }),
-        [blockData, garden?.stacks, garden?.structures],
+        [blockData, browseStructureRecords, garden?.stacks],
     );
     const savedStructureScene = useGardenStructureSceneSnapshot({
         gardenId: garden?.id,
         includeCollision: gardenAvatarEnabled,
-        records: blockData ? garden?.structures : undefined,
+        records: blockData ? browseStructureRecords : undefined,
         resolveBaseHeight: structureBaseHeightResolver,
     });
     const structureAvatarCollisionWorld = useMemo(() => {
@@ -1013,7 +1019,10 @@ export function GameScene({
                                                 key={slotKey}
                                                 block={block}
                                                 farmId={garden.farmId}
-                                                noControls={noControls}
+                                                noControls={
+                                                    noControls ||
+                                                    structureBuildActive
+                                                }
                                                 stack={stack}
                                                 stacks={garden.stacks}
                                                 weather={weather}
@@ -1295,9 +1304,12 @@ export function GameScene({
             {!hideHud && (
                 <GameHud
                     debugHud={showDebugHud}
-                    gardenStructureDebugFixture={
+                    gardenStructureBuildEnabled={
                         gardenStructureVerticalSliceEnabled
                     }
+                    gardenStructureDebugFixture={Boolean(
+                        gardenStructureDebugFixture,
+                    )}
                     gardenStructureDebugPlan={structureFixtureBundle?.plan}
                     noWeather={noWeather}
                     suppressOpeningHud={suppressOpeningHud}

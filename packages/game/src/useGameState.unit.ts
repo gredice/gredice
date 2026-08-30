@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
 import { createActiveDragPreviewTarget } from './dragPreviewIdentity';
+import {
+    confirmGardenStructureTemplatePlacement,
+    createNewGardenStructureEditorState,
+} from './structures/editor';
 import type { ActiveDragPreview } from './useGameState';
 import {
     activeDragPreviewsEqual,
@@ -30,6 +35,25 @@ function createPreview(): ActiveDragPreview {
         isBlocked: false,
         isOverRecycler: false,
     };
+}
+
+function createStructureEditor(templateKey: 'barn' | 'house') {
+    const created = createNewGardenStructureEditorState({
+        draftId: `fixture-${templateKey}`,
+        gardenId: 1,
+        placement: { anchorX: -1, anchorY: -1, rotation: 0 },
+        seed: createGardenStructureTemplateSeed(templateKey),
+    });
+    assert.equal(created.ok, true);
+    if (!created.ok) {
+        throw new Error('Failed to create fixture editor');
+    }
+    const confirmed = confirmGardenStructureTemplatePlacement(created.value);
+    assert.equal(confirmed.ok, true);
+    if (!confirmed.ok) {
+        throw new Error('Failed to confirm fixture editor');
+    }
+    return confirmed.value;
 }
 
 test('mock garden profile changes without recreating runtime resources', () => {
@@ -749,10 +773,8 @@ test('structure build mode is one discriminated session and excludes avatar and 
         store.getState().setItemsHudDropTargetActive(true);
         store.getState().setIsDragging(true);
         store.getState().setStructureBuildSession({
-            phase: 'editing',
-            source: 'fixture',
-            templateKey: 'house',
-            rotation: 0,
+            editor: createStructureEditor('house'),
+            persistence: 'fixture',
             category: 'structure',
             roofCutaway: false,
             selectedPartId: null,
@@ -760,7 +782,10 @@ test('structure build mode is one discriminated session and excludes avatar and 
 
         assert.equal(store.getState().gardenAvatarView, 'overview');
         assert.equal(store.getState().view, 'normal');
-        assert.equal(store.getState().structureBuildSession?.phase, 'editing');
+        assert.equal(
+            store.getState().structureBuildSession?.editor.workflow.kind,
+            'editing',
+        );
         assert.equal(store.getState().pickupBlock, null);
         assert.equal(store.getState().activeDragPreview, null);
         assert.equal(store.getState().hudPlacementDrag, null);
@@ -773,10 +798,8 @@ test('structure build mode is one discriminated session and excludes avatar and 
         assert.equal(store.getState().structureBuildSession, null);
 
         store.getState().setStructureBuildSession({
-            phase: 'editing',
-            source: 'fixture',
-            templateKey: 'barn',
-            rotation: 1,
+            editor: createStructureEditor('barn'),
+            persistence: 'fixture',
             category: 'roof',
             roofCutaway: true,
             selectedPartId: null,
