@@ -102,10 +102,12 @@ export function GardenStructureVerticalSliceHud({
         if (!buildActive) {
             return;
         }
-        const frame = requestAnimationFrame(() =>
-            doneButtonRef.current?.focus(),
+        doneButtonRef.current?.focus({ preventScroll: true });
+        const timeout = window.setTimeout(
+            () => doneButtonRef.current?.focus({ preventScroll: true }),
+            0,
         );
-        return () => cancelAnimationFrame(frame);
+        return () => window.clearTimeout(timeout);
     }, [buildActive]);
 
     useEffect(() => {

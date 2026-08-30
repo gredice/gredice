@@ -202,16 +202,26 @@ test('keeps one canvas through the touch-first building slice in portrait and la
 
     const page = await context.newPage();
     const browserErrors: string[] = [];
+    const failedResourceResponses: string[] = [];
     const buildingAssetRequests: string[] = [];
     page.on('console', (message) => {
         const isExpectedSignedOutRequest =
             message.text() ===
             'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
         if (message.type() === 'error' && !isExpectedSignedOutRequest) {
-            browserErrors.push(message.text());
+            browserErrors.push(
+                `${message.text()} (${message.location().url || 'unknown source'})`,
+            );
         }
     });
     page.on('pageerror', (error) => browserErrors.push(error.message));
+    page.on('response', (response) => {
+        if (response.status() >= 400) {
+            failedResourceResponses.push(
+                `${response.status()} ${response.request().method()} ${response.url()}`,
+            );
+        }
+    });
     page.on('request', (request) => {
         const url = request.url();
         const assetName = new URL(url).pathname.split('/').at(-1) ?? '';
@@ -507,7 +517,12 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         Number(Reflect.get(pointerState, 'lostCaptureCount')),
     ).toBeGreaterThan(0);
     expect(buildingAssetRequests).toEqual([]);
-    expect(browserErrors).toEqual([]);
+    expect(
+        browserErrors,
+        `Unexpected failed responses: ${failedResourceResponses
+            .filter((response) => !response.startsWith('401 '))
+            .join(', ')}`,
+    ).toEqual([]);
     await context.close();
 });
 
