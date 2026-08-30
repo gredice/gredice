@@ -17,8 +17,12 @@ export function GardenSceneTransitionFixture() {
             <Button onClick={() => setGarden(secondGarden)}>
                 Promijeni vrt
             </Button>
+            <Button onClick={() => setGarden(firstGarden)}>
+                Vrati prvi vrt
+            </Button>
             <GardenSceneTransitionSurface
                 className="relative h-40 w-40"
+                data-scene-garden-id={displayedGarden?.id}
                 data-testid="garden-scene-transition"
                 visible={sceneVisible}
             >

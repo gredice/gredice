@@ -230,6 +230,48 @@ need a separate night scenario, while wetland- and rain-dependent fauna such as
 frogs and slugs need separate habitat/weather probes. Passing the daytime
 scenario does not establish those paths or complete fauna coverage.
 
+Run the persistent-Canvas garden-switch baseline independently, or run it with
+the fauna baseline through one release-gate command:
+
+```bash
+cd apps/garden
+pnpm run profile:game:garden-switch
+pnpm run profile:game:runtime-baselines
+```
+
+Each of the three garden-switch runs owns one browser context and one WebGL
+Canvas, then records seven arrivals in the exact sequence `high-target →
+fauna-heavy → high-target → fauna-heavy → high-target → fauna-heavy →
+high-target`. The gate verifies the
+actually displayed garden ID on the Scene root and in profiler telemetry, exact
+fixture cardinalities, High-target generated-plant counts, an exact raised-bed
+outline interaction on each High arrival, and an exact two-Cow `trot`
+acknowledgement on each fauna arrival. Every arrival also requires a nonblank
+Canvas screenshot, one Canvas node, the original Canvas and WebGL context
+objects, a healthy context, zero context-lost/restored events, and zero API
+requests/errors, console errors, or page errors. Fixed fixture species are
+exact; dynamic bee, butterfly, ladybug, and squirrel counts remain visible in
+the report without being mistaken for fixed-fixture drift.
+
+The request and runtime witnesses also require the legacy static-scene path:
+`staticSceneCache=legacy` and `staticOpaqueSceneCacheEnabled=false` on every
+arrival. High arrivals exact-gate all 54 generated-plant fields and all 537
+instances as visible, rather than treating generated totals as proof that the
+workload remained on screen.
+
+Transition gates follow the current 280 ms fade-out swap and 500 ms visual
+settle contract with deliberately conservative scheduling headroom: the garden
+must swap no earlier than 200 ms and within 1,000 ms, become visible within
+1,200 ms, and finish the observed settle window within 1,800 ms. No frame may
+stall for more than 500 ms. These are structural transition safeguards, not
+machine-specific FPS targets. Renderer geometry, program, and texture counts
+are recorded on every arrival. For fauna, the warmed plateau compares F2→F3.
+High needs two warm returns, so H2→H3 remains explicit warm-up evidence and the
+plateau compares H3→H4. The later arrival may release resources but must not
+increase live geometry, program, or texture counts. Reports keep all three
+independent runs and all 21 arrivals visible so a passing median cannot hide one
+broken switch.
+
 Run every profiler scenario together:
 
 ```bash
@@ -507,6 +549,7 @@ GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=garden-switch pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_CLOSEUP_REPEAT=1 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game

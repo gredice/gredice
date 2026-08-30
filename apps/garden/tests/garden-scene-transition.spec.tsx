@@ -21,6 +21,25 @@ test('animates a garden switch without replacing the canvas', async ({
     await expect(fixture).toHaveAttribute('data-garden-id', '2', {
         timeout: 1_000,
     });
+    await expect(transition).toHaveAttribute('data-scene-garden-id', '2');
+    await expect(transition).toHaveAttribute('data-scene-visible', 'true');
+    await expect
+        .poll(() =>
+            canvas.evaluate(
+                (element) =>
+                    Reflect.get(window, '__grediceGameGardenCanvas') ===
+                    element,
+            ),
+        )
+        .toBe(true);
+
+    await fixture.getByRole('button', { name: 'Vrati prvi vrt' }).click();
+
+    await expect(transition).toHaveAttribute('data-scene-visible', 'false');
+    await expect(fixture).toHaveAttribute('data-garden-id', '1', {
+        timeout: 1_000,
+    });
+    await expect(transition).toHaveAttribute('data-scene-garden-id', '1');
     await expect(transition).toHaveAttribute('data-scene-visible', 'true');
     await expect
         .poll(() =>

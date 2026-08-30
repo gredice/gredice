@@ -392,6 +392,7 @@ export type GameState = {
     authenticatedGardenQueriesEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
+    setMockGardenProfile: (mockGardenProfile: MockGardenProfile) => void;
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
@@ -624,6 +625,12 @@ export function createGameState({
         authenticatedGardenQueriesEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
+        setMockGardenProfile: (mockGardenProfile) =>
+            set((state) =>
+                state.mockGardenProfile === mockGardenProfile
+                    ? state
+                    : { mockGardenProfile },
+            ),
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,

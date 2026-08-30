@@ -32,6 +32,25 @@ function createPreview(): ActiveDragPreview {
     };
 }
 
+test('mock garden profile changes without recreating runtime resources', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+        mockGardenProfile: 'high-target',
+    });
+    const audio = store.getState().audio;
+
+    try {
+        store.getState().setMockGardenProfile('fauna-heavy');
+
+        assert.equal(store.getState().mockGardenProfile, 'fauna-heavy');
+        assert.equal(store.getState().audio, audio);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('activeDragPreviewsEqual matches equivalent preview values', () => {
     const preview = createPreview();
 

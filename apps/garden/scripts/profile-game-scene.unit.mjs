@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    beginGardenSwitchProfileSample,
+    beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -16,11 +19,13 @@ import {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    installGardenSwitchContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
@@ -28,6 +33,7 @@ import {
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
@@ -295,6 +301,32 @@ test('fauna scenario set isolates the deterministic daytime High workload', () =
     assert.equal(request.mode, 'details');
     assert.equal(request.quality, 'high');
     assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('garden-switch scenario keeps repeated High and fauna arrivals in one context', () => {
+    const scenarios = resolveScenarios('garden-switch');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(
+        scenario.name,
+        'game-garden-switch-high-fauna-single-context-desktop',
+    );
+    assert.equal(scenario.gardenSwitchProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.mode, 'details');
+    assert.equal(request.outline, '1');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.get('gardenSwitch'), '1');
     assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
 });
 
@@ -841,6 +873,67 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
     );
 });
 
+test('garden-switch context tracking starts before Canvas discovery and fails closed for every Canvas event', () => {
+    const keys = [
+        'document',
+        'HTMLCanvasElement',
+        '__grediceGardenSwitchContextEvents',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const listeners = new Map();
+
+    try {
+        class ProfileCanvas {}
+        Object.defineProperties(globalThis, {
+            document: {
+                configurable: true,
+                value: {
+                    addEventListener(type, listener, capture) {
+                        assert.equal(capture, true);
+                        listeners.set(type, listener);
+                    },
+                },
+                writable: true,
+            },
+            HTMLCanvasElement: {
+                configurable: true,
+                value: ProfileCanvas,
+                writable: true,
+            },
+        });
+
+        installGardenSwitchContextTracker();
+        assert.equal(listeners.size, 2);
+        listeners.get('webglcontextlost')?.({ target: new ProfileCanvas() });
+        listeners.get('webglcontextrestored')?.({
+            target: new ProfileCanvas(),
+        });
+        listeners.get('webglcontextlost')?.({ target: {} });
+
+        assert.deepEqual(globalThis.__grediceGardenSwitchContextEvents, {
+            lostCount: 1,
+            restoredCount: 1,
+        });
+
+        installGardenSwitchContextTracker();
+        assert.equal(listeners.size, 2);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
 test('runtime GPU-source scenario disables only the external profiler timer', () => {
     const source = installBrowserMetrics.toString();
 
@@ -1198,6 +1291,90 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
             }
         }
     }
+});
+
+test('garden-switch sampling primes the discarded RAF before switch work', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileGpuTimer',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const frameCallbacks = [];
+    const evaluatedFunctions = [];
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', (callback) => {
+            frameCallbacks.push(callback);
+            return frameCallbacks.length;
+        });
+        setGlobal('__gameProfileMetrics', {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        });
+
+        const page = {
+            evaluate(evaluatedFunction) {
+                evaluatedFunctions.push(evaluatedFunction.name);
+                return evaluatedFunction();
+            },
+        };
+        const started = beginGardenSwitchProfileSample(page);
+        await Promise.resolve();
+
+        assert.deepEqual(evaluatedFunctions, [
+            beginInteractiveProfileSample.name,
+            primeGardenSwitchProfileSample.name,
+        ]);
+        assert.equal(frameCallbacks.length, 2);
+
+        const sampleStartedAt =
+            globalThis.__gameProfileInteractiveSample.startedAt;
+        frameCallbacks.shift()(sampleStartedAt + 16);
+        frameCallbacks.shift()(sampleStartedAt + 16);
+        await started;
+        assert.deepEqual(
+            globalThis.__gameProfileInteractiveSample.intervals,
+            [16],
+        );
+
+        frameCallbacks.shift()(sampleStartedAt + 216);
+        const sample = await finishInteractiveProfileSample();
+        assert.equal(sample.frames, 1);
+        assert.equal(Math.round(sample.maxFrameMs), 200);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+
+    await assert.rejects(
+        primeGardenSwitchProfileSample(),
+        /No active garden-switch profile sample to prime/,
+    );
 });
 
 test('profile finalization captures CDP before draining GPU queries', async () => {
@@ -1961,6 +2138,456 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
     assert.match(markdown, /cow:2\/2/);
     assert.match(markdown, /CowShelter:-6:-1:1/);
     assert.match(markdown, /entropy 5\.2/);
+});
+
+test('garden-switch acceptance fails closed across fixtures, interaction, visuals, identity, timing, and resources', () => {
+    const speciesCounts = {
+        bee: 1,
+        bird: 1,
+        butterfly: 3,
+        cat: 1,
+        chicken: 1,
+        cow: 2,
+        dog: 1,
+        goat: 1,
+        horse: 1,
+        ladybug: 5,
+        piglet: 1,
+        rabbit: 1,
+        sheep: 2,
+        squirrel: 1,
+    };
+    const cowIds = [
+        'cow:animal-debug:1:CowShelter:-6:-1:1',
+        'cow:animal-debug:1:CowShelter:3:2:1',
+    ];
+    const screenshotWitness = {
+        entropy: 5.2,
+        height: 1_440,
+        maximumChannelStandardDeviation: 42,
+        opaque: true,
+        sampledLumaRange: 180,
+        sampledUniqueColorCount: 2_000,
+        width: 2_560,
+    };
+    let faunaVisit = 0;
+    const profiles = [
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+        'fauna-heavy',
+        'high-target',
+    ];
+    const arrivals = profiles.map((profile, index) => {
+        const highTarget = profile === 'high-target';
+        if (!highTarget) {
+            faunaVisit += 1;
+        }
+        const resources = [
+            [258, 24, 7],
+            [490, 26, 9],
+            [523, 32, 9],
+            [492, 30, 9],
+            [525, 32, 9],
+            [492, 30, 9],
+            [525, 32, 9],
+        ][index];
+        return {
+            arrivalIndex: index + 1,
+            canvas: {
+                canvasCount: 1,
+                clientHeight: 720,
+                clientWidth: 1_280,
+                contextLost: false,
+                contextLostEventCount: 0,
+                contextRestoredEventCount: 0,
+                gardenId: highTarget ? 99_996 : 99_995,
+                height: 1_440,
+                sameCanvas: true,
+                sameContext: true,
+                sceneVisible: true,
+                width: 2_560,
+            },
+            fixture: highTarget
+                ? {
+                      blockCount: 297,
+                      generatedPlantExpectedInstanceCount: 537,
+                      generatedPlantFieldCount: 54,
+                      generatedPlantInstanceCount: 537,
+                      generatedPlantVisibleFieldCount: 54,
+                      generatedPlantVisibleInstanceCount: 537,
+                      raisedBedCount: 3,
+                      stackCount: 270,
+                  }
+                : {
+                      actorGroundingShadowDroppedCount: 0,
+                      blockCount: 147,
+                      raisedBedCount: 0,
+                      speciesCounts,
+                      stackCount: 117,
+                  },
+            gardenId: highTarget ? 99_996 : 99_995,
+            interaction: highTarget
+                ? {
+                      activeTargetCount: 2,
+                      dispatched: true,
+                      kind: 'outline',
+                      styleGroupCount: 1,
+                      targetBlockId: 'profile-raised-bed:2:0',
+                      targetRaisedBedId: 2,
+                  }
+                : {
+                      acknowledgementCount: 2,
+                      acknowledgedIds: cowIds,
+                      behavior: 'trot',
+                      dispatched: true,
+                      kind: 'animal',
+                      movingAcknowledgementCount: 2,
+                      movingAcknowledgedIds: cowIds,
+                      sequence: faunaVisit,
+                      species: 'Cow',
+                  },
+            profile,
+            resources: {
+                rendererGeometries: resources[0],
+                rendererShaders: resources[1],
+                rendererTextures: resources[2],
+                staticOpaqueSceneCacheEnabled: false,
+            },
+            sample: {
+                maxFrameMs: 100,
+            },
+            screenshotPath: `/tmp/garden-switch-${index + 1}.png`,
+            screenshotWitness,
+            timing:
+                index === 0
+                    ? { initial: true }
+                    : {
+                          dispatched: true,
+                          displayedMs: 280,
+                          hiddenObserved: true,
+                          settleTargetMs: 500,
+                          settledMs: 800,
+                          visibleMs: 300,
+                      },
+        };
+    });
+    const input = {
+        apiErrors: [],
+        apiRequests: [],
+        arrivals,
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            dpr: 2,
+            gardenSwitch: '1',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+    };
+    const result = evaluateGardenSwitchAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.length > 100);
+    assert.equal(
+        result.checks.filter((check) =>
+            check.name.startsWith(
+                'gardenSwitchResourceWarmPlateau:fauna-heavy:F2-to-F3:',
+            ),
+        ).length,
+        3,
+    );
+    assert.equal(
+        result.checks.filter((check) =>
+            check.name.startsWith(
+                'gardenSwitchResourceWarmPlateau:high-target:H3-to-H4:',
+            ),
+        ).length,
+        3,
+    );
+
+    const rejectArrival = (index, update) => {
+        const changed = arrivals.map((arrival, arrivalIndex) =>
+            arrivalIndex === index
+                ? {
+                      ...arrival,
+                      ...update(arrival),
+                  }
+                : arrival,
+        );
+        return evaluateGardenSwitchAcceptance({
+            ...input,
+            arrivals: changed,
+        }).pass;
+    };
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            canvas: { ...arrival.canvas, sameContext: false },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            canvas: {
+                ...arrival.canvas,
+                contextLostEventCount: 1,
+                contextRestoredEventCount: 1,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(2, () => ({ gardenId: 99_995 })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(3, (arrival) => ({
+            interaction: {
+                ...arrival.interaction,
+                movingAcknowledgedIds: [cowIds[0], 'cow:wrong'],
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(6, (arrival) => ({
+            screenshotWitness: {
+                ...arrival.screenshotWitness,
+                entropy: 0,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(6, (arrival) => ({
+            timing: { ...arrival.timing, settledMs: 2_000 },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(5, (arrival) => ({
+            resources: {
+                ...arrival.resources,
+                rendererTextures: 10,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(2, (arrival) => ({
+            fixture: {
+                ...arrival.fixture,
+                generatedPlantVisibleFieldCount: 53,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(4, (arrival) => ({
+            fixture: {
+                ...arrival.fixture,
+                generatedPlantVisibleInstanceCount: 536,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            resources: {
+                ...arrival.resources,
+                staticOpaqueSceneCacheEnabled: true,
+            },
+        })),
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            apiRequests: [{ method: 'GET', url: '/api/gredice' }],
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
+                staticSceneCache: 'cache',
+            },
+        }).pass,
+        false,
+    );
+
+    const scenario = {
+        acceptance: result,
+        apiErrors: [],
+        apiRequests: [],
+        budget: { checks: result.checks, pass: true },
+        consoleMessages: [],
+        environment: null,
+        gardenSwitch: { arrivals },
+        name: 'game-garden-switch-high-fauna-single-context-desktop',
+        pageErrors: [],
+        requested: {
+            controls: '0',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            gardenProfile: 'garden-switch',
+            gardenSwitch: '1',
+            gardenSwitchProfile: true,
+            hud: '0',
+            mode: 'details',
+            motion: 'high-fauna-single-context-switch',
+            operationVisuals: '0',
+            quality: 'high',
+            staticSceneCache: 'legacy',
+        },
+        runtime: { qualityTier: 'high', shadowsEnabled: true },
+        sample: {
+            canvas: arrivals.at(-1).canvas,
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            fps: 60,
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 100,
+            p95FrameMs: 20,
+            rainUnmountMs: null,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+        screenshotPath: arrivals.at(-1).screenshotPath,
+        screenshotWitness,
+    };
+    assert.deepEqual(buildGardenSwitchSummary([scenario]), {
+        arrivalCount: 7,
+        canvasPersistentArrivalCount: 7,
+        contextPersistentArrivalCount: 7,
+        maximumDisplayedMs: 280,
+        maximumFrameMs: 100,
+        maximumSettledMs: 800,
+        passedScenarioCount: 1,
+        resourceWarmPlateauPass: true,
+        scenarioCount: 1,
+        transitionCount: 6,
+    });
+    const repeatedScenarios = [1, 2, 3].map((profileRun) => ({
+        ...scenario,
+        baseName: scenario.name,
+        name: `${scenario.name}-run-${profileRun}`,
+        profileRun,
+    }));
+    const repeatedSummary = buildGardenSwitchSummary(repeatedScenarios);
+    assert.equal(repeatedSummary.scenarioCount, 3);
+    assert.equal(repeatedSummary.passedScenarioCount, 3);
+    assert.equal(repeatedSummary.arrivalCount, 21);
+    assert.equal(repeatedSummary.transitionCount, 18);
+    assert.deepEqual(buildProfileSummary(repeatedScenarios, {}), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const failedRepeatedScenarios = repeatedScenarios.map(
+        (repeatedScenario, index) => ({
+            ...repeatedScenario,
+            budget: {
+                ...repeatedScenario.budget,
+                pass: index !== 1,
+            },
+        }),
+    );
+    assert.deepEqual(buildProfileSummary(failedRepeatedScenarios, {}), {
+        failedScenarioNames: [scenario.name],
+        failedScenarios: 1,
+        failedRuns: 1,
+        passedRuns: 2,
+        passedScenarios: 0,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+    const faunaScenarios = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        budgetName: 'gameHighTarget',
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: {
+            faunaProfile: true,
+            gardenProfile: 'fauna-heavy',
+        },
+        runtime: { qualityTier: 'high' },
+        sample: {
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            effectiveDprAtEnd: 2,
+            gpu: { elapsedP95Ms: null, valid: false },
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+    }));
+    const combinedScenarios = [...faunaScenarios, ...repeatedScenarios];
+    assert.deepEqual(
+        buildProfileSummary(
+            combinedScenarios,
+            buildHighTargetMedians(combinedScenarios),
+        ),
+        {
+            failedScenarioNames: [],
+            failedScenarios: 0,
+            failedRuns: 0,
+            passedRuns: 6,
+            passedScenarios: 2,
+            totalRuns: 6,
+            totalScenarios: 2,
+        },
+    );
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians: {},
+        gardenSwitchSummary: buildGardenSwitchSummary([scenario]),
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'garden-switch',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [scenario],
+        schemaVersion: 4,
+        sourceCommit: 'test-sha',
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    assert.match(markdown, /## Persistent-Canvas garden switching/);
+    assert.match(
+        markdown,
+        /warm resource plateau \(fauna F2→F3, High H3→H4\): pass/,
+    );
+    assert.match(markdown, /cache off/);
+    assert.match(markdown, /fauna-heavy \/ 99995/);
+    assert.match(markdown, /Cow trot #3/);
+    assert.match(markdown, /dynamic bee:1 butterfly:3 ladybug:5 squirrel:1/);
 });
 
 test('local profiler console filtering only ignores the known missing analytics asset', () => {
