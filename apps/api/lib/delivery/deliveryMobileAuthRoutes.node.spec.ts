@@ -46,8 +46,9 @@ function nativeAuth(
     };
 }
 
-function routes(native: DeliveryNativeAuthRouteDeps) {
+function routes(native: DeliveryNativeAuthRouteDeps, enabled = true) {
     return createDeliveryMobileRoutes({
+        enabled: () => enabled,
         authValidator: createTestDeliveryMobileAuthMiddleware(),
         now: () => new Date('2026-08-28T10:00:00.000Z'),
         readActiveRoute: async () => ({
@@ -63,6 +64,68 @@ function routes(native: DeliveryNativeAuthRouteDeps) {
         nativeAuth: native,
     } satisfies DeliveryMobileRouteDeps);
 }
+
+test('disabled native auth fails closed before exchanging or rotating credentials', async () => {
+    let exchangeCalls = 0;
+    let refreshCalls = 0;
+    const app = routes(
+        nativeAuth({
+            exchangeCode: async () => {
+                exchangeCalls += 1;
+                throw new Error('must not exchange while disabled');
+            },
+            rotateRefresh: async () => {
+                refreshCalls += 1;
+                throw new Error('must not rotate while disabled');
+            },
+        }),
+        false,
+    );
+
+    for (const request of [
+        jsonRequest('/auth/token', tokenRequest),
+        jsonRequest('/auth/refresh', {
+            grant_type: 'refresh_token',
+            client_id: 'gredice-delivery-android',
+            refresh_token: 'refresh-id.refresh-secret',
+        }),
+    ]) {
+        const response = await app.request(request);
+        assert.equal(response.status, 503);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.equal(response.headers.get('pragma'), 'no-cache');
+        assert.deepEqual(await response.json(), {
+            error: 'Android Auto trenutačno nije dostupan.',
+            code: 'ANDROID_AUTO_DISABLED',
+        });
+    }
+    assert.equal(exchangeCalls, 0);
+    assert.equal(refreshCalls, 0);
+});
+
+test('disabled native auth still permits idempotent session revocation', async () => {
+    let revokeCalls = 0;
+    const app = routes(
+        nativeAuth({
+            revokeRefresh: async () => {
+                revokeCalls += 1;
+                return true;
+            },
+        }),
+        false,
+    );
+
+    const response = await app.request(
+        jsonRequest('/auth/revoke', {
+            client_id: 'gredice-delivery-android',
+            refresh_token: 'refresh-id.refresh-secret',
+        }),
+    );
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(revokeCalls, 1);
+});
 
 function jsonRequest(path: string, body: unknown) {
     return new Request(`https://api.gredice.test${path}`, {

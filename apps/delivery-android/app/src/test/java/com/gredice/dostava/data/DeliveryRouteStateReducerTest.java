@@ -17,6 +17,10 @@ public final class DeliveryRouteStateReducerTest {
         assertEquals(DeliveryRouteStatus.SIGNED_OUT, reducer.signedOut().getStatus());
         assertEquals(DeliveryRouteStatus.LOADING, reducer.loading().getStatus());
         assertEquals(DeliveryRouteStatus.EMPTY, reducer.empty().getStatus());
+        assertEquals(
+                DeliveryRouteStatus.DISABLED,
+                reducer.disabled("session:opaque").getStatus()
+        );
         assertEquals(DeliveryRouteStatus.UNSUPPORTED, reducer.unsupported().getStatus());
         assertEquals(
                 DeliveryRouteStatus.ERROR,

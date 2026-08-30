@@ -36,6 +36,8 @@ Immediately before a navigator handoff, the app posts or updates one low-importa
 
 The car display fails closed with **Prijavite se u aplikaciji na telefonu** when no native session is available. Route refresh is serialized across the process, revalidates with an ETag every 30 seconds only while the car screen is resumed, and is cancelled when the screen stops. Returning from the selected navigator triggers start/resume refresh and trusts the server-selected current stop; no navigator result, elapsed-time, proximity, or completion inference is used. One failed authenticated API request is retried after credential rotation, and a second `401` clears the local session and route cache.
 
+The server surface is guarded by `DELIVERY_ANDROID_AUTO_ENABLED`. An absent or non-`true` value disables native token exchange, refresh, and active-route reads with the stable `ANDROID_AUTO_DISABLED` code while keeping session revocation available. The Android client immediately clears cached stops and navigation/quick-return state, then directs the driver back to the phone Delivery app; it never treats the kill switch as an offline-cache condition.
+
 ## Integration seam
 
 `DeliveryStopRepository` remains the boundary between the car-safe UI and route data. Keep customer notes, phone numbers, full order contents, background GPS, and delivery mutations outside this surface.

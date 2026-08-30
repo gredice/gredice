@@ -78,6 +78,15 @@ public final class DeliveryRouteStateReducer {
         return unsupported(null);
     }
 
+    public DeliveryRouteViewState disabled(String sessionBinding) {
+        return state(
+                DeliveryRouteStatus.DISABLED,
+                null,
+                sessionBinding,
+                "ANDROID_AUTO_DISABLED"
+        );
+    }
+
     private DeliveryRouteViewState offline(
             DeliveryRouteSnapshot snapshot,
             long nowMillis,
