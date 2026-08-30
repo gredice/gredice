@@ -614,9 +614,10 @@ describe('purchaseGardenBlock', () => {
         assert.equal(state.receipts.size, 1);
     });
 
-    it('keeps sandbox purchases free and ignores sale and night restrictions', async () => {
+    it('keeps sandbox raised-bed purchases free while creating the isolated planting projection', async () => {
         const harness = makeHarness({
             availableNow: false,
+            blockName: 'Raised_Bed',
             directoryPrice: 0,
             sandbox: true,
         });
@@ -626,6 +627,11 @@ describe('purchaseGardenBlock', () => {
         assert.equal(result.ok, true);
         assert.equal(harness.state().balance, 1_000);
         assert.equal(harness.state().debits.length, 0);
+        assert.deepEqual(harness.state().raisedBeds, [
+            { blockId: 'placed-1', status: 'new' },
+        ]);
+        assert.equal(harness.calls.includes('create-raised-bed'), true);
+        assert.equal(harness.calls.includes('cache-bust'), true);
     });
 
     it('revalidates sale and night restrictions for normal gardens before writing', async () => {

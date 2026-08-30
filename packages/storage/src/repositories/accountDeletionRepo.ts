@@ -1,6 +1,12 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, or, type SQL } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import { accountAchievements } from '../schema/achievementsSchema';
+import {
+    aiAccountLimitOverrides,
+    aiChatConversations,
+    aiUsageLedger,
+} from '../schema/aiChatSchema';
+import { deliveryAddresses, deliveryRunStops } from '../schema/deliverySchema';
 import { events } from '../schema/eventsSchema';
 import {
     gardens as dbGardens,
@@ -9,12 +15,29 @@ import {
     gardenStacks,
     gardenStructureOperations,
     gardenStructures,
+    gardenVisitStates,
     raisedBedSensors,
 } from '../schema/gardenSchema';
+import {
+    harvestTraceLinks,
+    harvestTraceScans,
+} from '../schema/harvestTraceSchema';
+import { invoiceItems, invoices, receipts } from '../schema/invoiceSchema';
+import {
+    notificationEmailLog,
+    notifications,
+} from '../schema/notificationsSchema';
 import { operations } from '../schema/operationsSchema';
+import { outletOfferReservations } from '../schema/outletSchema';
 import { shoppingCartItems, shoppingCarts } from '../schema/shoppingCartSchema';
+import { sunflowerLedgerEntries } from '../schema/sunflowerLedgerSchema';
 import { transactions } from '../schema/transactionSchema';
-import { accounts, accountUsers, users } from '../schema/usersSchema';
+import {
+    accountInvitations,
+    accounts,
+    accountUsers,
+    users,
+} from '../schema/usersSchema';
 import { storage } from '../storage';
 import {
     lockAccountForDeletionLifecycle,
@@ -26,16 +49,26 @@ import {
     getGardenBoxInventoryAggregateId,
     getInventoryAggregateId,
 } from './inventoryRepo';
-import {
-    deleteNotification,
-    getNotificationsByAccount,
-    getNotificationsByUser,
-} from './notificationsRepo';
 import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
 import { deleteUserAuthenticationData } from './usersRepo';
 
 const GARDEN_EVENT_TYPES = Object.values(knownEventTypes.gardens);
 const INVENTORY_EVENT_TYPES = Object.values(knownEventTypes.inventory);
+
+async function deleteNotificationsMatching(where: SQL) {
+    await storage().transaction(async (db) => {
+        const notificationIds = db
+            .select({ id: notifications.id })
+            .from(notifications)
+            .where(where);
+        await db
+            .delete(notificationEmailLog)
+            .where(
+                inArray(notificationEmailLog.notificationId, notificationIds),
+            );
+        await db.delete(notifications).where(where);
+    });
+}
 
 export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
     const expectedCarts = await storage().query.shoppingCarts.findMany({
@@ -81,6 +114,33 @@ export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
             const retainedCartIds = liveCarts.flatMap((cart) =>
                 cart.status === 'new' ? [] : [cart.id],
             );
+
+            // Reservations retain hard FKs to the account, cart, and cart item.
+            // Remove them while the same cart/item locks are held, before a new
+            // cart or item can be physically deleted.
+            const reservationConditions: SQL[] = [
+                eq(outletOfferReservations.accountId, accountId),
+            ];
+            if (expectedCartIds.length > 0) {
+                reservationConditions.push(
+                    inArray(outletOfferReservations.cartId, expectedCartIds),
+                );
+            }
+            if (items.length > 0) {
+                reservationConditions.push(
+                    inArray(
+                        outletOfferReservations.cartItemId,
+                        items.map((item) => item.id),
+                    ),
+                );
+            }
+            const reservationWhere = or(...reservationConditions);
+            if (reservationWhere) {
+                await db
+                    .delete(outletOfferReservations)
+                    .where(reservationWhere);
+            }
+
             if (newCartIds.length > 0) {
                 await db
                     .delete(shoppingCartItems)
@@ -90,6 +150,10 @@ export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
                     .where(inArray(shoppingCarts.id, newCartIds));
             }
             if (retainedCartIds.length > 0) {
+                await db
+                    .update(shoppingCartItems)
+                    .set({ gardenId: null, raisedBedId: null })
+                    .where(inArray(shoppingCartItems.cartId, retainedCartIds));
                 await db
                     .update(shoppingCarts)
                     .set({ accountId: null })
@@ -154,10 +218,16 @@ export async function deleteAccountWithDependencies(
             garden.id.toString(),
         );
         const gardenBoxInventoryAggregateIds: string[] = [];
+        const ownedGardenBlocks: Array<{
+            id: string;
+            gardenId: number;
+            name: string;
+        }> = [];
         for (const garden of gardens) {
             const blocks = await storage().query.gardenBlocks.findMany({
                 where: eq(gardenBlocks.gardenId, garden.id),
             });
+            ownedGardenBlocks.push(...blocks);
             gardenBoxInventoryAggregateIds.push(
                 ...blocks
                     .filter((block) => block.name === 'GardenBox')
@@ -201,42 +271,188 @@ export async function deleteAccountWithDependencies(
                 );
         }
 
-        // 5-8. Deactivate raised beds
-        for (const garden of gardens) {
-            // Include already soft-deleted projections. They deliberately keep
-            // their garden/block foreign keys for history, so skipping them
-            // would make the later physical garden cleanup fail forever.
-            const raisedBeds = await storage().query.raisedBeds.findMany({
-                where: eq(dbRaisedBeds.gardenId, garden.id),
+        const gardenIds = gardens.map((garden) => garden.id);
+        const gardenBlockIds = ownedGardenBlocks.map((block) => block.id);
+        const raisedBedWhere =
+            gardenIds.length > 0
+                ? or(
+                      eq(dbRaisedBeds.accountId, accountId),
+                      inArray(dbRaisedBeds.gardenId, gardenIds),
+                  )
+                : eq(dbRaisedBeds.accountId, accountId);
+        const raisedBeds = await storage().query.raisedBeds.findMany({
+            where: raisedBedWhere,
+        });
+        const raisedBedIds = raisedBeds.map((raisedBed) => raisedBed.id);
+
+        // Delete account-owned notifications, plus any notification whose FK
+        // targets a garden dependency being physically removed. Email log rows
+        // do not cascade and must be removed first in the same transaction.
+        console.info(
+            `[AccountDelete] Deleting notifications for accountId=${accountId}`,
+        );
+        const notificationConditions: SQL[] = [
+            eq(notifications.accountId, accountId),
+        ];
+        if (gardenIds.length > 0) {
+            notificationConditions.push(
+                inArray(notifications.gardenId, gardenIds),
+            );
+        }
+        if (raisedBedIds.length > 0) {
+            notificationConditions.push(
+                inArray(notifications.raisedBedId, raisedBedIds),
+            );
+        }
+        if (gardenBlockIds.length > 0) {
+            notificationConditions.push(
+                inArray(notifications.blockId, gardenBlockIds),
+            );
+        }
+        const notificationWhere = or(...notificationConditions);
+        if (notificationWhere) {
+            await deleteNotificationsMatching(notificationWhere);
+        }
+
+        // AI conversations and usage are account-owned personal data. Delete
+        // them before gardens; detach only cross-account conversations that
+        // happen to retain an FK to a garden dependency being erased.
+        await storage()
+            .delete(aiUsageLedger)
+            .where(eq(aiUsageLedger.accountId, accountId));
+        await storage()
+            .delete(aiChatConversations)
+            .where(eq(aiChatConversations.accountId, accountId));
+        if (gardenIds.length > 0) {
+            await storage()
+                .update(aiChatConversations)
+                .set({ gardenId: null })
+                .where(inArray(aiChatConversations.gardenId, gardenIds));
+        }
+        if (raisedBedIds.length > 0) {
+            await storage()
+                .update(aiChatConversations)
+                .set({ raisedBedId: null })
+                .where(inArray(aiChatConversations.raisedBedId, raisedBedIds));
+        }
+        await storage()
+            .delete(aiAccountLimitOverrides)
+            .where(eq(aiAccountLimitOverrides.accountId, accountId));
+
+        const visitStateConditions: SQL[] = [
+            eq(gardenVisitStates.accountId, accountId),
+        ];
+        if (gardenIds.length > 0) {
+            visitStateConditions.push(
+                inArray(gardenVisitStates.gardenId, gardenIds),
+            );
+        }
+        const visitStateWhere = or(...visitStateConditions);
+        if (visitStateWhere) {
+            await storage().delete(gardenVisitStates).where(visitStateWhere);
+        }
+
+        // Trace links are account-owned records with non-null garden/bed FKs.
+        // Preserve delivery history by detaching its nullable pointer, then
+        // remove scans before their parent links.
+        const traceConditions: SQL[] = [
+            eq(harvestTraceLinks.accountId, accountId),
+        ];
+        if (gardenIds.length > 0) {
+            traceConditions.push(
+                inArray(harvestTraceLinks.gardenId, gardenIds),
+            );
+        }
+        if (raisedBedIds.length > 0) {
+            traceConditions.push(
+                inArray(harvestTraceLinks.raisedBedId, raisedBedIds),
+            );
+        }
+        const traceWhere = or(...traceConditions);
+        if (traceWhere) {
+            await storage().transaction(async (db) => {
+                const traceLinkIds = db
+                    .select({ id: harvestTraceLinks.id })
+                    .from(harvestTraceLinks)
+                    .where(traceWhere);
+                await db
+                    .update(deliveryRunStops)
+                    .set({ pickupTraceLinkId: null })
+                    .where(
+                        inArray(
+                            deliveryRunStops.pickupTraceLinkId,
+                            traceLinkIds,
+                        ),
+                    );
+                await db
+                    .delete(harvestTraceScans)
+                    .where(
+                        inArray(
+                            harvestTraceScans.harvestTraceLinkId,
+                            traceLinkIds,
+                        ),
+                    );
+                await db.delete(harvestTraceLinks).where(traceWhere);
             });
-            for (const raisedBed of raisedBeds) {
-                console.info(
-                    `[AccountDelete] Abandoning and detaching raised bedId=${raisedBed.id}`,
-                );
+        }
+
+        // Retain paid/commercial history, but remove garden/bed FKs before the
+        // referenced garden rows are physically deleted.
+        if (gardenIds.length > 0) {
+            await storage()
+                .update(shoppingCartItems)
+                .set({ gardenId: null })
+                .where(inArray(shoppingCartItems.gardenId, gardenIds));
+        }
+        if (raisedBedIds.length > 0) {
+            await storage()
+                .update(shoppingCartItems)
+                .set({ raisedBedId: null })
+                .where(inArray(shoppingCartItems.raisedBedId, raisedBedIds));
+        }
+
+        await storage()
+            .update(transactions)
+            .set({ accountId: null, gardenId: null })
+            .where(eq(transactions.accountId, accountId));
+        if (gardenIds.length > 0) {
+            await storage()
+                .update(transactions)
+                .set({ gardenId: null })
+                .where(inArray(transactions.gardenId, gardenIds));
+        }
+
+        // Deactivate and detach every account-owned or garden-owned raised bed,
+        // including already soft-deleted projections.
+        for (const raisedBed of raisedBeds) {
+            console.info(
+                `[AccountDelete] Abandoning and detaching raised bedId=${raisedBed.id}`,
+            );
+            await storage()
+                .update(dbRaisedBeds)
+                .set({
+                    status: 'abandoned',
+                    accountId: null,
+                    gardenId: null,
+                    blockId: null,
+                })
+                .where(eq(dbRaisedBeds.id, raisedBed.id));
+
+            console.info(
+                `[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`,
+            );
+            const sensors = await storage().query.raisedBedSensors.findMany({
+                where: eq(raisedBedSensors.raisedBedId, raisedBed.id),
+            });
+            for (const sensor of sensors) {
                 await storage()
-                    .update(dbRaisedBeds)
-                    .set({
-                        status: 'abandoned',
-                        accountId: null,
-                        gardenId: null,
-                        blockId: null,
-                    })
-                    .where(eq(dbRaisedBeds.id, raisedBed.id));
-
-                console.info(
-                    `[AccountDelete] Deactivating raised bed sensors for raisedBedId=${raisedBed.id}`,
-                );
-                const sensors = await storage().query.raisedBedSensors.findMany(
-                    { where: eq(raisedBedSensors.raisedBedId, raisedBed.id) },
-                );
-                for (const sensor of sensors) {
-                    await storage()
-                        .update(raisedBedSensors)
-                        .set({ isDeleted: true })
-                        .where(eq(raisedBedSensors.id, sensor.id));
-                }
+                    .update(raisedBedSensors)
+                    .set({ isDeleted: true })
+                    .where(eq(raisedBedSensors.id, sensor.id));
             }
+        }
 
+        for (const garden of gardens) {
             console.info('[AccountDelete] Deleting garden structure receipts', {
                 gardenId: garden.id,
             });
@@ -274,35 +490,7 @@ export async function deleteAccountWithDependencies(
                 .where(eq(dbGardens.id, garden.id));
         }
 
-        // 10. Delete notifications for account
-        console.info(
-            `[AccountDelete] Deleting notifications for accountId=${accountId}`,
-        );
-        const accountNotifications = await getNotificationsByAccount(
-            accountId,
-            false,
-            0,
-            10000,
-        );
-        for (const notification of accountNotifications) {
-            await deleteNotification(notification.id);
-        }
-
-        // 12. Detach transactions from account - set account to null
-        console.info(
-            `[AccountDelete] Detaching transactions for accountId=${accountId}`,
-        );
-        const txs = await storage().query.transactions.findMany({
-            where: eq(transactions.accountId, accountId),
-        });
-        for (const tx of txs) {
-            await storage()
-                .update(transactions)
-                .set({ accountId: null })
-                .where(eq(transactions.id, tx.id));
-        }
-
-        // 13. Detach operations from account - set account to null
+        // Detach operations from account - set account to null
         console.info(
             `[AccountDelete] Detaching operations for accountId=${accountId}`,
         );
@@ -318,6 +506,49 @@ export async function deleteAccountWithDependencies(
                 .set({ accountId: null })
                 .where(eq(operations.id, op.id));
         }
+
+        console.info(
+            `[AccountDelete] Deleting delivery addresses and invitations for accountId=${accountId}`,
+        );
+        await storage()
+            .delete(deliveryAddresses)
+            .where(eq(deliveryAddresses.accountId, accountId));
+        await storage()
+            .delete(accountInvitations)
+            .where(eq(accountInvitations.accountId, accountId));
+
+        // The ledger and invoice account FKs are non-null. The current hard
+        // deletion contract therefore erases those account-owned rows, while
+        // fiscal receipts remain as detached commercial records.
+        console.info(
+            `[AccountDelete] Deleting sunflower ledger and invoice rows for accountId=${accountId}`,
+        );
+        await storage().transaction(async (db) => {
+            await db
+                .delete(sunflowerLedgerEntries)
+                .where(eq(sunflowerLedgerEntries.accountId, accountId));
+            const accountInvoiceIds = db
+                .select({ id: invoices.id })
+                .from(invoices)
+                .where(eq(invoices.accountId, accountId));
+            await db
+                .update(sunflowerLedgerEntries)
+                .set({ invoiceId: null })
+                .where(
+                    inArray(
+                        sunflowerLedgerEntries.invoiceId,
+                        accountInvoiceIds,
+                    ),
+                );
+            await db
+                .update(receipts)
+                .set({ invoiceId: null })
+                .where(inArray(receipts.invoiceId, accountInvoiceIds));
+            await db
+                .delete(invoiceItems)
+                .where(inArray(invoiceItems.invoiceId, accountInvoiceIds));
+            await db.delete(invoices).where(eq(invoices.accountId, accountId));
+        });
 
         console.info(
             `[AccountDelete] Deleting achievements for accountId=${accountId}`,
@@ -342,15 +573,10 @@ export async function deleteAccountWithDependencies(
             console.info(
                 `[AccountDelete] Deleting notifications and user for userId=${userId}`,
             );
-            const userNotifications = await getNotificationsByUser(
-                userId,
-                false,
-                0,
-                10000,
-            );
-            for (const notification of userNotifications) {
-                await deleteNotification(notification.id);
-            }
+            await deleteNotificationsMatching(eq(notifications.userId, userId));
+            await storage()
+                .delete(notificationEmailLog)
+                .where(eq(notificationEmailLog.userId, userId));
             console.info(
                 `[AccountDelete] Deleting user events for userId=${userId}`,
             );

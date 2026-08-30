@@ -39,10 +39,10 @@ describe('garden mutation operation receipts', () => {
         let callbackCalls = 0;
         const input = {
             gardenId,
-            kind: 'block-purchase' as const,
+            kind: 'block-purchase',
             operationId,
             payload: { blockName: 'Tree', position: null },
-        };
+        } satisfies Parameters<typeof withGardenMutationOperation>[0];
 
         const first = await withGardenMutationOperation(input, async () => {
             callbackCalls += 1;

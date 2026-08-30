@@ -2660,7 +2660,10 @@ const app = new Hono<{ Variables: AuthVariables }>()
             });
             if (!purchaseResult.ok) {
                 return context.json(
-                    { error: purchaseResult.error },
+                    {
+                        code: purchaseResult.code,
+                        error: purchaseResult.error,
+                    },
                     purchaseResult.status,
                 );
             }

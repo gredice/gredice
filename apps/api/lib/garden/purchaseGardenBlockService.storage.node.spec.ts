@@ -7,6 +7,7 @@ import {
     createGardenBlock,
     createGardenStack,
     createRaisedBedInTransaction,
+    createSandboxGarden,
     earnSunflowersOnce,
     type GardenPlacementTransaction,
     getGarden,
@@ -113,10 +114,12 @@ function integrationService(controls: { failAfterDebit: boolean }) {
     return createPurchaseGardenBlockService(dependencies);
 }
 
-async function fixture() {
+async function fixture(options: { sandbox?: boolean } = {}) {
     const accountId = await createAccount();
     const farmId = await ensureFarmId();
-    const gardenId = await createTestGarden({ accountId, farmId });
+    const gardenId = options.sandbox
+        ? await createSandboxGarden({ accountId })
+        : await createTestGarden({ accountId, farmId });
     const groundId = await createGardenBlock(gardenId, 'Block_Grass');
     await createGardenStack(gardenId, { x: 0, y: 0 });
     await updateGardenStack(gardenId, {
@@ -131,6 +134,32 @@ async function fixture() {
     );
     return { accountId, gardenId, groundId };
 }
+
+test('real sandbox purchase creates its isolated raised-bed projection without currency effects', {
+    skip: !storageIntegrationEnabled,
+}, async () => {
+    const { accountId, gardenId, groundId } = await fixture({ sandbox: true });
+    const operationId = randomUUID();
+    const service = integrationService({ failAfterDebit: false });
+    const beforeBalance = await getSunflowers(accountId);
+
+    const result = await service({
+        accountId,
+        blockName: 'Raised_Bed',
+        expectedExistingBlocks: [groundId],
+        gardenId,
+        operationId,
+        position: { x: 0, y: 0 },
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal((await getGarden(gardenId))?.raisedBeds.length, 1);
+    assert.equal(await getSunflowers(accountId), beforeBalance);
+    assert.equal((await getGardenBlocks(gardenId)).length, 2);
+    assert.ok(
+        await getGardenMutationOperationReceipt({ gardenId, operationId }),
+    );
+});
 
 test('real purchase transaction persists one raised bed and replays without a second debit', {
     skip: !storageIntegrationEnabled,
