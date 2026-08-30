@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { GardenStructureCollectionRenderer } from './GardenStructureCollectionRenderer';
 import type { GardenStructureSceneSnapshot } from './gardenStructureScene';
 
@@ -19,12 +18,6 @@ export function GardenStructureSceneLayer({
     snapshot,
 }: GardenStructureSceneLayerProps) {
     const plan = snapshot.plan;
-    const renderable = Boolean(plan?.structures.length);
-    useEffect(() => {
-        if (renderable) {
-            onRendererReady?.();
-        }
-    }, [onRendererReady, renderable]);
 
     if (!plan || plan.structures.length === 0) {
         return null;
@@ -44,6 +37,7 @@ export function GardenStructureSceneLayer({
         >
             <GardenStructureCollectionRenderer
                 castShadows={castShadows}
+                onRendererReady={onRendererReady}
                 plan={plan}
                 renderProps={renderProps}
             />

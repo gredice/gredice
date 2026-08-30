@@ -54,6 +54,10 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     const buildingAssetRequests: string[] = [];
     const apiRequests: string[] = [];
     const apiResponses: string[] = [];
+    let releaseBuildingAsset: (() => void) | undefined;
+    const buildingAssetGate = new Promise<void>((resolve) => {
+        releaseBuildingAsset = resolve;
+    });
 
     page.on('console', (message) => {
         if (message.type() === 'error' && browserErrors.length < 20) {
@@ -175,6 +179,10 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             },
         }),
     );
+    await page.route('**/GardenStructureKitV1.glb*', async (route) => {
+        await buildingAssetGate;
+        await route.continue();
+    });
 
     await mount(<GardenPreviewCaptureStory />);
 
@@ -182,6 +190,23 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     const captureScene = page.locator(
         '[data-public-garden-capture-blocks-ready]',
     );
+    try {
+        await expect.poll(() => buildingAssetRequests.length).toBe(1);
+        await expect(captureScene).toHaveAttribute(
+            'data-public-garden-capture-structures-ready',
+            'false',
+        );
+        await expect
+            .poll(async () => {
+                const result = JSON.parse(
+                    (await resultOutput.textContent()) ?? '{}',
+                );
+                return result.status;
+            })
+            .toBe('waiting');
+    } finally {
+        releaseBuildingAsset?.();
+    }
     try {
         await expect
             .poll(

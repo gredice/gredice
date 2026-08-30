@@ -378,17 +378,27 @@ function GardenStructureKitV1ResolvedInstances({
     );
 }
 
-export function GardenStructureKitV1LoadedInstances(
-    props: Omit<
-        Parameters<typeof GardenStructureKitV1ResolvedInstances>[0],
-        'resolution'
-    >,
-) {
+type GardenStructureKitV1LoadedInstancesProps = Omit<
+    Parameters<typeof GardenStructureKitV1ResolvedInstances>[0],
+    'resolution'
+> &
+    Readonly<{
+        onInstancesReady?: () => void;
+    }>;
+
+export function GardenStructureKitV1LoadedInstances({
+    onInstancesReady,
+    ...props
+}: GardenStructureKitV1LoadedInstancesProps) {
     const gltf = useGameGLTF('GardenStructureKitV1');
     const resolution = useMemo(
         () => resolveGardenStructureKitV1Asset(gltf.scene),
         [gltf.scene],
     );
+
+    useEffect(() => {
+        onInstancesReady?.();
+    }, [onInstancesReady]);
 
     return (
         <GardenStructureKitV1ResolvedInstances
