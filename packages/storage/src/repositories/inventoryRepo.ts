@@ -1,6 +1,7 @@
 import { and, eq, gte, inArray, sql } from 'drizzle-orm';
 import { events } from '../schema';
 import { storage } from '../storage';
+import { withAccountDeletionFenceTransaction } from './accountDeletionFenceRepo';
 import {
     createEvent,
     getAllEvents,
@@ -248,7 +249,7 @@ export async function withGardenBoxInventoryTransaction<T>(
         if (!isPgliteTestDatabase()) {
             await lockInventoryAggregate(aggregateId, db);
         }
-        return callback(db);
+        return withAccountDeletionFenceTransaction(accountId, callback, db);
     };
     const run = () =>
         transaction

@@ -567,6 +567,75 @@ export async function deleteGarden(gardenId: number) {
     await bustScheduleCache();
 }
 
+export type SoftDeleteGardenResult =
+    | 'deleted'
+    | 'already-deleted'
+    | 'not-found';
+
+export async function getGardenDeletionTargetForUpdate(
+    gardenId: number,
+    db: TransactionClient,
+) {
+    return (
+        (
+            await db
+                .select({
+                    accountId: gardens.accountId,
+                    id: gardens.id,
+                    isDeleted: gardens.isDeleted,
+                    isSandbox: gardens.isSandbox,
+                })
+                .from(gardens)
+                .where(eq(gardens.id, gardenId))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
+    );
+}
+
+/**
+ * Soft-delete one garden and append its deletion event at most once. The
+ * caller should already own the account-deletion and garden-placement locks;
+ * the row lock keeps this helper safe when exercised directly in tests and
+ * administrative workflows.
+ */
+export async function softDeleteGardenOnce(
+    gardenId: number,
+    db: TransactionClient,
+): Promise<SoftDeleteGardenResult> {
+    const garden = (
+        await db
+            .select({ id: gardens.id, isDeleted: gardens.isDeleted })
+            .from(gardens)
+            .where(eq(gardens.id, gardenId))
+            .for('update')
+            .limit(1)
+    )[0];
+    if (!garden) {
+        return 'not-found';
+    }
+    if (garden.isDeleted) {
+        return 'already-deleted';
+    }
+
+    const [deletedGarden] = await db
+        .update(gardens)
+        .set({ isDeleted: true })
+        .where(and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)))
+        .returning({ id: gardens.id });
+    if (!deletedGarden) {
+        throw new Error('Locked garden changed before deletion.');
+    }
+
+    await removeGardenPreviewAndQueueBlobDeletionUsing(
+        db,
+        gardenId,
+        'garden_deleted',
+    );
+    await createEvent(knownEvents.gardens.deletedV1(gardenId.toString()), db);
+    return 'deleted';
+}
+
 export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     let deleted = false;
     const activeRaisedBedCount = await storage().transaction(async (tx) => {

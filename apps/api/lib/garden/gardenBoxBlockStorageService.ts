@@ -2,11 +2,13 @@ import type { BlockData } from '@gredice/directory-types';
 import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVariants';
 import { woodenSignBlockName } from '@gredice/js/woodenSign';
 import {
+    AccountDeletionInProgressError,
+    AccountNotFoundError,
     addGardenBoxInventoryItem,
     deleteGardenBlock,
     GardenBoxInventoryLimitError,
     type GardenPlacementTransaction,
-    getGardenPlacementSnapshot,
+    getGardenPlacementSnapshotForUpdate,
     getGardenStackForUpdate,
     listGardenStructures,
     updateGardenStack,
@@ -64,7 +66,7 @@ type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<void>;
     getBlockData: () => Promise<readonly BlockData[]>;
-    getGardenPlacementSnapshot: (
+    getGardenPlacementSnapshotForUpdate: (
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenBoxBlockStorageSnapshot | null>;
@@ -106,6 +108,7 @@ export type GardenBoxBlockStorageCommand = Readonly<{
 }>;
 
 type GardenBoxBlockStorageFailureCode =
+    | 'ACCOUNT_DELETION_IN_PROGRESS'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
     | 'BLOCK_NOT_FOUND'
     | 'GARDEN_BOX_INVENTORY_LIMIT'
@@ -294,7 +297,7 @@ export function createGardenBoxBlockStorageService<Transaction>(
                         command.gardenId,
                         async (gardenTransaction) => {
                             const initialSnapshot =
-                                await dependencies.getGardenPlacementSnapshot(
+                                await dependencies.getGardenPlacementSnapshotForUpdate(
                                     command.gardenId,
                                     gardenTransaction,
                                 );
@@ -328,7 +331,7 @@ export function createGardenBoxBlockStorageService<Transaction>(
                             }
 
                             const snapshot =
-                                await dependencies.getGardenPlacementSnapshot(
+                                await dependencies.getGardenPlacementSnapshotForUpdate(
                                     command.gardenId,
                                     gardenTransaction,
                                 );
@@ -363,7 +366,7 @@ export function createGardenBoxBlockStorageService<Transaction>(
 
                             const [postMutationSnapshot, structures] =
                                 await Promise.all([
-                                    dependencies.getGardenPlacementSnapshot(
+                                    dependencies.getGardenPlacementSnapshotForUpdate(
                                         command.gardenId,
                                         gardenTransaction,
                                     ),
@@ -437,6 +440,22 @@ export function createGardenBoxBlockStorageService<Transaction>(
                     status: 400,
                 };
             }
+            if (error instanceof AccountDeletionInProgressError) {
+                return {
+                    ok: false,
+                    code: 'ACCOUNT_DELETION_IN_PROGRESS',
+                    error: error.message,
+                    status: 409,
+                };
+            }
+            if (error instanceof AccountNotFoundError) {
+                return {
+                    ok: false,
+                    code: 'GARDEN_NOT_FOUND',
+                    error: 'Garden not found',
+                    status: 404,
+                };
+            }
             throw error;
         }
     };
@@ -460,7 +479,7 @@ const defaultDependencies: GardenBoxBlockStorageDependencies<GardenPlacementTran
             ),
         deleteGardenBlock,
         getBlockData,
-        getGardenPlacementSnapshot,
+        getGardenPlacementSnapshotForUpdate,
         getGardenStackForUpdate,
         listGardenStructures,
         updateGardenStack,

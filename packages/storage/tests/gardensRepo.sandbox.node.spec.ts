@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    AccountDeletionInProgressError,
     clearSandboxField,
     createAccount,
     createEntity,
@@ -15,6 +16,8 @@ import {
     getSandboxGardenDeletionCandidate,
     knownEvents,
     listGardenPreviewBlobDeletions,
+    lockAccountForDeletionLifecycle,
+    markAccountDeletionStarted,
     replaceGardenPreview,
     sowSandboxField,
     storage,
@@ -217,6 +220,7 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
     let attempts = 0;
     while (!complete) {
         const result = await deleteSandboxGardenCompletely(gardenId, {
+            accountId,
             batchSize: 1,
             maxBatches: 1,
         });
@@ -352,6 +356,32 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
             ),
         );
     assert.equal(eventRows.length, 0);
+});
+
+test('sandbox deletion honors the durable account-deletion fence', async () => {
+    createTestDb();
+    await ensureFarmId();
+    const accountId = await createAccount();
+    const gardenId = await createSandboxGarden({ accountId });
+
+    await storage().transaction(async (transaction) => {
+        assert.ok(
+            await lockAccountForDeletionLifecycle(accountId, transaction),
+        );
+        assert.equal(
+            await markAccountDeletionStarted(accountId, transaction),
+            true,
+        );
+    });
+
+    await assert.rejects(
+        deleteSandboxGardenCompletely(gardenId, { accountId }),
+        AccountDeletionInProgressError,
+    );
+    assert.equal(
+        (await getSandboxGardenDeletionCandidate(gardenId))?.isDeleted,
+        false,
+    );
 });
 
 test('sowSandboxField backdates the plant so it renders already grown', async () => {

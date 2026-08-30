@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    AccountDeletionInProgressError,
     addGardenBoxInventoryItem,
     addInventoryItem,
     consumeGardenBoxInventoryItem,
@@ -12,7 +13,10 @@ import {
     getGardenBoxBlocksForAccount,
     getGardenBoxInventory,
     getInventory,
+    lockAccountForDeletionLifecycle,
+    markAccountDeletionStarted,
     setGardenBoxInventory,
+    storage,
     withGardenBoxInventoryTransaction,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
@@ -78,6 +82,37 @@ test('garden box inventory is scoped per box and separate from account inventory
             await getGardenBoxInventory(accountId, gardenId, secondBoxId),
         ),
         [{ entityTypeName: 'block', entityId: '101', amount: 4 }],
+    );
+});
+
+test('garden box inventory mutations honor the account-deletion fence', async () => {
+    createTestDb();
+
+    const accountId = await createAccount();
+    const gardenId = await createTestGarden({
+        accountId,
+        farmId: await ensureFarmId(),
+    });
+    const boxId = await createGardenBlock(gardenId, 'GardenBox');
+    await storage().transaction(async (transaction) => {
+        assert.ok(
+            await lockAccountForDeletionLifecycle(accountId, transaction),
+        );
+        assert.equal(
+            await markAccountDeletionStarted(accountId, transaction),
+            true,
+        );
+    });
+
+    await assert.rejects(
+        setGardenBoxInventory(accountId, gardenId, boxId, [
+            { entityTypeName: 'block', entityId: '101', amount: 1 },
+        ]),
+        AccountDeletionInProgressError,
+    );
+    assert.deepEqual(
+        await getGardenBoxInventory(accountId, gardenId, boxId),
+        [],
     );
 });
 

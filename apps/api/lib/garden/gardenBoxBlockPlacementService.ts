@@ -3,12 +3,14 @@ import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVaria
 import type { GardenBlockPlacementResult } from '@gredice/js/gardenBlocks';
 import type { GardenOccupancyIndex } from '@gredice/js/gardenOccupancy';
 import {
+    AccountDeletionInProgressError,
+    AccountNotFoundError,
     consumeGardenBoxInventoryItem,
     createGardenBlock,
     createGardenStack,
     GardenBoxInventoryInsufficientError,
     type GardenPlacementTransaction,
-    getGardenPlacementSnapshot,
+    getGardenPlacementSnapshotForUpdate,
     listGardenStructures,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
@@ -66,7 +68,7 @@ type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<unknown>;
     getBlockData: () => Promise<readonly BlockData[]>;
-    getGardenPlacementSnapshot: (
+    getGardenPlacementSnapshotForUpdate: (
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenBoxPlacementSnapshot | null>;
@@ -113,6 +115,7 @@ export type GardenBoxBlockPlacementCommand = Readonly<{
 }>;
 
 type GardenBoxBlockPlacementFailureCode =
+    | 'ACCOUNT_DELETION_IN_PROGRESS'
     | 'BLOCK_NOT_FOUND'
     | 'BLOCK_PLACEMENT_INVALID'
     | 'GARDEN_BOX_INVENTORY_INSUFFICIENT'
@@ -237,7 +240,7 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                         command.gardenId,
                         async (gardenTransaction) => {
                             const snapshot =
-                                await dependencies.getGardenPlacementSnapshot(
+                                await dependencies.getGardenPlacementSnapshotForUpdate(
                                     command.gardenId,
                                     gardenTransaction,
                                 );
@@ -355,7 +358,7 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                             );
 
                             const postMutationSnapshot =
-                                await dependencies.getGardenPlacementSnapshot(
+                                await dependencies.getGardenPlacementSnapshotForUpdate(
                                     command.gardenId,
                                     gardenTransaction,
                                 );
@@ -425,6 +428,22 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                     status: 400,
                 };
             }
+            if (error instanceof AccountDeletionInProgressError) {
+                return {
+                    ok: false,
+                    code: 'ACCOUNT_DELETION_IN_PROGRESS',
+                    error: error.message,
+                    status: 409,
+                };
+            }
+            if (error instanceof AccountNotFoundError) {
+                return {
+                    ok: false,
+                    code: 'GARDEN_BOX_NOT_FOUND',
+                    error: 'Garden box not found',
+                    status: 404,
+                };
+            }
             throw error;
         }
     };
@@ -438,7 +457,7 @@ const defaultDependencies: GardenBoxBlockPlacementDependencies<GardenPlacementTr
         createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack,
         getBlockData,
-        getGardenPlacementSnapshot,
+        getGardenPlacementSnapshotForUpdate,
         listGardenStructures,
         resolveGardenBlockPlacement,
         updateGardenStack,

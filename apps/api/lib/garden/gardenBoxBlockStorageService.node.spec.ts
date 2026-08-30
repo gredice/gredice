@@ -159,7 +159,10 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('catalog');
             return blockData;
         },
-        getGardenPlacementSnapshot: async (gardenId, receivedTransaction) => {
+        getGardenPlacementSnapshotForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
             assert.equal(receivedTransaction, transaction);
             assert.equal(gardenId, command.gardenId);
             snapshotReads += 1;
@@ -222,6 +225,7 @@ function makeHarness(options: HarnessOptions = {}) {
             assert.equal(gardenId, command.gardenId);
             assert.equal(gardenBoxBlockId, command.gardenBoxBlockId);
             calls.push('inventory-lock');
+            calls.push('account-lock');
             const before = cloneState();
             try {
                 const result = await callback(transaction);
@@ -269,6 +273,7 @@ describe('storeGardenBlockInGardenBox', () => {
         assert.deepEqual(harness.calls, [
             'catalog',
             'inventory-lock',
+            'account-lock',
             'garden-lock',
             'snapshot:1',
             'source-row',

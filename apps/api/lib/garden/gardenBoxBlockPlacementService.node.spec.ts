@@ -136,7 +136,7 @@ describe('placeGardenBoxBlock', () => {
                 calls.push('catalog');
                 return blockData;
             },
-            getGardenPlacementSnapshot: async (
+            getGardenPlacementSnapshotForUpdate: async (
                 _gardenId,
                 receivedTransaction,
             ) => {
@@ -174,6 +174,7 @@ describe('placeGardenBoxBlock', () => {
                 callback,
             ) => {
                 calls.push('inventory-lock');
+                calls.push('account-lock');
                 return callback(transaction);
             },
             withGardenPlacementTransaction: async (
@@ -198,6 +199,7 @@ describe('placeGardenBoxBlock', () => {
         assert.deepEqual(calls, [
             'catalog',
             'inventory-lock',
+            'account-lock',
             'garden-lock',
             'snapshot-pre',
             'structures',
@@ -236,7 +238,7 @@ describe('placeGardenBoxBlock', () => {
                 state.stackCreated = true;
             },
             getBlockData: async () => blockData,
-            getGardenPlacementSnapshot: async () => snapshot,
+            getGardenPlacementSnapshotForUpdate: async () => snapshot,
             listGardenStructures: async () => [],
             resolveGardenBlockPlacement,
             updateGardenStack: async () => {},
@@ -312,7 +314,7 @@ describe('placeGardenBoxBlock', () => {
                 state.stackCreated = true;
             },
             getBlockData: async () => blockData,
-            getGardenPlacementSnapshot: async () => snapshot,
+            getGardenPlacementSnapshotForUpdate: async () => snapshot,
             listGardenStructures: async () => [],
             resolveGardenBlockPlacement,
             updateGardenStack: async () => {},
