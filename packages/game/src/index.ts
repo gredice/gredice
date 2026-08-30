@@ -85,6 +85,13 @@ export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
 export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
 export type { GardenStructureFootprintInspectorProps } from './structures/editor/GardenStructureFootprintInspector';
 export { GardenStructureFootprintInspector } from './structures/editor/GardenStructureFootprintInspector';
+export type {
+    GardenStructurePartInspectorEdgeSelection,
+    GardenStructurePartInspectorPropSelection,
+    GardenStructurePartInspectorProps,
+    GardenStructurePartInspectorRoofSelection,
+} from './structures/editor/GardenStructurePartInspector';
+export { GardenStructurePartInspector } from './structures/editor/GardenStructurePartInspector';
 export type { TemporaryAccountLoginOpenChangedDetail } from './temporaryAccountAuth';
 export {
     isTemporaryAccountLoginOpen,
