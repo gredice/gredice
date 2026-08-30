@@ -7,6 +7,7 @@ import {
     gardenStructureCatalogTotalMaxBytes,
     gardenStructureKitV1CatalogEntries,
 } from '../../../packages/game/src/structures/catalog/gardenStructureKitV1Catalog';
+import { GardenStructureCatalogPickerStory } from './GardenStructureCatalogPickerStory';
 
 const publicRoot = resolve('./public');
 const catalogRoot = resolve(
@@ -33,7 +34,7 @@ async function listWebpFiles(directory: string): Promise<string[]> {
     return paths.flat();
 }
 
-test.use({ viewport: { height: 844, width: 390 } });
+test.use({ hasTouch: true, viewport: { height: 844, width: 390 } });
 
 test('generated catalogue files stay synchronized and within media budgets', async () => {
     const expectedPaths = gardenStructureKitV1CatalogEntries
@@ -131,4 +132,50 @@ test('mobile chooser cards use static images without loading a GLB or canvas', a
     await expect(
         component.getByRole('button', { name: 'Staja' }),
     ).toBeFocused();
+});
+
+test('catalogue picker supports radio keyboard and touch selection', async ({
+    mount,
+    page,
+}) => {
+    const modelRequests: string[] = [];
+    page.on('request', (request) => {
+        if (request.url().includes('/assets/models/')) {
+            modelRequests.push(request.url());
+        }
+    });
+    await page.route('**/assets/structures/**', (route) => {
+        const pathname = new URL(route.request().url()).pathname;
+        return route.fulfill({
+            contentType: 'image/webp',
+            path: publicPath(pathname),
+        });
+    });
+
+    const component = await mount(<GardenStructureCatalogPickerStory />);
+    const group = page.getByRole('group', {
+        name: 'Predložak građevine',
+    });
+    const barn = group.getByRole('radio', { name: 'Staja' });
+    const house = group.getByRole('radio', { name: 'Kuća' });
+    const greenhouse = group.getByRole('radio', { name: 'Staklenik' });
+
+    await expect(group.getByRole('radio')).toHaveCount(4);
+    await expect(barn).toBeChecked();
+    await barn.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(house).toBeChecked();
+    await group.locator('label:has(input[value="greenhouse"])').tap();
+    await expect(greenhouse).toBeChecked();
+    await expect(group.locator('img').first()).toHaveAttribute(
+        'src',
+        /\/assets\/structures\/gredice-buildings\/v1\/catalog\/templates\//,
+    );
+    await expect(component.locator('canvas')).toHaveCount(0);
+    expect(modelRequests).toEqual([]);
+    expect(
+        await group
+            .locator('label:has(input[value="greenhouse"]) > span')
+            .evaluate((element) => element.getBoundingClientRect().height),
+    ).toBeGreaterThanOrEqual(44);
 });

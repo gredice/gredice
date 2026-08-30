@@ -220,3 +220,21 @@ export const gardenStructureKitV1Catalog = Object.freeze({
 
 export const gardenStructureKitV1CatalogEntries: readonly GardenStructureCatalogEntry[] =
     Object.freeze([...templates, ...parts, ...materials]);
+
+const templatesById = new Map(templates.map((entry) => [entry.id, entry]));
+const partsById = new Map(parts.map((entry) => [entry.id, entry]));
+const materialsById = new Map(materials.map((entry) => [entry.id, entry]));
+
+export function getGardenStructureKitV1TemplateCatalogEntry(
+    id: GardenStructureTemplateKey,
+) {
+    return templatesById.get(id);
+}
+
+export function getGardenStructureKitV1PartCatalogEntry(id: string) {
+    return partsById.get(id);
+}
+
+export function getGardenStructureKitV1MaterialCatalogEntry(id: string) {
+    return materialsById.get(id);
+}

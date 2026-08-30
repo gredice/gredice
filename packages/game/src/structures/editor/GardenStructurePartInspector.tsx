@@ -11,6 +11,12 @@ import {
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
 import { useId, useState } from 'react';
+import { GardenStructureCatalogPicker } from '../catalog/GardenStructureCatalogPicker';
+import {
+    gardenStructureKitV1Catalog,
+    getGardenStructureKitV1MaterialCatalogEntry,
+    getGardenStructureKitV1PartCatalogEntry,
+} from '../catalog/gardenStructureKitV1Catalog';
 import {
     type GardenStructureCellSide,
     getCanonicalGardenStructureEdge,
@@ -23,23 +29,11 @@ const actionClassName =
     'min-h-11 rounded-lg border border-border/70 bg-background px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50';
 
 const edgeSides: readonly GardenStructureCellSide[] = ['N', 'E', 'S', 'W'];
-const edgeKinds: readonly GardenStructureEdgeKind[] = [
-    'wall',
-    'door',
-    'window',
-];
-
 const sideLabels: Readonly<Record<GardenStructureCellSide, string>> = {
     N: 'Sjever',
     E: 'Istok',
     S: 'Jug',
     W: 'Zapad',
-};
-
-const edgeKindLabels: Readonly<Record<GardenStructureEdgeKind, string>> = {
-    wall: 'Zidovi',
-    door: 'Vrata',
-    window: 'Prozori',
 };
 
 function identifierLabel(identifier: string) {
@@ -179,14 +173,45 @@ export function GardenStructurePartInspector({
           )
         : [];
 
-    const floorMaterialIds = kit.floorMaterialIds.toSorted();
-    const edgePartEntries = Object.entries(kit.edgeParts).toSorted(
-        ([left], [right]) => left.localeCompare(right),
-    );
-    const roofStyleEntries = Object.entries(kit.roofStyles).toSorted(
-        ([left], [right]) => left.localeCompare(right),
-    );
-    const propPartIds = Object.keys(kit.propVariants).toSorted();
+    const usesVersionOneCatalog =
+        kit.kitKey === gardenStructureKitV1Catalog.kitKey &&
+        kit.kitVersion === gardenStructureKitV1Catalog.kitVersion;
+    const floorMaterialIds = usesVersionOneCatalog
+        ? kit.floorMaterialIds.toSorted()
+        : [];
+    const floorMaterialCatalogEntries = floorMaterialIds
+        .map(getGardenStructureKitV1MaterialCatalogEntry)
+        .filter((entry) => entry !== undefined);
+    const edgePartEntries = usesVersionOneCatalog
+        ? Object.entries(kit.edgeParts).toSorted(([left], [right]) =>
+              left.localeCompare(right),
+          )
+        : [];
+    const edgePartCatalogEntries = edgePartEntries
+        .map(([partId]) => getGardenStructureKitV1PartCatalogEntry(partId))
+        .filter((entry) => entry !== undefined);
+    const roofStyleEntries = usesVersionOneCatalog
+        ? Object.entries(kit.roofStyles).toSorted(([left], [right]) =>
+              left.localeCompare(right),
+          )
+        : [];
+    const roofStyleCatalogEntries = roofStyleEntries
+        .filter(([, materialIds]) => materialIds.length > 0)
+        .map(([styleId]) => getGardenStructureKitV1PartCatalogEntry(styleId))
+        .filter((entry) => entry !== undefined);
+    const roofMaterialCatalogEntries = (
+        usesVersionOneCatalog && roofRegion
+            ? (kit.roofStyles[roofRegion.styleId] ?? [])
+            : []
+    )
+        .map(getGardenStructureKitV1MaterialCatalogEntry)
+        .filter((entry) => entry !== undefined);
+    const propPartIds = usesVersionOneCatalog
+        ? Object.keys(kit.propVariants).toSorted()
+        : [];
+    const propPartCatalogEntries = propPartIds
+        .map(getGardenStructureKitV1PartCatalogEntry)
+        .filter((entry) => entry !== undefined);
     const propPartId = propPartIds.includes(requestedPropPartId)
         ? requestedPropPartId
         : (propPartIds[0] ?? '');
@@ -237,19 +262,14 @@ export function GardenStructurePartInspector({
                                 <legend className="px-1 text-xs font-semibold text-muted-foreground">
                                     Pod
                                 </legend>
-                                <label
-                                    className="block text-xs font-medium text-foreground"
-                                    htmlFor={`${baseId}-floor`}
-                                >
+                                <p className="text-xs font-medium text-foreground">
                                     Materijal poda
-                                </label>
+                                </p>
                                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                                    <select
-                                        className={controlClassName}
-                                        id={`${baseId}-floor`}
-                                        onChange={(event) => {
-                                            const materialId =
-                                                event.currentTarget.value;
+                                    <GardenStructureCatalogPicker
+                                        ariaLabel="Materijal poda"
+                                        entries={floorMaterialCatalogEntries}
+                                        onSelectionChange={(materialId) => {
                                             if (materialId) {
                                                 onSetFloorMaterial(
                                                     selectedCellCoordinate,
@@ -257,20 +277,8 @@ export function GardenStructurePartInspector({
                                                 );
                                             }
                                         }}
-                                        value={floor?.materialId ?? ''}
-                                    >
-                                        <option disabled value="">
-                                            Odaberite materijal
-                                        </option>
-                                        {floorMaterialIds.map((materialId) => (
-                                            <option
-                                                key={materialId}
-                                                value={materialId}
-                                            >
-                                                {identifierLabel(materialId)}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        selectedId={floor?.materialId ?? null}
+                                    />
                                     <button
                                         className={cx(
                                             actionClassName,
@@ -311,20 +319,20 @@ export function GardenStructurePartInspector({
                                                 ) === edgeKey,
                                         );
                                         return (
-                                            <label
-                                                className="space-y-1 text-xs font-medium text-foreground"
+                                            <div
+                                                className="min-w-0 space-y-1 text-xs font-medium text-foreground"
                                                 key={side}
-                                                htmlFor={`${baseId}-edge-${side}`}
                                             >
                                                 <span>{sideLabels[side]}</span>
-                                                <select
-                                                    aria-label={`${sideLabels[side]} rub polja`}
-                                                    className={controlClassName}
-                                                    id={`${baseId}-edge-${side}`}
-                                                    onChange={(event) => {
-                                                        const partId =
-                                                            event.currentTarget
-                                                                .value;
+                                                <GardenStructureCatalogPicker
+                                                    ariaLabel={`${sideLabels[side]} rub polja`}
+                                                    emptyLabel="Otvoreno"
+                                                    entries={
+                                                        edgePartCatalogEntries
+                                                    }
+                                                    onSelectionChange={(
+                                                        partId,
+                                                    ) => {
                                                         if (!partId) {
                                                             if (edge) {
                                                                 onRemoveEdgePart(
@@ -349,54 +357,11 @@ export function GardenStructurePartInspector({
                                                             );
                                                         }
                                                     }}
-                                                    value={edge?.partId ?? ''}
-                                                >
-                                                    <option value="">
-                                                        Otvoreno
-                                                    </option>
-                                                    {edgeKinds.map((kind) => {
-                                                        const choices =
-                                                            edgePartEntries.filter(
-                                                                ([
-                                                                    ,
-                                                                    candidateKind,
-                                                                ]) =>
-                                                                    candidateKind ===
-                                                                    kind,
-                                                            );
-                                                        return choices.length >
-                                                            0 ? (
-                                                            <optgroup
-                                                                key={kind}
-                                                                label={
-                                                                    edgeKindLabels[
-                                                                        kind
-                                                                    ]
-                                                                }
-                                                            >
-                                                                {choices.map(
-                                                                    ([
-                                                                        partId,
-                                                                    ]) => (
-                                                                        <option
-                                                                            key={
-                                                                                partId
-                                                                            }
-                                                                            value={
-                                                                                partId
-                                                                            }
-                                                                        >
-                                                                            {identifierLabel(
-                                                                                partId,
-                                                                            )}
-                                                                        </option>
-                                                                    ),
-                                                                )}
-                                                            </optgroup>
-                                                        ) : null;
-                                                    })}
-                                                </select>
-                                            </label>
+                                                    selectedId={
+                                                        edge?.partId ?? null
+                                                    }
+                                                />
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -412,18 +377,16 @@ export function GardenStructurePartInspector({
                             <legend className="px-1 text-xs font-semibold text-muted-foreground">
                                 Krov
                             </legend>
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                <label
-                                    className="space-y-1 text-xs font-medium text-foreground"
-                                    htmlFor={`${baseId}-roof-style`}
-                                >
+                            <div className="grid grid-cols-1 gap-3">
+                                <div className="min-w-0 space-y-1 text-xs font-medium text-foreground">
                                     <span>Stil krova</span>
-                                    <select
-                                        className={controlClassName}
-                                        id={`${baseId}-roof-style`}
-                                        onChange={(event) => {
-                                            const styleId =
-                                                event.currentTarget.value;
+                                    <GardenStructureCatalogPicker
+                                        ariaLabel="Stil krova"
+                                        entries={roofStyleCatalogEntries}
+                                        onSelectionChange={(styleId) => {
+                                            if (!styleId) {
+                                                return;
+                                            }
                                             const materialIds =
                                                 kit.roofStyles[styleId] ?? [];
                                             const materialId =
@@ -447,38 +410,16 @@ export function GardenStructurePartInspector({
                                                 );
                                             }
                                         }}
-                                        value={roofRegion?.styleId ?? ''}
-                                    >
-                                        <option disabled value="">
-                                            Odaberite stil
-                                        </option>
-                                        {roofStyleEntries.map(
-                                            ([styleId, materialIds]) => (
-                                                <option
-                                                    disabled={
-                                                        materialIds.length === 0
-                                                    }
-                                                    key={styleId}
-                                                    value={styleId}
-                                                >
-                                                    {identifierLabel(styleId)}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </label>
-                                <label
-                                    className="space-y-1 text-xs font-medium text-foreground"
-                                    htmlFor={`${baseId}-roof-material`}
-                                >
+                                        selectedId={roofRegion?.styleId ?? null}
+                                    />
+                                </div>
+                                <div className="min-w-0 space-y-1 text-xs font-medium text-foreground">
                                     <span>Materijal krova</span>
-                                    <select
-                                        className={controlClassName}
+                                    <GardenStructureCatalogPicker
+                                        ariaLabel="Materijal krova"
                                         disabled={!roofRegion}
-                                        id={`${baseId}-roof-material`}
-                                        onChange={(event) => {
-                                            const materialId =
-                                                event.currentTarget.value;
+                                        entries={roofMaterialCatalogEntries}
+                                        onSelectionChange={(materialId) => {
                                             if (roofRegion && materialId) {
                                                 onSetRoofCoverage(
                                                     selectedCellCoordinate,
@@ -492,26 +433,11 @@ export function GardenStructurePartInspector({
                                                 );
                                             }
                                         }}
-                                        value={roofRegion?.materialId ?? ''}
-                                    >
-                                        <option disabled value="">
-                                            Odaberite materijal
-                                        </option>
-                                        {(roofRegion
-                                            ? (kit.roofStyles[
-                                                  roofRegion.styleId
-                                              ] ?? [])
-                                            : []
-                                        ).map((materialId) => (
-                                            <option
-                                                key={materialId}
-                                                value={materialId}
-                                            >
-                                                {identifierLabel(materialId)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                        selectedId={
+                                            roofRegion?.materialId ?? null
+                                        }
+                                    />
+                                </div>
                             </div>
                             <button
                                 className={cx(
@@ -539,34 +465,18 @@ export function GardenStructurePartInspector({
                             </legend>
 
                             <div className="space-y-2">
-                                <label
-                                    className="block text-xs font-medium text-foreground"
-                                    htmlFor={`${baseId}-prop-part`}
-                                >
+                                <p className="text-xs font-medium text-foreground">
                                     Predmet
-                                </label>
-                                <select
-                                    className={controlClassName}
-                                    id={`${baseId}-prop-part`}
-                                    onChange={(event) => {
-                                        setRequestedPropPartId(
-                                            event.currentTarget.value,
-                                        );
+                                </p>
+                                <GardenStructureCatalogPicker
+                                    ariaLabel="Predmet"
+                                    entries={propPartCatalogEntries}
+                                    onSelectionChange={(partId) => {
+                                        setRequestedPropPartId(partId ?? '');
                                         setRequestedPropVariantId('');
                                     }}
-                                    value={propPartId}
-                                >
-                                    {propPartIds.length > 0 ? null : (
-                                        <option value="">
-                                            Nema dostupnih predmeta
-                                        </option>
-                                    )}
-                                    {propPartIds.map((partId) => (
-                                        <option key={partId} value={partId}>
-                                            {identifierLabel(partId)}
-                                        </option>
-                                    ))}
-                                </select>
+                                    selectedId={propPartId || null}
+                                />
                                 {propVariantIds.length > 0 ? (
                                     <label
                                         className="block space-y-1 text-xs font-medium text-foreground"

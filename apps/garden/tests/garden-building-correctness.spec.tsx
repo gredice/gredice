@@ -247,18 +247,46 @@ test('shows only the selected authoring category and provides accessible prop ta
     await expect(page.getByText('Pod', { exact: true })).toBeVisible();
     await expect(page.getByText('Rubovi', { exact: true })).toBeVisible();
     await expect(page.getByText('Krov', { exact: true })).toHaveCount(0);
+    await expect(
+        page
+            .getByRole('group', { name: 'Materijal poda' })
+            .locator('img')
+            .first(),
+    ).toHaveAttribute('src', /\/v1\/catalog\/materials\//);
+    await expect(
+        page
+            .getByRole('group', { name: 'Sjever rub polja' })
+            .locator('img')
+            .first(),
+    ).toHaveAttribute('src', /\/v1\/catalog\/parts\//);
 
     await page.getByRole('button', { name: 'roof' }).click();
     await expect(page.getByText('Krov', { exact: true })).toBeVisible();
     await expect(page.getByText('Pod', { exact: true })).toHaveCount(0);
+    await expect(
+        page.getByRole('group', { name: 'Stil krova' }).locator('img').first(),
+    ).toHaveAttribute('src', /\/v1\/catalog\/parts\//);
+    await expect(
+        page
+            .getByRole('group', { name: 'Materijal krova' })
+            .locator('img')
+            .first(),
+    ).toHaveAttribute('src', /\/v1\/catalog\/materials\//);
 
     await page.getByRole('button', { name: 'interior' }).click();
     await expect(
         page.getByText('Namještaj i predmeti', { exact: true }),
     ).toBeVisible();
+    await expect(
+        page
+            .getByRole('group', { name: 'Predmet', exact: true })
+            .locator('img')
+            .first(),
+    ).toHaveAttribute('src', /\/v1\/catalog\/parts\//);
     await page
-        .getByLabel('Predmet', { exact: true })
-        .selectOption('prop.planter');
+        .getByRole('group', { name: 'Predmet', exact: true })
+        .locator('label:has(input[value="prop.planter"])')
+        .click();
     await page
         .getByRole('button', { name: 'Zamijeni Table odabranim predmetom' })
         .click();

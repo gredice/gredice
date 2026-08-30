@@ -384,10 +384,24 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         ).toBe(true);
     }
 
-    await tapCenter(page, page.getByRole('button', { name: 'Prazno' }));
+    const templateCatalog = page.getByTestId(
+        'garden-structure-template-catalog',
+    );
+    await expect(templateCatalog.locator('img')).toHaveCount(4);
+    await expect(templateCatalog.locator('img').first()).toHaveAttribute(
+        'src',
+        /\/assets\/structures\/gredice-buildings\/v1\/catalog\/templates\//,
+    );
+    await tapCenter(
+        page,
+        templateCatalog.locator('label:has(input[value="blank"])'),
+    );
     await expect(hud).toContainText('4 / 100 polja');
     await expect(hud).toContainText('200 🌻');
-    await tapCenter(page, page.getByRole('button', { name: 'Kuća' }));
+    await tapCenter(
+        page,
+        templateCatalog.locator('label:has(input[value="house"])'),
+    );
     await page.waitForFunction(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
         return (
@@ -523,7 +537,16 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     }, targetBeforeHandPan);
 
     await tapCenter(page, page.getByRole('button', { name: 'Konstrukcija' }));
-    await page.getByLabel('Dio lanca').selectOption('window.house');
+    const edgeCatalog = page.getByTestId('garden-structure-edge-catalog');
+    await expect(edgeCatalog.locator('canvas')).toHaveCount(0);
+    await expect(edgeCatalog.locator('img').first()).toHaveAttribute(
+        'src',
+        /\/assets\/structures\/gredice-buildings\/v1\/catalog\/parts\//,
+    );
+    await tapCenter(
+        page,
+        edgeCatalog.locator('label:has(input[value="window.house"])'),
+    );
     const northEdgeTargets = page.locator(
         '[data-structure-canvas-target-kind="edge"][data-structure-canvas-target$=":N"]',
     );
@@ -793,7 +816,12 @@ test('supports keyboard authoring, reduced motion, Escape unwinding, and focus r
     });
     await structureTool.focus();
     await page.keyboard.press('Enter');
-    await page.getByLabel('Dio lanca').selectOption('window.house');
+    const windowPart = page
+        .getByRole('group', { name: 'Dio lanca' })
+        .getByRole('radio', { name: 'Prozor kuće' });
+    await windowPart.focus();
+    await page.keyboard.press('Space');
+    await expect(windowPart).toBeChecked();
     const selectedCell = page.getByLabel('Odabrano polje');
     await selectedCell.selectOption('0|0');
     await page.getByLabel('Strana ruba za lanac').selectOption('N');

@@ -31,6 +31,11 @@ import {
     useGameState,
     useGameStateStore,
 } from '../useGameState';
+import { GardenStructureCatalogPicker } from './catalog/GardenStructureCatalogPicker';
+import {
+    getGardenStructureKitV1PartCatalogEntry,
+    getGardenStructureKitV1TemplateCatalogEntry,
+} from './catalog/gardenStructureKitV1Catalog';
 import {
     abandonGardenStructureEditorDemolitionFailure,
     abandonGardenStructureEditorSaveFailure,
@@ -140,11 +145,15 @@ const templateOptions: readonly {
     key: GardenStructureTemplateKey;
     label: string;
 }[] = [
-    { key: 'barn', label: 'Štala' },
+    { key: 'barn', label: 'Staja' },
     { key: 'house', label: 'Kuća' },
     { key: 'greenhouse', label: 'Staklenik' },
-    { key: 'blank', label: 'Prazno' },
+    { key: 'blank', label: 'Prazna građevina' },
 ];
+
+const templateCatalogEntries = templateOptions
+    .map(({ key }) => getGardenStructureKitV1TemplateCatalogEntry(key))
+    .filter((entry) => entry !== undefined);
 
 const categoryOptions: readonly {
     key: GardenStructureBuildCategory;
@@ -503,6 +512,15 @@ export function GardenStructureVerticalSliceHud({
     )
         ? requestedEdgePartId
         : (edgePartEntries[0]?.[0] ?? '');
+    const edgePartCatalogEntries = useMemo(
+        () =>
+            edgePartEntries
+                .map(([partId]) =>
+                    getGardenStructureKitV1PartCatalogEntry(partId),
+                )
+                .filter((entry) => entry !== undefined),
+        [edgePartEntries],
+    );
     const edgePartKind = edgePartEntries.find(
         ([partId]) => partId === edgePartId,
     )?.[1];
@@ -2575,27 +2593,20 @@ export function GardenStructureVerticalSliceHud({
                         <legend className="mb-1 text-xs font-semibold text-muted-foreground">
                             Predložak
                         </legend>
-                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                            {templateOptions.map((option) => (
-                                <button
-                                    type="button"
-                                    className={cx(
-                                        controlClassName,
-                                        'px-2 text-xs',
-                                        option.key ===
-                                            editor.origin.templateKey &&
-                                            'border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-50',
-                                    )}
-                                    aria-pressed={
-                                        option.key === editor.origin.templateKey
-                                    }
-                                    key={option.key}
-                                    onClick={() => startTemplate(option.key)}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
+                        <GardenStructureCatalogPicker
+                            ariaLabel="Predložak"
+                            entries={templateCatalogEntries}
+                            onSelectionChange={(templateKey) => {
+                                const option = templateOptions.find(
+                                    ({ key }) => key === templateKey,
+                                );
+                                if (option) {
+                                    startTemplate(option.key);
+                                }
+                            }}
+                            selectedId={editor.origin.templateKey}
+                            testId="garden-structure-template-catalog"
+                        />
                         {!fixture ? (
                             <div className="mt-3 border-border/60 border-t pt-3">
                                 <p className="mb-1 text-xs font-semibold text-muted-foreground">
@@ -2834,35 +2845,21 @@ export function GardenStructureVerticalSliceHud({
                                 <legend className="px-1 text-xs font-semibold text-muted-foreground">
                                     Lanac rubova na platnu
                                 </legend>
-                                <label className="block text-xs font-medium text-foreground">
+                                <p className="text-xs font-medium text-foreground">
                                     Dio lanca
-                                    <select
-                                        className="mt-1 min-h-11 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-                                        disabled={interactionLocked}
-                                        onChange={(event) =>
-                                            selectEdgePart(
-                                                event.currentTarget.value,
-                                            )
+                                </p>
+                                <GardenStructureCatalogPicker
+                                    ariaLabel="Dio lanca"
+                                    disabled={interactionLocked}
+                                    entries={edgePartCatalogEntries}
+                                    onSelectionChange={(partId) => {
+                                        if (partId) {
+                                            selectEdgePart(partId);
                                         }
-                                        value={edgePartId}
-                                    >
-                                        {edgePartEntries.map(
-                                            ([partId, kind]) => (
-                                                <option
-                                                    key={partId}
-                                                    value={partId}
-                                                >
-                                                    {kind === 'wall'
-                                                        ? 'Zid'
-                                                        : kind === 'door'
-                                                          ? 'Vrata'
-                                                          : 'Prozor'}{' '}
-                                                    · {partId}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                </label>
+                                    }}
+                                    selectedId={edgePartId || null}
+                                    testId="garden-structure-edge-catalog"
+                                />
                                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                                     <label className="text-xs font-medium text-foreground">
                                         Strana odabranog polja

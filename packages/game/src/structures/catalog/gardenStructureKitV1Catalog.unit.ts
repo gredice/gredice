@@ -13,6 +13,9 @@ import {
     gardenStructureCatalogTemplateMaxBytes,
     gardenStructureKitV1Catalog,
     gardenStructureKitV1CatalogEntries,
+    getGardenStructureKitV1MaterialCatalogEntry,
+    getGardenStructureKitV1PartCatalogEntry,
+    getGardenStructureKitV1TemplateCatalogEntry,
 } from './gardenStructureKitV1Catalog';
 
 function sorted(values: readonly string[]) {
@@ -112,10 +115,40 @@ describe('Garden Structure Kit V1 catalogue', () => {
         }
         assert.equal(deepFrozen(gardenStructureKitV1Catalog), true);
         assert.equal(deepFrozen(gardenStructureKitV1CatalogEntries), true);
+        assert.equal(
+            getGardenStructureKitV1TemplateCatalogEntry('house')?.label,
+            'Kuća',
+        );
+        assert.equal(
+            getGardenStructureKitV1PartCatalogEntry('window.house')?.kind,
+            'part',
+        );
+        assert.equal(
+            getGardenStructureKitV1MaterialCatalogEntry('roof.clay')?.kind,
+            'material',
+        );
+        assert.equal(
+            getGardenStructureKitV1PartCatalogEntry('missing.part'),
+            undefined,
+        );
     });
 
     test('keeps the picker thumbnail primitive free of Three and Canvas imports', () => {
-        const source = readFileSync(
+        for (const fileName of [
+            'GardenStructureCatalogThumbnail.tsx',
+            'GardenStructureCatalogPicker.tsx',
+        ]) {
+            const source = readFileSync(
+                fileURLToPath(new URL(`./${fileName}`, import.meta.url)),
+                'utf8',
+            );
+            assert.doesNotMatch(
+                source,
+                /(?:from|import\()\s*['"](?:three|@react-three)/,
+            );
+            assert.doesNotMatch(source, /<Canvas\b/);
+        }
+        const thumbnailSource = readFileSync(
             fileURLToPath(
                 new URL(
                     './GardenStructureCatalogThumbnail.tsx',
@@ -124,11 +157,14 @@ describe('Garden Structure Kit V1 catalogue', () => {
             ),
             'utf8',
         );
-        assert.doesNotMatch(
-            source,
-            /(?:from|import\()\s*['"](?:three|@react-three)/,
+        const pickerSource = readFileSync(
+            fileURLToPath(
+                new URL('./GardenStructureCatalogPicker.tsx', import.meta.url),
+            ),
+            'utf8',
         );
-        assert.doesNotMatch(source, /<Canvas\b/);
-        assert.match(source, /<img\b/);
+        assert.match(thumbnailSource, /<img\b/);
+        assert.match(pickerSource, /type="radio"/);
+        assert.match(pickerSource, /GardenStructureCatalogThumbnail/);
     });
 });
