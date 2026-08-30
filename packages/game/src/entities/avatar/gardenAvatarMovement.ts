@@ -273,10 +273,14 @@ function getHighestSurfaceYAt(
     surfaces: readonly GardenAvatarMovementSurface[],
     currentGroundY: number,
     collisionHeight: number,
+    allowNonRoamableSupport: boolean,
 ) {
     let selectedY: number | null = null;
 
     for (const surface of surfaces) {
+        if (!allowNonRoamableSupport && surface.roamable === false) {
+            continue;
+        }
         const rotation = surface.rotation ?? 0;
         const cos = Math.cos(rotation);
         const sin = Math.sin(rotation);
@@ -374,12 +378,14 @@ export function getGardenAvatarCeilingY({
 }
 
 export function getGardenAvatarGroundY({
+    allowNonRoamableSupport = true,
     collisionHeight = gardenAvatarStandingCollisionHeight,
     currentGroundY,
     maxStepHeight = gardenAvatarMaxStepHeight,
     position,
     world,
 }: {
+    allowNonRoamableSupport?: boolean;
     collisionHeight?: number;
     currentGroundY: number;
     maxStepHeight?: number;
@@ -405,6 +411,7 @@ export function getGardenAvatarGroundY({
             candidates.surfaces,
             currentGroundY,
             collisionHeight,
+            allowNonRoamableSupport,
         );
         sampleHeights.push(surfaceY ?? 0);
     }
@@ -437,6 +444,53 @@ export function getGardenAvatarGroundY({
     return slopedCenterHeight === null
         ? maxHeight
         : Math.max(sampleHeights[0] ?? 0, slopedCenterHeight);
+}
+
+/**
+ * Checks the actor's live vertical collision envelope rather than treating
+ * every horizontally overlapping proxy as a full-height blocker.
+ */
+export function doesGardenAvatarCollisionEnvelopeOverlap({
+    collisionHeight = gardenAvatarStandingCollisionHeight,
+    position,
+    world,
+}: {
+    collisionHeight?: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}) {
+    const candidates = getGardenAvatarCollisionCandidates(world, position);
+    if (
+        candidates.blockedCells.some((cell) =>
+            circleIntersectsCell(position, cell),
+        )
+    ) {
+        // Blocked cells do not carry vertical bounds, so retain their existing
+        // full-column collision contract.
+        return true;
+    }
+
+    const actorBottomY = position.y;
+    const actorTopY = actorBottomY + collisionHeight;
+    return candidates.surfaces.some((surface) => {
+        if (
+            surface.roamable !== false ||
+            surface.bottomY === undefined ||
+            !circleIntersectsSurface(position, surface)
+        ) {
+            return false;
+        }
+        const surfaceY = getGardenAvatarSurfaceY(position, surface);
+        const surfaceBottomY = Math.min(surface.bottomY, surfaceY);
+        const surfaceTopY = Math.max(surface.bottomY, surfaceY);
+        if (surfaceTopY - surfaceBottomY <= collisionEpsilon) {
+            return false;
+        }
+        return (
+            actorBottomY < surfaceTopY - collisionEpsilon &&
+            actorTopY > surfaceBottomY + collisionEpsilon
+        );
+    });
 }
 
 function tryMove(
@@ -1375,25 +1429,34 @@ export function findGardenAvatarSpawnPoint(
 ) {
     const surfaces = [...createWalkableSurfaceMap(world).values()];
 
-    if (
-        preferredPosition &&
-        !world.surfaces.some(
-            (surface) =>
-                surface.roamable === false &&
-                circleIntersectsSurface(preferredPosition, surface),
-        )
-    ) {
+    if (preferredPosition) {
         const preferredGroundY = getGardenAvatarGroundY({
+            allowNonRoamableSupport: false,
             currentGroundY: 0,
             position: preferredPosition,
             world,
         });
-        if (preferredGroundY !== null) {
-            return {
-                x: preferredPosition.x,
-                y: preferredGroundY,
-                z: preferredPosition.z,
-            };
+        const preferredPose =
+            preferredGroundY === null
+                ? null
+                : {
+                      x: preferredPosition.x,
+                      y: preferredGroundY,
+                      z: preferredPosition.z,
+                  };
+        if (
+            preferredPose &&
+            !world.surfaces.some(
+                (surface) =>
+                    surface.kind === 'water' &&
+                    circleIntersectsSurface(preferredPose, surface),
+            ) &&
+            !doesGardenAvatarCollisionEnvelopeOverlap({
+                position: preferredPose,
+                world,
+            })
+        ) {
+            return preferredPose;
         }
     }
 

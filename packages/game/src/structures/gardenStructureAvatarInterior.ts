@@ -1,13 +1,12 @@
 import {
+    doesGardenAvatarCollisionEnvelopeOverlap,
     type GardenAvatarCollisionWorld,
     type GardenAvatarPoint,
     gardenAvatarMaxStepHeight,
-    gardenAvatarRadius,
     gardenAvatarStandingCollisionHeight,
     getGardenAvatarCeilingY,
-    getGardenAvatarCollisionCandidates,
     getGardenAvatarGroundY,
-    getGardenAvatarSurfaceY,
+    resolveGardenAvatarHorizontalMovement,
 } from '../entities/avatar/gardenAvatarMovement';
 import {
     containsGardenStructureWorldCell,
@@ -24,7 +23,6 @@ const transitionCoordinateStride = 4;
 const collisionBoundsStride = 6;
 const containmentEpsilon = 0.000_01;
 const cameraWallClearance = 0.08;
-const collisionCellHalfSize = 0.5;
 
 export type GardenStructureAvatarInteriorPresentation = Readonly<{
     hiddenInstanceIds: readonly string[];
@@ -258,82 +256,6 @@ function appendFootprintAdjacentCandidates(
     }
 }
 
-function circleIntersectsSurface(
-    point: Pick<GardenAvatarPoint, 'x' | 'z'>,
-    surface: GardenAvatarCollisionWorld['surfaces'][number],
-) {
-    const rotation = surface.rotation ?? 0;
-    const cos = Math.cos(rotation);
-    const sin = Math.sin(rotation);
-    const dx = point.x - surface.x;
-    const dz = point.z - surface.z;
-    const localX = dx * cos + dz * sin;
-    const localZ = -dx * sin + dz * cos;
-    const halfWidth = surface.halfWidth ?? 0.5;
-    const halfDepth = surface.halfDepth ?? 0.5;
-    const nearestX = Math.min(Math.max(localX, -halfWidth), halfWidth);
-    const nearestZ = Math.min(Math.max(localZ, -halfDepth), halfDepth);
-    return (
-        (localX - nearestX) ** 2 + (localZ - nearestZ) ** 2 <=
-        gardenAvatarRadius ** 2 + containmentEpsilon
-    );
-}
-
-function circleIntersectsBlockedCell(
-    point: Pick<GardenAvatarPoint, 'x' | 'z'>,
-    cell: GardenAvatarCollisionWorld['blockedCells'][number],
-) {
-    const dx = Math.max(Math.abs(point.x - cell.x) - collisionCellHalfSize, 0);
-    const dz = Math.max(Math.abs(point.z - cell.z) - collisionCellHalfSize, 0);
-    return (
-        dx * dx + dz * dz <
-        gardenAvatarRadius * gardenAvatarRadius - containmentEpsilon
-    );
-}
-
-function doesGardenAvatarCollisionEnvelopeOverlap({
-    collisionHeight,
-    position,
-    world,
-}: {
-    collisionHeight: number;
-    position: GardenAvatarPoint;
-    world: GardenAvatarCollisionWorld;
-}) {
-    const candidates = getGardenAvatarCollisionCandidates(world, position);
-    if (
-        candidates.blockedCells.some((cell) =>
-            circleIntersectsBlockedCell(position, cell),
-        )
-    ) {
-        // Blocked cells do not carry a vertical extent, so retain their
-        // existing full-column collision contract.
-        return true;
-    }
-
-    const actorBottomY = position.y;
-    const actorTopY = actorBottomY + collisionHeight;
-    return candidates.surfaces.some((surface) => {
-        if (
-            surface.roamable !== false ||
-            surface.bottomY === undefined ||
-            !circleIntersectsSurface(position, surface)
-        ) {
-            return false;
-        }
-        const surfaceY = getGardenAvatarSurfaceY(position, surface);
-        const surfaceBottomY = Math.min(surface.bottomY, surfaceY);
-        const surfaceTopY = Math.max(surface.bottomY, surfaceY);
-        if (surfaceTopY - surfaceBottomY <= containmentEpsilon) {
-            return false;
-        }
-        return (
-            actorBottomY < surfaceTopY - containmentEpsilon &&
-            actorTopY > surfaceBottomY + containmentEpsilon
-        );
-    });
-}
-
 export type GardenStructureAvatarWorldChangePose = Readonly<{
     groundY: number | null;
     requiresRelocation: boolean;
@@ -343,14 +265,18 @@ export type GardenStructureAvatarWorldChangePose = Readonly<{
  * Revalidates the actor after structure collision changes. Airborne actors use
  * their live vertical pose: geometry entirely below them can become their next
  * landing surface, while geometry intersecting their body requests recovery.
+ * A contained actor also requests recovery when the changed topology no longer
+ * has a bounded coarse-navigation route to the exterior.
  */
 export function resolveGardenStructureAvatarWorldChangePose({
+    collection,
     collisionHeight = gardenAvatarStandingCollisionHeight,
     grounded,
     groundY,
     position,
     world,
 }: {
+    collection?: GardenStructureCollectionPlan | null;
     collisionHeight?: number;
     grounded: boolean;
     groundY: number;
@@ -364,6 +290,15 @@ export function resolveGardenStructureAvatarWorldChangePose({
         position,
         world,
     });
+    const escapeRoutePosition = {
+        x: position.x,
+        y: grounded ? (resolvedGroundY ?? groundY) : groundY,
+        z: position.z,
+    };
+    const containingStructure = findContainingGardenStructure(
+        collection,
+        escapeRoutePosition,
+    );
     return Object.freeze({
         groundY: resolvedGroundY,
         requiresRelocation:
@@ -372,7 +307,13 @@ export function resolveGardenStructureAvatarWorldChangePose({
                 position,
                 world,
             }) ||
-            (grounded && resolvedGroundY === null),
+            (grounded && resolvedGroundY === null) ||
+            (containingStructure !== null &&
+                !hasSafeRelocationEscapeRoute({
+                    position: escapeRoutePosition,
+                    structure: containingStructure,
+                    world,
+                })),
     });
 }
 
@@ -381,6 +322,7 @@ function resolveSafeRelocationCandidate(
     world: GardenAvatarCollisionWorld,
 ) {
     const groundY = getGardenAvatarGroundY({
+        allowNonRoamableSupport: false,
         currentGroundY: candidate.baseHeight,
         position: candidate,
         world,
@@ -389,19 +331,12 @@ function resolveSafeRelocationCandidate(
         return null;
     }
     const position = { x: candidate.x, y: groundY, z: candidate.z };
-    const candidates = getGardenAvatarCollisionCandidates(world, position);
-    const intersectsBlockingSurface = candidates.surfaces.some(
-        (surface) =>
-            surface.roamable === false &&
-            surface.bottomY !== undefined &&
-            surface.bottomY <
-                groundY +
-                    gardenAvatarStandingCollisionHeight -
-                    containmentEpsilon &&
-            surface.y >= groundY - containmentEpsilon &&
-            circleIntersectsSurface(position, surface),
-    );
-    if (intersectsBlockingSurface) {
+    if (
+        doesGardenAvatarCollisionEnvelopeOverlap({
+            position,
+            world,
+        })
+    ) {
         return null;
     }
     const ceilingY = getGardenAvatarCeilingY({
@@ -412,6 +347,97 @@ function resolveSafeRelocationCandidate(
     return ceilingY === null || groundY <= ceilingY + containmentEpsilon
         ? position
         : null;
+}
+
+function hasSafeRelocationEscapeRoute({
+    position,
+    structure,
+    world,
+}: {
+    position: GardenAvatarPoint;
+    structure: GardenStructureSemanticPlan;
+    world: GardenAvatarCollisionWorld;
+}) {
+    const minCellX = Math.ceil(structure.footprint.bounds.minX);
+    const minCellZ = Math.ceil(structure.footprint.bounds.minY);
+    const maxCellX = Math.floor(structure.footprint.bounds.maxX);
+    const maxCellZ = Math.floor(structure.footprint.bounds.maxY);
+    const searchMinX = minCellX - 1;
+    const searchMinZ = minCellZ - 1;
+    const searchMaxX = maxCellX + 1;
+    const searchMaxZ = maxCellZ + 1;
+    // Valid structures are capped at 20x20, so this recovery-only flood fill
+    // visits at most the surrounding 22x22 cell window.
+    const maximumVisitedCells =
+        (searchMaxX - searchMinX + 1) * (searchMaxZ - searchMinZ + 1);
+    const isExterior = (point: Pick<GardenAvatarPoint, 'x' | 'z'>) =>
+        point.x < minCellX ||
+        point.x > maxCellX ||
+        point.z < minCellZ ||
+        point.z > maxCellZ;
+    if (isExterior(position)) {
+        return true;
+    }
+
+    const queue: GardenAvatarPoint[] = [position];
+    const visited = new Set([`${position.x}|${position.z}`]);
+    for (
+        let queueIndex = 0;
+        queueIndex < queue.length && queueIndex < maximumVisitedCells;
+        queueIndex += 1
+    ) {
+        const current = queue[queueIndex];
+        if (!current) {
+            continue;
+        }
+        for (const direction of cardinalDirections) {
+            const nextX = current.x + direction.x;
+            const nextZ = current.z + direction.z;
+            if (
+                nextX < searchMinX ||
+                nextX > searchMaxX ||
+                nextZ < searchMinZ ||
+                nextZ > searchMaxZ
+            ) {
+                continue;
+            }
+            const key = `${nextX}|${nextZ}`;
+            if (visited.has(key)) {
+                continue;
+            }
+            const movement = resolveGardenAvatarHorizontalMovement({
+                deltaX: direction.x,
+                deltaZ: direction.z,
+                position: current,
+                world,
+            });
+            if (
+                Math.abs(movement.position.x - nextX) > containmentEpsilon ||
+                Math.abs(movement.position.z - nextZ) > containmentEpsilon
+            ) {
+                continue;
+            }
+            const next = resolveSafeRelocationCandidate(
+                {
+                    baseHeight: movement.position.y,
+                    kind: 'footprint-adjacent',
+                    structureId: structure.structureId,
+                    x: nextX,
+                    z: nextZ,
+                },
+                world,
+            );
+            if (!next) {
+                continue;
+            }
+            visited.add(key);
+            if (isExterior(next)) {
+                return true;
+            }
+            queue.push(next);
+        }
+    }
+    return false;
 }
 
 /**
@@ -477,7 +503,21 @@ export function findGardenStructureAvatarSafeRelocation({
             continue;
         }
         const safe = resolveSafeRelocationCandidate(candidate, world);
-        if (safe) {
+        const structureIndex =
+            collection.structureIndexById[candidate.structureId];
+        const candidateStructure =
+            structureIndex === undefined
+                ? undefined
+                : collection.structures[structureIndex];
+        if (
+            safe &&
+            candidateStructure &&
+            hasSafeRelocationEscapeRoute({
+                position: safe,
+                structure: candidateStructure,
+                world,
+            })
+        ) {
             return safe;
         }
     }

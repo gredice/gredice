@@ -505,6 +505,8 @@ function GardenAvatarCamera({
     interiorPresentation,
     interiorStructure,
     pitchRef,
+    publishInteriorPresentation,
+    structureCollectionPlan,
     view,
     yawRef,
     zoomingRef,
@@ -516,6 +518,10 @@ function GardenAvatarCamera({
     interiorPresentation: GardenStructureAvatarInteriorPresentation;
     interiorStructure: GardenStructureSemanticPlan | null;
     pitchRef: RefObject<number>;
+    publishInteriorPresentation: (
+        presentation: GardenStructureAvatarInteriorPresentation,
+    ) => void;
+    structureCollectionPlan: GardenStructureCollectionPlan | null | undefined;
     view: Exclude<GardenAvatarView, 'overview'>;
     yawRef: RefObject<number>;
     zoomingRef: RefObject<boolean>;
@@ -525,6 +531,7 @@ function GardenAvatarCamera({
     const entryPositionRef = useRef(entryPose.position.clone());
     const entryQuaternionRef = useRef(entryPose.quaternion.clone());
     const transitionElapsedRef = useRef(0);
+    const lastInteriorCheckAtRef = useRef(Number.NEGATIVE_INFINITY);
     const previousViewRef = useRef(view);
     const desiredPositionRef = useRef(new Vector3());
     const lookTargetRef = useRef(new Vector3());
@@ -549,7 +556,7 @@ function GardenAvatarCamera({
         camera.updateMatrixWorld();
     }, []);
 
-    useFrame((_, frameDelta) => {
+    useFrame(({ clock }, frameDelta) => {
         const actor = actorRef.current;
         const camera = cameraRef.current;
         if (!actor || !camera) {
@@ -578,6 +585,7 @@ function GardenAvatarCamera({
             horizontalForward.z * Math.cos(pitch),
         );
 
+        let cameraTarget: Vector3 | null = null;
         if (view === 'first-person') {
             desiredPositionRef.current.set(
                 actor.position.x,
@@ -598,7 +606,7 @@ function GardenAvatarCamera({
                 Math.sin(pitch),
                 horizontalForward.z * Math.cos(pitch),
             );
-            const cameraTarget = cameraTargetRef.current.set(
+            cameraTarget = cameraTargetRef.current.set(
                 actor.position.x,
                 actor.position.y +
                     getGardenAvatarThirdPersonCameraTargetHeight(crouchAmount),
@@ -615,11 +623,45 @@ function GardenAvatarCamera({
                 desiredPositionRef.current.y,
                 groundYRef.current + avatarThirdPersonCameraGroundClearance,
             );
+        }
+
+        let cameraHiddenInstanceIds = hiddenInteriorInstanceIds;
+        let cameraInteriorStructure = interiorStructure;
+        const now = clock.elapsedTime;
+        if (
+            now - lastInteriorCheckAtRef.current >=
+            gardenStructureInteriorCheckIntervalSeconds
+        ) {
+            lastInteriorCheckAtRef.current = now;
+            const nextPresentation = structureCollectionPlan
+                ? getGardenStructureAvatarInteriorPresentation({
+                      avatarPosition: actor.position,
+                      cameraPosition: desiredPositionRef.current,
+                      collection: structureCollectionPlan,
+                  })
+                : emptyGardenStructureAvatarInteriorPresentation;
+            publishInteriorPresentation(nextPresentation);
+            cameraHiddenInstanceIds = new Set(
+                nextPresentation.hiddenInstanceIds,
+            );
+            const structureIndex = nextPresentation.structureId
+                ? structureCollectionPlan?.structureIndexById[
+                      nextPresentation.structureId
+                  ]
+                : undefined;
+            cameraInteriorStructure =
+                structureIndex === undefined
+                    ? null
+                    : (structureCollectionPlan?.structures[structureIndex] ??
+                      null);
+        }
+
+        if (cameraTarget) {
             const structureSafePosition =
                 resolveGardenStructureThirdPersonCameraPosition({
                     desiredPosition: desiredPositionRef.current,
-                    hiddenInstanceIds: hiddenInteriorInstanceIds,
-                    structure: interiorStructure,
+                    hiddenInstanceIds: cameraHiddenInstanceIds,
+                    structure: cameraInteriorStructure,
                     targetPosition: cameraTarget,
                 });
             desiredPositionRef.current.set(
@@ -808,7 +850,6 @@ export function GardenAvatar({
             emptyGardenStructureAvatarInteriorPresentation,
         );
     const lastContainedStructureIdRef = useRef<string | null>(null);
-    const lastStructureInteriorCheckAtRef = useRef(Number.NEGATIVE_INFINITY);
     const lastPresenceReportAtRef = useRef(Number.NEGATIVE_INFINITY);
     const cameraEntryPoseRef = useRef<AvatarCameraEntryPose>({
         position: camera.position.clone(),
@@ -1234,6 +1275,7 @@ export function GardenAvatar({
             ? gardenAvatarCrouchingCollisionHeight
             : gardenAvatarStandingCollisionHeight;
         const worldChangePose = resolveGardenStructureAvatarWorldChangePose({
+            collection: initializedRef.current ? structureCollectionPlan : null,
             collisionHeight,
             grounded: groundedRef.current,
             groundY: groundYRef.current,
@@ -1612,7 +1654,7 @@ export function GardenAvatar({
         gl.domElement.style.cursor = 'auto';
     }
 
-    useFrame(({ camera: frameCamera, clock }, frameDelta) => {
+    useFrame(({ clock }, frameDelta) => {
         const actor = actorRef.current;
         if (!actor?.visible) {
             return;
@@ -2173,29 +2215,6 @@ export function GardenAvatar({
             yaw: actor.rotation.y,
             z: actor.position.z,
         });
-        if (
-            now - lastStructureInteriorCheckAtRef.current >=
-            gardenStructureInteriorCheckIntervalSeconds
-        ) {
-            lastStructureInteriorCheckAtRef.current = now;
-            if (
-                view !== 'overview' &&
-                structureCollectionPlan &&
-                structureCollectionPlan.structures.length > 0
-            ) {
-                publishInteriorPresentation(
-                    getGardenStructureAvatarInteriorPresentation({
-                        avatarPosition: actor.position,
-                        cameraPosition: frameCamera.position,
-                        collection: structureCollectionPlan,
-                    }),
-                );
-            } else {
-                publishInteriorPresentation(
-                    emptyGardenStructureAvatarInteriorPresentation,
-                );
-            }
-        }
         if (now - lastPresenceReportAtRef.current >= 0.1) {
             lastPresenceReportAtRef.current = now;
             const avatarYaw = Math.atan2(
@@ -2306,6 +2325,8 @@ export function GardenAvatar({
                     interiorPresentation={interiorPresentation}
                     interiorStructure={interiorStructure}
                     pitchRef={pitchRef}
+                    publishInteriorPresentation={publishInteriorPresentation}
+                    structureCollectionPlan={structureCollectionPlan}
                     view={view}
                     yawRef={yawRef}
                     zoomingRef={zoomingRef}

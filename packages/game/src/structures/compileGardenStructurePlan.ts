@@ -104,6 +104,7 @@ type TransitionEntry = Readonly<{
 }>;
 
 type RawWallBox = Readonly<{
+    cutawaySide: -1 | 0 | 1;
     kind: GardenStructureBlockedTransitionKind;
     sourceId: string;
     orientation: EdgeGeometry['orientation'];
@@ -116,6 +117,7 @@ type RawWallBox = Readonly<{
 }>;
 
 type MergedWallBox = Readonly<{
+    cutawaySide: -1 | 0 | 1;
     kind: GardenStructureBlockedTransitionKind;
     sourceIds: readonly string[];
     orientation: EdgeGeometry['orientation'];
@@ -504,6 +506,7 @@ function compareRawWallBoxes(left: RawWallBox, right: RawWallBox) {
         left.minHeight - right.minHeight ||
         left.maxHeight - right.maxHeight ||
         left.thickness - right.thickness ||
+        left.cutawaySide - right.cutawaySide ||
         left.start - right.start ||
         left.end - right.end ||
         compareStrings(left.sourceId, right.sourceId)
@@ -518,6 +521,7 @@ function canMergeWallBoxes(left: MergedWallBox, right: RawWallBox) {
         left.minHeight === right.minHeight &&
         left.maxHeight === right.maxHeight &&
         left.thickness === right.thickness &&
+        left.cutawaySide === right.cutawaySide &&
         right.start <= left.end + mergeEpsilon
     );
 }
@@ -1167,6 +1171,7 @@ export function compilePreparedGardenStructurePlan({
             validation: kitValidation,
         });
     }
+    const footprintCellKeys = new Set(footprintEntries.map(worldCellKey));
     const floorEntries = rotated.floors
         .map((floor) => ({
             x: floor.cell.x + placement.anchorX,
@@ -1267,7 +1272,22 @@ export function compilePreparedGardenStructurePlan({
             openPortalEntries.push(transition);
         } else {
             blockedTransitionEntries.push(transition);
+            const fromInside = footprintCellKeys.has(worldCellKey(from));
+            const toInside = footprintCellKeys.has(worldCellKey(to));
+            const inside = fromInside ? from : to;
+            const outside = fromInside ? to : from;
+            const cutawaySide: RawWallBox['cutawaySide'] =
+                fromInside === toInside
+                    ? 0
+                    : geometry.orientation === 'horizontal'
+                      ? outside.y < inside.y
+                          ? -1
+                          : 1
+                      : outside.x < inside.x
+                        ? -1
+                        : 1;
             rawWallBoxes.push({
+                cutawaySide,
                 kind: getBlockedTransitionKind(edge),
                 sourceId: edge.id,
                 orientation: geometry.orientation,

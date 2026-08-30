@@ -25,6 +25,7 @@ import {
     type GardenAvatarPoint,
     mergeGardenAvatarCollisionWorlds,
 } from './entities/avatar/gardenAvatarMovement';
+import type { GardenAvatarPresenceState } from './entities/avatar/gardenVisitorPresence';
 import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
@@ -858,6 +859,28 @@ export function GameScene({
         () => new Set(structureInteriorPresentation.hiddenInstanceIds),
         [structureInteriorPresentation.hiddenInstanceIds],
     );
+    const hiddenStructureEdgeCount = useMemo(
+        () =>
+            gardenStructureDebugFixture
+                ? structureInteriorPresentation.hiddenInstanceIds.filter((id) =>
+                      id.startsWith('edge:'),
+                  ).length
+                : undefined,
+        [
+            gardenStructureDebugFixture,
+            structureInteriorPresentation.hiddenInstanceIds,
+        ],
+    );
+    const [gardenAvatarDebugPresence, setGardenAvatarDebugPresence] =
+        useState<GardenAvatarPresenceState | null>(null);
+    const publishGardenAvatarDebugPresence = useCallback(
+        (presence: GardenAvatarPresenceState) => {
+            if (gardenStructureDebugFixture) {
+                setGardenAvatarDebugPresence(presence);
+            }
+        },
+        [gardenStructureDebugFixture],
+    );
     const structureAvatarCollisionWorld = useMemo(() => {
         if (
             savedStructureScene.collisionWorld &&
@@ -1061,8 +1084,24 @@ export function GameScene({
             data-garden-structure-hidden-instance-count={
                 structureInteriorPresentation.hiddenInstanceIds.length
             }
+            data-garden-structure-hidden-edge-count={hiddenStructureEdgeCount}
             data-garden-structure-interior-id={
                 structureInteriorPresentation.structureId ?? 'outside'
+            }
+            data-garden-avatar-debug-x={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.position[0]
+                    : undefined
+            }
+            data-garden-avatar-debug-z={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.position[2]
+                    : undefined
+            }
+            data-garden-avatar-debug-yaw={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.yaw
+                    : undefined
             }
             data-garden-structure-collision-status={
                 savedStructureScene.collisionWorld
@@ -1334,6 +1373,11 @@ export function GameScene({
                                                 }
                                                 onInteractBlock={
                                                     interactWithAvatarBlock
+                                                }
+                                                onPresenceChange={
+                                                    gardenStructureDebugFixture
+                                                        ? publishGardenAvatarDebugPresence
+                                                        : undefined
                                                 }
                                                 onStructureInteriorChange={
                                                     publishStructureInteriorPresentation

@@ -2,11 +2,15 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
     createGardenStructureTemplateSeed,
+    type GardenStructureDocumentV1,
     type GardenStructureRotation,
+    gardenStructureSchemaVersion,
 } from '@gredice/js/gardenStructures';
 import {
+    findGardenAvatarSpawnPoint,
     gardenAvatarStandingCollisionHeight,
     getGardenAvatarGroundY,
+    mergeGardenAvatarCollisionWorlds,
 } from '../entities/avatar/gardenAvatarMovement';
 import { compileGardenStructurePlan } from './compileGardenStructurePlan';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
@@ -47,6 +51,44 @@ function collection(structures: readonly GardenStructureSemanticPlan[]) {
             plan,
         })),
     );
+}
+
+function customDocument({
+    cells,
+    edges,
+}: {
+    cells: GardenStructureDocumentV1['footprint']['cells'];
+    edges: GardenStructureDocumentV1['edges'];
+}): GardenStructureDocumentV1 {
+    return {
+        schemaVersion: gardenStructureSchemaVersion,
+        footprint: { cells },
+        floors: cells.map((cell) => ({
+            cell: { x: cell.x, y: cell.y },
+            materialId: 'floor.timber',
+        })),
+        edges,
+        roofRegions: [],
+        props: [],
+    };
+}
+
+function compileCustomStructure({
+    document,
+    rotation,
+    structureId,
+}: {
+    document: GardenStructureDocumentV1;
+    rotation: GardenStructureRotation;
+    structureId: string;
+}) {
+    return compileGardenStructurePlan({
+        baseHeight,
+        document,
+        placement: { anchorX: 0, anchorY: 0, rotation },
+        revision: 1,
+        structureId,
+    });
 }
 
 function packedCell(
@@ -191,6 +233,94 @@ describe('garden structure avatar containment and cutaway', () => {
     });
 });
 
+describe('garden structure avatar preferred spawn', () => {
+    test('keeps a preferred interior spawn below a high roof and rejects solid structure volumes', () => {
+        const structure = house(0, 'spawn-house', 0, 0);
+        const terrainWorld = {
+            blockedCells: [],
+            surfaces: Array.from({ length: 20 * 20 }, (_, index) => ({
+                kind: 'ground' as const,
+                roamable: true,
+                x: index % 20,
+                y: 0,
+                z: Math.floor(index / 20),
+            })),
+        };
+        const world = mergeGardenAvatarCollisionWorlds(
+            terrainWorld,
+            createGardenStructureAvatarCollisionWorld(structure),
+        );
+        const preferredInterior = { x: 1, z: 2 };
+
+        assert.deepEqual(
+            findGardenAvatarSpawnPoint(world, preferredInterior),
+            { ...preferredInterior, y: baseHeight },
+            'the roof remains an overhead ceiling rather than a 2D spawn blocker',
+        );
+
+        const propSpawn = findGardenAvatarSpawnPoint(world, { x: 1, z: 1 });
+        assert.ok(propSpawn);
+        assert.notDeepEqual(
+            { x: propSpawn.x, z: propSpawn.z },
+            { x: 1, z: 1 },
+            'a preferred spawn cannot stand on or intersect a non-roamable prop',
+        );
+
+        const windowIndex =
+            structure.blockedTransitions.edgeIds.indexOf('window-north');
+        assert.notEqual(windowIndex, -1);
+        const segmentOffset = windowIndex * 4;
+        const startX = structure.blockedTransitions.segments[segmentOffset];
+        const startZ = structure.blockedTransitions.segments[segmentOffset + 1];
+        const endX = structure.blockedTransitions.segments[segmentOffset + 2];
+        const endZ = structure.blockedTransitions.segments[segmentOffset + 3];
+        assert.ok(
+            startX !== undefined &&
+                startZ !== undefined &&
+                endX !== undefined &&
+                endZ !== undefined,
+        );
+        const wallPosition = {
+            x: (startX + endX) / 2,
+            z: (startZ + endZ) / 2,
+        };
+        const wallSpawn = findGardenAvatarSpawnPoint(world, wallPosition);
+        assert.ok(wallSpawn);
+        assert.notDeepEqual(
+            { x: wallSpawn.x, z: wallSpawn.z },
+            wallPosition,
+            'a preferred spawn cannot intersect a wall volume',
+        );
+
+        const lowCeilingPosition = { x: 10, z: 10 };
+        const lowCeilingWorld = mergeGardenAvatarCollisionWorlds(terrainWorld, {
+            blockedCells: [],
+            surfaces: [
+                {
+                    bottomY: 0.8,
+                    halfDepth: 0.5,
+                    halfWidth: 0.5,
+                    kind: 'ground',
+                    roamable: false,
+                    x: lowCeilingPosition.x,
+                    y: 0.86,
+                    z: lowCeilingPosition.z,
+                },
+            ],
+        });
+        const lowCeilingSpawn = findGardenAvatarSpawnPoint(
+            lowCeilingWorld,
+            lowCeilingPosition,
+        );
+        assert.ok(lowCeilingSpawn);
+        assert.notDeepEqual(
+            { x: lowCeilingSpawn.x, z: lowCeilingSpawn.z },
+            lowCeilingPosition,
+            'a preferred spawn still requires standing headroom',
+        );
+    });
+});
+
 describe('garden structure avatar mutation recovery', () => {
     test('keeps an airborne actor above new geometry but rejects an overlapping live envelope', () => {
         const structure = house(0);
@@ -231,6 +361,80 @@ describe('garden structure avatar mutation recovery', () => {
             world,
         });
         assert.equal(overlapping.requiresRelocation, true);
+    });
+
+    test('requests relocation when a structure edit seals a collision-free actor inside', () => {
+        const sealedRoom = compileCustomStructure({
+            document: customDocument({
+                cells: [
+                    { x: 0, y: 0, spaceKind: 'interior' },
+                    { x: 1, y: 0, spaceKind: 'interior' },
+                    { x: 0, y: 1, spaceKind: 'interior' },
+                    { x: 1, y: 1, spaceKind: 'interior' },
+                ],
+                edges: [
+                    ...[0, 1].flatMap((x) => [
+                        {
+                            id: `sealed-north-${x.toString()}`,
+                            direction: 'north' as const,
+                            from: { x, y: 0 },
+                            kind: 'wall' as const,
+                            partId: 'wall.timber',
+                        },
+                        {
+                            id: `sealed-south-${x.toString()}`,
+                            direction: 'north' as const,
+                            from: { x, y: 2 },
+                            kind: 'wall' as const,
+                            partId: 'wall.timber',
+                        },
+                    ]),
+                    ...[0, 1].flatMap((y) => [
+                        {
+                            id: `sealed-west-${y.toString()}`,
+                            direction: 'east' as const,
+                            from: { x: -1, y },
+                            kind: 'wall' as const,
+                            partId: 'wall.timber',
+                        },
+                        {
+                            id: `sealed-east-${y.toString()}`,
+                            direction: 'east' as const,
+                            from: { x: 1, y },
+                            kind: 'wall' as const,
+                            partId: 'wall.timber',
+                        },
+                    ]),
+                ],
+            }),
+            rotation: 0,
+            structureId: 'sealed-room',
+        });
+        const plan = collection([sealedRoom]);
+        const world = createGardenStructureAvatarCollisionWorld(sealedRoom);
+        const position = { x: 0, y: baseHeight, z: 0 };
+
+        assert.equal(
+            resolveGardenStructureAvatarWorldChangePose({
+                grounded: true,
+                groundY: baseHeight,
+                position,
+                world,
+            }).requiresRelocation,
+            false,
+            'the actor envelope itself remains clear',
+        );
+        assert.equal(
+            resolveGardenStructureAvatarWorldChangePose({
+                collection: plan,
+                grounded: true,
+                groundY: baseHeight,
+                position,
+                world,
+            }).requiresRelocation,
+            true,
+            'bounded topology validation detects the missing exit route',
+        );
     });
 
     test('relocates an invalid actor to the nearest deterministic cardinal portal or perimeter point', () => {
@@ -302,9 +506,216 @@ describe('garden structure avatar mutation recovery', () => {
             assert.equal(isPortalCell || isCardinalPerimeterCell, true);
         }
     });
+
+    test('rejects an enclosed concave footprint gap as a safe relocation', () => {
+        const ringDocument = customDocument({
+            cells: [
+                { x: 0, y: 0, spaceKind: 'interior' },
+                { x: 1, y: 0, spaceKind: 'interior' },
+                { x: 2, y: 0, spaceKind: 'interior' },
+                { x: 0, y: 1, spaceKind: 'interior' },
+                { x: 2, y: 1, spaceKind: 'interior' },
+                { x: 0, y: 2, spaceKind: 'interior' },
+                { x: 1, y: 2, spaceKind: 'interior' },
+                { x: 2, y: 2, spaceKind: 'interior' },
+            ],
+            edges: [
+                {
+                    id: 'hole-north',
+                    direction: 'north',
+                    from: { x: 1, y: 1 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+                {
+                    id: 'hole-south',
+                    direction: 'north',
+                    from: { x: 1, y: 2 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+                {
+                    id: 'hole-west',
+                    direction: 'east',
+                    from: { x: 0, y: 1 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+                {
+                    id: 'hole-east',
+                    direction: 'east',
+                    from: { x: 1, y: 1 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+            ],
+        });
+
+        for (const rotation of rotations) {
+            const structure = compileCustomStructure({
+                document: ringDocument,
+                rotation,
+                structureId: `ring-${rotation.toString()}`,
+            });
+            const plan = collection([structure]);
+            const world = createGardenStructureAvatarCollisionWorld(structure);
+            const hole = {
+                x:
+                    (structure.footprint.bounds.minX +
+                        structure.footprint.bounds.maxX) /
+                    2,
+                z:
+                    (structure.footprint.bounds.minY +
+                        structure.footprint.bounds.maxY) /
+                    2,
+            };
+            const start = packedCell(
+                structure.footprint,
+                structure.footprint.ids.findIndex((_, index) => {
+                    const cell = packedCell(structure.footprint, index);
+                    return (
+                        Math.abs(cell.x - hole.x) +
+                            Math.abs(cell.z - hole.z) ===
+                        1
+                    );
+                }),
+            );
+            const relocation = findGardenStructureAvatarSafeRelocation({
+                collection: plan,
+                position: { ...start, y: baseHeight },
+                preferredStructureId: structure.structureId,
+                world,
+            });
+
+            assert.ok(relocation);
+            assert.notDeepEqual(
+                { x: relocation.x, z: relocation.z },
+                hole,
+                `rotation ${rotation.toString()} avoids the enclosed hole`,
+            );
+            assert.equal(
+                relocation.x < Math.ceil(structure.footprint.bounds.minX) ||
+                    relocation.x >
+                        Math.floor(structure.footprint.bounds.maxX) ||
+                    relocation.z < Math.ceil(structure.footprint.bounds.minY) ||
+                    relocation.z > Math.floor(structure.footprint.bounds.maxY),
+                true,
+                `rotation ${rotation.toString()} relocates to an exterior roam point`,
+            );
+        }
+    });
 });
 
 describe('garden structure avatar camera wall policy', () => {
+    test('separates adjacent exterior and partition camera collision in every rotation', () => {
+        const mixedWallDocument = customDocument({
+            cells: [
+                { x: 0, y: 0, spaceKind: 'interior' },
+                { x: 0, y: 1, spaceKind: 'interior' },
+                { x: 1, y: 1, spaceKind: 'interior' },
+            ],
+            edges: [
+                {
+                    id: 'mixed-partition',
+                    direction: 'north',
+                    from: { x: 0, y: 1 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+                {
+                    id: 'mixed-exterior',
+                    direction: 'north',
+                    from: { x: 1, y: 1 },
+                    kind: 'wall',
+                    partId: 'wall.timber',
+                },
+            ],
+        });
+
+        for (const rotation of rotations) {
+            const structure = compileCustomStructure({
+                document: mixedWallDocument,
+                rotation,
+                structureId: `mixed-wall-${rotation.toString()}`,
+            });
+            const partitionIndex =
+                structure.blockedTransitions.edgeIds.indexOf('mixed-partition');
+            const exteriorIndex =
+                structure.blockedTransitions.edgeIds.indexOf('mixed-exterior');
+            assert.notEqual(partitionIndex, -1);
+            assert.notEqual(exteriorIndex, -1);
+            assert.equal(
+                structure.wallCollisionBoxes.sourceIds.some(
+                    (sourceIds) =>
+                        sourceIds.includes('mixed-partition') &&
+                        sourceIds.includes('mixed-exterior'),
+                ),
+                false,
+                `rotation ${rotation.toString()} keeps cutaway classes separate`,
+            );
+
+            const exterior = transitionCells(
+                structure.blockedTransitions,
+                exteriorIndex,
+            );
+            const exteriorFromInside = Object.hasOwn(
+                structure.footprint.indexByKey,
+                `${exterior.from.x}|${exterior.from.z}`,
+            );
+            const exteriorInside = exteriorFromInside
+                ? exterior.from
+                : exterior.to;
+            const exteriorOutside = exteriorFromInside
+                ? exterior.to
+                : exterior.from;
+            const presentation = getGardenStructureAvatarInteriorPresentation({
+                avatarPosition: exteriorInside,
+                cameraPosition: exteriorOutside,
+                collection: collection([structure]),
+            });
+            assert.ok(
+                presentation.hiddenInstanceIds.includes(
+                    `edge:${structure.structureId}:mixed-exterior`,
+                ),
+            );
+            const hiddenInstanceIds = new Set(presentation.hiddenInstanceIds);
+            const exteriorDesired = { ...exteriorOutside, y: 1.4 };
+            assert.deepEqual(
+                resolveGardenStructureThirdPersonCameraPosition({
+                    desiredPosition: exteriorDesired,
+                    hiddenInstanceIds,
+                    structure,
+                    targetPosition: { ...exteriorInside, y: 1.4 },
+                }),
+                exteriorDesired,
+                `rotation ${rotation.toString()} permits the hidden exterior segment`,
+            );
+
+            const partition = transitionCells(
+                structure.blockedTransitions,
+                partitionIndex,
+            );
+            const partitionResult =
+                resolveGardenStructureThirdPersonCameraPosition({
+                    desiredPosition: { ...partition.to, y: 1.4 },
+                    hiddenInstanceIds,
+                    structure,
+                    targetPosition: { ...partition.from, y: 1.4 },
+                });
+            assert.ok(
+                Math.hypot(
+                    partitionResult.x - partition.from.x,
+                    partitionResult.z - partition.from.z,
+                ) <
+                    Math.hypot(
+                        partition.to.x - partition.from.x,
+                        partition.to.z - partition.from.z,
+                    ),
+                `rotation ${rotation.toString()} keeps the adjacent partition solid`,
+            );
+        }
+    });
+
     test('keeps partitions camera-solid but permits a suppressed exterior window', () => {
         const structure = house(0);
         const partitionIndex = structure.blockedTransitions.edgeIds.indexOf(

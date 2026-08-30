@@ -89,6 +89,7 @@ export function GardenBuildingAvatarInteriorsFixture() {
                         flags={{ enableGardenAvatarFlag: true }}
                         gardenAvatarActivationRequest={1}
                         gardenAvatarInitialSpawnPoint={{ x: 1, z: 2 }}
+                        gardenStructureDebugFixture
                         hideHud
                         mockGarden
                         noBackground
