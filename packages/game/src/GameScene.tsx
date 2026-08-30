@@ -1334,7 +1334,9 @@ export function GameScene({
                             </group>
                             <GameCameraRig
                                 controlsEnabled={
-                                    !noControls && !gardenAvatarActive
+                                    !noControls &&
+                                    !gardenAvatarActive &&
+                                    !structureBuildActive
                                 }
                                 gestureResetKey={structureBuildActive}
                                 initialPosition={sceneCameraPosition}

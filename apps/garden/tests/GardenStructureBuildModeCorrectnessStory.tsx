@@ -15,6 +15,7 @@ export function GardenStructureConflictResolutionStory() {
     return (
         <div className="max-w-md p-4">
             <GardenStructureConflictResolutionPanel
+                errorMessage="Najnoviju građevinu trenutačno nije moguće učitati."
                 onReloadLatest={() => setAction('reload')}
                 onSaveAsNewDraft={() => setAction('save-as-draft')}
                 pendingAction={null}

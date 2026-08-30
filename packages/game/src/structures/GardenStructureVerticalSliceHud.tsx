@@ -306,6 +306,10 @@ export function GardenStructureVerticalSliceHud({
     const [conflictResolutionPending, setConflictResolutionPending] = useState<
         'reload' | 'save-as-draft' | null
     >(null);
+    const [conflictResolutionFailure, setConflictResolutionFailure] =
+        useState<Readonly<{ message: string; operationId: string }> | null>(
+            null,
+        );
     const [exitConfirmation, setExitConfirmation] = useState(false);
     const [recoveryWriteState, setRecoveryWriteState] = useState<Readonly<{
         available: boolean;
@@ -1073,7 +1077,9 @@ export function GardenStructureVerticalSliceHud({
         }
         const conflictedEditor = editor;
         const structureId = editor.origin.structureId;
+        const conflictOperationId = editor.save.operationId;
         setConflictResolutionPending('reload');
+        setConflictResolutionFailure(null);
         setAnnouncement('Učitavanje najnovije građevine…');
         try {
             const latestGardenResult = await refetchGarden();
@@ -1086,9 +1092,13 @@ export function GardenStructureVerticalSliceHud({
                     isOwnerGardenStructure(structure),
             );
             if (!latestStructure) {
-                setAnnouncement(
-                    'Građevina više ne postoji u najnovijem vrtu. Lokalne izmjene možete sačuvati samo kao novu građevinu.',
-                );
+                const message =
+                    'Građevina više ne postoji u najnovijem vrtu. Lokalne izmjene možete sačuvati samo kao novu građevinu.';
+                setConflictResolutionFailure({
+                    message,
+                    operationId: conflictOperationId,
+                });
+                setAnnouncement(message);
                 return;
             }
             const resolved = resolveGardenStructureEditorConflictWithLatest(
@@ -1110,6 +1120,10 @@ export function GardenStructureVerticalSliceHud({
                 },
             );
             if (!resolved.ok) {
+                setConflictResolutionFailure({
+                    message: resolved.error.message,
+                    operationId: conflictOperationId,
+                });
                 setAnnouncement(resolved.error.message);
                 return;
             }
@@ -1120,11 +1134,15 @@ export function GardenStructureVerticalSliceHud({
                 'Učitana je najnovija poslužiteljska verzija. Lokalne izmjene su odbačene.',
             );
         } catch (error) {
-            setAnnouncement(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : 'Najnoviju građevinu trenutačno nije moguće učitati.',
-            );
+                    : 'Najnoviju građevinu trenutačno nije moguće učitati.';
+            setConflictResolutionFailure({
+                message,
+                operationId: conflictOperationId,
+            });
+            setAnnouncement(message);
         } finally {
             setConflictResolutionPending(null);
         }
@@ -1813,6 +1831,12 @@ export function GardenStructureVerticalSliceHud({
 
                 {editor.save.status === 'conflict' ? (
                     <GardenStructureConflictResolutionPanel
+                        errorMessage={
+                            conflictResolutionFailure?.operationId ===
+                            editor.save.operationId
+                                ? conflictResolutionFailure.message
+                                : null
+                        }
                         onReloadLatest={reloadLatestAfterConflict}
                         onSaveAsNewDraft={saveConflictAsNewLocalDraft}
                         pendingAction={conflictResolutionPending}

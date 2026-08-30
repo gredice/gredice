@@ -53,6 +53,15 @@ test('suspends normal block and avatar interactions only for an active build ses
         gameSceneSource,
         /controlsEnabled=\{\s*!noControls &&\s*!gardenAvatarActive &&\s*!structureBuildActive\s*\}/,
     );
+    const overviewCamera = sourceBetween(
+        gameSceneSource,
+        '<GameCameraRig',
+        '</BlockInteractionRegistryProvider>',
+    );
+    assert.match(
+        overviewCamera,
+        /controlsEnabled=\{\s*!noControls &&\s*!gardenAvatarActive &&\s*!structureBuildActive\s*\}/,
+    );
     assert.match(
         gameSceneSource,
         /interactionDisabled=\{\s*structureBuildActive\s*\}/,

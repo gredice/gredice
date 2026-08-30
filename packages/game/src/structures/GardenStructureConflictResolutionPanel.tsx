@@ -5,11 +5,13 @@ const conflictActionClassName =
     'min-h-11 rounded-xl border border-amber-700/50 bg-background px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-900';
 
 export function GardenStructureConflictResolutionPanel({
+    errorMessage,
     onReloadLatest,
     onSaveAsNewDraft,
     pendingAction,
     recoveryAvailability,
 }: {
+    errorMessage?: string | null;
     onReloadLatest: () => void;
     onSaveAsNewDraft: () => void;
     pendingAction: 'reload' | 'save-as-draft' | null;
@@ -30,6 +32,14 @@ export function GardenStructureConflictResolutionPanel({
                       ? 'Lokalne izmjene nije moguće pohraniti na ovom uređaju. Nemojte zatvarati vrt dok ne odaberete rješenje.'
                       : 'Provjera lokalne kopije je u tijeku. Nemojte zatvarati vrt dok se status ne potvrdi.'}
             </p>
+            {errorMessage ? (
+                <p
+                    className="mt-2 rounded-lg border border-destructive/60 bg-destructive/10 p-2 text-xs text-foreground"
+                    data-testid="garden-structure-conflict-error"
+                >
+                    {errorMessage}
+                </p>
+            ) : null}
             <div className="mt-3 grid grid-cols-1 gap-2">
                 <button
                     type="button"

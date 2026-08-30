@@ -20,6 +20,9 @@ test('makes both revision-conflict resolutions actionable and explains their con
         page.getByText(/uključujući njezin položaj i važeću cijenu/),
     ).toBeVisible();
     await expect(page.getByText(/naplaćuje se puna cijena/)).toBeVisible();
+    await expect(
+        page.getByTestId('garden-structure-conflict-error'),
+    ).toHaveText('Najnoviju građevinu trenutačno nije moguće učitati.');
 
     await page.getByTestId('garden-structure-conflict-reload').click();
     await expect(page.getByTestId('conflict-action')).toHaveText('reload');
