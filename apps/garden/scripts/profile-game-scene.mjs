@@ -9042,19 +9042,21 @@ function buildMarkdown(report) {
 
     lines.push('', '## High-target Aggregate Failures', '');
     const highTargetFailures = [
-        ...highTargetMedians.flatMap(([name, summary]) => [
-            ...(summary.acceptancePass
-                ? []
-                : [
-                      `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
-                  ]),
-            ...summary.performanceBudget.checks
-                .filter((check) => !check.pass)
-                .map(
-                    (check) =>
-                        `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
-                ),
-        ]),
+        ...[...crossTierMedians, ...highTargetMedians].flatMap(
+            ([name, summary]) => [
+                ...(summary.acceptancePass
+                    ? []
+                    : [
+                          `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
+                      ]),
+                ...summary.performanceBudget.checks
+                    .filter((check) => !check.pass)
+                    .map(
+                        (check) =>
+                            `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
+                    ),
+            ],
+        ),
         ...adaptiveHighComparisons.flatMap(([pairName, comparison]) =>
             comparison.relativePerformanceChecks
                 .filter((check) => !check.pass && !check.skipped)

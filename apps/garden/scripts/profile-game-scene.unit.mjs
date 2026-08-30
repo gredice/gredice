@@ -3908,6 +3908,64 @@ test('cross-tier medians retain tier identity and render in a separate report se
         crossTierSection,
         /game-high-target-clear-idle-desktop/,
     );
+
+    crossTier.acceptancePass = false;
+    crossTier.failedAcceptanceRuns = [
+        'game-cross-tier-low-steady-desktop-run-2',
+    ];
+    crossTier.performanceBudget = {
+        pass: false,
+        checks: [
+            {
+                actual: 25,
+                limit: 20,
+                name: 'p95 frame time',
+                pass: false,
+            },
+        ],
+    };
+    const failureMarkdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians,
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians,
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'cross-tier',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [],
+        schemaVersion: 3,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 1 },
+        weatherSurfaceComparisons: {},
+    });
+    const failureSectionStart = failureMarkdown.indexOf(
+        '## High-target Aggregate Failures',
+    );
+    const failureSectionEnd = failureMarkdown.indexOf(
+        '\n## ',
+        failureSectionStart + 3,
+    );
+    const failureSection = failureMarkdown.slice(
+        failureSectionStart,
+        failureSectionEnd,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop: acceptance failed for game-cross-tier-low-steady-desktop-run-2/,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop median: p95 frame time 25 > 20/,
+    );
 });
 
 test('adaptive High comparison reports paired pass rates and frame/GPU deltas', () => {
