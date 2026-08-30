@@ -387,6 +387,7 @@ export function GameScene({
     );
     const gameCamera = useGameState((state) => state.gameCamera);
     const structureCameraSnapshotRef = useRef<GameCameraSnapshot | null>(null);
+    const structureCameraFrameSignatureRef = useRef<string | null>(null);
     const structurePlanCacheRef = useRef<GardenStructurePlanCache | null>(null);
     if (!structurePlanCacheRef.current) {
         structurePlanCacheRef.current = new GardenStructurePlanCache();
@@ -532,6 +533,17 @@ export function GameScene({
                 const canvasBounds = gameCamera
                     .getDomElement()
                     ?.getBoundingClientRect();
+                const frameSignature = [
+                    structureFixtureBundle.plan.cacheKey,
+                    canvasBounds?.width ?? 390,
+                    canvasBounds?.height ?? 844,
+                ].join(':');
+                if (
+                    structureCameraFrameSignatureRef.current === frameSignature
+                ) {
+                    return;
+                }
+                structureCameraFrameSignatureRef.current = frameSignature;
                 const cameraSnapshot = gameCamera.getSnapshot();
                 const cameraOffset = [
                     cameraSnapshot.position[0] - cameraSnapshot.target[0],
@@ -649,6 +661,7 @@ export function GameScene({
             return () => observer.disconnect();
         }
 
+        structureCameraFrameSignatureRef.current = null;
         const savedSnapshot = structureCameraSnapshotRef.current;
         if (!savedSnapshot) {
             return;
