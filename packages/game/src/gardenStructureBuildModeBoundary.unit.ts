@@ -10,6 +10,10 @@ const buildHudSource = readFileSync(
     join(sourceRoot, 'structures/GardenStructureVerticalSliceHud.tsx'),
     'utf8',
 );
+const historyGuardSource = readFileSync(
+    join(sourceRoot, 'structures/useGardenStructureBuildModeHistoryGuard.ts'),
+    'utf8',
+);
 function sourceBetween(source: string, start: string, end: string) {
     const startIndex = source.indexOf(start);
     const endIndex = source.indexOf(end, startIndex + start.length);
@@ -122,4 +126,22 @@ test('keeps the editor background inert while a confirmation is open', () => {
         buildHudSource,
         /aria-hidden=\{confirmationOpen \|\| undefined\}[\s\S]*?inert=\{confirmationOpen \? true : undefined\}/,
     );
+});
+
+test('bounds camera handoff retries and creates history markers only when arming the guard', () => {
+    assert.match(
+        gameSceneSource,
+        /const gardenStructureCameraFocusAttemptLimit = \d+;/,
+    );
+    assert.match(
+        gameSceneSource,
+        /focusAttemptCount < gardenStructureCameraFocusAttemptLimit[\s\S]*?requestAnimationFrame/,
+    );
+    assert.match(historyGuardSource, /useRef<string \| null>\(null\)/);
+    const armGuard = sourceBetween(
+        historyGuardSource,
+        'const armGuard',
+        'const releaseGuard',
+    );
+    assert.match(armGuard, /markerRef\.current \?\? createHistoryMarker\(\)/);
 });

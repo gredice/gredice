@@ -131,6 +131,8 @@ import {
 import { useRaisedBedCloseup } from './useRaisedBedCloseup';
 import { useWoodenSignParam } from './useUrlState';
 
+const gardenStructureCameraFocusAttemptLimit = 30;
+
 export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     appBaseUrl?: string;
     spriteBaseUrl?: string;
@@ -537,6 +539,8 @@ export function GameScene({
                 structureCameraSnapshotRef.current = gameCamera.getSnapshot();
             }
             let retryFrame: number | null = null;
+            let retryFrameSignature: string | null = null;
+            let focusAttemptCount = 0;
             const frameStructure = () => {
                 const { worldBounds } = structureFixtureBundle.plan;
                 const canvasBounds = gameCamera
@@ -552,6 +556,16 @@ export function GameScene({
                 ) {
                     return;
                 }
+                if (retryFrameSignature !== frameSignature) {
+                    retryFrameSignature = frameSignature;
+                    focusAttemptCount = 0;
+                }
+                if (
+                    focusAttemptCount >= gardenStructureCameraFocusAttemptLimit
+                ) {
+                    return;
+                }
+                focusAttemptCount += 1;
                 const cameraSnapshot = gameCamera.getSnapshot();
                 const cameraOffset = [
                     cameraSnapshot.position[0] - cameraSnapshot.target[0],
@@ -573,6 +587,8 @@ export function GameScene({
                 );
                 const completeStructureFrame = () => {
                     structureCameraFrameSignatureRef.current = frameSignature;
+                    focusAttemptCount = 0;
+                    retryFrameSignature = null;
                     const points = [
                         [
                             worldBounds.minX,
@@ -670,7 +686,8 @@ export function GameScene({
                 if (
                     structureCameraFrameSignatureRef.current !==
                         frameSignature &&
-                    retryFrame === null
+                    retryFrame === null &&
+                    focusAttemptCount < gardenStructureCameraFocusAttemptLimit
                 ) {
                     retryFrame = window.requestAnimationFrame(() => {
                         retryFrame = null;

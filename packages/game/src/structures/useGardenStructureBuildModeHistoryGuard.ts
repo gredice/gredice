@@ -20,6 +20,14 @@ function currentHistoryMarker() {
         : null;
 }
 
+function createHistoryMarker() {
+    const identifier =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    return `${historyMarkerPrefix}${identifier}`;
+}
+
 function historyStateWithMarker(marker: string) {
     const current = window.history.state;
     return {
@@ -35,7 +43,7 @@ export function useGardenStructureBuildModeHistoryGuard({
     active: boolean;
     onBack: () => GardenStructureBuildModeHistoryBackDisposition;
 }) {
-    const markerRef = useRef(`${historyMarkerPrefix}${crypto.randomUUID()}`);
+    const markerRef = useRef<string | null>(null);
     const guardArmedRef = useRef(false);
     const releasePendingRef = useRef(false);
     const activeRef = useRef(active);
@@ -53,8 +61,10 @@ export function useGardenStructureBuildModeHistoryGuard({
             guardArmedRef.current = true;
             return;
         }
+        const marker = markerRef.current ?? createHistoryMarker();
+        markerRef.current = marker;
         window.history.pushState(
-            historyStateWithMarker(markerRef.current),
+            historyStateWithMarker(marker),
             '',
             window.location.href,
         );
