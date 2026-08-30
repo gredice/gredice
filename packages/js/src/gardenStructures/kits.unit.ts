@@ -115,4 +115,32 @@ describe('garden structure immutable kit reference registry', () => {
             true,
         );
     });
+
+    test('allows the production kit storage props without changing template documents', () => {
+        const definition = getGardenStructureKitReferenceDefinition(
+            'gredice-buildings',
+            '1',
+        );
+        assert.ok(definition);
+
+        for (const propId of ['prop.chair', 'prop.shelf', 'prop.crate']) {
+            assert.equal(
+                isGardenStructureReferenceAllowed(definition, {
+                    id: propId,
+                    kind: 'prop-part',
+                    path: `props.${propId}`,
+                }),
+                true,
+            );
+        }
+
+        assert.equal(
+            isGardenStructureReferenceAllowed(definition, {
+                id: 'prop.client-model',
+                kind: 'prop-part',
+                path: 'props.prop.client-model',
+            }),
+            false,
+        );
+    });
 });

@@ -42,7 +42,10 @@ const versionOneKit = Object.freeze({
         'roof.shed': Object.freeze(['roof.clay']),
     }),
     propVariants: Object.freeze({
+        'prop.chair': Object.freeze([]),
+        'prop.crate': Object.freeze([]),
         'prop.planter': Object.freeze([]),
+        'prop.shelf': Object.freeze([]),
         'prop.table': Object.freeze([]),
         'prop.workbench': Object.freeze([]),
     }),
