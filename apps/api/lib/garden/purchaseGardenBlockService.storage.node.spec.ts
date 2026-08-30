@@ -11,10 +11,12 @@ import {
     type GardenPlacementTransaction,
     getGarden,
     getGardenBlocks,
+    getGardenMutationAuthorityForUpdate,
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getSunflowers,
     listGardenStructures,
+    softDeleteGardenOnce,
     spendSunflowersBatch,
     updateGardenStack,
     withAccountDeletionFenceTransaction,
@@ -90,6 +92,7 @@ function integrationService(controls: { failAfterDebit: boolean }) {
             },
             getBlockData: async () => blockData,
             getGardenLocation: async () => null,
+            getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
             isBlockPurchaseAvailableNow: () => true,
             listGardenStructures,
@@ -144,13 +147,16 @@ test('real purchase transaction persists one raised bed and replays without a se
     } as const;
 
     const first = await service(command);
+    assert.equal(first.ok, true);
+    assert.equal((await getGarden(gardenId))?.raisedBeds.length, 1);
+    await withGardenPlacementTransaction(gardenId, (transaction) =>
+        softDeleteGardenOnce(gardenId, transaction),
+    );
     const replay = await service(command);
 
-    assert.equal(first.ok, true);
     assert.equal(replay.ok && replay.replayed, true);
     assert.equal(await getSunflowers(accountId), beforeBalance - 75);
     assert.equal((await getGardenBlocks(gardenId)).length, 2);
-    assert.equal((await getGarden(gardenId))?.raisedBeds.length, 1);
     assert.ok(
         await getGardenMutationOperationReceipt({
             gardenId,

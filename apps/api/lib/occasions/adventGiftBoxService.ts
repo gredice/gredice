@@ -21,6 +21,7 @@ type GardenGiftBoxSnapshot = Readonly<{
     garden: Readonly<{
         accountId: string;
         id: number;
+        isSandbox: boolean;
     }>;
     blocks: readonly Readonly<{
         id: string;
@@ -85,6 +86,15 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<GardenGiftBoxSnapshot | null>;
     getBlockData: () => Promise<readonly GardenGiftBoxDirectoryBlock[]>;
+    getGardenMutationAuthorityForUpdate: (
+        gardenId: number,
+        transaction: Transaction,
+    ) => Promise<Readonly<{
+        accountId: string;
+        id: number;
+        isDeleted: boolean;
+        isSandbox: boolean;
+    }> | null>;
     isAdventSeasonOver: (timeZone: string) => boolean;
     listGardenStructuresForUpdate: (
         gardenId: number,
@@ -166,7 +176,8 @@ type OpenAdventGiftBoxFailureCode =
     | 'INVALID_OPERATION_RECEIPT'
     | 'INVALID_REQUEST'
     | 'OPERATION_CONFLICT'
-    | 'REWARD_UNAVAILABLE';
+    | 'REWARD_UNAVAILABLE'
+    | 'SANDBOX_GIFT_UNAVAILABLE';
 
 export type OpenAdventGiftBoxResult =
     | Readonly<{
@@ -283,20 +294,27 @@ export function createAdventGiftBoxService<Transaction>(
                                 dependencies.withGardenPlacementTransaction(
                                     command.gardenId,
                                     async (gardenTransaction) => {
-                                        const snapshot =
-                                            await dependencies.getGardenPlacementSnapshotForUpdate(
+                                        const authority =
+                                            await dependencies.getGardenMutationAuthorityForUpdate(
                                                 command.gardenId,
                                                 gardenTransaction,
                                             );
                                         if (
-                                            !snapshot ||
-                                            snapshot.garden.accountId !==
+                                            !authority ||
+                                            authority.accountId !==
                                                 command.accountId
                                         ) {
                                             fail(
                                                 'GARDEN_NOT_FOUND',
                                                 404,
                                                 'Vrt nije pronađen.',
+                                            );
+                                        }
+                                        if (authority.isSandbox) {
+                                            fail(
+                                                'SANDBOX_GIFT_UNAVAILABLE',
+                                                400,
+                                                'Poklon kutije nisu dostupne u probnom vrtu.',
                                             );
                                         }
 
@@ -312,6 +330,23 @@ export function createAdventGiftBoxService<Transaction>(
                                                 },
                                             },
                                             async (operationTransaction) => {
+                                                const snapshot =
+                                                    await dependencies.getGardenPlacementSnapshotForUpdate(
+                                                        command.gardenId,
+                                                        operationTransaction,
+                                                    );
+                                                if (
+                                                    !snapshot ||
+                                                    snapshot.garden
+                                                        .accountId !==
+                                                        command.accountId
+                                                ) {
+                                                    fail(
+                                                        'GARDEN_NOT_FOUND',
+                                                        404,
+                                                        'Vrt nije pronađen.',
+                                                    );
+                                                }
                                                 if (
                                                     !dependencies.isAdventSeasonOver(
                                                         command.timeZone,

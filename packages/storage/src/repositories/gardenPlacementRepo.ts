@@ -91,6 +91,40 @@ export type GardenPlacementSnapshot = Readonly<{
     blocks: readonly (typeof gardenBlocks.$inferSelect)[];
 }>;
 
+export type GardenMutationAuthority = Readonly<{
+    accountId: string;
+    id: number;
+    isDeleted: boolean;
+    isSandbox: boolean;
+}>;
+
+/**
+ * Lock the owning garden row before consulting a garden-scoped mutation
+ * receipt. Soft-deleted rows remain valid authorization authorities so exact
+ * retries can replay a committed receipt. Hard deletion cascades receipts.
+ */
+export async function getGardenMutationAuthorityForUpdate(
+    gardenId: number,
+    db: GardenPlacementTransaction,
+): Promise<GardenMutationAuthority | null> {
+    assertGardenId(gardenId);
+    return (
+        (
+            await db
+                .select({
+                    accountId: gardens.accountId,
+                    id: gardens.id,
+                    isDeleted: gardens.isDeleted,
+                    isSandbox: gardens.isSandbox,
+                })
+                .from(gardens)
+                .where(eq(gardens.id, gardenId))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
+    );
+}
+
 /**
  * Read the placement authority through one transaction client after the
  * garden lock is held. This intentionally avoids the broader getGarden query,

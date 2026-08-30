@@ -57,7 +57,12 @@ function assertIdentifier(value: string, name: string) {
 function assertOperationKind(
     kind: string,
 ): asserts kind is GardenMutationOperationKind {
-    if (kind !== 'block-purchase' && kind !== 'gift-open') {
+    if (
+        kind !== 'block-purchase' &&
+        kind !== 'garden-box-block-place' &&
+        kind !== 'garden-box-block-store' &&
+        kind !== 'gift-open'
+    ) {
         throw new RangeError('Unknown garden mutation operation kind.');
     }
 }
@@ -368,8 +373,8 @@ export type GardenMutationOperationExecution = Readonly<{
 /**
  * Execute a garden mutation and save its exact canonical response atomically.
  * Callers own domain lock ordering; economic garden callers must acquire the
- * account currency, deletion-fence, and garden-placement locks first and pass
- * that shared transaction here.
+ * account currency or inventory, deletion-fence, and garden-placement locks
+ * first and pass that shared transaction here.
  */
 export async function withGardenMutationOperation(
     {

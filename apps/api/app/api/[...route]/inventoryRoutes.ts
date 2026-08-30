@@ -12,6 +12,10 @@ import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
 import { authSecurity } from '../../../lib/docs/security';
+import {
+    gardenBoxBlockPlacementBodySchema,
+    resolveGardenBoxBlockPlacementOperationId,
+} from '../../../lib/garden/gardenBoxBlockPlacementSchemas';
 import { placeGardenBoxBlockForAccount } from '../../../lib/garden/gardenBoxBlockPlacementService';
 import {
     type AuthVariables,
@@ -195,21 +199,25 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/garden-boxes/:gardenId/:blockId/items/block/:entityId/place',
         describeRoute({
             description:
-                'Place one block from a garden box inventory into the garden using standard block placement rules.',
+                'Atomically place and consume one block from a garden box. New clients can replay an exact bounded operation ID; legacy requests receive a one-shot server identity.',
             security: authSecurity,
             tags: ['Inventory'],
         }),
         authValidator(['user', 'admin']),
         zValidator('param', gardenBoxInventoryBlockPlacementParamsSchema),
+        zValidator('json', gardenBoxBlockPlacementBodySchema),
         async (context) => {
             const { accountId } = context.get('authContext');
             const { gardenId, blockId, entityId } = context.req.valid('param');
+            const { operationId } = context.req.valid('json');
             try {
                 const result = await placeGardenBoxBlockForAccount({
                     accountId,
                     gardenId,
                     gardenBoxBlockId: blockId,
                     entityId,
+                    operationId:
+                        resolveGardenBoxBlockPlacementOperationId(operationId),
                 });
                 if (!result.ok) {
                     return context.json(

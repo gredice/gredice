@@ -18,6 +18,7 @@ import {
     type GardenMutationOperationStoredResponse,
     type GardenPlacementTransaction,
     getGarden,
+    getGardenMutationAuthorityForUpdate,
     getGardenPlacementSnapshotForUpdate,
     InsufficientSunflowersError,
     listGardenStructures,
@@ -98,6 +99,15 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
     ) => Promise<unknown>;
     getBlockData: () => Promise<readonly BlockData[]>;
     getGardenLocation: (gardenId: number) => Promise<GardenPurchaseLocation>;
+    getGardenMutationAuthorityForUpdate: (
+        gardenId: number,
+        transaction: Transaction,
+    ) => Promise<Readonly<{
+        accountId: string;
+        id: number;
+        isDeleted: boolean;
+        isSandbox: boolean;
+    }> | null>;
     getGardenPlacementSnapshotForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -515,14 +525,14 @@ export function createPurchaseGardenBlockService<Transaction>(
                             dependencies.withGardenPlacementTransaction(
                                 command.gardenId,
                                 async (gardenTransaction) => {
-                                    const snapshot =
-                                        await dependencies.getGardenPlacementSnapshotForUpdate(
+                                    const authority =
+                                        await dependencies.getGardenMutationAuthorityForUpdate(
                                             command.gardenId,
                                             gardenTransaction,
                                         );
                                     if (
-                                        !snapshot ||
-                                        snapshot.garden.accountId !==
+                                        !authority ||
+                                        authority.accountId !==
                                             command.accountId
                                     ) {
                                         fail(
@@ -543,6 +553,23 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                     operationPayload(command),
                                             },
                                             async (operationTransaction) => {
+                                                const snapshot =
+                                                    await dependencies.getGardenPlacementSnapshotForUpdate(
+                                                        command.gardenId,
+                                                        operationTransaction,
+                                                    );
+                                                if (
+                                                    !snapshot ||
+                                                    snapshot.garden
+                                                        .accountId !==
+                                                        command.accountId
+                                                ) {
+                                                    fail(
+                                                        'GARDEN_NOT_FOUND',
+                                                        404,
+                                                        'Garden not found',
+                                                    );
+                                                }
                                                 const blockData =
                                                     await loadBlockData(
                                                         dependencies,
@@ -877,6 +904,7 @@ const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransa
                   }
                 : null;
         },
+        getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
         isBlockPurchaseAvailableNow,
         listGardenStructures,

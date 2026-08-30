@@ -102,6 +102,7 @@ type HarnessOptions = Readonly<{
     blockName?: string;
     directoryPrice?: number;
     failAfterDebit?: boolean;
+    gardenAccountId?: string;
     sandbox?: boolean;
     structures?: TestState['structures'];
 }>;
@@ -168,6 +169,7 @@ function makeHarness(options: HarnessOptions = {}) {
     const blockName = options.blockName ?? 'Shade';
     const transaction: TestTransaction = { id: 'shared-transaction' };
     const calls: string[] = [];
+    let gardenActive = true;
     const blockData = [
         directoryBlock(1, 'Block_Grass', {
             price: 0,
@@ -264,16 +266,30 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('location');
             return { lat: 45, lon: 16 };
         },
+        getGardenMutationAuthorityForUpdate: async (
+            _gardenId,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            calls.push('authority');
+            return {
+                accountId: options.gardenAccountId ?? accountId,
+                id: gardenId,
+                isDeleted: !gardenActive,
+                isSandbox: options.sandbox ?? false,
+            };
+        },
         getGardenPlacementSnapshotForUpdate: async (
             _gardenId,
             receivedTransaction,
         ) => {
             assert.equal(receivedTransaction, transaction);
             calls.push('snapshot');
+            if (!gardenActive) return null;
             return {
                 garden: {
                     id: gardenId,
-                    accountId,
+                    accountId: options.gardenAccountId ?? accountId,
                     isSandbox: options.sandbox ?? false,
                 },
                 blocks: state.blocks,
@@ -397,6 +413,9 @@ function makeHarness(options: HarnessOptions = {}) {
         calls,
         command,
         service,
+        softDeleteGarden: () => {
+            gardenActive = false;
+        },
         state: () => cloneState(state),
     };
 }
@@ -418,8 +437,9 @@ describe('purchaseGardenBlock', () => {
             'sunflower-lock',
             'deletion-fence',
             'garden-lock',
-            'snapshot',
+            'authority',
             'operation-receipt',
+            'snapshot',
             'directory',
             'location',
             'structures',
@@ -445,6 +465,7 @@ describe('purchaseGardenBlock', () => {
     it('replays the exact response without duplicating placement or debit', async () => {
         const harness = makeHarness();
         const first = await harness.service(harness.command());
+        harness.softDeleteGarden();
         const replay = await harness.service(harness.command());
 
         assert.equal(first.ok && first.replayed, false);
@@ -461,6 +482,23 @@ describe('purchaseGardenBlock', () => {
             harness.calls.filter((call) => call === 'directory').length,
             1,
         );
+        assert.equal(
+            harness.calls.filter((call) => call === 'snapshot').length,
+            1,
+        );
+    });
+
+    it('denies a foreign account before consulting the operation receipt', async () => {
+        const harness = makeHarness({ gardenAccountId: 'account-2' });
+
+        assert.deepEqual(await harness.service(harness.command()), {
+            ok: false,
+            code: 'GARDEN_NOT_FOUND',
+            error: 'Garden not found',
+            status: 404,
+        });
+        assert.equal(harness.calls.includes('operation-receipt'), false);
+        assert.equal(harness.calls.includes('snapshot'), false);
     });
 
     it('allows identical purchases when each explicit command has a different operation ID', async () => {

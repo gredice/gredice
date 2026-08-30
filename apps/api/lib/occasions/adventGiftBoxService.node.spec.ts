@@ -23,7 +23,10 @@ function makeHarness({
     adventOver = true,
     blockName = 'GiftBox_RedWhite',
     existingReceipt,
+    gardenActive = true,
     gardenAccountId = command.accountId,
+    gardenIsDeleted = false,
+    gardenIsSandbox = false,
     occupancyResult = { valid: true } as const,
     remainingBlockIds = ['ground'],
     rewardFailure = false,
@@ -31,7 +34,10 @@ function makeHarness({
     adventOver?: boolean;
     blockName?: string;
     existingReceipt?: Readonly<{ reward: GiftBoxReward }>;
+    gardenActive?: boolean;
     gardenAccountId?: string;
+    gardenIsDeleted?: boolean;
+    gardenIsSandbox?: boolean;
     occupancyResult?:
         | Readonly<{ valid: true }>
         | Readonly<{
@@ -66,6 +72,20 @@ function makeHarness({
             assert.equal(receivedTransaction, transaction);
             calls.push('stack-delete');
         },
+        getGardenMutationAuthorityForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
+            assert.equal(gardenId, command.gardenId);
+            assert.equal(receivedTransaction, transaction);
+            calls.push('authority');
+            return {
+                accountId: gardenAccountId,
+                id: gardenId,
+                isDeleted: gardenIsDeleted,
+                isSandbox: gardenIsSandbox,
+            };
+        },
         getGardenPlacementSnapshotForUpdate: async (
             gardenId,
             receivedTransaction,
@@ -73,8 +93,13 @@ function makeHarness({
             assert.equal(gardenId, command.gardenId);
             assert.equal(receivedTransaction, transaction);
             calls.push('snapshot');
+            if (!gardenActive) return null;
             return {
-                garden: { accountId: gardenAccountId, id: gardenId },
+                garden: {
+                    accountId: gardenAccountId,
+                    id: gardenId,
+                    isSandbox: gardenIsSandbox,
+                },
                 blocks: [
                     { id: command.blockId, name: blockName },
                     ...remainingBlockIds.map((id) => ({
@@ -220,8 +245,9 @@ describe('openAdventGiftBoxAtomically', () => {
             'inventory-lock',
             'account-lock',
             'garden-lock',
-            'snapshot',
+            'authority',
             'receipt',
+            'snapshot',
             'structures',
             'directory',
             'occupancy',
@@ -232,8 +258,10 @@ describe('openAdventGiftBoxAtomically', () => {
         ]);
     });
 
-    test('replays the exact saved reward without reading or mutating garden state', async () => {
+    test('replays the exact saved reward after soft deletion without reading active garden state', async () => {
         const harness = makeHarness({
+            gardenActive: false,
+            gardenIsDeleted: true,
             adventOver: false,
             existingReceipt: { reward },
         });
@@ -247,8 +275,28 @@ describe('openAdventGiftBoxAtomically', () => {
             'inventory-lock',
             'account-lock',
             'garden-lock',
-            'snapshot',
+            'authority',
             'receipt',
+        ]);
+    });
+
+    test('rejects sandbox gifts before receipt, reward, or inventory effects', async () => {
+        const harness = makeHarness({
+            existingReceipt: { reward },
+            gardenIsSandbox: true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'SANDBOX_GIFT_UNAVAILABLE',
+            error: 'Poklon kutije nisu dostupne u probnom vrtu.',
+            status: 400,
+        });
+        assert.deepEqual(harness.calls, [
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
         ]);
     });
 
@@ -295,10 +343,17 @@ describe('openAdventGiftBoxAtomically', () => {
                     calls.push('inventory-add');
                 },
                 deleteGardenStack: async () => {},
+                getGardenMutationAuthorityForUpdate: async () => ({
+                    accountId: command.accountId,
+                    id: command.gardenId,
+                    isDeleted: false,
+                    isSandbox: false,
+                }),
                 getGardenPlacementSnapshotForUpdate: async () => ({
                     garden: {
                         accountId: command.accountId,
                         id: command.gardenId,
+                        isSandbox: false,
                     },
                     blocks: [{ id: command.blockId, name: 'GiftBox_RedWhite' }],
                     stacks,
@@ -355,8 +410,9 @@ describe('openAdventGiftBoxAtomically', () => {
             'inventory-lock',
             'account-lock',
             'garden-lock',
-            'snapshot',
+            'authority',
             'receipt',
+            'snapshot',
         ]);
 
         const invalid = makeHarness();

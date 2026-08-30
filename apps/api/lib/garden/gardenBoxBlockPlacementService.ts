@@ -9,11 +9,17 @@ import {
     createGardenBlock,
     createGardenStack,
     GardenBoxInventoryInsufficientError,
+    GardenMutationOperationConflictError,
+    type GardenMutationOperationExecution,
+    type GardenMutationOperationStoredResponse,
     type GardenPlacementTransaction,
+    getGardenBlockForUpdate,
+    getGardenMutationAuthorityForUpdate,
     getGardenPlacementSnapshotForUpdate,
     listGardenStructures,
     updateGardenStack,
     withGardenBoxInventoryTransaction,
+    withGardenMutationOperation,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
@@ -24,6 +30,9 @@ import {
     type GardenOccupancyStorageStructureLike,
     validatePersistedStructuresAfterBlockMutation,
 } from './gardenOccupancyService';
+
+const maximumStorageInteger = 2_147_483_647;
+const operationIdentifierMaxLength = 96;
 
 type GardenBoxPlacementSnapshot = Readonly<{
     garden: Readonly<{
@@ -43,7 +52,7 @@ type GardenBoxPlacementSnapshot = Readonly<{
     }>[];
 }>;
 
-type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
+export type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
     consumeGardenBoxInventoryItem: (
         accountId: string,
         gardenId: number,
@@ -68,6 +77,23 @@ type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<unknown>;
     getBlockData: () => Promise<readonly BlockData[]>;
+    getGardenBlockForUpdate: (
+        input: Readonly<{
+            blockId: string;
+            gardenId: number;
+            includeDeleted?: boolean;
+        }>,
+        transaction: Transaction,
+    ) => Promise<Readonly<{ id: string; name: string }> | null>;
+    getGardenMutationAuthorityForUpdate: (
+        gardenId: number,
+        transaction: Transaction,
+    ) => Promise<Readonly<{
+        accountId: string;
+        id: number;
+        isDeleted: boolean;
+        isSandbox: boolean;
+    }> | null>;
     getGardenPlacementSnapshotForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -100,6 +126,22 @@ type GardenBoxBlockPlacementDependencies<Transaction> = Readonly<{
         gardenBoxBlockId: string,
         callback: (transaction: Transaction) => Promise<Result>,
     ) => Promise<Result>;
+    withGardenMutationOperation: (
+        input: Readonly<{
+            gardenId: number;
+            kind: 'garden-box-block-place';
+            operationId: string;
+            payload: Readonly<{
+                accountId: string;
+                entityId: string;
+                gardenBoxBlockId: string;
+            }>;
+        }>,
+        callback: (
+            transaction: Transaction,
+        ) => Promise<Readonly<{ response: unknown }>>,
+        transaction: Transaction,
+    ) => Promise<GardenMutationOperationExecution>;
     withGardenPlacementTransaction: <Result>(
         gardenId: number,
         callback: (transaction: Transaction) => Promise<Result>,
@@ -112,6 +154,7 @@ export type GardenBoxBlockPlacementCommand = Readonly<{
     gardenId: number;
     gardenBoxBlockId: string;
     entityId: string;
+    operationId: string;
 }>;
 
 type GardenBoxBlockPlacementFailureCode =
@@ -124,6 +167,9 @@ type GardenBoxBlockPlacementFailureCode =
     | 'GARDEN_OCCUPANCY_INVALID_INPUT'
     | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
+    | 'INVALID_OPERATION_RECEIPT'
+    | 'INVALID_REQUEST'
+    | 'OPERATION_CONFLICT'
     | 'UNSUPPORTED_GARDEN_BOX_BLOCK';
 
 export type GardenBoxBlockPlacementResult =
@@ -136,12 +182,13 @@ export type GardenBoxBlockPlacementResult =
               amount: 1;
           }>;
           position: Readonly<{ x: number; y: number }>;
+          replayed: boolean;
       }>
     | Readonly<{
           ok: false;
           code: GardenBoxBlockPlacementFailureCode;
           error: string;
-          status: 400 | 404 | 409;
+          status: 400 | 404 | 409 | 500;
       }>;
 
 class GardenBoxBlockPlacementError extends Error {
@@ -149,7 +196,7 @@ class GardenBoxBlockPlacementError extends Error {
 
     constructor(
         readonly code: GardenBoxBlockPlacementFailureCode,
-        readonly status: 400 | 404 | 409,
+        readonly status: 400 | 404 | 409 | 500,
         message: string,
     ) {
         super(message);
@@ -158,7 +205,7 @@ class GardenBoxBlockPlacementError extends Error {
 
 function fail(
     code: GardenBoxBlockPlacementFailureCode,
-    status: 400 | 404 | 409,
+    status: 400 | 404 | 409 | 500,
     message: string,
 ): never {
     throw new GardenBoxBlockPlacementError(code, status, message);
@@ -170,6 +217,81 @@ function failOccupancy(error: GardenOccupancyServiceError): never {
         error.status,
         error.message,
     );
+}
+
+function assertCommand(command: GardenBoxBlockPlacementCommand) {
+    if (
+        !command.accountId.trim() ||
+        !Number.isSafeInteger(command.gardenId) ||
+        command.gardenId <= 0 ||
+        command.gardenId > maximumStorageInteger ||
+        !command.gardenBoxBlockId ||
+        command.gardenBoxBlockId.length > 128 ||
+        command.gardenBoxBlockId.trim() !== command.gardenBoxBlockId ||
+        !command.entityId ||
+        command.entityId.length > 100 ||
+        command.entityId.trim() !== command.entityId ||
+        !command.operationId ||
+        command.operationId.length > operationIdentifierMaxLength ||
+        command.operationId.trim() !== command.operationId
+    ) {
+        fail('INVALID_REQUEST', 400, 'Invalid garden box placement request');
+    }
+}
+
+type GardenBoxBlockPlacementResponse = Readonly<{
+    blockId: string;
+    item: Readonly<{
+        amount: 1;
+        entityId: string;
+        entityTypeName: 'block';
+    }>;
+    position: Readonly<{ x: number; y: number }>;
+}>;
+
+function isStoredResponseObject(
+    value: unknown,
+): value is GardenMutationOperationStoredResponse {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readReceiptResponse(
+    response: GardenMutationOperationStoredResponse,
+): GardenBoxBlockPlacementResponse {
+    if (
+        !isStoredResponseObject(response.item) ||
+        !isStoredResponseObject(response.position) ||
+        typeof response.blockId !== 'string' ||
+        response.blockId.length === 0 ||
+        response.blockId.length > 128 ||
+        response.item.entityTypeName !== 'block' ||
+        typeof response.item.entityId !== 'string' ||
+        response.item.entityId.length === 0 ||
+        response.item.entityId.length > 100 ||
+        response.item.amount !== 1 ||
+        typeof response.position.x !== 'number' ||
+        !Number.isSafeInteger(response.position.x) ||
+        typeof response.position.y !== 'number' ||
+        !Number.isSafeInteger(response.position.y)
+    ) {
+        fail(
+            'INVALID_OPERATION_RECEIPT',
+            500,
+            'Stored garden box placement receipt is invalid',
+        );
+    }
+    return {
+        blockId: response.blockId,
+        item: {
+            amount: 1,
+            entityId: response.item.entityId,
+            entityTypeName: 'block',
+        },
+        position: {
+            x: response.position.x,
+            y: response.position.y,
+        },
+    };
 }
 
 function getRequestedBlock(blockData: readonly BlockData[], entityId: string) {
@@ -223,13 +345,7 @@ export function createGardenBoxBlockPlacementService<Transaction>(
         command: GardenBoxBlockPlacementCommand,
     ): Promise<GardenBoxBlockPlacementResult> {
         try {
-            const blockData = await dependencies.getBlockData();
-            const requestedBlock = getRequestedBlock(
-                blockData,
-                command.entityId,
-            );
-            const blockName = requestedBlock.information.name;
-            assertPlaceableGardenBoxBlock(blockName);
+            assertCommand(command);
 
             return await dependencies.withGardenBoxInventoryTransaction(
                 command.accountId,
@@ -239,14 +355,14 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                     dependencies.withGardenPlacementTransaction(
                         command.gardenId,
                         async (gardenTransaction) => {
-                            const snapshot =
-                                await dependencies.getGardenPlacementSnapshotForUpdate(
+                            const authority =
+                                await dependencies.getGardenMutationAuthorityForUpdate(
                                     command.gardenId,
                                     gardenTransaction,
                                 );
                             if (
-                                !snapshot ||
-                                snapshot.garden.accountId !== command.accountId
+                                !authority ||
+                                authority.accountId !== command.accountId
                             ) {
                                 fail(
                                     'GARDEN_BOX_NOT_FOUND',
@@ -254,158 +370,245 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                     'Garden box not found',
                                 );
                             }
-                            const gardenBox = snapshot.blocks.find(
-                                (block) =>
-                                    block.id === command.gardenBoxBlockId,
-                            );
-                            if (gardenBox?.name !== 'GardenBox') {
+                            const targetGardenBox =
+                                await dependencies.getGardenBlockForUpdate(
+                                    {
+                                        blockId: command.gardenBoxBlockId,
+                                        gardenId: command.gardenId,
+                                        includeDeleted: true,
+                                    },
+                                    gardenTransaction,
+                                );
+                            if (targetGardenBox?.name !== 'GardenBox') {
                                 fail(
                                     'GARDEN_BOX_NOT_FOUND',
                                     404,
                                     'Garden box not found',
                                 );
                             }
-
-                            const structures =
-                                await dependencies.listGardenStructures(
-                                    command.gardenId,
-                                    gardenTransaction,
-                                );
-                            const occupancy =
-                                dependencies.createGardenOccupancyIndexFromStorageSnapshot(
+                            const execution =
+                                await dependencies.withGardenMutationOperation(
                                     {
-                                        blockData,
-                                        snapshot: {
-                                            blocks: snapshot.blocks,
-                                            stacks: snapshot.stacks,
-                                            structures,
+                                        gardenId: command.gardenId,
+                                        kind: 'garden-box-block-place',
+                                        operationId: command.operationId,
+                                        payload: {
+                                            accountId: command.accountId,
+                                            entityId: command.entityId,
+                                            gardenBoxBlockId:
+                                                command.gardenBoxBlockId,
                                         },
                                     },
-                                );
-                            if (!occupancy.valid) {
-                                failOccupancy(occupancy.error);
-                            }
+                                    async (operationTransaction) => {
+                                        const snapshot =
+                                            await dependencies.getGardenPlacementSnapshotForUpdate(
+                                                command.gardenId,
+                                                operationTransaction,
+                                            );
+                                        if (
+                                            !snapshot ||
+                                            snapshot.garden.accountId !==
+                                                command.accountId
+                                        ) {
+                                            fail(
+                                                'GARDEN_BOX_NOT_FOUND',
+                                                404,
+                                                'Garden box not found',
+                                            );
+                                        }
+                                        const gardenBox = snapshot.blocks.find(
+                                            (block) =>
+                                                block.id ===
+                                                command.gardenBoxBlockId,
+                                        );
+                                        if (gardenBox?.name !== 'GardenBox') {
+                                            fail(
+                                                'GARDEN_BOX_NOT_FOUND',
+                                                404,
+                                                'Garden box not found',
+                                            );
+                                        }
 
-                            const blockNameById = new Map(
-                                snapshot.blocks.map((block) => [
-                                    block.id,
-                                    block.name,
-                                ]),
-                            );
-                            const blockRotationById = new Map(
-                                snapshot.blocks.map((block) => [
-                                    block.id,
-                                    block.rotation,
-                                ]),
-                            );
-                            const blockDataByName = new Map(
-                                blockData.map((block) => [
-                                    block.information.name,
-                                    block,
-                                ]),
-                            );
-                            const placement =
-                                dependencies.resolveGardenBlockPlacement({
-                                    blockName,
-                                    blockedCells: structureOccupiedCellKeys(
-                                        occupancy.index,
-                                    ),
-                                    stacks: snapshot.stacks.map((stack) => ({
-                                        blocks: [...stack.blocks],
-                                        positionX: stack.positionX,
-                                        positionY: stack.positionY,
-                                    })),
-                                    blockNameById,
-                                    blockDataByName,
-                                    blockRotationById,
-                                });
-                            if (!placement.valid) {
-                                fail(
-                                    'BLOCK_PLACEMENT_INVALID',
-                                    400,
-                                    placement.error,
-                                );
-                            }
+                                        const blockData =
+                                            await dependencies.getBlockData();
+                                        const requestedBlock =
+                                            getRequestedBlock(
+                                                blockData,
+                                                command.entityId,
+                                            );
+                                        const blockName =
+                                            requestedBlock.information.name;
+                                        assertPlaceableGardenBoxBlock(
+                                            blockName,
+                                        );
 
-                            const { existingBlocks, x, y } =
-                                placement.placement;
-                            const hasTargetStack = snapshot.stacks.some(
-                                (stack) =>
-                                    stack.positionX === x &&
-                                    stack.positionY === y,
-                            );
-                            if (!hasTargetStack) {
-                                await dependencies.createGardenStack(
-                                    command.gardenId,
-                                    { x, y },
-                                    gardenTransaction,
-                                );
-                            }
-                            const createdBlockId =
-                                await dependencies.createGardenBlock(
-                                    command.gardenId,
-                                    blockName,
-                                    gardenTransaction,
-                                );
-                            await dependencies.updateGardenStack(
-                                command.gardenId,
-                                {
-                                    x,
-                                    y,
-                                    blocks: [...existingBlocks, createdBlockId],
-                                },
-                                gardenTransaction,
-                            );
+                                        const structures =
+                                            await dependencies.listGardenStructures(
+                                                command.gardenId,
+                                                operationTransaction,
+                                            );
+                                        const occupancy =
+                                            dependencies.createGardenOccupancyIndexFromStorageSnapshot(
+                                                {
+                                                    blockData,
+                                                    snapshot: {
+                                                        blocks: snapshot.blocks,
+                                                        stacks: snapshot.stacks,
+                                                        structures,
+                                                    },
+                                                },
+                                            );
+                                        if (!occupancy.valid) {
+                                            failOccupancy(occupancy.error);
+                                        }
 
-                            const postMutationSnapshot =
-                                await dependencies.getGardenPlacementSnapshotForUpdate(
-                                    command.gardenId,
-                                    gardenTransaction,
-                                );
-                            if (!postMutationSnapshot) {
-                                fail(
-                                    'GARDEN_STATE_CHANGED',
-                                    409,
-                                    'Garden changed while placing block',
-                                );
-                            }
-                            const postMutationValidation =
-                                dependencies.validatePersistedStructuresAfterBlockMutation(
-                                    {
-                                        blockData,
-                                        snapshot: {
-                                            blocks: postMutationSnapshot.blocks,
-                                            stacks: postMutationSnapshot.stacks,
-                                            structures,
-                                        },
+                                        const blockNameById = new Map(
+                                            snapshot.blocks.map((block) => [
+                                                block.id,
+                                                block.name,
+                                            ]),
+                                        );
+                                        const blockRotationById = new Map(
+                                            snapshot.blocks.map((block) => [
+                                                block.id,
+                                                block.rotation,
+                                            ]),
+                                        );
+                                        const blockDataByName = new Map(
+                                            blockData.map((block) => [
+                                                block.information.name,
+                                                block,
+                                            ]),
+                                        );
+                                        const placement =
+                                            dependencies.resolveGardenBlockPlacement(
+                                                {
+                                                    blockName,
+                                                    blockedCells:
+                                                        structureOccupiedCellKeys(
+                                                            occupancy.index,
+                                                        ),
+                                                    stacks: snapshot.stacks.map(
+                                                        (stack) => ({
+                                                            blocks: [
+                                                                ...stack.blocks,
+                                                            ],
+                                                            positionX:
+                                                                stack.positionX,
+                                                            positionY:
+                                                                stack.positionY,
+                                                        }),
+                                                    ),
+                                                    blockNameById,
+                                                    blockDataByName,
+                                                    blockRotationById,
+                                                },
+                                            );
+                                        if (!placement.valid) {
+                                            fail(
+                                                'BLOCK_PLACEMENT_INVALID',
+                                                400,
+                                                placement.error,
+                                            );
+                                        }
+
+                                        const { existingBlocks, x, y } =
+                                            placement.placement;
+                                        const hasTargetStack =
+                                            snapshot.stacks.some(
+                                                (stack) =>
+                                                    stack.positionX === x &&
+                                                    stack.positionY === y,
+                                            );
+                                        if (!hasTargetStack) {
+                                            await dependencies.createGardenStack(
+                                                command.gardenId,
+                                                { x, y },
+                                                operationTransaction,
+                                            );
+                                        }
+                                        const createdBlockId =
+                                            await dependencies.createGardenBlock(
+                                                command.gardenId,
+                                                blockName,
+                                                operationTransaction,
+                                            );
+                                        await dependencies.updateGardenStack(
+                                            command.gardenId,
+                                            {
+                                                x,
+                                                y,
+                                                blocks: [
+                                                    ...existingBlocks,
+                                                    createdBlockId,
+                                                ],
+                                            },
+                                            operationTransaction,
+                                        );
+
+                                        const postMutationSnapshot =
+                                            await dependencies.getGardenPlacementSnapshotForUpdate(
+                                                command.gardenId,
+                                                operationTransaction,
+                                            );
+                                        if (!postMutationSnapshot) {
+                                            fail(
+                                                'GARDEN_STATE_CHANGED',
+                                                409,
+                                                'Garden changed while placing block',
+                                            );
+                                        }
+                                        const postMutationValidation =
+                                            dependencies.validatePersistedStructuresAfterBlockMutation(
+                                                {
+                                                    blockData,
+                                                    snapshot: {
+                                                        blocks: postMutationSnapshot.blocks,
+                                                        stacks: postMutationSnapshot.stacks,
+                                                        structures,
+                                                    },
+                                                },
+                                            );
+                                        if (!postMutationValidation.valid) {
+                                            failOccupancy(
+                                                postMutationValidation.error,
+                                            );
+                                        }
+
+                                        await dependencies.consumeGardenBoxInventoryItem(
+                                            command.accountId,
+                                            command.gardenId,
+                                            command.gardenBoxBlockId,
+                                            {
+                                                entityTypeName: 'block',
+                                                entityId: command.entityId,
+                                                amount: 1,
+                                                source: 'gardenBox:place',
+                                            },
+                                            operationTransaction,
+                                        );
+
+                                        return {
+                                            response: {
+                                                blockId: createdBlockId,
+                                                position: { x, y },
+                                                item: {
+                                                    entityTypeName: 'block',
+                                                    entityId: command.entityId,
+                                                    amount: 1,
+                                                },
+                                            },
+                                        } as const;
                                     },
+                                    gardenTransaction,
                                 );
-                            if (!postMutationValidation.valid) {
-                                failOccupancy(postMutationValidation.error);
-                            }
-
-                            await dependencies.consumeGardenBoxInventoryItem(
-                                command.accountId,
-                                command.gardenId,
-                                command.gardenBoxBlockId,
-                                {
-                                    entityTypeName: 'block',
-                                    entityId: command.entityId,
-                                    amount: 1,
-                                    source: 'gardenBox:place',
-                                },
-                                gardenTransaction,
+                            const response = readReceiptResponse(
+                                execution.receipt.response,
                             );
-
                             return {
                                 ok: true,
-                                blockId: createdBlockId,
-                                position: { x, y },
-                                item: {
-                                    entityTypeName: 'block',
-                                    entityId: command.entityId,
-                                    amount: 1,
-                                },
+                                ...response,
+                                replayed: execution.replayed,
                             } as const;
                         },
                         inventoryTransaction,
@@ -426,6 +629,14 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                     code: 'GARDEN_BOX_INVENTORY_INSUFFICIENT',
                     error: error.message,
                     status: 400,
+                };
+            }
+            if (error instanceof GardenMutationOperationConflictError) {
+                return {
+                    ok: false,
+                    code: 'OPERATION_CONFLICT',
+                    error: error.message,
+                    status: 409,
                 };
             }
             if (error instanceof AccountDeletionInProgressError) {
@@ -457,6 +668,8 @@ const defaultDependencies: GardenBoxBlockPlacementDependencies<GardenPlacementTr
         createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack,
         getBlockData,
+        getGardenBlockForUpdate,
+        getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
         listGardenStructures,
         resolveGardenBlockPlacement,
@@ -474,6 +687,8 @@ const defaultDependencies: GardenBoxBlockPlacementDependencies<GardenPlacementTr
                 gardenBoxBlockId,
                 callback,
             ),
+        withGardenMutationOperation: (input, callback, transaction) =>
+            withGardenMutationOperation(input, callback, transaction),
         withGardenPlacementTransaction,
     };
 

@@ -240,6 +240,7 @@ type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
 
 const storeBlockInGardenBoxBodySchema = z.object({
     gardenBoxBlockId: z.string().trim().min(1).max(128),
+    entityId: z.string().trim().min(1).max(100).optional(),
     sourcePosition: z.object({
         x: z.number().int(),
         z: z.number().int(),
@@ -2524,7 +2525,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/blocks/:blockId/store-in-garden-box',
         describeRoute({
             description:
-                'Move a garden block into a garden box inventory for the current user.',
+                'Atomically move a garden block into garden-box inventory with deterministic exact replay from the source block identity.',
             security: authSecurity,
             tags: ['Gardens'],
         }),
@@ -2539,7 +2540,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const { blockIndex, gardenBoxBlockId, sourcePosition } =
+            const { blockIndex, entityId, gardenBoxBlockId, sourcePosition } =
                 context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
@@ -2552,12 +2553,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     accountId,
                     blockId,
                     blockIndex,
+                    entityId,
                     gardenBoxBlockId,
                     gardenId: gardenIdNumber,
                     sourcePosition,
                 });
                 if (!result.ok) {
-                    return context.json({ error: result.error }, result.status);
+                    return context.json(
+                        { code: result.code, error: result.error },
+                        result.status,
+                    );
                 }
 
                 return context.json({

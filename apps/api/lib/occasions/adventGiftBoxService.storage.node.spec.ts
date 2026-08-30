@@ -6,10 +6,12 @@ import {
     createAccount,
     createGardenBlock,
     createGardenStack,
+    createSandboxGarden,
     deleteGardenStack,
     type GardenPlacementTransaction,
     getAllEvents,
     getGardenBlocks,
+    getGardenMutationAuthorityForUpdate,
     getGardenMutationOperationReceipt,
     getGardenPlacementSnapshotForUpdate,
     getGardenStacks,
@@ -17,6 +19,7 @@ import {
     knownEventTypes,
     listGardenStructuresForUpdate,
     softDeleteGardenBlockOnce,
+    softDeleteGardenOnce,
     updateGardenStack,
     withAccountDeletionFenceTransaction,
     withGardenMutationOperation,
@@ -78,6 +81,7 @@ function integrationService({
         {
             addInventoryItem,
             deleteGardenStack,
+            getGardenMutationAuthorityForUpdate,
             getGardenPlacementSnapshotForUpdate,
             getBlockData: async () => blockData,
             isAdventSeasonOver: () => true,
@@ -153,6 +157,9 @@ test('real gift transaction commits one inventory event, block/stack mutation, a
         replayed: false,
         reward,
     });
+    await withGardenPlacementTransaction(fixtureData.gardenId, (transaction) =>
+        softDeleteGardenOnce(fixtureData.gardenId, transaction),
+    );
     assert.deepEqual(await service(command), {
         ok: true,
         replayed: true,
@@ -203,6 +210,54 @@ test('real gift transaction commits one inventory event, block/stack mutation, a
             })
         )?.response,
         { reward },
+    );
+});
+
+test('sandbox gift boxes cannot mint real account inventory or a receipt', {
+    skip: !storageIntegrationEnabled,
+}, async () => {
+    const accountId = await createAccount();
+    await ensureFarmId();
+    const gardenId = await createSandboxGarden({ accountId });
+    const groundBlockId = await createGardenBlock(gardenId, 'Block_Grass');
+    const giftBlockId = await createGardenBlock(gardenId, 'GiftBox_RedWhite');
+    await createGardenStack(gardenId, { x: 4, y: -2 });
+    await updateGardenStack(gardenId, {
+        blocks: [groundBlockId, giftBlockId],
+        x: 4,
+        y: -2,
+    });
+
+    assert.deepEqual(
+        await integrationService()({
+            accountId,
+            blockId: giftBlockId,
+            gardenId,
+            timeZone: 'Europe/Zagreb',
+        }),
+        {
+            ok: false,
+            code: 'SANDBOX_GIFT_UNAVAILABLE',
+            error: 'Poklon kutije nisu dostupne u probnom vrtu.',
+            status: 400,
+        },
+    );
+    assert.deepEqual(await getInventory(accountId), []);
+    assert.deepEqual(await inventoryAddedEvents(accountId), []);
+    assert.deepEqual(
+        (await getGardenBlocks(gardenId)).map((block) => block.id),
+        [groundBlockId, giftBlockId],
+    );
+    assert.deepEqual(
+        (await getGardenStacks(gardenId)).map((stack) => stack.blocks),
+        [[groundBlockId, giftBlockId]],
+    );
+    assert.equal(
+        await getGardenMutationOperationReceipt({
+            gardenId,
+            operationId: getAdventGiftBoxOperationId(giftBlockId),
+        }),
+        null,
     );
 });
 

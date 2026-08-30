@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import type { BlockData } from '@gredice/directory-types';
-import { GardenBoxInventoryInsufficientError } from '@gredice/storage';
+import {
+    GardenBoxInventoryInsufficientError,
+    GardenMutationOperationConflictError,
+} from '@gredice/storage';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
 import {
     createGardenBoxBlockPlacementService,
@@ -61,6 +64,7 @@ const command: GardenBoxBlockPlacementCommand = {
     gardenId: 7,
     gardenBoxBlockId: 'box-1',
     entityId: '101',
+    operationId: 'garden-box-place-1',
 };
 
 describe('placeGardenBoxBlock', () => {
@@ -101,6 +105,12 @@ describe('placeGardenBoxBlock', () => {
             ],
         };
         let snapshotReadCount = 0;
+        const storedResponse = {
+            blockId: 'placed-1',
+            position: { x: 0, y: -1 },
+            item: { entityTypeName: 'block', entityId: '101', amount: 1 },
+        } as const;
+        let storedPayload: unknown;
 
         const place = createGardenBoxBlockPlacementService({
             consumeGardenBoxInventoryItem: async (
@@ -135,6 +145,23 @@ describe('placeGardenBoxBlock', () => {
             getBlockData: async () => {
                 calls.push('catalog');
                 return blockData;
+            },
+            getGardenBlockForUpdate: async () => {
+                calls.push('box-authority');
+                return { id: command.gardenBoxBlockId, name: 'GardenBox' };
+            },
+            getGardenMutationAuthorityForUpdate: async (
+                _gardenId,
+                receivedTransaction,
+            ) => {
+                assert.equal(receivedTransaction, transaction);
+                calls.push('authority');
+                return {
+                    accountId: command.accountId,
+                    id: command.gardenId,
+                    isDeleted: snapshotReadCount > 0,
+                    isSandbox: false,
+                };
             },
             getGardenPlacementSnapshotForUpdate: async (
                 _gardenId,
@@ -177,6 +204,51 @@ describe('placeGardenBoxBlock', () => {
                 calls.push('account-lock');
                 return callback(transaction);
             },
+            withGardenMutationOperation: async (
+                operation,
+                callback,
+                receivedTransaction,
+            ) => {
+                assert.equal(receivedTransaction, transaction);
+                calls.push('receipt');
+                assert.equal(operation.kind, 'garden-box-block-place');
+                if (storedPayload !== undefined) {
+                    if (
+                        JSON.stringify(storedPayload) !==
+                        JSON.stringify(operation.payload)
+                    ) {
+                        throw new GardenMutationOperationConflictError(
+                            operation.gardenId,
+                            operation.operationId,
+                        );
+                    }
+                    return {
+                        receipt: {
+                            createdAt: new Date(),
+                            gardenId: operation.gardenId,
+                            kind: operation.kind,
+                            operationId: operation.operationId,
+                            payloadHash: '0'.repeat(64),
+                            response: storedResponse,
+                        },
+                        replayed: true,
+                    };
+                }
+                const mutation = await callback(transaction);
+                assert.deepEqual(mutation.response, storedResponse);
+                storedPayload = operation.payload;
+                return {
+                    receipt: {
+                        createdAt: new Date(),
+                        gardenId: operation.gardenId,
+                        kind: operation.kind,
+                        operationId: operation.operationId,
+                        payloadHash: '0'.repeat(64),
+                        response: storedResponse,
+                    },
+                    replayed: false,
+                };
+            },
             withGardenPlacementTransaction: async (
                 _gardenId,
                 callback,
@@ -195,13 +267,17 @@ describe('placeGardenBoxBlock', () => {
             blockId: 'placed-1',
             position: { x: 0, y: -1 },
             item: { entityTypeName: 'block', entityId: '101', amount: 1 },
+            replayed: false,
         });
         assert.deepEqual(calls, [
-            'catalog',
             'inventory-lock',
             'account-lock',
             'garden-lock',
+            'authority',
+            'box-authority',
+            'receipt',
             'snapshot-pre',
+            'catalog',
             'structures',
             'create-stack',
             'create-block',
@@ -209,6 +285,39 @@ describe('placeGardenBoxBlock', () => {
             'snapshot-post',
             'consume',
         ]);
+
+        calls.length = 0;
+        assert.deepEqual(await place(command), {
+            ok: true,
+            ...storedResponse,
+            replayed: true,
+        });
+        assert.deepEqual(calls, [
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'box-authority',
+            'receipt',
+        ]);
+
+        calls.length = 0;
+        assert.deepEqual(await place({ ...command, entityId: '102' }), {
+            ok: false,
+            code: 'OPERATION_CONFLICT',
+            error: 'Garden mutation operation ID was reused with different input.',
+            status: 409,
+        });
+        assert.equal(calls.includes('catalog'), false);
+
+        calls.length = 0;
+        assert.deepEqual(await place({ ...command, accountId: 'account-2' }), {
+            ok: false,
+            code: 'GARDEN_BOX_NOT_FOUND',
+            error: 'Garden box not found',
+            status: 404,
+        });
+        assert.equal(calls.includes('receipt'), false);
     });
 
     test('rolls placement writes back when post-mutation structure validation fails', async () => {
@@ -238,6 +347,16 @@ describe('placeGardenBoxBlock', () => {
                 state.stackCreated = true;
             },
             getBlockData: async () => blockData,
+            getGardenBlockForUpdate: async () => ({
+                id: command.gardenBoxBlockId,
+                name: 'GardenBox',
+            }),
+            getGardenMutationAuthorityForUpdate: async () => ({
+                accountId: command.accountId,
+                id: command.gardenId,
+                isDeleted: false,
+                isSandbox: false,
+            }),
             getGardenPlacementSnapshotForUpdate: async () => snapshot,
             listGardenStructures: async () => [],
             resolveGardenBlockPlacement,
@@ -265,6 +384,34 @@ describe('placeGardenBoxBlock', () => {
                     Object.assign(state, before);
                     throw error;
                 }
+            },
+            withGardenMutationOperation: async (
+                operation,
+                callback,
+                receivedTransaction,
+            ) => {
+                assert.equal(receivedTransaction, transaction);
+                const mutation = await callback(transaction);
+                return {
+                    receipt: {
+                        createdAt: new Date(),
+                        gardenId: operation.gardenId,
+                        kind: operation.kind,
+                        operationId: operation.operationId,
+                        payloadHash: '0'.repeat(64),
+                        response: {
+                            blockId: 'placed-1',
+                            item: {
+                                amount: 1,
+                                entityId: command.entityId,
+                                entityTypeName: 'block',
+                            },
+                            position: { x: 0, y: 0 },
+                        },
+                    },
+                    replayed: false,
+                    mutation,
+                };
             },
             withGardenPlacementTransaction: async (
                 _gardenId,
@@ -314,6 +461,16 @@ describe('placeGardenBoxBlock', () => {
                 state.stackCreated = true;
             },
             getBlockData: async () => blockData,
+            getGardenBlockForUpdate: async () => ({
+                id: command.gardenBoxBlockId,
+                name: 'GardenBox',
+            }),
+            getGardenMutationAuthorityForUpdate: async () => ({
+                accountId: command.accountId,
+                id: command.gardenId,
+                isDeleted: false,
+                isSandbox: false,
+            }),
             getGardenPlacementSnapshotForUpdate: async () => snapshot,
             listGardenStructures: async () => [],
             resolveGardenBlockPlacement,
@@ -334,6 +491,34 @@ describe('placeGardenBoxBlock', () => {
                     Object.assign(state, before);
                     throw error;
                 }
+            },
+            withGardenMutationOperation: async (
+                operation,
+                callback,
+                receivedTransaction,
+            ) => {
+                assert.equal(receivedTransaction, transaction);
+                const mutation = await callback(transaction);
+                return {
+                    receipt: {
+                        createdAt: new Date(),
+                        gardenId: operation.gardenId,
+                        kind: operation.kind,
+                        operationId: operation.operationId,
+                        payloadHash: '0'.repeat(64),
+                        response: {
+                            blockId: 'placed-1',
+                            item: {
+                                amount: 1,
+                                entityId: command.entityId,
+                                entityTypeName: 'block',
+                            },
+                            position: { x: 0, y: 0 },
+                        },
+                    },
+                    replayed: false,
+                    mutation,
+                };
             },
             withGardenPlacementTransaction: async (
                 _gardenId,
