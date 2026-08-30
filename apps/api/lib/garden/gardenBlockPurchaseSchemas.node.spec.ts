@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { gardenBlockPurchaseParamSchema } from './gardenBlockPurchaseSchemas';
+import {
+    gardenBlockPurchaseBodySchema,
+    gardenBlockPurchaseParamSchema,
+} from './gardenBlockPurchaseSchemas';
 
 describe('garden block purchase route schemas', () => {
     it('accepts canonical positive PostgreSQL int32 garden IDs', () => {
@@ -31,5 +34,22 @@ describe('garden block purchase route schemas', () => {
                 gardenId,
             );
         }
+    });
+
+    it('accepts legacy bodies without an operation ID and preserves new client IDs', () => {
+        assert.deepEqual(
+            gardenBlockPurchaseBodySchema.parse({ blockName: 'Raised_Bed' }),
+            { blockName: 'Raised_Bed' },
+        );
+        assert.deepEqual(
+            gardenBlockPurchaseBodySchema.parse({
+                blockName: 'Raised_Bed',
+                operationId: 'client-operation-1',
+            }),
+            {
+                blockName: 'Raised_Bed',
+                operationId: 'client-operation-1',
+            },
+        );
     });
 });

@@ -41,6 +41,11 @@ type GardenGiftBoxStructure = Readonly<{
     rotation: unknown;
 }>;
 
+type GardenGiftBoxDirectoryBlock = Readonly<{
+    attributes?: unknown;
+    information?: unknown;
+}>;
+
 type GardenGiftBoxOccupancyValidation =
     | Readonly<{ valid: true }>
     | Readonly<{
@@ -59,7 +64,7 @@ type GardenMutationReceipt = Readonly<{
     response: Readonly<Record<string, unknown>>;
 }>;
 
-type AdventGiftBoxDependencies<Transaction> = Readonly<{
+export type AdventGiftBoxDependencies<Transaction> = Readonly<{
     addInventoryItem: (
         accountId: string,
         payload: Readonly<{
@@ -79,7 +84,7 @@ type AdventGiftBoxDependencies<Transaction> = Readonly<{
         gardenId: number,
         transaction: Transaction,
     ) => Promise<GardenGiftBoxSnapshot | null>;
-    getBlockData: () => Promise<readonly unknown[]>;
+    getBlockData: () => Promise<readonly GardenGiftBoxDirectoryBlock[]>;
     isAdventSeasonOver: (timeZone: string) => boolean;
     listGardenStructuresForUpdate: (
         gardenId: number,
@@ -98,7 +103,7 @@ type AdventGiftBoxDependencies<Transaction> = Readonly<{
     ) => Promise<void>;
     validatePersistedStructuresAfterBlockMutation: (
         input: Readonly<{
-            blockData: readonly unknown[];
+            blockData: readonly GardenGiftBoxDirectoryBlock[];
             snapshot: Readonly<{
                 blocks: GardenGiftBoxSnapshot['blocks'];
                 stacks: GardenGiftBoxSnapshot['stacks'];

@@ -1,43 +1,32 @@
 import type { OperationData, PlantSortData } from '@gredice/directory-types';
 import {
     addInventoryItem,
-    deleteGardenBlock,
     deleteGardenStack,
+    type GardenPlacementTransaction,
     getEntitiesFormatted,
-    getGarden,
-    getGardenBlock,
-    getGardenStacks,
+    getGardenPlacementSnapshotForUpdate,
+    listGardenStructuresForUpdate,
+    softDeleteGardenBlockOnce,
     updateGardenStack,
+    withAccountDeletionFenceTransaction,
+    withGardenMutationOperation,
+    withGardenPlacementTransaction,
+    withInventoryAccountTransaction,
 } from '@gredice/storage';
+import { getBlockData } from '../blocks/blockDataService';
+import { validatePersistedStructuresAfterBlockMutation } from '../garden/gardenOccupancyService';
 import { isAdventSeasonOver } from './advent2025';
-
-const GIFT_BOX_BLOCK_PREFIX = 'GiftBox_';
-
-type GiftBoxReward = {
-    kind: 'plant' | 'operation';
-    entityTypeName: 'plantSort' | 'operation';
-    entityId: string;
-    title: string;
-};
-
-type OpenGiftBoxResult = {
-    reward: GiftBoxReward;
-};
-
-type GiftBoxErrorResult = {
-    errorStatus: number;
-    errorMessage: string;
-};
+import {
+    type AdventGiftBoxDependencies,
+    createAdventGiftBoxService,
+    type GiftBoxReward,
+} from './adventGiftBoxService';
 
 function pickRandomItem<T>(items: T[]): T {
     if (!items.length) {
         throw new Error('Cannot pick a random item from an empty array.');
     }
     return items[Math.floor(Math.random() * items.length)];
-}
-
-function isValidGiftBoxName(name: string) {
-    return name.startsWith(GIFT_BOX_BLOCK_PREFIX);
 }
 
 async function pickGiftBoxReward(): Promise<GiftBoxReward> {
@@ -89,79 +78,20 @@ async function pickGiftBoxReward(): Promise<GiftBoxReward> {
     };
 }
 
-export async function openAdventGiftBox({
-    accountId,
-    gardenId,
-    blockId,
-    timeZone,
-}: {
-    accountId: string;
-    gardenId: number;
-    blockId: string;
-    timeZone: string;
-}): Promise<OpenGiftBoxResult | GiftBoxErrorResult> {
-    if (!isAdventSeasonOver(timeZone)) {
-        return {
-            errorStatus: 400,
-            errorMessage: 'Advent još traje. Poklon kutije su dostupne 25.12.',
-        };
-    }
-
-    const [garden, block, stacks] = await Promise.all([
-        getGarden(gardenId),
-        getGardenBlock(gardenId, blockId),
-        getGardenStacks(gardenId),
-    ]);
-
-    if (!garden || garden.accountId !== accountId) {
-        return { errorStatus: 404, errorMessage: 'Vrt nije pronađen' };
-    }
-    if (!block || block.gardenId !== gardenId) {
-        return { errorStatus: 404, errorMessage: 'Blok nije pronađen' };
-    }
-    if (!isValidGiftBoxName(block.name)) {
-        return {
-            errorStatus: 400,
-            errorMessage: 'Odabrani blok nije poklon kutija.',
-        };
-    }
-
-    const stack = stacks.find((candidate) =>
-        candidate.blocks.includes(blockId),
-    );
-    if (!stack) {
-        return {
-            errorStatus: 404,
-            errorMessage: 'Stog nije pronađen za poklon kutiju.',
-        };
-    }
-
-    const reward = await pickGiftBoxReward();
-    await addInventoryItem(accountId, {
-        entityTypeName: reward.entityTypeName,
-        entityId: reward.entityId,
-        amount: 1,
-        source: `advent-gift-box:${blockId}`,
-    });
-
-    const updatedBlocks = stack.blocks.filter(
-        (blockIdInStack) => blockIdInStack !== blockId,
-    );
-
-    if (updatedBlocks.length === 0) {
-        await deleteGardenStack(gardenId, {
-            x: stack.positionX,
-            y: stack.positionY,
-        });
-    } else {
-        await updateGardenStack(gardenId, {
-            x: stack.positionX,
-            y: stack.positionY,
-            blocks: updatedBlocks,
-        });
-    }
-
-    await deleteGardenBlock(gardenId, blockId);
-
-    return { reward };
-}
+export const openAdventGiftBox = createAdventGiftBoxService({
+    addInventoryItem,
+    deleteGardenStack,
+    getGardenPlacementSnapshotForUpdate,
+    getBlockData,
+    isAdventSeasonOver,
+    listGardenStructuresForUpdate,
+    pickGiftBoxReward,
+    softDeleteGardenBlockOnce,
+    updateGardenStack,
+    validatePersistedStructuresAfterBlockMutation,
+    withAccountDeletionFenceTransaction,
+    withGardenMutationOperation: (input, callback, transaction) =>
+        withGardenMutationOperation(input, callback, transaction),
+    withGardenPlacementTransaction,
+    withInventoryAccountTransaction,
+} satisfies AdventGiftBoxDependencies<GardenPlacementTransaction>);

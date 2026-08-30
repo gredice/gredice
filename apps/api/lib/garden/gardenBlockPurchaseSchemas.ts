@@ -32,7 +32,8 @@ export const gardenBlockPurchaseBodySchema = z
             .refine((value) => value.trim() === value, {
                 message:
                     'Operation ID must not have leading or trailing whitespace.',
-            }),
+            })
+            .optional(),
         blockName: boundedIdentifierSchema,
         expectedExistingBlocks: z
             .array(boundedIdentifierSchema)
