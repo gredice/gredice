@@ -774,6 +774,7 @@ function denseMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -914,6 +915,7 @@ function highTargetMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -928,6 +930,7 @@ function faunaHeavyMockGarden(): useCurrentGardenResponse {
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks: createAllAnimalDebugStacks(),
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
     };
@@ -978,6 +981,7 @@ function operationRewardDebugMockGarden(
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks,
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -1232,6 +1236,7 @@ export function createMockGarden(
                 ],
             },
         ],
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds,
     };
@@ -1386,6 +1391,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
                 stacks,
+                // Tolerate a rolling deployment where an older API response
+                // predates the additive structures collection.
+                structures: garden.structures ?? [],
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude,

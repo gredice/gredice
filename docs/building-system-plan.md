@@ -184,6 +184,9 @@ unacknowledged draft.
 - Keep Done, undo, and redo in a safe-area-aware top bar.
 - Keep the current footprint count, `used / 100` limit, dimensions, and total
   or pending Sunflower delta visible whenever Footprint is active.
+- Enforce a shared hard safety ceiling of 625 active structures per garden in
+  both the locked create transaction and the renderer. This is a defensive
+  collection limit, independent of the 100-cell per-structure footprint limit.
 - Use a bottom sheet for the active category and its part palette. The canvas
   must remain visible above the sheet in portrait orientation.
 - Use four primary categories: Footprint, Structure, Roof, and Interior.

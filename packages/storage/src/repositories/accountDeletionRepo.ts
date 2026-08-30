@@ -7,6 +7,8 @@ import {
     raisedBeds as dbRaisedBeds,
     gardenBlocks,
     gardenStacks,
+    gardenStructureOperations,
+    gardenStructures,
     raisedBedSensors,
 } from '../schema/gardenSchema';
 import { operations } from '../schema/operationsSchema';
@@ -171,6 +173,20 @@ export async function deleteAccountWithDependencies(
                         .where(eq(raisedBedSensors.id, sensor.id));
                 }
             }
+
+            console.info('[AccountDelete] Deleting garden structure receipts', {
+                gardenId: garden.id,
+            });
+            await storage()
+                .delete(gardenStructureOperations)
+                .where(eq(gardenStructureOperations.gardenId, garden.id));
+
+            console.info('[AccountDelete] Deleting garden structures', {
+                gardenId: garden.id,
+            });
+            await storage()
+                .delete(gardenStructures)
+                .where(eq(gardenStructures.gardenId, garden.id));
 
             // Delete garden stacks, blocks, gardens, garden events
             console.info(

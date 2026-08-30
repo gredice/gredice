@@ -175,6 +175,9 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     await mount(<GardenPreviewCaptureStory />);
 
     const resultOutput = page.getByTestId('garden-preview-capture-result');
+    const captureScene = page.locator(
+        '[data-public-garden-capture-blocks-ready]',
+    );
     try {
         await expect
             .poll(
@@ -188,9 +191,6 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             )
             .not.toBe('waiting');
     } catch (error) {
-        const captureScene = page.locator(
-            '[data-public-garden-capture-blocks-ready]',
-        );
         const diagnostics = {
             apiRequests,
             apiResponses,
@@ -211,6 +211,9 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                           ),
                           plants: await captureScene.getAttribute(
                               'data-public-garden-capture-plants-ready',
+                          ),
+                          structures: await captureScene.getAttribute(
+                              'data-public-garden-capture-structures-ready',
                           ),
                       },
             webgl,
@@ -235,6 +238,10 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.size).toBeLessThanOrEqual(2 * 1024 * 1024);
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
+    await expect(captureScene).toHaveAttribute(
+        'data-public-garden-capture-structures-ready',
+        'true',
+    );
 
     await page.waitForTimeout(1_000);
     expect(authenticatedViewerRequests).toEqual([]);

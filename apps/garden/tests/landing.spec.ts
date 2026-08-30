@@ -109,6 +109,7 @@ const gardenOverviewDetail = {
             weedState: null,
         },
     ],
+    structures: [],
     stacks: {
         '0': {
             '0': [

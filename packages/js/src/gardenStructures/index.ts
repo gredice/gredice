@@ -1,3 +1,11 @@
+export type { GardenStructureKitReferenceDefinition } from './kits';
+export {
+    createGardenStructureReferenceValidator,
+    gardenStructureKitReferenceRegistry,
+    getGardenStructureKitReferenceDefinition,
+    isGardenStructureReferenceAllowed,
+    isGardenStructureTemplateAvailable,
+} from './kits';
 export {
     calculateGardenStructurePriceDelta,
     getGardenStructureDocumentPrice,
@@ -49,6 +57,7 @@ export type {
     GardenStructureValidationSeverity,
 } from './types';
 export {
+    gardenStructureMaxActivePerGarden,
     gardenStructureMaxCoordinateMagnitude,
     gardenStructureMaxEdges,
     gardenStructureMaxFootprintCells,

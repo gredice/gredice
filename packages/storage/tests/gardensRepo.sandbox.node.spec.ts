@@ -24,9 +24,15 @@ import {
 } from '@gredice/storage';
 import { and, eq, inArray, like, or } from 'drizzle-orm';
 import {
+    createGardenStructure,
+    withGardenStructureOperation,
+} from '../src/repositories/gardenStructuresRepo';
+import {
     events,
     gardenBlocks,
     gardenStacks,
+    gardenStructureOperations,
+    gardenStructures,
     gardens,
     notifications,
     operations,
@@ -168,6 +174,44 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         status: 'test',
         stripePaymentId: 'sandbox-cleanup-payment',
     });
+    const structureId = `sandbox-structure-${gardenId.toString()}`;
+    await createGardenStructure({
+        id: structureId,
+        gardenId,
+        anchorX: 0,
+        anchorY: 0,
+        rotation: 0,
+        templateKey: 'blank',
+        kitKey: 'gredice-buildings',
+        kitVersion: '1',
+        document: {
+            schemaVersion: 1,
+            footprint: {
+                cells: [{ x: 0, y: 0, spaceKind: 'interior' }],
+            },
+            floors: [],
+            edges: [],
+            roofRegions: [],
+            props: [],
+        },
+    });
+    await withGardenStructureOperation(
+        {
+            gardenId,
+            kind: 'create',
+            operationId: `sandbox-create-${gardenId.toString()}`,
+            payload: { structureId },
+            structureId,
+        },
+        async () => ({
+            response: { structureId },
+        }),
+    );
+    await assert.rejects(
+        storage()
+            .delete(gardenStructures)
+            .where(eq(gardenStructures.id, structureId)),
+    );
 
     let complete = false;
     let attempts = 0;
@@ -210,6 +254,18 @@ test('deleteSandboxGardenCompletely removes sandbox garden dependencies across r
         .from(gardenStacks)
         .where(eq(gardenStacks.gardenId, gardenId));
     assert.equal(gardenStackRows.length, 0);
+
+    const gardenStructureRows = await storage()
+        .select({ id: gardenStructures.id })
+        .from(gardenStructures)
+        .where(eq(gardenStructures.gardenId, gardenId));
+    assert.equal(gardenStructureRows.length, 0);
+
+    const gardenStructureOperationRows = await storage()
+        .select({ operationId: gardenStructureOperations.operationId })
+        .from(gardenStructureOperations)
+        .where(eq(gardenStructureOperations.gardenId, gardenId));
+    assert.equal(gardenStructureOperationRows.length, 0);
 
     const raisedBedRows = await storage()
         .select({ id: raisedBeds.id })

@@ -1,29 +1,21 @@
-import { isAppearanceVariantEntityName } from '@gredice/js/entityAppearanceVariants';
 import {
-    consumeGardenBoxInventoryItem,
-    createGardenBlock,
-    createGardenStack,
     type EntityStandardized,
     GardenBoxInventoryLimitError,
     getEntitiesFormatted,
     getGarden,
     getGardenBlock,
-    getGardenBlocks,
     getGardenBoxBlocksForAccount,
     getGardenBoxInventory,
     getInventory,
     type InventoryItem,
     type InventoryItemInput,
     setGardenBoxInventory,
-    storage,
-    updateGardenStack,
 } from '@gredice/storage';
 import { Hono } from 'hono';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { authSecurity } from '../../../lib/docs/security';
-import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
+import { placeGardenBoxBlockForAccount } from '../../../lib/garden/gardenBoxBlockPlacementService';
 import {
     type AuthVariables,
     authValidator,
@@ -251,153 +243,34 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { accountId } = context.get('authContext');
             const { gardenId, blockId, entityId } = context.req.valid('param');
-            const [garden, gardenBoxBlock, gardenBlocks, blockData] =
-                await Promise.all([
-                    getGarden(gardenId),
-                    getGardenBlock(gardenId, blockId),
-                    getGardenBlocks(gardenId),
-                    getBlockData(),
-                ]);
-
-            if (
-                !garden ||
-                garden.accountId !== accountId ||
-                gardenBoxBlock?.name !== 'GardenBox'
-            ) {
-                return context.json({ error: 'Garden box not found' }, 404);
-            }
-
-            const block = blockData.find(
-                (candidate) => candidate.id.toString() === entityId,
-            );
-            const blockName = block?.information?.name;
-            if (!block || !blockName) {
-                return context.json({ error: 'Block not found' }, 404);
-            }
-
-            if (blockName === 'GardenBox') {
-                return context.json(
-                    {
-                        error: 'Garden boxes cannot be placed from garden boxes',
-                    },
-                    400,
-                );
-            }
-
-            if (blockName === 'Raised_Bed') {
-                return context.json(
-                    { error: 'Raised beds cannot be placed from garden boxes' },
-                    400,
-                );
-            }
-
-            if (isAppearanceVariantEntityName(blockName)) {
-                return context.json(
-                    {
-                        error: 'Životinju s odabranom bojom nije moguće postaviti iz vrtne kutije.',
-                    },
-                    400,
-                );
-            }
-
-            const blockNameById = new Map(
-                gardenBlocks.map((gardenBlock) => [
-                    gardenBlock.id,
-                    gardenBlock.name,
-                ]),
-            );
-            const blockRotationById = new Map(
-                gardenBlocks.map((gardenBlock) => [
-                    gardenBlock.id,
-                    gardenBlock.rotation,
-                ]),
-            );
-            const blockDataByName = new Map<
-                string,
-                (typeof blockData)[number]
-            >();
-            for (const candidate of blockData) {
-                const candidateName = candidate.information?.name;
-                if (candidateName) {
-                    blockDataByName.set(candidateName, candidate);
-                }
-            }
-
-            const placement = resolveGardenBlockPlacement({
-                blockName,
-                stacks: garden.stacks,
-                blockNameById,
-                blockRotationById,
-                blockDataByName,
-            });
-            if (!placement.valid) {
-                return context.json({ error: placement.error }, 400);
-            }
-
-            const { x, y, existingBlocks } = placement.placement;
-            const hasTargetStack = garden.stacks.some(
-                (stack) => stack.positionX === x && stack.positionY === y,
-            );
-
             try {
-                const placedBlockId = await storage().transaction(
-                    async (tx) => {
-                        await consumeGardenBoxInventoryItem(
-                            accountId,
-                            gardenId,
-                            blockId,
-                            {
-                                entityTypeName: 'block',
-                                entityId,
-                                amount: 1,
-                                source: 'gardenBox:place',
-                            },
-                            tx,
-                        );
-
-                        if (!hasTargetStack) {
-                            await createGardenStack(gardenId, { x, y }, tx);
-                        }
-
-                        const createdBlockId = await createGardenBlock(
-                            gardenId,
-                            blockName,
-                            tx,
-                        );
-                        await updateGardenStack(
-                            gardenId,
-                            {
-                                x,
-                                y,
-                                blocks: [...existingBlocks, createdBlockId],
-                            },
-                            tx,
-                        );
-
-                        return createdBlockId;
-                    },
-                );
+                const result = await placeGardenBoxBlockForAccount({
+                    accountId,
+                    gardenId,
+                    gardenBoxBlockId: blockId,
+                    entityId,
+                });
+                if (!result.ok) {
+                    return context.json(
+                        { error: result.error, code: result.code },
+                        result.status,
+                    );
+                }
 
                 return context.json({
-                    id: placedBlockId,
-                    position: { x, y },
-                    item: {
-                        entityTypeName: 'block',
-                        entityId,
-                        amount: 1,
-                    },
+                    id: result.blockId,
+                    position: result.position,
+                    item: result.item,
                 });
             } catch (error) {
-                const errorMessage =
-                    error instanceof Error
-                        ? error.message
-                        : 'Failed to place block';
-                const status =
-                    errorMessage === 'Nedovoljno predmeta u vrtnoj kutiji'
-                        ? 400
-                        : 500;
-
-                return context.json({ error: errorMessage }, status);
+                console.error('Failed to place block from garden box', {
+                    accountId,
+                    gardenId,
+                    gardenBoxBlockId: blockId,
+                    entityId,
+                    error,
+                });
+                return context.json({ error: 'Failed to place block' }, 500);
             }
         },
     );

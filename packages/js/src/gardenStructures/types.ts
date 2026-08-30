@@ -1,6 +1,11 @@
 export const gardenStructureSchemaVersion: 1 = 1;
 export const gardenStructureMaxFootprintCells = 100;
 export const gardenStructureMaxSideLength = 20;
+/**
+ * Hard safety ceiling shared by mutation and rendering paths. A garden lock
+ * serializes creates, so the API can enforce this count without races.
+ */
+export const gardenStructureMaxActivePerGarden = 625;
 export const gardenStructureSunflowerPricePerCell = 50;
 // A connected n-cell polyomino has at most 4n - (n - 1) distinct incident
 // grid edges. For the fixed 100-cell limit, every usable boundary and

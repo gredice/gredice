@@ -86,6 +86,7 @@ const captureGarden = {
             isValid: true,
         },
     ],
+    structures: [],
     stacks: {
         '0': {
             '0': [

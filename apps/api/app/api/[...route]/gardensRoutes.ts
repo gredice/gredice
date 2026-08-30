@@ -37,7 +37,6 @@ import { signalcoClient } from '@gredice/signalco';
 import {
     abandonRaisedBed,
     acquireGardenPreviewCaptureLease,
-    addGardenBoxInventoryItem,
     CannotLikeOwnGardenError,
     cancelGardenDiaryOperation,
     cancelGardenDiaryRaisedBedField,
@@ -55,7 +54,6 @@ import {
     deleteGardenIfNoActiveRaisedBeds,
     deleteGardenStack,
     deleteSandboxGardenCompletely,
-    GardenBoxInventoryLimitError,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
     type GardenPreviewBlobDeletionReason,
@@ -71,7 +69,6 @@ import {
     getGardenLikeCounts,
     getGardenPreviews,
     getGardenStack,
-    getGardenStackForUpdate,
     getNotification,
     getOperationsByIds,
     getOperationsPage,
@@ -95,6 +92,7 @@ import {
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
+    listGardenStructures,
     maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
@@ -109,7 +107,6 @@ import {
     setGardenLike,
     sowSandboxField,
     spendSunflowers,
-    storage,
     deleteGardenBlock as storageDeleteGardenBlock,
     toGardenPreviewImage,
     updateGarden,
@@ -135,6 +132,7 @@ import {
     detailedInspectionOperationId,
 } from '../../../lib/garden/detailedRaisedBedInspectionReports';
 import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
 import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import {
     canAccessGardenPreviewSource,
@@ -147,6 +145,7 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import {
     countPublicGardenActivePlants,
@@ -184,6 +183,7 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import gardenStructuresRoutes from './gardenStructuresRoutes';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -721,6 +721,7 @@ function serializePublicGardenPreviewImages(
 
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
+type GardenStructures = Awaited<ReturnType<typeof listGardenStructures>>;
 type AppliedGardenOperations = Awaited<
     ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
 >;
@@ -794,6 +795,7 @@ async function serializeGardenDetails(
     garden: GardenDetail,
     blocks: GardenBlocks,
     operations: AppliedGardenOperations,
+    structures: GardenStructures,
     options: { publicView?: boolean } = {},
 ) {
     const blockNameById = new Map(
@@ -859,6 +861,16 @@ async function serializeGardenDetails(
         garden.stacks,
         blockNameById,
     );
+    const serializedStructures = serializeGardenStructures(structures, {
+        publicView: options.publicView,
+        onInvalid: ({ code, structureId }) => {
+            console.error('Skipped invalid garden structure serialization', {
+                code,
+                gardenId: garden.id,
+                structureId,
+            });
+        },
+    });
 
     return {
         id: garden.id,
@@ -873,6 +885,7 @@ async function serializeGardenDetails(
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
         stacks: serializeGardenStacks(garden, blocks),
+        structures: serializedStructures,
         raisedBeds: garden.raisedBeds.map((raisedBed) => ({
             id: raisedBed.id,
             name: raisedBed.name,
@@ -928,12 +941,18 @@ async function getAuthorizedGardenPreviewSource(
         return null;
     }
 
-    const [blocks, operations] = await Promise.all([
+    const [blocks, operations, structures] = await Promise.all([
         getGardenBlocks(gardenId),
         getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
+        listGardenStructures(gardenId),
     ]);
 
-    const details = await serializeGardenDetails(garden, blocks, operations);
+    const details = await serializeGardenDetails(
+        garden,
+        blocks,
+        operations,
+        structures,
+    );
     return {
         details,
         garden,
@@ -1054,6 +1073,7 @@ async function getGardenQueuedTasks(garden: GardenDetail) {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/:gardenId/structures', gardenStructuresRoutes)
     .get(
         '/',
         describeRoute({
@@ -2097,7 +2117,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -2131,7 +2151,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -2143,17 +2163,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const [operations, queuedTasks] = await Promise.all([
+            const [operations, queuedTasks, structures] = await Promise.all([
                 getAppliedRaisedBedOperationsForGarden(
                     garden.accountId,
                     gardenIdNumber,
                 ),
                 getGardenQueuedTasks(garden),
+                listGardenStructures(gardenIdNumber),
             ]);
             const gardenDetails = await serializeGardenDetails(
                 garden,
                 blocks,
                 operations,
+                structures,
                 { publicView: true },
             );
             const {
@@ -2881,172 +2903,36 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const [gardenBlocks, sourceStack, blockData] = await Promise.all([
-                getGardenBlocks(gardenIdNumber),
-                getGardenStack(gardenIdNumber, {
-                    x: sourcePosition.x,
-                    y: sourcePosition.z,
-                }),
-                getBlockData(),
-            ]);
-
-            if (!sourceStack) {
-                return context.json({ error: 'Source stack not found' }, 400);
-            }
-
-            if (sourceStack.blocks[blockIndex] !== blockId) {
-                return context.json(
-                    { error: 'Source block no longer matches the garden' },
-                    409,
-                );
-            }
-
-            const block = gardenBlocks.find(
-                (candidate) => candidate.id === blockId,
-            );
-            if (!block) {
-                return context.json({ error: 'Block not found' }, 404);
-            }
-
-            if (block.name === woodenSignBlockName && block.message) {
-                return context.json(
-                    {
-                        error: 'Prije spremanja ploče u vrtnu kutiju obriši njezin natpis.',
-                    },
-                    400,
-                );
-            }
-
-            const gardenBox = gardenBlocks.find(
-                (candidate) => candidate.id === gardenBoxBlockId,
-            );
-            if (gardenBox?.name !== 'GardenBox') {
-                return context.json({ error: 'Garden box not found' }, 404);
-            }
-
-            const gardenBoxStack = garden.stacks.find(
-                (stack) =>
-                    !stack.isDeleted && stack.blocks.includes(gardenBoxBlockId),
-            );
-            if (!gardenBoxStack) {
-                return context.json(
-                    { error: 'Garden box is not placed in this garden' },
-                    400,
-                );
-            }
-
-            if (block.id === gardenBoxBlockId || block.name === 'GardenBox') {
-                return context.json(
-                    { error: 'Garden boxes cannot be stored in garden boxes' },
-                    400,
-                );
-            }
-
-            if (block.name === 'Raised_Bed') {
-                return context.json(
-                    { error: 'Raised beds cannot be stored in garden boxes' },
-                    400,
-                );
-            }
-
-            if (isAppearanceVariantEntityName(block.name)) {
-                return context.json(
-                    {
-                        error: 'Životinju s odabranom bojom nije moguće spremiti u vrtnu kutiju.',
-                    },
-                    400,
-                );
-            }
-
-            const inventoryBlock = blockData.find(
-                (candidate) => candidate.information?.name === block.name,
-            );
-            if (!inventoryBlock) {
-                return context.json(
-                    { error: 'Block directory data not found' },
-                    404,
-                );
-            }
-            const inventoryEntityId = inventoryBlock.id.toString();
-            let result:
-                | { ok: true }
-                | { ok: false; error: string; status: ContentfulStatusCode };
             try {
-                result = await storage().transaction(async (tx) => {
-                    const currentSourceStack = await getGardenStackForUpdate(
-                        gardenIdNumber,
-                        {
-                            x: sourcePosition.x,
-                            y: sourcePosition.z,
-                        },
-                        tx,
-                    );
-                    if (
-                        !currentSourceStack ||
-                        currentSourceStack.blocks[blockIndex] !== blockId
-                    ) {
-                        return {
-                            ok: false,
-                            error: 'Source block no longer matches the garden',
-                            status: 409,
-                        } as const;
-                    }
-
-                    const nextSourceBlocks = currentSourceStack.blocks.filter(
-                        (_sourceBlockId, index) => index !== blockIndex,
-                    );
-                    await updateGardenStack(
-                        gardenIdNumber,
-                        {
-                            x: sourcePosition.x,
-                            y: sourcePosition.z,
-                            blocks: nextSourceBlocks,
-                        },
-                        tx,
-                    );
-                    await storageDeleteGardenBlock(
-                        gardenIdNumber,
-                        block.id,
-                        tx,
-                    );
-                    await addGardenBoxInventoryItem(
-                        accountId,
-                        gardenIdNumber,
-                        gardenBoxBlockId,
-                        {
-                            entityTypeName: 'block',
-                            entityId: inventoryEntityId,
-                            amount: 1,
-                            source: 'gardenBox:drop',
-                        },
-                        tx,
-                    );
-                    return { ok: true } as const;
+                const result = await storeGardenBlockInGardenBoxForAccount({
+                    accountId,
+                    blockId,
+                    blockIndex,
+                    gardenBoxBlockId,
+                    gardenId: gardenIdNumber,
+                    sourcePosition,
                 });
-            } catch (error) {
-                if (error instanceof GardenBoxInventoryLimitError) {
-                    return context.json({ error: error.message }, 400);
+                if (!result.ok) {
+                    return context.json({ error: result.error }, result.status);
                 }
 
-                throw error;
+                return context.json({
+                    gardenBoxBlockId: result.gardenBoxBlockId,
+                    item: result.item,
+                });
+            } catch (error) {
+                console.error('Failed to store block in garden box', {
+                    accountId,
+                    blockId,
+                    gardenBoxBlockId,
+                    gardenId: gardenIdNumber,
+                    error,
+                });
+                return context.json(
+                    { error: 'Failed to store block in garden box' },
+                    500,
+                );
             }
-            if (!result.ok) {
-                return context.json({ error: result.error }, result.status);
-            }
-
-            return context.json({
-                gardenBoxBlockId,
-                item: {
-                    entityTypeName: 'block',
-                    entityId: inventoryEntityId,
-                    amount: 1,
-                },
-            });
         },
     )
     .post(
