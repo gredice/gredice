@@ -65,6 +65,10 @@ function normalScenario(profileRun, overrides = {}) {
     return {
         acceptance: { pass: true },
         baseName,
+        budget: {
+            checks: [{ name: 'p95FrameMs', pass: true }],
+            pass: true,
+        },
         budgetName: 'gameHighTarget',
         canvasReadyMs: 480,
         cdp: { jsHeapMb: 64, scriptDuration: 0.8 },
@@ -76,6 +80,10 @@ function normalScenario(profileRun, overrides = {}) {
         },
         name: `${baseName}-run-${profileRun}`,
         path: '/debug/profile/game?mode=details&profile=high-target&quality=high',
+        performanceBudget: {
+            checks: [{ name: 'p95FrameMs', pass: true }],
+            pass: true,
+        },
         profileRun,
         requested: {
             controls: '0',
@@ -134,9 +142,9 @@ function lifecycleScenario(profileRun) {
             domContentLoadedMs: 20,
             firstSubmittedFrameMs: 490,
             fixture: {
-                fixture,
+                fixture: structuredClone(fixture),
                 gardenId: scenario.runtime.profileGardenId,
-                resources: phaseResources,
+                resources: structuredClone(phaseResources),
             },
             fixtureReadyMs: 580,
             interactionReadyMs: 870,
@@ -144,9 +152,9 @@ function lifecycleScenario(profileRun) {
         context: {
             restoredControl: {
                 fixture: {
-                    fixture,
+                    fixture: structuredClone(fixture),
                     gardenId: scenario.runtime.profileGardenId,
-                    resources: phaseResources,
+                    resources: structuredClone(phaseResources),
                 },
             },
             restoredWindow: {
@@ -465,10 +473,13 @@ test('canonical regression manifest is required outside diagnostic mode', () => 
     );
 
     let complete = regressionReportPair();
-    assert.equal(
-        compareReports(complete.baseline, complete.candidate).status,
-        'pass',
-    );
+    const singlePair = compareReports(complete.baseline, complete.candidate);
+    assert.equal(singlePair.status, 'needs-rerun');
+    assert.equal(singlePair.exitCode, 1);
+    assert.equal(singlePair.diagnostic, true);
+    assert.deepEqual(singlePair.diagnosticReasons, [
+        'single comparison pair only',
+    ]);
 
     complete = regressionReportPair();
     complete.baseline.scenarios = complete.baseline.scenarios.filter(
@@ -493,6 +504,36 @@ test('canonical regression manifest is required outside diagnostic mode', () => 
         compareReports(complete.baseline, complete.candidate).exitCode,
         2,
     );
+});
+
+test('canonical release comparison requires a symmetric 2x2 matrix through the API', () => {
+    const { baseline, candidate } = regressionReportPair();
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+
+    const incomplete = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+    );
+    assert.equal(incomplete.status, 'invalid');
+    assert.equal(incomplete.exitCode, 2);
+    assert.match(
+        incomplete.validationErrors.join('\n'),
+        /baseline confirmation is required/,
+    );
+
+    const complete = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        { baselineConfirmation },
+    );
+    assert.equal(complete.status, 'pass');
+    assert.equal(complete.exitCode, 0);
+    assert.equal(complete.diagnostic, false);
+    assert.deepEqual(complete.diagnosticReasons, []);
+    assert.equal(complete.summary.comparisonPairCount, 4);
 });
 
 test('canonical nested policy and fixture evidence fails closed', async (t) => {
@@ -1250,7 +1291,13 @@ test('lifecycle active resources come from the cold fixture', () => {
         (result) =>
             result.id === 'resources.geometries' && result.phase === 'active',
     );
+    const restoredGeometries = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.geometries' &&
+            result.phase === 'context-restored',
+    );
     assert.equal(activeGeometries.pass, false);
+    assert.equal(restoredGeometries.pass, true);
     assert.equal(comparison.exitCode, 1);
 });
 
@@ -1258,6 +1305,7 @@ test('lifecycle restored fixture drift is incompatible', () => {
     const { baseline, candidate } = reportPair(lifecycleScenario);
     for (const scenario of candidate.scenarios) {
         scenario.lifecycle.context.restoredControl.fixture.fixture.blockCount += 1;
+        assert.equal(scenario.lifecycle.cold.fixture.fixture.blockCount, 297);
     }
 
     const comparison = comparePartialReports(baseline, candidate);
@@ -1364,6 +1412,37 @@ test('structural acceptance must pass in every raw run', () => {
     comparison = comparePartialReports(pair.baseline, pair.candidate);
     assert.equal(comparison.exitCode, 2);
     assert.match(comparison.validationErrors.join('\n'), /acceptance\.pass/);
+});
+
+test('absolute performance budgets must pass in every raw run', () => {
+    for (const field of ['budget', 'performanceBudget']) {
+        let pair = reportPair();
+        pair.candidate.scenarios[0][field].pass = false;
+        let comparison = comparePartialReports(pair.baseline, pair.candidate);
+        assert.equal(comparison.exitCode, 2);
+        assert.match(
+            comparison.validationErrors.join('\n'),
+            new RegExp(`${field}\\.pass`),
+        );
+
+        pair = reportPair();
+        pair.candidate.scenarios[0][field].checks[0].pass = false;
+        comparison = comparePartialReports(pair.baseline, pair.candidate);
+        assert.equal(comparison.exitCode, 2);
+        assert.match(
+            comparison.validationErrors.join('\n'),
+            new RegExp(`${field}\\.checks\\[0\\]\\.pass`),
+        );
+
+        pair = reportPair();
+        pair.candidate.scenarios[0][field].checks = [];
+        comparison = comparePartialReports(pair.baseline, pair.candidate);
+        assert.equal(comparison.exitCode, 2);
+        assert.match(
+            comparison.validationErrors.join('\n'),
+            new RegExp(`${field}\\.checks must be a non-empty array`),
+        );
+    }
 });
 
 test('provenance rejects malformed, dirty, mismatched, and same-source reports', async (t) => {
@@ -1622,6 +1701,22 @@ test('argument parser supports positional and named paths without threshold over
                 'after.json',
             ]),
         /requires --confirmation/,
+    );
+    assert.throws(
+        () => parseArgs(['before.json', 'after.json']),
+        /requires both --baseline-confirmation and --confirmation/,
+    );
+    assert.throws(
+        () =>
+            parseArgs([
+                '--baseline',
+                'before.json',
+                '--candidate',
+                'after.json',
+                '--confirmation',
+                'after-repeat.json',
+            ]),
+        /requires both --baseline-confirmation and --confirmation/,
     );
     assert.throws(
         () => parseArgs(['--median-frame-limit', '1.5']),

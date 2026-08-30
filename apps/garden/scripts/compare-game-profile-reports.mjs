@@ -290,6 +290,27 @@ function validatePositiveNumber(errors, value, path) {
     }
 }
 
+function validatePassingChecks(errors, value, path) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    if (value.pass !== true) {
+        errors.push(`${path}.pass is not true`);
+    }
+    if (!Array.isArray(value.checks) || value.checks.length === 0) {
+        errors.push(`${path}.checks must be a non-empty array`);
+        return;
+    }
+    for (const [index, check] of value.checks.entries()) {
+        if (!isRecord(check)) {
+            errors.push(`${path}.checks[${index}] must be an object`);
+        } else if (check.pass !== true) {
+            errors.push(`${path}.checks[${index}].pass is not true`);
+        }
+    }
+}
+
 function validateRendererResources(errors, resources, path) {
     if (!isRecord(resources)) {
         errors.push(`${path} is missing`);
@@ -974,6 +995,16 @@ function validateReport(report, label, { allowPartial = false } = {}) {
         if (scenario.acceptance?.pass !== true) {
             errors.push(`${label} scenario ${key} acceptance.pass is not true`);
         }
+        validatePassingChecks(
+            errors,
+            scenario.budget,
+            `${label} scenario ${key} budget`,
+        );
+        validatePassingChecks(
+            errors,
+            scenario.performanceBudget,
+            `${label} scenario ${key} performanceBudget`,
+        );
         for (const field of ['renderer', 'userAgent', 'vendor']) {
             if (
                 typeof scenario.environment?.[field] !== 'string' ||
@@ -1811,7 +1842,7 @@ function comparePairedScenarios(pairs) {
     return { comparisons, errors, invariants, skipped };
 }
 
-function compareReports(
+function compareReportPair(
     baseline,
     candidate,
     {
@@ -1819,6 +1850,7 @@ function compareReports(
         allowSameSource = false,
         baselinePath = null,
         candidatePath = null,
+        confirmedMatrixMember = false,
     } = {},
 ) {
     const validationErrors = [
@@ -1922,13 +1954,19 @@ function compareReports(
         (invariant) => !invariant.pass,
     );
     const comparable = validationErrors.length === 0;
-    const status = !comparable
+    const pairStatus = !comparable
         ? 'invalid'
         : failedComparisons.length > 0 || failedInvariants.length > 0
           ? 'regression'
           : screeningComparisons.length > 0
             ? 'needs-rerun'
             : 'pass';
+    const incompleteReleaseMatrix =
+        !confirmedMatrixMember && !allowPartial && !allowSameSource;
+    const status =
+        pairStatus === 'pass' && incompleteReleaseMatrix
+            ? 'needs-rerun'
+            : pairStatus;
     const exitCode = status === 'invalid' ? 2 : status === 'pass' ? 0 : 1;
 
     return {
@@ -1947,10 +1985,11 @@ function compareReports(
         comparable,
         comparisonContractVersion,
         comparisons: comparable ? comparisonData.comparisons : [],
-        diagnostic: allowPartial || allowSameSource,
+        diagnostic: allowPartial || allowSameSource || !confirmedMatrixMember,
         diagnosticReasons: [
             ...(allowPartial ? ['partial scenario manifest allowed'] : []),
             ...(allowSameSource ? ['same source commit allowed'] : []),
+            ...(!confirmedMatrixMember ? ['single comparison pair only'] : []),
         ],
         exitCode,
         generatedAt: new Date().toISOString(),
@@ -1978,6 +2017,13 @@ function compareReports(
         },
         validationErrors,
     };
+}
+
+function compareReports(baseline, candidate, options = {}) {
+    return compareReportPair(baseline, candidate, {
+        ...options,
+        confirmedMatrixMember: false,
+    });
 }
 
 function metricKey(result) {
@@ -2071,42 +2117,48 @@ function compareConfirmedReports(
     } = {},
 ) {
     const sharedOptions = { allowPartial, allowSameSource, baselinePath };
-    const primary = compareReports(baseline, candidate, {
+    const primary = compareReportPair(baseline, candidate, {
         ...sharedOptions,
         candidatePath,
+        confirmedMatrixMember: true,
     });
-    const repeated = compareReports(baseline, confirmation, {
+    const repeated = compareReportPair(baseline, confirmation, {
         ...sharedOptions,
         candidatePath: confirmationPath,
+        confirmedMatrixMember: true,
     });
-    const repeatCompatibility = compareReports(candidate, confirmation, {
+    const repeatCompatibility = compareReportPair(candidate, confirmation, {
         allowPartial,
         allowSameSource: true,
         baselinePath: candidatePath,
         candidatePath: confirmationPath,
+        confirmedMatrixMember: true,
     });
     const baselineRepeatCompatibility = baselineConfirmation
-        ? compareReports(baseline, baselineConfirmation, {
+        ? compareReportPair(baseline, baselineConfirmation, {
               allowPartial,
               allowSameSource: true,
               baselinePath,
               candidatePath: baselineConfirmationPath,
+              confirmedMatrixMember: true,
           })
         : null;
     const baselineRepeatedPrimary = baselineConfirmation
-        ? compareReports(baselineConfirmation, candidate, {
+        ? compareReportPair(baselineConfirmation, candidate, {
               allowPartial,
               allowSameSource,
               baselinePath: baselineConfirmationPath,
               candidatePath,
+              confirmedMatrixMember: true,
           })
         : null;
     const baselineRepeatedConfirmation = baselineConfirmation
-        ? compareReports(baselineConfirmation, confirmation, {
+        ? compareReportPair(baselineConfirmation, confirmation, {
               allowPartial,
               allowSameSource,
               baselinePath: baselineConfirmationPath,
               candidatePath: confirmationPath,
+              confirmedMatrixMember: true,
           })
         : null;
     const validationErrors = [
@@ -2125,6 +2177,11 @@ function compareConfirmedReports(
             (error) => `baseline confirmation / confirmation: ${error}`,
         ),
     ];
+    if (!baselineConfirmation && !allowPartial && !allowSameSource) {
+        validationErrors.push(
+            'baseline confirmation is required for a non-diagnostic symmetric 2x2 comparison',
+        );
+    }
     if (
         candidate?.provenance?.subject?.commit !==
         confirmation?.provenance?.subject?.commit
@@ -2769,6 +2826,16 @@ function parseArgs(args) {
             '--baseline-confirmation requires --confirmation for a symmetric 2x2 gate',
         );
     }
+    if (
+        !options.help &&
+        !options.allowPartial &&
+        !options.allowSameSource &&
+        (!options.baselineConfirmationPath || !options.confirmationPath)
+    ) {
+        throw new Error(
+            'A non-diagnostic comparison requires both --baseline-confirmation and --confirmation for a symmetric 2x2 gate',
+        );
+    }
     return options;
 }
 
@@ -2784,7 +2851,9 @@ Options:
   --out-dir <path>        Comparison report directory
   --allow-partial         Permit a noncanonical scenario manifest for diagnostics
   --allow-same-source     Permit same-commit diagnostic comparison
-  --help                  Show this help`);
+  --help                  Show this help
+
+Non-diagnostic comparisons require both confirmation options.`);
 }
 
 async function readJson(path) {

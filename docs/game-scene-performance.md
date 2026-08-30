@@ -365,8 +365,13 @@ the two independent baseline bundles against both independent candidate bundles
 and confirms a regression only when the same scenario, phase, and metric crosses
 its relative screen in all four pairings. This symmetric 2x2 gate prevents an
 unusually low baseline bundle or unusually high candidate bundle from deciding
-the release. Non-reproduced signals stay visible in JSON and Markdown but do not
-fail the confirmed result.
+the release. A non-diagnostic CLI invocation rejects an incomplete matrix;
+single-pair comparisons require an explicit diagnostic flag and cannot be used
+as release evidence. Non-reproduced signals stay visible in JSON and Markdown
+but do not fail the confirmed result. The exported single-pair comparison API
+also marks its output diagnostic and returns `needs-rerun` for an otherwise
+passing canonical pair; only the complete confirmed API can emit a
+non-diagnostic pass.
 
 Each repeat must preserve its source commit, fixtures, options, runtime, and
 environment while using a different report path and valid capture timestamp.
@@ -401,7 +406,8 @@ larger growth must reproduce across the symmetric confirmation matrix.
 is meaningful when its worsening reaches the floor while also crossing the
 relative boundary. These are profiler noise floors, not product budgets; each
 raw run must still pass the scenario's checked absolute performance budget
-before either report is comparable.
+before either report is comparable. The comparator validates both the aggregate
+budget outcome and every recorded absolute-budget check in every raw run.
 
 Exit `0` means compatible evidence and all confirmed relative gates passed.
 Exit `1` means either `needs-rerun` or a regression, and exit `2` means the
