@@ -11,6 +11,8 @@ import {
     resolveGameProfileAdaptiveHigh,
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
+    resolveGameProfileGardenBuilding,
+    resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
     resolveGameProfileStaticSceneCacheOcclusionFixture,
@@ -302,9 +304,19 @@ export default async function GameProfilePage({
     const gardenAvatar = resolveGameProfileGardenAvatar(
         firstValue(params.avatar),
     );
+    const gardenBuildingFixtureEnabled =
+        resolveGameProfileGardenBuildingFixtureGate(
+            process.env.GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED,
+        );
+    const gardenBuilding = resolveGameProfileGardenBuilding(
+        firstValue(params.building),
+        gardenBuildingFixtureEnabled,
+    );
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
+        firstValue(params.building),
+        gardenBuildingFixtureEnabled,
         mockGardenProfile !== 'fauna-heavy',
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
@@ -340,6 +352,7 @@ export default async function GameProfilePage({
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
+            data-game-profile-building={gardenBuilding ? '1' : '0'}
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
@@ -382,6 +395,7 @@ export default async function GameProfilePage({
                     adaptiveHigh ||
                     cameraProfile ||
                     mockGardenProfile === 'fauna-heavy' ||
+                    gardenBuilding ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
                     placementProfile ||
@@ -390,6 +404,7 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
+                gardenStructureDebugFixture={gardenBuilding}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

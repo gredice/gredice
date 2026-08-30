@@ -1,3 +1,4 @@
+import { vercelAdapter } from '@flags-sdk/vercel';
 import { booleanFlagOptions } from '@gredice/js/featureFlags';
 import { flag } from 'flags/next';
 
@@ -41,5 +42,14 @@ export const enableGardenAvatarFlag = flag<boolean>({
     description:
         'Enable the experimental walkable gardener with POV and third-person cameras.',
     decide: () => false,
+    options: booleanFlagOptions,
+});
+
+export const enableGardenBuildingSystemFlag = flag<boolean>({
+    key: 'enableGardenBuildingSystem',
+    description:
+        'Enable discovery and editing for the mobile-first modular garden building system.',
+    adapter: vercelAdapter,
+    defaultValue: false,
     options: booleanFlagOptions,
 });

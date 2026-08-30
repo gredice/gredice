@@ -85,6 +85,7 @@ import {
     createGardenAvatarCollisionWorld,
     findGardenAvatarRoute,
     findGardenAvatarSpawnPoint,
+    type GardenAvatarCollisionWorld,
     type GardenAvatarPoint,
     gardenAvatarCrouchingCollisionHeight,
     gardenAvatarMaxJumpClimbHeight,
@@ -94,6 +95,7 @@ import {
     getGardenAvatarGroundY,
     getGardenAvatarNextJumpCount,
     getGardenAvatarRoamTargets,
+    mergeGardenAvatarCollisionWorlds,
     resolveGardenAvatarHorizontalMovement,
 } from './gardenAvatarMovement';
 import {
@@ -659,7 +661,9 @@ function GardenAvatarCamera({
 
 export function GardenAvatar({
     activationRequest = 0,
+    additionalCollisionWorld,
     initialSpawnPoint,
+    interactionDisabled = false,
     interactiveBlockIds,
     onInteractBlock,
     onPresenceChange,
@@ -668,7 +672,9 @@ export function GardenAvatar({
     stacks,
 }: {
     activationRequest?: number;
+    additionalCollisionWorld?: GardenAvatarCollisionWorld;
     initialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
+    interactionDisabled?: boolean;
     interactiveBlockIds?: ReadonlySet<string>;
     onInteractBlock?: (block: Block) => boolean | GardenAvatarInteractionResult;
     onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
@@ -784,9 +790,19 @@ export function GardenAvatar({
         const scene = gltf.scene.clone(true);
         return { ...prepareGardenAvatarModel(scene), scene };
     }, [gltf.scene]);
-    const world = useMemo(
+    const blockCollisionWorld = useMemo(
         () => createGardenAvatarCollisionWorld({ blockData, stacks }),
         [blockData, stacks],
+    );
+    const world = useMemo(
+        () =>
+            additionalCollisionWorld
+                ? mergeGardenAvatarCollisionWorlds(
+                      blockCollisionWorld,
+                      additionalCollisionWorld,
+                  )
+                : blockCollisionWorld,
+        [additionalCollisionWorld, blockCollisionWorld],
     );
     const interactionTargets = useMemo(
         () =>
@@ -1404,7 +1420,7 @@ export function GardenAvatar({
 
     const activateAvatarView = useCallback(() => {
         const actor = actorRef.current;
-        if (!actor || view !== 'overview') {
+        if (!actor || interactionDisabled || view !== 'overview') {
             return;
         }
         getGardenAvatarPerspectiveEntryPosition({
@@ -1419,7 +1435,15 @@ export function GardenAvatar({
         roamRef.current.route = [];
         dismissSpeechMessage();
         setView('third-person');
-    }, [camera, dismissSpeechMessage, setView, view]);
+    }, [camera, dismissSpeechMessage, interactionDisabled, setView, view]);
+
+    useEffect(() => {
+        if (!interactionDisabled) {
+            return;
+        }
+        gl.domElement.style.cursor = 'auto';
+        dismissSpeechMessage();
+    }, [dismissSpeechMessage, gl.domElement, interactionDisabled]);
 
     useEffect(() => {
         if (
@@ -1444,7 +1468,7 @@ export function GardenAvatar({
 
     function showAvatarPointer(event: ThreeEvent<PointerEvent>) {
         event.stopPropagation();
-        if (view === 'overview') {
+        if (!interactionDisabled && view === 'overview') {
             gl.domElement.style.cursor = 'pointer';
             showSpeechMessage();
         }
@@ -2056,28 +2080,38 @@ export function GardenAvatar({
                 userData={{
                     [blockInteractionPassthroughUserDataKey]: true,
                 }}
-                onPointerDown={stopAvatarPointer}
-                onClick={enterAvatarView}
-                onPointerOver={showAvatarPointer}
-                onPointerOut={hideAvatarPointer}
+                onPointerDown={
+                    interactionDisabled ? undefined : stopAvatarPointer
+                }
+                onClick={interactionDisabled ? undefined : enterAvatarView}
+                onPointerOver={
+                    interactionDisabled ? undefined : showAvatarPointer
+                }
+                onPointerOut={
+                    interactionDisabled ? undefined : hideAvatarPointer
+                }
             >
-                <mesh
-                    name="Interaction:GardenAvatar"
-                    position={[0, 0.6, 0]}
-                    scale={[0.76, 1.32, 0.76]}
-                >
-                    <boxGeometry />
-                    <meshBasicMaterial
-                        colorWrite={false}
-                        depthWrite={false}
-                        transparent
-                        opacity={0}
-                    />
-                </mesh>
+                {!interactionDisabled ? (
+                    <mesh
+                        name="Interaction:GardenAvatar"
+                        position={[0, 0.6, 0]}
+                        scale={[0.76, 1.32, 0.76]}
+                    >
+                        <boxGeometry />
+                        <meshBasicMaterial
+                            colorWrite={false}
+                            depthWrite={false}
+                            transparent
+                            opacity={0}
+                        />
+                    </mesh>
+                ) : null}
                 <group scale={avatarModelScale}>
                     <primitive object={model.scene} />
                 </group>
-                {view === 'overview' && showActivationPrompt ? (
+                {view === 'overview' &&
+                showActivationPrompt &&
+                !interactionDisabled ? (
                     <Html center position={[0, 1.43, 0]} zIndexRange={[30, 20]}>
                         <button
                             type="button"
@@ -2092,7 +2126,7 @@ export function GardenAvatar({
                     </Html>
                 ) : null}
             </group>
-            {view === 'overview' && speechMessage ? (
+            {view === 'overview' && speechMessage && !interactionDisabled ? (
                 <ActorSpeechBubble
                     actorRef={actorRef}
                     message={speechMessage}

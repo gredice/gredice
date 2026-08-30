@@ -93,6 +93,7 @@ function createMockGameCamera(snapshot: GameCameraSnapshot): GameCameraRigApi {
         getSnapshot: () => snapshot,
         panByDragEdge: () => false,
         projectToScreen: () => null,
+        restore: () => undefined,
         subscribe: (listener) => {
             listener(snapshot);
             return () => undefined;

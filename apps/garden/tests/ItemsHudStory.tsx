@@ -493,6 +493,7 @@ function createMockGameCamera(
         getSnapshot: () => snapshot,
         panByDragEdge: () => false,
         projectToScreen: () => null,
+        restore: () => undefined,
         subscribe: () => () => undefined,
     };
 }
