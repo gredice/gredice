@@ -68,6 +68,12 @@ export function GameRuntimeProvider({
     }, [winterMode]);
 
     useEffect(() => {
+        storeRef.current
+            ?.getState()
+            .setMockGardenProfile(mockGardenProfile ?? 'default');
+    }, [mockGardenProfile]);
+
+    useEffect(() => {
         storeRef.current?.getState().setFreezeTime(freezeTime ?? null);
     }, [freezeTime]);
 

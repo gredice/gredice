@@ -614,6 +614,7 @@ export function GameScene({
                     adaptiveHighProfile={adaptiveHighProfile}
                     onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
+                    profileStats={Boolean(enableGameProfileController)}
                     fixedTimeSeconds={fixedTimeSeconds}
                     position={sceneCameraPosition}
                     quality={qualityProfile}
@@ -623,6 +624,7 @@ export function GameScene({
                         sceneVisible,
                         '!absolute',
                     )}
+                    data-scene-garden-id={garden?.id}
                     data-scene-visible={sceneVisible}
                 >
                     <ParticleSystemProvider>

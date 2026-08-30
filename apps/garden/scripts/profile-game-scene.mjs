@@ -18,6 +18,7 @@ const gameProfilePlacementCommandEventName =
 const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
 const gameProfileAnimalCommandEventName = 'gredice:game-profile-animal-command';
+const gameProfileGardenSwitchEventName = 'gredice:game-profile-garden-switch';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
 const faunaHeavyExpectedGardenId = 99_995;
@@ -66,6 +67,37 @@ const faunaHeavyExpectedCowActorIds = [
     'cow:animal-debug:1:CowShelter:-6:-1:1',
     'cow:animal-debug:1:CowShelter:3:2:1',
 ];
+const gardenSwitchExpectedProfiles = [
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+];
+const gardenSwitchExpectedGardenIds = {
+    'fauna-heavy': faunaHeavyExpectedGardenId,
+    'high-target': 99_996,
+};
+const gardenSwitchExpectedFixtures = {
+    'fauna-heavy': {
+        blockCount: faunaHeavyExpectedGardenBlockCount,
+        raisedBedCount: 0,
+        stackCount: faunaHeavyExpectedGardenStackCount,
+    },
+    'high-target': {
+        blockCount: 297,
+        raisedBedCount: 3,
+        stackCount: 270,
+    },
+};
+const gardenSwitchFadeOutDelayMs = 280;
+const gardenSwitchVisualSettleMs = 500;
+const gardenSwitchMaximumDisplayedMs = 1_000;
+const gardenSwitchMaximumVisibleMs = 1_200;
+const gardenSwitchMaximumSettledMs = 1_800;
+const gardenSwitchMaximumFrameStallMs = 500;
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -454,6 +486,20 @@ const faunaHeavyScenarios = [
             species: 'Cow',
         },
         faunaProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
+
+const gardenSwitchScenarios = [
+    {
+        name: 'game-garden-switch-high-fauna-single-context-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&gardenSwitch=1&quality=high&controls=0&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        gardenSwitchProfile: true,
         repeat: 3,
         screenshotWitness: true,
     },
@@ -1025,6 +1071,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     fauna: faunaHeavyScenarios,
+    'garden-switch': gardenSwitchScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1326,7 +1373,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -1356,6 +1403,7 @@ function allScenarios() {
         ...denseScenarios,
         ...denseMobileScenarios,
         ...faunaHeavyScenarios,
+        ...gardenSwitchScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -1395,7 +1443,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1984,6 +2032,18 @@ function beginInteractiveProfileSample() {
         requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+}
+
+async function primeGardenSwitchProfileSample() {
+    if (!globalThis.__gameProfileInteractiveSample?.running) {
+        throw new Error('No active garden-switch profile sample to prime.');
+    }
+    await new Promise((resolveFrame) => requestAnimationFrame(resolveFrame));
+}
+
+async function beginGardenSwitchProfileSample(page) {
+    await page.evaluate(beginInteractiveProfileSample);
+    await page.evaluate(primeGardenSwitchProfileSample);
 }
 
 async function finishInteractiveProfileSample() {
@@ -2743,6 +2803,655 @@ async function measurePlantCloseup({ cdp, options, page, scenario }) {
         runtime,
         warm,
     };
+}
+
+async function waitForGardenSwitchFixture(page, profile) {
+    await page.waitForFunction(
+        ({
+            expectedBlockCount,
+            expectedFieldCount,
+            expectedGardenId,
+            expectedInstanceCount,
+            expectedRaisedBedCount,
+            expectedSpeciesCounts,
+            expectedStackCount,
+            profile,
+        }) => {
+            const runtime = globalThis.__grediceGameProfile;
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            const displayedGardenId = Number.parseInt(
+                sceneRoot?.getAttribute('data-scene-garden-id') ?? '',
+                10,
+            );
+            const matchesExpectedEntries = (actual, expected) =>
+                Boolean(
+                    actual &&
+                        typeof actual === 'object' &&
+                        Object.entries(expected).every(
+                            ([name, count]) => actual[name] === count,
+                        ),
+                );
+            const baseReady =
+                runtime?.qualityTier === 'high' &&
+                runtime.profileGardenId === expectedGardenId &&
+                runtime.profileGardenStackCount === expectedStackCount &&
+                runtime.profileGardenBlockCount === expectedBlockCount &&
+                runtime.profileGardenRaisedBedCount ===
+                    expectedRaisedBedCount &&
+                displayedGardenId === expectedGardenId &&
+                sceneRoot?.getAttribute('data-scene-visible') === 'true';
+
+            if (!baseReady) {
+                return false;
+            }
+            if (profile === 'high-target') {
+                return (
+                    runtime.generatedPlantFieldCount === expectedFieldCount &&
+                    runtime.generatedPlantExpectedInstanceCount ===
+                        expectedInstanceCount &&
+                    runtime.generatedPlantInstanceCount ===
+                        expectedInstanceCount &&
+                    runtime.generatedPlantVisibleFieldCount ===
+                        expectedFieldCount &&
+                    runtime.generatedPlantVisibleInstanceCount ===
+                        expectedInstanceCount
+                );
+            }
+
+            return (
+                matchesExpectedEntries(
+                    runtime.actorGroundingShadowSpeciesCounts,
+                    expectedSpeciesCounts,
+                ) && runtime.actorGroundingShadowDroppedCount === 0
+            );
+        },
+        {
+            expectedBlockCount:
+                gardenSwitchExpectedFixtures[profile].blockCount,
+            expectedFieldCount: highTargetExpectedGeneratedPlantFieldCount,
+            expectedGardenId: gardenSwitchExpectedGardenIds[profile],
+            expectedInstanceCount:
+                highTargetExpectedGeneratedPlantInstanceCount,
+            expectedRaisedBedCount:
+                gardenSwitchExpectedFixtures[profile].raisedBedCount,
+            expectedSpeciesCounts: faunaHeavyExpectedFixedSpeciesCounts,
+            expectedStackCount:
+                gardenSwitchExpectedFixtures[profile].stackCount,
+            profile,
+        },
+        { timeout: 60_000 },
+    );
+}
+
+async function dispatchGardenSwitchProfile(page, profile) {
+    const expectedGardenId = gardenSwitchExpectedGardenIds[profile];
+    const dispatched = await page.evaluate(
+        ({ eventName, expectedGardenId, profile }) => {
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            if (!(sceneRoot instanceof HTMLElement)) {
+                throw new Error('Garden-switch Scene root is unavailable.');
+            }
+            const witness = {
+                displayedAt: null,
+                dispatched: false,
+                hiddenAt: null,
+                startedAt: performance.now(),
+                targetGardenId: expectedGardenId,
+                visibleAt: null,
+            };
+            const record = () => {
+                const gardenId = Number.parseInt(
+                    sceneRoot.dataset.sceneGardenId ?? '',
+                    10,
+                );
+                const visible = sceneRoot.dataset.sceneVisible;
+                const now = performance.now();
+                if (visible === 'false' && witness.hiddenAt === null) {
+                    witness.hiddenAt = now;
+                }
+                if (
+                    gardenId === witness.targetGardenId &&
+                    witness.displayedAt === null
+                ) {
+                    witness.displayedAt = now;
+                }
+                if (
+                    gardenId === witness.targetGardenId &&
+                    visible === 'true' &&
+                    witness.hiddenAt !== null &&
+                    witness.visibleAt === null
+                ) {
+                    witness.visibleAt = now;
+                }
+            };
+            const observer = new MutationObserver(record);
+            observer.observe(sceneRoot, {
+                attributeFilter: ['data-scene-garden-id', 'data-scene-visible'],
+            });
+            globalThis.__grediceGardenSwitchProfileWitness = witness;
+            witness.dispatched = globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail: { profile },
+                }),
+            );
+            record();
+            globalThis.__grediceGardenSwitchProfileObserver?.disconnect();
+            globalThis.__grediceGardenSwitchProfileObserver = observer;
+            return witness.dispatched;
+        },
+        {
+            eventName: gameProfileGardenSwitchEventName,
+            expectedGardenId,
+            profile,
+        },
+    );
+    await page.waitForFunction(
+        () => {
+            const witness = globalThis.__grediceGardenSwitchProfileWitness;
+            return Boolean(
+                witness?.dispatched &&
+                    typeof witness.hiddenAt === 'number' &&
+                    typeof witness.displayedAt === 'number' &&
+                    typeof witness.visibleAt === 'number',
+            );
+        },
+        undefined,
+        { timeout: gardenSwitchMaximumVisibleMs + 2_000 },
+    );
+
+    return dispatched;
+}
+
+async function readGardenSwitchTiming(page) {
+    return page.evaluate((settleMs) => {
+        const witness = globalThis.__grediceGardenSwitchProfileWitness;
+        if (!witness) {
+            return null;
+        }
+        const settledAt = performance.now();
+        globalThis.__grediceGardenSwitchProfileObserver?.disconnect();
+        return {
+            dispatched: witness.dispatched === true,
+            displayedMs:
+                typeof witness.displayedAt === 'number'
+                    ? witness.displayedAt - witness.startedAt
+                    : null,
+            hiddenObserved: typeof witness.hiddenAt === 'number',
+            settledMs: settledAt - witness.startedAt,
+            settleTargetMs: settleMs,
+            visibleMs:
+                typeof witness.visibleAt === 'number'
+                    ? witness.visibleAt - witness.startedAt
+                    : null,
+        };
+    }, gardenSwitchVisualSettleMs);
+}
+
+async function dispatchGardenSwitchInteraction(page, profile) {
+    if (profile === 'high-target') {
+        const state = await dispatchOutlineProfileCommand(page, {
+            action: 'show',
+            raisedBedId: 2,
+        });
+        const telemetry = await page.evaluate(() => {
+            const runtime = globalThis.__grediceGameProfile;
+            return {
+                activeTargetCount:
+                    runtime?.hoverOutlineActiveTargetCount ?? null,
+                styleGroupCount: runtime?.hoverOutlineStyleGroupCount ?? null,
+                targetBlockId:
+                    runtime?.hoverOutlineProfileTargetBlockId ?? null,
+                targetRaisedBedId:
+                    runtime?.hoverOutlineProfileTargetRaisedBedId ?? null,
+            };
+        });
+        return {
+            ...telemetry,
+            dispatched: state.dispatched,
+            kind: 'outline',
+        };
+    }
+
+    const command = {
+        behavior: 'trot',
+        species: 'Cow',
+    };
+    const sequenceAtStart = await page.evaluate(
+        () =>
+            globalThis.__grediceGameProfile?.profileAnimalCommandSequence ?? 0,
+    );
+    const dispatched = await page.evaluate(
+        ({ command, eventName }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, { detail: command }),
+            ),
+        {
+            command,
+            eventName: gameProfileAnimalCommandEventName,
+        },
+    );
+    await page.waitForFunction(
+        ({ acknowledgedIds, expectedSequence }) => {
+            const runtime = globalThis.__grediceGameProfile;
+            const matchesIds = (actual) =>
+                Array.isArray(actual) &&
+                actual.length === acknowledgedIds.length &&
+                [...actual]
+                    .sort()
+                    .every(
+                        (value, index) =>
+                            value === [...acknowledgedIds].sort()[index],
+                    );
+            return (
+                runtime?.profileAnimalCommandSequence === expectedSequence &&
+                runtime.profileAnimalCommandSpecies === 'Cow' &&
+                runtime.profileAnimalCommandBehavior === 'trot' &&
+                runtime.profileAnimalCommandAcknowledgementCount === 2 &&
+                runtime.profileAnimalCommandMovingAcknowledgementCount === 2 &&
+                matchesIds(runtime.profileAnimalCommandAcknowledgedIds) &&
+                matchesIds(runtime.profileAnimalCommandMovingAcknowledgedIds)
+            );
+        },
+        {
+            acknowledgedIds: faunaHeavyExpectedCowActorIds,
+            expectedSequence: sequenceAtStart + 1,
+        },
+        { timeout: 20_000 },
+    );
+    const telemetry = await page.evaluate(() => {
+        const runtime = globalThis.__grediceGameProfile;
+        return {
+            acknowledgementCount:
+                runtime?.profileAnimalCommandAcknowledgementCount ?? null,
+            acknowledgedIds:
+                runtime?.profileAnimalCommandAcknowledgedIds ?? null,
+            behavior: runtime?.profileAnimalCommandBehavior ?? null,
+            movingAcknowledgementCount:
+                runtime?.profileAnimalCommandMovingAcknowledgementCount ?? null,
+            movingAcknowledgedIds:
+                runtime?.profileAnimalCommandMovingAcknowledgedIds ?? null,
+            sequence: runtime?.profileAnimalCommandSequence ?? null,
+            species: runtime?.profileAnimalCommandSpecies ?? null,
+        };
+    });
+
+    return {
+        ...telemetry,
+        dispatched,
+        kind: 'animal',
+    };
+}
+
+async function readGardenSwitchArrival(
+    page,
+    persistentCanvas,
+    persistentContext,
+) {
+    return page.evaluate(
+        ({ persistentCanvas, persistentContext }) => {
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            const canvas = sceneRoot?.querySelector('canvas');
+            const context =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const runtime = globalThis.__grediceGameProfile;
+            const numberOrNull = (value) =>
+                typeof value === 'number' && Number.isFinite(value)
+                    ? value
+                    : null;
+            const booleanOrNull = (value) =>
+                typeof value === 'boolean' ? value : null;
+            const recordOrNull = (value) =>
+                value && typeof value === 'object' && !Array.isArray(value)
+                    ? { ...value }
+                    : null;
+
+            return {
+                canvas: {
+                    canvasCount: document.querySelectorAll('canvas').length,
+                    clientHeight:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.clientHeight
+                            : null,
+                    clientWidth:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.clientWidth
+                            : null,
+                    contextLost: context?.isContextLost() ?? null,
+                    contextLostEventCount:
+                        globalThis.__grediceGardenSwitchContextEvents
+                            ?.lostCount ?? null,
+                    contextRestoredEventCount:
+                        globalThis.__grediceGardenSwitchContextEvents
+                            ?.restoredCount ?? null,
+                    gardenId: Number.parseInt(
+                        sceneRoot?.getAttribute('data-scene-garden-id') ?? '',
+                        10,
+                    ),
+                    height:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.height
+                            : null,
+                    sameCanvas: canvas === persistentCanvas,
+                    sameContext: context === persistentContext,
+                    sceneVisible:
+                        sceneRoot?.getAttribute('data-scene-visible') ===
+                        'true',
+                    width:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.width
+                            : null,
+                },
+                fixture: {
+                    actorGroundingShadowDroppedCount: numberOrNull(
+                        runtime?.actorGroundingShadowDroppedCount,
+                    ),
+                    blockCount: numberOrNull(runtime?.profileGardenBlockCount),
+                    generatedPlantExpectedInstanceCount: numberOrNull(
+                        runtime?.generatedPlantExpectedInstanceCount,
+                    ),
+                    generatedPlantFieldCount: numberOrNull(
+                        runtime?.generatedPlantFieldCount,
+                    ),
+                    generatedPlantInstanceCount: numberOrNull(
+                        runtime?.generatedPlantInstanceCount,
+                    ),
+                    generatedPlantVisibleFieldCount: numberOrNull(
+                        runtime?.generatedPlantVisibleFieldCount,
+                    ),
+                    generatedPlantVisibleInstanceCount: numberOrNull(
+                        runtime?.generatedPlantVisibleInstanceCount,
+                    ),
+                    raisedBedCount: numberOrNull(
+                        runtime?.profileGardenRaisedBedCount,
+                    ),
+                    speciesCounts: recordOrNull(
+                        runtime?.actorGroundingShadowSpeciesCounts,
+                    ),
+                    stackCount: numberOrNull(runtime?.profileGardenStackCount),
+                },
+                gardenId: numberOrNull(runtime?.profileGardenId),
+                resources: {
+                    rendererGeometries: numberOrNull(
+                        runtime?.rendererGeometries,
+                    ),
+                    rendererLines: numberOrNull(runtime?.rendererLines),
+                    rendererPoints: numberOrNull(runtime?.rendererPoints),
+                    rendererRenderCalls: numberOrNull(
+                        runtime?.rendererRenderCalls,
+                    ),
+                    rendererShaders:
+                        numberOrNull(runtime?.rendererShaders) ??
+                        numberOrNull(
+                            globalThis.__gameProfileMetrics?.rendererShaders,
+                        ),
+                    rendererTextures:
+                        numberOrNull(runtime?.rendererTextures) ??
+                        numberOrNull(
+                            globalThis.__gameProfileMetrics?.rendererTextures,
+                        ),
+                    rendererTriangles: numberOrNull(runtime?.rendererTriangles),
+                    staticOpaqueSceneCacheEnabled: booleanOrNull(
+                        runtime?.staticOpaqueSceneCacheEnabled,
+                    ),
+                },
+            };
+        },
+        { persistentCanvas, persistentContext },
+    );
+}
+
+async function finishGardenSwitchSample({ cdp, page }) {
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    return roundSample(normalizeRenderWork(completion.sample));
+}
+
+async function measureGardenSwitchScenario(
+    browser,
+    baseUrl,
+    scenario,
+    options,
+) {
+    const context = await browser.newContext({
+        deviceScaleFactor: scenario.dpr,
+        hasTouch: scenario.isMobile,
+        isMobile: scenario.isMobile,
+        viewport: scenario.viewport,
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    const apiErrors = [];
+    const apiRequests = [];
+    const consoleMessages = [];
+    const pageErrors = [];
+
+    page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') {
+            const location = message.location();
+            consoleMessages.push({
+                type: message.type(),
+                text: message.text().slice(0, 300),
+                url: location.url || null,
+            });
+        }
+    });
+    page.on('pageerror', (error) => {
+        pageErrors.push(error.message.slice(0, 300));
+    });
+    page.on('response', (response) => {
+        const responseUrl = response.url();
+        if (
+            response.status() >= 400 &&
+            new URL(responseUrl).pathname.includes('/api/')
+        ) {
+            apiErrors.push({ status: response.status(), url: responseUrl });
+        }
+    });
+    page.on('request', (request) => {
+        const requestUrl = request.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({ method: request.method(), url: requestUrl });
+        }
+    });
+
+    await cdp.send('Performance.enable');
+    await page.addInitScript(installBrowserMetrics, {
+        externalGpuTimer: true,
+    });
+
+    const url = new URL(scenario.path, baseUrl).toString();
+    const navigationStart = Date.now();
+    try {
+        await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60_000,
+        });
+        const domContentLoadedMs = Date.now() - navigationStart;
+        await page.waitForSelector('[data-scene-garden-id] canvas', {
+            state: 'attached',
+            timeout: 60_000,
+        });
+        const sceneCanvas = await page
+            .locator('[data-scene-garden-id] canvas')
+            .elementHandle();
+        if (!sceneCanvas) {
+            throw new Error('Garden-switch Canvas handle is unavailable.');
+        }
+        const sceneContext = await sceneCanvas.evaluateHandle(
+            (canvas) =>
+                canvas.getContext('webgl2') ?? canvas.getContext('webgl'),
+        );
+        await sceneCanvas.evaluate((canvas) => {
+            const tracker = {
+                lostCount: 0,
+                restoredCount: 0,
+            };
+            canvas.addEventListener('webglcontextlost', () => {
+                tracker.lostCount += 1;
+            });
+            canvas.addEventListener('webglcontextrestored', () => {
+                tracker.restoredCount += 1;
+            });
+            globalThis.__grediceGardenSwitchContextEvents = tracker;
+        });
+        await waitForGardenSwitchFixture(page, 'high-target');
+        const canvasReadyMs = Date.now() - navigationStart;
+        await page.waitForTimeout(options.warmupMs);
+        const environment = await page.evaluate(() => {
+            const canvas = document.querySelector(
+                '[data-scene-garden-id] canvas',
+            );
+            const gl =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const rendererInfo = gl?.getExtension('WEBGL_debug_renderer_info');
+            return {
+                renderer:
+                    gl && rendererInfo
+                        ? gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL)
+                        : null,
+                userAgent: window.navigator.userAgent,
+                vendor:
+                    gl && rendererInfo
+                        ? gl.getParameter(rendererInfo.UNMASKED_VENDOR_WEBGL)
+                        : null,
+            };
+        });
+        const request = getScenarioRequest(scenario.path);
+        const switchOptIn = await page.evaluate(
+            () =>
+                document
+                    .querySelector('[data-game-profile-mode]')
+                    ?.getAttribute('data-game-profile-garden-switch') ?? null,
+        );
+        const requested = {
+            controls: request.controls,
+            debugHud: request.debugHud,
+            details: request.details,
+            dpr: scenario.dpr,
+            gardenProfile: 'garden-switch',
+            gardenSwitch: switchOptIn,
+            gardenSwitchProfile: true,
+            graphicsBackend: options.graphicsBackend,
+            hud: request.hud,
+            isMobile: scenario.isMobile,
+            mode: request.mode,
+            motion: 'high-fauna-single-context-switch',
+            operationVisuals: request.operationVisuals,
+            outline: request.outline,
+            quality: request.quality,
+            staticSceneCache: request.staticSceneCache,
+            viewport: scenario.viewport,
+        };
+        const arrivals = [];
+        for (const [index, profile] of gardenSwitchExpectedProfiles.entries()) {
+            await beginGardenSwitchProfileSample(page);
+            let timing = { initial: true };
+            if (index > 0) {
+                await dispatchGardenSwitchProfile(page, profile);
+                await waitForGardenSwitchFixture(page, profile);
+                await page.waitForTimeout(gardenSwitchVisualSettleMs);
+                timing = await readGardenSwitchTiming(page);
+            }
+            const interaction = await dispatchGardenSwitchInteraction(
+                page,
+                profile,
+            );
+            await page.waitForTimeout(550);
+            const sample = await finishGardenSwitchSample({ cdp, page });
+            const arrival = await readGardenSwitchArrival(
+                page,
+                sceneCanvas,
+                sceneContext,
+            );
+            const screenshotPath = resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-arrival-${index + 1}-${profile}.png`,
+            );
+            await mkdir(dirname(screenshotPath), { recursive: true });
+            await page.locator('[data-scene-garden-id] canvas').screenshot({
+                animations: 'disabled',
+                path: screenshotPath,
+            });
+            arrivals.push({
+                ...arrival,
+                arrivalIndex: index + 1,
+                interaction,
+                profile,
+                sample,
+                screenshotPath,
+                screenshotWitness:
+                    await measureProfileScreenshotWitness(screenshotPath),
+                timing,
+            });
+        }
+
+        const acceptance = evaluateGardenSwitchAcceptance({
+            apiErrors,
+            apiRequests,
+            arrivals,
+            consoleMessages,
+            pageErrors,
+            requested,
+        });
+        const finalArrival = arrivals.at(-1);
+        const transitionChecks = acceptance.checks.filter(
+            (check) =>
+                check.name.includes('FrameStall') ||
+                check.name.includes('WithinMs') ||
+                check.name.includes('AfterFadeOutMs') ||
+                check.name.includes('SettleDurationMs'),
+        );
+        const budget = {
+            checks: acceptance.checks,
+            pass: acceptance.pass,
+        };
+        return {
+            acceptance,
+            apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
+            budget,
+            budgetName: 'gardenSwitch',
+            canvasReadyMs,
+            consoleMessages: consoleMessages.slice(0, 8),
+            cdp: null,
+            domContentLoadedMs,
+            environment,
+            gardenSwitch: { arrivals },
+            name: scenario.name,
+            pageErrors: pageErrors.slice(0, 8),
+            path: scenario.path,
+            performanceBudget: {
+                checks: transitionChecks,
+                pass: transitionChecks.every((check) => check.pass),
+            },
+            requested,
+            runtime: {
+                ...finalArrival?.fixture,
+                ...finalArrival?.resources,
+                profileGardenId: finalArrival?.gardenId ?? null,
+                qualityTier: 'high',
+            },
+            sample: finalArrival?.sample ?? null,
+            screenshotPath: finalArrival?.screenshotPath ?? null,
+            screenshotWitness: finalArrival?.screenshotWitness ?? null,
+            url,
+        };
+    } finally {
+        await context.close();
+    }
 }
 
 async function measureScenario(browser, baseUrl, scenario, options) {
@@ -5312,6 +6021,461 @@ async function measureProfileScreenshotWitness(path) {
         sampledLumaRange: round(maximumLuma - minimumLuma, 4),
         sampledUniqueColorCount: sampledColors.size,
         width: metadata.width ?? null,
+    };
+}
+
+function evaluateGardenSwitchAcceptance({
+    apiErrors = [],
+    apiRequests = [],
+    arrivals = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+}) {
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const exactStringSet = (name, actual, expected) => {
+        const normalize = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...new Set(value)].sort((left, right) =>
+                      left.localeCompare(right),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-string-set',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const checks = [
+        exact('gardenSwitchOptIn', requested?.gardenSwitch, '1'),
+        exact('gardenSwitchQualityRequest', requested?.quality, 'high'),
+        exact('gardenSwitchReportedDpr', requested?.dpr, 2),
+        exact(
+            'gardenSwitchStaticSceneCacheRequest',
+            requested?.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'gardenSwitchProfileSequence',
+            JSON.stringify(arrivals.map((arrival) => arrival.profile)),
+            JSON.stringify(gardenSwitchExpectedProfiles),
+        ),
+        exact(
+            'gardenSwitchArrivalCount',
+            arrivals.length,
+            gardenSwitchExpectedProfiles.length,
+        ),
+        exact('gardenSwitchApiErrors', apiErrors.length, 0),
+        exact('gardenSwitchApiRequests', apiRequests.length, 0),
+        exact(
+            'gardenSwitchConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('gardenSwitchPageErrors', pageErrors.length, 0),
+    ];
+
+    let faunaVisit = 0;
+    for (const [index, arrival] of arrivals.entries()) {
+        const prefix = `gardenSwitchArrival${index + 1}`;
+        const expectedProfile = gardenSwitchExpectedProfiles[index];
+        const expectedFixture = gardenSwitchExpectedFixtures[expectedProfile];
+        checks.push(
+            exact(`${prefix}Profile`, arrival.profile, expectedProfile),
+            exact(
+                `${prefix}GardenId`,
+                arrival.gardenId,
+                gardenSwitchExpectedGardenIds[expectedProfile],
+            ),
+            exact(
+                `${prefix}DomGardenId`,
+                arrival.canvas?.gardenId,
+                gardenSwitchExpectedGardenIds[expectedProfile],
+            ),
+            exact(`${prefix}SceneVisible`, arrival.canvas?.sceneVisible, true),
+            exact(`${prefix}CanvasCount`, arrival.canvas?.canvasCount, 1),
+            exact(
+                `${prefix}CanvasPersistent`,
+                arrival.canvas?.sameCanvas,
+                true,
+            ),
+            exact(
+                `${prefix}ContextPersistent`,
+                arrival.canvas?.sameContext,
+                true,
+            ),
+            exact(`${prefix}ContextLost`, arrival.canvas?.contextLost, false),
+            exact(
+                `${prefix}ContextLostEventCount`,
+                arrival.canvas?.contextLostEventCount,
+                0,
+            ),
+            exact(
+                `${prefix}ContextRestoredEventCount`,
+                arrival.canvas?.contextRestoredEventCount,
+                0,
+            ),
+            exact(
+                `${prefix}CanvasClientWidth`,
+                arrival.canvas?.clientWidth,
+                1_280,
+            ),
+            exact(
+                `${prefix}CanvasClientHeight`,
+                arrival.canvas?.clientHeight,
+                720,
+            ),
+            exact(`${prefix}CanvasWidth`, arrival.canvas?.width, 2_560),
+            exact(`${prefix}CanvasHeight`, arrival.canvas?.height, 1_440),
+            exact(
+                `${prefix}FixtureStackCount`,
+                arrival.fixture?.stackCount,
+                expectedFixture?.stackCount,
+            ),
+            exact(
+                `${prefix}FixtureBlockCount`,
+                arrival.fixture?.blockCount,
+                expectedFixture?.blockCount,
+            ),
+            exact(
+                `${prefix}FixtureRaisedBedCount`,
+                arrival.fixture?.raisedBedCount,
+                expectedFixture?.raisedBedCount,
+            ),
+            exact(
+                `${prefix}ScreenshotValid`,
+                isProfileScreenshotWitnessValid(arrival.screenshotWitness),
+                true,
+            ),
+            exact(
+                `${prefix}ScreenshotWidth`,
+                arrival.screenshotWitness?.width,
+                arrival.canvas?.width,
+            ),
+            exact(
+                `${prefix}ScreenshotHeight`,
+                arrival.screenshotWitness?.height,
+                arrival.canvas?.height,
+            ),
+            minimum(
+                `${prefix}RendererGeometries`,
+                arrival.resources?.rendererGeometries,
+                1,
+            ),
+            minimum(
+                `${prefix}RendererShaders`,
+                arrival.resources?.rendererShaders,
+                1,
+            ),
+            minimum(
+                `${prefix}RendererTextures`,
+                arrival.resources?.rendererTextures,
+                1,
+            ),
+            exact(
+                `${prefix}StaticOpaqueSceneCacheEnabled`,
+                arrival.resources?.staticOpaqueSceneCacheEnabled,
+                false,
+            ),
+            maximum(
+                `${prefix}MaximumFrameStallMs`,
+                arrival.sample?.maxFrameMs,
+                gardenSwitchMaximumFrameStallMs,
+            ),
+        );
+
+        if (index === 0) {
+            checks.push(
+                exact(`${prefix}InitialArrival`, arrival.timing?.initial, true),
+            );
+        } else {
+            checks.push(
+                exact(
+                    `${prefix}SwitchDispatched`,
+                    arrival.timing?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}HiddenObserved`,
+                    arrival.timing?.hiddenObserved,
+                    true,
+                ),
+                exact(
+                    `${prefix}VisualSettleTargetMs`,
+                    arrival.timing?.settleTargetMs,
+                    gardenSwitchVisualSettleMs,
+                ),
+                minimum(
+                    `${prefix}DisplayedAfterFadeOutMs`,
+                    arrival.timing?.displayedMs,
+                    gardenSwitchFadeOutDelayMs - 80,
+                ),
+                maximum(
+                    `${prefix}DisplayedWithinMs`,
+                    arrival.timing?.displayedMs,
+                    gardenSwitchMaximumDisplayedMs,
+                ),
+                maximum(
+                    `${prefix}VisibleWithinMs`,
+                    arrival.timing?.visibleMs,
+                    gardenSwitchMaximumVisibleMs,
+                ),
+                minimum(
+                    `${prefix}VisualSettleDurationMs`,
+                    typeof arrival.timing?.settledMs === 'number' &&
+                        typeof arrival.timing.visibleMs === 'number'
+                        ? arrival.timing.settledMs - arrival.timing.visibleMs
+                        : null,
+                    gardenSwitchVisualSettleMs - 50,
+                ),
+                maximum(
+                    `${prefix}SettledWithinMs`,
+                    arrival.timing?.settledMs,
+                    gardenSwitchMaximumSettledMs,
+                ),
+            );
+        }
+
+        if (expectedProfile === 'high-target') {
+            checks.push(
+                exact(
+                    `${prefix}GeneratedPlantFieldCount`,
+                    arrival.fixture?.generatedPlantFieldCount,
+                    highTargetExpectedGeneratedPlantFieldCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantExpectedInstanceCount`,
+                    arrival.fixture?.generatedPlantExpectedInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantInstanceCount`,
+                    arrival.fixture?.generatedPlantInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantVisibleFieldCount`,
+                    arrival.fixture?.generatedPlantVisibleFieldCount,
+                    highTargetExpectedGeneratedPlantFieldCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantVisibleInstanceCount`,
+                    arrival.fixture?.generatedPlantVisibleInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}InteractionKind`,
+                    arrival.interaction?.kind,
+                    'outline',
+                ),
+                exact(
+                    `${prefix}OutlineDispatched`,
+                    arrival.interaction?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}OutlineRaisedBedId`,
+                    arrival.interaction?.targetRaisedBedId,
+                    2,
+                ),
+                exact(
+                    `${prefix}OutlineBlockId`,
+                    arrival.interaction?.targetBlockId,
+                    'profile-raised-bed:2:0',
+                ),
+                exact(
+                    `${prefix}OutlineActiveTargetCount`,
+                    arrival.interaction?.activeTargetCount,
+                    2,
+                ),
+                exact(
+                    `${prefix}OutlineStyleGroupCount`,
+                    arrival.interaction?.styleGroupCount,
+                    1,
+                ),
+            );
+        } else if (expectedProfile === 'fauna-heavy') {
+            faunaVisit += 1;
+            checks.push(
+                ...Object.entries(faunaHeavyExpectedFixedSpeciesCounts).map(
+                    ([species, count]) =>
+                        exact(
+                            `${prefix}FixedSpecies:${species}`,
+                            arrival.fixture?.speciesCounts?.[species],
+                            count,
+                        ),
+                ),
+                exact(
+                    `${prefix}DroppedGroundingShadows`,
+                    arrival.fixture?.actorGroundingShadowDroppedCount,
+                    0,
+                ),
+                exact(
+                    `${prefix}InteractionKind`,
+                    arrival.interaction?.kind,
+                    'animal',
+                ),
+                exact(
+                    `${prefix}AnimalCommandDispatched`,
+                    arrival.interaction?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}AnimalCommandSequence`,
+                    arrival.interaction?.sequence,
+                    faunaVisit,
+                ),
+                exact(
+                    `${prefix}AnimalCommandSpecies`,
+                    arrival.interaction?.species,
+                    'Cow',
+                ),
+                exact(
+                    `${prefix}AnimalCommandBehavior`,
+                    arrival.interaction?.behavior,
+                    'trot',
+                ),
+                exact(
+                    `${prefix}AnimalAcknowledgementCount`,
+                    arrival.interaction?.acknowledgementCount,
+                    2,
+                ),
+                exactStringSet(
+                    `${prefix}AnimalAcknowledgedIds`,
+                    arrival.interaction?.acknowledgedIds,
+                    faunaHeavyExpectedCowActorIds,
+                ),
+                exact(
+                    `${prefix}AnimalMovingAcknowledgementCount`,
+                    arrival.interaction?.movingAcknowledgementCount,
+                    2,
+                ),
+                exactStringSet(
+                    `${prefix}AnimalMovingAcknowledgedIds`,
+                    arrival.interaction?.movingAcknowledgedIds,
+                    faunaHeavyExpectedCowActorIds,
+                ),
+            );
+        }
+    }
+
+    for (const [profile, comparison, baselineIndex, repeatedIndex] of [
+        ['fauna-heavy', 'F2-to-F3', 3, 5],
+        ['high-target', 'H3-to-H4', 4, 6],
+    ]) {
+        const baseline = arrivals[baselineIndex]?.resources;
+        const repeated = arrivals[repeatedIndex]?.resources;
+        for (const resourceName of [
+            'rendererGeometries',
+            'rendererShaders',
+            'rendererTextures',
+        ]) {
+            const baselineValue = baseline?.[resourceName];
+            const repeatedValue = repeated?.[resourceName];
+            checks.push({
+                actual: repeatedValue,
+                comparison: 'maximum-warm-repeat',
+                limit: baselineValue,
+                name: `gardenSwitchResourceWarmPlateau:${profile}:${comparison}:${resourceName}`,
+                pass:
+                    typeof baselineValue === 'number' &&
+                    Number.isFinite(baselineValue) &&
+                    typeof repeatedValue === 'number' &&
+                    Number.isFinite(repeatedValue) &&
+                    repeatedValue <= baselineValue,
+            });
+        }
+    }
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function buildGardenSwitchSummary(scenarios) {
+    const switchScenarios = scenarios.filter(
+        (scenario) => scenario.requested?.gardenSwitchProfile === true,
+    );
+    const arrivals = switchScenarios.flatMap(
+        (scenario) => scenario.gardenSwitch?.arrivals ?? [],
+    );
+    const transitions = arrivals.filter(
+        (arrival) => arrival.timing?.initial !== true,
+    );
+    const finiteMaximum = (values) => {
+        const finite = values.filter((value) => Number.isFinite(value));
+        return finite.length > 0 ? round(Math.max(...finite)) : null;
+    };
+    const resourceWarmPlateauChecks = switchScenarios.flatMap((scenario) =>
+        (scenario.acceptance?.checks ?? []).filter((check) =>
+            check.name.startsWith('gardenSwitchResourceWarmPlateau:'),
+        ),
+    );
+
+    return {
+        arrivalCount: arrivals.length,
+        canvasPersistentArrivalCount: arrivals.filter(
+            (arrival) => arrival.canvas?.sameCanvas === true,
+        ).length,
+        contextPersistentArrivalCount: arrivals.filter(
+            (arrival) => arrival.canvas?.sameContext === true,
+        ).length,
+        maximumDisplayedMs: finiteMaximum(
+            transitions.map((arrival) => arrival.timing?.displayedMs),
+        ),
+        maximumFrameMs: finiteMaximum(
+            arrivals.map((arrival) => arrival.sample?.maxFrameMs),
+        ),
+        maximumSettledMs: finiteMaximum(
+            transitions.map((arrival) => arrival.timing?.settledMs),
+        ),
+        passedScenarioCount: switchScenarios.filter(
+            (scenario) => scenario.budget?.pass === true,
+        ).length,
+        resourceWarmPlateauPass:
+            resourceWarmPlateauChecks.length === switchScenarios.length * 6 &&
+            resourceWarmPlateauChecks.every((check) => check.pass),
+        scenarioCount: switchScenarios.length,
+        transitionCount: transitions.length,
     };
 }
 
@@ -8844,7 +10008,20 @@ function buildProfileSummary(
     const nonHighTargetScenarios = scenarios.filter(
         (scenario) =>
             scenario.requested?.gardenProfile !== 'high-target' &&
-            scenario.requested?.faunaProfile !== true,
+            scenario.requested?.faunaProfile !== true &&
+            scenario.requested?.gardenSwitchProfile !== true,
+    );
+    const gardenSwitchResults = Array.from(
+        Map.groupBy(
+            scenarios.filter(
+                (scenario) => scenario.requested?.gardenSwitchProfile === true,
+            ),
+            (scenario) => scenario.baseName ?? scenario.name,
+        ),
+        ([name, runs]) => ({
+            name,
+            pass: runs.every((run) => run.budget.pass),
+        }),
     );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(
@@ -8867,6 +10044,9 @@ function buildProfileSummary(
             ...nonHighTargetScenarios
                 .filter((scenario) => !scenario.budget.pass)
                 .map((scenario) => scenario.name),
+            ...gardenSwitchResults
+                .filter((result) => !result.pass)
+                .map((result) => result.name),
             ...highTargetResults
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
@@ -8876,7 +10056,9 @@ function buildProfileSummary(
         ]),
     ];
     const totalScenarios =
-        nonHighTargetScenarios.length + highTargetResults.length;
+        nonHighTargetScenarios.length +
+        gardenSwitchResults.length +
+        highTargetResults.length;
     const failedRuns = scenarios.filter(
         (scenario) => !scenario.budget.pass,
     ).length;
@@ -9640,6 +10822,67 @@ function buildMarkdown(report) {
         }
     }
 
+    const gardenSwitchProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.gardenSwitchProfile === true,
+    );
+    if (gardenSwitchProfiles.length > 0) {
+        const summary =
+            report.gardenSwitchSummary ??
+            buildGardenSwitchSummary(report.scenarios);
+        lines.push(
+            '',
+            '## Persistent-Canvas garden switching',
+            '',
+            `Single-context runs: ${summary.passedScenarioCount}/${summary.scenarioCount} passed; arrivals: ${summary.arrivalCount}; transitions: ${summary.transitionCount}; persistent Canvas/context witnesses: ${summary.canvasPersistentArrivalCount}/${summary.contextPersistentArrivalCount}; warm resource plateau (fauna F2→F3, High H3→H4): ${summary.resourceWarmPlateauPass ? 'pass' : 'fail'}; maximum displayed/settled/frame: ${summary.maximumDisplayedMs ?? 'n/a'}/${summary.maximumSettledMs ?? 'n/a'}/${summary.maximumFrameMs ?? 'n/a'} ms.`,
+            '',
+            '| Scenario | Arrival | Profile / garden | Fixture stacks/blocks/beds | Fixed / dynamic fauna census | Interaction witness | Canvas / context | Transition displayed/visible/settled | Resources geometries/programs/textures / static cache | Screenshot witness |',
+            '| --- | ---: | --- | ---: | --- | --- | --- | ---: | ---: | --- |',
+        );
+        for (const scenario of gardenSwitchProfiles) {
+            for (const arrival of scenario.gardenSwitch?.arrivals ?? []) {
+                const interaction =
+                    arrival.interaction?.kind === 'animal'
+                        ? `Cow ${arrival.interaction.behavior ?? 'n/a'} #${arrival.interaction.sequence ?? 'n/a'}; acknowledged ${arrival.interaction.acknowledgementCount ?? 'n/a'}/${arrival.interaction.movingAcknowledgementCount ?? 'n/a'} moving`
+                        : `outline bed ${arrival.interaction?.targetRaisedBedId ?? 'n/a'} / ${arrival.interaction?.targetBlockId ?? 'n/a'}; ${arrival.interaction?.activeTargetCount ?? 'n/a'} targets`;
+                const timing = arrival.timing?.initial
+                    ? 'initial'
+                    : `${round(arrival.timing?.displayedMs) ?? 'n/a'}/${round(arrival.timing?.visibleMs) ?? 'n/a'}/${round(arrival.timing?.settledMs) ?? 'n/a'} ms`;
+                const speciesCounts = arrival.fixture?.speciesCounts ?? {};
+                const faunaCensus =
+                    arrival.profile === 'fauna-heavy'
+                        ? `fixed ${Object.entries(
+                              faunaHeavyExpectedFixedSpeciesCounts,
+                          )
+                              .map(
+                                  ([species, expected]) =>
+                                      `${species}:${speciesCounts[species] ?? 'n/a'}/${expected}`,
+                              )
+                              .join(' ')}; dynamic ${
+                              Object.entries(speciesCounts)
+                                  .filter(
+                                      ([species]) =>
+                                          faunaHeavyExpectedFixedSpeciesCounts[
+                                              species
+                                          ] === undefined,
+                                  )
+                                  .sort(([left], [right]) =>
+                                      left.localeCompare(right),
+                                  )
+                                  .map(
+                                      ([species, count]) =>
+                                          `${species}:${count}`,
+                                  )
+                                  .join(' ') || 'none'
+                          }`
+                        : 'n/a';
+                const screenshot = arrival.screenshotWitness;
+                lines.push(
+                    `| ${scenario.name} | ${arrival.arrivalIndex} | ${arrival.profile} / ${arrival.gardenId ?? 'n/a'} | ${arrival.fixture?.stackCount ?? 'n/a'}/${arrival.fixture?.blockCount ?? 'n/a'}/${arrival.fixture?.raisedBedCount ?? 'n/a'} | ${faunaCensus} | ${interaction} | ${arrival.canvas?.sameCanvas ? 'same' : 'changed'} / ${arrival.canvas?.sameContext ? 'same' : 'changed'}; ${arrival.canvas?.contextLost ? 'lost' : 'healthy'}; context events ${arrival.canvas?.contextLostEventCount ?? 'n/a'}/${arrival.canvas?.contextRestoredEventCount ?? 'n/a'} | ${timing} | ${arrival.resources?.rendererGeometries ?? 'n/a'}/${arrival.resources?.rendererShaders ?? 'n/a'}/${arrival.resources?.rendererTextures ?? 'n/a'}; cache ${arrival.resources?.staticOpaqueSceneCacheEnabled === false ? 'off' : arrival.resources?.staticOpaqueSceneCacheEnabled === true ? 'on' : 'n/a'} | ${screenshot?.width ?? 'n/a'}x${screenshot?.height ?? 'n/a'}, entropy ${screenshot?.entropy ?? 'n/a'}, colors ${screenshot?.sampledUniqueColorCount ?? 'n/a'} |`,
+                );
+            }
+        }
+    }
+
     const faunaProfiles = report.scenarios.filter(
         (scenario) => scenario.requested.faunaProfile === true,
     );
@@ -10230,12 +11473,19 @@ async function main() {
             console.log(
                 `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
             );
-            const result = await measureScenario(
-                browser,
-                options.baseUrl,
-                runScenario,
-                options,
-            );
+            const result = baseScenario.gardenSwitchProfile
+                ? await measureGardenSwitchScenario(
+                      browser,
+                      options.baseUrl,
+                      runScenario,
+                      options,
+                  )
+                : await measureScenario(
+                      browser,
+                      options.baseUrl,
+                      runScenario,
+                      options,
+                  );
             result.baseName = baseScenario.name;
             result.profileRun = runIndex;
             scenarios.push(result);
@@ -10261,7 +11511,7 @@ async function main() {
         const report = {
             baseUrl: options.baseUrl,
             generatedAt: new Date().toISOString(),
-            schemaVersion: 3,
+            schemaVersion: 4,
             sourceCommit:
                 process.env.VERCEL_GIT_COMMIT_SHA ??
                 process.env.GITHUB_SHA ??
@@ -10282,6 +11532,7 @@ async function main() {
             },
             adaptiveHighComparisons,
             crossTierMedians,
+            gardenSwitchSummary: buildGardenSwitchSummary(scenarios),
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
@@ -10313,8 +11564,11 @@ async function main() {
 }
 
 export {
+    beginGardenSwitchProfileSample,
+    beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -10328,6 +11582,7 @@ export {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
@@ -10341,6 +11596,7 @@ export {
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,

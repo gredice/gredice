@@ -55,6 +55,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         onContextLost?: () => void;
         pixelRatio?: number;
         position: FiberVector3;
+        profileStats?: boolean;
         quality?: GameQualityProfile;
         rendererOptions?: WebGLRendererParameters;
         staticOpaqueCacheEnabled?: boolean;
@@ -214,6 +215,7 @@ export function Scene({
     onContextLost,
     pixelRatio,
     position,
+    profileStats = false,
     quality,
     rendererOptions,
     staticOpaqueCacheEnabled = false,
@@ -336,7 +338,9 @@ export function Scene({
                             >
                                 <HoverOutlineProvider>
                                     <SceneDebugName />
-                                    {debugStats && <RendererStatsReporter />}
+                                    {(debugStats || profileStats) && (
+                                        <RendererStatsReporter />
+                                    )}
                                     <SceneWireframeMode
                                         enabled={Boolean(
                                             debugStats && wireframeDebugVisible,
