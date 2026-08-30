@@ -613,8 +613,11 @@ export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     };
 }
 
-export async function getGardenBlocks(gardenId: number) {
-    return storage().query.gardenBlocks.findMany({
+export async function getGardenBlocks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenBlocks.findMany({
         where: and(
             eq(gardenBlocks.gardenId, gardenId),
             eq(gardenBlocks.isDeleted, false),
@@ -644,9 +647,13 @@ export async function getGardenBoxBlocksForAccount(accountId: string) {
         .orderBy(asc(gardens.createdAt), asc(gardenBlocks.createdAt));
 }
 
-export async function getGardenBlock(gardenId: number, blockId: string) {
+export async function getGardenBlock(
+    gardenId: number,
+    blockId: string,
+    db: DatabaseClient = storage(),
+) {
     return (
-        (await storage().query.gardenBlocks.findFirst({
+        (await db.query.gardenBlocks.findFirst({
             where: and(
                 eq(gardenBlocks.gardenId, gardenId),
                 eq(gardenBlocks.id, blockId),
@@ -736,8 +743,11 @@ export async function deleteGardenBlock(
     );
 }
 
-export async function getGardenStacks(gardenId: number) {
-    return storage().query.gardenStacks.findMany({
+export async function getGardenStacks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenStacks.findMany({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.isDeleted, false),
@@ -748,9 +758,10 @@ export async function getGardenStacks(gardenId: number) {
 export async function getGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
     return (
-        (await storage().query.gardenStacks.findFirst({
+        (await db.query.gardenStacks.findFirst({
             where: and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, x),
@@ -871,8 +882,9 @@ export async function updateGardenStack(
 export async function deleteGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
-    await storage()
+    await db
         .update(gardenStacks)
         .set({ isDeleted: true })
         .where(

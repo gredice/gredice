@@ -5,9 +5,14 @@ import {
     createGardenBlock,
     createGardenStack,
     deleteGardenBlock,
+    deleteGardenStack,
     gardens,
     getGarden,
+    getGardenBlock,
+    getGardenBlocks,
     getGardenPlacementSnapshot,
+    getGardenStack,
+    getGardenStacks,
     updateGardenStack,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
@@ -116,5 +121,52 @@ test('garden placement transactions reject invalid lock identifiers', async () =
     await assert.rejects(
         withGardenPlacementTransaction(0, async () => undefined),
         /positive ID/u,
+    );
+});
+
+test('placement readers and stack deletion reuse and roll back the lock transaction', async () => {
+    createTestDb();
+    const { gardenId } = await createPlacementGarden();
+    const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+    await createGardenStack(gardenId, { x: 7, y: -4 });
+    await updateGardenStack(gardenId, {
+        x: 7,
+        y: -4,
+        blocks: [blockId],
+    });
+
+    await assert.rejects(
+        withGardenPlacementTransaction(gardenId, async (transaction) => {
+            assert.equal(
+                (await getGardenBlocks(gardenId, transaction)).length,
+                1,
+            );
+            assert.equal(
+                (await getGardenBlock(gardenId, blockId, transaction))?.id,
+                blockId,
+            );
+            assert.equal(
+                (await getGardenStacks(gardenId, transaction)).length,
+                1,
+            );
+            assert.deepEqual(
+                (await getGardenStack(gardenId, { x: 7, y: -4 }, transaction))
+                    ?.blocks,
+                [blockId],
+            );
+
+            await deleteGardenStack(gardenId, { x: 7, y: -4 }, transaction);
+            assert.equal(
+                await getGardenStack(gardenId, { x: 7, y: -4 }, transaction),
+                null,
+            );
+            throw new Error('reject placement readers');
+        }),
+        /reject placement readers/u,
+    );
+
+    assert.deepEqual(
+        (await getGardenStack(gardenId, { x: 7, y: -4 }))?.blocks,
+        [blockId],
     );
 });
