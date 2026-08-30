@@ -186,6 +186,7 @@ import {
 import { queryBooleanSchema } from '../../../lib/http/queryBoolean';
 import { openAdventGiftBox } from '../../../lib/occasions/adventGiftBox';
 import { getPostHogClient } from '../../../lib/posthog-server';
+import gardenStructuresRoutes from './gardenStructuresRoutes';
 
 const DEFAULT_TIMEZONE = 'Europe/Paris';
 
@@ -1075,6 +1076,7 @@ async function getGardenQueuedTasks(garden: GardenDetail) {
 }
 
 const app = new Hono<{ Variables: AuthVariables }>()
+    .route('/:gardenId/structures', gardenStructuresRoutes)
     .get(
         '/',
         describeRoute({
