@@ -34,6 +34,7 @@ import {
     type GardenOccupancyStorageStructureLike,
     validatePersistedStructuresAfterBlockMutation,
 } from './gardenOccupancyService';
+import { validateRotatedBlockPlacement } from './rotatedBlockPlacementValidation';
 
 const defaultRecycleRefund = 10;
 const maximumAccountIdentifierLength = 128;
@@ -871,7 +872,7 @@ const defaultDependencies: GardenBlockMutationDependencies<GardenPlacementTransa
         updateGardenStack,
         updateRaisedBedOrientation,
         validatePersistedStructuresAfterBlockMutation,
-        validateRotatedBlockPlacement: validateRotatedBlockPlacementUnavailable,
+        validateRotatedBlockPlacement,
         withAccountDeletionFenceTransaction,
         withGardenPlacementTransaction,
         withSunflowerAccountTransaction,
