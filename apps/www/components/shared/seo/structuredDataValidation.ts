@@ -3,6 +3,11 @@ export type StructuredDataIssue = {
     message: string;
 };
 
+export type StructuredDataSerialization = {
+    issues: StructuredDataIssue[];
+    serializedData: string | null;
+};
+
 const schemaContexts = new Set(['https://schema.org', 'https://schema.org/']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -298,4 +303,18 @@ export function validateSerializedStructuredData(
             },
         ];
     }
+}
+
+export function serializeValidStructuredData(
+    data: unknown,
+): StructuredDataSerialization {
+    const issues = validateStructuredData(data);
+    if (issues.length > 0) {
+        return { issues, serializedData: null };
+    }
+
+    return {
+        issues,
+        serializedData: JSON.stringify(data).replace(/</g, '\\u003c'),
+    };
 }

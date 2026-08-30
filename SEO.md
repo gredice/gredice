@@ -42,6 +42,7 @@ SEO usually does not apply to authenticated `garden`, `farm`, `app`, or API rout
 - Do not invent price, availability, review, or legal data for schema.
 - Every `Product` must have a non-empty name and at least one valid `offers`, `review`, or `aggregateRating` property. Use `WebPage`/`Thing` for informational entities and `Service` for garden operations instead of creating incomplete Products.
 - Keep unrelated catalogue entries as generic `ItemList` items. Google Product rich results are intended for pages focused on one product or its variants.
+- `StructuredDataScript` validates every JSON-LD payload before rendering. Invalid payloads fail in development and CI; production omits and logs the invalid script instead of publishing it.
 - Run `pnpm --filter www test:seo` for the fast structured-data contract tests. The sitemap-driven public metadata suite parses rendered JSON-LD on every generated public route.
 
 ## Sitemaps and tests
