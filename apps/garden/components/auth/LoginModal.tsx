@@ -8,7 +8,7 @@ import {
     useLastLoginProvider,
 } from '@gredice/ui/auth';
 import { Button } from '@gredice/ui/Button';
-import { Mail, Sprout } from '@gredice/ui/icons';
+import { ArrowLeft, Mail, Sprout } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
@@ -16,7 +16,14 @@ import { Typography } from '@gredice/ui/Typography';
 import { usePostHog } from '@posthog/next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import {
+    type ReactNode,
+    useCallback,
+    useEffect,
+    useId,
+    useRef,
+    useState,
+} from 'react';
 import {
     type GardenOAuthProvider,
     getGardenOAuthStartUrl,
@@ -73,6 +80,8 @@ export default function LoginModal({
     const [emailExpanded, setEmailExpanded] = useState(false);
     const [shouldAnimateAuthContent, setShouldAnimateAuthContent] =
         useState(false);
+    const emailTriggerId = useId();
+    const restoreEmailTriggerFocusRef = useRef(false);
     const fetchLastLogin = useCallback(
         () => clientPublic().api.auth['last-login'].$get(),
         [],
@@ -89,6 +98,13 @@ export default function LoginModal({
         setError(undefined);
         setShouldAnimateAuthContent(false);
     }, [defaultTab, open]);
+
+    useEffect(() => {
+        if (!emailExpanded && restoreEmailTriggerFocusRef.current) {
+            restoreEmailTriggerFocusRef.current = false;
+            document.getElementById(emailTriggerId)?.focus();
+        }
+    }, [emailExpanded, emailTriggerId]);
 
     const handleLogin = async (email: string, password: string) => {
         setError(undefined);
@@ -222,9 +238,7 @@ export default function LoginModal({
 
     const handleTabChange = (value: string) => {
         if (value === 'login' || value === 'register') {
-            setShouldAnimateAuthContent(emailExpanded);
             setActiveTab(value);
-            setEmailExpanded(false);
             setError(undefined);
         }
     };
@@ -234,7 +248,13 @@ export default function LoginModal({
         setEmailExpanded(true);
     };
 
-    const authActionLabel = activeTab === 'login' ? 'prijava' : 'registracija';
+    const handleProvidersBack = () => {
+        restoreEmailTriggerFocusRef.current = true;
+        setShouldAnimateAuthContent(true);
+        setEmailExpanded(false);
+        setError(undefined);
+    };
+
     const authContent = emailExpanded ? 'email' : 'providers';
 
     return (
@@ -266,14 +286,6 @@ export default function LoginModal({
                     onValueChange={handleTabChange}
                     className="w-full"
                 >
-                    <div className="flex justify-center w-full">
-                        <TabsList className="grid grid-cols-2">
-                            <TabsTrigger value="login">Prijava</TabsTrigger>
-                            <TabsTrigger value="register">
-                                Registracija
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
                     {description && (
                         <Typography
                             level="body2"
@@ -304,7 +316,7 @@ export default function LoginModal({
                                                 lastLoginProvider === 'google'
                                             }
                                         >
-                                            Google {authActionLabel}
+                                            Nastavi sa Google
                                         </GoogleLoginButton>
                                         <FacebookLoginButton
                                             onClick={() =>
@@ -314,7 +326,7 @@ export default function LoginModal({
                                                 lastLoginProvider === 'facebook'
                                             }
                                         >
-                                            Facebook {authActionLabel}
+                                            Nastavi sa Facebook
                                         </FacebookLoginButton>
                                         <Button
                                             type="button"
@@ -324,13 +336,24 @@ export default function LoginModal({
                                             startDecorator={
                                                 <Mail className="h-4 w-4 shrink-0" />
                                             }
+                                            id={emailTriggerId}
                                             onClick={handleEmailExpand}
                                         >
-                                            Email {authActionLabel}
+                                            Nastavi s emailom
                                         </Button>
                                     </Stack>
                                 ) : (
-                                    <>
+                                    <Stack spacing={4}>
+                                        <div className="flex justify-center w-full">
+                                            <TabsList className="grid grid-cols-2">
+                                                <TabsTrigger value="login">
+                                                    Prijava
+                                                </TabsTrigger>
+                                                <TabsTrigger value="register">
+                                                    Registracija
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </div>
                                         <TabsContent
                                             value="login"
                                             className="mt-0"
@@ -372,7 +395,22 @@ export default function LoginModal({
                                                 </Stack>
                                             </div>
                                         </TabsContent>
-                                    </>
+                                        <Button
+                                            color="neutral"
+                                            fullWidth
+                                            onClick={handleProvidersBack}
+                                            startDecorator={
+                                                <ArrowLeft
+                                                    aria-hidden="true"
+                                                    className="size-4"
+                                                />
+                                            }
+                                            type="button"
+                                            variant="plain"
+                                        >
+                                            Natrag na druge načine prijave
+                                        </Button>
+                                    </Stack>
                                 )}
                             </div>
                         </div>

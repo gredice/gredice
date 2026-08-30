@@ -466,18 +466,20 @@ test('guest explicitly starts a temporary garden with separate login HUD and no 
     const guestAction = initialLogin.getByRole('button', {
         name: 'Nastavi kao gost',
     });
-    const loginTab = initialLogin.getByRole('tab', { name: 'Prijava' });
+    const emailAction = initialLogin.getByRole('button', {
+        name: 'Nastavi s emailom',
+    });
     await expect(guestAction).toBeVisible();
     await expect(guestAction.locator('svg')).toHaveCount(1);
-    const [guestActionBounds, loginTabBounds] = await Promise.all([
+    const [guestActionBounds, emailActionBounds] = await Promise.all([
         guestAction.boundingBox(),
-        loginTab.boundingBox(),
+        emailAction.boundingBox(),
     ]);
-    if (!guestActionBounds || !loginTabBounds) {
-        throw new Error('Expected guest action and login tab bounds');
+    if (!guestActionBounds || !emailActionBounds) {
+        throw new Error('Expected guest and email action bounds');
     }
-    expect(guestActionBounds.y).toBeLessThan(loginTabBounds.y);
-    expect(guestActionBounds.height).toBeGreaterThan(loginTabBounds.height);
+    expect(guestActionBounds.y).toBeLessThan(emailActionBounds.y);
+    expect(guestActionBounds.height).toBeGreaterThan(emailActionBounds.height);
     await guestAction.click();
     await expect(page.getByTitle(/zvuk/u)).toBeVisible({ timeout: 15_000 });
     const loginHud = page.locator('[data-game-hud-temporary-auth="true"]');
@@ -552,7 +554,9 @@ test('fresh signed-out visitor can log in without creating a temporary account',
     await expect(loginDialog).toBeVisible();
     expect(api.getTemporaryAccountRequestCount()).toBe(0);
 
-    await loginDialog.getByRole('button', { name: 'Email prijava' }).click();
+    await loginDialog
+        .getByRole('button', { name: 'Nastavi s emailom' })
+        .click();
     await loginDialog.getByLabel('Email').fill('vrtlar@example.com');
     await loginDialog.getByLabel('Zaporka').fill('sigurna-zaporka');
     await loginDialog.getByRole('button', { name: 'Prijava' }).click();
@@ -599,7 +603,7 @@ test('returning user with an expired session sees simplified login choices befor
         }, returningUserStorageKey),
     ).toBe('1');
 
-    await page.getByRole('button', { name: 'Email prijava' }).click();
+    await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
     await page.getByLabel('Email').fill('vrtlar@example.com');
     await page.getByLabel('Zaporka').fill('sigurna-zaporka');
     await page.getByRole('button', { name: 'Prijava' }).click();
@@ -654,7 +658,9 @@ test('loads the signed-out React-only garden page behind the login prompt', asyn
     expect(response?.ok()).toBe(true);
     await expect(page.locator('[data-garden-renderer="2d"]')).toBeVisible();
     await expect(
-        page.getByRole('button', { name: 'Prijava' }).first(),
+        page
+            .getByRole('dialog', { name: 'Prijava' })
+            .getByRole('button', { name: 'Nastavi s emailom' }),
     ).toBeVisible();
     await expect(page.locator('canvas')).toHaveCount(0);
     await expectNoImmediateRuntimeFailures(page, failures);
