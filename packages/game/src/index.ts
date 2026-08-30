@@ -83,6 +83,8 @@ export type {
 } from './sprites/types';
 export { useSpriteAtlasManifest } from './sprites/useSpriteAtlasManifest';
 export { useSpriteAtlasTexture } from './sprites/useSpriteAtlasTexture';
+export type { GardenStructureFootprintInspectorProps } from './structures/editor/GardenStructureFootprintInspector';
+export { GardenStructureFootprintInspector } from './structures/editor/GardenStructureFootprintInspector';
 export type { TemporaryAccountLoginOpenChangedDetail } from './temporaryAccountAuth';
 export {
     isTemporaryAccountLoginOpen,
