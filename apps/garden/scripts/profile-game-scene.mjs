@@ -8842,7 +8842,9 @@ function buildProfileSummary(
     ),
 ) {
     const nonHighTargetScenarios = scenarios.filter(
-        (scenario) => scenario.requested?.gardenProfile !== 'high-target',
+        (scenario) =>
+            scenario.requested?.gardenProfile !== 'high-target' &&
+            scenario.requested?.faunaProfile !== true,
     );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(

@@ -1866,36 +1866,44 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
         false,
     );
 
-    const medians = buildHighTargetMedians(
-        [1, 2, 3].map((profileRun) => ({
-            acceptance: { pass: true },
-            baseName: 'game-fauna-heavy-day-interaction-desktop',
-            budget: { pass: true },
-            budgetName: 'gameHighTarget',
-            name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
-            performanceBudget: { pass: true },
-            profileRun,
-            requested: input.requested,
-            runtime: { qualityTier: 'high' },
-            sample: {
-                drawCallsPerFrame: 2,
-                drawCallsPerRenderedFrame: 100,
-                effectiveDprAtEnd: 2,
-                gpu: { elapsedP95Ms: null, valid: false },
-                jsHeapMb: 100,
-                longTaskCount: 0,
-                maxFrameMs: 20,
-                p95FrameMs: 16,
-                renderedFps: 30,
-                trianglesPerFrame: 2_000,
-                trianglesPerRenderedFrame: 100_000,
-            },
-        })),
-    );
+    const scenarios = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-fauna-heavy-day-interaction-desktop',
+        budget: { pass: true },
+        budgetName: 'gameHighTarget',
+        name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: input.requested,
+        runtime: { qualityTier: 'high' },
+        sample: {
+            drawCallsPerFrame: 2,
+            drawCallsPerRenderedFrame: 100,
+            effectiveDprAtEnd: 2,
+            gpu: { elapsedP95Ms: null, valid: false },
+            jsHeapMb: 100,
+            longTaskCount: 0,
+            maxFrameMs: 20,
+            p95FrameMs: 16,
+            renderedFps: 30,
+            trianglesPerFrame: 2_000,
+            trianglesPerRenderedFrame: 100_000,
+        },
+    }));
+    const medians = buildHighTargetMedians(scenarios);
     const faunaMedian = medians['game-fauna-heavy-day-interaction-desktop'];
     assert.equal(faunaMedian?.faunaProfile, true);
     assert.equal(faunaMedian?.runCount, 3);
     assert.equal(faunaMedian?.pass, true);
+    assert.deepEqual(buildProfileSummary(scenarios, medians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
 
     const markdown = buildMarkdown({
         adaptiveHighComparisons: {},

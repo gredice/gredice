@@ -125,6 +125,7 @@ function disableRaycast() {
 }
 
 function publishActorGroundingShadowProfile() {
+    const speciesCounts: Record<string, number> = {};
     const aggregate = {
         batchCount: 0,
         capacity: 0,
@@ -134,7 +135,7 @@ function publishActorGroundingShadowProfile() {
         placementDroppedCount: 0,
         placementPeakCount: 0,
         primaryCasterCount: 0,
-        speciesCounts: {} as Record<string, number>,
+        speciesCounts,
         updateCount: 0,
         visibleCount: 0,
     };
