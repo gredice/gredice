@@ -766,9 +766,11 @@ test('account deletion clears hard FK families while retaining detached commerci
     const retainedItem = await storage().query.shoppingCartItems.findFirst({
         where: eq(shoppingCartItems.id, paidCartItem.id),
     });
-    assert.equal(retainedCart?.accountId, null);
-    assert.equal(retainedItem?.gardenId, null);
-    assert.equal(retainedItem?.raisedBedId, null);
+    assert.ok(retainedCart);
+    assert.ok(retainedItem);
+    assert.equal(retainedCart.accountId, null);
+    assert.equal(retainedItem.gardenId, null);
+    assert.equal(retainedItem.raisedBedId, null);
 
     const retainedTransaction = await storage().query.transactions.findFirst({
         where: eq(transactions.id, transaction.id),
@@ -776,9 +778,11 @@ test('account deletion clears hard FK families while retaining detached commerci
     const retainedReceipt = await storage().query.receipts.findFirst({
         where: eq(receipts.id, receipt.id),
     });
-    assert.equal(retainedTransaction?.accountId, null);
-    assert.equal(retainedTransaction?.gardenId, null);
-    assert.equal(retainedReceipt?.invoiceId, null);
+    assert.ok(retainedTransaction);
+    assert.ok(retainedReceipt);
+    assert.equal(retainedTransaction.accountId, null);
+    assert.equal(retainedTransaction.gardenId, null);
+    assert.equal(retainedReceipt.invoiceId, null);
     assert.equal(
         await storage().query.invoices.findFirst({
             where: eq(invoices.id, invoice.id),
@@ -814,5 +818,6 @@ test('account deletion clears hard FK families while retaining detached commerci
         await storage().query.deliveryRunStops.findFirst({
             where: eq(deliveryRunStops.id, deliveryRunStop.id),
         });
-    assert.equal(retainedDeliveryStop?.pickupTraceLinkId, null);
+    assert.ok(retainedDeliveryStop);
+    assert.equal(retainedDeliveryStop.pickupTraceLinkId, null);
 });
