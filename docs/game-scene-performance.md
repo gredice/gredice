@@ -198,8 +198,12 @@ and full plant-fixture visibility throughout each repeated sample. Camera
 motion uses bounded zoom/rotation cycles so it exercises visibility and render
 updates without changing the measured fixture; motion runs also require a
 camera snapshot/version change during the sample, so dropped input cannot be
-reported as motion evidence. The auto device classes are deterministic
-profiler inputs rather than measurements from representative hardware.
+reported as motion evidence. Every steady and moving run also dispatches the
+same connected-raised-bed outline command and requires exact target telemetry
+plus a nonblank Canvas screenshot. Screenshot dimensions follow the browser
+DPR, independently of the quality-capped WebGL backing-store dimensions. The
+auto device classes are deterministic profiler inputs rather than measurements
+from representative hardware.
 Reported results therefore establish a reproducible local production-build
 regression baseline; they do not replace physical-device, sustained thermal,
 or deployed runtime validation. Do not record performance conclusions here
@@ -312,6 +316,106 @@ forced loss cannot invalidate profiler-owned query handles. These are local
 headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
+Capture the complete regression bundle before and after a runtime change with
+the same machine, browser, options, and deterministic fixtures. Use distinct
+output directories so the candidate run cannot overwrite the baseline:
+
+```bash
+cd apps/garden
+GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline \
+  pnpm run profile:game:regression-baselines
+
+# Capture an independent repeat of the exact same clean baseline commit:
+GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline-confirmation \
+  pnpm run profile:game:regression-baselines
+
+# After checking out and building the candidate commit:
+GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate \
+  pnpm run profile:game:regression-baselines
+
+# Capture an independent repeat of the exact same clean candidate commit:
+GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate-confirmation \
+  pnpm run profile:game:regression-baselines
+```
+
+Compare the four raw repeated-run reports with the checked-in relative policy:
+
+```bash
+cd apps/garden
+pnpm run profile:game:compare \
+  --baseline test-results/game-profile/baseline/latest.json \
+  --baseline-confirmation test-results/game-profile/baseline-confirmation/latest.json \
+  --candidate test-results/game-profile/candidate/latest.json \
+  --confirmation test-results/game-profile/candidate-confirmation/latest.json \
+  --out-dir test-results/game-profile/comparisons/baseline-to-candidate
+```
+
+The comparator validates and pairs raw scenarios by stable base name and repeat
+index; it does not compare precomputed summaries. Performance samples from the
+two independently captured bundles are then treated as exchangeable repeats:
+the release decision uses the ratio of batch medians, while sorted raw ranks are
+retained as diagnostics and cannot make an otherwise stable median fail. This
+avoids assigning statistical meaning to baseline run 1 versus candidate run 1.
+
+A relative median breach below its practical noise floor returns `needs-rerun`
+instead of passing or being mislabeled as a regression. A breach beyond both
+boundaries is a regression in a single comparison. For release evidence, use
+both `--baseline-confirmation` and `--confirmation`. The comparator evaluates
+the two independent baseline bundles against both independent candidate bundles
+and confirms a regression only when the same scenario, phase, and metric crosses
+its relative screen in all four pairings. This symmetric 2x2 gate prevents an
+unusually low baseline bundle or unusually high candidate bundle from deciding
+the release. Non-reproduced signals stay visible in JSON and Markdown but do not
+fail the confirmed result.
+
+Each repeat must preserve its source commit, fixtures, options, runtime, and
+environment while using a different report path and valid capture timestamp.
+A timestamp-only copy of an existing JSON report is rejected because it is not
+independent evidence. If a screened metric is unavailable in any required
+pairing, the confirmed result returns `needs-rerun` rather than passing open.
+
+The floors cover observed same-commit variation in browser startup clocks, GPU
+queries, uncollected heap snapshots, script counters, and isolated long tasks;
+deterministic fixture, quality, interaction, provenance, and lifecycle zero-work
+witnesses remain hard checks in every raw run. Long-task counts compare batch
+medians, and duration medians use bounded millisecond floors, so one isolated
+browser task is visible in the raw ranks without being mislabeled as an
+application regression. Renderer resource medians have a one-count tolerance;
+larger growth must reproduce across the symmetric confirmation matrix.
+
+| Median metric | Relative allowance | Practical floor |
+| --- | ---: | ---: |
+| p95 frame duration | 15% | 2 ms |
+| Rendered FPS | 10% | 5 FPS |
+| Draws / triangles per rendered frame | 5% | none |
+| JavaScript heap snapshot | 15% | 8 MiB |
+| Script duration | 15% | 0.5 s |
+| GPU p95 duration | 15% | 3 ms |
+| DOM content loaded | 25% | 25 ms |
+| Canvas and lifecycle readiness | 20% | 100 ms |
+| Switch displayed / visible | 15% | 50 ms |
+| Switch settled | 15% | 100 ms |
+| Long-task maximum / total duration | 20% | 10 / 20 ms |
+
+“Practical floor” is not an extra allowance added to the percentage. A signal
+is meaningful when its worsening reaches the floor while also crossing the
+relative boundary. These are profiler noise floors, not product budgets; each
+raw run must still pass the scenario's checked absolute performance budget
+before either report is comparable.
+
+Exit `0` means compatible evidence and all confirmed relative gates passed.
+Exit `1` means either `needs-rerun` or a regression, and exit `2` means the
+reports are invalid or incomparable. The generated comparison report uses
+schema version 2 and distinguishes screening signals from reproduced
+regressions. The gate fails closed for dirty, unknown,
+same-commit, stale-build, or mismatched served-build provenance, changed
+fixtures/options/runtime, missing runs, and one-sided required measurements. The
+default gate requires the complete `cross-tier,fauna,garden-switch,lifecycle`
+manifest with three raw repeats per scenario, and it rejects an output directory
+that contains either input report. `--allow-partial` and `--allow-same-source`
+exist only for local harness diagnostics, are marked as diagnostic in the
+generated report, and must not be used as release evidence.
+
 Run every profiler scenario together:
 
 ```bash
@@ -356,6 +460,9 @@ as both `latest.json` and `latest.md`; timestamped copies are kept beside them.
 The JSON is intended for CI/trend comparison, while the Markdown summary is meant
 for quick review in a PR. Reports also include whether the profiler ran a build
 and whether the server was managed with `pnpm start` or supplied externally.
+Schema-v5 reports distinguish the profiler harness commit from the commit baked
+into the served Garden build. Only the served-build marker is authoritative for
+the comparison subject; a runner environment SHA is not deployment proof.
 
 The default `core` scenario set currently samples these scenarios:
 
