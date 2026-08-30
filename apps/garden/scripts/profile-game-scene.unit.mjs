@@ -25,6 +25,7 @@ import {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    installGardenSwitchContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
@@ -870,6 +871,67 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
         installBrowserMetrics.toString(),
         /getQuery\([\s\S]*TIME_ELAPSED_EXT[\s\S]*CURRENT_QUERY/,
     );
+});
+
+test('garden-switch context tracking starts before Canvas discovery and fails closed for every Canvas event', () => {
+    const keys = [
+        'document',
+        'HTMLCanvasElement',
+        '__grediceGardenSwitchContextEvents',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const listeners = new Map();
+
+    try {
+        class ProfileCanvas {}
+        Object.defineProperties(globalThis, {
+            document: {
+                configurable: true,
+                value: {
+                    addEventListener(type, listener, capture) {
+                        assert.equal(capture, true);
+                        listeners.set(type, listener);
+                    },
+                },
+                writable: true,
+            },
+            HTMLCanvasElement: {
+                configurable: true,
+                value: ProfileCanvas,
+                writable: true,
+            },
+        });
+
+        installGardenSwitchContextTracker();
+        assert.equal(listeners.size, 2);
+        listeners.get('webglcontextlost')?.({ target: new ProfileCanvas() });
+        listeners.get('webglcontextrestored')?.({
+            target: new ProfileCanvas(),
+        });
+        listeners.get('webglcontextlost')?.({ target: {} });
+
+        assert.deepEqual(globalThis.__grediceGardenSwitchContextEvents, {
+            lostCount: 1,
+            restoredCount: 1,
+        });
+
+        installGardenSwitchContextTracker();
+        assert.equal(listeners.size, 2);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('runtime GPU-source scenario disables only the external profiler timer', () => {

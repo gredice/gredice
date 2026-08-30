@@ -1585,6 +1585,37 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
+function installGardenSwitchContextTracker() {
+    if (globalThis.__grediceGardenSwitchContextEvents) {
+        return;
+    }
+
+    const tracker = {
+        lostCount: 0,
+        restoredCount: 0,
+    };
+    globalThis.__grediceGardenSwitchContextEvents = tracker;
+
+    document.addEventListener(
+        'webglcontextlost',
+        (event) => {
+            if (event.target instanceof HTMLCanvasElement) {
+                tracker.lostCount += 1;
+            }
+        },
+        true,
+    );
+    document.addEventListener(
+        'webglcontextrestored',
+        (event) => {
+            if (event.target instanceof HTMLCanvasElement) {
+                tracker.restoredCount += 1;
+            }
+        },
+        true,
+    );
+}
+
 function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     if (globalThis.__gameProfileMetrics) {
         return;
@@ -3264,6 +3295,7 @@ async function measureGardenSwitchScenario(
     });
 
     await cdp.send('Performance.enable');
+    await page.addInitScript(installGardenSwitchContextTracker);
     await page.addInitScript(installBrowserMetrics, {
         externalGpuTimer: true,
     });
@@ -3290,19 +3322,6 @@ async function measureGardenSwitchScenario(
             (canvas) =>
                 canvas.getContext('webgl2') ?? canvas.getContext('webgl'),
         );
-        await sceneCanvas.evaluate((canvas) => {
-            const tracker = {
-                lostCount: 0,
-                restoredCount: 0,
-            };
-            canvas.addEventListener('webglcontextlost', () => {
-                tracker.lostCount += 1;
-            });
-            canvas.addEventListener('webglcontextrestored', () => {
-                tracker.restoredCount += 1;
-            });
-            globalThis.__grediceGardenSwitchContextEvents = tracker;
-        });
         await waitForGardenSwitchFixture(page, 'high-target');
         const canvasReadyMs = Date.now() - navigationStart;
         await page.waitForTimeout(options.warmupMs);
@@ -11588,6 +11607,7 @@ export {
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    installGardenSwitchContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
