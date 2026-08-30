@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { useGameState } from '../useGameState';
+import { getGardenStackPatchError } from './gardenStackPatchError';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 import {
@@ -88,7 +89,9 @@ export function useBlockRecycle() {
                 return;
             }
             const gardenId = garden.id;
-            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
@@ -98,6 +101,9 @@ export function useBlockRecycle() {
                     position,
                 }),
             });
+            if (!response.ok) {
+                throw new Error(await getGardenStackPatchError(response));
+            }
 
             if (shoppingCart && raisedBedId) {
                 await removeShoppingCartItems(shoppingCart, raisedBedId);

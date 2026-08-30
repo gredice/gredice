@@ -4,6 +4,7 @@ import { handleOptimisticUpdate } from '../helpers/queryHelpers';
 import { persistLocalSandboxGarden } from '../localSandboxGarden';
 import { createGardenPosition, type GardenStack } from '../types/Stack';
 import { useGameState } from '../useGameState';
+import { getGardenStackPatchError } from './gardenStackPatchError';
 import { currentGardenKeys, useCurrentGarden } from './useCurrentGarden';
 
 const mutationKey = ['gardens', 'current', 'blockMove'];
@@ -168,12 +169,17 @@ export function useBlockMove() {
             const gardenId = garden.id;
             const operations = createMovePatchOperations(args);
 
-            await clientAuthenticated().api.gardens[':gardenId'].stacks.$patch({
+            const response = await clientAuthenticated().api.gardens[
+                ':gardenId'
+            ].stacks.$patch({
                 param: {
                     gardenId: gardenId.toString(),
                 },
                 json: operations,
             });
+            if (!response.ok) {
+                throw new Error(await getGardenStackPatchError(response));
+            }
         },
         onMutate: async (args) => {
             if (!garden) {
