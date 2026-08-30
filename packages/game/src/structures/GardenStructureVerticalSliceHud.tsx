@@ -74,6 +74,7 @@ import {
     getGardenStructureSaveStatusLabel,
 } from './gardenStructureBuildModePresentation';
 import { getMatchingGardenStructureConflictSession } from './gardenStructureConflictSession';
+import { resolveGardenStructureMutationConflictRevision } from './gardenStructureMutationRecovery';
 import {
     createGardenStructureEditorOccupancyIndex,
     validateGardenStructureEditorPlacementOccupancy,
@@ -1034,11 +1035,17 @@ export function GardenStructureVerticalSliceHud({
                           'UNKNOWN_ERROR',
                           'unknown',
                       );
+            const conflictRevision =
+                resolveGardenStructureMutationConflictRevision({
+                    code: clientError.code,
+                    currentRevision: clientError.currentRevision,
+                    originKind: begun.value.origin.kind,
+                });
             const failed =
-                clientError.code === 'REVISION_CONFLICT'
+                conflictRevision !== undefined
                     ? markGardenStructureEditorConflict(begun.value, {
                           operationId,
-                          actualRevision: clientError.currentRevision,
+                          actualRevision: conflictRevision,
                       })
                     : clientError.outcome === 'unknown'
                       ? markGardenStructureEditorOffline(
@@ -1247,11 +1254,17 @@ export function GardenStructureVerticalSliceHud({
                           'UNKNOWN_ERROR',
                           'unknown',
                       );
+            const conflictRevision =
+                resolveGardenStructureMutationConflictRevision({
+                    code: clientError.code,
+                    currentRevision: clientError.currentRevision,
+                    originKind: begun.value.origin.kind,
+                });
             const next =
-                clientError.code === 'REVISION_CONFLICT'
+                conflictRevision !== undefined
                     ? markGardenStructureEditorDemolitionConflict(begun.value, {
                           operationId,
-                          actualRevision: clientError.currentRevision,
+                          actualRevision: conflictRevision,
                       })
                     : clientError.outcome === 'unknown'
                       ? markGardenStructureEditorDemolitionUnknown(
