@@ -139,3 +139,56 @@ export async function getGardenPlacementSnapshot(
 
     return { garden, stacks, blocks };
 }
+
+/**
+ * Lock and read the complete active placement authority for one garden.
+ * Locks are acquired in a deterministic order: garden row, stack rows by ID,
+ * then block rows by ID. The caller must provide the transaction that owns
+ * the surrounding account and garden-placement locks.
+ */
+export async function getGardenPlacementSnapshotForUpdate(
+    gardenId: number,
+    db: GardenPlacementTransaction,
+): Promise<GardenPlacementSnapshot | null> {
+    assertGardenId(gardenId);
+    const garden = (
+        await db
+            .select({
+                id: gardens.id,
+                accountId: gardens.accountId,
+                isSandbox: gardens.isSandbox,
+            })
+            .from(gardens)
+            .where(and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)))
+            .for('update')
+            .limit(1)
+    )[0];
+    if (!garden) {
+        return null;
+    }
+
+    const stacks = await db
+        .select()
+        .from(gardenStacks)
+        .where(
+            and(
+                eq(gardenStacks.gardenId, gardenId),
+                eq(gardenStacks.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardenStacks.id))
+        .for('update');
+    const blocks = await db
+        .select()
+        .from(gardenBlocks)
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardenBlocks.id))
+        .for('update');
+
+    return { garden, stacks, blocks };
+}

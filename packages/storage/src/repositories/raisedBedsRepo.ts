@@ -362,6 +362,84 @@ export async function getRaisedBedMetadataByIds(raisedBedIds: number[]) {
         .orderBy(asc(raisedBeds.id));
 }
 
+export type GardenRaisedBedMutationMetadata = Readonly<{
+    id: number;
+    blockId: string | null;
+    status: string;
+    orientation: RaisedBedOrientation;
+}>;
+
+/**
+ * Lock active raised-bed projections for a garden in stable ID order. This
+ * lightweight view is intended for garden placement mutations that already
+ * own the surrounding account and garden locks.
+ */
+export async function listGardenRaisedBedMetadataForUpdate(
+    gardenId: number,
+    db: TransactionClient,
+): Promise<GardenRaisedBedMutationMetadata[]> {
+    return db
+        .select({
+            id: raisedBeds.id,
+            blockId: raisedBeds.blockId,
+            status: raisedBeds.status,
+            orientation: raisedBeds.orientation,
+        })
+        .from(raisedBeds)
+        .where(
+            and(
+                eq(raisedBeds.gardenId, gardenId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(raisedBeds.id))
+        .for('update');
+}
+
+/**
+ * Delete an unactivated raised bed at most once. Schedule cache invalidation
+ * belongs to the outer command after its transaction commits.
+ */
+export async function softDeleteNewRaisedBedOnce(
+    raisedBedId: number,
+    db: TransactionClient,
+) {
+    const [deletedRaisedBed] = await db
+        .update(raisedBeds)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.status, 'new'),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .returning({ id: raisedBeds.id });
+    return deletedRaisedBed !== undefined;
+}
+
+/**
+ * Update orientation for one active raised-bed projection inside the caller's
+ * transaction. Schedule cache invalidation belongs to the outer command.
+ */
+export async function updateRaisedBedOrientation(
+    raisedBedId: number,
+    orientation: RaisedBedOrientation,
+    db: TransactionClient,
+) {
+    const [updatedRaisedBed] = await db
+        .update(raisedBeds)
+        .set({ orientation })
+        .where(
+            and(
+                eq(raisedBeds.id, raisedBedId),
+                eq(raisedBeds.isDeleted, false),
+            ),
+        )
+        .returning({ id: raisedBeds.id });
+    return updatedRaisedBed !== undefined;
+}
+
 export async function listActiveRaisedBedOperationTargets() {
     const rows = await storage()
         .select({

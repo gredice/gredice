@@ -663,6 +663,38 @@ export async function getGardenBlock(
     );
 }
 
+export async function getGardenBlockForUpdate(
+    {
+        blockId,
+        gardenId,
+        includeDeleted = false,
+    }: {
+        blockId: string;
+        gardenId: number;
+        includeDeleted?: boolean;
+    },
+    db: TransactionClient,
+) {
+    const conditions = [
+        eq(gardenBlocks.gardenId, gardenId),
+        eq(gardenBlocks.id, blockId),
+    ];
+    if (!includeDeleted) {
+        conditions.push(eq(gardenBlocks.isDeleted, false));
+    }
+
+    return (
+        (
+            await db
+                .select()
+                .from(gardenBlocks)
+                .where(and(...conditions))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
+    );
+}
+
 export async function createGardenBlock(
     gardenId: number,
     blockName: string,
@@ -741,6 +773,56 @@ export async function deleteGardenBlock(
         }),
         db,
     );
+}
+
+export type SoftDeleteGardenBlockResult =
+    | 'deleted'
+    | 'already-deleted'
+    | 'not-found';
+
+/**
+ * Soft-delete one locked garden block and append its removal event exactly
+ * once. Retry callers can distinguish an already-applied deletion from a
+ * block that never belonged to the requested garden.
+ */
+export async function softDeleteGardenBlockOnce(
+    gardenId: number,
+    blockId: string,
+    db: TransactionClient,
+): Promise<SoftDeleteGardenBlockResult> {
+    const block = await getGardenBlockForUpdate(
+        { blockId, gardenId, includeDeleted: true },
+        db,
+    );
+    if (!block) {
+        return 'not-found';
+    }
+    if (block.isDeleted) {
+        return 'already-deleted';
+    }
+
+    const [deletedBlock] = await db
+        .update(gardenBlocks)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, blockId),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+    if (!deletedBlock) {
+        throw new Error('Locked garden block changed before deletion.');
+    }
+
+    await createEvent(
+        knownEvents.gardens.blockRemovedV1(gardenId.toString(), {
+            id: blockId,
+        }),
+        db,
+    );
+    return 'deleted';
 }
 
 export async function getGardenStacks(
