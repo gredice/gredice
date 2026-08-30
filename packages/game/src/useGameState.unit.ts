@@ -714,6 +714,83 @@ test('garden avatar view enters play mode and resets controls on exit', () => {
     }
 });
 
+test('structure build mode is one discriminated session and excludes avatar and closeup modes', () => {
+    const store = createGameState({
+        appBaseUrl: '',
+        freezeTime: new Date('2026-01-01T12:00:00.000Z'),
+        isMock: true,
+    });
+
+    try {
+        store.getState().setGardenAvatarView('third-person');
+        store.getState().setPickupBlock({
+            id: 'dragged-block',
+            name: 'Block_Grass',
+            rotation: 0,
+        });
+        store.getState().setActiveDragPreview(createPreview());
+        store.getState().beginHudPlacementDrag({
+            blockName: 'Block_Grass',
+            clientX: 10,
+            clientY: 20,
+            pointerId: 4,
+            pointerType: 'touch',
+        });
+        store.getState().addPickupSelectionTarget({
+            blockId: 'dragged-block',
+            blockIndex: 0,
+            stackPosition: { x: 0, z: 0 },
+        });
+        store.getState().setStationaryPickupOutlineTarget({
+            blockId: 'dragged-block',
+            blockIndex: 0,
+            stackPosition: { x: 0, z: 0 },
+        });
+        store.getState().setItemsHudDropTargetActive(true);
+        store.getState().setIsDragging(true);
+        store.getState().setStructureBuildSession({
+            phase: 'editing',
+            source: 'fixture',
+            templateKey: 'house',
+            rotation: 0,
+            category: 'structure',
+            roofCutaway: false,
+            selectedPartId: null,
+        });
+
+        assert.equal(store.getState().gardenAvatarView, 'overview');
+        assert.equal(store.getState().view, 'normal');
+        assert.equal(store.getState().structureBuildSession?.phase, 'editing');
+        assert.equal(store.getState().pickupBlock, null);
+        assert.equal(store.getState().activeDragPreview, null);
+        assert.equal(store.getState().hudPlacementDrag, null);
+        assert.deepEqual(store.getState().pickupSelectionTargets, []);
+        assert.equal(store.getState().stationaryPickupOutlineTarget, null);
+        assert.equal(store.getState().itemsHudDropTargetActive, false);
+        assert.equal(store.getState().isDragging, false);
+
+        store.getState().setGardenAvatarView('first-person');
+        assert.equal(store.getState().structureBuildSession, null);
+
+        store.getState().setStructureBuildSession({
+            phase: 'editing',
+            source: 'fixture',
+            templateKey: 'barn',
+            rotation: 1,
+            category: 'roof',
+            roofCutaway: true,
+            selectedPartId: null,
+        });
+        store.getState().setView({
+            view: 'closeup',
+            block: { id: 'bed', name: 'Raised_Bed', rotation: 0 },
+        });
+        assert.equal(store.getState().structureBuildSession, null);
+    } finally {
+        store.getState().audio.dispose();
+    }
+});
+
 test('environment can publish blended rain intensity for surface effects', () => {
     const store = createGameState({
         appBaseUrl: '',
