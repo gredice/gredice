@@ -439,6 +439,89 @@ export function setGardenStructureEdgePart(
     );
 }
 
+/** Applies a precise tap-start/tap-end chain as one validated document edit. */
+export function setGardenStructureEdgeChain(
+    input: EditInput &
+        Readonly<{
+            edges: readonly Readonly<{
+                cell: GardenStructureCoordinate;
+                side: GardenStructureCellSide;
+            }>[];
+            kind: GardenStructureEdgeKind;
+            partId: string;
+        }>,
+): GardenStructureDocumentEditResult {
+    const prepared = prepareDocument(input);
+    if (!prepared.ok) {
+        return prepared;
+    }
+    if (input.edges.length === 0) {
+        return noChange();
+    }
+    const { document, isReferenceAllowed } = prepared.value;
+    const canonicalByKey = new Map<
+        string,
+        ReturnType<typeof getCanonicalGardenStructureEdge>
+    >();
+    for (const edge of input.edges) {
+        const targetFailure = validateSelectedCell(document, edge.cell);
+        if (targetFailure) {
+            return targetFailure;
+        }
+        const canonical = getCanonicalGardenStructureEdge(edge.cell, edge.side);
+        canonicalByKey.set(gardenStructureEdgeKey(canonical), canonical);
+    }
+
+    let changed = false;
+    let lastEdgeId: string | undefined;
+    let nextEdges = [...document.edges];
+    for (const [targetKey, canonical] of canonicalByKey) {
+        const existingIndex = nextEdges.findIndex(
+            (edge) => gardenStructureEdgeKey(edge) === targetKey,
+        );
+        const existing =
+            existingIndex === -1 ? undefined : nextEdges[existingIndex];
+        if (existing?.kind === input.kind && existing.partId === input.partId) {
+            continue;
+        }
+        const edgeId =
+            existing?.id ??
+            nextUniqueIdentifier(
+                'edge',
+                nextEdges.map((edge) => edge.id),
+            );
+        if (!edgeId) {
+            return failure(
+                'id-exhausted',
+                'A bounded unique edge identifier could not be allocated.',
+            );
+        }
+        const replacement: GardenStructureEdge = {
+            id: edgeId,
+            from: canonical.from,
+            direction: canonical.direction,
+            kind: input.kind,
+            partId: input.partId,
+        };
+        if (existingIndex === -1) {
+            nextEdges = [...nextEdges, replacement];
+        } else {
+            nextEdges = nextEdges.map((edge, index) =>
+                index === existingIndex ? replacement : edge,
+            );
+        }
+        changed = true;
+        lastEdgeId = edgeId;
+    }
+    return changed
+        ? finishDocument(
+              { ...document, edges: nextEdges },
+              isReferenceAllowed,
+              lastEdgeId,
+          )
+        : noChange();
+}
+
 export function removeGardenStructureEdgePart(
     input: EditInput &
         Readonly<{
@@ -735,6 +818,53 @@ export function rotateGardenStructureProp(
                 candidate.id === prop.id
                     ? { ...candidate, rotation: input.rotation }
                     : candidate,
+            ),
+        },
+        isReferenceAllowed,
+        prop.id,
+    );
+}
+
+export function replaceGardenStructureProp(
+    input: EditInput &
+        Readonly<{
+            propId: string;
+            partId: string;
+            rotation: GardenStructureRotation;
+            variantId?: string;
+        }>,
+): GardenStructureDocumentEditResult {
+    const prepared = prepareDocument(input);
+    if (!prepared.ok) {
+        return prepared;
+    }
+    const { document, isReferenceAllowed } = prepared.value;
+    const prop = findProp(document, input.propId);
+    if (!prop) {
+        return itemNotFound();
+    }
+    if (
+        prop.partId === input.partId &&
+        prop.rotation === input.rotation &&
+        prop.variantId === input.variantId
+    ) {
+        return noChange();
+    }
+    const replacement = {
+        id: prop.id,
+        partId: input.partId,
+        x: prop.x,
+        y: prop.y,
+        rotation: input.rotation,
+        ...(input.variantId !== undefined
+            ? { variantId: input.variantId }
+            : {}),
+    };
+    return finishDocument(
+        {
+            ...document,
+            props: document.props.map((candidate) =>
+                candidate.id === prop.id ? replacement : candidate,
             ),
         },
         isReferenceAllowed,

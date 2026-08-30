@@ -70,6 +70,7 @@ async function waitForStructureInsideVisibleViewport(
 }
 
 async function tapCenter(page: Page, locator: Locator) {
+    await locator.scrollIntoViewIfNeeded();
     const bounds = await locator.boundingBox();
     expect(bounds).not.toBeNull();
     if (!bounds) {
@@ -146,6 +147,39 @@ async function dispatchCanvasTouchGesture({
         await session.detach();
     }
     return session;
+}
+
+async function dispatchTouchDrag({
+    context,
+    from,
+    page,
+    to,
+}: {
+    context: BrowserContext;
+    from: Readonly<{ x: number; y: number }>;
+    page: Page;
+    to: Readonly<{ x: number; y: number }>;
+}) {
+    const session = await context.newCDPSession(page);
+    const point = {
+        id: 201,
+        radiusX: 8,
+        radiusY: 8,
+        force: 1,
+    };
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ ...point, ...from }],
+    });
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ ...point, ...to }],
+    });
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+    });
+    await session.detach();
 }
 
 test('keeps one canvas through the touch-first building slice in portrait and landscape', async ({
@@ -382,11 +416,168 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         partSelect.locator('option[value^="roof:debug-garden-structure:"]'),
     ).not.toHaveCount(0);
     await tapCenter(page, page.getByRole('button', { name: 'Tlocrt' }));
+    const footprintTargets = await page
+        .locator('[data-structure-canvas-target-kind="add-cell"]')
+        .evaluateAll((elements) =>
+            elements.flatMap((element) => {
+                const id = element.getAttribute('data-structure-canvas-target');
+                const bounds = element.getBoundingClientRect();
+                if (!id) {
+                    return [];
+                }
+                const [worldX, worldY] = id.split('|').map(Number);
+                return Number.isFinite(worldX) && Number.isFinite(worldY)
+                    ? [
+                          {
+                              screenX: bounds.x + bounds.width / 2,
+                              screenY: bounds.y + bounds.height / 2,
+                              worldX,
+                              worldY,
+                          },
+                      ]
+                    : [];
+            }),
+        );
+    const addRow = footprintTargets
+        .filter(
+            (target, _index, targets) =>
+                targets.filter(
+                    (candidate) => candidate.worldY === target.worldY,
+                ).length >= 2,
+        )
+        .toSorted((left, right) =>
+            left.worldY === right.worldY
+                ? left.worldX - right.worldX
+                : left.worldY - right.worldY,
+        );
+    const firstAddTarget = addRow[0];
+    const lastAddTarget = addRow.findLast(
+        (target) => target.worldY === firstAddTarget?.worldY,
+    );
+    expect(firstAddTarget).toBeDefined();
+    expect(lastAddTarget).toBeDefined();
+    if (!firstAddTarget || !lastAddTarget) {
+        throw new Error('A coalesced footprint target row is unavailable');
+    }
+    await dispatchTouchDrag({
+        context,
+        from: { x: firstAddTarget.screenX, y: firstAddTarget.screenY },
+        page,
+        to: { x: lastAddTarget.screenX, y: lastAddTarget.screenY },
+    });
+    const footprintDialog = page.getByRole('alertdialog', {
+        name: 'Potvrditi promjenu tlocrta?',
+    });
+    await expect(footprintDialog).toBeVisible();
+    await expect(footprintDialog).toContainText('15 / 100');
+    await footprintDialog.getByRole('button', { name: 'Vrati tlocrt' }).click();
+    await expect(footprintDialog).toHaveCount(0);
     await expect(
         partSelect.locator(
             'option[value="footprint:debug-garden-structure:-1|2"]',
         ),
     ).toHaveCount(1);
+
+    await tapCenter(
+        page,
+        page.getByRole('button', { name: 'Ruka / pomicanje' }),
+    );
+    await expect(
+        page.getByRole('button', { name: 'Ruka / pomicanje' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    const targetBeforeHandPan = await page.evaluate(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return Number(
+            typeof profile === 'object' && profile !== null
+                ? Reflect.get(profile, 'gardenStructureCameraTargetX')
+                : Number.NaN,
+        );
+    });
+    const canvasBounds = await canvas.boundingBox();
+    expect(canvasBounds).not.toBeNull();
+    if (!canvasBounds) {
+        throw new Error('Canvas bounds are unavailable for Hand pan');
+    }
+    await dispatchTouchDrag({
+        context,
+        from: {
+            x: canvasBounds.x + canvasBounds.width * 0.65,
+            y: canvasBounds.y + canvasBounds.height * 0.38,
+        },
+        page,
+        to: {
+            x: canvasBounds.x + canvasBounds.width * 0.72,
+            y: canvasBounds.y + canvasBounds.height * 0.38,
+        },
+    });
+    await page.waitForFunction((before) => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Math.abs(
+                Number(Reflect.get(profile, 'gardenStructureCameraTargetX')) -
+                    before,
+            ) > 0.01
+        );
+    }, targetBeforeHandPan);
+
+    await tapCenter(page, page.getByRole('button', { name: 'Konstrukcija' }));
+    await page.getByLabel('Dio lanca').selectOption('window.house');
+    const northEdgeTargets = page.locator(
+        '[data-structure-canvas-target-kind="edge"][data-structure-canvas-target$=":N"]',
+    );
+    await expect(northEdgeTargets).not.toHaveCount(0);
+    const edgeTargets = await northEdgeTargets.evaluateAll((elements) =>
+        elements.flatMap((element) => {
+            const id = element.getAttribute('data-structure-canvas-target');
+            const bounds = element.getBoundingClientRect();
+            if (!id) {
+                return [];
+            }
+            const [cellKey] = id.split(':');
+            const [cellX, cellY] = cellKey.split('|').map(Number);
+            return Number.isFinite(cellX) && Number.isFinite(cellY)
+                ? [
+                      {
+                          cellX,
+                          cellY,
+                          screenX: bounds.x + bounds.width / 2,
+                          screenY: bounds.y + bounds.height / 2,
+                      },
+                  ]
+                : [];
+        }),
+    );
+    const edgeRow = edgeTargets
+        .filter(
+            (target, _index, targets) =>
+                targets.filter((candidate) => candidate.cellY === target.cellY)
+                    .length >= 2,
+        )
+        .toSorted((left, right) =>
+            left.cellY === right.cellY
+                ? left.cellX - right.cellX
+                : left.cellY - right.cellY,
+        );
+    const firstEdge = edgeRow[0];
+    const secondEdge = edgeRow.find(
+        (target) =>
+            target.cellY === firstEdge?.cellY &&
+            target.cellX !== firstEdge.cellX,
+    );
+    expect(firstEdge).toBeDefined();
+    expect(secondEdge).toBeDefined();
+    if (!firstEdge || !secondEdge) {
+        throw new Error('A collinear edge pair is unavailable');
+    }
+    await page.touchscreen.tap(firstEdge.screenX, firstEdge.screenY);
+    await page.touchscreen.tap(secondEdge.screenX, secondEdge.screenY);
+    await expect(hud).toContainText('rubova čeka potvrdu');
+    await tapCenter(page, page.getByRole('button', { name: 'Potvrdi lanac' }));
+    await expect(hud).toContainText(/Lanac s \d+ rubova je primijenjen/);
+
+    await tapCenter(page, page.getByRole('button', { name: 'Tlocrt' }));
     await tapCenter(page, page.getByRole('button', { name: 'Zakreni 90°' }));
 
     await page.waitForFunction(() => {
@@ -584,10 +775,11 @@ test('keeps the public debug sandbox on the managed default-off path', async ({
     );
 });
 
-test('supports keyboard entry, initial focus, Escape, and focus return', async ({
+test('supports keyboard authoring, reduced motion, Escape unwinding, and focus return', async ({
     page,
 }) => {
     test.setTimeout(30_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(buildingKeyboardProfileUrl, { waitUntil: 'networkidle' });
 
     const entry = page.getByTestId('garden-structure-build-entry');
@@ -595,6 +787,61 @@ test('supports keyboard entry, initial focus, Escape, and focus return', async (
     await page.keyboard.press('Enter');
     const done = page.getByTestId('garden-structure-build-done');
     await expect(done).toBeFocused();
+
+    const structureTool = page.getByRole('button', {
+        name: 'Konstrukcija',
+    });
+    await structureTool.focus();
+    await page.keyboard.press('Enter');
+    await page.getByLabel('Dio lanca').selectOption('window.house');
+    const selectedCell = page.getByLabel('Odabrano polje');
+    await selectedCell.selectOption('0|0');
+    await page.getByLabel('Strana ruba za lanac').selectOption('N');
+    const startEdge = page.getByRole('button', { name: 'Postavi početak' });
+    await startEdge.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+        page.getByRole('button', { name: 'Postavi kraj' }),
+    ).toBeVisible();
+    await selectedCell.selectOption('1|0');
+    const finishEdge = page.getByRole('button', { name: 'Postavi kraj' });
+    await finishEdge.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+        page.getByRole('button', { name: 'Potvrdi lanac' }),
+    ).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(
+        page.getByRole('button', { name: 'Potvrdi lanac' }),
+    ).toHaveCount(0);
+
+    const footprintTool = page.getByRole('button', { name: 'Tlocrt' });
+    await footprintTool.focus();
+    await page.keyboard.press('Enter');
+    const reducedMotionCanvasTarget = page
+        .locator('[data-structure-canvas-target]')
+        .first();
+    await expect(reducedMotionCanvasTarget).toBeVisible();
+    await expect
+        .poll(() =>
+            reducedMotionCanvasTarget.evaluate(
+                (element) => getComputedStyle(element).transitionDuration,
+            ),
+        )
+        .toBe('0s');
+
+    const handTool = page.getByRole('button', {
+        name: 'Ruka / pomicanje',
+    });
+    await handTool.focus();
+    await page.keyboard.press('Enter');
+    await expect(handTool).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Odabir' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+    );
+    await expect(done).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(entry).toBeFocused();
 });

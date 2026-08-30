@@ -28,6 +28,7 @@ type PartCallbacks = Pick<
     | 'onRemoveEdgePart'
     | 'onRemoveFloorMaterial'
     | 'onRemoveRoofCoverage'
+    | 'onReplaceProp'
     | 'onRotateProp'
     | 'onSetEdgePart'
     | 'onSetFloorMaterial'
@@ -73,6 +74,7 @@ export function GardenStructureAuthoringInspectors({
     onRemoveEdgePart,
     onRemoveFloorMaterial,
     onRemoveRoofCoverage,
+    onReplaceProp,
     onRotateProp,
     onSelectedCellKeyChange,
     onSetEdgePart,
@@ -163,6 +165,7 @@ export function GardenStructureAuthoringInspectors({
                     onRemoveEdgePart={onRemoveEdgePart}
                     onRemoveFloorMaterial={onRemoveFloorMaterial}
                     onRemoveRoofCoverage={onRemoveRoofCoverage}
+                    onReplaceProp={onReplaceProp}
                     onRotateProp={onRotateProp}
                     onSetEdgePart={onSetEdgePart}
                     onSetFloorMaterial={onSetFloorMaterial}

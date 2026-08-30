@@ -256,6 +256,15 @@ test('shows only the selected authoring category and provides accessible prop ta
     await expect(
         page.getByText('Namještaj i predmeti', { exact: true }),
     ).toBeVisible();
+    await page
+        .getByLabel('Predmet', { exact: true })
+        .selectOption('prop.planter');
+    await page
+        .getByRole('button', { name: 'Zamijeni Table odabranim predmetom' })
+        .click();
+    await expect(page.getByTestId('authoring-action')).toHaveText(
+        'replace:prop-table:prop.planter',
+    );
     await page.getByRole('button', { name: 'Zakreni Table' }).click();
     await expect(page.getByTestId('authoring-action')).toHaveText(
         'rotate:prop-table:1',

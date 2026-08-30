@@ -265,6 +265,9 @@ export function GardenStructureAuthoringInspectorsStory() {
                 onRemoveRoofCoverage={(cell) =>
                     setAction(`remove-roof:${gardenStructureCellKey(cell)}`)
                 }
+                onReplaceProp={(propId, selection) =>
+                    setAction(`replace:${propId}:${selection.partId}`)
+                }
                 onRotateProp={(propId, rotation) =>
                     setAction(`rotate:${propId}:${rotation.toString()}`)
                 }

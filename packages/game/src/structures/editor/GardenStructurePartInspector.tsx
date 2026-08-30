@@ -105,6 +105,10 @@ export type GardenStructurePartInspectorProps = Readonly<{
     ) => void;
     onRemoveFloorMaterial: (cell: GardenStructureCoordinate) => void;
     onRemoveRoofCoverage: (cell: GardenStructureCoordinate) => void;
+    onReplaceProp: (
+        propId: string,
+        selection: GardenStructurePartInspectorPropSelection,
+    ) => void;
     onRotateProp: (propId: string, rotation: GardenStructureRotation) => void;
     onSetEdgePart: (
         cell: GardenStructureCoordinate,
@@ -136,6 +140,7 @@ export function GardenStructurePartInspector({
     onRemoveEdgePart,
     onRemoveFloorMaterial,
     onRemoveRoofCoverage,
+    onReplaceProp,
     onRotateProp,
     onSetEdgePart,
     onSetFloorMaterial,
@@ -656,6 +661,34 @@ export function GardenStructurePartInspector({
                                                     type="button"
                                                 >
                                                     Zakreni
+                                                </button>
+                                                <button
+                                                    aria-label={`Zamijeni ${identifierLabel(prop.partId)} odabranim predmetom`}
+                                                    className={actionClassName}
+                                                    disabled={
+                                                        !propPartId ||
+                                                        (prop.partId ===
+                                                            propPartId &&
+                                                            prop.variantId ===
+                                                                (propVariantId ||
+                                                                    undefined))
+                                                    }
+                                                    onClick={() =>
+                                                        onReplaceProp(prop.id, {
+                                                            partId: propPartId,
+                                                            rotation:
+                                                                prop.rotation,
+                                                            ...(propVariantId
+                                                                ? {
+                                                                      variantId:
+                                                                          propVariantId,
+                                                                  }
+                                                                : {}),
+                                                        })
+                                                    }
+                                                    type="button"
+                                                >
+                                                    Zamijeni
                                                 </button>
                                                 <button
                                                     aria-label={`Dupliciraj ${identifierLabel(prop.partId)}`}

@@ -23,6 +23,7 @@ const callbacks = {
     onRemoveEdgePart: () => undefined,
     onRemoveFloorMaterial: () => undefined,
     onRemoveRoofCoverage: () => undefined,
+    onReplaceProp: () => undefined,
     onRotateProp: () => undefined,
     onSetEdgePart: () => undefined,
     onSetFloorMaterial: () => undefined,
@@ -36,6 +37,7 @@ const callbacks = {
     | 'onRemoveEdgePart'
     | 'onRemoveFloorMaterial'
     | 'onRemoveRoofCoverage'
+    | 'onReplaceProp'
     | 'onRotateProp'
     | 'onSetEdgePart'
     | 'onSetFloorMaterial'
@@ -90,6 +92,19 @@ export const RoofOnly: Story = {
 export const InteriorOnly: Story = {
     args: {
         section: 'interior',
+    },
+};
+
+export const PropReplacementAndMoveActions: Story = {
+    args: {
+        section: 'interior',
+    },
+    parameters: {
+        docs: {
+            description: {
+                story: 'The selected prop exposes explicit replace, move, rotate, duplicate, and delete actions without relying on a canvas-only context menu.',
+            },
+        },
     },
 };
 

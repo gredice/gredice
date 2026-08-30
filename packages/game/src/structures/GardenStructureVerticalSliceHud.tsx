@@ -16,6 +16,7 @@ import {
     getGardenStructureKitReferenceDefinition,
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
@@ -65,11 +66,13 @@ import {
     removeGardenStructureEdgePart,
     removeGardenStructureFloorMaterial,
     removeGardenStructureRoofCoverage,
+    replaceGardenStructureProp,
     resolveGardenStructureEditorConflictAsNewDraft,
     resolveGardenStructureEditorConflictWithLatest,
     restoreGardenStructureEditorRecovery,
     rotateGardenStructureProp,
     serializeGardenStructureEditorRecovery,
+    setGardenStructureEdgeChain,
     setGardenStructureEdgePart,
     setGardenStructureEditorTool,
     setGardenStructureFloorMaterial,
@@ -97,6 +100,10 @@ import {
     getGardenStructureSaveCompletionAction,
     getGardenStructureSelectedKeyboardAction,
 } from './editor/gardenStructureAuthoring';
+import {
+    type GardenStructureCanvasEdge,
+    getGardenStructureCanvasEdgeChain,
+} from './editor/gardenStructureCanvasInteraction';
 import { useGardenStructureExistingStructureAutosave } from './editor/useGardenStructureExistingStructureAutosave';
 import {
     gardenStructureBuildModeControlClassName as controlClassName,
@@ -120,6 +127,14 @@ import {
 import { getGardenStructureSelectablePartIds } from './gardenStructureSelectableParts';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 import { useGardenStructureBuildModeHistoryGuard } from './useGardenStructureBuildModeHistoryGuard';
+
+const GardenStructureCanvasAuthoring = dynamic(
+    () =>
+        import('./editor/GardenStructureCanvasAuthoring').then(
+            (module) => module.GardenStructureCanvasAuthoring,
+        ),
+    { loading: () => null, ssr: false },
+);
 
 const templateOptions: readonly {
     key: GardenStructureTemplateKey;
@@ -147,6 +162,14 @@ const initialPlacement: GardenStructurePlacement = {
     anchorY: -1,
     rotation: 0,
 };
+
+type GardenStructureEdgeChainDraft = Readonly<{
+    edges: readonly GardenStructureCanvasEdge[];
+    end: GardenStructureCanvasEdge | null;
+    error: string | null;
+    start: GardenStructureCanvasEdge;
+    valid: boolean;
+}>;
 
 type OwnerGardenStructure = CurrentGarden['structures'][number] &
     Readonly<{
@@ -368,6 +391,7 @@ export function GardenStructureVerticalSliceHud({
     const [addSpaceKind, setAddSpaceKind] =
         useState<GardenStructureSpaceKind>('interior');
     const [authoringError, setAuthoringError] = useState<string | null>(null);
+    const [canvasPreviewResetKey, setCanvasPreviewResetKey] = useState(0);
     const [demolishConfirmation, setDemolishConfirmation] = useState(false);
     const [conflictResolutionPending, setConflictResolutionPending] = useState<
         'reload' | 'save-as-draft' | null
@@ -380,6 +404,11 @@ export function GardenStructureVerticalSliceHud({
     const [exitConfirmationError, setExitConfirmationError] = useState<
         string | null
     >(null);
+    const [edgeChainDraft, setEdgeChainDraft] =
+        useState<GardenStructureEdgeChainDraft | null>(null);
+    const [edgeChainSide, setEdgeChainSide] =
+        useState<GardenStructureCellSide>('N');
+    const [requestedEdgePartId, setRequestedEdgePartId] = useState('');
     const [pendingFootprintSelectionKey, setPendingFootprintSelectionKey] =
         useState<string | null>(null);
     const [propTargetAction, setPropTargetAction] =
@@ -459,6 +488,24 @@ export function GardenStructureVerticalSliceHud({
               editor.origin.kitVersion,
           )
         : undefined;
+    const edgePartEntries = useMemo(
+        () =>
+            Object.entries(authoringKit?.edgeParts ?? {}).toSorted(
+                ([leftId, leftKind], [rightId, rightKind]) =>
+                    ['wall', 'door', 'window'].indexOf(leftKind) -
+                        ['wall', 'door', 'window'].indexOf(rightKind) ||
+                    leftId.localeCompare(rightId),
+            ),
+        [authoringKit],
+    );
+    const edgePartId = edgePartEntries.some(
+        ([partId]) => partId === requestedEdgePartId,
+    )
+        ? requestedEdgePartId
+        : (edgePartEntries[0]?.[0] ?? '');
+    const edgePartKind = edgePartEntries.find(
+        ([partId]) => partId === edgePartId,
+    )?.[1];
     const authoringSessionScope = editor
         ? editor.origin.kind === 'saved-structure'
             ? `${editor.origin.gardenId.toString()}:saved:${editor.origin.structureId}`
@@ -518,8 +565,12 @@ export function GardenStructureVerticalSliceHud({
             authoringSessionScopeRef.current = authoringSessionScope;
             setAddSpaceKind('interior');
             setAuthoringError(null);
+            setCanvasPreviewResetKey((value) => value + 1);
+            setEdgeChainDraft(null);
+            setEdgeChainSide('N');
             setPendingFootprintSelectionKey(null);
             setPropTargetAction(null);
+            setRequestedEdgePartId('');
             setSelectedCellKey(firstCellKey);
             return;
         }
@@ -677,7 +728,9 @@ export function GardenStructureVerticalSliceHud({
         }
         releaseBuildModeHistoryGuard();
         setAuthoringError(null);
+        setCanvasPreviewResetKey((value) => value + 1);
         setDemolishConfirmation(false);
+        setEdgeChainDraft(null);
         setConflictResolutionPending(null);
         setExitConfirmationError(null);
         setExitConfirmation(false);
@@ -748,6 +801,12 @@ export function GardenStructureVerticalSliceHud({
         }
         if (demolishConfirmation || exitConfirmation) {
             dismissConfirmation();
+            return 'retain' as const;
+        }
+        if (edgeChainDraft) {
+            setEdgeChainDraft(null);
+            setCanvasPreviewResetKey((value) => value + 1);
+            setAnnouncement('Lanac rubova je otkazan.');
             return 'retain' as const;
         }
         if (propTargetAction) {
@@ -1220,6 +1279,7 @@ export function GardenStructureVerticalSliceHud({
         const returnTarget = confirmationReturnFocusRef.current;
         confirmationReturnFocusRef.current = null;
         setSession({ ...session, editor: confirmed.value });
+        setCanvasPreviewResetKey((value) => value + 1);
         setSelectedCellKey(pendingFootprintSelectionKey);
         setPendingFootprintSelectionKey(null);
         setAuthoringError(null);
@@ -1247,6 +1307,7 @@ export function GardenStructureVerticalSliceHud({
         const returnTarget = confirmationReturnFocusRef.current;
         confirmationReturnFocusRef.current = null;
         setSession({ ...session, editor: cancelled.value });
+        setCanvasPreviewResetKey((value) => value + 1);
         setPendingFootprintSelectionKey(null);
         setAuthoringError(null);
         setAnnouncement('Promjena tlocrta je otkazana.');
@@ -1318,14 +1379,176 @@ export function GardenStructureVerticalSliceHud({
         return documentEditInput();
     }
 
+    function clearCanvasDraft(message?: string) {
+        setEdgeChainDraft(null);
+        setCanvasPreviewResetKey((value) => value + 1);
+        if (message) {
+            setAnnouncement(message);
+        }
+    }
+
+    function selectCanvasTool(tool: 'hand' | 'select') {
+        if (editor?.workflow.kind !== 'editing') {
+            return;
+        }
+        const result = setGardenStructureEditorTool(editor, tool);
+        if (!result.ok) {
+            setAnnouncement(result.error.message);
+            return;
+        }
+        setAuthoringError(null);
+        setPropTargetAction(null);
+        clearCanvasDraft();
+        updateSession({
+            editor: result.value,
+            selectedPartId: null,
+        });
+        setAnnouncement(
+            tool === 'hand'
+                ? 'Alat Ruka. Povucite jednim prstom za pomicanje pogleda.'
+                : 'Alat Odabir.',
+        );
+    }
+
+    function selectEdgePart(partId: string) {
+        if (editor?.workflow.kind !== 'editing' || !authoringKit) {
+            return;
+        }
+        const kind = authoringKit.edgeParts[partId];
+        if (!kind) {
+            setAuthoringFailure('Odabrani rub više nije dostupan.');
+            return;
+        }
+        const result = setGardenStructureEditorTool(
+            editor,
+            kind === 'wall' ? 'shell' : 'openings',
+        );
+        if (!result.ok) {
+            setAnnouncement(result.error.message);
+            return;
+        }
+        setRequestedEdgePartId(partId);
+        setAuthoringError(null);
+        setPropTargetAction(null);
+        clearCanvasDraft();
+        updateSession({
+            category: 'structure',
+            editor: result.value,
+            selectedPartId: null,
+        });
+        setAnnouncement(
+            `${kind === 'wall' ? 'Zid' : kind === 'door' ? 'Vrata' : 'Prozor'} je spreman za lanac rubova.`,
+        );
+    }
+
+    function selectEdgeChainPoint(edge: GardenStructureCanvasEdge) {
+        if (!editor || !edgePartKind || !edgePartId) {
+            setAuthoringFailure('Najprije odaberite dio za lanac rubova.');
+            return;
+        }
+        if (!edgeChainDraft || edgeChainDraft.end) {
+            setEdgeChainDraft({
+                edges: [edge],
+                end: null,
+                error: null,
+                start: edge,
+                valid: true,
+            });
+            setAnnouncement(
+                `Početni rub je odabran na polju ${edge.cell.x.toString()}, ${edge.cell.y.toString()}. Odaberite završni rub.`,
+            );
+            return;
+        }
+        const chain = getGardenStructureCanvasEdgeChain(
+            editor.snapshot.document,
+            edgeChainDraft.start,
+            edge,
+        );
+        if (!chain.ok) {
+            const error =
+                chain.reason === 'not-collinear'
+                    ? 'Početni i završni rub moraju biti u istom ravnom redu.'
+                    : 'Lanac ne smije prelaziti izvan tlocrta.';
+            setEdgeChainDraft({
+                ...edgeChainDraft,
+                edges: [edgeChainDraft.start, edge],
+                end: edge,
+                error,
+                valid: false,
+            });
+            setAuthoringFailure(error);
+            return;
+        }
+        setAuthoringError(null);
+        setEdgeChainDraft({
+            ...edgeChainDraft,
+            edges: chain.edges,
+            end: edge,
+            error: null,
+            valid: true,
+        });
+        setAnnouncement(
+            `Pregled lanca s ${chain.edges.length.toLocaleString('hr-HR')} rubova je spreman. Potvrdite primjenu.`,
+        );
+    }
+
+    function selectEdgeChainPointFromInspector() {
+        const cell = editor?.snapshot.document.footprint.cells.find(
+            (candidate) =>
+                gardenStructureCellKey(candidate) === selectedCellKey,
+        );
+        if (!cell) {
+            setAuthoringFailure('Najprije odaberite polje građevine.');
+            return;
+        }
+        selectEdgeChainPoint({
+            cell: { x: cell.x, y: cell.y },
+            side: edgeChainSide,
+        });
+    }
+
+    function confirmEdgeChain() {
+        const input = partEditInput();
+        if (
+            !input ||
+            !edgeChainDraft?.end ||
+            !edgeChainDraft.valid ||
+            !edgePartKind ||
+            !edgePartId
+        ) {
+            setAuthoringFailure('Lanac rubova još nije spreman za potvrdu.');
+            return;
+        }
+        const applied = applyDocumentEdit(
+            setGardenStructureEdgeChain({
+                ...input,
+                edges: edgeChainDraft.edges,
+                kind: edgePartKind,
+                partId: edgePartId,
+            }),
+            `Lanac s ${edgeChainDraft.edges.length.toLocaleString('hr-HR')} rubova je primijenjen kao jedna promjena.`,
+        );
+        if (applied) {
+            clearCanvasDraft();
+        }
+    }
+
     function selectCategory(option: (typeof categoryOptions)[number]) {
         if (editor?.workflow.kind !== 'editing') {
             return;
         }
-        const result = setGardenStructureEditorTool(editor, option.tool);
+        const result = setGardenStructureEditorTool(
+            editor,
+            option.key === 'structure' && edgePartKind
+                ? edgePartKind === 'wall'
+                    ? 'shell'
+                    : 'openings'
+                : option.tool,
+        );
         if (result.ok) {
             setAuthoringError(null);
             setPropTargetAction(null);
+            clearCanvasDraft();
             updateSession({
                 editor: result.value,
                 category: option.key,
@@ -1442,6 +1665,23 @@ export function GardenStructureVerticalSliceHud({
             applyDocumentEdit(
                 rotateGardenStructureProp({ ...input, propId, rotation }),
                 `Predmet je zakrenut za ${(rotation * 90).toString()} stupnjeva.`,
+            );
+        }
+    }
+
+    function replaceProp(
+        propId: string,
+        selection: GardenStructurePartInspectorPropSelection,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                replaceGardenStructureProp({
+                    ...input,
+                    propId,
+                    ...selection,
+                }),
+                'Predmet je zamijenjen uz očuvani položaj i zakret.',
             );
         }
     }
@@ -1930,6 +2170,7 @@ export function GardenStructureVerticalSliceHud({
     const keyboardActionsRef = useRef({
         cancelFootprintChange,
         deleteProp,
+        handleBuildModeHistoryBack,
         removeFootprintCell,
         removeRoofCoverage,
         requestExit,
@@ -1937,6 +2178,7 @@ export function GardenStructureVerticalSliceHud({
     keyboardActionsRef.current = {
         cancelFootprintChange,
         deleteProp,
+        handleBuildModeHistoryBack,
         removeFootprintCell,
         removeRoofCoverage,
         requestExit,
@@ -2008,11 +2250,15 @@ export function GardenStructureVerticalSliceHud({
                             returnTarget.focus({ preventScroll: true });
                         }
                     }, 0);
+                } else if (edgeChainDraft) {
+                    setEdgeChainDraft(null);
+                    setCanvasPreviewResetKey((value) => value + 1);
+                    setAnnouncement('Lanac rubova je otkazan.');
                 } else if (propTargetAction) {
                     setPropTargetAction(null);
                     setAnnouncement('Odabir cilja je otkazan.');
                 } else {
-                    keyboardActionsRef.current.requestExit();
+                    keyboardActionsRef.current.handleBuildModeHistoryBack();
                 }
                 return;
             }
@@ -2136,6 +2382,7 @@ export function GardenStructureVerticalSliceHud({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [
         demolishConfirmation,
+        edgeChainDraft,
         editor,
         exitConfirmation,
         mutations.demolish.isPending,
@@ -2180,6 +2427,8 @@ export function GardenStructureVerticalSliceHud({
     const showTemplateChooser =
         editor.workflow.kind === 'placing-template' ||
         session.persistence === 'fixture';
+    const activeEditorTool =
+        editor.workflow.kind === 'editing' ? editor.workflow.tool : null;
 
     return (
         <section
@@ -2192,6 +2441,34 @@ export function GardenStructureVerticalSliceHud({
             }
             data-testid="garden-structure-build-hud"
         >
+            {plan && activeEditorTool && authoringSessionScope ? (
+                <GardenStructureCanvasAuthoring
+                    addSpaceKind={addSpaceKind}
+                    disabled={interactionLocked}
+                    document={editor.snapshot.document}
+                    edgePreview={
+                        edgeChainDraft
+                            ? {
+                                  edges: edgeChainDraft.edges,
+                                  valid: edgeChainDraft.valid,
+                              }
+                            : null
+                    }
+                    onEdgeTap={selectEdgeChainPoint}
+                    onFootprintStroke={(operations, nextSelectionKey) =>
+                        stageFootprintOperations(
+                            operations,
+                            nextSelectionKey,
+                            `Potez tlocrta s ${operations.length.toLocaleString('hr-HR')} polja je pripremljen kao jedna promjena.`,
+                        )
+                    }
+                    onSelectCell={selectAuthoringCell}
+                    placement={editor.snapshot.placement}
+                    planeHeight={plan.baseHeight}
+                    key={`${authoringSessionScope}:${activeEditorTool}:${canvasPreviewResetKey.toString()}`}
+                    tool={activeEditorTool}
+                />
+            ) : null}
             <header
                 aria-hidden={confirmationOpen || undefined}
                 className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-start justify-between gap-2"
@@ -2474,6 +2751,44 @@ export function GardenStructureVerticalSliceHud({
                                     </button>
                                 ))}
                             </div>
+                            <div className="mt-2 grid grid-cols-2 gap-1.5">
+                                <button
+                                    type="button"
+                                    aria-pressed={
+                                        editor.workflow.kind === 'editing' &&
+                                        editor.workflow.tool === 'select'
+                                    }
+                                    className={cx(
+                                        controlClassName,
+                                        'px-2 text-xs',
+                                        editor.workflow.kind === 'editing' &&
+                                            editor.workflow.tool === 'select' &&
+                                            'border-sky-600 bg-sky-100 text-sky-950 dark:bg-sky-950 dark:text-sky-50',
+                                    )}
+                                    disabled={interactionLocked}
+                                    onClick={() => selectCanvasTool('select')}
+                                >
+                                    Odabir
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-pressed={
+                                        editor.workflow.kind === 'editing' &&
+                                        editor.workflow.tool === 'hand'
+                                    }
+                                    className={cx(
+                                        controlClassName,
+                                        'px-2 text-xs',
+                                        editor.workflow.kind === 'editing' &&
+                                            editor.workflow.tool === 'hand' &&
+                                            'border-sky-600 bg-sky-100 text-sky-950 dark:bg-sky-950 dark:text-sky-50',
+                                    )}
+                                    disabled={interactionLocked}
+                                    onClick={() => selectCanvasTool('hand')}
+                                >
+                                    Ruka / pomicanje
+                                </button>
+                            </div>
                         </fieldset>
 
                         <div className="mt-3">
@@ -2502,6 +2817,7 @@ export function GardenStructureVerticalSliceHud({
                                 onRemoveEdgePart={removeEdgePart}
                                 onRemoveFloorMaterial={removeFloorMaterial}
                                 onRemoveRoofCoverage={removeRoofCoverage}
+                                onReplaceProp={replaceProp}
                                 onRotateProp={rotateProp}
                                 onSelectedCellKeyChange={selectAuthoringCell}
                                 onSetEdgePart={setEdgePart}
@@ -2512,6 +2828,140 @@ export function GardenStructureVerticalSliceHud({
                                 selectedCellKey={selectedCellKey}
                             />
                         </div>
+
+                        {session.category === 'structure' && authoringKit ? (
+                            <fieldset className="mt-3 space-y-2 rounded-xl border border-border/60 p-3">
+                                <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                    Lanac rubova na platnu
+                                </legend>
+                                <label className="block text-xs font-medium text-foreground">
+                                    Dio lanca
+                                    <select
+                                        className="mt-1 min-h-11 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                                        disabled={interactionLocked}
+                                        onChange={(event) =>
+                                            selectEdgePart(
+                                                event.currentTarget.value,
+                                            )
+                                        }
+                                        value={edgePartId}
+                                    >
+                                        {edgePartEntries.map(
+                                            ([partId, kind]) => (
+                                                <option
+                                                    key={partId}
+                                                    value={partId}
+                                                >
+                                                    {kind === 'wall'
+                                                        ? 'Zid'
+                                                        : kind === 'door'
+                                                          ? 'Vrata'
+                                                          : 'Prozor'}{' '}
+                                                    · {partId}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                                    <label className="text-xs font-medium text-foreground">
+                                        Strana odabranog polja
+                                        <select
+                                            aria-label="Strana ruba za lanac"
+                                            className="mt-1 min-h-11 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                                            disabled={interactionLocked}
+                                            onChange={(event) => {
+                                                const side =
+                                                    event.currentTarget.value;
+                                                if (
+                                                    side === 'N' ||
+                                                    side === 'E' ||
+                                                    side === 'S' ||
+                                                    side === 'W'
+                                                ) {
+                                                    setEdgeChainSide(side);
+                                                }
+                                            }}
+                                            value={edgeChainSide}
+                                        >
+                                            <option value="N">Sjever</option>
+                                            <option value="E">Istok</option>
+                                            <option value="S">Jug</option>
+                                            <option value="W">Zapad</option>
+                                        </select>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className={cx(
+                                            controlClassName,
+                                            'self-end px-3 text-xs',
+                                        )}
+                                        disabled={
+                                            interactionLocked ||
+                                            !selectedCellKey ||
+                                            !edgePartId
+                                        }
+                                        onClick={
+                                            selectEdgeChainPointFromInspector
+                                        }
+                                    >
+                                        {edgeChainDraft && !edgeChainDraft.end
+                                            ? 'Postavi kraj'
+                                            : 'Postavi početak'}
+                                    </button>
+                                </div>
+                                <p
+                                    className={cx(
+                                        'text-xs',
+                                        edgeChainDraft?.valid === false
+                                            ? 'font-semibold text-destructive'
+                                            : 'text-muted-foreground',
+                                    )}
+                                    role={
+                                        edgeChainDraft?.valid === false
+                                            ? 'alert'
+                                            : 'status'
+                                    }
+                                >
+                                    {edgeChainDraft?.error ??
+                                        (edgeChainDraft?.end
+                                            ? `${edgeChainDraft.edges.length.toLocaleString('hr-HR')} rubova čeka potvrdu.`
+                                            : edgeChainDraft
+                                              ? 'Početak je postavljen. Dodirnite završni rub ili ga postavite iz odabranog polja.'
+                                              : 'Dodirnite početni i završni rub na platnu. Dva prsta i dalje pomiču i povećavaju pogled.')}
+                                </p>
+                                {edgeChainDraft ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            className={controlClassName}
+                                            onClick={() =>
+                                                clearCanvasDraft(
+                                                    'Lanac rubova je otkazan.',
+                                                )
+                                            }
+                                        >
+                                            Otkaži lanac
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={cx(
+                                                controlClassName,
+                                                'border-green-600 bg-green-600 text-white hover:bg-green-700',
+                                            )}
+                                            disabled={
+                                                !edgeChainDraft.end ||
+                                                !edgeChainDraft.valid ||
+                                                interactionLocked
+                                            }
+                                            onClick={confirmEdgeChain}
+                                        >
+                                            Potvrdi lanac
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </fieldset>
+                        ) : null}
 
                         <div className="mt-3 grid grid-cols-2 gap-2">
                             {fixture ? (

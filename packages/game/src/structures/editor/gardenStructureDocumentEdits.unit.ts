@@ -30,7 +30,9 @@ import {
     removeGardenStructureEdgePart,
     removeGardenStructureFloorMaterial,
     removeGardenStructureRoofCoverage,
+    replaceGardenStructureProp,
     rotateGardenStructureProp,
+    setGardenStructureEdgeChain,
     setGardenStructureEdgePart,
     setGardenStructureFloorMaterial,
     setGardenStructureFootprintCellSpaceKind,
@@ -346,6 +348,31 @@ describe('garden structure semantic document edits', () => {
         );
     });
 
+    test('applies a deduplicated edge chain as one validated edit', () => {
+        const chained = unwrap(
+            setGardenStructureEdgeChain({
+                document: blankDocument(),
+                kit,
+                edges: [
+                    { cell: { x: 0, y: 0 }, side: 'N' },
+                    { cell: { x: 1, y: 0 }, side: 'N' },
+                    { cell: { x: 1, y: 0 }, side: 'N' },
+                ],
+                kind: 'window',
+                partId: 'window.house',
+            }),
+        );
+        assert.equal(chained.document.edges.length, 2);
+        assert.deepEqual(
+            chained.document.edges.map((edge) => edge.id),
+            ['edge-1', 'edge-2'],
+        );
+        assert.ok(
+            chained.document.edges.every((edge) => edge.kind === 'window'),
+        );
+        assertValid(chained.document);
+    });
+
     test('sets, replaces, splits, and removes selected-cell roof coverage without overlap', () => {
         const document = normalizeGardenStructureDocument({
             ...blankDocument(),
@@ -501,9 +528,26 @@ describe('garden structure semantic document edits', () => {
         );
         assert.equal(rotated.document.props[0]?.rotation, 3);
 
+        const replaced = unwrap(
+            replaceGardenStructureProp({
+                document: rotated.document,
+                kit,
+                propId: 'prop-1',
+                partId: 'prop.planter',
+                rotation: 3,
+            }),
+        );
+        assert.deepEqual(replaced.document.props[0], {
+            id: 'prop-1',
+            partId: 'prop.planter',
+            x: 1,
+            y: 0,
+            rotation: 3,
+        });
+
         const duplicated = unwrap(
             duplicateGardenStructureProp({
-                document: rotated.document,
+                document: replaced.document,
                 kit,
                 propId: 'prop-1',
                 cell: { x: 0, y: 1 },
@@ -514,7 +558,7 @@ describe('garden structure semantic document edits', () => {
             duplicated.document.props.find((prop) => prop.id === 'prop-2'),
             {
                 id: 'prop-2',
-                partId: 'prop.table',
+                partId: 'prop.planter',
                 x: 0,
                 y: 1,
                 rotation: 3,

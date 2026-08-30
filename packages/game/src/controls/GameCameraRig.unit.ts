@@ -5,7 +5,30 @@ import {
     getPreservedAngleCameraPosition,
     getScreenPositionAdjustedCameraTarget,
     resolvePreservedAngleCloseupZoom,
+    shouldGameCameraOwnPointerGesture,
+    shouldUseImmediateGameCameraTransition,
 } from './GameCameraRig';
+
+describe('camera pointer arbitration', () => {
+    it('reserves one pointer for paint tools while preserving two-finger navigation', () => {
+        assert.equal(shouldGameCameraOwnPointerGesture(0, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, false), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, true), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, true), true);
+    });
+});
+
+describe('camera motion preference', () => {
+    it('makes structure focus and restore immediate for reduced motion', () => {
+        assert.equal(shouldUseImmediateGameCameraTransition(0.65, true), true);
+        assert.equal(shouldUseImmediateGameCameraTransition(0, false), true);
+        assert.equal(
+            shouldUseImmediateGameCameraTransition(0.65, false),
+            false,
+        );
+    });
+});
 
 describe('preserved-angle camera focus', () => {
     it('pans to a new target without changing the camera viewing offset', () => {
