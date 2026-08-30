@@ -528,6 +528,7 @@ export function GameScene({
             if (!structureCameraSnapshotRef.current) {
                 structureCameraSnapshotRef.current = gameCamera.getSnapshot();
             }
+            let retryFrame: number | null = null;
             const frameStructure = () => {
                 const { worldBounds } = structureFixtureBundle.plan;
                 const canvasBounds = gameCamera
@@ -543,7 +544,6 @@ export function GameScene({
                 ) {
                     return;
                 }
-                structureCameraFrameSignatureRef.current = frameSignature;
                 const cameraSnapshot = gameCamera.getSnapshot();
                 const cameraOffset = [
                     cameraSnapshot.position[0] - cameraSnapshot.target[0],
@@ -563,7 +563,8 @@ export function GameScene({
                     (worldBounds.minHeight + worldBounds.maxHeight) / 2,
                     (worldBounds.minY + worldBounds.maxY) / 2,
                 );
-                const publishProjectedBounds = () => {
+                const completeStructureFrame = () => {
+                    structureCameraFrameSignatureRef.current = frameSignature;
                     const points = [
                         [
                             worldBounds.minX,
@@ -646,19 +647,46 @@ export function GameScene({
                     gardenStructureCameraMode: 'building',
                 });
                 gameCamera.focus(structureCenter, {
-                    onComplete: publishProjectedBounds,
+                    // Build Mode exclusively owns the overview camera. Apply
+                    // its framing atomically so a slow avatar-camera handoff or
+                    // demand-driven frame loop cannot leave the editor waiting
+                    // for an animation that never starts.
+                    immediate: true,
+                    onComplete: completeStructureFrame,
                     screenPosition: frame.screenPosition,
                     zoom: frame.zoom,
                 });
+                // The stable API can briefly outlive the orthographic default
+                // camera while the avatar camera unmounts. A rejected focus has
+                // no completion callback, so retry without caching the frame.
+                if (
+                    structureCameraFrameSignatureRef.current !==
+                        frameSignature &&
+                    retryFrame === null
+                ) {
+                    retryFrame = window.requestAnimationFrame(() => {
+                        retryFrame = null;
+                        frameStructure();
+                    });
+                }
             };
             frameStructure();
             const canvas = gameCamera.getDomElement();
             if (!canvas || typeof ResizeObserver === 'undefined') {
-                return;
+                return () => {
+                    if (retryFrame !== null) {
+                        window.cancelAnimationFrame(retryFrame);
+                    }
+                };
             }
             const observer = new ResizeObserver(frameStructure);
             observer.observe(canvas);
-            return () => observer.disconnect();
+            return () => {
+                observer.disconnect();
+                if (retryFrame !== null) {
+                    window.cancelAnimationFrame(retryFrame);
+                }
+            };
         }
 
         structureCameraFrameSignatureRef.current = null;
