@@ -164,6 +164,7 @@ export type GardenBoxBlockStorageCommand = Readonly<{
 type GardenBoxBlockStorageFailureCode =
     | 'ACCOUNT_DELETION_IN_PROGRESS'
     | 'BLOCK_DIRECTORY_DATA_NOT_FOUND'
+    | 'BLOCK_DIRECTORY_UNAVAILABLE'
     | 'BLOCK_NOT_FOUND'
     | 'GARDEN_BOX_INVENTORY_LIMIT'
     | 'GARDEN_BOX_NOT_FOUND'
@@ -195,7 +196,7 @@ export type GardenBoxBlockStorageResult =
           ok: false;
           code: GardenBoxBlockStorageFailureCode;
           error: string;
-          status: 400 | 404 | 409 | 500;
+          status: 400 | 404 | 409 | 500 | 503;
       }>;
 
 class GardenBoxBlockStorageError extends Error {
@@ -203,7 +204,7 @@ class GardenBoxBlockStorageError extends Error {
 
     constructor(
         readonly code: GardenBoxBlockStorageFailureCode,
-        readonly status: 400 | 404 | 409 | 500,
+        readonly status: 400 | 404 | 409 | 500 | 503,
         message: string,
     ) {
         super(message);
@@ -212,7 +213,7 @@ class GardenBoxBlockStorageError extends Error {
 
 function fail(
     code: GardenBoxBlockStorageFailureCode,
-    status: 400 | 404 | 409 | 500,
+    status: 400 | 404 | 409 | 500 | 503,
     message: string,
 ): never {
     throw new GardenBoxBlockStorageError(code, status, message);
@@ -556,7 +557,11 @@ export function createGardenBoxBlockStorageService<Transaction>(
                                     );
                                 }
                                 if (blockDataResult.status === 'rejected') {
-                                    throw blockDataResult.reason;
+                                    fail(
+                                        'BLOCK_DIRECTORY_UNAVAILABLE',
+                                        503,
+                                        'Garden block directory data is unavailable',
+                                    );
                                 }
                                 const blockData = blockDataResult.value;
                                 const authoritativeEntityId =

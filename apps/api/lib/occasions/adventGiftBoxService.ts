@@ -181,6 +181,7 @@ export type OpenAdventGiftBoxCommand = Readonly<{
 
 type OpenAdventGiftBoxFailureCode =
     | 'ACCOUNT_DELETION_IN_PROGRESS'
+    | 'BLOCK_DIRECTORY_UNAVAILABLE'
     | 'BLOCK_NOT_FOUND'
     | 'GARDEN_NOT_FOUND'
     | 'GARDEN_OCCUPANCY_CONFLICT'
@@ -489,7 +490,11 @@ export function createAdventGiftBoxService<Transaction>(
                                                     blockDataResult.status ===
                                                     'rejected'
                                                 ) {
-                                                    throw blockDataResult.reason;
+                                                    fail(
+                                                        'BLOCK_DIRECTORY_UNAVAILABLE',
+                                                        503,
+                                                        'Podaci kataloga vrtnih blokova trenutačno nisu dostupni.',
+                                                    );
                                                 }
                                                 const blockData =
                                                     blockDataResult.value;

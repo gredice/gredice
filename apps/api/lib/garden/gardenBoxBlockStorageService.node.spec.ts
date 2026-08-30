@@ -403,7 +403,11 @@ describe('storeGardenBlockInGardenBox', () => {
     });
 
     test('loads the directory before inventory and garden locks, then commits every write once', async () => {
-        const harness = makeHarness();
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
 
         const result = await harness.service(command);
 
@@ -463,6 +467,7 @@ describe('storeGardenBlockInGardenBox', () => {
         assert.equal(harness.state.inventoryAdds, 1);
 
         harness.calls.length = 0;
+        directoryPending = true;
         const conflict = await harness.service({
             ...command,
             sourcePosition: { x: 1, z: 0 },
@@ -522,6 +527,28 @@ describe('storeGardenBlockInGardenBox', () => {
             'receipt',
             'commit',
         ]);
+    });
+
+    test('returns a retryable directory failure without storage effects when a new cold read stalls', async () => {
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
+        const before = structuredClone(harness.state);
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+            error: 'Garden block directory data is unavailable',
+            status: 503,
+        });
+        assert.deepEqual(harness.state, before);
+        assert.equal(harness.receipt(), undefined);
+        assert.equal(harness.calls.includes('receipt'), false);
+        assert.equal(harness.calls.includes('update-stack'), false);
+        assert.equal(harness.calls.includes('delete-block'), false);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.at(-1), 'rollback');
     });
 
     test('rolls stack, block, and inventory changes back when support validation fails', async () => {
@@ -595,7 +622,11 @@ describe('storeGardenBlockInGardenBox', () => {
     });
 
     test('denies a foreign account before reading an operation receipt', async () => {
-        const harness = makeHarness({ authorityAccountId: 'account-2' });
+        const harness = makeHarness({
+            authorityAccountId: 'account-2',
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
 
         assert.deepEqual(await harness.service(command), {
             ok: false,

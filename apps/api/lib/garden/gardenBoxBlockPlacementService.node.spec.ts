@@ -68,7 +68,7 @@ const command: GardenBoxBlockPlacementCommand = {
 };
 
 describe('placeGardenBoxBlock', () => {
-    test('loads the directory before inventory and garden locks, then skips structure-occupied cells', async () => {
+    test('fails a stalled new operation closed before writes, then preserves ordering, replay, and precedence', async () => {
         const calls: string[] = [];
         const transaction = { id: 'shared-transaction' };
         let transactionActive = false;
@@ -276,6 +276,37 @@ describe('placeGardenBoxBlock', () => {
             },
         });
 
+        directoryPending = true;
+        assert.deepEqual(
+            await place({
+                ...command,
+                operationId: 'garden-box-place-timeout',
+            }),
+            {
+                ok: false,
+                code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+                error: 'Garden block directory data is unavailable',
+                status: 503,
+            },
+        );
+        assert.deepEqual(calls, [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'box-authority',
+            'receipt',
+            'snapshot-pre',
+        ]);
+        assert.equal(storedPayload, undefined);
+        assert.equal(calls.includes('create-stack'), false);
+        assert.equal(calls.includes('create-block'), false);
+        assert.equal(calls.includes('consume'), false);
+
+        calls.length = 0;
+        directoryPending = false;
+        snapshotReadCount = 0;
         const result = await place(command);
 
         assert.deepEqual(result, {
@@ -336,7 +367,6 @@ describe('placeGardenBoxBlock', () => {
             'box-authority',
             'receipt',
         ]);
-        directoryPending = false;
 
         calls.length = 0;
         assert.deepEqual(await place({ ...command, entityId: '102' }), {

@@ -30,6 +30,7 @@ function makeHarness({
     gardenIsDeleted = false,
     gardenIsSandbox = false,
     occupancyResult = { valid: true } as const,
+    operationConflict = false,
     remainingBlockIds = ['ground'],
     blockDirectoryFailure = false,
     rewardFailure = false,
@@ -54,6 +55,7 @@ function makeHarness({
                   status: 409;
               }>;
           }>;
+    operationConflict?: boolean;
     remainingBlockIds?: readonly string[];
     blockDirectoryFailure?: boolean;
     rewardFailure?: boolean;
@@ -228,6 +230,13 @@ function makeHarness({
                 },
             });
             calls.push('receipt');
+            if (operationConflict) {
+                const error = new Error(
+                    'Garden mutation operation ID was reused with different input.',
+                );
+                error.name = 'GardenMutationOperationConflictError';
+                throw error;
+            }
             if (receipt) {
                 return {
                     receipt: { response: receipt },
@@ -262,7 +271,7 @@ function makeHarness({
             }
         },
     });
-    return { calls, service };
+    return { calls, receipt: () => receipt, service };
 }
 
 describe('openAdventGiftBoxAtomically', () => {
@@ -476,8 +485,11 @@ describe('openAdventGiftBoxAtomically', () => {
 
     test('authorizes the locked garden before revealing an operation receipt', async () => {
         const harness = makeHarness({
+            blockDirectoryPending: true,
+            dependencyPreparationTimeoutMs: 5,
             existingReceipt: { reward },
             gardenAccountId: 'account-2',
+            rewardPending: true,
         });
 
         assert.deepEqual(await harness.service(command), {
@@ -524,8 +536,50 @@ describe('openAdventGiftBoxAtomically', () => {
         assert.equal(harness.calls.includes('inventory-lock'), true);
     });
 
-    test('keeps Advent validation ahead of a prepared reward-directory failure', async () => {
-        const harness = makeHarness({ adventOver: false, rewardFailure: true });
+    test('normalizes a stalled reward directory into a typed retryable response without effects', async () => {
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            rewardPending: true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'REWARD_UNAVAILABLE',
+            error: 'Nagrada poklon kutije trenutačno nije dostupna.',
+            status: 503,
+        });
+        assert.equal(harness.receipt(), undefined);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.includes('stack-update'), false);
+        assert.equal(harness.calls.includes('block-delete'), false);
+    });
+
+    test('returns a retryable block-directory failure without effects when a new cold read stalls', async () => {
+        const harness = makeHarness({
+            blockDirectoryPending: true,
+            dependencyPreparationTimeoutMs: 5,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+            error: 'Podaci kataloga vrtnih blokova trenutačno nisu dostupni.',
+            status: 503,
+        });
+        assert.equal(harness.receipt(), undefined);
+        assert.equal(harness.calls.includes('reward'), false);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.includes('stack-update'), false);
+        assert.equal(harness.calls.includes('block-delete'), false);
+    });
+
+    test('keeps Advent validation ahead of prepared catalogue timeouts', async () => {
+        const harness = makeHarness({
+            adventOver: false,
+            blockDirectoryPending: true,
+            dependencyPreparationTimeoutMs: 5,
+            rewardPending: true,
+        });
 
         assert.deepEqual(await harness.service(command), {
             ok: false,
@@ -534,6 +588,24 @@ describe('openAdventGiftBoxAtomically', () => {
             status: 400,
         });
         assert.equal(harness.calls.includes('reward'), false);
+    });
+
+    test('keeps operation conflicts ahead of prepared catalogue timeouts', async () => {
+        const harness = makeHarness({
+            blockDirectoryPending: true,
+            dependencyPreparationTimeoutMs: 5,
+            operationConflict: true,
+            rewardPending: true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'OPERATION_CONFLICT',
+            error: 'Identitet otvaranja već je korišten za drugi zahtjev.',
+            status: 409,
+        });
+        assert.equal(harness.calls.includes('snapshot'), false);
+        assert.equal(harness.calls.includes('inventory-add'), false);
     });
 
     test('replays a committed gift when both cold directory reads fail', async () => {

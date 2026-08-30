@@ -587,7 +587,11 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                     blockDataResult.status ===
                                                     'rejected'
                                                 ) {
-                                                    throw blockDataResult.reason;
+                                                    fail(
+                                                        'BLOCK_DIRECTORY_UNAVAILABLE',
+                                                        503,
+                                                        'Garden block directory data is unavailable',
+                                                    );
                                                 }
                                                 const blockData =
                                                     blockDataResult.value;

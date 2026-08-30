@@ -665,8 +665,35 @@ describe('purchaseGardenBlock', () => {
         );
     });
 
+    it('returns a retryable directory failure without writing a new purchase when the cold read stalls', async () => {
+        const harness = makeHarness({
+            beforeDirectoryResult: () => new Promise(() => undefined),
+            dependencyPreparationTimeoutMs: 5,
+        });
+
+        assert.deepEqual(await harness.service(harness.command()), {
+            ok: false,
+            code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+            error: 'Garden block directory data is unavailable',
+            status: 503,
+        });
+        const state = harness.state();
+        assert.equal(state.balance, 1_000);
+        assert.equal(state.blocks.length, 1);
+        assert.equal(state.debits.length, 0);
+        assert.equal(state.raisedBeds.length, 0);
+        assert.equal(state.receipts.size, 0);
+        assert.equal(harness.calls.includes('create-block'), false);
+        assert.equal(harness.calls.includes('debit'), false);
+        assert.equal(harness.calls.includes('transaction-committed'), false);
+    });
+
     it('denies a foreign account before consulting the operation receipt', async () => {
-        const harness = makeHarness({ gardenAccountId: 'account-2' });
+        const harness = makeHarness({
+            beforeDirectoryResult: () => new Promise(() => undefined),
+            dependencyPreparationTimeoutMs: 5,
+            gardenAccountId: 'account-2',
+        });
 
         assert.deepEqual(await harness.service(harness.command()), {
             ok: false,
@@ -704,8 +731,16 @@ describe('purchaseGardenBlock', () => {
     });
 
     it('rejects same-garden operation ID payload reuse with a conflict', async () => {
-        const harness = makeHarness();
+        let directoryPending = false;
+        const harness = makeHarness({
+            beforeDirectoryResult: () =>
+                directoryPending
+                    ? new Promise(() => undefined)
+                    : Promise.resolve(),
+            dependencyPreparationTimeoutMs: 5,
+        });
         assert.equal((await harness.service(harness.command())).ok, true);
+        directoryPending = true;
 
         const conflict = await harness.service(
             harness.command({ position: { x: 1, y: 0 } }),

@@ -161,6 +161,7 @@ export type GardenBoxBlockPlacementCommand = Readonly<{
 
 type GardenBoxBlockPlacementFailureCode =
     | 'ACCOUNT_DELETION_IN_PROGRESS'
+    | 'BLOCK_DIRECTORY_UNAVAILABLE'
     | 'BLOCK_NOT_FOUND'
     | 'BLOCK_PLACEMENT_INVALID'
     | 'GARDEN_BOX_INVENTORY_INSUFFICIENT'
@@ -190,7 +191,7 @@ export type GardenBoxBlockPlacementResult =
           ok: false;
           code: GardenBoxBlockPlacementFailureCode;
           error: string;
-          status: 400 | 404 | 409 | 500;
+          status: 400 | 404 | 409 | 500 | 503;
       }>;
 
 class GardenBoxBlockPlacementError extends Error {
@@ -198,7 +199,7 @@ class GardenBoxBlockPlacementError extends Error {
 
     constructor(
         readonly code: GardenBoxBlockPlacementFailureCode,
-        readonly status: 400 | 404 | 409 | 500,
+        readonly status: 400 | 404 | 409 | 500 | 503,
         message: string,
     ) {
         super(message);
@@ -207,7 +208,7 @@ class GardenBoxBlockPlacementError extends Error {
 
 function fail(
     code: GardenBoxBlockPlacementFailureCode,
-    status: 400 | 404 | 409 | 500,
+    status: 400 | 404 | 409 | 500 | 503,
     message: string,
 ): never {
     throw new GardenBoxBlockPlacementError(code, status, message);
@@ -440,7 +441,11 @@ export function createGardenBoxBlockPlacementService<Transaction>(
                                             blockDataResult.status ===
                                             'rejected'
                                         ) {
-                                            throw blockDataResult.reason;
+                                            fail(
+                                                'BLOCK_DIRECTORY_UNAVAILABLE',
+                                                503,
+                                                'Garden block directory data is unavailable',
+                                            );
                                         }
                                         const blockData = blockDataResult.value;
                                         const requestedBlock =
