@@ -18,6 +18,11 @@ import {
 import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import { useGameState } from '../useGameState';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
+import {
+    GardenStructureKitV1AssetBoundary,
+    GardenStructureKitV1LoadedInstances,
+    type GardenStructureKitV1RuntimeBatch,
+} from './GardenStructureKitV1AssetRenderer';
 import { getGardenStructureVerticalSliceBatches } from './gardenStructureVerticalSliceBatches';
 import type {
     GardenStructureBatchDescription,
@@ -99,7 +104,7 @@ function getBatchDimensions(
     }
 }
 
-function GardenStructureBatchInstances({
+function GardenStructureFallbackBatchInstances({
     baseHeight,
     batch,
     geometry,
@@ -204,6 +209,38 @@ function GardenStructureBatchInstances({
     );
 }
 
+function GardenStructureVerticalSliceFallbackRenderer({
+    baseHeight,
+    batches,
+    geometry,
+    onSelect,
+    selectedPartId,
+}: Readonly<{
+    baseHeight: number;
+    batches: readonly GardenStructureBatchDescription[];
+    geometry: BoxGeometry;
+    onSelect?: (id: string) => void;
+    selectedPartId: string | null;
+}>) {
+    return (
+        <group
+            name="GardenStructures:VerticalSliceSemanticFallback"
+            userData={{ semanticFallback: true }}
+        >
+            {batches.map((batch) => (
+                <GardenStructureFallbackBatchInstances
+                    baseHeight={baseHeight}
+                    batch={batch}
+                    geometry={geometry}
+                    key={batch.id}
+                    onSelect={onSelect}
+                    selectedPartId={selectedPartId}
+                />
+            ))}
+        </group>
+    );
+}
+
 function GardenStructureFootprintPreview({
     geometry,
     plan,
@@ -305,6 +342,48 @@ export function GardenStructureVerticalSlice({
             ),
         [batches],
     );
+    const batchById = useMemo(
+        () => new Map(batches.map((batch) => [batch.id, batch])),
+        [batches],
+    );
+    const selectInstance = useCallback(
+        (
+            runtimeBatch: GardenStructureKitV1RuntimeBatch,
+            sourceIndex: number,
+        ) => {
+            const selectedPartId = batchById.get(runtimeBatch.id)?.instanceIds[
+                sourceIndex
+            ];
+            if (selectedPartId) {
+                selectPart(selectedPartId);
+            }
+        },
+        [batchById, selectPart],
+    );
+    const renderFallback = useCallback(
+        (batchIds: readonly string[]) => {
+            const unresolvedIds = new Set(batchIds);
+            return (
+                <GardenStructureVerticalSliceFallbackRenderer
+                    baseHeight={plan.baseHeight}
+                    batches={batches.filter(({ id }) => unresolvedIds.has(id))}
+                    geometry={geometry}
+                    onSelect={session ? selectPart : undefined}
+                    selectedPartId={session?.selectedPartId ?? null}
+                />
+            );
+        },
+        [batches, geometry, plan.baseHeight, selectPart, session],
+    );
+    const fallback = (
+        <GardenStructureVerticalSliceFallbackRenderer
+            baseHeight={plan.baseHeight}
+            batches={batches}
+            geometry={geometry}
+            onSelect={session ? selectPart : undefined}
+            selectedPartId={session?.selectedPartId ?? null}
+        />
+    );
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -334,6 +413,7 @@ export function GardenStructureVerticalSlice({
         <group
             name="GardenStructures:VerticalSlice"
             userData={{
+                assetName: 'GardenStructureKitV1',
                 compilerCacheKey: plan.cacheKey,
                 fixtureOnly: true,
             }}
@@ -344,16 +424,17 @@ export function GardenStructureVerticalSlice({
                     plan={plan}
                 />
             ) : null}
-            {batches.map((batch) => (
-                <GardenStructureBatchInstances
+            <GardenStructureKitV1AssetBoundary fallback={fallback}>
+                <GardenStructureKitV1LoadedInstances
                     baseHeight={plan.baseHeight}
-                    batch={batch}
-                    geometry={geometry}
-                    key={batch.id}
-                    onSelect={session ? selectPart : undefined}
-                    selectedPartId={session?.selectedPartId ?? null}
+                    batches={batches}
+                    castShadows
+                    namePrefix="GardenStructureVerticalSliceKitV1Batch"
+                    onSelectInstance={session ? selectInstance : undefined}
+                    renderFallback={renderFallback}
+                    selectedInstanceId={session?.selectedPartId ?? null}
                 />
-            ))}
+            </GardenStructureKitV1AssetBoundary>
         </group>
     );
 }

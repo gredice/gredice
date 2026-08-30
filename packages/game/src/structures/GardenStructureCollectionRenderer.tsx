@@ -14,6 +14,11 @@ import {
     Object3D,
 } from 'three';
 import {
+    GardenStructureKitV1AssetBoundary,
+    GardenStructureKitV1LoadedInstances,
+    type GardenStructureKitV1RuntimeBatch,
+} from './GardenStructureKitV1AssetRenderer';
+import {
     type GardenStructureCollectionBatchDescription,
     type GardenStructureCollectionPlan,
     type GardenStructureCollectionVisibilityPredicate,
@@ -83,7 +88,7 @@ function getVisibleInstanceIndices(
     );
 }
 
-function GardenStructureCollectionBatchInstances({
+function GardenStructureCollectionFallbackBatchInstances({
     batch,
     castShadows,
     geometry,
@@ -234,6 +239,42 @@ function GardenStructureCollectionBatchInstances({
     );
 }
 
+function GardenStructureCollectionFallbackRenderer({
+    batches,
+    castShadows,
+    onSelect,
+    selectedInstanceId,
+    visibleStructureIds,
+}: Readonly<{
+    batches: readonly GardenStructureCollectionBatchDescription[];
+    castShadows: boolean;
+    onSelect?: GardenStructureCollectionRendererProps['onSelect'];
+    selectedInstanceId: string | null;
+    visibleStructureIds?: ReadonlySet<string>;
+}>) {
+    const geometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
+    useEffect(() => () => geometry.dispose(), [geometry]);
+
+    return (
+        <group
+            name="GardenStructures:CollectionSemanticFallback"
+            userData={{ semanticFallback: true }}
+        >
+            {batches.map((batch) => (
+                <GardenStructureCollectionFallbackBatchInstances
+                    batch={batch}
+                    castShadows={castShadows}
+                    geometry={geometry}
+                    key={batch.id}
+                    onSelect={onSelect}
+                    selectedInstanceId={selectedInstanceId}
+                    visibleStructureIds={visibleStructureIds}
+                />
+            ))}
+        </group>
+    );
+}
+
 /**
  * Batched semantic fallback renderer for an existing R3F scene. It deliberately
  * creates no Canvas, per-part React node, or frame callback. Camera subscribers
@@ -249,8 +290,6 @@ export function GardenStructureCollectionRenderer({
     selectedInstanceId = null,
     visibleStructureIds,
 }: GardenStructureCollectionRendererProps) {
-    const geometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
-    useEffect(() => () => geometry.dispose(), [geometry]);
     const predicateVisibleIds = useMemo(
         () =>
             isStructureVisible
@@ -275,27 +314,85 @@ export function GardenStructureCollectionRenderer({
         ],
         [plan.batches, renderProps],
     );
+    const batchById = useMemo(
+        () => new Map(batches.map((batch) => [batch.id, batch])),
+        [batches],
+    );
+    const getVisibleIndices = useCallback(
+        (runtimeBatch: GardenStructureKitV1RuntimeBatch) => {
+            const batch = batchById.get(runtimeBatch.id);
+            return batch
+                ? getVisibleInstanceIndices(batch, effectiveVisibleIds)
+                : [];
+        },
+        [batchById, effectiveVisibleIds],
+    );
+    const selectInstance = useCallback(
+        (
+            runtimeBatch: GardenStructureKitV1RuntimeBatch,
+            sourceIndex: number,
+        ) => {
+            const batch = batchById.get(runtimeBatch.id);
+            const instanceId = batch?.instanceIds[sourceIndex];
+            const structureId = batch?.structureIds[sourceIndex];
+            if (!onSelect || !instanceId || !structureId) {
+                return;
+            }
+            onSelect({ instanceId, structureId });
+        },
+        [batchById, onSelect],
+    );
+    const renderFallback = useCallback(
+        (batchIds: readonly string[]) => {
+            const unresolvedIds = new Set(batchIds);
+            return (
+                <GardenStructureCollectionFallbackRenderer
+                    batches={batches.filter(({ id }) => unresolvedIds.has(id))}
+                    castShadows={castShadows}
+                    onSelect={onSelect}
+                    selectedInstanceId={selectedInstanceId}
+                    visibleStructureIds={effectiveVisibleIds}
+                />
+            );
+        },
+        [
+            batches,
+            castShadows,
+            effectiveVisibleIds,
+            onSelect,
+            selectedInstanceId,
+        ],
+    );
+    const fallback = (
+        <GardenStructureCollectionFallbackRenderer
+            batches={batches}
+            castShadows={castShadows}
+            onSelect={onSelect}
+            selectedInstanceId={selectedInstanceId}
+            visibleStructureIds={effectiveVisibleIds}
+        />
+    );
 
     return (
         <group
             name="GardenStructures:Collection"
             userData={{
+                assetName: 'GardenStructureKitV1',
                 collectionCacheKey: plan.cacheKey,
-                semanticFallback: true,
                 structureCount: plan.structures.length,
             }}
         >
-            {batches.map((batch) => (
-                <GardenStructureCollectionBatchInstances
-                    batch={batch}
+            <GardenStructureKitV1AssetBoundary fallback={fallback}>
+                <GardenStructureKitV1LoadedInstances
+                    batches={batches}
                     castShadows={castShadows}
-                    geometry={geometry}
-                    key={batch.id}
-                    onSelect={onSelect}
+                    getVisibleInstanceIndices={getVisibleIndices}
+                    namePrefix="GardenStructureCollectionKitV1Batch"
+                    onSelectInstance={onSelect ? selectInstance : undefined}
+                    renderFallback={renderFallback}
                     selectedInstanceId={selectedInstanceId}
-                    visibleStructureIds={effectiveVisibleIds}
                 />
-            ))}
+            </GardenStructureKitV1AssetBoundary>
         </group>
     );
 }

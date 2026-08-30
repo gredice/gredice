@@ -251,9 +251,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         const assetName = new URL(url).pathname.split('/').at(-1) ?? '';
         if (
             /\.glb(?:\?|$)/u.test(url) &&
-            /^(building|structure|greenhouse|barn|house|roof|door|window|wall|floor)([-_.]|$)/iu.test(
-                assetName,
-            )
+            assetName === 'GardenStructureKitV1.glb'
         ) {
             buildingAssetRequests.push(url);
         }
@@ -540,7 +538,8 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     expect(
         Number(Reflect.get(pointerState, 'lostCaptureCount')),
     ).toBeGreaterThan(0);
-    expect(buildingAssetRequests).toEqual([]);
+    expect(buildingAssetRequests).toHaveLength(1);
+    expect(buildingAssetRequests[0]).toContain('/GardenStructureKitV1.glb');
     expect(
         browserErrors,
         `Unexpected failed responses: ${failedResourceResponses
@@ -553,6 +552,12 @@ test('keeps one canvas through the touch-first building slice in portrait and la
 test('keeps the production-profile building fixture disabled by default', async ({
     page,
 }) => {
+    const buildingAssetRequests: string[] = [];
+    page.on('request', (request) => {
+        if (request.url().includes('/GardenStructureKitV1.glb')) {
+            buildingAssetRequests.push(request.url());
+        }
+    });
     await page.goto('/debug/profile/game?hud=1&controls=1', {
         waitUntil: 'networkidle',
     });
@@ -565,6 +570,7 @@ test('keeps the production-profile building fixture disabled by default', async 
         'data-game-profile-building',
         '0',
     );
+    expect(buildingAssetRequests).toEqual([]);
 });
 
 test('keeps the public debug sandbox on the managed default-off path', async ({

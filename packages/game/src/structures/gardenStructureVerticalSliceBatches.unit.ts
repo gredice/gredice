@@ -5,7 +5,7 @@ import { compileGardenStructurePlan } from './compileGardenStructurePlan';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import { getGardenStructureVerticalSliceBatches } from './gardenStructureVerticalSliceBatches';
 
-test('keeps debug doorway visuals open when semantic collision is passable', () => {
+test('keeps open-door asset submissions while semantic collision is passable', () => {
     const plan = compileGardenStructurePlan({
         structureId: 'open-house',
         revision: 1,
@@ -19,7 +19,7 @@ test('keeps debug doorway visuals open when semantic collision is passable', () 
     const renderedIds = batches.flatMap((batch) => batch.instanceIds);
 
     assert.ok(plan.openPortals.edgeIds.includes('door-main'));
-    assert.equal(renderedIds.includes('edge:open-house:door-main'), false);
+    assert.equal(renderedIds.includes('edge:open-house:door-main'), true);
     assert.ok(renderedIds.some((id) => id.startsWith('edge:open-house:')));
 });
 
