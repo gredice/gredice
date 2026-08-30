@@ -18,6 +18,7 @@ import {
     resolveGardenStructureKitV1Asset,
     resolveGardenStructureKitV1BatchGeometry,
 } from './gardenStructureKitV1AssetResolver';
+import { gardenStructureKitV1Metadata } from './gardenStructureKitV1Manifest';
 import type { GardenStructureBatchGeometryKind } from './structurePlanTypes';
 
 export type GardenStructureKitV1RuntimeBatch = Readonly<{
@@ -116,6 +117,20 @@ function allInstanceIndices(batch: GardenStructureKitV1RuntimeBatch) {
     return batch.instanceIds.map((_, index) => index);
 }
 
+/**
+ * Production floor meshes are authored from their lower face while the
+ * semantic transform marks the walkable top surface. Keep the asset below
+ * that surface so it matches the fallback geometry and collision volume.
+ */
+export function getGardenStructureKitV1AssetInstanceHeight(
+    geometryKind: GardenStructureBatchGeometryKind,
+    baseHeight: number,
+) {
+    return geometryKind === 'floor-cell'
+        ? baseHeight - gardenStructureKitV1Metadata.floorThickness
+        : baseHeight;
+}
+
 function GardenStructureKitV1PrimitiveInstances({
     baseHeight,
     castShadows,
@@ -180,7 +195,14 @@ function GardenStructureKitV1PrimitiveInstances({
             ) {
                 continue;
             }
-            scratch.position.set(x, instanceBaseHeight, z);
+            scratch.position.set(
+                x,
+                getGardenStructureKitV1AssetInstanceHeight(
+                    batch.geometryKind,
+                    instanceBaseHeight,
+                ),
+                z,
+            );
             scratch.rotation.set(0, rotation * (Math.PI / 2), 0);
             scratch.scale.set(1, 1, 1);
             scratch.updateMatrix();
