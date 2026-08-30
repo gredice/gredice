@@ -69,6 +69,11 @@ import {
 import { Scene } from '../scene/Scene';
 import { GardenStructureSceneLayerDynamic } from '../structures/GardenStructureSceneLayerDynamic';
 import {
+    areGardenStructureAvatarInteriorPresentationsEqual,
+    emptyGardenStructureAvatarInteriorPresentation,
+    type GardenStructureAvatarInteriorPresentation,
+} from '../structures/gardenStructureAvatarInterior';
+import {
     createGardenStructureSceneBaseHeightResolver,
     type GardenStructureSceneDiagnosticStatus,
     useGardenStructureSceneSnapshot,
@@ -700,6 +705,34 @@ function PublicGardenScene({
     const renderLivingDetails = renderDetails && gardenCacheReady;
     const renderTransientDetails = renderLivingDetails && !capture;
     const [visualOccluders, setVisualOccluders] = useState<Group | null>(null);
+    const [structureInteriorPresentation, setStructureInteriorPresentation] =
+        useState<GardenStructureAvatarInteriorPresentation>(
+            emptyGardenStructureAvatarInteriorPresentation,
+        );
+    const publishStructureInteriorPresentation = useCallback(
+        (next: GardenStructureAvatarInteriorPresentation) => {
+            setStructureInteriorPresentation((current) =>
+                areGardenStructureAvatarInteriorPresentationsEqual(
+                    current,
+                    next,
+                )
+                    ? current
+                    : next,
+            );
+        },
+        [],
+    );
+    const hiddenStructureInstanceIds = useMemo(
+        () => new Set(structureInteriorPresentation.hiddenInstanceIds),
+        [structureInteriorPresentation.hiddenInstanceIds],
+    );
+    useEffect(() => {
+        if (!visitorPresence || capture) {
+            publishStructureInteriorPresentation(
+                emptyGardenStructureAvatarInteriorPresentation,
+            );
+        }
+    }, [capture, publishStructureInteriorPresentation, visitorPresence]);
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
             if (!onAvatarInteractBlock) {
@@ -750,6 +783,12 @@ function PublicGardenScene({
             }
             data-garden-structure-first-id={
                 structureScene.plan?.structures[0]?.structureId
+            }
+            data-garden-structure-hidden-instance-count={
+                structureInteriorPresentation.hiddenInstanceIds.length
+            }
+            data-garden-structure-interior-id={
+                structureInteriorPresentation.structureId ?? 'outside'
             }
             data-garden-structure-warning-count={
                 structureScene.diagnostics.warningCount
@@ -850,6 +889,9 @@ function PublicGardenScene({
                                                     }
                                                     renderProps={
                                                         renderLivingDetails
+                                                    }
+                                                    hiddenInstanceIds={
+                                                        hiddenStructureInstanceIds
                                                     }
                                                     onRendererReady={
                                                         markStructureRendererReady
@@ -1016,6 +1058,9 @@ function PublicGardenScene({
                                                         onPresenceChange={
                                                             visitorPresence.onLocalPresenceChange
                                                         }
+                                                        onStructureInteriorChange={
+                                                            publishStructureInteriorPresentation
+                                                        }
                                                         onInteractBlock={
                                                             interactWithAvatarBlock
                                                         }
@@ -1028,6 +1073,11 @@ function PublicGardenScene({
                                                         }
                                                         stacks={
                                                             normalizedStacks
+                                                        }
+                                                        structureCollectionPlan={
+                                                            capture
+                                                                ? null
+                                                                : structureScene.plan
                                                         }
                                                     />
                                                     {visitorPresence.visitors.map(

@@ -29,6 +29,15 @@ export {
     createGardenStructureCollectionAvatarCollisionWorld,
     getGardenStructureAvatarCollisionSurfaces,
 } from './gardenStructureAvatarCollision';
+export type { GardenStructureAvatarInteriorPresentation } from './gardenStructureAvatarInterior';
+export {
+    areGardenStructureAvatarInteriorPresentationsEqual,
+    emptyGardenStructureAvatarInteriorPresentation,
+    findContainingGardenStructure,
+    findGardenStructureAvatarSafeRelocation,
+    getGardenStructureAvatarInteriorPresentation,
+    resolveGardenStructureThirdPersonCameraPosition,
+} from './gardenStructureAvatarInterior';
 export type {
     GardenStructureCollectionBatchDescription,
     GardenStructureCollectionBatches,
