@@ -13,6 +13,21 @@ const buildingProfileUrl =
 const buildingKeyboardProfileUrl =
     '/debug/profile/game?building=1&hud=1&quality=low&staticSceneCache=legacy';
 
+function isKnownLocalAnalytics404(text: string, sourceUrl: string) {
+    if (!text.startsWith('Failed to load resource:') || !text.includes('404')) {
+        return false;
+    }
+    try {
+        const url = new URL(sourceUrl);
+        return (
+            ['localhost', '127.0.0.1', '::1'].includes(url.hostname) &&
+            url.pathname === '/_vercel/insights/script.js'
+        );
+    } catch {
+        return false;
+    }
+}
+
 async function waitForStructureInsideVisibleViewport(
     page: Page,
     viewport: Readonly<{ width: number; height: number }>,
@@ -205,12 +220,21 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     const failedResourceResponses: string[] = [];
     const buildingAssetRequests: string[] = [];
     page.on('console', (message) => {
+        const sourceUrl = message.location().url;
         const isExpectedSignedOutRequest =
             message.text() ===
             'Failed to load resource: the server responded with a status of 401 (Unauthorized)';
-        if (message.type() === 'error' && !isExpectedSignedOutRequest) {
+        const isExpectedLocalAnalyticsRequest = isKnownLocalAnalytics404(
+            message.text(),
+            sourceUrl,
+        );
+        if (
+            message.type() === 'error' &&
+            !isExpectedSignedOutRequest &&
+            !isExpectedLocalAnalyticsRequest
+        ) {
             browserErrors.push(
-                `${message.text()} (${message.location().url || 'unknown source'})`,
+                `${message.text()} (${sourceUrl || 'unknown source'})`,
             );
         }
     });
