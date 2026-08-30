@@ -3,9 +3,11 @@ import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 
 export function getGardenStructureVerticalSliceBatches({
     plan,
+    renderProps,
     roofCutaway,
 }: {
     plan: GardenStructureSemanticPlan;
+    renderProps: boolean;
     roofCutaway: boolean;
 }) {
     if (!isGardenStructureKitV1DefinitionCompatible(plan)) {
@@ -18,6 +20,6 @@ export function getGardenStructureVerticalSliceBatches({
         ...plan.batches.opaque,
         ...plan.batches.transparent,
         ...(roofCutaway ? [] : plan.batches.roof),
-        ...plan.batches.props,
+        ...(renderProps ? plan.batches.props : []),
     ];
 }

@@ -328,6 +328,10 @@ export type GameProfileMetadata = {
     gardenStructureActiveRevision?: number;
     gardenStructureAssetBytesRequested?: number;
     gardenStructureAssetBytesResident?: number;
+    gardenStructureAssetResolutionIssueCount?: number;
+    gardenStructureAssetResolutionStatus?: 'idle' | 'resolved';
+    gardenStructureAssetUnresolvedBatchCount?: number;
+    gardenStructureAssetUrl?: string;
     gardenStructureCameraActivePointerCount?: number;
     gardenStructureCameraMode?: 'browse' | 'building' | 'restoring';
     gardenStructureCameraPositionX?: number;
@@ -339,6 +343,14 @@ export type GameProfileMetadata = {
     gardenStructureCameraZoom?: number;
     gardenStructureCollisionBoxCount?: number;
     gardenStructureCollisionBucketCount?: number;
+    gardenStructureCollectionDetailSuppressedPropCount?: number;
+    gardenStructureCollectionExteriorSuppressedPropCount?: number;
+    gardenStructureCollectionFrustumCulledPropCount?: number;
+    gardenStructureCollectionFrustumCulledStructureCount?: number;
+    gardenStructureCollectionPropCount?: number;
+    gardenStructureCollectionStructureCount?: number;
+    gardenStructureCollectionVisiblePropCount?: number;
+    gardenStructureCollectionVisibleStructureCount?: number;
     gardenStructureCompileCount?: number;
     gardenStructureCompileDurationMs?: number;
     gardenStructureDocumentPayloadBytes?: number;
@@ -352,7 +364,15 @@ export type GameProfileMetadata = {
     gardenStructureEditorPointerResolutionCount?: number;
     gardenStructureEditorPointerResolutionMaxMs?: number;
     gardenStructureEditorPointerResolutionTotalMs?: number;
+    gardenStructureExteriorSuppressedPropCount?: number;
     gardenStructureFloorCount?: number;
+    gardenStructureFallbackAttributeBytes?: number;
+    gardenStructureFallbackDrawCount?: number;
+    gardenStructureFallbackIndexBytes?: number;
+    gardenStructureFallbackInstanceBufferBytes?: number;
+    gardenStructureFallbackInstanceCount?: number;
+    gardenStructureFallbackTriangleCount?: number;
+    gardenStructureFallbackVertexCount?: number;
     gardenStructureFootprintCellCount?: number;
     gardenStructureNavigationCompileDurationMs?: number;
     gardenStructureOpenPortalCount?: number;
@@ -361,6 +381,25 @@ export type GameProfileMetadata = {
     gardenStructurePlanCacheHitCount?: number;
     gardenStructurePlanCacheMissCount?: number;
     gardenStructurePlanCacheOutcome?: 'hit' | 'miss' | 'none';
+    gardenStructurePlanCacheLookupDurationMs?: number;
+    gardenStructurePreviewAttributeBytes?: number;
+    gardenStructurePreviewDrawCount?: number;
+    gardenStructurePreviewIndexBytes?: number;
+    gardenStructurePreviewInstanceBufferBytes?: number;
+    gardenStructurePreviewInstanceCount?: number;
+    gardenStructurePreviewTriangleCount?: number;
+    gardenStructurePreviewVertexCount?: number;
+    gardenStructureProductionAttributeBytes?: number;
+    gardenStructureProductionDrawCount?: number;
+    gardenStructureProductionIndexBytes?: number;
+    gardenStructureProductionInstanceBufferBytes?: number;
+    gardenStructureProductionInstanceCount?: number;
+    gardenStructureProductionOpaqueDrawCount?: number;
+    gardenStructureProductionTextureCount?: number;
+    gardenStructureProductionTextureEstimatedBytes?: number;
+    gardenStructureProductionTransparentDrawCount?: number;
+    gardenStructureProductionTriangleCount?: number;
+    gardenStructureProductionVertexCount?: number;
     gardenStructurePropCount?: number;
     gardenStructureProjectedBottom?: number;
     gardenStructureProjectedLeft?: number;
@@ -533,12 +572,42 @@ export function updateGameProfileMetadata(metadata: GameProfileMetadata) {
 
 const gardenStructureEditorActionSampleLimit = 64;
 const gardenStructureEditorActionSamples: number[] = [];
+let gardenStructureProfileTelemetryEnabled = false;
+let gardenStructurePointerStartedAt: number | null = null;
+
+export function getGardenStructureProfileP95(samples: readonly number[]) {
+    if (samples.length === 0) {
+        return 0;
+    }
+    const sorted = [...samples].sort((left, right) => left - right);
+    return sorted[Math.ceil(sorted.length * 0.95) - 1] ?? 0;
+}
+
+export function setGardenStructureProfileTelemetryEnabled(enabled: boolean) {
+    gardenStructureProfileTelemetryEnabled = enabled;
+    gardenStructurePointerStartedAt = null;
+    gardenStructureEditorActionSamples.length = 0;
+    updateGameProfileMetadata({
+        gardenStructureEditorActionCount: 0,
+        gardenStructureEditorActionDurationMaxMs: 0,
+        gardenStructureEditorActionDurationP95Ms: 0,
+        gardenStructureEditorActionDurationTotalMs: 0,
+        gardenStructureEditorLastAction: '',
+        gardenStructureEditorPointerResolutionCount: 0,
+        gardenStructureEditorPointerResolutionMaxMs: 0,
+        gardenStructureEditorPointerResolutionTotalMs: 0,
+    });
+}
 
 export function recordGardenStructureEditorAction(
     action: string,
     durationMs: number,
 ) {
-    if (!Number.isFinite(durationMs) || durationMs < 0) {
+    if (
+        !gardenStructureProfileTelemetryEnabled ||
+        !Number.isFinite(durationMs) ||
+        durationMs < 0
+    ) {
         return;
     }
     gardenStructureEditorActionSamples.push(durationMs);
@@ -551,15 +620,12 @@ export function recordGardenStructureEditorAction(
     const sorted = [...gardenStructureEditorActionSamples].sort(
         (left, right) => left - right,
     );
-    const p95Index = Math.min(
-        sorted.length - 1,
-        Math.floor(sorted.length * 0.95),
-    );
     updateGameProfileMetadata({
         gardenStructureEditorActionCount:
             gardenStructureEditorActionSamples.length,
         gardenStructureEditorActionDurationMaxMs: sorted.at(-1) ?? 0,
-        gardenStructureEditorActionDurationP95Ms: sorted[p95Index] ?? 0,
+        gardenStructureEditorActionDurationP95Ms:
+            getGardenStructureProfileP95(sorted),
         gardenStructureEditorActionDurationTotalMs: sorted.reduce(
             (total, duration) => total + duration,
             0,
@@ -568,10 +634,29 @@ export function recordGardenStructureEditorAction(
     });
 }
 
-export function recordGardenStructurePointerResolution(durationMs: number) {
-    if (!Number.isFinite(durationMs) || durationMs < 0) {
+export function beginGardenStructurePointerResolution(startedAt: number) {
+    if (
+        !gardenStructureProfileTelemetryEnabled ||
+        !Number.isFinite(startedAt) ||
+        startedAt < 0
+    ) {
         return;
     }
+    gardenStructurePointerStartedAt = startedAt;
+}
+
+export function recordGardenStructurePointerResolution(resolvedAt: number) {
+    const startedAt = gardenStructurePointerStartedAt;
+    gardenStructurePointerStartedAt = null;
+    if (
+        !gardenStructureProfileTelemetryEnabled ||
+        startedAt === null ||
+        !Number.isFinite(resolvedAt) ||
+        resolvedAt < startedAt
+    ) {
+        return;
+    }
+    const durationMs = resolvedAt - startedAt;
     const current = readGameProfileMetadata();
     updateGameProfileMetadata({
         gardenStructureEditorPointerResolutionCount:

@@ -45,6 +45,7 @@ import {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
 
 const provenanceCommitA = 'a'.repeat(40);
@@ -359,28 +360,33 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
 
 test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
     const scenarios = resolveScenarios('buildings');
-    assert.equal(scenarios.length, 9);
+    assert.equal(scenarios.length, 12);
     assert.deepEqual(
         scenarios.map((scenario) => scenario.name),
         [
+            'game-building-no-structure-network-baseline-mobile',
             'game-building-empty-shell-desktop',
             'game-building-empty-shell-constrained-mobile',
             'game-building-furnished-house-normal-constrained-mobile',
+            'game-building-dense-garden-house-mixed-production-mobile',
             'game-building-shell-edit-constrained-mobile',
             'game-building-interior-edit-cutaway-constrained-mobile',
             'game-building-greenhouse-rain-constrained-mobile',
             'game-building-worst-case-furnished-constrained-mobile',
+            'game-building-worst-case-furnished-cutaway-constrained-mobile',
             'game-building-worst-case-edit-churn-constrained-mobile',
             'game-building-enter-exit-lifecycle-constrained-mobile',
         ],
     );
     assert.ok(
-        scenarios.every(
-            (scenario) =>
-                scenario.path.includes('building=1') &&
-                scenario.path.includes('staticSceneCache=legacy') &&
-                scenario.buildingProfile,
-        ),
+        scenarios
+            .slice(1)
+            .every(
+                (scenario) =>
+                    scenario.path.includes('building=1') &&
+                    scenario.path.includes('staticSceneCache=legacy') &&
+                    scenario.buildingProfile,
+            ),
     );
     const worstCase = scenarios.find((scenario) =>
         scenario.name.includes('worst-case-furnished'),
@@ -394,6 +400,69 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
     assert.equal(worstCase?.isMobile, true);
     assert.equal(worstCase?.navigatorMetrics.deviceMemory, 4);
     assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
+    assert.equal(
+        scenarios.find((scenario) =>
+            scenario.name.includes('furnished-cutaway'),
+        )?.buildingProfile.cutaway,
+        true,
+    );
+    assert.equal(scenarios[0].buildingProfile.fixture, 'none');
+    assert.equal(getScenarioRequest(scenarios[0].path).building, '0');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('mixed-production'))
+            ?.buildingProfile.workload,
+        'mixed-production',
+    );
+});
+
+test('building asset network summary preserves exact response and resource timing', () => {
+    const url =
+        'http://localhost:3001/assets/models/GardenStructureKitV1.glb?v=abc';
+    assert.deepEqual(
+        summarizeGardenStructureAssetNetwork(
+            [
+                {
+                    bodyBytes: 364_684,
+                    fromServiceWorker: false,
+                    status: 200,
+                    url,
+                },
+            ],
+            [
+                {
+                    decodedBodySize: 364_684,
+                    duration: 18.25,
+                    encodedBodySize: 364_684,
+                    name: url,
+                    responseEnd: 31.5,
+                    responseStart: 13.25,
+                    startTime: 10,
+                    transferSize: 364_984,
+                },
+            ],
+        ),
+        {
+            gardenStructureAssetBytesRequested: 364_684,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseFromServiceWorker: false,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: url,
+            gardenStructureAssetResourceDecodedBodyBytes: 364_684,
+            gardenStructureAssetResourceDurationMs: 18.25,
+            gardenStructureAssetResourceEncodedBodyBytes: 364_684,
+            gardenStructureAssetResourceResponseEndMs: 31.5,
+            gardenStructureAssetResourceResponseStartMs: 13.25,
+            gardenStructureAssetResourceStartMs: 10,
+            gardenStructureAssetResourceTransferBytes: 364_984,
+            gardenStructureAssetResourceUrl: url,
+        },
+    );
+    assert.equal(
+        summarizeGardenStructureAssetNetwork([], [])
+            .gardenStructureAssetRequestCount,
+        0,
+    );
 });
 
 test('building acceptance enforces bounded privacy-safe telemetry and editor budgets', () => {
@@ -417,8 +486,21 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             staticSceneCache: 'legacy',
         },
         runtime: {
-            gardenStructureAssetBytesRequested: 0,
-            gardenStructureAssetBytesResident: 0,
+            gardenStructureAssetBytesRequested: 364_684,
+            gardenStructureAssetBytesResident: 96_000,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResourceDurationMs: 12,
+            gardenStructureAssetResourceUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
             gardenStructureCompileCount: 4,
             gardenStructureCompileDurationMs: 4.2,
             gardenStructureDocumentPayloadBytes: 56_759,
@@ -427,12 +509,29 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             gardenStructureEditorActionDurationMaxMs: 42,
             gardenStructureEditorActionDurationP95Ms: 24,
             gardenStructureEditorActive: true,
+            gardenStructureEditorPointerResolutionCount: 1,
+            gardenStructureEditorPointerResolutionMaxMs: 3,
+            gardenStructureExteriorSuppressedPropCount: 0,
             gardenStructureFootprintCellCount: 100,
             gardenStructureNavigationCompileDurationMs: 2.1,
+            gardenStructurePlanCacheLookupDurationMs: 0.1,
             gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructurePreviewDrawCount: 1,
+            gardenStructureProductionAttributeBytes: 40_000,
+            gardenStructureProductionDrawCount: 12,
+            gardenStructureProductionIndexBytes: 8_000,
+            gardenStructureProductionInstanceBufferBytes: 48_000,
+            gardenStructureProductionOpaqueDrawCount: 9,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 3,
+            gardenStructureProductionTriangleCount: 400_000,
+            gardenStructureProductionVertexCount: 600_000,
             gardenStructurePropCount: 100,
             gardenStructureRoofRegionCount: 100,
             gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 100,
             gardenStructureVisibleStructureCount: 1,
         },
     });
@@ -474,6 +573,99 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
                 check.name === 'buildingNoMutationRequests' && !check.pass,
         ),
     );
+});
+
+test('building acceptance proves the no-structure baseline made no GLB request', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building acceptance keeps an empty structure distinct from production GLB draws', () => {
+    const responseUrl =
+        'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc';
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'blank',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 4,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'blank',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesRequested: 364_684,
+            gardenStructureAssetBytesResident: 0,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: responseUrl,
+            gardenStructureAssetResourceDurationMs: 4,
+            gardenStructureAssetResourceUrl: responseUrl,
+            gardenStructureCompileDurationMs: 1,
+            gardenStructureDocumentPayloadBytes: 242,
+            gardenStructureEdgeCount: 0,
+            gardenStructureEditorActive: false,
+            gardenStructureExteriorSuppressedPropCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructureFootprintCellCount: 4,
+            gardenStructureNavigationCompileDurationMs: 0.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePreviewDrawCount: 0,
+            gardenStructureProductionAttributeBytes: 0,
+            gardenStructureProductionDrawCount: 0,
+            gardenStructureProductionIndexBytes: 0,
+            gardenStructureProductionInstanceBufferBytes: 0,
+            gardenStructureProductionOpaqueDrawCount: 0,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 0,
+            gardenStructureProductionTriangleCount: 0,
+            gardenStructureProductionVertexCount: 0,
+            gardenStructurePropCount: 0,
+            gardenStructureRoofRegionCount: 0,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 0,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
 });
 
 test('profile request reads the deterministic closeup target', () => {

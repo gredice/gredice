@@ -14,6 +14,7 @@ test('keeps open-door asset submissions while semantic collision is passable', (
     });
     const batches = getGardenStructureVerticalSliceBatches({
         plan,
+        renderProps: false,
         roofCutaway: false,
     });
     const renderedIds = batches.flatMap((batch) => batch.instanceIds);
@@ -34,15 +35,43 @@ test('removes roof submissions only while cutaway is active', () => {
     assert.ok(
         getGardenStructureVerticalSliceBatches({
             plan,
+            renderProps: false,
             roofCutaway: false,
         }).some((batch) => batch.category === 'roof'),
     );
     assert.equal(
         getGardenStructureVerticalSliceBatches({
             plan,
+            renderProps: false,
             roofCutaway: true,
         }).some((batch) => batch.category === 'roof'),
         false,
+    );
+});
+
+test('submits interior props only for an explicit cutaway or inside view', () => {
+    const plan = compileGardenStructurePlan({
+        structureId: 'furnished-house',
+        revision: 1,
+        document: createGardenStructureTemplateSeed('house').document,
+        placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+    });
+
+    assert.equal(
+        getGardenStructureVerticalSliceBatches({
+            plan,
+            renderProps: false,
+            roofCutaway: false,
+        }).some((batch) => batch.category === 'props'),
+        false,
+    );
+    assert.equal(
+        getGardenStructureVerticalSliceBatches({
+            plan,
+            renderProps: true,
+            roofCutaway: true,
+        }).some((batch) => batch.category === 'props'),
+        true,
     );
 });
 
@@ -62,6 +91,7 @@ test('rejects a plan from a different immutable kit before visual semantics can 
         () =>
             getGardenStructureVerticalSliceBatches({
                 plan,
+                renderProps: false,
                 roofCutaway: false,
             }),
         /matching immutable debug kit/u,

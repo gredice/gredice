@@ -53,8 +53,8 @@ function createWorstCaseEdge(
             id: `edge-${index.toString().padStart(3, '0')}`,
             from,
             direction,
-            partId: 'door.debug-closed',
-            kind: 'door',
+            partId: 'wall.timber',
+            kind: 'wall',
         };
     }
     if (remainder === 2) {
@@ -79,7 +79,8 @@ function createWorstCaseEdge(
  * A valid 20x9 / 100-cell comb whose adjacency graph is a tree. It reaches
  * the 301 distinct incident-edge maximum while also exercising one roof
  * region and prop per cell, opaque and transparent materials, open portals,
- * and solid closed doors.
+ * and solid timber edges. Every rendered part belongs to the production kit;
+ * benchmark-only semantic parts would invalidate resolved-GLB profile proof.
  */
 export function createWorstCaseGardenStructureDocument(): GardenStructureDocumentV1 {
     const cells: GardenStructureFootprintCell[] = [];

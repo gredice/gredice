@@ -13,6 +13,7 @@
         "./garden-2d": "./src/GardenOverview2DDynamic.tsx",
         "./garden-structure-catalog": "./src/structures/catalog/index.ts",
         "./garden-scene-transition": "./src/GardenSceneTransition.tsx",
+        "./garden-building-profile-fixture": "./src/structures/gardenStructureProfileFixture.server.ts",
         "./outlet-garden": "./src/viewers/OutletGardenViewer.tsx",
         "./outlet-garden-browser": "./src/viewers/OutletGardenOfferBrowser.tsx",
         "./outlet-garden-commerce": "./src/viewers/OutletGardenCommerce.tsx",

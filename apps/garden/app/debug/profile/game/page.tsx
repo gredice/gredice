@@ -319,6 +319,14 @@ export default async function GameProfilePage({
         firstValue(params.buildingFixture),
         gardenBuildingFixtureEnabled,
     );
+    const gardenStructureProfileFixture =
+        gardenBuilding && gardenBuildingFixture
+            ? (
+                  await import('@gredice/game/garden-building-profile-fixture')
+              ).createGardenStructureProfileFixtureDescriptor(
+                  gardenBuildingFixture,
+              )
+            : undefined;
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
@@ -428,11 +436,7 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
-                gardenStructureDebugFixture={
-                    gardenBuilding
-                        ? (gardenBuildingFixture ?? 'house')
-                        : undefined
-                }
+                gardenStructureProfileFixture={gardenStructureProfileFixture}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

@@ -509,22 +509,87 @@ The `dense-mobile` scenario set samples:
 The `buildings` scenario set is available only when the production server was
 built and started with
 `GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED=true`. The query alone cannot
-enable the fixture. It covers empty shells on desktop and constrained mobile,
-a furnished house, shell and cutaway-interior editing, greenhouse rain,
-furnished 100-cell/301-edge worst-case normal and edit-churn workloads, and
-repeated build-mode entry/exit. Mobile runs use `390x844`, DPR 3, automatic
-quality, and emulated 4 GiB/four-core navigator hints. Active editing explicitly
-bypasses the static opaque cache.
+enable the fixture. The gated server route constructs one bounded,
+serializable descriptor; production `GameScene` consumes that descriptor and
+does not import the benchmark fixture compiler. The same descriptor document
+drives normal rendering and the editor session.
+
+The matrix begins with a true no-structure baseline and fails if the production
+`GardenStructureKitV1.glb` is requested. It then covers empty shells on desktop
+and constrained mobile, a furnished house, a dense garden plus furnished house
+mixed-production workload, shell and cutaway-interior editing, greenhouse rain,
+the valid 20x9 / 100-cell / 301-edge / 100-roof-region / 100-prop comb as a
+closed-roof exterior, a fully furnished cutaway, and an edit-churn state, plus
+repeated build-mode entry/exit. Mobile runs use
+`390x844`, DPR 3, automatic quality, and emulated 4 GiB/four-core navigator
+hints. Active editing explicitly bypasses the static opaque cache.
 
 The building report copies only bounded metadata: counts, durations, cache
 outcomes, byte totals, quality/device class, and budget results. It does not
 copy a structure document, player identity, garden identity, or account
-balance. The building gates retain the 33.3 ms mobile p95 frame target, 100 ms
+balance. Runtime work comes from resolved production GLB primitives: opaque and
+transparent draws, vertices, triangles, unique CPU attribute/index bytes,
+estimated texture bytes, and instance-buffer bytes. Semantic fallback and
+editor-preview work remain separate columns. The network witness records the
+exact GLB URL, response status and body length together with same-origin
+Resource Timing sizes and milestones; the no-building row must remain zero.
+Compilation time is miss-only, cache lookup time is separate, and editor p95
+uses nearest-rank `ceil(n * 0.95) - 1`.
+
+The saved-scene production layer derives one visibility set from each compiled
+structure's conservative world bounds when the camera matrix changes, and
+passes that set into the collection renderer before instance submission. An
+empty set mounts no kit renderer and therefore cannot initiate the GLB request.
+Interior prop batches additionally require an explicit per-structure admission
+set, which defaults empty for the saved scene; future avatar/authoring callers
+must supply only structures that are actually inside or cut away. The gated
+fixture editor applies the same rule directly: normal closed-roof exterior
+submits zero props and cutaway admits them. Profile metadata keeps
+structure/prop frustum rejection, exterior prop suppression, and detail-tier
+suppression as distinct counts.
+
+The building gates retain the 33.3 ms mobile p95 frame target, 100 ms
 editor-action p95 target, 500 ms maximum editor stall, 192 KiB document limit,
-and zero debug-kit GLB bytes. Use `GAME_PROFILE_SOAK_MS=600000` to hold each
-normal/editing state for ten minutes before its sample; use
+and 600,000-byte production GLB response limit. Use
+`GAME_PROFILE_SOAK_MS=600000` to hold each normal/editing state for ten minutes
+before its sample; use
 `GAME_PROFILE_SAMPLE_MS=600000` when the edit-churn or entry/exit actions must
 run for the full soak window.
+
+### 2026-08-30 building production profile
+
+The local production-build witness used headless Chromium 149 with ANGLE Metal
+on an Apple M4 Pro/24 GiB host, Node 24.15.0, a 5 s warmup, and a 5 s sample.
+Constrained-mobile rows used a 390x844 CSS viewport at browser DPR 3, emulated
+4 GiB/four-core navigator inputs, the resolved `auto-constrained` tier, DPR cap
+1, a 390x844 backing buffer, 1024 px shadows, and the legacy static-scene-cache
+path. These are browser/host measurements, not a physical constrained phone.
+
+| Scenario | p95 / max frame | Rendered FPS | Draws / rendered frame | Triangles / rendered frame | Long tasks | JS heap | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| No structure / no building asset | 17.2 / 17.7 ms | 29.1 | 71 | 4,050 | 0 | 57.5 MiB | pass |
+| Dense 25x25 garden + furnished house | 17.6 / 17.8 ms | 27.1 | 74 | 18,584 | 0 | 54.2 MiB | pass |
+| Furnished 100-cell closed-roof exterior | 18.4 / 18.8 ms | 27.5 | 98 | 178,822 | 0 | 57.5 MiB | pass |
+| Furnished 100-cell cutaway editor | 18.4 / 18.8 ms | 26.4 | 49 | 183,096 | 0 | 61.0 MiB | pass |
+| Furnished 100-cell edit churn | 17.3 / 18.6 ms | 59.9 | 123.4 | 183,465 | 0 | 77.6 MiB | pass |
+
+The production kit response body was 364,684 bytes, below the 600,000-byte
+gate; the same-origin local server reported 41,117 encoded bytes and 41,417
+transfer bytes. The closed-roof worst case resolved 24 production draws,
+376,320 submitted vertices, 173,044 triangles, 135,936 unique attribute bytes,
+8,472 index bytes, 115,216 instance-buffer bytes, zero textures, zero fallback
+draws, and zero unresolved batches. Cutaway admission raised this to 29 draws,
+390,432 vertices, 179,176 triangles, and 127,908 instance-buffer bytes while
+making all 100 props visible. The normal exterior made zero props visible and
+reported all 100 as exterior-suppressed.
+
+The initial worst-case compile miss was 4.3 ms in the normal row and 3.7 ms in
+the cutaway row. Edit churn reused the plan cache (`hit`, zero miss-only compile
+time); its editor action p95/max was 15.6/17.0 ms and final Canvas pointer
+resolution max was 2.0 ms. The no-structure baseline made zero kit requests and
+reported zero production, fallback, and preview draws. The automated desktop
+row uses a 20 ms p95 gate because 60 Hz headless rAF samples commonly land just
+above 16.7 ms; the physical desktop target remains 16.7 ms.
 
 Run the matrix with:
 
