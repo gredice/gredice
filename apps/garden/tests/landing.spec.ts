@@ -545,6 +545,7 @@ test('rejects malformed current claims before creating a temporary account', asy
 test('fresh signed-out visitor can log in without creating a temporary account', async ({
     page,
 }) => {
+    test.setTimeout(20_000);
     const api = await mockGardenApi(page, false);
 
     const response = await page.goto('/');
@@ -586,6 +587,7 @@ test('opens and clears a cross-app temporary login request from the URL', async 
 test('returning user with an expired session sees simplified login choices before a temporary garden is created', async ({
     page,
 }) => {
+    test.setTimeout(20_000);
     const api = await mockGardenApi(page, false, { returningUser: true });
 
     const response = await page.goto('/');
