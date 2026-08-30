@@ -44,6 +44,10 @@ import {
     deliveryRequests,
     deliveryRunStops,
     deliveryRuns,
+    entities,
+    entityRevisions,
+    entitySearchDocuments,
+    entityTypes,
     gardenBlocks,
     gardens,
     gardenVisitStates,
@@ -55,6 +59,7 @@ import {
     notifications,
     operations,
     outletOfferReservations,
+    outletOffers,
     pickupLocations,
     raisedBedFields,
     receipts,
@@ -352,7 +357,7 @@ test('account deletion erases only exact owned garden and inventory event famili
     );
 });
 
-test('account deletion clears hard FK families while retaining detached commercial history', async () => {
+test('account deletion clears hard FK families while retaining detached commercial history', async (t) => {
     createTestDb();
     const fixtureId = randomUUID();
     const accountId = await createAccount();
@@ -709,6 +714,73 @@ test('account deletion clears hard FK families while retaining detached commerci
             sequence: 1,
         })
         .returning({ id: deliveryRunStops.id });
+
+    t.after(async () => {
+        await storage().transaction(async (cleanupTransaction) => {
+            await cleanupTransaction
+                .delete(deliveryRunStops)
+                .where(eq(deliveryRunStops.id, deliveryRunStop.id));
+            await cleanupTransaction
+                .delete(deliveryRuns)
+                .where(eq(deliveryRuns.id, deliveryRunId));
+            await cleanupTransaction
+                .delete(deliveryRequests)
+                .where(eq(deliveryRequests.id, deliveryRequestId));
+            await cleanupTransaction
+                .delete(timeSlots)
+                .where(eq(timeSlots.id, timeSlot.id));
+            await cleanupTransaction
+                .delete(pickupLocations)
+                .where(eq(pickupLocations.id, pickupLocation.id));
+            await cleanupTransaction
+                .delete(operations)
+                .where(eq(operations.id, harvestOperation.id));
+            await cleanupTransaction
+                .delete(events)
+                .where(eq(events.id, plantPlaceEvent.id));
+            await cleanupTransaction
+                .delete(raisedBedFields)
+                .where(eq(raisedBedFields.id, raisedBedField.id));
+            await cleanupTransaction
+                .delete(raisedBeds)
+                .where(
+                    inArray(raisedBeds.id, [
+                        activeRaisedBedId,
+                        deletedRaisedBedId,
+                    ]),
+                );
+            await cleanupTransaction
+                .delete(shoppingCartItems)
+                .where(eq(shoppingCartItems.id, paidCartItem.id));
+            await cleanupTransaction
+                .delete(shoppingCarts)
+                .where(eq(shoppingCarts.id, paidCart.id));
+            await cleanupTransaction
+                .delete(receipts)
+                .where(eq(receipts.id, receipt.id));
+            await cleanupTransaction
+                .delete(transactions)
+                .where(eq(transactions.id, transaction.id));
+            await cleanupTransaction
+                .delete(outletOffers)
+                .where(eq(outletOffers.id, outletOfferId));
+            await cleanupTransaction
+                .delete(entitySearchDocuments)
+                .where(eq(entitySearchDocuments.entityId, plantSortId));
+            await cleanupTransaction
+                .delete(entityRevisions)
+                .where(eq(entityRevisions.entityId, plantSortId));
+            await cleanupTransaction
+                .delete(entities)
+                .where(eq(entities.id, plantSortId));
+            await cleanupTransaction
+                .delete(entityTypes)
+                .where(eq(entityTypes.name, entityTypeName));
+            await cleanupTransaction
+                .delete(users)
+                .where(eq(users.id, driverUserId));
+        });
+    });
 
     await deleteAccountWithDependencies(accountId, userId);
     await deleteAccountWithDependencies(accountId, userId);
