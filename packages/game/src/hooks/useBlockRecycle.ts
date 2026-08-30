@@ -23,15 +23,29 @@ type RecycleBlockArgs = {
     onOptimisticUpdate?: () => void;
 };
 
+type RecyclePatchOperation =
+    | {
+          op: 'test';
+          path: string;
+          value: string;
+      }
+    | {
+          op: 'remove';
+          path: string;
+      };
+
 export function createRecyclePatchOperations({
     blockId,
     blockIndex,
     position,
-}: Pick<RecycleBlockArgs, 'blockId' | 'blockIndex' | 'position'>) {
+}: Pick<
+    RecycleBlockArgs,
+    'blockId' | 'blockIndex' | 'position'
+>): RecyclePatchOperation[] {
     const path = `/${position.x}/${position.z}/${blockIndex}`;
     return [
-        { op: 'test' as const, path, value: blockId },
-        { op: 'remove' as const, path },
+        { op: 'test', path, value: blockId },
+        { op: 'remove', path },
     ];
 }
 

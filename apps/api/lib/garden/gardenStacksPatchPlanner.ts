@@ -485,7 +485,8 @@ function getRecycleDelta({
         if (
             typeof directoryPrice === 'number' &&
             directoryPrice > 0 &&
-            !Number.isSafeInteger(directoryPrice)
+            (!Number.isSafeInteger(directoryPrice) ||
+                directoryPrice > maximumStorageInteger)
         ) {
             fail(
                 'INVALID_REFUND_PRICE',

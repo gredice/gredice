@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { BlockData } from '@gredice/directory-types';
+import { woodenSignBlockName } from '@gredice/js/woodenSign';
 import {
     createGardenBlockMutationService,
     type ValidateRotatedBlockPlacementInput,
@@ -600,7 +601,7 @@ describe('updateGardenBlockForAccount', () => {
     });
 
     it('normalizes wooden-sign messages without loading or validating occupancy', async () => {
-        const harness = makeHarness({ blockName: 'WoodenSign' });
+        const harness = makeHarness({ blockName: woodenSignBlockName });
 
         const result = await harness.service.updateGardenBlockForAccount({
             accountId: harness.accountId,

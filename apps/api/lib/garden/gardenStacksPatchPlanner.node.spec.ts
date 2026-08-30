@@ -646,11 +646,24 @@ describe('planGardenStacksPatch recycle planning', () => {
         );
     });
 
-    test('rejects a non-integral positive directory refund', () => {
+    test('rejects a positive directory refund outside storage bounds', () => {
         expectFailure(
             planGardenStacksPatch(
                 plannerInput({
                     blockData: [directoryBlock('Block_Grass', { price: 1.5 })],
+                    operations: [{ op: 'remove', path: '/0/0/0' }],
+                }),
+            ),
+            'INVALID_REFUND_PRICE',
+        );
+        expectFailure(
+            planGardenStacksPatch(
+                plannerInput({
+                    blockData: [
+                        directoryBlock('Block_Grass', {
+                            price: 2_147_483_648,
+                        }),
+                    ],
                     operations: [{ op: 'remove', path: '/0/0/0' }],
                 }),
             ),
