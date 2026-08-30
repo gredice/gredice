@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    serializeValidStructuredData,
     validateSerializedStructuredData,
     validateStructuredData,
 } from './structuredDataValidation.ts';
@@ -183,6 +184,35 @@ test('rejects invalid JSON and non-schema.org roots', () => {
             path: '$',
             message:
                 'Structured data root must use the https://schema.org context.',
+        },
+    ]);
+});
+
+test('serializes only valid structured data and escapes HTML delimiters', () => {
+    const validResult = serializeValidStructuredData({
+        '@context': 'https://schema.org',
+        '@type': 'Thing',
+        name: '<Rajčica>',
+    });
+
+    assert.deepEqual(validResult.issues, []);
+    assert.equal(
+        validResult.serializedData,
+        '{"@context":"https://schema.org","@type":"Thing","name":"\\u003cRajčica>"}',
+    );
+
+    const invalidResult = serializeValidStructuredData({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: 'Sjeme bez ponude',
+    });
+
+    assert.equal(invalidResult.serializedData, null);
+    assert.deepEqual(invalidResult.issues, [
+        {
+            path: '$',
+            message:
+                'Product must specify offers, review, or aggregateRating for Google Product snippets.',
         },
     ]);
 });
