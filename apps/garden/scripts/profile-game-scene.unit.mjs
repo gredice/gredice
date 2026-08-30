@@ -222,6 +222,16 @@ test('cross-tier scenario set replays one High-target garden across every tier a
             ),
             ['0', '1'],
         );
+        assert.deepEqual(
+            profileScenarios.map(
+                (scenario) =>
+                    new URL(
+                        scenario.path,
+                        'http://profile.local',
+                    ).searchParams.get('cameraProfile') ?? '0',
+            ),
+            ['0', '1'],
+        );
         for (const scenario of profileScenarios) {
             const request = getScenarioRequest(scenario.path);
             assert.equal(scenario.autoQualityDeviceClass ?? null, device);
@@ -1505,6 +1515,41 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
                 generatedPlantVisibleInstanceCountMin: 0,
             },
         }).pass,
+        false,
+    );
+
+    const cameraMotionInput = {
+        ...input,
+        requested: {
+            ...input.requested,
+            motion: 'bounded-zoom-rotate',
+        },
+        sample: {
+            ...input.sample,
+            gameCameraMotionObserved: true,
+            gameCameraSnapshotVersionDelta: 20,
+        },
+    };
+    assert.equal(evaluateCrossTierAcceptance(cameraMotionInput).pass, true);
+    const missingCameraMotion = evaluateCrossTierAcceptance({
+        ...cameraMotionInput,
+        sample: {
+            ...cameraMotionInput.sample,
+            gameCameraMotionObserved: false,
+            gameCameraSnapshotVersionDelta: 0,
+        },
+    });
+    assert.equal(missingCameraMotion.pass, false);
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraMotionObserved',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraSnapshotVersionDelta',
+        )?.pass,
         false,
     );
 });

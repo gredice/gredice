@@ -1,5 +1,6 @@
 'use client';
 
+import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { GameQualityProfileTier } from './gameQuality';
 
@@ -289,6 +290,7 @@ export type GameProfileMetadata = {
     generatedPlantRenderNearInstanceCount?: number;
     generatedPlantVisibleFieldCount?: number;
     generatedPlantVisibleInstanceCount?: number;
+    gameCameraSnapshot?: GameCameraSnapshot;
     instancedInteractionControllerCount?: number;
     instancedInteractionResolutionCount?: number;
     instancedInteractionResolutionMaxMs?: number;

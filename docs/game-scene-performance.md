@@ -194,12 +194,14 @@ layers, and legacy static-scene-cache mode fixed. Its acceptance checks verify
 the resolved quality tier, synthetic Auto inputs, canvas backing-store policy,
 and full plant-fixture visibility throughout each repeated sample. Camera
 motion uses bounded zoom/rotation cycles so it exercises visibility and render
-updates without changing the measured fixture. The auto device classes are
-deterministic profiler inputs rather than measurements from representative
-hardware. Reported results therefore establish a reproducible local
-production-build regression baseline; they do not replace physical-device,
-sustained thermal, or deployed runtime validation. Do not record performance
-conclusions here until a report has been generated and reviewed.
+updates without changing the measured fixture; motion runs also require a
+camera snapshot/version change during the sample, so dropped input cannot be
+reported as motion evidence. The auto device classes are deterministic
+profiler inputs rather than measurements from representative hardware.
+Reported results therefore establish a reproducible local production-build
+regression baseline; they do not replace physical-device, sustained thermal,
+or deployed runtime validation. Do not record performance conclusions here
+until a report has been generated and reviewed.
 
 Run every profiler scenario together:
 

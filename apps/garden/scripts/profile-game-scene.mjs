@@ -372,7 +372,7 @@ const crossTierPhases = [
 const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
     crossTierPhases.map((phase) => ({
         name: `game-cross-tier-${profile.slug}-${phase.name}-desktop`,
-        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&staticSceneCache=legacy`,
+        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&staticSceneCache=legacy${phase.motion ? '&cameraProfile=1' : ''}`,
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -3118,6 +3118,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let adaptiveHighLevelMax = null;
             let adaptiveHighProfileControlObserved = false;
             let effectiveDprMin = null;
+            let gameCameraMotionObserved = false;
+            let gameCameraSnapshotAtStart = null;
+            let gameCameraSnapshotVersionMax = null;
             let generatedPlantVisibleFieldCountMin = null;
             let generatedPlantVisibleInstanceCountMin = null;
             const readProfileNumber = (field) => {
@@ -3132,10 +3135,68 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'string' ? value : null;
             };
+            const readGameCameraSnapshot = () => {
+                const snapshot =
+                    globalThis.__grediceGameProfile?.gameCameraSnapshot;
+                const validVector = (value) =>
+                    Array.isArray(value) &&
+                    value.length === 3 &&
+                    value.every((component) => Number.isFinite(component));
+                if (
+                    !snapshot ||
+                    !validVector(snapshot.position) ||
+                    !validVector(snapshot.target) ||
+                    !Number.isFinite(snapshot.version) ||
+                    !Number.isFinite(snapshot.zoom)
+                ) {
+                    return null;
+                }
+                return {
+                    position: [...snapshot.position],
+                    target: [...snapshot.target],
+                    version: snapshot.version,
+                    zoom: snapshot.zoom,
+                };
+            };
             const counterDelta = (startValue, endValue) =>
                 startValue === null || endValue === null
                     ? null
                     : endValue - startValue;
+            const recordGameCameraMotion = () => {
+                const snapshot = readGameCameraSnapshot();
+                if (!snapshot) {
+                    return;
+                }
+                gameCameraSnapshotVersionMax =
+                    gameCameraSnapshotVersionMax === null
+                        ? snapshot.version
+                        : Math.max(
+                              gameCameraSnapshotVersionMax,
+                              snapshot.version,
+                          );
+                if (
+                    !gameCameraSnapshotAtStart ||
+                    snapshot.version <= gameCameraSnapshotAtStart.version
+                ) {
+                    return;
+                }
+                const componentDeltas = [
+                    Math.abs(snapshot.zoom - gameCameraSnapshotAtStart.zoom),
+                    ...snapshot.position.map((component, index) =>
+                        Math.abs(
+                            component -
+                                gameCameraSnapshotAtStart.position[index],
+                        ),
+                    ),
+                    ...snapshot.target.map((component, index) =>
+                        Math.abs(
+                            component - gameCameraSnapshotAtStart.target[index],
+                        ),
+                    ),
+                ];
+                gameCameraMotionObserved ||=
+                    Math.max(...componentDeltas) > 0.000_001;
+            };
             const readEffectiveDpr = () => {
                 if (
                     !canvas ||
@@ -3214,6 +3275,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 adaptiveHighProfileControlObserved ||=
                     profile?.adaptiveHighProfileControlActive === true;
             };
+            gameCameraSnapshotAtStart = readGameCameraSnapshot();
+            gameCameraSnapshotVersionMax =
+                gameCameraSnapshotAtStart?.version ?? null;
+            recordGameCameraMotion();
             recordEffectiveDpr();
             recordGeneratedPlantVisibility();
             recordAdaptiveHighState();
@@ -3486,6 +3551,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     last = now;
                     recordAdaptiveHighState();
                     recordEffectiveDpr();
+                    recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
@@ -3594,6 +3660,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ]);
 
             const sampleEndedAt = performance.now();
+            recordGameCameraMotion();
+            const gameCameraSnapshotAtEnd = readGameCameraSnapshot();
+            const gameCameraSnapshotVersionDelta =
+                gameCameraSnapshotAtStart && gameCameraSnapshotAtEnd
+                    ? gameCameraSnapshotAtEnd.version -
+                      gameCameraSnapshotAtStart.version
+                    : null;
             const frameIntervals = intervals.slice(1);
             const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
             const percentile = (value) =>
@@ -3799,6 +3872,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 elapsedMs: elapsedSeconds * 1000,
                 fps: rafFrames / safeElapsedSeconds,
                 frames: rafFrames,
+                gameCameraMotionObserved,
+                gameCameraSnapshotAtEnd,
+                gameCameraSnapshotAtStart,
+                gameCameraSnapshotVersionDelta,
+                gameCameraSnapshotVersionMax,
                 generatedPlantVisibleFieldCountMin,
                 generatedPlantVisibleInstanceCountMin,
                 instancedDrawCalls,
@@ -5062,6 +5140,20 @@ function evaluateCrossTierAcceptance({
             sample.generatedPlantVisibleInstanceCountMin,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        ...(requested.motion === 'bounded-zoom-rotate'
+            ? [
+                  exact(
+                      'crossTierCameraMotionObserved',
+                      sample.gameCameraMotionObserved,
+                      true,
+                  ),
+                  minimum(
+                      'crossTierCameraSnapshotVersionDelta',
+                      sample.gameCameraSnapshotVersionDelta,
+                      1,
+                  ),
+              ]
+            : []),
         exact(
             'crossTierStaticSceneCacheRequest',
             requested.staticSceneCache,
