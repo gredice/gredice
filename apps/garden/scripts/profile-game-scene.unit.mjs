@@ -12,6 +12,7 @@ import {
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildReportProvenance,
     buildScenarioRunQueue,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
@@ -37,11 +38,225 @@ import {
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    parseComparisonContractVersion,
     primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
+    shouldFailProfileRun,
 } from './profile-game-scene.mjs';
+
+const provenanceCommitA = 'a'.repeat(40);
+const provenanceCommitB = 'b'.repeat(40);
+const cleanServedBuildMarker = {
+    commit: provenanceCommitA,
+    comparisonContractVersion: 1,
+    dirty: false,
+};
+
+function profileProvenance(overrides = {}) {
+    return buildReportProvenance({
+        harness: {
+            commit: provenanceCommitA,
+            dirty: false,
+        },
+        runtime: {
+            arch: 'arm64',
+            browserVersion: '140.0.0.0',
+            nodeVersion: 'v24.15.0',
+            platform: 'darwin',
+        },
+        scenarios: [
+            {
+                requested: { gardenProfile: 'high-target' },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+            {
+                requested: { gardenSwitchProfile: true },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+            {
+                requested: { lifecycleProfile: true },
+                servedBuildProvenance: cleanServedBuildMarker,
+            },
+        ],
+        server: {
+            buildPerformed: true,
+            mode: 'managed',
+        },
+        ...overrides,
+    });
+}
+
+test('report provenance validates regular, switch, and lifecycle served-build markers', () => {
+    assert.deepEqual(profileProvenance(), {
+        comparable: true,
+        reasons: [],
+        subject: {
+            commit: provenanceCommitA,
+            dirty: false,
+            source: 'served-build-marker',
+        },
+        harness: {
+            commit: provenanceCommitA,
+            dirty: false,
+        },
+        runtime: {
+            arch: 'arm64',
+            browserVersion: '140.0.0.0',
+            nodeVersion: 'v24.15.0',
+            platform: 'darwin',
+        },
+        server: {
+            buildPerformed: true,
+            mode: 'managed',
+        },
+    });
+});
+
+test('comparison contract markers require one complete canonical integer', () => {
+    assert.equal(parseComparisonContractVersion('1'), 1);
+    assert.equal(parseComparisonContractVersion('12'), 12);
+    for (const malformed of [
+        null,
+        '',
+        '0',
+        '01',
+        '1.0',
+        '1-invalid',
+        ' 1 ',
+        String(Number.MAX_SAFE_INTEGER + 1),
+    ]) {
+        assert.equal(parseComparisonContractVersion(malformed), null);
+    }
+});
+
+test('report provenance fails closed for unknown or dirty sources', () => {
+    const unknown = profileProvenance({
+        harness: { commit: 'unknown', dirty: null },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    commit: 'unknown',
+                    comparisonContractVersion: null,
+                    dirty: null,
+                },
+            },
+        ],
+    });
+    assert.equal(unknown.comparable, false);
+    assert.deepEqual(unknown.subject, {
+        commit: null,
+        dirty: null,
+        source: 'served-build-marker',
+    });
+    assert.ok(unknown.reasons.includes('served-build-source-commit-unknown'));
+    assert.ok(unknown.reasons.includes('served-build-dirty-state-unknown'));
+    assert.ok(
+        unknown.reasons.includes('served-build-comparison-contract-unknown'),
+    );
+    assert.ok(unknown.reasons.includes('harness-source-commit-unknown'));
+    assert.ok(unknown.reasons.includes('harness-dirty-state-unknown'));
+
+    const dirty = profileProvenance({
+        harness: { commit: provenanceCommitA, dirty: true },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    dirty: true,
+                },
+            },
+        ],
+    });
+    assert.equal(dirty.comparable, false);
+    assert.ok(dirty.reasons.includes('served-build-dirty'));
+    assert.ok(dirty.reasons.includes('harness-dirty'));
+});
+
+test('report provenance rejects served-build, harness, and contract mismatches', () => {
+    const provenance = profileProvenance({
+        scenarios: [
+            { servedBuildProvenance: cleanServedBuildMarker },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    commit: provenanceCommitB,
+                },
+            },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    comparisonContractVersion: 2,
+                },
+            },
+        ],
+    });
+
+    assert.equal(provenance.comparable, false);
+    assert.equal(provenance.subject.commit, null);
+    assert.ok(
+        provenance.reasons.includes('served-build-source-commit-inconsistent'),
+    );
+    assert.ok(
+        provenance.reasons.includes(
+            'served-build-comparison-contract-mismatch',
+        ),
+    );
+
+    const harnessMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+    });
+    assert.equal(harnessMismatch.comparable, false);
+    assert.ok(harnessMismatch.reasons.includes('source-commit-mismatch'));
+});
+
+test('budget-enforced profiling fails closed for incomparable provenance', () => {
+    const passingSummary = { failedScenarios: 0 };
+
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: passingSummary,
+            provenance: profileProvenance(),
+        }),
+        false,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: passingSummary,
+            provenance: profileProvenance({
+                harness: { commit: provenanceCommitA, dirty: true },
+            }),
+        }),
+        true,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: { failedScenarios: 1 },
+            provenance: profileProvenance(),
+        }),
+        true,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: false,
+            profileSummary: passingSummary,
+            provenance: { comparable: false },
+        }),
+        false,
+    );
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: {},
+            provenance: profileProvenance(),
+        }),
+        true,
+    );
+});
 
 test('closeup acceptance rejects synchronous worker fallback', () => {
     const phase = (syncFallbackTaskCount) => ({
@@ -256,13 +471,19 @@ test('cross-tier scenario set replays one High-target garden across every tier a
             assert.equal(scenario.expectedShadowMapSize, shadowMapSize);
             assert.equal(scenario.expectedShadows, shadows);
             assert.equal(scenario.isMobile, false);
+            assert.deepEqual(scenario.outlineProfile, {
+                action: 'show',
+                raisedBedId: 2,
+            });
             assert.equal(scenario.repeat, 3);
+            assert.equal(scenario.screenshotWitness, true);
             assert.deepEqual(scenario.viewport, { width: 1280, height: 720 });
             assert.equal(request.debugHud, '0');
             assert.equal(request.details, '1');
             assert.equal(request.gardenProfile, 'high-target');
             assert.equal(request.hud, '0');
             assert.equal(request.mode, 'details');
+            assert.equal(request.outline, '1');
             assert.equal(request.quality, quality);
             assert.equal(request.staticSceneCache, 'legacy');
         }
@@ -1409,9 +1630,14 @@ test('garden-switch sampling primes the discarded RAF before switch work', async
         frameCallbacks.shift()(sampleStartedAt + 16);
         frameCallbacks.shift()(sampleStartedAt + 16);
         await started;
-        assert.deepEqual(
-            globalThis.__gameProfileInteractiveSample.intervals,
-            [16],
+        assert.equal(
+            globalThis.__gameProfileInteractiveSample.intervals.length,
+            1,
+        );
+        assert.ok(
+            Math.abs(
+                globalThis.__gameProfileInteractiveSample.intervals[0] - 16,
+            ) < 1e-9,
         );
 
         frameCallbacks.shift()(sampleStartedAt + 216);
@@ -1713,6 +1939,9 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             expectedShadows: false,
             dpr: 2,
             gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
             quality: 'low',
             staticSceneCache: 'legacy',
             viewport: { height: 720, width: 1280 },
@@ -1725,6 +1954,10 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             generatedPlantVisibleFieldCount: 54,
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0,
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileCommandAction: 'show',
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineStyleGroupCount: 1,
             qualityTier: 'low',
             shadowMapSize: 0,
             shadowsEnabled: false,
@@ -1742,10 +1975,21 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             elapsedMs: 5_000,
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: true,
             renderedFps: 12,
             renderedFrames: 60,
             reportedDpr: 2,
             submittedTriangles: 1_000_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
         },
     };
 
@@ -1850,6 +2094,9 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             expectedShadowMapSize: 2_048,
             expectedShadows: true,
             gardenProfile: 'high-target',
+            outline: '1',
+            outlineProfile: 'connected-raised-bed',
+            outlineRaisedBedId: 2,
             quality: 'auto',
             staticSceneCache: 'legacy',
             viewport: { height: 720, width: 1280 },
@@ -1862,6 +2109,10 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             generatedPlantVisibleFieldCount: 54,
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0.5,
+            hoverOutlineActiveTargetCount: 2,
+            hoverOutlineProfileCommandAction: 'show',
+            hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
+            hoverOutlineStyleGroupCount: 1,
             qualityTier: 'medium',
             shadowMapSize: 2_048,
             shadowsEnabled: true,
@@ -1878,10 +2129,21 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             elapsedMs: 5_000,
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            outlineProfileDispatched: true,
+            outlineProfileTelemetryAvailable: true,
             renderedFps: 12,
             renderedFrames: 60,
             reportedDpr: 2,
             submittedTriangles: 1_000_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
         },
     };
     const result = evaluateCrossTierAcceptance(input);

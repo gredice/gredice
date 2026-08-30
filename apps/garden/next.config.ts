@@ -23,6 +23,16 @@ const deploymentId =
     process.env.VERCEL_DEPLOYMENT_ID ??
     process.env.VERCEL_GIT_COMMIT_SHA ??
     'local';
+const gameProfileSourceCommit =
+    process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT?.trim() ||
+    process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+    process.env.GITHUB_SHA?.trim() ||
+    'unknown';
+const gameProfileSourceDirty =
+    process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY?.trim() || 'unknown';
+const gameProfileComparisonContractVersion =
+    process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION?.trim() ||
+    '1';
 
 const assetCacheHeaders = [
     {
@@ -43,6 +53,10 @@ const nextConfig: NextConfig = {
     partialPrefetching: true,
     env: {
         NEXT_PUBLIC_BLOCK_IMAGE_VERSION: blockImageAssetVersion,
+        NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION:
+            gameProfileComparisonContractVersion,
+        NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT: gameProfileSourceCommit,
+        NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY: gameProfileSourceDirty,
     },
     logging: {
         browserToTerminal: true,

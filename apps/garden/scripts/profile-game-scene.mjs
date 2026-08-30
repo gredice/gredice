@@ -9,6 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
+const gameProfileComparisonContractVersion = 1;
+const fullSourceCommitPattern = /^[0-9a-f]{40}$/i;
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
 const gameProfileCloseupCommandEventName =
@@ -456,7 +458,7 @@ const crossTierPhases = [
 const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
     crossTierPhases.map((phase) => ({
         name: `game-cross-tier-${profile.slug}-${phase.name}-desktop`,
-        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&staticSceneCache=legacy${phase.motion ? '&cameraProfile=1' : ''}`,
+        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy${phase.motion ? '&cameraProfile=1' : ''}`,
         viewport: { width: 1280, height: 720 },
         dpr: 2,
         isMobile: false,
@@ -468,7 +470,12 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
         expectedShadowMapSize: profile.shadowMapSize,
         expectedShadows: profile.shadows,
         motion: phase.motion,
+        outlineProfile: {
+            action: 'show',
+            raisedBedId: 2,
+        },
         repeat: 3,
+        screenshotWitness: true,
         ...(profile.autoQualityDeviceClass
             ? {
                   autoQualityDeviceClass: profile.autoQualityDeviceClass,
@@ -1374,6 +1381,199 @@ function parseArgs(argv) {
     return options;
 }
 
+function normalizeSourceCommit(value) {
+    const commit = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return fullSourceCommitPattern.test(commit) ? commit : null;
+}
+
+function parseDirtyMarker(value) {
+    if (value === true || value === 'true') {
+        return true;
+    }
+    if (value === false || value === 'false') {
+        return false;
+    }
+    return null;
+}
+
+function parseComparisonContractVersion(value) {
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+        return null;
+    }
+    const version = Number(value);
+    return Number.isSafeInteger(version) ? version : null;
+}
+
+function readCommandOutput(command, args) {
+    return new Promise((resolveOutput) => {
+        let output = '';
+        const child = spawn(command, args, {
+            cwd: appRoot,
+            env: process.env,
+            stdio: ['ignore', 'pipe', 'ignore'],
+        });
+
+        child.stdout.on('data', (chunk) => {
+            output += chunk.toString();
+        });
+        child.on('error', () => resolveOutput(null));
+        child.on('close', (code) => {
+            resolveOutput(code === 0 ? output : null);
+        });
+    });
+}
+
+async function readHarnessProvenance() {
+    const [gitCommit, gitStatus] = await Promise.all([
+        readCommandOutput('git', ['rev-parse', 'HEAD']),
+        readCommandOutput('git', [
+            'status',
+            '--porcelain',
+            '--untracked-files=normal',
+        ]),
+    ]);
+    const environmentCommit =
+        process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? null;
+
+    return {
+        commit:
+            normalizeSourceCommit(gitCommit) ??
+            normalizeSourceCommit(environmentCommit),
+        dirty: gitStatus === null ? null : gitStatus.trim().length > 0,
+    };
+}
+
+async function readServedBuildProvenance(page) {
+    const marker = await page.evaluate(() => {
+        const element = document.querySelector(
+            '[data-game-profile-source-commit]',
+        );
+        if (!(element instanceof HTMLElement)) {
+            return {
+                commit: null,
+                comparisonContractVersion: null,
+                dirty: null,
+            };
+        }
+
+        return {
+            commit: element.dataset.gameProfileSourceCommit ?? null,
+            comparisonContractVersion:
+                element.dataset.gameProfileComparisonContractVersion ?? null,
+            dirty: element.dataset.gameProfileSourceDirty ?? null,
+        };
+    });
+    return {
+        commit: marker.commit,
+        comparisonContractVersion: parseComparisonContractVersion(
+            marker.comparisonContractVersion,
+        ),
+        dirty: parseDirtyMarker(marker.dirty),
+    };
+}
+
+function buildReportProvenance({ harness, runtime, scenarios, server }) {
+    const markers = scenarios.map(
+        (scenario) => scenario.servedBuildProvenance ?? null,
+    );
+    const normalizedCommits = markers.map((marker) =>
+        normalizeSourceCommit(marker?.commit),
+    );
+    const normalizedDirtyStates = markers.map((marker) =>
+        parseDirtyMarker(marker?.dirty),
+    );
+    const normalizedContractVersions = markers.map((marker) =>
+        Number.isInteger(marker?.comparisonContractVersion)
+            ? marker.comparisonContractVersion
+            : null,
+    );
+    const commits = new Set(normalizedCommits.filter(Boolean));
+    const dirtyStates = new Set(
+        normalizedDirtyStates.filter((value) => value !== null),
+    );
+    const contractVersions = new Set(
+        normalizedContractVersions.filter((value) => value !== null),
+    );
+    const subjectCommit = commits.size === 1 ? [...commits][0] : null;
+    const subjectDirty = dirtyStates.size === 1 ? [...dirtyStates][0] : null;
+    const subjectContractVersion =
+        contractVersions.size === 1 ? [...contractVersions][0] : null;
+    const harnessCommit = normalizeSourceCommit(harness?.commit);
+    const harnessDirty = parseDirtyMarker(harness?.dirty);
+    const reasons = [];
+
+    if (markers.length === 0 || markers.some((marker) => marker === null)) {
+        reasons.push('served-build-marker-missing');
+    }
+    if (normalizedCommits.some((commit) => commit === null)) {
+        reasons.push('served-build-source-commit-unknown');
+    }
+    if (commits.size > 1) {
+        reasons.push('served-build-source-commit-inconsistent');
+    }
+    if (normalizedDirtyStates.some((dirty) => dirty === null)) {
+        reasons.push('served-build-dirty-state-unknown');
+    }
+    if (dirtyStates.size > 1) {
+        reasons.push('served-build-dirty-state-inconsistent');
+    } else if (subjectDirty) {
+        reasons.push('served-build-dirty');
+    }
+    if (normalizedContractVersions.some((version) => version === null)) {
+        reasons.push('served-build-comparison-contract-unknown');
+    }
+    if (
+        contractVersions.size > 1 ||
+        (subjectContractVersion !== null &&
+            subjectContractVersion !== gameProfileComparisonContractVersion)
+    ) {
+        reasons.push('served-build-comparison-contract-mismatch');
+    }
+    if (!harnessCommit) {
+        reasons.push('harness-source-commit-unknown');
+    }
+    if (harnessDirty === null) {
+        reasons.push('harness-dirty-state-unknown');
+    } else if (harnessDirty) {
+        reasons.push('harness-dirty');
+    }
+    if (subjectCommit && harnessCommit && subjectCommit !== harnessCommit) {
+        reasons.push('source-commit-mismatch');
+    }
+
+    return {
+        comparable: reasons.length === 0,
+        reasons,
+        subject: {
+            commit: subjectCommit,
+            dirty: subjectDirty,
+            source: 'served-build-marker',
+        },
+        harness: {
+            commit: harnessCommit,
+            dirty: harnessDirty,
+        },
+        runtime: {
+            arch: runtime.arch,
+            browserVersion: runtime.browserVersion,
+            nodeVersion: runtime.nodeVersion,
+            platform: runtime.platform,
+        },
+        server: {
+            buildPerformed: server.buildPerformed,
+            mode: server.mode,
+        },
+    };
+}
+
+function shouldFailProfileRun({ failOnBudget, profileSummary, provenance }) {
+    return (
+        failOnBudget === true &&
+        (profileSummary?.failedScenarios !== 0 ||
+            provenance?.comparable !== true)
+    );
+}
+
 function printHelp(options) {
     console.log(
         [
@@ -1396,7 +1596,7 @@ function printHelp(options) {
             `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
-            '  --fail-on-budget       Exit non-zero when a budget check fails.',
+            '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
             '  --help                 Show this help.',
             '',
             'Environment aliases:',
@@ -2621,11 +2821,14 @@ function resolveServerPort(baseUrl) {
     return url.protocol === 'https:' ? '443' : '80';
 }
 
-function runPackageScript(script) {
+function runPackageScript(script, environment = {}) {
     return new Promise((resolveRun, rejectRun) => {
         const child = spawn('pnpm', ['run', script], {
             cwd: appRoot,
-            env: process.env,
+            env: {
+                ...process.env,
+                ...environment,
+            },
             stdio: 'inherit',
         });
 
@@ -3452,6 +3655,7 @@ async function measureGardenSwitchScenario(
             state: 'attached',
             timeout: 60_000,
         });
+        const servedBuildProvenance = await readServedBuildProvenance(page);
         const sceneCanvas = await page
             .locator('[data-scene-garden-id] canvas')
             .elementHandle();
@@ -3604,6 +3808,7 @@ async function measureGardenSwitchScenario(
                 qualityTier: 'high',
             },
             sample: finalArrival?.sample ?? null,
+            servedBuildProvenance,
             screenshotPath: finalArrival?.screenshotPath ?? null,
             screenshotWitness: finalArrival?.screenshotWitness ?? null,
             url,
@@ -4936,6 +5141,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             state: 'attached',
             timeout: 60_000,
         });
+        const servedBuildProvenance = await readServedBuildProvenance(page);
         await page.waitForFunction(
             () => {
                 const canvas = document.querySelector(
@@ -5439,6 +5645,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 shadowsEnabled: resolved.shadowsEnabled,
             },
             sample: active.sample,
+            servedBuildProvenance,
             screenshotPath,
             screenshotWitness,
             url,
@@ -5516,6 +5723,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         state: 'attached',
         timeout: 60000,
     });
+    const servedBuildProvenance = await readServedBuildProvenance(page);
     await page.waitForFunction(
         () => {
             const canvas = document.querySelector('canvas');
@@ -5908,6 +6116,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             },
             runtime: closeup.runtime,
             sample,
+            servedBuildProvenance,
             screenshotPath:
                 closeup.cold.screenshots.detailed ??
                 closeup.normalScreenshotPath,
@@ -7463,6 +7672,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             rendererShaders:
                 numberOrNull(metadata.rendererShaders) ??
                 numberOrNull(resources.rendererShaders),
+            rendererGeometries: numberOrNull(metadata.rendererGeometries),
             rendererTextures:
                 numberOrNull(metadata.rendererTextures) ??
                 numberOrNull(resources.rendererTextures),
@@ -7812,6 +8022,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         requested,
         runtime,
         sample: roundedSample,
+        servedBuildProvenance,
         screenshotPath,
         screenshotWitness,
         url,
@@ -8879,6 +9090,7 @@ function evaluateCrossTierAcceptance({
     requested,
     runtime,
     sample,
+    screenshotWitness,
 }) {
     if (requested?.crossTierProfile !== true) {
         return { checks: [], pass: true };
@@ -9063,6 +9275,75 @@ function evaluateCrossTierAcceptance({
             runtime?.staticOpaqueSceneCacheEnabled,
             false,
         ),
+        exact('crossTierOutlineFlag', requested.outline, '1'),
+        exact(
+            'crossTierOutlineProfile',
+            requested.outlineProfile,
+            'connected-raised-bed',
+        ),
+        exact('crossTierOutlineRaisedBedId', requested.outlineRaisedBedId, 2),
+        exact(
+            'crossTierOutlineProfileDispatched',
+            sample.outlineProfileDispatched,
+            true,
+        ),
+        exact(
+            'crossTierOutlineTelemetryAvailable',
+            sample.outlineProfileTelemetryAvailable,
+            true,
+        ),
+        exact(
+            'crossTierOutlineActiveTargets',
+            runtime?.hoverOutlineActiveTargetCount,
+            2,
+        ),
+        exact(
+            'crossTierOutlineStyleGroups',
+            runtime?.hoverOutlineStyleGroupCount,
+            1,
+        ),
+        exact(
+            'crossTierOutlineCommandAction',
+            runtime?.hoverOutlineProfileCommandAction,
+            'show',
+        ),
+        exact(
+            'crossTierOutlineTargetBlockId',
+            runtime?.hoverOutlineProfileTargetBlockId,
+            'profile-raised-bed:2:0',
+        ),
+        exact(
+            'crossTierScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'crossTierScreenshotWidth',
+            screenshotWitness?.width,
+            requested.viewport?.width * requested.dpr,
+        ),
+        exact(
+            'crossTierScreenshotHeight',
+            screenshotWitness?.height,
+            requested.viewport?.height * requested.dpr,
+        ),
+        exact('crossTierScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('crossTierScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'crossTierScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'crossTierScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'crossTierScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
         minimum('crossTierRenderedFps', sample.renderedFps, 1),
         minimum(
             'crossTierRenderedFrames',
@@ -9122,6 +9403,7 @@ function evaluateHighTargetAcceptance({
             requested,
             runtime,
             sample,
+            screenshotWitness,
         });
     }
 
@@ -12830,7 +13112,13 @@ function buildMarkdown(report) {
         `Generated: ${report.generatedAt}`,
         '',
         `Schema: ${report.schemaVersion}`,
+        `Comparison contract: ${report.comparisonContractVersion ?? 'unknown'}`,
         `Source commit: ${report.sourceCommit ?? 'unknown'}`,
+        `Comparable: ${report.provenance?.comparable ? 'yes' : 'no'}`,
+        `Comparability reasons: ${report.provenance?.reasons?.length ? report.provenance.reasons.join(', ') : 'none'}`,
+        `Served build: ${report.provenance?.subject?.commit ?? 'unknown'} (${report.provenance?.subject?.dirty === false ? 'clean' : report.provenance?.subject?.dirty === true ? 'dirty' : 'dirty state unknown'})`,
+        `Profiler harness: ${report.provenance?.harness?.commit ?? 'unknown'} (${report.provenance?.harness?.dirty === false ? 'clean' : report.provenance?.harness?.dirty === true ? 'dirty' : 'dirty state unknown'})`,
+        `Runtime: ${report.provenance?.runtime?.platform ?? 'unknown'}/${report.provenance?.runtime?.arch ?? 'unknown'}, Node ${report.provenance?.runtime?.nodeVersion ?? 'unknown'}, Chromium ${report.provenance?.runtime?.browserVersion ?? 'unknown'}`,
         '',
         `Base URL: ${report.baseUrl}`,
         '',
@@ -13519,6 +13807,7 @@ async function main() {
         options.scenarioSet,
         options.scenarios,
     );
+    const harnessProvenance = await readHarnessProvenance();
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -13527,7 +13816,17 @@ async function main() {
     }
 
     if (options.build) {
-        await runPackageScript('build');
+        await runPackageScript('build', {
+            NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION: String(
+                gameProfileComparisonContractVersion,
+            ),
+            NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT:
+                harnessProvenance.commit ?? 'unknown',
+            NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY:
+                harnessProvenance.dirty === null
+                    ? 'unknown'
+                    : String(harnessProvenance.dirty),
+        });
     }
 
     let server;
@@ -13637,14 +13936,27 @@ async function main() {
             highTargetMedians,
             staticSceneCacheComparisons,
         );
+        const provenance = buildReportProvenance({
+            harness: harnessProvenance,
+            runtime: {
+                arch: process.arch,
+                browserVersion: browser.version(),
+                nodeVersion: process.version,
+                platform: process.platform,
+            },
+            scenarios,
+            server: {
+                buildPerformed: options.build,
+                mode: options.startServer ? 'managed' : 'external',
+            },
+        });
         const report = {
             baseUrl: options.baseUrl,
+            comparisonContractVersion: gameProfileComparisonContractVersion,
             generatedAt: new Date().toISOString(),
-            schemaVersion: 4,
-            sourceCommit:
-                process.env.VERCEL_GIT_COMMIT_SHA ??
-                process.env.GITHUB_SHA ??
-                null,
+            provenance,
+            schemaVersion: 5,
+            sourceCommit: provenance.subject.commit,
             options: {
                 allowLegacyOperationVisuals:
                     options.allowLegacyOperationVisuals,
@@ -13656,6 +13968,7 @@ async function main() {
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
                 scenarioSet: options.scenarioSet,
+                screenshots: options.screenshots,
                 soakMs: options.soakMs,
                 warmupMs: options.warmupMs,
             },
@@ -13681,8 +13994,17 @@ async function main() {
         console.log(
             `Budget status: ${profileSummary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         );
+        console.log(
+            `Comparability status: ${provenance.comparable ? 'pass' : `fail (${provenance.reasons.join(', ')})`}`,
+        );
 
-        if (profileSummary.failedScenarios > 0 && options.failOnBudget) {
+        if (
+            shouldFailProfileRun({
+                failOnBudget: options.failOnBudget,
+                profileSummary,
+                provenance,
+            })
+        ) {
             process.exitCode = 1;
         }
     } finally {
@@ -13705,6 +14027,7 @@ export {
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildReportProvenance,
     buildScenarioRunQueue,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
@@ -13731,10 +14054,12 @@ export {
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    parseComparisonContractVersion,
     primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
+    shouldFailProfileRun,
 };
 
 const invokedModuleUrl = process.argv[1]

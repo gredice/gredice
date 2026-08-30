@@ -345,6 +345,9 @@ export default async function GameProfilePage({
         <main
             className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]"
             data-game-profile-mode={mode}
+            data-game-profile-comparison-contract-version={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION
+            }
             data-game-profile-controls={enableControls ? '1' : '0'}
             data-game-profile-details={renderDetails ? '1' : '0'}
             data-game-profile-fixed-time-seconds={fixedTimeSeconds ?? undefined}
@@ -366,6 +369,12 @@ export default async function GameProfilePage({
             data-game-profile-static-scene-cache={staticSceneCacheMode}
             data-game-profile-static-scene-cache-occlusion-fixture={
                 staticSceneCacheOcclusionFixture ? '1' : '0'
+            }
+            data-game-profile-source-commit={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT
+            }
+            data-game-profile-source-dirty={
+                process.env.NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY
             }
             data-game-profile-weather-surface={weatherSurfaceMode}
             data-game-profile-operation-visual-highlight-raised-bed-id={
