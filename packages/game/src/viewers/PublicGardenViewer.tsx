@@ -120,6 +120,7 @@ export type PublicGardenDetail = Pick<
     | 'name'
     | 'raisedBeds'
     | 'stacks'
+    | 'structures'
     | 'updatedAt'
 >;
 
@@ -417,6 +418,7 @@ function publicGardenForGameState(
         homeCamera: garden.homeCamera ?? null,
         farmId: garden.farmId,
         stacks: normalizedStacks,
+        structures: garden.structures,
         location: {
             lat: garden.latitude,
             lon: garden.longitude,

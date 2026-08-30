@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
 import type { Block } from '../types/Block';
 import { createGardenPosition, type GardenStack } from '../types/Stack';
 import { shareCurrentGardenData } from './currentGardenStructuralSharing';
@@ -36,6 +37,7 @@ function createGarden(overrides: Partial<CurrentGarden> = {}): CurrentGarden {
         backgroundPalette: 'current',
         farmId: 1,
         stacks: [createStack(0, 0)],
+        structures: [],
         location: {
             lat: 45,
             lon: 16,
@@ -43,6 +45,28 @@ function createGarden(overrides: Partial<CurrentGarden> = {}): CurrentGarden {
         raisedBeds: [],
         ...gardenOverrides,
         homeCamera: homeCamera ?? null,
+    };
+}
+
+function createStructure(
+    overrides: Partial<CurrentGarden['structures'][number]> = {},
+): CurrentGarden['structures'][number] {
+    const seed = createGardenStructureTemplateSeed('house');
+    return {
+        anchorX: 0,
+        anchorY: 0,
+        document: seed.document,
+        id: 'structure-1',
+        isDeleted: false,
+        kitKey: seed.kitKey,
+        kitVersion: seed.kitVersion,
+        pricingVersion: 1,
+        refundableSunflowerPrincipal: 50,
+        revision: 1,
+        rotation: 0,
+        sunflowerPricePerCell: 50,
+        templateKey: seed.templateKey,
+        ...overrides,
     };
 }
 
@@ -104,6 +128,39 @@ describe('shareCurrentGardenData', () => {
             sharedGarden?.stacks[1]?.blocks[1],
             nextChangedStack.blocks[1],
         );
+    });
+
+    it('keeps unrelated structure, stack, and raised-bed references when one structure changes', () => {
+        const unchangedStructure = createStructure({ id: 'structure-a' });
+        const changedStructure = createStructure({ id: 'structure-b' });
+        const stack = createStack(0, 0);
+        const raisedBeds: CurrentGarden['raisedBeds'] = [];
+        const previousGarden = createGarden({
+            raisedBeds,
+            stacks: [stack],
+            structures: [unchangedStructure, changedStructure],
+        });
+        const nextChangedStructure = createStructure({
+            anchorX: 3,
+            id: 'structure-b',
+            revision: 2,
+        });
+        const nextGarden = createGarden({
+            raisedBeds: [],
+            stacks: [createStack(0, 0)],
+            structures: [
+                createStructure({ id: 'structure-a' }),
+                nextChangedStructure,
+            ],
+        });
+
+        const sharedGarden = shareCurrentGardenData(previousGarden, nextGarden);
+
+        assert.notEqual(sharedGarden, previousGarden);
+        assert.equal(sharedGarden?.structures[0], unchangedStructure);
+        assert.equal(sharedGarden?.structures[1], nextChangedStructure);
+        assert.equal(sharedGarden?.stacks, previousGarden.stacks);
+        assert.equal(sharedGarden?.raisedBeds, raisedBeds);
     });
 
     it('replaces a block when its editable sign message changes', () => {

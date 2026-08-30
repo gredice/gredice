@@ -95,6 +95,7 @@ import {
     isPlantStatusEffectiveDateAllowed,
     knownEvents,
     knownEventTypes,
+    listGardenStructures,
     maxNotificationReadBatchSize,
     PublicGardenLikeTargetNotFoundError,
     queueGardenPreviewBlobDeletion,
@@ -147,6 +148,7 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
+import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import {
     countPublicGardenActivePlants,
@@ -721,6 +723,7 @@ function serializePublicGardenPreviewImages(
 
 type GardenDetail = NonNullable<Awaited<ReturnType<typeof getGarden>>>;
 type GardenBlocks = Awaited<ReturnType<typeof getGardenBlocks>>;
+type GardenStructures = Awaited<ReturnType<typeof listGardenStructures>>;
 type AppliedGardenOperations = Awaited<
     ReturnType<typeof getAppliedRaisedBedOperationsForGarden>
 >;
@@ -794,6 +797,7 @@ async function serializeGardenDetails(
     garden: GardenDetail,
     blocks: GardenBlocks,
     operations: AppliedGardenOperations,
+    structures: GardenStructures,
     options: { publicView?: boolean } = {},
 ) {
     const blockNameById = new Map(
@@ -859,6 +863,16 @@ async function serializeGardenDetails(
         garden.stacks,
         blockNameById,
     );
+    const serializedStructures = serializeGardenStructures(structures, {
+        publicView: options.publicView,
+        onInvalid: ({ code, structureId }) => {
+            console.error('Skipped invalid garden structure serialization', {
+                code,
+                gardenId: garden.id,
+                structureId,
+            });
+        },
+    });
 
     return {
         id: garden.id,
@@ -873,6 +887,7 @@ async function serializeGardenDetails(
         latitude: garden.farm.latitude,
         longitude: garden.farm.longitude,
         stacks: serializeGardenStacks(garden, blocks),
+        structures: serializedStructures,
         raisedBeds: garden.raisedBeds.map((raisedBed) => ({
             id: raisedBed.id,
             name: raisedBed.name,
@@ -928,12 +943,18 @@ async function getAuthorizedGardenPreviewSource(
         return null;
     }
 
-    const [blocks, operations] = await Promise.all([
+    const [blocks, operations, structures] = await Promise.all([
         getGardenBlocks(gardenId),
         getAppliedRaisedBedOperationsForGarden(garden.accountId, gardenId),
+        listGardenStructures(gardenId),
     ]);
 
-    const details = await serializeGardenDetails(garden, blocks, operations);
+    const details = await serializeGardenDetails(
+        garden,
+        blocks,
+        operations,
+        structures,
+    );
     return {
         details,
         garden,
@@ -2097,7 +2118,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -2131,7 +2152,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         async (context) => {
             const { gardenId } = context.req.valid('param');
             const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
+            if (!Number.isInteger(gardenIdNumber) || gardenIdNumber < 1) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -2143,17 +2164,19 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Garden not found' }, 404);
             }
 
-            const [operations, queuedTasks] = await Promise.all([
+            const [operations, queuedTasks, structures] = await Promise.all([
                 getAppliedRaisedBedOperationsForGarden(
                     garden.accountId,
                     gardenIdNumber,
                 ),
                 getGardenQueuedTasks(garden),
+                listGardenStructures(gardenIdNumber),
             ]);
             const gardenDetails = await serializeGardenDetails(
                 garden,
                 blocks,
                 operations,
+                structures,
                 { publicView: true },
             );
             const {
