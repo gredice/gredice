@@ -21,7 +21,9 @@ const reward: GiftBoxReward = {
 
 function makeHarness({
     adventOver = true,
+    blockDirectoryPending = false,
     blockName = 'GiftBox_RedWhite',
+    dependencyPreparationTimeoutMs,
     existingReceipt,
     gardenActive = true,
     gardenAccountId = command.accountId,
@@ -31,9 +33,12 @@ function makeHarness({
     remainingBlockIds = ['ground'],
     blockDirectoryFailure = false,
     rewardFailure = false,
+    rewardPending = false,
 }: Readonly<{
     adventOver?: boolean;
+    blockDirectoryPending?: boolean;
     blockName?: string;
+    dependencyPreparationTimeoutMs?: number;
     existingReceipt?: Readonly<{ reward: GiftBoxReward }>;
     gardenActive?: boolean;
     gardenAccountId?: string;
@@ -52,6 +57,7 @@ function makeHarness({
     remainingBlockIds?: readonly string[];
     blockDirectoryFailure?: boolean;
     rewardFailure?: boolean;
+    rewardPending?: boolean;
 }> = {}) {
     const calls: string[] = [];
     const transaction = { id: 'gift-transaction' };
@@ -75,6 +81,7 @@ function makeHarness({
             assert.equal(receivedTransaction, transaction);
             calls.push('stack-delete');
         },
+        dependencyPreparationTimeoutMs,
         getGardenMutationAuthorityForUpdate: async (
             gardenId,
             receivedTransaction,
@@ -122,6 +129,9 @@ function makeHarness({
         getBlockData: async () => {
             assert.equal(transactionActive, false);
             calls.push('directory');
+            if (blockDirectoryPending) {
+                return new Promise(() => undefined);
+            }
             if (blockDirectoryFailure) {
                 throw new Error('Block directory unavailable');
             }
@@ -140,6 +150,9 @@ function makeHarness({
         loadGiftBoxRewardCatalog: async () => {
             assert.equal(transactionActive, false);
             calls.push('reward-directory');
+            if (rewardPending) {
+                return new Promise(() => undefined);
+            }
             if (rewardFailure) {
                 throw new Error('Directory unavailable');
             }
@@ -528,6 +541,30 @@ describe('openAdventGiftBoxAtomically', () => {
             blockDirectoryFailure: true,
             existingReceipt: { reward },
             rewardFailure: true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: true,
+            replayed: true,
+            reward,
+        });
+        assert.deepEqual(harness.calls, [
+            'directory',
+            'reward-directory',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'receipt',
+        ]);
+    });
+
+    test('replays a committed gift when both cold directory reads stall', async () => {
+        const harness = makeHarness({
+            blockDirectoryPending: true,
+            dependencyPreparationTimeoutMs: 5,
+            existingReceipt: { reward },
+            rewardPending: true,
         });
 
         assert.deepEqual(await harness.service(command), {

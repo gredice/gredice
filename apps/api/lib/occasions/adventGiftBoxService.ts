@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { settleGardenEconomicMutationDependency } from '../garden/gardenEconomicMutationDependency';
 
 const maximumStorageInteger = 2_147_483_647;
 const adventGiftBoxBlockNames = new Set([
@@ -92,6 +93,7 @@ export type AdventGiftBoxDependencies<Transaction> = Readonly<{
         position: Readonly<{ x: number; y: number }>,
         transaction: Transaction,
     ) => Promise<void>;
+    dependencyPreparationTimeoutMs?: number;
     getGardenPlacementSnapshotForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -298,11 +300,16 @@ export function createAdventGiftBoxService<Transaction>(
             assertCommand(command);
 
             const operationId = getAdventGiftBoxOperationId(command.blockId);
-            const [blockDataResult, rewardCatalogResult] =
-                await Promise.allSettled([
-                    dependencies.getBlockData(),
-                    dependencies.loadGiftBoxRewardCatalog(),
-                ]);
+            const [blockDataResult, rewardCatalogResult] = await Promise.all([
+                settleGardenEconomicMutationDependency(
+                    dependencies.getBlockData,
+                    dependencies.dependencyPreparationTimeoutMs,
+                ),
+                settleGardenEconomicMutationDependency(
+                    dependencies.loadGiftBoxRewardCatalog,
+                    dependencies.dependencyPreparationTimeoutMs,
+                ),
+            ]);
             const execution =
                 await dependencies.withInventoryAccountTransaction(
                     command.accountId,

@@ -113,6 +113,7 @@ describe('placeGardenBoxBlock', () => {
         } as const;
         let storedPayload: unknown;
         let directoryUnavailable = false;
+        let directoryPending = false;
 
         const place = createGardenBoxBlockPlacementService({
             consumeGardenBoxInventoryItem: async (
@@ -144,9 +145,13 @@ describe('placeGardenBoxBlock', () => {
                 assert.deepEqual(position, { x: 0, y: -1 });
                 calls.push('create-stack');
             },
+            dependencyPreparationTimeoutMs: 5,
             getBlockData: async () => {
                 assert.equal(transactionActive, false);
                 calls.push('catalog');
+                if (directoryPending) {
+                    return new Promise(() => undefined);
+                }
                 if (directoryUnavailable) {
                     throw new Error('Directory unavailable');
                 }
@@ -313,6 +318,25 @@ describe('placeGardenBoxBlock', () => {
             'box-authority',
             'receipt',
         ]);
+
+        calls.length = 0;
+        directoryUnavailable = false;
+        directoryPending = true;
+        assert.deepEqual(await place(command), {
+            ok: true,
+            ...storedResponse,
+            replayed: true,
+        });
+        assert.deepEqual(calls, [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'box-authority',
+            'receipt',
+        ]);
+        directoryPending = false;
 
         calls.length = 0;
         assert.deepEqual(await place({ ...command, entityId: '102' }), {

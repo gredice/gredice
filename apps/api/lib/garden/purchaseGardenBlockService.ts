@@ -32,6 +32,7 @@ import {
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
 import { resolveGardenBlockPlacement } from './blockPlacementService';
+import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
 import {
     createGardenOccupancyIndexFromStorageSnapshot,
     type GardenOccupancyServiceError,
@@ -100,6 +101,7 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<unknown>;
     getBlockData: () => Promise<readonly BlockData[]>;
+    dependencyPreparationTimeoutMs?: number;
     getGardenLocation: (
         gardenId: number,
         transaction: Transaction,
@@ -521,9 +523,11 @@ export function createPurchaseGardenBlockService<Transaction>(
     ): Promise<PurchaseGardenBlockResult> {
         try {
             assertCommand(command);
-            const [blockDataResult] = await Promise.allSettled([
-                loadBlockData(dependencies),
-            ]);
+            const blockDataResult =
+                await settleGardenEconomicMutationDependency(
+                    () => loadBlockData(dependencies),
+                    dependencies.dependencyPreparationTimeoutMs,
+                );
             const { withSunflowerAccountTransaction } = dependencies;
             const committed = await withSunflowerAccountTransaction(
                 command.accountId,

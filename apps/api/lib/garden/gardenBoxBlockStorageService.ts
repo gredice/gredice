@@ -24,6 +24,7 @@ import {
     withGardenPlacementTransaction,
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
+import { settleGardenEconomicMutationDependency } from './gardenEconomicMutationDependency';
 import {
     type GardenOccupancyServiceError,
     type GardenOccupancyStorageStructureLike,
@@ -77,6 +78,7 @@ export type GardenBoxBlockStorageDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<void>;
     getBlockData: () => Promise<readonly BlockData[]>;
+    dependencyPreparationTimeoutMs?: number;
     getGardenBlockForUpdate: (
         input: Readonly<{
             blockId: string;
@@ -426,9 +428,11 @@ export function createGardenBoxBlockStorageService<Transaction>(
             const operationId = getGardenBoxBlockStorageOperationId(
                 command.blockId,
             );
-            const [blockDataResult] = await Promise.allSettled([
-                dependencies.getBlockData(),
-            ]);
+            const blockDataResult =
+                await settleGardenEconomicMutationDependency(
+                    dependencies.getBlockData,
+                    dependencies.dependencyPreparationTimeoutMs,
+                );
             return await dependencies.withGardenBoxInventoryTransaction(
                 command.accountId,
                 command.gardenId,

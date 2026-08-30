@@ -68,6 +68,8 @@ type HarnessOptions = Readonly<{
     authorityAccountId?: string;
     blockMessage?: string | null;
     blockName?: string;
+    dependencyPreparationTimeoutMs?: number;
+    directoryPending?: () => boolean;
     directoryUnavailable?: () => boolean;
     failInventoryAdd?: boolean;
     structures?: readonly Readonly<{
@@ -178,9 +180,13 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('delete-block');
             state.blocks = state.blocks.filter((block) => block.id !== blockId);
         },
+        dependencyPreparationTimeoutMs: options.dependencyPreparationTimeoutMs,
         getBlockData: async () => {
             assert.equal(transactionActive, false);
             calls.push('catalog');
+            if (options.directoryPending?.()) {
+                return new Promise(() => undefined);
+            }
             if (options.directoryUnavailable?.()) {
                 throw new Error('Directory unavailable');
             }
@@ -472,6 +478,33 @@ describe('storeGardenBlockInGardenBox', () => {
         });
         const first = await harness.service(command);
         directoryUnavailable = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+    });
+
+    test('replays a committed storage operation when the cold directory read stalls', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
+        const first = await harness.service(command);
+        directoryPending = true;
 
         const replay = await harness.service(command);
 

@@ -103,6 +103,7 @@ type HarnessOptions = Readonly<{
     beforeDirectoryResult?: () => Promise<void>;
     blockName?: string;
     directoryPrice?: number;
+    dependencyPreparationTimeoutMs?: number;
     failAfterDebit?: boolean;
     failCacheBust?: boolean;
     gardenAccountId?: string;
@@ -268,6 +269,7 @@ function makeHarness(options: HarnessOptions = {}) {
                 throw new Error('Injected failure after debit');
             }
         },
+        dependencyPreparationTimeoutMs: options.dependencyPreparationTimeoutMs,
         getBlockData: async () => {
             assert.equal(transactionActive, false);
             calls.push('directory');
@@ -628,6 +630,29 @@ describe('purchaseGardenBlock', () => {
         });
         const first = await harness.service(harness.command());
         directoryUnavailable = true;
+
+        const replay = await harness.service(harness.command());
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state().debits.length, 1);
+        assert.equal(
+            harness.calls.filter((call) => call === 'directory').length,
+            2,
+        );
+    });
+
+    it('replays a committed purchase when the cold directory read stalls', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            beforeDirectoryResult: () =>
+                directoryPending
+                    ? new Promise(() => undefined)
+                    : Promise.resolve(),
+            dependencyPreparationTimeoutMs: 5,
+        });
+        const first = await harness.service(harness.command());
+        directoryPending = true;
 
         const replay = await harness.service(harness.command());
 
