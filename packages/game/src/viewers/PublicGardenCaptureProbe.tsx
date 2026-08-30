@@ -1,7 +1,7 @@
 'use client';
 
 import { useProgress } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { Box3, OrthographicCamera, Vector3 } from 'three';
 import {
@@ -339,11 +339,18 @@ export function PublicGardenCaptureProbe({
     const onCaptureRef = useRef(onCapture);
     const onErrorRef = useRef(onError);
     const resolvedOutput = resolveCaptureOutput(output);
+    const invalidate = useThree((state) => state.invalidate);
 
     useEffect(() => {
         onCaptureRef.current = onCapture;
         onErrorRef.current = onError;
     }, [onCapture, onError]);
+
+    useEffect(() => {
+        if (enabled && queriesIdle) {
+            invalidate();
+        }
+    }, [enabled, invalidate, queriesIdle]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -374,7 +381,19 @@ export function PublicGardenCaptureProbe({
 
         const assetsLoading = useProgress.getState().active;
         const now = performance.now();
-        if (!enabled || !queriesIdle || assetsLoading) {
+        if (!enabled || !queriesIdle) {
+            eligibleSinceRef.current = null;
+            stableFramesRef.current = 0;
+            stableSinceRef.current = null;
+            signatureRef.current = null;
+            return;
+        }
+
+        // Public capture scenes render on demand. Keep a bounded frame train
+        // alive after late query or production-asset readiness so the warmup
+        // and stability gates do not depend on unrelated scene activity.
+        invalidate();
+        if (assetsLoading) {
             eligibleSinceRef.current = null;
             stableFramesRef.current = 0;
             stableSinceRef.current = null;
