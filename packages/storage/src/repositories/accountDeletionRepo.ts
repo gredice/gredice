@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { bustScheduleCache } from '../cache/scheduleCache';
 import { accountAchievements } from '../schema/achievementsSchema';
 import { events } from '../schema/eventsSchema';
@@ -21,6 +21,11 @@ import {
     markAccountDeletionStarted,
 } from './accountDeletionFenceRepo';
 import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
+import { knownEventTypes } from './eventsRepo';
+import {
+    getGardenBoxInventoryAggregateId,
+    getInventoryAggregateId,
+} from './inventoryRepo';
 import {
     deleteNotification,
     getNotificationsByAccount,
@@ -28,6 +33,9 @@ import {
 } from './notificationsRepo';
 import { lockAndAssertShoppingCartsMutable } from './stripeCheckoutAttemptRepo';
 import { deleteUserAuthenticationData } from './usersRepo';
+
+const GARDEN_EVENT_TYPES = Object.values(knownEventTypes.gardens);
+const INVENTORY_EVENT_TYPES = Object.values(knownEventTypes.inventory);
 
 export async function fenceAccountShoppingCartsForDeletion(accountId: string) {
     const expectedCarts = await storage().query.shoppingCarts.findMany({
@@ -140,6 +148,57 @@ export async function deleteAccountWithDependencies(
         });
         if (gardens.length > 0) {
             hasScheduleAffectingChanges = true;
+        }
+
+        const gardenAggregateIds = gardens.map((garden) =>
+            garden.id.toString(),
+        );
+        const gardenBoxInventoryAggregateIds: string[] = [];
+        for (const garden of gardens) {
+            const blocks = await storage().query.gardenBlocks.findMany({
+                where: eq(gardenBlocks.gardenId, garden.id),
+            });
+            gardenBoxInventoryAggregateIds.push(
+                ...blocks
+                    .filter((block) => block.name === 'GardenBox')
+                    .map((block) =>
+                        getGardenBoxInventoryAggregateId({
+                            accountId,
+                            gardenId: garden.id,
+                            blockId: block.id,
+                        }),
+                    ),
+            );
+        }
+
+        const inventoryAggregateIds = [
+            getInventoryAggregateId(accountId),
+            ...gardenBoxInventoryAggregateIds,
+        ];
+        console.info(
+            `[AccountDelete] Deleting inventory events for accountId=${accountId}`,
+        );
+        await storage()
+            .delete(events)
+            .where(
+                and(
+                    inArray(events.type, INVENTORY_EVENT_TYPES),
+                    inArray(events.aggregateId, inventoryAggregateIds),
+                ),
+            );
+
+        if (gardenAggregateIds.length > 0) {
+            console.info(
+                `[AccountDelete] Deleting garden events for accountId=${accountId}`,
+            );
+            await storage()
+                .delete(events)
+                .where(
+                    and(
+                        inArray(events.type, GARDEN_EVENT_TYPES),
+                        inArray(events.aggregateId, gardenAggregateIds),
+                    ),
+                );
         }
 
         // 5-8. Deactivate raised beds

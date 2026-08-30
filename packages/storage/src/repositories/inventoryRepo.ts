@@ -103,7 +103,7 @@ async function withInventoryInProcessLock<T>(
     }
 }
 
-function getInventoryAggregateId(accountId: string) {
+export function getInventoryAggregateId(accountId: string) {
     return `${INVENTORY_PREFIX}${accountId}`;
 }
 
@@ -130,7 +130,7 @@ export async function addInventoryItem(
     );
 }
 
-function getGardenBoxInventoryAggregateId({
+export function getGardenBoxInventoryAggregateId({
     accountId,
     gardenId,
     blockId,
