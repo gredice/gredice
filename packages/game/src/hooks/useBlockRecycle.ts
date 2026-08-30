@@ -14,6 +14,26 @@ import { tutorialChecklistKeys } from './useTutorialChecklist';
 
 const mutationKey = ['gardens', 'current', 'useBlockRecycle'];
 
+type RecycleBlockArgs = {
+    position: { x: number; z: number };
+    blockId: string;
+    blockIndex: number;
+    raisedBedId?: number;
+    onOptimisticUpdate?: () => void;
+};
+
+export function createRecyclePatchOperations({
+    blockId,
+    blockIndex,
+    position,
+}: Pick<RecycleBlockArgs, 'blockId' | 'blockIndex' | 'position'>) {
+    const path = `/${position.x}/${position.z}/${blockIndex}`;
+    return [
+        { op: 'test' as const, path, value: blockId },
+        { op: 'remove' as const, path },
+    ];
+}
+
 async function removeShoppingCartItems(
     shoppingCart: ShoppingCartData,
     raisedBedId: number,
@@ -56,14 +76,10 @@ export function useBlockRecycle() {
         mutationKey,
         mutationFn: async ({
             position,
+            blockId,
             blockIndex,
             raisedBedId,
-        }: {
-            position: { x: number; z: number };
-            blockIndex: number;
-            raisedBedId?: number;
-            onOptimisticUpdate?: () => void;
-        }) => {
+        }: RecycleBlockArgs) => {
             console.debug('Recycling block', position, blockIndex);
             if (!garden) {
                 throw new Error('No garden selected');
@@ -76,12 +92,11 @@ export function useBlockRecycle() {
                 param: {
                     gardenId: gardenId.toString(),
                 },
-                json: [
-                    {
-                        op: 'remove',
-                        path: `/${position.x}/${position.z}/${blockIndex}`,
-                    },
-                ],
+                json: createRecyclePatchOperations({
+                    blockId,
+                    blockIndex,
+                    position,
+                }),
             });
 
             if (shoppingCart && raisedBedId) {
