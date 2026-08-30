@@ -284,8 +284,10 @@ export function GardenStructureAuthoringInspectorsStory() {
                 onSetFloorMaterial={(cell) =>
                     setAction(`set-floor:${gardenStructureCellKey(cell)}`)
                 }
-                onSetRoofCoverage={(cell) =>
-                    setAction(`set-roof:${gardenStructureCellKey(cell)}`)
+                onSetRoofCoverage={(cell, selection) =>
+                    setAction(
+                        `set-roof:${gardenStructureCellKey(cell)}:${selection.rotation.toString()}`,
+                    )
                 }
                 onSetSpaceKind={(cell, spaceKind) =>
                     setAction(

@@ -167,6 +167,9 @@ export function GardenStructurePartInspector({
               ),
           )
         : undefined;
+    const nextRoofRotation = roofRegion
+        ? nextRotation(roofRegion.rotation)
+        : null;
     const props = selectedCell
         ? document.props.filter(
               (prop) => prop.x === selectedCell.x && prop.y === selectedCell.y,
@@ -439,19 +442,58 @@ export function GardenStructurePartInspector({
                                     />
                                 </div>
                             </div>
-                            <button
-                                className={cx(
-                                    actionClassName,
-                                    'w-full border-destructive/60 text-destructive',
-                                )}
-                                disabled={!roofRegion}
-                                onClick={() =>
-                                    onRemoveRoofCoverage(selectedCellCoordinate)
-                                }
-                                type="button"
-                            >
-                                Ukloni krov s polja
-                            </button>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <button
+                                    aria-label={
+                                        roofRegion
+                                            ? `Zakreni krov s ${(roofRegion.rotation * 90).toString()} na ${((nextRoofRotation ?? 0) * 90).toString()} stupnjeva`
+                                            : 'Zakreni krov'
+                                    }
+                                    className={actionClassName}
+                                    disabled={!roofRegion}
+                                    onClick={() => {
+                                        if (
+                                            !roofRegion ||
+                                            nextRoofRotation === null
+                                        ) {
+                                            return;
+                                        }
+                                        onSetRoofCoverage(
+                                            selectedCellCoordinate,
+                                            {
+                                                styleId: roofRegion.styleId,
+                                                materialId:
+                                                    roofRegion.materialId,
+                                                rotation: nextRoofRotation,
+                                            },
+                                        );
+                                    }}
+                                    type="button"
+                                >
+                                    Zakreni krov
+                                    <span aria-hidden="true">
+                                        {' · '}
+                                        {roofRegion
+                                            ? `${(roofRegion.rotation * 90).toString()}° → ${((nextRoofRotation ?? 0) * 90).toString()}°`
+                                            : '—'}
+                                    </span>
+                                </button>
+                                <button
+                                    className={cx(
+                                        actionClassName,
+                                        'border-destructive/60 text-destructive',
+                                    )}
+                                    disabled={!roofRegion}
+                                    onClick={() =>
+                                        onRemoveRoofCoverage(
+                                            selectedCellCoordinate,
+                                        )
+                                    }
+                                    type="button"
+                                >
+                                    Ukloni krov s polja
+                                </button>
+                            </div>
                         </fieldset>
                     ) : null}
 

@@ -272,6 +272,19 @@ test('shows only the selected authoring category and provides accessible prop ta
             .locator('img')
             .first(),
     ).toHaveAttribute('src', /\/v1\/catalog\/materials\//);
+    const rotateRoof = page.getByRole('button', {
+        name: 'Zakreni krov s 0 na 90 stupnjeva',
+    });
+    await expect(rotateRoof).toBeEnabled();
+    expect(
+        await rotateRoof.evaluate(
+            (element) => element.getBoundingClientRect().height,
+        ),
+    ).toBeGreaterThanOrEqual(44);
+    await rotateRoof.click();
+    await expect(page.getByTestId('authoring-action')).toHaveText(
+        'set-roof:1|1:1',
+    );
 
     await page.getByRole('button', { name: 'interior' }).click();
     await expect(

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const sourceRoot = dirname(fileURLToPath(import.meta.url));
 const gameSceneSource = readFileSync(join(sourceRoot, 'GameScene.tsx'), 'utf8');
+const gameHudSource = readFileSync(join(sourceRoot, 'GameHud.tsx'), 'utf8');
 const buildHudSource = readFileSync(
     join(sourceRoot, 'structures/GardenStructureVerticalSliceHud.tsx'),
     'utf8',
@@ -45,6 +46,21 @@ test('uses only the managed building flag for build-mode discovery while saved s
     assert.match(
         gameSceneSource,
         /<GardenStructureSceneLayerDynamic[\s\S]*?snapshot=\{savedStructureScene\}/,
+    );
+});
+
+test('loads the complete authoring HUD only behind the managed feature boundary', () => {
+    assert.doesNotMatch(
+        gameHudSource,
+        /import \{ GardenStructureVerticalSliceHud \} from/,
+    );
+    assert.match(
+        gameHudSource,
+        /import \{ GardenStructureVerticalSliceHudDynamic \} from '\.\/structures\/GardenStructureVerticalSliceHudDynamic';/,
+    );
+    assert.match(
+        gameHudSource,
+        /gardenStructureBuildEnabled \? \([\s\S]*?<GardenStructureVerticalSliceHudDynamic/,
     );
 });
 
