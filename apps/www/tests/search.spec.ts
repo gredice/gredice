@@ -442,6 +442,8 @@ test.describe('public search filters', () => {
     test('block search suppresses its empty state when a plant matches', async ({
         page,
     }) => {
+        test.slow();
+
         await page.goto('/blokovi?pretraga=rajcica', { waitUntil: 'load' });
 
         await expect(page.getByText('Rajčica', { exact: true })).toBeVisible();

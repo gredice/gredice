@@ -6,6 +6,7 @@ import {
 } from './calendarDatePickerTestUtils';
 import {
     ShoppingCartHudItemsPresenceStory,
+    ShoppingCartHudLoadingStory,
     ShoppingCartItemsPresenceStory,
     ShoppingCartOptimisticToggleStory,
     ShoppingCartOutletCountdownStory,
@@ -14,6 +15,18 @@ import {
     ShoppingCartSunflowerCheckoutStory,
     ShoppingCartTargetedOperationStory,
 } from './ShoppingCartOptimisticToggleStory';
+
+test('keeps the shopping cart HUD hidden while the cart is loading', async ({
+    mount,
+    page,
+}) => {
+    await mount(<ShoppingCartHudLoadingStory />);
+
+    await expect(page.getByTitle('Košara')).toHaveCount(0);
+    await expect(
+        page.locator('[data-shopping-cart-hud-shell="true"]'),
+    ).toHaveCount(0);
+});
 
 const shoppingCartServerItem = {
     id: 1,

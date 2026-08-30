@@ -111,13 +111,13 @@ export function LoginDialog() {
                                 onClick={() => handleOAuthLogin('google')}
                                 lastUsed={lastLoginProvider === 'google'}
                             >
-                                Google prijava
+                                Nastavi sa Google
                             </GoogleLoginButton>
                             <FacebookLoginButton
                                 onClick={() => handleOAuthLogin('facebook')}
                                 lastUsed={lastLoginProvider === 'facebook'}
                             >
-                                Facebook prijava
+                                Nastavi sa Facebook
                             </FacebookLoginButton>
                             <Button
                                 type="button"
@@ -129,7 +129,7 @@ export function LoginDialog() {
                                 }
                                 onClick={() => setEmailExpanded(true)}
                             >
-                                Email prijava
+                                Nastavi s emailom
                             </Button>
                         </Stack>
                     ) : (

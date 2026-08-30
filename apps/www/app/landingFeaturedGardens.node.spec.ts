@@ -72,17 +72,40 @@ test('keeps the garden indicator strip compact while following the selection', (
     assert.deepEqual(getVisibleLandingGardenIndexes(0, 10, 0), []);
 });
 
-test('exposes the landing experiment through managed Vercel flag discovery', () => {
+test('keeps featured gardens enabled without stale rollout flag metadata', () => {
+    const pageSource = readFileSync(new URL('./page.tsx', import.meta.url), {
+        encoding: 'utf8',
+    });
     const flagsSource = readFileSync(new URL('./flags.ts', import.meta.url), {
         encoding: 'utf8',
     });
+    const loaderSource = readFileSync(
+        new URL('./getLandingFeaturedGardens.ts', import.meta.url),
+        { encoding: 'utf8' },
+    );
+    const playwrightConfigSource = readFileSync(
+        new URL('../playwright.config.ts', import.meta.url),
+        { encoding: 'utf8' },
+    );
     const discoverySource = readFileSync(
         new URL('./.well-known/vercel/flags/route.ts', import.meta.url),
         { encoding: 'utf8' },
     );
 
-    assert.match(flagsSource, /key: 'enableLandingFeaturedGardens'/u);
-    assert.match(flagsSource, /adapter: vercelAdapter/u);
-    assert.match(discoverySource, /getVercelProviderData\(flags\)/u);
-    assert.match(discoverySource, /mergeProviderData/u);
+    assert.match(
+        pageSource,
+        /const featuredGardens = await getLandingFeaturedGardens\(\);/u,
+    );
+    assert.doesNotMatch(pageSource, /enableLandingFeaturedGardens/u);
+    assert.doesNotMatch(flagsSource, /enableLandingFeaturedGardens/u);
+    assert.match(loaderSource, /AbortSignal\.timeout/u);
+    assert.match(loaderSource, /init: \{ signal \}/u);
+    assert.match(loaderSource, /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE/u);
+    assert.match(
+        playwrightConfigSource,
+        /GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE: 'true'/u,
+    );
+    assert.match(flagsSource, /key: 'enablePublicEnvironmentDebug'/u);
+    assert.match(discoverySource, /getProviderData\(flags\)/u);
+    assert.doesNotMatch(discoverySource, /mergeProviderData/u);
 });

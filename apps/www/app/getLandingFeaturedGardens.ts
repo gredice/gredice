@@ -6,11 +6,44 @@ import {
 } from './landingGardenCarousel';
 import { comparePublicGardensByPopularity } from './vrtovi/publicGardenFormatting';
 
+const landingFeaturedGardensTimeoutMs = 5_000;
+
+const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
+    {
+        garden: {
+            backgroundPalette: 'current',
+            farmId: 1,
+            homeCamera: null,
+            id: 99_999,
+            isPublic: true,
+            isSandbox: false,
+            latitude: 45.815,
+            longitude: 15.982,
+            name: 'Istaknuti testni vrt',
+            raisedBeds: [],
+            stacks: {},
+            updatedAt: '2026-08-29T12:00:00.000Z',
+        },
+        owner: {
+            avatarUrl: null,
+            displayName: 'Testni vrtlar',
+        },
+    },
+];
+
 export async function getLandingFeaturedGardens(): Promise<
     LandingGardenCandidate[]
 > {
+    if (process.env.GREDICE_PLAYWRIGHT_FEATURED_GARDENS_FIXTURE === 'true') {
+        return playwrightFeaturedGardensFixture;
+    }
+
     try {
-        const response = await clientPublic().api.gardens.public.$get();
+        const signal = AbortSignal.timeout(landingFeaturedGardensTimeoutMs);
+        const response = await clientPublic().api.gardens.public.$get(
+            undefined,
+            { init: { signal } },
+        );
         if (!response.ok) {
             console.error('Failed to fetch featured gardens for landing', {
                 status: response.status,
@@ -26,9 +59,12 @@ export async function getLandingFeaturedGardens(): Promise<
             featuredGardenSummaries.map(async (garden) => {
                 const gardenResponse = await clientPublic().api.gardens[
                     ':gardenId'
-                ].public.$get({
-                    param: { gardenId: garden.id.toString() },
-                });
+                ].public.$get(
+                    {
+                        param: { gardenId: garden.id.toString() },
+                    },
+                    { init: { signal } },
+                );
 
                 if (!gardenResponse.ok) {
                     console.error('Failed to fetch featured garden details', {
