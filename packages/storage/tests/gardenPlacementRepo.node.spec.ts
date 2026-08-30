@@ -7,12 +7,17 @@ import {
     deleteGardenBlock,
     deleteGardenStack,
     gardens,
+    getAllEvents,
     getGarden,
     getGardenBlock,
+    getGardenBlockForUpdate,
     getGardenBlocks,
     getGardenPlacementSnapshot,
+    getGardenPlacementSnapshotForUpdate,
     getGardenStack,
     getGardenStacks,
+    knownEventTypes,
+    softDeleteGardenBlockOnce,
     updateGardenStack,
     withGardenPlacementTransaction,
 } from '@gredice/storage';
@@ -115,6 +120,110 @@ test('placement snapshots read active authoritative rows through the lock transa
         snapshot.blocks.map((block) => block.id),
         [blockId],
     );
+});
+
+test('locked placement snapshots return active rows in stable ID order', async () => {
+    createTestDb();
+    const { accountId, gardenId } = await createPlacementGarden();
+    const firstBlockId = await createGardenBlock(gardenId, 'Block_Grass');
+    const secondBlockId = await createGardenBlock(gardenId, 'Tree');
+    await createGardenStack(gardenId, { x: 3, y: 1 });
+    await createGardenStack(gardenId, { x: -2, y: 4 });
+
+    const snapshot = await withGardenPlacementTransaction(
+        gardenId,
+        (transaction) =>
+            getGardenPlacementSnapshotForUpdate(gardenId, transaction),
+    );
+
+    assert.ok(snapshot);
+    assert.deepEqual(snapshot.garden, {
+        id: gardenId,
+        accountId,
+        isSandbox: false,
+    });
+    const stackIds = snapshot.stacks.map((stack) => stack.id);
+    assert.deepEqual(
+        stackIds,
+        [...stackIds].sort((left, right) => left - right),
+    );
+    const blockIds = snapshot.blocks.map((block) => block.id);
+    assert.deepEqual(blockIds, [...blockIds].sort());
+    assert.deepEqual(new Set(blockIds), new Set([firstBlockId, secondBlockId]));
+});
+
+test('garden block deletion reports retry state and emits one removal event', async () => {
+    createTestDb();
+    const { gardenId } = await createPlacementGarden();
+    const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+    const otherGardenId = (await createPlacementGarden()).gardenId;
+    const eventsBefore = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+
+    const firstResult = await withGardenPlacementTransaction(
+        gardenId,
+        (transaction) =>
+            softDeleteGardenBlockOnce(gardenId, blockId, transaction),
+    );
+    const retryResult = await withGardenPlacementTransaction(
+        gardenId,
+        (transaction) =>
+            softDeleteGardenBlockOnce(gardenId, blockId, transaction),
+    );
+    const wrongGardenResult = await withGardenPlacementTransaction(
+        otherGardenId,
+        (transaction) =>
+            softDeleteGardenBlockOnce(otherGardenId, blockId, transaction),
+    );
+
+    assert.equal(firstResult, 'deleted');
+    assert.equal(retryResult, 'already-deleted');
+    assert.equal(wrongGardenResult, 'not-found');
+    const eventsAfter = await getAllEvents(knownEventTypes.gardens.blockPlace, [
+        gardenId.toString(),
+    ]);
+    assert.equal(eventsAfter.length, eventsBefore.length + 1);
+
+    await withGardenPlacementTransaction(gardenId, async (transaction) => {
+        assert.equal(
+            await getGardenBlockForUpdate({ blockId, gardenId }, transaction),
+            null,
+        );
+        const deletedBlock = await getGardenBlockForUpdate(
+            { blockId, gardenId, includeDeleted: true },
+            transaction,
+        );
+        assert.equal(deletedBlock?.isDeleted, true);
+    });
+});
+
+test('garden block deletion and its event roll back with the placement transaction', async () => {
+    createTestDb();
+    const { gardenId } = await createPlacementGarden();
+    const blockId = await createGardenBlock(gardenId, 'Block_Grass');
+    const eventsBefore = await getAllEvents(
+        knownEventTypes.gardens.blockPlace,
+        [gardenId.toString()],
+    );
+
+    await assert.rejects(
+        withGardenPlacementTransaction(gardenId, async (transaction) => {
+            assert.equal(
+                await softDeleteGardenBlockOnce(gardenId, blockId, transaction),
+                'deleted',
+            );
+            throw new Error('reject garden block deletion');
+        }),
+        /reject garden block deletion/u,
+    );
+
+    assert.equal((await getGardenBlock(gardenId, blockId))?.id, blockId);
+    const eventsAfter = await getAllEvents(knownEventTypes.gardens.blockPlace, [
+        gardenId.toString(),
+    ]);
+    assert.equal(eventsAfter.length, eventsBefore.length);
 });
 
 test('garden placement transactions reject invalid lock identifiers', async () => {

@@ -1056,6 +1056,7 @@ export function InstancedBlockInteractionController({
             await recycleBlock
                 .mutateAsync({
                     position: target.stack.position,
+                    blockId: target.block.id,
                     blockIndex: target.blockIndex,
                     raisedBedId: raisedBed?.id,
                     onOptimisticUpdate: activePreviewReset.queue,
@@ -1149,6 +1150,7 @@ export function InstancedBlockInteractionController({
             await recycleBlock
                 .mutateAsync({
                     position: target.stack.position,
+                    blockId: target.block.id,
                     blockIndex: target.blockIndex,
                     raisedBedId: raisedBed?.id,
                     onOptimisticUpdate: activePreviewReset.queue,

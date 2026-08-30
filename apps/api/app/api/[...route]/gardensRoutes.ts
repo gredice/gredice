@@ -1,8 +1,6 @@
 import {
     createEntityAppearanceVariantForPlacement,
     isAppearanceVariantEntityName,
-    isAppearanceVariantRotationLocked,
-    isEntityAppearanceVariantUpdateAllowed,
     isValidEntityAppearanceVariant,
     requiresExplicitAppearanceVariantSelection,
 } from '@gredice/js/entityAppearanceVariants';
@@ -29,7 +27,6 @@ import {
 import {
     isValidWoodenSignMessage,
     normalizeWoodenSignMessage,
-    woodenSignBlockName,
     woodenSignMessageMaxGraphemesPerLine,
 } from '@gredice/js/woodenSign';
 import { notifyOperationUpdate } from '@gredice/notifications';
@@ -52,7 +49,6 @@ import {
     createGardenStack,
     createSandboxGarden,
     deleteGardenIfNoActiveRaisedBeds,
-    deleteGardenStack,
     deleteSandboxGardenCompletely,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
@@ -64,11 +60,9 @@ import {
     getAllEvents,
     getAppliedRaisedBedOperationsForGarden,
     getGarden,
-    getGardenBlock,
     getGardenBlocks,
     getGardenLikeCounts,
     getGardenPreviews,
-    getGardenStack,
     getNotification,
     getOperationsByIds,
     getOperationsPage,
@@ -110,7 +104,6 @@ import {
     deleteGardenBlock as storageDeleteGardenBlock,
     toGardenPreviewImage,
     updateGarden,
-    updateGardenBlock,
     updateGardenStack,
     updateRaisedBed,
     withPlantingScheduleTaskTransaction,
@@ -131,7 +124,10 @@ import {
     buildDetailedRaisedBedInspectionReports,
     detailedInspectionOperationId,
 } from '../../../lib/garden/detailedRaisedBedInspectionReports';
-import { deleteGardenBlock } from '../../../lib/garden/gardenBlocksService';
+import {
+    recycleGardenBlockForAccount,
+    updateGardenBlockForAccount,
+} from '../../../lib/garden/gardenBlockMutationService';
 import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
 import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import {
@@ -144,6 +140,7 @@ import {
     getGardenPreviewBlobDeletionRetryAt,
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
+import { patchGardenStacksForAccount } from '../../../lib/garden/gardenStacksPatchService';
 import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
 import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
@@ -173,10 +170,6 @@ import {
 import { serializeRaisedBedGardenNotification } from '../../../lib/garden/raisedBedNotifications';
 import { calculateRaisedBedsValidity } from '../../../lib/garden/raisedBedsService';
 import {
-    validateSpanningBlockMove,
-    validateStackPlacement,
-} from '../../../lib/garden/stacksPatchValidation';
-import {
     type AuthVariables,
     authValidator,
 } from '../../../lib/hono/authValidator';
@@ -204,8 +197,20 @@ const woodenSignMessageSchema = z
 
 const updateGardenBlockBodySchema = z
     .object({
-        rotation: z.number().nullable().optional(),
-        variant: z.number().nullable().optional(),
+        rotation: z
+            .number()
+            .int()
+            .min(-2_147_483_648)
+            .max(2_147_483_647)
+            .nullable()
+            .optional(),
+        variant: z
+            .number()
+            .int()
+            .min(-2_147_483_648)
+            .max(2_147_483_647)
+            .nullable()
+            .optional(),
         message: woodenSignMessageSchema.optional(),
     })
     .strict()
@@ -2426,46 +2431,48 @@ const app = new Hono<{ Variables: AuthVariables }>()
         ),
         zValidator(
             'json',
-            z.array(
-                z.discriminatedUnion('op', [
-                    // add requires value
-                    z.object({
-                        op: z.literal('add'),
-                        path: z.string(),
-                        // Array<string> or string
-                        value: z.union([z.array(z.string()), z.string()]),
-                    }),
-                    // remove doesn't need value or from
-                    z.object({
-                        op: z.literal('remove'),
-                        path: z.string(),
-                    }),
-                    // replace requires value
-                    z.object({
-                        op: z.literal('replace'),
-                        path: z.string(),
-                        value: z.union([z.array(z.string()), z.string()]),
-                    }),
-                    // move requires from
-                    z.object({
-                        op: z.literal('move'),
-                        path: z.string(),
-                        from: z.string(),
-                    }),
-                    // copy requires from
-                    z.object({
-                        op: z.literal('copy'),
-                        path: z.string(),
-                        from: z.string(),
-                    }),
-                    // test requires value
-                    z.object({
-                        op: z.literal('test'),
-                        path: z.string(),
-                        value: z.union([z.array(z.string()), z.string()]),
-                    }),
-                ]),
-            ),
+            z
+                .array(
+                    z.discriminatedUnion('op', [
+                        // add requires value
+                        z.object({
+                            op: z.literal('add'),
+                            path: z.string(),
+                            // Array<string> or string
+                            value: z.union([z.array(z.string()), z.string()]),
+                        }),
+                        // remove doesn't need value or from
+                        z.object({
+                            op: z.literal('remove'),
+                            path: z.string(),
+                        }),
+                        // replace requires value
+                        z.object({
+                            op: z.literal('replace'),
+                            path: z.string(),
+                            value: z.union([z.array(z.string()), z.string()]),
+                        }),
+                        // move requires from
+                        z.object({
+                            op: z.literal('move'),
+                            path: z.string(),
+                            from: z.string(),
+                        }),
+                        // copy requires from
+                        z.object({
+                            op: z.literal('copy'),
+                            path: z.string(),
+                            from: z.string(),
+                        }),
+                        // test requires value
+                        z.object({
+                            op: z.literal('test'),
+                            path: z.string(),
+                            value: z.union([z.array(z.string()), z.string()]),
+                        }),
+                    ]),
+                )
+                .max(256),
         ),
         authValidator(['user', 'admin']),
         async (context) => {
@@ -2478,400 +2485,15 @@ const app = new Hono<{ Variables: AuthVariables }>()
             }
 
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json({ error: 'Garden not found' }, 404);
-            }
-
-            const [gardenBlocks, blockData] = await Promise.all([
-                getGardenBlocks(gardenIdNumber),
-                getBlockData(),
-            ]);
-            const blockNameById = new Map(
-                gardenBlocks.map((block) => [block.id, block.name]),
-            );
-            const blockRotationById = new Map(
-                gardenBlocks.map((block) => [block.id, block.rotation]),
-            );
-            const blockDataByName = new Map(
-                blockData.map((block) => [block.information.name, block]),
-            );
-
-            const validateStackPlacementForGarden = (blockIds: string[]) =>
-                validateStackPlacement({
-                    blockIds,
-                    blockNameById,
-                    blockDataByName,
-                });
-
             const operations = context.req.valid('json');
-            if (operations.length === 0) {
-                return context.json({ error: 'No operations provided' }, 400);
+            const result = await patchGardenStacksForAccount({
+                accountId,
+                gardenId: gardenIdNumber,
+                operations,
+            });
+            if (!result.ok) {
+                return context.json({ error: result.error }, result.status);
             }
-            const initialGardenState = garden;
-
-            /**
-             * Parses a path string into an object with x, y, and index properties.
-             * Format: /{x}/{y}[/{index}]
-             * @param path The path to parse
-             * @example "/0/0/1" => { x: 0, y: 0, index: 1 }
-             * @example "/0/0" => { x: 0, y: 0, index: undefined }
-             * @returns An object with x, y, and index properties
-             */
-            function parsePath(path: string) {
-                const pathParts = path.split('/');
-                if (pathParts.length < 3 || pathParts.length > 4) {
-                    throw new Error(`Invalid path: ${path}`);
-                }
-
-                const x = parseInt(pathParts[1], 10);
-                const y = parseInt(pathParts[2], 10);
-                if (Number.isNaN(x) || Number.isNaN(y)) {
-                    throw new Error(`Invalid path: ${path}`);
-                }
-
-                let index: number | undefined;
-                let append = false;
-                if (pathParts.length === 4) {
-                    if (pathParts[3] === '-') {
-                        append = true;
-                    } else {
-                        index = parseInt(pathParts[3], 10);
-                        if (Number.isNaN(index)) {
-                            throw new Error(`Invalid path: ${path}`);
-                        }
-                    }
-                }
-
-                return { x, y, index, append };
-            }
-
-            async function getStack(path: string) {
-                return await getGardenStack(gardenIdNumber, parsePath(path));
-            }
-
-            async function addStack(path: string, value: string | string[]) {
-                const stackPosition = parsePath(path);
-
-                console.debug(
-                    `Adding stack at position x:${stackPosition.x} y:${stackPosition.y} index:${stackPosition.index} append:${stackPosition.append} with value:`,
-                    value,
-                );
-
-                // Create stack if doesn't exist
-                const existing = await getGardenStack(
-                    gardenIdNumber,
-                    stackPosition,
-                );
-                if (!existing) {
-                    await createGardenStack(gardenIdNumber, stackPosition);
-                }
-
-                if (stackPosition.index === undefined) {
-                    const nextBlocks = Array.isArray(value)
-                        ? stackPosition.append
-                            ? [...(existing?.blocks ?? []), ...value]
-                            : value
-                        : stackPosition.append
-                          ? [...(existing?.blocks ?? []), value]
-                          : [value];
-
-                    const validation =
-                        validateStackPlacementForGarden(nextBlocks);
-                    if (!validation.valid) {
-                        return context.json({ error: validation.error }, 400);
-                    }
-
-                    if (Array.isArray(value)) {
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: nextBlocks,
-                        });
-                    } else {
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: nextBlocks,
-                        });
-                    }
-                } else {
-                    if (
-                        !existing ||
-                        (existing?.blocks.length ?? 0) < stackPosition.index ||
-                        stackPosition.index < 0
-                    ) {
-                        return context.json(
-                            {
-                                error: `Index out of bounds: ${stackPosition.index} in collection of ${existing?.blocks.length ?? 0}`,
-                            },
-                            400,
-                        );
-                    }
-
-                    if (Array.isArray(value)) {
-                        const nextBlocks = [
-                            ...existing.blocks.slice(0, stackPosition.index),
-                            ...value,
-                            ...existing.blocks.slice(stackPosition.index),
-                        ];
-
-                        const validation =
-                            validateStackPlacementForGarden(nextBlocks);
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
-
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: nextBlocks,
-                        });
-                    } else {
-                        const nextBlocks = [
-                            ...existing.blocks.slice(0, stackPosition.index),
-                            value,
-                            ...existing.blocks.slice(stackPosition.index),
-                        ];
-
-                        const validation =
-                            validateStackPlacementForGarden(nextBlocks);
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
-
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: nextBlocks,
-                        });
-                    }
-                }
-            }
-
-            async function removeStack(path: string, permanent = false) {
-                const stackPosition = parsePath(path);
-                if (stackPosition.index === undefined) {
-                    await deleteGardenStack(gardenIdNumber, stackPosition);
-                } else {
-                    const stack = await getStack(path);
-                    if (!stack) {
-                        return context.json(
-                            { error: `Stack ${path} not found` },
-                            400,
-                        );
-                    }
-
-                    if (!permanent) {
-                        stack.blocks.splice(stackPosition.index, 1);
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: stack.blocks,
-                        });
-                    } else {
-                        const blockId = stack.blocks[stackPosition.index];
-                        await deleteGardenBlock(
-                            accountId,
-                            gardenIdNumber,
-                            blockId,
-                        );
-                    }
-                }
-            }
-
-            for (const operation of operations) {
-                if (operation.op === 'test') {
-                    const { path, value } = operation;
-                    const stack = await getStack(path);
-                    if (!stack) {
-                        return context.json(
-                            { error: `Stack ${path} not found` },
-                            400,
-                        );
-                    }
-
-                    const stackPosition = parsePath(path);
-                    if (stackPosition.index === undefined) {
-                        if (!Array.isArray(value)) {
-                            return context.json(
-                                { error: 'Test value must be an array' },
-                                400,
-                            );
-                        }
-
-                        if (
-                            JSON.stringify(stack.blocks) !==
-                            JSON.stringify(value)
-                        ) {
-                            return context.json(
-                                {
-                                    error: `Test failed: ${path} = ${JSON.stringify(value)}`,
-                                },
-                                400,
-                            );
-                        }
-                    } else {
-                        if (Array.isArray(value)) {
-                            return context.json(
-                                { error: 'Test value must be a string' },
-                                400,
-                            );
-                        }
-
-                        if (stack.blocks[stackPosition.index] !== value) {
-                            return context.json(
-                                {
-                                    error: `Test failed: ${path} = ${JSON.stringify(value)}`,
-                                },
-                                400,
-                            );
-                        }
-                    }
-                } else if (operation.op === 'add') {
-                    const { path, value } = operation;
-                    const resp = await addStack(path, value);
-                    if (resp) {
-                        return resp;
-                    }
-                } else if (operation.op === 'remove') {
-                    const { path } = operation;
-                    const resp = await removeStack(path, true);
-                    if (resp) {
-                        return resp;
-                    }
-                } else if (operation.op === 'replace') {
-                    const { path, value } = operation;
-                    const stackPosition = parsePath(path);
-
-                    if (stackPosition.index === undefined) {
-                        if (!Array.isArray(value)) {
-                            return context.json(
-                                { error: 'Test value must be an array' },
-                                400,
-                            );
-                        }
-
-                        const validation =
-                            validateStackPlacementForGarden(value);
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: value,
-                        });
-                    } else {
-                        if (Array.isArray(value)) {
-                            return context.json(
-                                { error: 'Test value must be a string' },
-                                400,
-                            );
-                        }
-
-                        const stack = await getStack(path);
-                        if (!stack) {
-                            return context.json(
-                                { error: `Stack ${path} not found` },
-                                400,
-                            );
-                        }
-
-                        const nextBlocks = stack.blocks.map((blockId, index) =>
-                            index === stackPosition.index ? value : blockId,
-                        );
-
-                        const validation =
-                            validateStackPlacementForGarden(nextBlocks);
-                        if (!validation.valid) {
-                            return context.json(
-                                { error: validation.error },
-                                400,
-                            );
-                        }
-
-                        await updateGardenStack(gardenIdNumber, {
-                            x: stackPosition.x,
-                            y: stackPosition.y,
-                            blocks: nextBlocks,
-                        });
-                    }
-                } else if (operation.op === 'move') {
-                    const { path, from } = operation;
-                    const fromPosition = parsePath(from);
-                    const fromStack = await getStack(from);
-                    if (!fromStack) {
-                        return context.json(
-                            { error: `Stack from:${from} not found` },
-                            400,
-                        );
-                    }
-                    const fromValue =
-                        fromPosition.index === undefined
-                            ? fromStack.blocks
-                            : fromStack.blocks[fromPosition.index];
-
-                    if (typeof fromValue === 'string') {
-                        const spanValidation = validateSpanningBlockMove({
-                            stacks: initialGardenState.stacks,
-                            fromPath: from,
-                            toPath: path,
-                            movedBlockId: fromValue,
-                            blockNameById,
-                            blockDataByName,
-                            blockRotationById,
-                            parsePath,
-                        });
-                        if (!spanValidation.valid) {
-                            return context.json(
-                                { error: spanValidation.error },
-                                400,
-                            );
-                        }
-                    }
-
-                    let resp = await addStack(path, fromValue);
-                    if (resp) {
-                        return resp;
-                    }
-                    resp = await removeStack(from);
-                    if (resp) {
-                        return resp;
-                    }
-                } else if (operation.op === 'copy') {
-                    const { path, from } = operation;
-                    const fromStack = await getStack(from);
-                    if (!fromStack) {
-                        return context.json(
-                            { error: `Stack from:${from} not found` },
-                            400,
-                        );
-                    }
-                    const fromValue = fromStack.blocks;
-
-                    const resp = await addStack(path, fromValue);
-                    if (resp) {
-                        return resp;
-                    }
-                } else {
-                    return context.json(
-                        { error: 'Operation not implemented' },
-                        501,
-                    );
-                }
-            }
-
-            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },
@@ -3216,67 +2838,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
-            const garden = await getGarden(gardenIdNumber);
-            if (!garden || garden.accountId !== accountId) {
-                return context.json(
-                    {
-                        error: 'Garden not found',
-                    },
-                    404,
-                );
-            }
-
-            const block = await getGardenBlock(gardenIdNumber, blockId);
-            if (!block) {
-                return context.json({ error: 'Block not found' }, 404);
-            }
-
-            const { message, rotation, variant } = context.req.valid('json');
-            if (message !== undefined && block.name !== woodenSignBlockName) {
-                return context.json(
-                    { error: 'Only wooden signs can have a message' },
-                    400,
-                );
-            }
-            if (
-                variant !== undefined &&
-                !isEntityAppearanceVariantUpdateAllowed({
-                    entityName: block.name,
-                    currentVariant: block.variant,
-                    requestedVariant: variant,
-                })
-            ) {
-                return context.json(
-                    {
-                        error: 'Izgled životinje nije moguće promijeniti nakon postavljanja.',
-                    },
-                    400,
-                );
-            }
-            if (
-                rotation !== undefined &&
-                rotation !== block.rotation &&
-                isAppearanceVariantRotationLocked(block.name)
-            ) {
-                return context.json(
-                    {
-                        error: 'Životinju nije moguće rotirati nakon postavljanja.',
-                    },
-                    400,
-                );
-            }
-
-            const updated = await updateGardenBlock(gardenIdNumber, {
-                id: blockId,
-                message,
-                rotation,
-                variant,
+            const body = context.req.valid('json');
+            const result = await updateGardenBlockForAccount({
+                accountId,
+                blockId,
+                gardenId: gardenIdNumber,
+                ...body,
             });
-
-            if (!updated) {
-                return context.json({ error: 'Block not found' }, 404);
+            if (!result.ok) {
+                return context.json({ error: result.error }, result.status);
             }
 
             return context.json(null, 200);
@@ -3301,33 +2872,20 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const { accountId } = context.get('authContext');
-            const gardenIdNumber = parseInt(gardenId, 10) || 0;
+            const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
-                console.warn('Invalid garden ID', { gardenId });
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
-            console.info('Deleting block...', { gardenId, blockId });
-            const result = await deleteGardenBlock(
+            const { accountId } = context.get('authContext');
+            const result = await recycleGardenBlockForAccount({
                 accountId,
-                gardenIdNumber,
                 blockId,
-            );
-
-            if (result?.errorStatus) {
-                console.error('Error deleting block', {
-                    gardenId,
-                    blockId,
-                    error: result.errorMessage,
-                });
-                return context.json(
-                    { error: result.errorMessage },
-                    result.errorStatus as ContentfulStatusCode,
-                );
+                gardenId: gardenIdNumber,
+            });
+            if (!result.ok) {
+                return context.json({ error: result.error }, result.status);
             }
-
-            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json(null, 200);
         },
