@@ -11,6 +11,7 @@ import {
     createGardenStructureSceneBuildPreviewCompileInput,
     createGardenStructureSceneFixtureBuildPreviewCompileInput,
     type GardenStructureCollectionCacheDisposalReason,
+    type GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCache,
     GardenStructureSceneLayer,
     resolveGardenStructureSceneStructureBaseHeight,
@@ -328,12 +329,12 @@ describe('GardenStructureSceneCache', () => {
             placement: {
                 anchorX: record.anchorX,
                 anchorY: record.anchorY,
-                rotation: 0 as const,
+                rotation: 0,
             },
             revision: record.revision,
             stacks,
             structureId: record.id,
-        };
+        } satisfies GardenStructureSceneBuildPreviewInput;
 
         assert.equal(
             createGardenStructureSceneBuildPreviewCompileInput(input),

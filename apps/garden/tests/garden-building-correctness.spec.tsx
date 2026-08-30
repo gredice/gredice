@@ -83,3 +83,35 @@ test('system Back unwinds confirmation and tool before blocking dirty exit, then
     await pressSystemBackInMountedComponent(activeState);
     await expect(page.getByTestId('history-active')).toHaveText('closed');
 });
+
+test('unmounting active Build Mode releases its synthetic history entry', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(
+        <GardenStructureBuildModeHistoryGuardStory />,
+    );
+
+    await expect(page.getByTestId('history-active')).toHaveText('active');
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.history.state?.__grediceGardenStructureBuildMode ??
+                    null,
+            ),
+        )
+        .not.toBeNull();
+
+    await component.unmount();
+
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.history.state?.__grediceGardenStructureBuildMode ??
+                    null,
+            ),
+        )
+        .toBeNull();
+});

@@ -58,6 +58,14 @@ export function useGardenStructureBuildModeHistoryGuard({
         }
     }, [active, armGuard, releaseGuard]);
 
+    useEffect(
+        () => () => {
+            activeRef.current = false;
+            releaseGuard();
+        },
+        [releaseGuard],
+    );
+
     useEffect(() => {
         const handlePopState = () => {
             if (releasePendingRef.current) {
