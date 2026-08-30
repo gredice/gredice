@@ -2,13 +2,20 @@
 
 Date: 2026-04-29
 
+Static inventory refreshed: 2026-08-30
+
 ## Summary
 
-The scene still does not look asset-bound. Game models are now split into one
-runtime GLB per asset under `apps/garden/public/assets/models`, generated from
-one Blender source file per asset under `assets/game-assets`. The split set is
-932,304 bytes across 31 GLBs and contains 59 meshes, 75 primitives, 22,300
-vertices, 18 shared material names, and no animations.
+The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
+split into one runtime GLB per asset under `apps/garden/public/assets/models`,
+generated from one Blender source file per asset under `assets/game-assets`.
+The current runtime inventory contains 146 GLBs totaling 14,648,032 compressed
+bytes (13.97 MiB), while the generated manifest exposes 145 asset names. The
+extra file is the intentionally obsolete `BlockStoneStairsHalf` compatibility
+asset, which the runtime manifest excludes. Mesh, primitive, vertex, material,
+texture, and animation totals have not been remeasured against this expanded
+asset set, so the static refresh alone does not reconfirm the earlier
+asset-bound conclusion.
 
 The optimization already made since the first pass is meaningful: the scene no
 longer mounts the old one-second game-time manager. Environment, sun/moon, plant,
@@ -16,11 +23,13 @@ and suggestion code now read `useSnapshotTime()`, which removes recurring React
 state churn from normal unfrozen time. That should help idle stability and avoid
 unrelated scene re-renders.
 
-The remaining cost is still render policy and auxiliary systems rather than raw
-model complexity: continuous frame loops, high-resolution shadows, many shadow
-casters/receivers, per-instance snow overlays, CPU-updated weather particles,
-per-sprite billboard callbacks, and detailed plant/decoration layers. These costs
-scale poorly on high-DPR mobile and lower-end desktop GPUs.
+The earlier analysis attributed the remaining cost to render policy and
+auxiliary systems rather than raw model complexity: continuous frame loops,
+high-resolution shadows, many shadow casters/receivers, per-instance snow
+overlays, CPU-updated weather particles, per-sprite billboard callbacks, and
+detailed plant/decoration layers. The cross-tier matrix below exercises one
+deterministic garden, not the full asset catalog; current before/after profiles
+must establish which of these costs still dominate.
 
 The latest implementation pass added explicit game quality tiers, canvas DPR
 caps, tiered shadow maps, low-tier shadow disabling, tiered rain/snow particle
@@ -86,18 +95,20 @@ not accidentally based on `next dev`.
 
 ## Current static snapshot
 
-Measured from the current workspace on 2026-04-29:
+Source inventory refreshed from the current workspace on 2026-08-30. Geometry
+figures explicitly marked as historical retain the 2026-04-29 evidence boundary:
 
 | Area | Current value | Notes |
 | --- | ---: | --- |
-| GLB size | 932,304 bytes across 31 files | split by asset; `GiftBox.glb` is the largest at about 207 KB |
-| GLB meshes | 59 | summed across split assets |
-| GLB primitives | 75 | summed across split assets |
-| GLB vertices | 22,300 | summed across split assets |
-| GLB triangles | not remeasured | split export changed file boundaries |
-| GLB textures | 1 source texture | material names are duplicated only as runtime GLB-local data |
-| Runtime `useFrame` source files | 12 | still enough to keep continuous work alive |
-| `castShadow` / `receiveShadow` occurrences | 109 | coarse source count in `packages/game/src` |
+| GLB size | 14,648,032 compressed bytes (13.97 MiB) across 146 files | source-backed file inventory; no runtime transfer or decode cost is implied |
+| Generated manifest asset names | 145 | names exposed by the generated runtime manifest |
+| GLB meshes | historical: 59 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB primitives | historical: 75 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB vertices | historical: 22,300 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB triangles | not remeasured | expanded asset inventory needs a fresh geometry audit |
+| GLB textures | not remeasured | the previous one-source-texture result is not asserted for the expanded inventory |
+| Runtime `useFrame` registrations / source files | 59 / 48 | coarse current source count in `packages/game/src`; registrations are not equivalent to active callbacks in every scene |
+| `castShadow` / `receiveShadow` occurrences | historical: 109 | not remeasured; coarse 2026-04-29 source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |
 | Canvas DPR policy | low: cap 1, medium: cap 1.5, high: cap 2 | set as a DPR cap, not a forced upscale |
 | Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | rain fades through shader intensity and unmounts below the visible threshold; profiler reports active rain/snow counts |
@@ -167,6 +178,28 @@ budgets:
 cd apps/garden
 pnpm run profile:game:dense-mobile
 ```
+
+Run the cross-tier production matrix to measure the same deterministic
+high-target garden fixture in steady and bounded camera-motion phases across
+explicit low, medium, and high quality plus synthetic auto-standard and
+auto-constrained device classes:
+
+```bash
+cd apps/garden
+pnpm run profile:game:cross-tier
+```
+
+The matrix keeps the viewport, reported browser DPR, garden contents, detail
+layers, and legacy static-scene-cache mode fixed. Its acceptance checks verify
+the resolved quality tier, synthetic Auto inputs, canvas backing-store policy,
+and full plant-fixture visibility throughout each repeated sample. Camera
+motion uses bounded zoom/rotation cycles so it exercises visibility and render
+updates without changing the measured fixture. The auto device classes are
+deterministic profiler inputs rather than measurements from representative
+hardware. Reported results therefore establish a reproducible local
+production-build regression baseline; they do not replace physical-device,
+sustained thermal, or deployed runtime validation. Do not record performance
+conclusions here until a report has been generated and reviewed.
 
 Run every profiler scenario together:
 

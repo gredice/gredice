@@ -299,6 +299,101 @@ const highTargetScenarios = [
     },
 ];
 
+const crossTierProfileMatrix = [
+    {
+        dprCap: 1,
+        groundDecorationDensity: 0,
+        quality: 'low',
+        shadowMapSize: 0,
+        shadows: false,
+        slug: 'low',
+        tier: 'low',
+    },
+    {
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        quality: 'medium',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'medium',
+        tier: 'medium',
+    },
+    {
+        dprCap: 2,
+        groundDecorationDensity: 1,
+        quality: 'high',
+        shadowMapSize: 4_096,
+        shadows: true,
+        slug: 'high',
+        tier: 'high',
+    },
+    {
+        autoQualityDeviceClass: 'standard',
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        navigatorMetrics: {
+            deviceMemory: 8,
+            hardwareConcurrency: 8,
+        },
+        quality: 'auto',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'auto-standard',
+        tier: 'medium',
+    },
+    {
+        autoQualityDeviceClass: 'constrained',
+        dprCap: 1,
+        groundDecorationDensity: 0.25,
+        navigatorMetrics: {
+            deviceMemory: 4,
+            hardwareConcurrency: 4,
+        },
+        quality: 'auto',
+        shadowMapSize: 1_024,
+        shadows: true,
+        slug: 'auto-constrained',
+        tier: 'auto-constrained',
+    },
+];
+
+const crossTierPhases = [
+    {
+        controls: '0',
+        name: 'steady',
+    },
+    {
+        controls: '1',
+        motion: 'bounded-zoom-rotate',
+        name: 'camera-motion',
+    },
+];
+
+const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
+    crossTierPhases.map((phase) => ({
+        name: `game-cross-tier-${profile.slug}-${phase.name}-desktop`,
+        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&staticSceneCache=legacy`,
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        crossTierProfile: true,
+        expectedDprCap: profile.dprCap,
+        expectedGroundDecorationDensity: profile.groundDecorationDensity,
+        expectedQualityTier: profile.tier,
+        expectedShadowMapSize: profile.shadowMapSize,
+        expectedShadows: profile.shadows,
+        motion: phase.motion,
+        repeat: 3,
+        ...(profile.autoQualityDeviceClass
+            ? {
+                  autoQualityDeviceClass: profile.autoQualityDeviceClass,
+                  navigatorMetrics: profile.navigatorMetrics,
+              }
+            : {}),
+    })),
+);
+
 const highTargetOperationVisualScenarios = [
     {
         name: 'game-high-target-operation-visuals-desktop',
@@ -861,6 +956,7 @@ const scenarioSets = {
     'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
     core: coreScenarios,
+    'cross-tier': crossTierScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     'high-target': highTargetScenarios,
@@ -1164,7 +1260,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget check fails.',
@@ -1190,6 +1286,7 @@ function allScenarios() {
     return [
         ...adaptiveHighScenarios,
         ...coreScenarios,
+        ...crossTierScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
         ...highTargetScenarios,
@@ -1231,7 +1328,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -2096,6 +2193,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
+        scenario.motion !== 'bounded-zoom-rotate' &&
         scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
@@ -2140,6 +2238,22 @@ async function runScenarioMotion(page, scenario, sampleMs) {
             );
             pointIndex = (pointIndex + 1) % points.length;
             await wait(80);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return;
+    }
+
+    if (scenario.motion === 'bounded-zoom-rotate') {
+        while (Date.now() - startedAt < sampleMs - 240) {
+            await page.mouse.wheel(0, -20);
+            await page.keyboard.press('KeyQ');
+            await wait(120);
+            await page.mouse.wheel(0, 20);
+            await page.keyboard.press('KeyW');
+            await wait(120);
         }
         const remainingMs = sampleMs - (Date.now() - startedAt);
         if (remainingMs > 0) {
@@ -2646,12 +2760,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 expectedFieldVisualInstanceCount,
                 expectedInstanceCount,
                 expectedMulchInstanceCount,
+                expectedQualityTier,
                 allowLegacyOperationVisuals,
                 operationVisuals,
             }) => {
                 const profile = globalThis.__grediceGameProfile;
                 return Boolean(
-                    profile?.qualityTier === 'high' &&
+                    profile?.qualityTier === expectedQualityTier &&
                         profile.generatedPlantFieldCount ===
                             expectedFieldCount &&
                         profile.generatedPlantExpectedInstanceCount ===
@@ -2683,6 +2798,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         : highTargetExpectedGeneratedPlantInstanceCount,
                 expectedMulchInstanceCount:
                     highTargetOperationVisualExpectedMulchInstanceCount,
+                expectedQualityTier: scenario.expectedQualityTier ?? 'high',
                 allowLegacyOperationVisuals:
                     options.allowLegacyOperationVisuals,
                 operationVisuals: request.operationVisuals === '1',
@@ -3002,6 +3118,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let adaptiveHighLevelMax = null;
             let adaptiveHighProfileControlObserved = false;
             let effectiveDprMin = null;
+            let generatedPlantVisibleFieldCountMin = null;
+            let generatedPlantVisibleInstanceCountMin = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -3041,6 +3159,32 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         ? effectiveDpr
                         : Math.min(effectiveDprMin, effectiveDpr);
             };
+            const recordGeneratedPlantVisibility = () => {
+                const visibleFieldCount = readProfileNumber(
+                    'generatedPlantVisibleFieldCount',
+                );
+                const visibleInstanceCount = readProfileNumber(
+                    'generatedPlantVisibleInstanceCount',
+                );
+                if (visibleFieldCount !== null) {
+                    generatedPlantVisibleFieldCountMin =
+                        generatedPlantVisibleFieldCountMin === null
+                            ? visibleFieldCount
+                            : Math.min(
+                                  generatedPlantVisibleFieldCountMin,
+                                  visibleFieldCount,
+                              );
+                }
+                if (visibleInstanceCount !== null) {
+                    generatedPlantVisibleInstanceCountMin =
+                        generatedPlantVisibleInstanceCountMin === null
+                            ? visibleInstanceCount
+                            : Math.min(
+                                  generatedPlantVisibleInstanceCountMin,
+                                  visibleInstanceCount,
+                              );
+                }
+            };
             const recordAdaptiveHighState = () => {
                 const profile = globalThis.__grediceGameProfile;
                 const dprCap =
@@ -3071,6 +3215,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     profile?.adaptiveHighProfileControlActive === true;
             };
             recordEffectiveDpr();
+            recordGeneratedPlantVisibility();
             recordAdaptiveHighState();
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
@@ -3341,6 +3486,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     last = now;
                     recordAdaptiveHighState();
                     recordEffectiveDpr();
+                    recordGeneratedPlantVisibility();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -3653,6 +3799,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 elapsedMs: elapsedSeconds * 1000,
                 fps: rafFrames / safeElapsedSeconds,
                 frames: rafFrames,
+                generatedPlantVisibleFieldCountMin,
+                generatedPlantVisibleInstanceCountMin,
                 instancedDrawCalls,
                 instancedInteractionResolvedTargetCountDelta:
                     interactionResolvedTargetCountAtStart === null ||
@@ -4501,9 +4649,25 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
+        crossTierProfile: scenario.crossTierProfile === true,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
+        expectedAutoQualityMetrics: scenario.navigatorMetrics
+            ? {
+                  coarsePointer: false,
+                  coreCount: scenario.navigatorMetrics.hardwareConcurrency,
+                  dpr: scenario.dpr,
+                  memoryGb: scenario.navigatorMetrics.deviceMemory,
+                  narrowViewport: scenario.viewport.width <= 640,
+              }
+            : null,
+        expectedDprCap: scenario.expectedDprCap ?? null,
+        expectedGroundDecorationDensity:
+            scenario.expectedGroundDecorationDensity ?? null,
+        expectedQualityTier: scenario.expectedQualityTier ?? null,
+        expectedShadowMapSize: scenario.expectedShadowMapSize ?? null,
+        expectedShadows: scenario.expectedShadows ?? null,
         foliageBudget: request.foliageBudget,
         fixedTimeSeconds:
             profileMetadata?.fixedTimeSeconds ??
@@ -4731,6 +4895,210 @@ function isIgnoredLocalProfilerConsoleError(message) {
     }
 }
 
+function evaluateCrossTierAcceptance({
+    apiErrors = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+}) {
+    if (requested?.crossTierProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass: typeof actual === 'number' && actual >= limit,
+    });
+    const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
+        const expected =
+            typeof clientSize === 'number' && typeof dpr === 'number'
+                ? Math.round(clientSize * dpr)
+                : null;
+        return {
+            actual,
+            comparison: 'within-pixels',
+            limit: expected,
+            name,
+            pass:
+                typeof actual === 'number' &&
+                expected !== null &&
+                Math.abs(actual - expected) <= 2,
+        };
+    };
+    const autoQualityRequested =
+        requested.autoQualityDeviceClass === 'standard' ||
+        requested.autoQualityDeviceClass === 'constrained';
+    const expectedQualityRequest = autoQualityRequested
+        ? 'auto'
+        : requested.expectedQualityTier;
+    const minimumRenderedFrames = Math.max(
+        1,
+        Math.floor((sample.elapsedMs ?? 0) / 1_000),
+    );
+    const checks = [
+        exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
+        exact(
+            'crossTierQualityRequest',
+            requested.quality,
+            expectedQualityRequest,
+        ),
+        exact(
+            'crossTierQualityTier',
+            runtime?.qualityTier,
+            requested.expectedQualityTier,
+        ),
+        ...(autoQualityRequested
+            ? [
+                  exact(
+                      'crossTierAutoMemoryGb',
+                      requested.autoQualityMetrics?.memoryGb,
+                      requested.expectedAutoQualityMetrics?.memoryGb,
+                  ),
+                  exact(
+                      'crossTierAutoCoreCount',
+                      requested.autoQualityMetrics?.coreCount,
+                      requested.expectedAutoQualityMetrics?.coreCount,
+                  ),
+                  exact(
+                      'crossTierAutoReportedDpr',
+                      requested.autoQualityMetrics?.dpr,
+                      requested.expectedAutoQualityMetrics?.dpr,
+                  ),
+                  exact(
+                      'crossTierAutoCoarsePointer',
+                      requested.autoQualityMetrics?.coarsePointer,
+                      requested.expectedAutoQualityMetrics?.coarsePointer,
+                  ),
+                  exact(
+                      'crossTierAutoNarrowViewport',
+                      requested.autoQualityMetrics?.narrowViewport,
+                      requested.expectedAutoQualityMetrics?.narrowViewport,
+                  ),
+              ]
+            : []),
+        exact('crossTierDprCap', runtime?.dprCap, requested.expectedDprCap),
+        exact(
+            'crossTierShadowsEnabled',
+            runtime?.shadowsEnabled,
+            requested.expectedShadows,
+        ),
+        exact(
+            'crossTierShadowMapSize',
+            runtime?.shadowMapSize,
+            requested.expectedShadowMapSize,
+        ),
+        exact(
+            'crossTierGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            requested.expectedGroundDecorationDensity,
+        ),
+        exact('crossTierReportedDpr', sample.reportedDpr, requested.dpr),
+        exact(
+            'crossTierCanvasClientWidth',
+            sample.canvas?.clientWidth,
+            requested.viewport?.width,
+        ),
+        exact(
+            'crossTierCanvasClientHeight',
+            sample.canvas?.clientHeight,
+            requested.viewport?.height,
+        ),
+        canvasMatchesDpr(
+            'crossTierCanvasWidth',
+            sample.canvas?.width,
+            sample.canvas?.clientWidth,
+            requested.expectedDprCap,
+        ),
+        canvasMatchesDpr(
+            'crossTierCanvasHeight',
+            sample.canvas?.height,
+            sample.canvas?.clientHeight,
+            requested.expectedDprCap,
+        ),
+        exact(
+            'crossTierGeneratedPlantFields',
+            runtime?.generatedPlantFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierExpectedGeneratedPlantInstances',
+            runtime?.generatedPlantExpectedInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierGeneratedPlantInstances',
+            runtime?.generatedPlantInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierVisiblePlantFields',
+            runtime?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierVisiblePlantInstances',
+            runtime?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierMinimumVisiblePlantFields',
+            sample.generatedPlantVisibleFieldCountMin,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierMinimumVisiblePlantInstances',
+            sample.generatedPlantVisibleInstanceCountMin,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'crossTierStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        minimum('crossTierRenderedFps', sample.renderedFps, 1),
+        minimum(
+            'crossTierRenderedFrames',
+            sample.renderedFrames,
+            minimumRenderedFrames,
+        ),
+        minimum('crossTierDrawCalls', sample.drawCalls, 1),
+        minimum('crossTierSubmittedTriangles', sample.submittedTriangles, 1),
+        exact('crossTierApiErrors', apiErrors.length, 0),
+        exact(
+            'crossTierConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('crossTierPageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
 function evaluateHighTargetAcceptance({
     apiErrors = [],
     consoleMessages = [],
@@ -4740,6 +5108,17 @@ function evaluateHighTargetAcceptance({
     runtime,
     sample,
 }) {
+    if (requested?.crossTierProfile === true) {
+        return evaluateCrossTierAcceptance({
+            apiErrors,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+        });
+    }
+
     if (requested.gardenProfile !== 'high-target') {
         return { checks: [], pass: true };
     }
@@ -6399,8 +6778,28 @@ function buildHighTargetMedians(scenarios) {
                 runs,
                 (run) => run.sample.drawCallsPerRenderedFrame,
             );
+            const effectiveDpr = metric(runs, (run) => {
+                if (Number.isFinite(run.sample.effectiveDprAtEnd)) {
+                    return run.sample.effectiveDprAtEnd;
+                }
+                const width = run.sample.canvas?.width;
+                const clientWidth = run.sample.canvas?.clientWidth;
+                return Number.isFinite(width) &&
+                    Number.isFinite(clientWidth) &&
+                    clientWidth > 0
+                    ? width / clientWidth
+                    : null;
+            });
             const gpuElapsedP95Ms = metric(runs, (run) =>
                 run.sample.gpu?.valid ? run.sample.gpu.elapsedP95Ms : null,
+            );
+            const generatedPlantVisibleFieldCountMin = metric(
+                runs,
+                (run) => run.sample.generatedPlantVisibleFieldCountMin,
+            );
+            const generatedPlantVisibleInstanceCountMin = metric(
+                runs,
+                (run) => run.sample.generatedPlantVisibleInstanceCountMin,
             );
             const gpuElapsedP95MsRuns = runs.map((run, index) => {
                 const value = run.sample.gpu?.elapsedP95Ms ?? null;
@@ -6571,8 +6970,15 @@ function buildHighTargetMedians(scenarios) {
                     budgetName,
                     comparisonPair: runs[0]?.requested?.comparisonPair ?? null,
                     comparisonRole: runs[0]?.requested?.comparisonRole ?? null,
+                    crossTierProfile:
+                        runs[0]?.requested?.crossTierProfile === true,
                     drawCallsPerRenderedFrame,
+                    effectiveDpr,
+                    expectedQualityTier:
+                        runs[0]?.requested?.expectedQualityTier ?? null,
                     failedAcceptanceRuns,
+                    generatedPlantVisibleFieldCountMin,
+                    generatedPlantVisibleInstanceCountMin,
                     gpuElapsedP95Ms,
                     gpuElapsedP95MsRuns,
                     jsHeapMb,
@@ -6588,6 +6994,8 @@ function buildHighTargetMedians(scenarios) {
                         (run) => run.performanceBudget?.pass === true,
                     ).length,
                     renderedFps,
+                    requestedQuality: runs[0]?.requested?.quality ?? null,
+                    resolvedQualityTier: runs[0]?.runtime?.qualityTier ?? null,
                     rendererShaders,
                     rendererShadersRuns,
                     rendererTextures,
@@ -6617,6 +7025,14 @@ function buildHighTargetMedians(scenarios) {
                 },
             ];
         }),
+    );
+}
+
+function buildCrossTierMedians(highTargetMedians) {
+    return Object.fromEntries(
+        Object.entries(highTargetMedians).filter(
+            ([, summary]) => summary.crossTierProfile === true,
+        ),
     );
 }
 
@@ -8427,7 +8843,30 @@ function buildMarkdown(report) {
         );
     }
 
-    const highTargetMedians = Object.entries(report.highTargetMedians ?? {});
+    const crossTierMedians = Object.entries(
+        report.crossTierMedians ??
+            buildCrossTierMedians(report.highTargetMedians ?? {}),
+    );
+    if (crossTierMedians.length > 0) {
+        lines.push(
+            '',
+            '## Cross-tier repeated-run summary',
+            '',
+            '| Scenario | Requested → resolved | Accepted runs | Performance passing runs | Final | Min visible fields/instances | Effective DPR median [min, max] | p95 median [min, max] | Rendered FPS median [min, max] | Draw/render median [min, max] | Triangles/render median [min, max] | GPU p95 median [min, max] |',
+            '| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        const formatRange = (range) =>
+            `${range.median ?? 'n/a'} [${range.min ?? 'n/a'}, ${range.max ?? 'n/a'}]`;
+        for (const [name, summary] of crossTierMedians) {
+            lines.push(
+                `| ${name} | ${summary.requestedQuality ?? 'n/a'} → ${summary.resolvedQualityTier ?? 'n/a'} | ${summary.acceptedRunCount}/${summary.runCount} | ${summary.performancePassedRunCount}/${summary.runCount} | ${summary.pass ? 'pass' : 'fail'} | ${summary.generatedPlantVisibleFieldCountMin?.min ?? 'n/a'}/${summary.generatedPlantVisibleInstanceCountMin?.min ?? 'n/a'} | ${formatRange(summary.effectiveDpr)} | ${formatRange(summary.p95FrameMs)} | ${formatRange(summary.renderedFps)} | ${formatRange(summary.drawCallsPerRenderedFrame)} | ${formatRange(summary.trianglesPerRenderedFrame)} | ${formatRange(summary.gpuElapsedP95Ms)} |`,
+            );
+        }
+    }
+
+    const highTargetMedians = Object.entries(
+        report.highTargetMedians ?? {},
+    ).filter(([, summary]) => summary.crossTierProfile !== true);
     if (highTargetMedians.length > 0) {
         lines.push(
             '',
@@ -8983,6 +9422,7 @@ async function main() {
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
+        const crossTierMedians = buildCrossTierMedians(highTargetMedians);
         const adaptiveHighComparisons =
             buildAdaptiveHighComparisons(highTargetMedians);
         const staticSceneCacheVisualComparisons =
@@ -9001,7 +9441,7 @@ async function main() {
         const report = {
             baseUrl: options.baseUrl,
             generatedAt: new Date().toISOString(),
-            schemaVersion: 2,
+            schemaVersion: 3,
             sourceCommit:
                 process.env.VERCEL_GIT_COMMIT_SHA ??
                 process.env.GITHUB_SHA ??
@@ -9021,6 +9461,7 @@ async function main() {
                 warmupMs: options.warmupMs,
             },
             adaptiveHighComparisons,
+            crossTierMedians,
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
@@ -9053,6 +9494,7 @@ async function main() {
 
 export {
     buildAdaptiveHighComparisons,
+    buildCrossTierMedians,
     buildHighTargetMedians,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -9064,6 +9506,7 @@ export {
     buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
+    evaluateCrossTierAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
