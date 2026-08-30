@@ -60,6 +60,19 @@ describe('serializeGardenStructures', () => {
         assert.equal('gardenId' in structures[0], false);
     });
 
+    it('orders identifiers by locale-independent code units', () => {
+        const structures = serializeGardenStructures([
+            structureRecord({ id: 'structure-ä' }),
+            structureRecord({ id: 'structure-a' }),
+            structureRecord({ id: 'structure-Z' }),
+        ]);
+
+        assert.deepEqual(
+            structures.map((structure) => structure.id),
+            ['structure-Z', 'structure-a', 'structure-ä'],
+        );
+    });
+
     it('exposes only visual and safe catalogue fields publicly', () => {
         const [structure] = serializeGardenStructures([structureRecord()], {
             publicView: true,

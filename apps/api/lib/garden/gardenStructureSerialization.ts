@@ -9,12 +9,12 @@ import {
     normalizeGardenStructureDocument,
 } from '@gredice/js/gardenStructures';
 
-const gardenStructureTemplateKeys = new Set<GardenStructureTemplateKey>([
+const gardenStructureTemplateKeys: readonly GardenStructureTemplateKey[] = [
     'barn',
     'blank',
     'greenhouse',
     'house',
-]);
+];
 
 export type GardenStructureSerializationRecord = Readonly<{
     anchorX: unknown;
@@ -91,6 +91,16 @@ function isRotation(value: unknown): value is GardenStructureRotation {
     return value === 0 || value === 1 || value === 2 || value === 3;
 }
 
+function isTemplateKey(value: unknown): value is GardenStructureTemplateKey {
+    return gardenStructureTemplateKeys.some((key) => key === value);
+}
+
+function compareIdentifiers(left: string, right: string) {
+    if (left < right) return -1;
+    if (left > right) return 1;
+    return 0;
+}
+
 function reportInvalid(
     record: GardenStructureSerializationRecord,
     code: GardenStructureSerializationIssue['code'],
@@ -134,12 +144,7 @@ function serializeGardenStructure(
     if (!Number.isSafeInteger(record.revision) || Number(record.revision) < 1) {
         return reportInvalid(record, 'invalid-revision', options);
     }
-    if (
-        typeof record.templateKey !== 'string' ||
-        !gardenStructureTemplateKeys.has(
-            record.templateKey as GardenStructureTemplateKey,
-        )
-    ) {
+    if (!isTemplateKey(record.templateKey)) {
         return reportInvalid(record, 'invalid-template', options);
     }
 
@@ -167,7 +172,7 @@ function serializeGardenStructure(
         kitVersion: record.kitVersion,
         revision: Number(record.revision),
         rotation: record.rotation,
-        templateKey: record.templateKey as GardenStructureTemplateKey,
+        templateKey: record.templateKey,
     } satisfies SerializedPublicGardenStructure;
     if (options.publicView) {
         return common;
@@ -209,5 +214,5 @@ export function serializeGardenStructures(
             const serialized = serializeGardenStructure(record, options);
             return serialized ? [serialized] : [];
         })
-        .sort((left, right) => left.id.localeCompare(right.id));
+        .sort((left, right) => compareIdentifiers(left.id, right.id));
 }
