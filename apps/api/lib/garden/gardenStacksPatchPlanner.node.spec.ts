@@ -646,6 +646,20 @@ describe('planGardenStacksPatch recycle planning', () => {
         );
     });
 
+    test('rejects GardenBox recycling before its stored inventory can be orphaned', () => {
+        expectFailure(
+            planGardenStacksPatch(
+                plannerInput({
+                    blockData: [directoryBlock('GardenBox')],
+                    blocks: [block('garden-box', 'GardenBox')],
+                    operations: [{ op: 'remove', path: '/0/0/0' }],
+                    stacks: [stack(0, 0, ['garden-box'])],
+                }),
+            ),
+            'GARDEN_BOX_NOT_RECYCLABLE',
+        );
+    });
+
     test('rejects a positive directory refund outside storage bounds', () => {
         expectFailure(
             planGardenStacksPatch(

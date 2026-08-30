@@ -6,6 +6,8 @@ import {
     AccountNotFoundError,
     accountDeletionStartedEventType,
     accounts,
+    createAccount,
+    createGardenBlock,
     deleteAccountWithDependencies,
     events,
     fenceAccountShoppingCartsForDeletion,
@@ -13,10 +15,17 @@ import {
     getOrCreateShoppingCart,
     getShoppingCart,
     markAccountDeletionStarted,
+    raisedBeds,
+    softDeleteNewRaisedBedOnce,
     storage,
     withAccountDeletionFenceTransaction,
 } from '@gredice/storage';
 import { and, eq } from 'drizzle-orm';
+import {
+    createTestGarden,
+    createTestRaisedBed,
+    ensureFarmId,
+} from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 async function getDeletionMarkers(accountId: string) {
@@ -152,4 +161,32 @@ test('account deletion fence transaction rejects missing and deleting accounts',
             return true;
         },
     );
+});
+
+test('account deletion detaches a recycled soft-deleted raised bed before removing its garden', async () => {
+    createTestDb();
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const blockId = await createGardenBlock(gardenId, 'Raised_Bed');
+    const raisedBedId = await createTestRaisedBed(gardenId, accountId, blockId);
+    await storage().transaction(async (transaction) => {
+        assert.equal(
+            await softDeleteNewRaisedBedOnce(raisedBedId, transaction),
+            true,
+        );
+    });
+
+    await deleteAccountWithDependencies(accountId, 'missing-test-user');
+
+    const recycledBed = await storage().query.raisedBeds.findFirst({
+        where: eq(raisedBeds.id, raisedBedId),
+    });
+    assert.ok(recycledBed);
+    assert.equal(recycledBed.isDeleted, true);
+    assert.equal(recycledBed.status, 'abandoned');
+    assert.equal(recycledBed.accountId, null);
+    assert.equal(recycledBed.gardenId, null);
+    assert.equal(recycledBed.blockId, null);
+    assert.equal(await getAccount(accountId), undefined);
 });

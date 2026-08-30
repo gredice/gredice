@@ -436,6 +436,26 @@ describe('recycleGardenBlockForAccount', () => {
         assert.equal(harness.calls.includes('refund'), false);
     });
 
+    it('rejects GardenBox recycling before it can orphan stored inventory', async () => {
+        const harness = makeHarness({ blockName: 'GardenBox' });
+
+        const result = await harness.service.recycleGardenBlockForAccount({
+            accountId: harness.accountId,
+            blockId: harness.blockId,
+            gardenId: harness.gardenId,
+        });
+
+        assert.deepEqual(result, {
+            ok: false,
+            code: 'GARDEN_BOX_NOT_RECYCLABLE',
+            error: 'Garden boxes cannot be recycled because they may contain stored blocks',
+            status: 400,
+        });
+        assert.equal(harness.calls.includes('stack-update'), false);
+        assert.equal(harness.calls.includes('block-delete'), false);
+        assert.equal(harness.calls.includes('refund'), false);
+    });
+
     it('returns bounded combined-occupancy conflicts without writing', async () => {
         const issues = Array.from({ length: 30 }, (_, index) => ({
             code: 'missing-support' as const,

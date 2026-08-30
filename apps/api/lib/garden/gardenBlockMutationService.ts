@@ -57,6 +57,7 @@ export type GardenBlockMutationFailureCode =
     | 'GARDEN_OCCUPANCY_INVALID_STATE'
     | 'GARDEN_STATE_CHANGED'
     | 'GARDEN_STATE_INVALID'
+    | 'GARDEN_BOX_NOT_RECYCLABLE'
     | 'INVALID_REQUEST'
     | 'MESSAGE_NOT_ALLOWED'
     | 'ROTATION_LOCKED'
@@ -544,6 +545,13 @@ export function createGardenBlockMutationService<Transaction>(
                     );
                     if (!block) {
                         fail('BLOCK_NOT_FOUND', 404, 'Block not found');
+                    }
+                    if (block.name === 'GardenBox') {
+                        fail(
+                            'GARDEN_BOX_NOT_RECYCLABLE',
+                            400,
+                            'Garden boxes cannot be recycled because they may contain stored blocks',
+                        );
                     }
                     const directoryBlock = findDirectoryBlock(
                         blockData,

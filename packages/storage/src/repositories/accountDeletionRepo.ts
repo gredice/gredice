@@ -21,7 +21,6 @@ import {
     markAccountDeletionStarted,
 } from './accountDeletionFenceRepo';
 import { withCheckoutCartItemLocks } from './checkoutCartItemLock';
-import { getRaisedBeds } from './gardensRepo';
 import {
     deleteNotification,
     getNotificationsByAccount,
@@ -145,7 +144,12 @@ export async function deleteAccountWithDependencies(
 
         // 5-8. Deactivate raised beds
         for (const garden of gardens) {
-            const raisedBeds = await getRaisedBeds(garden.id);
+            // Include already soft-deleted projections. They deliberately keep
+            // their garden/block foreign keys for history, so skipping them
+            // would make the later physical garden cleanup fail forever.
+            const raisedBeds = await storage().query.raisedBeds.findMany({
+                where: eq(dbRaisedBeds.gardenId, garden.id),
+            });
             for (const raisedBed of raisedBeds) {
                 console.info(
                     `[AccountDelete] Abandoning and detaching raised bedId=${raisedBed.id}`,
