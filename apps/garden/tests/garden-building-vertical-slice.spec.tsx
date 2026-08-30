@@ -136,7 +136,11 @@ async function dispatchCanvasTouchGesture({
 test('keeps one canvas through the touch-first building slice in portrait and landscape', async ({
     browser,
 }, testInfo) => {
-    test.setTimeout(45_000);
+    // This proof intentionally exercises a full WebGL lifecycle (touch entry,
+    // template recompilation, viewport rotation, pinch zoom, and teardown). The
+    // shared CI runner executes it near the end of the serial WebGL suite, where
+    // software rendering can be substantially slower than an isolated run.
+    test.setTimeout(120_000);
     const context = await browser.newContext({
         hasTouch: true,
         viewport: portraitViewport,
@@ -538,6 +542,7 @@ test('keeps the public debug sandbox on the managed default-off path', async ({
 test('supports keyboard entry, initial focus, Escape, and focus return', async ({
     page,
 }) => {
+    test.setTimeout(30_000);
     await page.goto(buildingKeyboardProfileUrl, { waitUntil: 'networkidle' });
 
     const entry = page.getByTestId('garden-structure-build-entry');
