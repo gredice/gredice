@@ -71,4 +71,15 @@ test('system Back unwinds confirmation and tool before blocking dirty exit, then
     await page.getByRole('button', { name: 'Use acknowledged state' }).click();
     await pressSystemBackInMountedComponent(activeState);
     await expect(page.getByTestId('history-active')).toHaveText('closed');
+
+    await page.getByRole('button', { name: 'Reopen build mode' }).click();
+    await expect(page.getByTestId('history-active')).toHaveText('active');
+    await page
+        .getByRole('button', { name: 'Close build mode normally' })
+        .click();
+    await expect(page.getByTestId('history-active')).toHaveText('closed');
+    await page.getByRole('button', { name: 'Reopen build mode' }).click();
+    await expect(page.getByTestId('history-active')).toHaveText('active');
+    await pressSystemBackInMountedComponent(activeState);
+    await expect(page.getByTestId('history-active')).toHaveText('closed');
 });

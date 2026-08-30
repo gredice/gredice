@@ -126,6 +126,12 @@ export function GardenStructureBuildModeHistoryGuardStory() {
             >
                 Use acknowledged state
             </button>
+            <button type="button" onClick={() => setActive(true)}>
+                Reopen build mode
+            </button>
+            <button type="button" onClick={() => setActive(false)}>
+                Close build mode normally
+            </button>
         </div>
     );
 }
