@@ -18,6 +18,7 @@ export function GardenStructureConfirmationDialog({
     confirmLabel,
     description,
     destructive = false,
+    destructiveAction,
     error,
     onCancel,
     onConfirm,
@@ -30,6 +31,11 @@ export function GardenStructureConfirmationDialog({
     confirmLabel: string;
     description: string;
     destructive?: boolean;
+    destructiveAction?: Readonly<{
+        disabled?: boolean;
+        label: string;
+        onClick: () => void;
+    }>;
     error?: string | null;
     onCancel: () => void;
     onConfirm: () => void;
@@ -106,7 +112,12 @@ export function GardenStructureConfirmationDialog({
                         {error}
                     </p>
                 ) : null}
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div
+                    className={cx(
+                        'mt-4 grid grid-cols-1 gap-2',
+                        destructiveAction ? 'sm:grid-cols-3' : 'sm:grid-cols-2',
+                    )}
+                >
                     <button
                         type="button"
                         className={gardenStructureBuildModeControlClassName}
@@ -116,6 +127,19 @@ export function GardenStructureConfirmationDialog({
                     >
                         {cancelLabel}
                     </button>
+                    {destructiveAction ? (
+                        <button
+                            type="button"
+                            className={cx(
+                                gardenStructureBuildModeControlClassName,
+                                'border-destructive bg-destructive text-destructive-foreground',
+                            )}
+                            disabled={destructiveAction.disabled}
+                            onClick={destructiveAction.onClick}
+                        >
+                            {destructiveAction.label}
+                        </button>
+                    ) : null}
                     <button
                         type="button"
                         className={cx(

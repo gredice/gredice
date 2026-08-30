@@ -315,6 +315,9 @@ export function GardenStructureVerticalSliceHud({
             null,
         );
     const [exitConfirmation, setExitConfirmation] = useState(false);
+    const [exitConfirmationError, setExitConfirmationError] = useState<
+        string | null
+    >(null);
     const [recoveryWriteState, setRecoveryWriteState] = useState<Readonly<{
         available: boolean;
         editor: GardenStructureEditorState;
@@ -512,6 +515,7 @@ export function GardenStructureVerticalSliceHud({
     function showExitConfirmation() {
         rememberConfirmationFocus();
         setDemolishConfirmation(false);
+        setExitConfirmationError(null);
         setExitConfirmation(true);
     }
 
@@ -525,6 +529,7 @@ export function GardenStructureVerticalSliceHud({
         const returnTarget = confirmationReturnFocusRef.current;
         confirmationReturnFocusRef.current = null;
         setDemolishConfirmation(false);
+        setExitConfirmationError(null);
         setExitConfirmation(false);
         window.setTimeout(() => {
             if (returnTarget?.isConnected) {
@@ -540,10 +545,24 @@ export function GardenStructureVerticalSliceHud({
         releaseBuildModeHistoryGuard();
         setDemolishConfirmation(false);
         setConflictResolutionPending(null);
+        setExitConfirmationError(null);
         setExitConfirmation(false);
         confirmationReturnFocusRef.current = null;
         restoreEntryFocusRef.current = true;
         setSession(null);
+    }
+
+    function discardNewDraft() {
+        if (editor?.origin.kind !== 'new-draft') {
+            return;
+        }
+        if (!removeRecovery(editor)) {
+            setExitConfirmationError(
+                'Nacrt nije moguće ukloniti s ovog uređaja. Pokušajte ponovno prije izlaska.',
+            );
+            return;
+        }
+        closeBuildMode({ keepRecovery: true });
     }
 
     function requestExit() {
@@ -1923,13 +1942,29 @@ export function GardenStructureVerticalSliceHud({
                 <GardenStructureConfirmationDialog
                     cancelLabel="Nastavi uređivati"
                     confirmDisabled={saving}
-                    confirmLabel={exitConfirmationPresentation.actionLabel}
+                    confirmLabel={
+                        editor.origin.kind === 'new-draft' &&
+                        exitConfirmationPresentation.keepRecovery
+                            ? 'Sačuvaj nacrt i izađi'
+                            : exitConfirmationPresentation.actionLabel
+                    }
                     description={
                         saving
                             ? 'Spremanje je još u tijeku. Pričekajte potvrdu prije izlaska.'
                             : exitConfirmationPresentation.description
                     }
                     destructive={!exitConfirmationPresentation.keepRecovery}
+                    destructiveAction={
+                        editor.origin.kind === 'new-draft' &&
+                        exitConfirmationPresentation.keepRecovery
+                            ? {
+                                  disabled: saving,
+                                  label: 'Odbaci nacrt',
+                                  onClick: discardNewDraft,
+                              }
+                            : undefined
+                    }
+                    error={exitConfirmationError}
                     onCancel={dismissConfirmation}
                     onConfirm={() =>
                         closeBuildMode({

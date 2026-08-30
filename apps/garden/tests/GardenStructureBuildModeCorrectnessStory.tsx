@@ -42,6 +42,28 @@ export function GardenStructureDemolitionFailureDialogStory() {
     );
 }
 
+export function GardenStructureDraftExitDialogStory() {
+    const [action, setAction] = useState('none');
+    return (
+        <div>
+            <GardenStructureConfirmationDialog
+                cancelLabel="Nastavi uređivati"
+                confirmLabel="Sačuvaj nacrt i izađi"
+                description="Nacrt ostaje na ovom uređaju dok spremanje nije potvrđeno."
+                destructiveAction={{
+                    label: 'Odbaci nacrt',
+                    onClick: () => setAction('discard'),
+                }}
+                onCancel={() => setAction('continue')}
+                onConfirm={() => setAction('keep')}
+                testId="garden-structure-exit-dialog"
+                title="Nespremljene promjene"
+            />
+            <output data-testid="draft-exit-action">{action}</output>
+        </div>
+    );
+}
+
 function createHistoryGuardEditors() {
     const seed = createGardenStructureTemplateSeed('blank');
     const draft = createNewGardenStructureEditorState({

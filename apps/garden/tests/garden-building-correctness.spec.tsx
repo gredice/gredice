@@ -4,6 +4,7 @@ import {
     GardenStructureBuildModeHistoryGuardStory,
     GardenStructureConflictResolutionStory,
     GardenStructureDemolitionFailureDialogStory,
+    GardenStructureDraftExitDialogStory,
 } from './GardenStructureBuildModeCorrectnessStory';
 
 async function pressSystemBackInMountedComponent(activeState: Locator) {
@@ -46,6 +47,30 @@ test('shows demolition failures visibly inside the confirmation dialog', async (
         'Rušenje trenutačno nije moguće dovršiti.',
     );
     await expect(dialog.getByRole('button', { name: 'Ne ruši' })).toBeFocused();
+});
+
+test('offers confirmed drafts separate keep, discard, and continue actions', async ({
+    mount,
+    page,
+}) => {
+    await mount(<GardenStructureDraftExitDialogStory />);
+
+    const dialog = page.getByRole('alertdialog', {
+        name: 'Nespremljene promjene',
+    });
+    await expect(dialog).toBeVisible();
+    await expect(
+        dialog.getByRole('button', { name: 'Nastavi uređivati' }),
+    ).toBeFocused();
+
+    await dialog.getByRole('button', { name: 'Odbaci nacrt' }).click();
+    await expect(page.getByTestId('draft-exit-action')).toHaveText('discard');
+
+    await dialog.getByRole('button', { name: 'Sačuvaj nacrt i izađi' }).click();
+    await expect(page.getByTestId('draft-exit-action')).toHaveText('keep');
+
+    await dialog.getByRole('button', { name: 'Nastavi uređivati' }).click();
+    await expect(page.getByTestId('draft-exit-action')).toHaveText('continue');
 });
 
 test('system Back unwinds confirmation and tool before blocking dirty exit, then closes acknowledged state', async ({

@@ -92,15 +92,28 @@ test('keeps the React-only garden entry free of 3D runtime imports', () => {
     assert.ok(visited.size > 10, 'expected to inspect the shared HUD graph');
 });
 
-test('keeps saved structure summaries visible when the managed building flag is off', () => {
+test('keeps saved summaries flag-independent and exposes the flagged 3D build entry', () => {
     const content = readFileSync(
         join(sourceRoot, 'GardenOverview2DContent.tsx'),
         'utf8',
     );
+    const panel = readFileSync(
+        join(sourceRoot, 'GardenStructureOverview2DPanel.tsx'),
+        'utf8',
+    );
 
-    assert.match(content, /garden\.structures\.length > 0/);
+    assert.match(
+        content,
+        /garden\.structures\.length > 0 \|\|\s*flags\.enableGardenBuildingSystemFlag/,
+    );
+    assert.match(
+        content,
+        /buildEnabled=\{Boolean\(\s*flags\.enableGardenBuildingSystemFlag/,
+    );
     assert.doesNotMatch(
         content,
         /enableGardenBuildingSystemFlag\s*&&\s*garden\.structures/,
     );
+    assert.match(panel, /if \(!buildEnabled && summaries\.length === 0\)/);
+    assert.match(panel, /Izradi građevinu u 3D/);
 });
