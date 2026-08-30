@@ -178,4 +178,35 @@ test('unmounting Build Mode does not pop a newer client-side route entry', async
             page.evaluate(() => window.history.state?.routeTransition ?? null),
         )
         .toBe('destination');
+
+    await page.evaluate(() => window.history.back());
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.history.state?.__grediceGardenStructureBuildMode ??
+                    null,
+            ),
+        )
+        .not.toBeNull();
+    const restoredMarker = await page.evaluate(
+        () => window.history.state?.__grediceGardenStructureBuildMode ?? null,
+    );
+    const historyLengthBeforeRemount = await page.evaluate(
+        () => window.history.length,
+    );
+
+    await mount(<GardenStructureBuildModeHistoryGuardStory />);
+    await expect
+        .poll(() =>
+            page.evaluate(
+                () =>
+                    window.history.state?.__grediceGardenStructureBuildMode ??
+                    null,
+            ),
+        )
+        .toBe(restoredMarker);
+    await expect
+        .poll(() => page.evaluate(() => window.history.length))
+        .toBe(historyLengthBeforeRemount);
 });

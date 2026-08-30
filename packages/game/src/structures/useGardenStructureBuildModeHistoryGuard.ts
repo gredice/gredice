@@ -5,6 +5,20 @@ import { useCallback, useEffect, useRef } from 'react';
 export type GardenStructureBuildModeHistoryBackDisposition = 'close' | 'retain';
 
 const historyStateKey = '__grediceGardenStructureBuildMode';
+const historyMarkerPrefix = 'garden-structure-';
+
+function currentHistoryMarker() {
+    const current = window.history.state;
+    if (typeof current !== 'object' || current === null) {
+        return null;
+    }
+    const marker = current[historyStateKey];
+    return typeof marker === 'string' &&
+        marker.startsWith(historyMarkerPrefix) &&
+        marker.length <= 128
+        ? marker
+        : null;
+}
 
 function historyStateWithMarker(marker: string) {
     const current = window.history.state;
@@ -21,7 +35,7 @@ export function useGardenStructureBuildModeHistoryGuard({
     active: boolean;
     onBack: () => GardenStructureBuildModeHistoryBackDisposition;
 }) {
-    const markerRef = useRef(`garden-structure-${crypto.randomUUID()}`);
+    const markerRef = useRef(`${historyMarkerPrefix}${crypto.randomUUID()}`);
     const guardArmedRef = useRef(false);
     const releasePendingRef = useRef(false);
     const activeRef = useRef(active);
@@ -31,6 +45,12 @@ export function useGardenStructureBuildModeHistoryGuard({
 
     const armGuard = useCallback(() => {
         if (guardArmedRef.current || releasePendingRef.current) {
+            return;
+        }
+        const restoredMarker = currentHistoryMarker();
+        if (restoredMarker) {
+            markerRef.current = restoredMarker;
+            guardArmedRef.current = true;
             return;
         }
         window.history.pushState(
