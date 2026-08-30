@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
+    createGardenOccupancyIndexFromStorageSnapshot,
     type GardenOccupancyStorageBlockLike,
     type GardenOccupancyStorageStackLike,
     type GardenOccupancyStorageStructureLike,
@@ -334,6 +335,35 @@ describe('validateStructureCandidateAgainstGarden', () => {
             assert.equal(
                 Object.hasOwn(result.error.issues[0] ?? {}, 'message'),
                 false,
+            );
+        }
+    });
+});
+
+describe('createGardenOccupancyIndexFromStorageSnapshot', () => {
+    test('exposes combined block and structure cells for placement search', () => {
+        const result = createGardenOccupancyIndexFromStorageSnapshot({
+            blockData,
+            snapshot: gardenSnapshot({
+                blocks: [{ id: 'ground', name: 'Block_Grass' }],
+                stacks: [{ blocks: ['ground'], positionX: 4, positionY: -2 }],
+                structures: [
+                    structure('house', [[0, 0]], {
+                        anchorX: 4,
+                        anchorY: -2,
+                        rotation: 0,
+                    }),
+                ],
+            }),
+        });
+
+        assert.equal(result.valid, true);
+        if (result.valid) {
+            const cell = result.index.cells.get('4|-2');
+            assert.deepEqual(cell?.structureIds, ['house']);
+            assert.deepEqual(
+                cell?.blocks.map((block) => block.blockId),
+                ['ground'],
             );
         }
     });

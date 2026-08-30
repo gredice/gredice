@@ -3,14 +3,18 @@ import test from 'node:test';
 import {
     addGardenBoxInventoryItem,
     addInventoryItem,
+    consumeGardenBoxInventoryItem,
     createAccount,
     createGardenBlock,
     GARDEN_BOX_BLOCK_STACK_LIMIT,
     GARDEN_BOX_BLOCK_STACK_SIZE,
+    GardenBoxInventoryInsufficientError,
     getGardenBoxBlocksForAccount,
     getGardenBoxInventory,
     getInventory,
     setGardenBoxInventory,
+    withGardenBoxInventoryTransaction,
+    withGardenPlacementTransaction,
 } from '@gredice/storage';
 import { createTestGarden, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
@@ -74,6 +78,105 @@ test('garden box inventory is scoped per box and separate from account inventory
             await getGardenBoxInventory(accountId, gardenId, secondBoxId),
         ),
         [{ entityTypeName: 'block', entityId: '101', amount: 4 }],
+    );
+});
+
+test('garden box inventory composes before the garden lock and rolls back together', async () => {
+    createTestDb();
+
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const boxId = await createGardenBlock(gardenId, 'GardenBox');
+    await setGardenBoxInventory(accountId, gardenId, boxId, [
+        { entityTypeName: 'block', entityId: '101', amount: 1 },
+    ]);
+
+    await assert.rejects(
+        withGardenBoxInventoryTransaction(
+            accountId,
+            gardenId,
+            boxId,
+            (inventoryTransaction) =>
+                withGardenPlacementTransaction(
+                    gardenId,
+                    async (gardenTransaction) => {
+                        await consumeGardenBoxInventoryItem(
+                            accountId,
+                            gardenId,
+                            boxId,
+                            {
+                                entityTypeName: 'block',
+                                entityId: '101',
+                                amount: 1,
+                                source: 'test:rollback',
+                            },
+                            gardenTransaction,
+                        );
+                        throw new Error('rollback placement');
+                    },
+                    inventoryTransaction,
+                ),
+        ),
+        /rollback placement/u,
+    );
+
+    assert.deepEqual(
+        itemSummary(await getGardenBoxInventory(accountId, gardenId, boxId)),
+        [{ entityTypeName: 'block', entityId: '101', amount: 1 }],
+    );
+});
+
+test('one remaining garden box item can be consumed by only one concurrent placement', async () => {
+    createTestDb();
+
+    const accountId = await createAccount();
+    const farmId = await ensureFarmId();
+    const gardenId = await createTestGarden({ accountId, farmId });
+    const boxId = await createGardenBlock(gardenId, 'GardenBox');
+    await setGardenBoxInventory(accountId, gardenId, boxId, [
+        { entityTypeName: 'block', entityId: '101', amount: 1 },
+    ]);
+
+    const consumeForPlacement = () =>
+        withGardenBoxInventoryTransaction(
+            accountId,
+            gardenId,
+            boxId,
+            (inventoryTransaction) =>
+                withGardenPlacementTransaction(
+                    gardenId,
+                    (gardenTransaction) =>
+                        consumeGardenBoxInventoryItem(
+                            accountId,
+                            gardenId,
+                            boxId,
+                            {
+                                entityTypeName: 'block',
+                                entityId: '101',
+                                amount: 1,
+                                source: 'test:concurrent-placement',
+                            },
+                            gardenTransaction,
+                        ),
+                    inventoryTransaction,
+                ),
+        );
+    const results = await Promise.allSettled([
+        consumeForPlacement(),
+        consumeForPlacement(),
+    ]);
+
+    assert.equal(
+        results.filter((result) => result.status === 'fulfilled').length,
+        1,
+    );
+    const rejected = results.find((result) => result.status === 'rejected');
+    assert.ok(rejected && rejected.status === 'rejected');
+    assert.ok(rejected.reason instanceof GardenBoxInventoryInsufficientError);
+    assert.deepEqual(
+        itemSummary(await getGardenBoxInventory(accountId, gardenId, boxId)),
+        [],
     );
 });
 

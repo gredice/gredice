@@ -12,6 +12,7 @@ type StorageClient = ReturnType<typeof storage>;
 type TransactionClient = Parameters<
     Parameters<StorageClient['transaction']>[0]
 >[0];
+export type GardenBoxInventoryTransaction = TransactionClient;
 type DatabaseClient = TransactionClient | StorageClient;
 
 const checkoutInventorySourcePrefix = 'shoppingCartItem:';
@@ -55,6 +56,17 @@ export class GardenBoxInventoryLimitError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'GardenBoxInventoryLimitError';
+    }
+}
+
+export class GardenBoxInventoryInsufficientError extends Error {
+    override readonly name = 'GardenBoxInventoryInsufficientError';
+
+    constructor(
+        readonly availableAmount: number,
+        readonly requestedAmount: number,
+    ) {
+        super('Nedovoljno predmeta u vrtnoj kutiji');
     }
 }
 
@@ -200,6 +212,39 @@ export async function withInventoryAccountTransaction<T>(
 ) {
     const aggregateId = getInventoryAggregateId(accountId);
     const runInTransaction = async (db: TransactionClient) => {
+        if (!isPgliteTestDatabase()) {
+            await lockInventoryAggregate(aggregateId, db);
+        }
+        return callback(db);
+    };
+    const run = () =>
+        transaction
+            ? runInTransaction(transaction)
+            : storage().transaction(runInTransaction);
+
+    return isPgliteTestDatabase()
+        ? withInventoryInProcessLock(aggregateId, run)
+        : run();
+}
+
+/**
+ * Serialize mutations for one physical GardenBox inventory aggregate. Callers
+ * that also change garden placement must acquire this lock first, then pass
+ * the same transaction to the garden placement lock.
+ */
+export async function withGardenBoxInventoryTransaction<T>(
+    accountId: string,
+    gardenId: number,
+    blockId: string,
+    callback: (db: GardenBoxInventoryTransaction) => Promise<T>,
+    transaction?: GardenBoxInventoryTransaction,
+) {
+    const aggregateId = getGardenBoxInventoryAggregateId({
+        accountId,
+        gardenId,
+        blockId,
+    });
+    const runInTransaction = async (db: GardenBoxInventoryTransaction) => {
         if (!isPgliteTestDatabase()) {
             await lockInventoryAggregate(aggregateId, db);
         }
@@ -517,10 +562,12 @@ export async function getGardenBoxInventory(
     accountId: string,
     gardenId: number,
     blockId: string,
+    db: DatabaseClient = storage(),
 ) {
-    return getInventoryForAggregateIds([
-        getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
-    ]);
+    return getInventoryForAggregateIds(
+        [getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId })],
+        db,
+    );
 }
 
 export async function addGardenBoxInventoryItem(
@@ -528,17 +575,21 @@ export async function addGardenBoxInventoryItem(
     gardenId: number,
     blockId: string,
     payload: InventoryItemEventPayload,
-    db?: DatabaseClient,
+    db?: GardenBoxInventoryTransaction,
 ) {
     if (!db) {
-        await storage().transaction((tx) =>
-            addGardenBoxInventoryItem(
-                accountId,
-                gardenId,
-                blockId,
-                payload,
-                tx,
-            ),
+        await withGardenBoxInventoryTransaction(
+            accountId,
+            gardenId,
+            blockId,
+            (tx) =>
+                addGardenBoxInventoryItem(
+                    accountId,
+                    gardenId,
+                    blockId,
+                    payload,
+                    tx,
+                ),
         );
         return;
     }
@@ -563,12 +614,32 @@ export async function consumeGardenBoxInventoryItem(
     gardenId: number,
     blockId: string,
     payload: InventoryItemEventPayload,
-    db: DatabaseClient = storage(),
+    db?: GardenBoxInventoryTransaction,
 ) {
-    const inventory = await getInventoryForAggregateIds(
-        [getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId })],
-        db,
-    );
+    if (!db) {
+        await withGardenBoxInventoryTransaction(
+            accountId,
+            gardenId,
+            blockId,
+            (transaction) =>
+                consumeGardenBoxInventoryItem(
+                    accountId,
+                    gardenId,
+                    blockId,
+                    payload,
+                    transaction,
+                ),
+        );
+        return;
+    }
+
+    const aggregateId = getGardenBoxInventoryAggregateId({
+        accountId,
+        gardenId,
+        blockId,
+    });
+    await lockInventoryAggregate(aggregateId, db);
+    const inventory = await getInventoryForAggregateIds([aggregateId], db);
     const currentAmount =
         inventory.find(
             (item) =>
@@ -577,14 +648,14 @@ export async function consumeGardenBoxInventoryItem(
         )?.amount ?? 0;
 
     if (currentAmount < payload.amount) {
-        throw new Error('Nedovoljno predmeta u vrtnoj kutiji');
+        throw new GardenBoxInventoryInsufficientError(
+            currentAmount,
+            payload.amount,
+        );
     }
 
     await createEvent(
-        knownEvents.inventory.consumedV1(
-            getGardenBoxInventoryAggregateId({ accountId, gardenId, blockId }),
-            payload,
-        ),
+        knownEvents.inventory.consumedV1(aggregateId, payload),
         db,
     );
 }
@@ -618,61 +689,64 @@ export async function setGardenBoxInventory(
 
     validateGardenBoxInventoryItems(Array.from(requestedTotals.values()));
 
-    await storage().transaction(async (tx) => {
-        await lockInventoryAggregate(aggregateId, tx);
+    await withGardenBoxInventoryTransaction(
+        accountId,
+        gardenId,
+        blockId,
+        async (tx) => {
+            const currentInventory = await getInventoryForAggregateIds(
+                [aggregateId],
+                tx,
+            );
+            const currentTotals = new Map(
+                currentInventory.map((item) => [inventoryItemKey(item), item]),
+            );
+            const inventoryKeys = new Set([
+                ...currentTotals.keys(),
+                ...requestedTotals.keys(),
+            ]);
 
-        const currentInventory = await getInventoryForAggregateIds(
-            [aggregateId],
-            tx,
-        );
-        const currentTotals = new Map(
-            currentInventory.map((item) => [inventoryItemKey(item), item]),
-        );
-        const inventoryKeys = new Set([
-            ...currentTotals.keys(),
-            ...requestedTotals.keys(),
-        ]);
+            for (const key of inventoryKeys) {
+                const current = currentTotals.get(key);
+                const requested = requestedTotals.get(key);
+                const currentAmount = current?.amount ?? 0;
+                const requestedAmount = requested?.amount ?? 0;
+                const delta = requestedAmount - currentAmount;
 
-        for (const key of inventoryKeys) {
-            const current = currentTotals.get(key);
-            const requested = requestedTotals.get(key);
-            const currentAmount = current?.amount ?? 0;
-            const requestedAmount = requested?.amount ?? 0;
-            const delta = requestedAmount - currentAmount;
-
-            if (delta > 0 && requested) {
-                await addGardenBoxInventoryItem(
-                    accountId,
-                    gardenId,
-                    blockId,
-                    {
-                        entityTypeName: requested.entityTypeName,
-                        entityId: requested.entityId,
-                        amount: delta,
-                        source: 'gardenBox:set',
-                    },
-                    tx,
-                );
-            } else if (delta < 0 && current) {
-                await createEvent(
-                    knownEvents.inventory.consumedV1(
-                        getGardenBoxInventoryAggregateId({
-                            accountId,
-                            gardenId,
-                            blockId,
-                        }),
+                if (delta > 0 && requested) {
+                    await addGardenBoxInventoryItem(
+                        accountId,
+                        gardenId,
+                        blockId,
                         {
-                            entityTypeName: current.entityTypeName,
-                            entityId: current.entityId,
-                            amount: Math.abs(delta),
+                            entityTypeName: requested.entityTypeName,
+                            entityId: requested.entityId,
+                            amount: delta,
                             source: 'gardenBox:set',
                         },
-                    ),
-                    tx,
-                );
+                        tx,
+                    );
+                } else if (delta < 0 && current) {
+                    await createEvent(
+                        knownEvents.inventory.consumedV1(
+                            getGardenBoxInventoryAggregateId({
+                                accountId,
+                                gardenId,
+                                blockId,
+                            }),
+                            {
+                                entityTypeName: current.entityTypeName,
+                                entityId: current.entityId,
+                                amount: Math.abs(delta),
+                                source: 'gardenBox:set',
+                            },
+                        ),
+                        tx,
+                    );
+                }
             }
-        }
-    });
+        },
+    );
 
     return getGardenBoxInventory(accountId, gardenId, blockId);
 }

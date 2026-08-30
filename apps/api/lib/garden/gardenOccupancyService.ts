@@ -113,7 +113,7 @@ export type GardenOccupancyServiceError = Readonly<{
     truncated: boolean;
 }>;
 
-type GardenOccupancyServiceFailure = Readonly<{
+export type GardenOccupancyServiceFailure = Readonly<{
     valid: false;
     error: GardenOccupancyServiceError;
 }>;
@@ -166,6 +166,9 @@ type PreparedGardenOccupancy =
           structureIds: ReadonlySet<string>;
       }>
     | GardenOccupancyServiceFailure;
+
+export type CreateGardenOccupancyIndexFromStorageSnapshotResult =
+    PreparedGardenOccupancy;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -768,6 +771,27 @@ function prepareGardenOccupancy({
         index: indexed.index,
         structureIds: parsed.structureIds,
     };
+}
+
+export function createGardenOccupancyIndexFromStorageSnapshot({
+    blockData,
+    excludedBlockIds,
+    excludedStructureIds,
+    snapshot,
+}: Readonly<{
+    blockData: readonly GardenOccupancyDirectoryBlockLike[];
+    excludedBlockIds?: ReadonlySet<string>;
+    excludedStructureIds?: ReadonlySet<string>;
+    snapshot: GardenOccupancyStorageSnapshotLike;
+}>): CreateGardenOccupancyIndexFromStorageSnapshotResult {
+    const collector: IssueCollector = { issues: [], total: 0 };
+    return prepareGardenOccupancy({
+        blockData,
+        collector,
+        excludedBlockIds,
+        excludedStructureIds,
+        snapshot,
+    });
 }
 
 export function validateStructureCandidateAgainstGarden({
