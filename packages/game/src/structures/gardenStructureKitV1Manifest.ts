@@ -233,7 +233,10 @@ const materials = Object.freeze({
     'floor.stone': semanticMaterial('opaque', [
         physicalMaterialNames.greyStone,
     ]),
-    'floor.timber': semanticMaterial('opaque', woodMaterials),
+    'floor.timber': semanticMaterial('opaque', [
+        physicalMaterialNames.honeyWood,
+        physicalMaterialNames.warmWood,
+    ]),
     'roof.clay': semanticMaterial('opaque', [
         physicalMaterialNames.darkWood,
         physicalMaterialNames.terracotta,
@@ -454,7 +457,7 @@ const edgeParts = Object.freeze({
         anchor: edgeAnchor,
         bounds: bounds(vector3(-0.5, -0.07, 0), vector3(0.5, 0.8, 2.4)),
         collisionHeight: 2.4,
-        collisionThickness: 0.08,
+        collisionThickness: 0.12,
         edgeKind: 'door',
         materialId: 'door.greenhouse-open',
         nodes: Object.freeze([
@@ -767,6 +770,7 @@ export function validateGardenStructureKitV1Manifest(
     const seenNodes = new Set<string>();
     const usedNodeMaterials = new Set<string>();
     const usedSemanticMaterials = new Set<string>();
+    const boundNodeMaterialsBySemanticMaterial = new Map<string, Set<string>>();
     for (const [materialId, materialMetadata] of Object.entries(
         manifest.materials,
     )) {
@@ -869,6 +873,52 @@ export function validateGardenStructureKitV1Manifest(
                 }
             }
         }
+
+        const onlySemanticMaterialId = semanticMaterialIds[0];
+        if (
+            semanticMaterialIds.length === 1 &&
+            typeof onlySemanticMaterialId === 'string'
+        ) {
+            const boundMaterials =
+                boundNodeMaterialsBySemanticMaterial.get(
+                    onlySemanticMaterialId,
+                ) ?? new Set<string>();
+            for (const binding of part.nodes) {
+                for (const materialName of binding.nodeMaterialNames) {
+                    boundMaterials.add(materialName);
+                }
+            }
+            boundNodeMaterialsBySemanticMaterial.set(
+                onlySemanticMaterialId,
+                boundMaterials,
+            );
+        }
+    }
+
+    for (const [
+        materialId,
+        boundMaterials,
+    ] of boundNodeMaterialsBySemanticMaterial) {
+        const material = manifest.materials[materialId];
+        if (
+            material &&
+            !sameSortedValues(
+                [...material.nodeMaterialNames].toSorted((left, right) =>
+                    left.localeCompare(right),
+                ),
+                [...boundMaterials].toSorted((left, right) =>
+                    left.localeCompare(right),
+                ),
+            )
+        ) {
+            issues.push(
+                issue(
+                    'material-reference',
+                    `materials.${materialId}`,
+                    'A single-semantic part must declare exactly the physical materials bound by its nodes.',
+                ),
+            );
+        }
     }
 
     for (const materialName of Object.keys(manifest.nodeMaterials)) {
@@ -907,17 +957,21 @@ export function validateGardenStructureKitV1Manifest(
 
     for (const [partId, part] of Object.entries(manifest.edgeParts)) {
         usedSemanticMaterials.add(part.materialId);
+        const thickness = part.bounds.maximum[1] - part.bounds.minimum[1];
+        const height = part.bounds.maximum[2] - part.bounds.minimum[2];
         if (
             part.anchor.kind !== 'edge-base-center' ||
             !manifest.materials[part.materialId] ||
             !finitePositive(part.collisionHeight) ||
-            !finitePositive(part.collisionThickness)
+            !finitePositive(part.collisionThickness) ||
+            part.collisionHeight > height + 0.000_001 ||
+            part.collisionThickness > thickness + 0.000_001
         ) {
             issues.push(
                 issue(
                     'collision',
                     `edgeParts.${partId}`,
-                    'Edge collision dimensions and anchor must be valid.',
+                    'Edge collision must be positive, fit its declared bounds, and use the edge anchor.',
                 ),
             );
         }

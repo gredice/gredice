@@ -261,6 +261,48 @@ describe('GardenStructureKitV1 production asset', () => {
         );
     });
 
+    test('rejects semantic material and edge collision drift', () => {
+        const manifest = gardenStructureKitV1AssetManifest;
+        const malformedManifest = {
+            ...manifest,
+            edgeParts: {
+                ...manifest.edgeParts,
+                'door.greenhouse-open': {
+                    ...manifest.edgeParts['door.greenhouse-open'],
+                    collisionHeight: 3,
+                    collisionThickness: 2,
+                },
+            },
+            materials: {
+                ...manifest.materials,
+                'floor.timber': {
+                    ...manifest.materials['floor.timber'],
+                    nodeMaterialNames: [
+                        ...(manifest.materials['floor.timber']
+                            ?.nodeMaterialNames ?? []),
+                        'Material.GardenStructureKitV1.DarkWood',
+                    ],
+                },
+            },
+        };
+
+        const issues = validateGardenStructureKitV1Manifest(malformedManifest);
+        assert.ok(
+            issues.some(
+                ({ code, path }) =>
+                    code === 'material-reference' &&
+                    path === 'materials.floor.timber',
+            ),
+        );
+        assert.ok(
+            issues.some(
+                ({ code, path }) =>
+                    code === 'collision' &&
+                    path === 'edgeParts.door.greenhouse-open',
+            ),
+        );
+    });
+
     test('matches the editable source, lazy registry, and pinned GLB hash', () => {
         const { document, model } = readGlbDocument();
         const assetManifest: unknown = JSON.parse(
