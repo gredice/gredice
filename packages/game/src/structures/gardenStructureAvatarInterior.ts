@@ -1,11 +1,13 @@
 import {
     type GardenAvatarCollisionWorld,
     type GardenAvatarPoint,
+    gardenAvatarMaxStepHeight,
     gardenAvatarRadius,
     gardenAvatarStandingCollisionHeight,
     getGardenAvatarCeilingY,
     getGardenAvatarCollisionCandidates,
     getGardenAvatarGroundY,
+    getGardenAvatarSurfaceY,
 } from '../entities/avatar/gardenAvatarMovement';
 import {
     containsGardenStructureWorldCell,
@@ -22,6 +24,7 @@ const transitionCoordinateStride = 4;
 const collisionBoundsStride = 6;
 const containmentEpsilon = 0.000_01;
 const cameraWallClearance = 0.08;
+const collisionCellHalfSize = 0.5;
 
 export type GardenStructureAvatarInteriorPresentation = Readonly<{
     hiddenInstanceIds: readonly string[];
@@ -276,6 +279,103 @@ function circleIntersectsSurface(
     );
 }
 
+function circleIntersectsBlockedCell(
+    point: Pick<GardenAvatarPoint, 'x' | 'z'>,
+    cell: GardenAvatarCollisionWorld['blockedCells'][number],
+) {
+    const dx = Math.max(Math.abs(point.x - cell.x) - collisionCellHalfSize, 0);
+    const dz = Math.max(Math.abs(point.z - cell.z) - collisionCellHalfSize, 0);
+    return (
+        dx * dx + dz * dz <
+        gardenAvatarRadius * gardenAvatarRadius - containmentEpsilon
+    );
+}
+
+function doesGardenAvatarCollisionEnvelopeOverlap({
+    collisionHeight,
+    position,
+    world,
+}: {
+    collisionHeight: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}) {
+    const candidates = getGardenAvatarCollisionCandidates(world, position);
+    if (
+        candidates.blockedCells.some((cell) =>
+            circleIntersectsBlockedCell(position, cell),
+        )
+    ) {
+        // Blocked cells do not carry a vertical extent, so retain their
+        // existing full-column collision contract.
+        return true;
+    }
+
+    const actorBottomY = position.y;
+    const actorTopY = actorBottomY + collisionHeight;
+    return candidates.surfaces.some((surface) => {
+        if (
+            surface.roamable !== false ||
+            surface.bottomY === undefined ||
+            !circleIntersectsSurface(position, surface)
+        ) {
+            return false;
+        }
+        const surfaceY = getGardenAvatarSurfaceY(position, surface);
+        const surfaceBottomY = Math.min(surface.bottomY, surfaceY);
+        const surfaceTopY = Math.max(surface.bottomY, surfaceY);
+        if (surfaceTopY - surfaceBottomY <= containmentEpsilon) {
+            return false;
+        }
+        return (
+            actorBottomY < surfaceTopY - containmentEpsilon &&
+            actorTopY > surfaceBottomY + containmentEpsilon
+        );
+    });
+}
+
+export type GardenStructureAvatarWorldChangePose = Readonly<{
+    groundY: number | null;
+    requiresRelocation: boolean;
+}>;
+
+/**
+ * Revalidates the actor after structure collision changes. Airborne actors use
+ * their live vertical pose: geometry entirely below them can become their next
+ * landing surface, while geometry intersecting their body requests recovery.
+ */
+export function resolveGardenStructureAvatarWorldChangePose({
+    collisionHeight = gardenAvatarStandingCollisionHeight,
+    grounded,
+    groundY,
+    position,
+    world,
+}: {
+    collisionHeight?: number;
+    grounded: boolean;
+    groundY: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}): GardenStructureAvatarWorldChangePose {
+    const resolvedGroundY = getGardenAvatarGroundY({
+        collisionHeight,
+        currentGroundY: grounded ? groundY : position.y,
+        maxStepHeight: grounded ? gardenAvatarMaxStepHeight : 0,
+        position,
+        world,
+    });
+    return Object.freeze({
+        groundY: resolvedGroundY,
+        requiresRelocation:
+            doesGardenAvatarCollisionEnvelopeOverlap({
+                collisionHeight,
+                position,
+                world,
+            }) ||
+            (grounded && resolvedGroundY === null),
+    });
+}
+
 function resolveSafeRelocationCandidate(
     candidate: RelocationCandidate,
     world: GardenAvatarCollisionWorld,
@@ -449,11 +549,15 @@ export function resolveGardenStructureThirdPersonCameraPosition({
         const minZ = structure.wallCollisionBoxes.bounds[offset + 1];
         const maxX = structure.wallCollisionBoxes.bounds[offset + 2];
         const maxZ = structure.wallCollisionBoxes.bounds[offset + 3];
+        const minY = structure.wallCollisionBoxes.bounds[offset + 4];
+        const maxY = structure.wallCollisionBoxes.bounds[offset + 5];
         if (
             minX === undefined ||
             minZ === undefined ||
             maxX === undefined ||
-            maxZ === undefined
+            maxZ === undefined ||
+            minY === undefined ||
+            maxY === undefined
         ) {
             continue;
         }
@@ -469,11 +573,27 @@ export function resolveGardenStructureThirdPersonCameraPosition({
             minZ - cameraWallClearance,
             maxZ + cameraWallClearance,
         );
-        if (!xEntry || !zEntry) {
+        const yEntry = segmentEntryFraction(
+            targetPosition.y,
+            deltaY,
+            minY - cameraWallClearance,
+            maxY + cameraWallClearance,
+        );
+        if (!xEntry || !yEntry || !zEntry) {
             continue;
         }
-        const entry = Math.max(xEntry.minimum, zEntry.minimum, 0);
-        const exit = Math.min(xEntry.maximum, zEntry.maximum, 1);
+        const entry = Math.max(
+            xEntry.minimum,
+            yEntry.minimum,
+            zEntry.minimum,
+            0,
+        );
+        const exit = Math.min(
+            xEntry.maximum,
+            yEntry.maximum,
+            zEntry.maximum,
+            1,
+        );
         if (entry <= exit && entry > containmentEpsilon) {
             nearestEntry = Math.min(nearestEntry, entry);
         }

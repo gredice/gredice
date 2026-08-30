@@ -29,13 +29,17 @@ export {
     createGardenStructureCollectionAvatarCollisionWorld,
     getGardenStructureAvatarCollisionSurfaces,
 } from './gardenStructureAvatarCollision';
-export type { GardenStructureAvatarInteriorPresentation } from './gardenStructureAvatarInterior';
+export type {
+    GardenStructureAvatarInteriorPresentation,
+    GardenStructureAvatarWorldChangePose,
+} from './gardenStructureAvatarInterior';
 export {
     areGardenStructureAvatarInteriorPresentationsEqual,
     emptyGardenStructureAvatarInteriorPresentation,
     findContainingGardenStructure,
     findGardenStructureAvatarSafeRelocation,
     getGardenStructureAvatarInteriorPresentation,
+    resolveGardenStructureAvatarWorldChangePose,
     resolveGardenStructureThirdPersonCameraPosition,
 } from './gardenStructureAvatarInterior';
 export type {

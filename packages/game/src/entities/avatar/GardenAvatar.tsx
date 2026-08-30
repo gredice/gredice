@@ -34,6 +34,7 @@ import {
     findGardenStructureAvatarSafeRelocation,
     type GardenStructureAvatarInteriorPresentation,
     getGardenStructureAvatarInteriorPresentation,
+    resolveGardenStructureAvatarWorldChangePose,
     resolveGardenStructureThirdPersonCameraPosition,
 } from '../../structures/gardenStructureAvatarInterior';
 import type { GardenStructureCollectionPlan } from '../../structures/gardenStructureCollectionPlan';
@@ -1229,27 +1230,21 @@ export function GardenAvatar({
                       Math.max(nearbySpawnCandidates.length, 1)
               ]?.candidate ?? defaultSpawn);
         actor.visible = true;
-        const currentGroundY = getGardenAvatarGroundY({
-            currentGroundY: groundYRef.current,
-            position: actor.position,
+        const collisionHeight = crouchingRef.current
+            ? gardenAvatarCrouchingCollisionHeight
+            : gardenAvatarStandingCollisionHeight;
+        const worldChangePose = resolveGardenStructureAvatarWorldChangePose({
+            collisionHeight,
+            grounded: groundedRef.current,
+            groundY: groundYRef.current,
+            position: {
+                x: actor.position.x,
+                y: actor.position.y,
+                z: actor.position.z,
+            },
             world,
         });
-        const currentCeilingY =
-            currentGroundY === null
-                ? null
-                : getGardenAvatarCeilingY({
-                      collisionHeight: gardenAvatarStandingCollisionHeight,
-                      position: {
-                          x: actor.position.x,
-                          y: currentGroundY,
-                          z: actor.position.z,
-                      },
-                      world,
-                  });
-        const currentPositionInvalid =
-            currentGroundY === null ||
-            (currentCeilingY !== null && currentGroundY > currentCeilingY);
-        if (!initializedRef.current || currentPositionInvalid) {
+        if (!initializedRef.current || worldChangePose.requiresRelocation) {
             const containingStructure = findContainingGardenStructure(
                 structureCollectionPlan,
                 actor.position,
@@ -1259,7 +1254,7 @@ export function GardenAvatar({
                       collection: structureCollectionPlan,
                       position: {
                           x: actor.position.x,
-                          y: groundYRef.current,
+                          y: actor.position.y,
                           z: actor.position.z,
                       },
                       preferredStructureId:
@@ -1281,8 +1276,8 @@ export function GardenAvatar({
                 roamRef.current.waitUntil = 0;
             }
             initializedRef.current = true;
-        } else {
-            groundYRef.current = currentGroundY;
+        } else if (worldChangePose.groundY !== null) {
+            groundYRef.current = worldChangePose.groundY;
         }
     }, [initialSpawnPoint, roamCandidates, structureCollectionPlan, world]);
 

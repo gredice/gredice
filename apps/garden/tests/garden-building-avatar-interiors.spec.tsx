@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/experimental-ct-react';
 import type { Locator, Page } from '@playwright/test';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { GardenBuildingAvatarInteriorsFixture } from './GardenBuildingAvatarInteriorsFixture';
+import { GardenStructureCollectionVisibilityFixture } from './GardenStructureCollectionVisibilityFixture';
 import { PublicGardenSwitchFixture } from './PublicGardenSwitchFixture';
 
 async function installBlockDataRoute(page: Page) {
@@ -104,4 +105,74 @@ test('public avatar uses the same entry and exit cutaway contract', async ({
         fixture,
         page,
     });
+});
+
+test('removes hidden roof and wall IDs from the rendered fallback meshes', async ({
+    mount,
+}) => {
+    const fixture = await mount(<GardenStructureCollectionVisibilityFixture />);
+    const result = fixture.getByTestId('garden-structure-visibility-result');
+    const roofBatchCount = Number(
+        await result.getAttribute('data-roof-batch-count'),
+    );
+    const wallBatchCount = Number(
+        await result.getAttribute('data-wall-batch-count'),
+    );
+    expect(roofBatchCount).toBeGreaterThan(1);
+    expect(wallBatchCount).toBeGreaterThan(1);
+
+    await expect(result).toHaveText(
+        JSON.stringify({
+            roof: {
+                count: roofBatchCount,
+                semanticFallback: true,
+                visible: true,
+            },
+            wall: {
+                count: wallBatchCount,
+                semanticFallback: true,
+                visible: true,
+            },
+        }),
+    );
+
+    await fixture
+        .getByRole('button', {
+            name: 'Hide cutaway instances',
+        })
+        .click();
+    await expect(result).toHaveText(
+        JSON.stringify({
+            roof: {
+                count: roofBatchCount - 1,
+                semanticFallback: true,
+                visible: true,
+            },
+            wall: {
+                count: wallBatchCount - 1,
+                semanticFallback: true,
+                visible: true,
+            },
+        }),
+    );
+
+    await fixture
+        .getByRole('button', {
+            name: 'Hide target batches',
+        })
+        .click();
+    await expect(result).toHaveText(
+        JSON.stringify({
+            roof: {
+                count: 0,
+                semanticFallback: true,
+                visible: false,
+            },
+            wall: {
+                count: 0,
+                semanticFallback: true,
+                visible: false,
+            },
+        }),
+    );
 });

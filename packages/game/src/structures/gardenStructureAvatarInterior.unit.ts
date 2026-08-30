@@ -16,6 +16,7 @@ import {
     findContainingGardenStructure,
     findGardenStructureAvatarSafeRelocation,
     getGardenStructureAvatarInteriorPresentation,
+    resolveGardenStructureAvatarWorldChangePose,
     resolveGardenStructureThirdPersonCameraPosition,
 } from './gardenStructureAvatarInterior';
 import { createGardenStructureCollectionPlan } from './gardenStructureCollectionPlan';
@@ -191,6 +192,47 @@ describe('garden structure avatar containment and cutaway', () => {
 });
 
 describe('garden structure avatar mutation recovery', () => {
+    test('keeps an airborne actor above new geometry but rejects an overlapping live envelope', () => {
+        const structure = house(0);
+        const world = createGardenStructureAvatarCollisionWorld(structure);
+        const propBounds = structure.propCollisionBoxes.bounds;
+        const minX = propBounds[0];
+        const minZ = propBounds[1];
+        const maxX = propBounds[2];
+        const maxZ = propBounds[3];
+        const maxY = propBounds[5];
+        assert.ok(
+            minX !== undefined &&
+                minZ !== undefined &&
+                maxX !== undefined &&
+                maxZ !== undefined &&
+                maxY !== undefined,
+        );
+        const position = {
+            x: (minX + maxX) / 2,
+            y: maxY + 0.1,
+            z: (minZ + maxZ) / 2,
+        };
+
+        const clear = resolveGardenStructureAvatarWorldChangePose({
+            grounded: false,
+            groundY: baseHeight,
+            position,
+            world,
+        });
+        assert.equal(clear.requiresRelocation, false);
+        assert.ok(clear.groundY !== null);
+        assert.ok(Math.abs(clear.groundY - maxY) < 0.000_01);
+
+        const overlapping = resolveGardenStructureAvatarWorldChangePose({
+            grounded: false,
+            groundY: baseHeight,
+            position: { ...position, y: maxY - 0.2 },
+            world,
+        });
+        assert.equal(overlapping.requiresRelocation, true);
+    });
+
     test('relocates an invalid actor to the nearest deterministic cardinal portal or perimeter point', () => {
         for (const rotation of rotations) {
             const structure = house(rotation);
@@ -308,5 +350,37 @@ describe('garden structure avatar camera wall policy', () => {
             targetPosition: { ...window.from, y: 1.4 },
         });
         assert.deepEqual(windowResult, { ...window.to, y: 1.4 });
+    });
+
+    test('lets a pitched third-person camera ray pass above the wall height', () => {
+        const structure = house(0);
+        const partitionIndex = structure.blockedTransitions.edgeIds.indexOf(
+            'partition-wall-north',
+        );
+        assert.notEqual(partitionIndex, -1);
+        const partition = transitionCells(
+            structure.blockedTransitions,
+            partitionIndex,
+        );
+        const collisionIndex = structure.wallCollisionBoxes.sourceIds.findIndex(
+            (sourceIds) => sourceIds.includes('partition-wall-north'),
+        );
+        assert.notEqual(collisionIndex, -1);
+        const wallMaxY =
+            structure.wallCollisionBoxes.bounds[collisionIndex * 6 + 5];
+        assert.ok(wallMaxY !== undefined);
+        const desiredPosition = {
+            ...partition.to,
+            y: wallMaxY + 6,
+        };
+
+        const result = resolveGardenStructureThirdPersonCameraPosition({
+            desiredPosition,
+            hiddenInstanceIds: new Set(),
+            structure,
+            targetPosition: { ...partition.from, y: 1.4 },
+        });
+
+        assert.deepEqual(result, desiredPosition);
     });
 });
