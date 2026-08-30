@@ -91,3 +91,16 @@ test('keeps the React-only garden entry free of 3D runtime imports', () => {
 
     assert.ok(visited.size > 10, 'expected to inspect the shared HUD graph');
 });
+
+test('keeps saved structure summaries visible when the managed building flag is off', () => {
+    const content = readFileSync(
+        join(sourceRoot, 'GardenOverview2DContent.tsx'),
+        'utf8',
+    );
+
+    assert.match(content, /garden\.structures\.length > 0/);
+    assert.doesNotMatch(
+        content,
+        /enableGardenBuildingSystemFlag\s*&&\s*garden\.structures/,
+    );
+});

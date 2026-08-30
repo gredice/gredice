@@ -17,6 +17,19 @@ export function resolveGameProfileGardenAvatar(value: string | undefined) {
     return value === '1';
 }
 
+export function resolveGameProfileGardenBuilding(
+    value: string | undefined,
+    fixtureEnabled = false,
+) {
+    return fixtureEnabled && value === '1';
+}
+
+export function resolveGameProfileGardenBuildingFixtureGate(
+    value: string | undefined,
+) {
+    return value === 'true';
+}
+
 export function resolveGameProfileOperationVisuals(value: string | undefined) {
     return value === '1';
 }
@@ -42,12 +55,19 @@ export function resolveGameProfileWeatherSurface(
 export function resolveGameProfileFlags(
     weatherSurface: string | undefined,
     gardenAvatar?: string,
+    gardenBuilding?: string,
+    gardenBuildingFixtureEnabled = false,
+    debugTelemetry = true,
 ) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
 
     return {
-        enableDebugHudFlag: true,
+        enableDebugHudFlag: debugTelemetry,
         enableGardenAvatarFlag: resolveGameProfileGardenAvatar(gardenAvatar),
+        enableGardenBuildingSystemFlag: resolveGameProfileGardenBuilding(
+            gardenBuilding,
+            gardenBuildingFixtureEnabled,
+        ),
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',
     } satisfies NonNullable<GameSceneProps['flags']>;

@@ -1,4 +1,8 @@
 import type { GameBackgroundPaletteKey } from '@gredice/js/gameBackground';
+import type {
+    GardenStructureRotation,
+    GardenStructureTemplateKey,
+} from '@gredice/js/gardenStructures';
 import {
     createContext,
     useContext,
@@ -60,9 +64,24 @@ export type GardenAvatarMoveInput = {
     forward: number;
     right: number;
 };
+export type GardenStructureBuildCategory =
+    | 'footprint'
+    | 'structure'
+    | 'roof'
+    | 'interior';
+export type GardenStructureBuildSession = Readonly<{
+    phase: 'editing';
+    source: 'fixture';
+    templateKey: GardenStructureTemplateKey;
+    rotation: GardenStructureRotation;
+    category: GardenStructureBuildCategory;
+    roofCutaway: boolean;
+    selectedPartId: string | null;
+}>;
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'fauna-heavy'
     | 'high-target'
     | 'operation-rewards'
     | 'plant-heavy';
@@ -391,6 +410,7 @@ export type GameState = {
     authenticatedGardenQueriesEnabled: boolean;
     isMock: boolean;
     mockGardenProfile: MockGardenProfile;
+    setMockGardenProfile: (mockGardenProfile: MockGardenProfile) => void;
     winterMode: WinterMode;
     setWinterMode: (winterMode: WinterMode) => void;
     appBaseUrl: string;
@@ -489,6 +509,7 @@ export type GameState = {
 
     // Camera
     view: 'normal' | 'closeup';
+    structureBuildSession: GardenStructureBuildSession | null;
     gardenAvatarView: GardenAvatarView;
     gardenAvatarMoveInput: GardenAvatarMoveInput;
     gardenAvatarSprintInput: boolean;
@@ -510,6 +531,9 @@ export type GameState = {
         options:
             | { view: 'normal'; block?: Block }
             | { view: 'closeup'; block: Block },
+    ) => void;
+    setStructureBuildSession: (
+        session: GardenStructureBuildSession | null,
     ) => void;
     setGardenAvatarView: (view: GardenAvatarView) => void;
     setGardenAvatarMoveInput: (input: GardenAvatarMoveInput) => void;
@@ -623,6 +647,12 @@ export function createGameState({
         authenticatedGardenQueriesEnabled,
         isMock: isMock,
         mockGardenProfile: mockGardenProfile ?? 'default',
+        setMockGardenProfile: (mockGardenProfile) =>
+            set((state) =>
+                state.mockGardenProfile === mockGardenProfile
+                    ? state
+                    : { mockGardenProfile },
+            ),
         winterMode: winterMode ?? 'summer',
         setWinterMode: (winterMode) => set({ winterMode }),
         appBaseUrl: appBaseUrl,
@@ -1122,6 +1152,7 @@ export function createGameState({
 
         // Camera
         view: 'normal',
+        structureBuildSession: null,
         gardenAvatarView: 'overview',
         gardenAvatarMoveInput: { forward: 0, right: 0 },
         gardenAvatarSprintInput: false,
@@ -1149,10 +1180,45 @@ export function createGameState({
             }
 
             if (view === 'closeup') {
-                set({ view, closeupBlock: block });
+                set({
+                    view,
+                    closeupBlock: block,
+                    structureBuildSession: null,
+                });
             } else {
                 set({ view });
             }
+        },
+        setStructureBuildSession: (structureBuildSession) => {
+            if (get().structureBuildSession !== structureBuildSession) {
+                triggerSelectionHaptic();
+            }
+            set(
+                structureBuildSession
+                    ? {
+                          structureBuildSession,
+                          activeDragPreview: null,
+                          hudPlacementDrag: null,
+                          isDragging: false,
+                          itemsHudDropTargetActive: false,
+                          pickupBlock: null,
+                          pickupSelectionTargets: [],
+                          stationaryPickupOutlineTarget: null,
+                          view: 'normal',
+                          closeupBlock: null,
+                          closeupCameraActive: false,
+                          closeupCameraSettled: false,
+                          gardenAvatarView: 'overview',
+                          gardenAvatarMoveInput: { forward: 0, right: 0 },
+                          gardenAvatarSprintInput: false,
+                          gardenAvatarCrouchInput: false,
+                          gardenAvatarBoatId: null,
+                          gardenAvatarAimedBoatId: null,
+                          gardenAvatarSeatId: null,
+                          gardenAvatarPresence: null,
+                      }
+                    : { structureBuildSession },
+            );
         },
         setGardenAvatarView: (gardenAvatarView) => {
             const currentGardenAvatarView = get().gardenAvatarView;
@@ -1179,6 +1245,7 @@ export function createGameState({
                           closeupBlock: null,
                           closeupCameraActive: false,
                           closeupCameraSettled: false,
+                          structureBuildSession: null,
                       },
             );
         },

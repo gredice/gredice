@@ -47,6 +47,15 @@ const stopsScreen = read(
 const nativeApiClient = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/auth/DeliveryNativeApiClient.java",
 );
+const mobileRoutes = read(
+    "apps/api/app/api/[...route]/deliveryMobileRoutes.ts",
+);
+const androidAutoFlag = read(
+    "apps/api/lib/delivery/deliveryAndroidAutoFlag.ts",
+);
+const nativeRouteRepository = read(
+    "apps/delivery-android/app/src/main/java/com/gredice/dostava/data/NativeDeliveryStopRepository.java",
+);
 
 const readStringResValue = (name) => {
     const match = appBuild.match(
@@ -173,6 +182,12 @@ assert.match(navigationHandoffStore, /\.commit\(\)/);
 assert.doesNotMatch(navigationHandoffStore, /\.apply\(\)/);
 assert.match(strings, /<string name="navigation_action">Navigacija<\/string>/);
 assert.match(nativeApiClient, /setInstanceFollowRedirects\(false\)/);
+assert.match(androidAutoFlag, /DELIVERY_ANDROID_AUTO_ENABLED/);
+assert.match(androidAutoFlag, /=== 'true'/);
+assert.match(mobileRoutes, /code: 'ANDROID_AUTO_DISABLED'/);
+assert.match(mobileRoutes, /context\.req\.path\.endsWith\('\/auth\/revoke'\)/);
+assert.match(nativeRouteRepository, /"ANDROID_AUTO_DISABLED"\.equals\(errorCode\)/);
+assert.match(nativeRouteRepository, /routeCache\.clear\(\)/);
 
 const quickReturnSpec = read(
     "apps/delivery-android/app/src/main/java/com/gredice/dostava/navigation/QuickReturnNotificationSpec.java",

@@ -1,13 +1,20 @@
 import { defaultLocalSandboxStorageKey, GameScene } from '@gredice/game';
 import type { ComponentProps } from 'react';
+import { getGardenGameFlags } from '../../getGardenGameFlags';
 import { SandboxDebugActions } from './SandboxDebugActions';
 
-const debugSandboxFlags = {
-    enableDebugHudFlag: true,
-    enableGardenAvatarFlag: true,
-} satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
+export const instant = false;
 
-export default function DebugSandboxPage() {
+export default async function DebugSandboxPage() {
+    const managedFlags = await getGardenGameFlags();
+    const debugSandboxFlags = {
+        ...managedFlags,
+        enableDebugHudFlag: true,
+        enableGardenAvatarFlag: true,
+    } satisfies NonNullable<ComponentProps<typeof GameScene>['flags']>;
+    const gardenBuildingEnabled =
+        debugSandboxFlags.enableGardenBuildingSystemFlag;
+
     return (
         <main className="relative h-screen w-screen overflow-hidden bg-[#e7e2cc]">
             <GameScene
@@ -15,6 +22,7 @@ export default function DebugSandboxPage() {
                 dayNightCycleDisabled={false}
                 deferDetails={false}
                 flags={debugSandboxFlags}
+                gardenStructureDebugFixture={gardenBuildingEnabled}
                 localSandboxStorageKey={defaultLocalSandboxStorageKey}
                 noSound
             />

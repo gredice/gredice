@@ -2,7 +2,8 @@
 
 Date: 2026-08-30
 
-Status: Proposed
+Status: In progress behind independent default-off presentation, server
+mutation, and normal-garden commercial gates
 
 ## Outcome
 
@@ -183,6 +184,9 @@ unacknowledged draft.
 - Keep Done, undo, and redo in a safe-area-aware top bar.
 - Keep the current footprint count, `used / 100` limit, dimensions, and total
   or pending Sunflower delta visible whenever Footprint is active.
+- Enforce a shared hard safety ceiling of 625 active structures per garden in
+  both the locked create transaction and the renderer. This is a defensive
+  collection limit, independent of the 100-cell per-structure footprint limit.
 - Use a bottom sheet for the active category and its part palette. The canvas
   must remain visible above the sheet in portrait orientation.
 - Use four primary categories: Footprint, Structure, Roof, and Interior.
@@ -286,6 +290,15 @@ Domain/storage `anchorY` and document-local `y` name the second horizontal
 garden-grid axis. The compiler maps local/world grid `(x, y)` to Three.js
 `(x, 0, z = y)`; Three.js `y` remains the vertical height axis. Keep this
 conversion at the renderer boundary so domain geometry is renderer-free.
+
+Version 1 canonicalization normalizes every document so the local footprint
+has `minX = 0` and `minY = 0`. Integer local and world coordinates identify
+cell centers; cell boundaries are at `coordinate +/- 0.5`. The placement anchor
+is the world-grid center of the normalized minimum cell. Whole-structure
+rotation rotates the semantic document by a quarter turn and then normalizes
+the rotated bounding box back to non-negative local coordinates before adding
+the anchor. This yields one deterministic document/placement representation
+for equivalent layouts and matches the existing center-based Garden grid.
 
 ### Version 1 document
 
@@ -906,6 +919,31 @@ baselines:
 - Add profiler counters and capture a no-building baseline plus active-editing
   profile.
 
+Current headless foundation evidence (2026-08-30) establishes contract bounds
+without claiming physical-device proof:
+
+| Budget or invariant | Current version 1 value/evidence |
+| --- | --- |
+| Footprint | 100 cells, 20 cells on either local side; fixed product rules. |
+| Addressable edges | 301 maximum. A connected `n`-cell polyomino has at most `4n - (n - 1)` distinct incident grid edges. |
+| Roof regions and props | 100 roof regions and 100 props; at most one bounded region/solid prop per footprint cell in the current contract. |
+| Identifiers and coordinates | 96 JavaScript/UTF-16 code units per identifier and integer local coordinates within `+/-1000`. |
+| Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,759 bytes. |
+| Worst-case compiler output | 13 render batches, 601 instances, 38 open portals, 263 blocked transitions, 210 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
+| Headless compile baseline | 2.767 ms average across 1,000 compiles on local Apple M4 Pro/24 GiB, Node 24; this is development evidence, not a constrained-mobile frame result. |
+| Fixture assets | The vertical slice uses procedural debug boxes and requests zero building GLBs. Compressed-byte and generated-kit material budgets remain a Milestone 2 gate. |
+
+The production-build Chromium/WebGL flow now proves one canvas identity across
+entry/exit, 390x844 portrait and 844x390 landscape layout, resize-aware camera
+framing and full camera restoration, an accessible DOM part selector and focus
+return, a cache hit after template reuse, real touch pointer input, two-contact
+pinch, pointer cancellation/lost capture, mid-gesture exit cleanup, and zero
+building-kit GLB requests. Headless semantic movement proves the visible open
+door traversable and a solid edge blocking in all four rotations. Physical
+avatar traversal in a production browser, frame/draw/memory profiles, soak
+behavior, and physical iPhone/Android measurements remain open Milestone 0
+evidence and must be reported separately.
+
 Exit criteria: the architecture meets the one-canvas/no-per-part-component
 constraints and has a credible constrained-mobile budget. If it does not, fix
 the compiler/interaction design before adding persistence or content volume.
@@ -983,6 +1021,20 @@ desktop keyboard, and with reduced motion, including failure/conflict recovery.
 - Roll out behind a managed feature flag, first in the DB-backed sandbox and
   then to an internal cohort using sandbox gardens only. Keep the Milestone 0
   fixture-only debug spike separate from this persistence evidence.
+- Use three independent default-off gates: the managed Garden flag controls
+  discovery/editor entry and client mutation calls;
+  `GREDICE_GARDEN_BUILDING_SYSTEM_ENABLED` authorizes server mutations; and
+  `GREDICE_GARDEN_BUILDING_COMMERCIAL_ENABLED` additionally authorizes normal-
+  garden creation, footprint resizing, and demolition with Sunflower effects.
+  The server gate may be enabled for sandbox proving while the commercial gate
+  remains off. Footprint-neutral replace and placement edits remain available
+  when commerce is paused, and exact operation retries may replay a previously
+  committed canonical result after the commercial gate changes. The emergency
+  server mutation gate is checked before receipt lookup and rejects every
+  mutation, including retries, while disabled. No gate may hide or stop
+  decoding, read-only rendering, public/2D summaries, or semantic collision for
+  already-saved structures. Fixture-only debug routes may opt in explicitly
+  only while they have no production persistence or currency path.
 - Review completion funnel, error/conflict rates, payload sizes, compile/cache
   behavior, and real-device performance.
 

@@ -12,6 +12,7 @@ import {
     deliveryNativeAuthRateLimitAllows,
     deliveryNativeAuthRetryAfterSeconds,
 } from '../../../lib/auth/deliveryNativeAuthRateLimit';
+import { deliveryAndroidAutoEnabled } from '../../../lib/delivery/deliveryAndroidAutoFlag';
 import {
     deliveryNativeAccessTokenLifetimeSeconds,
     deliveryNativeAuthErrorResponseSchema,
@@ -90,6 +91,7 @@ type DeliveryMobileReadEvent = {
 };
 
 export type DeliveryMobileRouteDeps = {
+    enabled: () => boolean;
     authValidator: MiddlewareHandler<{
         Variables: DeliveryMobileAuthVariables;
     }>;
@@ -128,6 +130,7 @@ const defaultNativeAuthDeps: DeliveryNativeAuthRouteDeps = {
 };
 
 const defaultDeps: DeliveryMobileRouteDeps = {
+    enabled: deliveryAndroidAutoEnabled,
     authValidator: deliveryMobileAuthValidator,
     now: () => new Date(),
     readActiveRoute: readDeliveryMobileActiveRoute,
@@ -257,6 +260,26 @@ export function createDeliveryMobileRoutes(
                 context.header(name, value);
             }
             await next();
+        })
+        .use('*', async (context, next) => {
+            if (
+                deps.enabled() ||
+                (context.req.method === 'POST' &&
+                    context.req.path.endsWith('/auth/revoke'))
+            ) {
+                await next();
+                return;
+            }
+            return context.json(
+                {
+                    error: 'Android Auto trenutačno nije dostupan.',
+                    code: 'ANDROID_AUTO_DISABLED' as const,
+                },
+                503,
+                context.req.path.includes('/auth/')
+                    ? authNoStoreHeaders
+                    : privateNoStoreHeaders,
+            );
         })
         .post(
             '/auth/token',

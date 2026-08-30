@@ -199,6 +199,42 @@ describe('resolveGardenBlockPlacement', () => {
         });
     });
 
+    it('skips structure-occupied cells during automatic placement', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Shade',
+            blockedCells: new Set(['0|0', '0|-1']),
+            stacks: [],
+            blockNameById: new Map(),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: true,
+            placement: {
+                x: 1,
+                y: -1,
+                index: 0,
+                existingBlocks: [],
+            },
+        });
+    });
+
+    it('rejects a requested footprint that intersects a structure', () => {
+        const placement = resolveGardenBlockPlacement({
+            blockName: 'Raised_Bed',
+            blockedCells: new Set(['4|7']),
+            requestedPosition: { x: 4, y: 6 },
+            stacks: [],
+            blockNameById: new Map(),
+            blockDataByName,
+        });
+
+        assert.deepStrictEqual(placement, {
+            valid: false,
+            error: 'Invalid block placement: structure occupies 4|7',
+        });
+    });
+
     it('rejects explicitly requested raised-bed positions that the backend would not allow', () => {
         const placement = resolveGardenBlockPlacement({
             blockName: 'Raised_Bed',

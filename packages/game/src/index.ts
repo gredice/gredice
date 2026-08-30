@@ -2,6 +2,7 @@ export {
     GameAnalyticsProvider,
     useGameAnalytics,
 } from './analytics/GameAnalyticsContext';
+export { createAllAnimalDebugStacks } from './entities/animals/allAnimalDebugStacks';
 export type {
     GardenAvatarPresenceState,
     GardenVisitorPresence,
@@ -22,6 +23,7 @@ export {
     PLANT_STAGES,
 } from './hud/raisedBed/featuredOperations';
 export { defaultLocalSandboxStorageKey } from './localSandboxGarden';
+export { faunaHeavyMockGardenProfile } from './mockGardenProfilePolicy';
 export type {
     OperationVisualRewardDebugBedState,
     OperationVisualRewardDebugScenario,

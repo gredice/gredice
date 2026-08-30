@@ -3,13 +3,17 @@
 import { invalidate } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
+import {
+    resetAnimalProfileCommandMetrics,
+    startAnimalProfileCommandMetrics,
+} from '../entities/animals/animalProfileCommandMetrics';
 import { meshChunkSize } from '../entities/chunkedMeshGeometry';
 import { instancedBlockNames } from '../entities/EntityInstances';
 import { resetPlacementAnimationProfileMetrics } from '../entities/placementAnimationProfileMetrics';
 import { getGeneratedPackedPlantRenderTaskSchedulerSnapshot } from '../generators/plant/hooks/useGeneratedPlantRenderData';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import type { Block } from '../types/Block';
-import { useGameState } from '../useGameState';
+import { useGameState, useGameStateStore } from '../useGameState';
 import {
     useRemoveRaisedBedCloseupParam,
     useSetRaisedBedCloseupParam,
@@ -31,6 +35,8 @@ export const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
 export const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
+export const gameProfileAnimalCommandEventName =
+    'gredice:game-profile-animal-command';
 
 type ProfileGarden = {
     id?: number;
@@ -82,6 +88,37 @@ export type GameProfileOutlineCommand =
           action: 'show';
           raisedBedId: number;
       };
+
+export type GameProfileAnimalCommand = {
+    behavior: 'trot';
+    species: 'Cow';
+    targetId?: null;
+};
+
+export function readGameProfileAnimalCommand(
+    value: unknown,
+): GameProfileAnimalCommand | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const species = Reflect.get(value, 'species');
+    const behavior = Reflect.get(value, 'behavior');
+    const targetId = Reflect.get(value, 'targetId');
+    if (
+        species !== 'Cow' ||
+        behavior !== 'trot' ||
+        (targetId !== undefined && targetId !== null)
+    ) {
+        return null;
+    }
+
+    return {
+        behavior,
+        species,
+        ...(targetId !== undefined ? { targetId } : {}),
+    };
+}
 
 export type GameProfileOperationVisualHighlightRequest = {
     fieldId: number;
@@ -346,6 +383,7 @@ export function resolveGameProfileRaisedBedTarget(
 
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
+    const gameStateStore = useGameStateStore();
     const operationVisualHighlightDispatchKeyRef = useRef<string | null>(null);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
@@ -372,6 +410,76 @@ export function GameProfileController() {
     const { mutate: setRaisedBedCloseupParam } = useSetRaisedBedCloseupParam();
 
     useEffect(() => {
+        if (!garden) {
+            return;
+        }
+
+        const blockCounts = new Map<string, number>();
+        let blockCount = 0;
+        for (const stack of garden.stacks) {
+            for (const block of stack.blocks) {
+                blockCount += 1;
+                blockCounts.set(
+                    block.name,
+                    (blockCounts.get(block.name) ?? 0) + 1,
+                );
+            }
+        }
+
+        updateGameProfileMetadata({
+            profileGardenBlockCount: blockCount,
+            profileGardenBlockCountsByName: Object.fromEntries(
+                Array.from(blockCounts.entries()).sort(([left], [right]) =>
+                    left.localeCompare(right),
+                ),
+            ),
+            profileGardenId: garden.id,
+            profileGardenRaisedBedCount: garden.raisedBeds.length,
+            profileGardenStackCount: garden.stacks.length,
+        });
+    }, [garden]);
+
+    useEffect(() => {
+        resetAnimalProfileCommandMetrics();
+        const handleCommand = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readGameProfileAnimalCommand(event.detail)
+                    : null;
+            if (!command) {
+                return;
+            }
+            gameStateStore.getState().triggerAnimalDebugBehavior(command);
+            const dispatched = gameStateStore.getState().animalDebugCommand;
+            if (
+                !dispatched ||
+                dispatched.species !== command.species ||
+                dispatched.behavior !== command.behavior
+            ) {
+                return;
+            }
+            startAnimalProfileCommandMetrics({
+                behavior: command.behavior,
+                sequence: dispatched.sequence,
+                species: command.species,
+                targetId: command.targetId,
+            });
+            invalidate(undefined, 2);
+        };
+
+        window.addEventListener(
+            gameProfileAnimalCommandEventName,
+            handleCommand,
+        );
+        return () => {
+            window.removeEventListener(
+                gameProfileAnimalCommandEventName,
+                handleCommand,
+            );
+        };
+    }, [gameStateStore]);
+
+    useEffect(() => {
         recordGeneratedPlantProfileCamera({
             active: closeupCameraActive,
             settled: closeupCameraSettled,
@@ -384,12 +492,15 @@ export function GameProfileController() {
             return;
         }
 
-        recordGeneratedPlantProfileCamera({
-            zoom: gameCamera.getSnapshot().zoom,
-        });
-        return gameCamera.subscribe((snapshot) => {
+        const recordCameraSnapshot = (
+            snapshot: ReturnType<typeof gameCamera.getSnapshot>,
+        ) => {
             recordGeneratedPlantProfileCamera({ zoom: snapshot.zoom });
-        });
+            updateGameProfileMetadata({ gameCameraSnapshot: snapshot });
+        };
+
+        recordCameraSnapshot(gameCamera.getSnapshot());
+        return gameCamera.subscribe(recordCameraSnapshot);
     }, [gameCamera]);
 
     useEffect(() => {

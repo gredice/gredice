@@ -240,6 +240,19 @@ public final class NavigationHandoffControllerTest {
                 "session:opaque"
         ));
         assertNull(fixture.store.pending);
+
+        fixture.store.pending = PendingNavigationHandoff.from(
+                "session:opaque",
+                fixture.target,
+                20_000L
+        );
+        fixture.controller.reconcile(route(
+                DeliveryRouteStatus.DISABLED,
+                null,
+                null,
+                "session:opaque"
+        ));
+        assertNull(fixture.store.pending);
     }
 
     private static void assertFailure(NavigationHandoffController.Result result) {

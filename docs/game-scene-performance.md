@@ -2,13 +2,20 @@
 
 Date: 2026-04-29
 
+Static inventory refreshed: 2026-08-30
+
 ## Summary
 
-The scene still does not look asset-bound. Game models are now split into one
-runtime GLB per asset under `apps/garden/public/assets/models`, generated from
-one Blender source file per asset under `assets/game-assets`. The split set is
-932,304 bytes across 31 GLBs and contains 59 meshes, 75 primitives, 22,300
-vertices, 18 shared material names, and no animations.
+The 2026-04-29 analysis did not find the scene asset-bound. Game models are now
+split into one runtime GLB per asset under `apps/garden/public/assets/models`,
+generated from one Blender source file per asset under `assets/game-assets`.
+The current runtime inventory contains 146 GLBs totaling 14,648,032 compressed
+bytes (13.97 MiB), while the generated manifest exposes 145 asset names. The
+extra file is the intentionally obsolete `BlockStoneStairsHalf` compatibility
+asset, which the runtime manifest excludes. Mesh, primitive, vertex, material,
+texture, and animation totals have not been remeasured against this expanded
+asset set, so the static refresh alone does not reconfirm the earlier
+asset-bound conclusion.
 
 The optimization already made since the first pass is meaningful: the scene no
 longer mounts the old one-second game-time manager. Environment, sun/moon, plant,
@@ -16,11 +23,13 @@ and suggestion code now read `useSnapshotTime()`, which removes recurring React
 state churn from normal unfrozen time. That should help idle stability and avoid
 unrelated scene re-renders.
 
-The remaining cost is still render policy and auxiliary systems rather than raw
-model complexity: continuous frame loops, high-resolution shadows, many shadow
-casters/receivers, per-instance snow overlays, CPU-updated weather particles,
-per-sprite billboard callbacks, and detailed plant/decoration layers. These costs
-scale poorly on high-DPR mobile and lower-end desktop GPUs.
+The earlier analysis attributed the remaining cost to render policy and
+auxiliary systems rather than raw model complexity: continuous frame loops,
+high-resolution shadows, many shadow casters/receivers, per-instance snow
+overlays, CPU-updated weather particles, per-sprite billboard callbacks, and
+detailed plant/decoration layers. The cross-tier matrix below exercises one
+deterministic garden, not the full asset catalog; current before/after profiles
+must establish which of these costs still dominate.
 
 The latest implementation pass added explicit game quality tiers, canvas DPR
 caps, tiered shadow maps, low-tier shadow disabling, tiered rain/snow particle
@@ -86,18 +95,20 @@ not accidentally based on `next dev`.
 
 ## Current static snapshot
 
-Measured from the current workspace on 2026-04-29:
+Source inventory refreshed from the current workspace on 2026-08-30. Geometry
+figures explicitly marked as historical retain the 2026-04-29 evidence boundary:
 
 | Area | Current value | Notes |
 | --- | ---: | --- |
-| GLB size | 932,304 bytes across 31 files | split by asset; `GiftBox.glb` is the largest at about 207 KB |
-| GLB meshes | 59 | summed across split assets |
-| GLB primitives | 75 | summed across split assets |
-| GLB vertices | 22,300 | summed across split assets |
-| GLB triangles | not remeasured | split export changed file boundaries |
-| GLB textures | 1 source texture | material names are duplicated only as runtime GLB-local data |
-| Runtime `useFrame` source files | 12 | still enough to keep continuous work alive |
-| `castShadow` / `receiveShadow` occurrences | 109 | coarse source count in `packages/game/src` |
+| GLB size | 14,648,032 compressed bytes (13.97 MiB) across 146 files | source-backed file inventory; no runtime transfer or decode cost is implied |
+| Generated manifest asset names | 145 | names exposed by the generated runtime manifest |
+| GLB meshes | historical: 59 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB primitives | historical: 75 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB vertices | historical: 22,300 | not remeasured; 2026-04-29 count covered the earlier 31-file split |
+| GLB triangles | not remeasured | expanded asset inventory needs a fresh geometry audit |
+| GLB textures | not remeasured | the previous one-source-texture result is not asserted for the expanded inventory |
+| Runtime `useFrame` registrations / source files | 59 / 48 | coarse current source count in `packages/game/src`; registrations are not equivalent to active callbacks in every scene |
+| `castShadow` / `receiveShadow` occurrences | historical: 109 | not remeasured; coarse 2026-04-29 source count in `packages/game/src` |
 | Directional shadow map | low: off, medium: 2048, high: 4096 | legacy default was 8192 |
 | Canvas DPR policy | low: cap 1, medium: cap 1.5, high: cap 2 | set as a DPR cap, not a forced upscale |
 | Weather particle policy | low: 35% rain / 30% snow, medium: 70% / 60%, high: 100% | rain fades through shader intensity and unmounts below the visible threshold; profiler reports active rain/snow counts |
@@ -128,19 +139,21 @@ supports these stable modes:
 - `/debug/profile/game?mode=cloudy&quality=medium`
 - `/debug/profile/game?mode=windy&quality=medium`
 - `/debug/profile/game?mode=details&profile=dense&quality=medium`
+- `/debug/profile/game?mode=details&profile=fauna-heavy&quality=high`
 - `/debug/profile/game?mode=details&profile=plant-heavy&quality=medium`
 
 The `quality` query accepts `low`, `medium`, or `high`. When omitted, the game
 uses the automatic quality resolver. The `profile` query accepts `default`,
-`dense`, or `plant-heavy`. Dense profile scenes use deterministic 25x25 mock
-gardens so larger-scene measurements do not depend on signed-in garden data. The
-`details` query defaults to `1`; use `details=0` only when intentionally
-profiling the reduced scene without detail layers such as mulch, ground
-decorations, and animals. Controls, the regular HUD, and the debug HUD are
-hidden by default; add `controls=1`, `hud=1`, or `debugHud=1` only when needed.
-Mobile profile scenarios use `quality=medium`, matching the automatic resolver
-policy that no longer selects the low tier by default. Use `quality=low` only
-for explicit manual low-tier comparisons.
+`dense`, `fauna-heavy`, or `plant-heavy`. Dense profile scenes use deterministic
+25x25 mock gardens so larger-scene measurements do not depend on signed-in
+garden data. The fauna-heavy profile uses the shared deterministic animal
+fixture described below. The `details` query defaults to `1`; use `details=0`
+only when intentionally profiling the reduced scene without detail layers such
+as mulch, ground decorations, and animals. Controls, the regular HUD, and the
+debug HUD are hidden by default; add `controls=1`, `hud=1`, or `debugHud=1` only
+when needed. Mobile profile scenarios use `quality=medium`, matching the
+automatic resolver policy that no longer selects the low tier by default. Use
+`quality=low` only for explicit manual low-tier comparisons.
 
 Generate the default production report. This builds the garden app, starts it
 with `pnpm start` on `http://localhost:3101`, profiles the scenarios, and then
@@ -167,6 +180,137 @@ budgets:
 cd apps/garden
 pnpm run profile:game:dense-mobile
 ```
+
+Run the cross-tier production matrix to measure the same deterministic
+high-target garden fixture in steady and bounded camera-motion phases across
+explicit low, medium, and high quality plus synthetic auto-standard and
+auto-constrained device classes:
+
+```bash
+cd apps/garden
+pnpm run profile:game:cross-tier
+```
+
+The matrix keeps the viewport, reported browser DPR, garden contents, detail
+layers, and legacy static-scene-cache mode fixed. Its acceptance checks verify
+the resolved quality tier, synthetic Auto inputs, canvas backing-store policy,
+and full plant-fixture visibility throughout each repeated sample. Camera
+motion uses bounded zoom/rotation cycles so it exercises visibility and render
+updates without changing the measured fixture; motion runs also require a
+camera snapshot/version change during the sample, so dropped input cannot be
+reported as motion evidence. The auto device classes are deterministic
+profiler inputs rather than measurements from representative hardware.
+Reported results therefore establish a reproducible local production-build
+regression baseline; they do not replace physical-device, sustained thermal,
+or deployed runtime validation. Do not record performance conclusions here
+until a report has been generated and reviewed.
+
+Run the daytime fauna profile to measure the shared all-animal fixture at
+explicit High quality, a reported DPR of 2, and the legacy static-scene-cache
+path:
+
+```bash
+cd apps/garden
+pnpm run profile:game:fauna
+```
+
+The fixture is exact and fresh for every consumer: 117 stack positions contain
+117 ground blocks and 30 detail blocks, for 147 blocks total, with no raised
+bed. The production scenario runs three repeats. After each repeat's warmup it
+dispatches the exact Cow `trot` command once, then requires runtime-resolved
+acknowledgement from both Cow actors, including distinct actor and moving-actor
+IDs for the dispatched sequence. It also captures a canvas screenshot and
+requires a nonblank visual witness alongside the normal performance, error, and
+fauna-presence gates. This keeps fixture presence, actual runtime interaction,
+and rendered output separate pieces of evidence instead of inferring one from
+another.
+
+This is intentionally a clear daytime probe. Bats and other night-only behavior
+need a separate night scenario, while wetland- and rain-dependent fauna such as
+frogs and slugs need separate habitat/weather probes. Passing the daytime
+scenario does not establish those paths or complete fauna coverage.
+
+Run the persistent-Canvas garden-switch and lifecycle baselines independently,
+or run them with the fauna baseline through one release-gate command:
+
+```bash
+cd apps/garden
+pnpm run profile:game:garden-switch
+pnpm run profile:game:lifecycle
+pnpm run profile:game:runtime-baselines
+```
+
+Each of the three garden-switch runs owns one browser context and one WebGL
+Canvas, then records seven arrivals in the exact sequence `high-target →
+fauna-heavy → high-target → fauna-heavy → high-target → fauna-heavy →
+high-target`. The gate verifies the
+actually displayed garden ID on the Scene root and in profiler telemetry, exact
+fixture cardinalities, High-target generated-plant counts, an exact raised-bed
+outline interaction on each High arrival, and an exact two-Cow `trot`
+acknowledgement on each fauna arrival. Every arrival also requires a nonblank
+Canvas screenshot, one Canvas node, the original Canvas and WebGL context
+objects, a healthy context, zero context-lost/restored events, and zero API
+requests/errors, console errors, or page errors. Fixed fixture species are
+exact; dynamic bee, butterfly, ladybug, and squirrel counts remain visible in
+the report without being mistaken for fixed-fixture drift.
+
+The request and runtime witnesses also require the legacy static-scene path:
+`staticSceneCache=legacy` and `staticOpaqueSceneCacheEnabled=false` on every
+arrival. High arrivals exact-gate all 54 generated-plant fields and all 537
+instances as visible, rather than treating generated totals as proof that the
+workload remained on screen.
+
+Transition gates follow the current 280 ms fade-out swap and 500 ms visual
+settle contract with deliberately conservative scheduling headroom: the garden
+must swap no earlier than 200 ms and within 1,000 ms, become visible within
+1,200 ms, and finish the observed settle window within 1,800 ms. No frame may
+stall for more than 500 ms. These are structural transition safeguards, not
+machine-specific FPS targets. Renderer geometry, program, and texture counts
+are recorded on every arrival. For fauna, the warmed plateau compares F2→F3.
+High needs two warm returns, so H2→H3 remains explicit warm-up evidence and the
+plateau compares H3→H4. The later arrival may release resources but must not
+increase live geometry, program, or texture counts. Reports keep all three
+independent runs and all 21 arrivals visible so a passing median cannot hide one
+broken switch.
+
+The lifecycle scenario is one deterministic High target repeated in three
+fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
+legacy static-scene-cache path. It uses a document-start tracker rather than
+post-wait timestamps for Navigation Timing `DOMContentLoaded`, Canvas DOM
+attachment, the first correctly sized backing store, and the first submitted
+WebGL draw. Exact fixture readiness (270 stacks, 297 blocks, three raised beds,
+54 visible generated-plant fields, and 537 visible instances) and an exact
+raised-bed outline interaction remain separate later milestones. Cold and
+restored screenshots must be nonblank `2560x1440` Canvas captures.
+
+The active phase records the normal render sample and all runtime frame-loop
+telemetry: active lease count, Canvas/document/effective visibility, loop state,
+target FPS, scheduled callbacks, wakeups, owned invalidations, cancellations,
+and suspend/resume counts. The offscreen phase inserts a real viewport spacer
+and requires both the runtime's IntersectionObserver state and an independent
+observer witness to report a zero-area, nonintersecting Canvas. The document
+hidden phase is explicitly synthetic: the profiler overrides
+`document.hidden`/`visibilityState`, dispatches `visibilitychange`, and records
+those getters in the report. It must not be presented as browser lifecycle or
+background-tab proof.
+
+Both suspended phases require the owned SceneTime scheduler to add zero
+callbacks, wakeups, and invalidations. Browser RAF instrumentation itself is
+active, so submitted WebGL frames/draws/triangles and CDP script time are kept
+as honest residual observations rather than release failures in this baseline.
+Each resume must return to the same healthy Canvas and WebGL context, re-prove
+the exact fixture, accept a fresh outline command from an exact zero-target
+state, submit new draw work, and produce a nonblank screenshot.
+
+Finally, the profiler forces `WEBGL_lose_context` without preventing the loss
+event itself. It records that the renderer handled the event, requires one
+ordered lost/restored event pair on the original Canvas/context, samples zero
+submitted frames/draws/triangles while the context is lost, then requires fresh
+interaction, draw work, exact fixture evidence, and a valid screenshot after
+restoration. External GPU timer queries are disabled for this scenario so the
+forced loss cannot invalidate profiler-owned query handles. These are local
+headless production-build lifecycle witnesses; they do not replace a real
+background-tab, device thermal, or deployed-runtime check.
 
 Run every profiler scenario together:
 
@@ -445,6 +589,8 @@ GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=garden-switch pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=lifecycle pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_CLOSEUP_REPEAT=1 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game

@@ -1,5 +1,6 @@
 'use client';
 
+import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
 import type { GameQualityProfileTier } from './gameQuality';
 
@@ -189,6 +190,38 @@ export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'passed'
     | 'verifying';
 
+export type RuntimeFrameLoopProfileTelemetry = {
+    activeLeaseCount: number;
+    cancelledCallbackCount: number;
+    canvasVisible: boolean;
+    documentVisible: boolean;
+    effectiveVisible: boolean;
+    loopActive: boolean;
+    ownedInvalidationCount: number;
+    resumeCount: number;
+    scheduledCallbackCount: number;
+    suspendCount: number;
+    targetFramesPerSecond: number;
+    wakeupCount: number;
+};
+
+export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfileTelemetry {
+    return {
+        activeLeaseCount: 0,
+        cancelledCallbackCount: 0,
+        canvasVisible: false,
+        documentVisible: false,
+        effectiveVisible: false,
+        loopActive: false,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        targetFramesPerSecond: 0,
+        wakeupCount: 0,
+    };
+}
+
 export type GameProfileMetadata = {
     adaptiveHighAmbientFps?: number;
     adaptiveHighCloudUpdateMs?: number;
@@ -218,6 +251,7 @@ export type GameProfileMetadata = {
     actorGroundingShadowCount?: number;
     actorGroundingShadowDroppedCount?: number;
     actorGroundingShadowPrimaryCasterCount?: number;
+    actorGroundingShadowSpeciesCounts?: Record<string, number>;
     actorGroundingShadowUpdateCount?: number;
     actorGroundingShadowVisibleCount?: number;
     animatedCasterShadowRefreshCount?: number;
@@ -289,6 +323,49 @@ export type GameProfileMetadata = {
     generatedPlantRenderNearInstanceCount?: number;
     generatedPlantVisibleFieldCount?: number;
     generatedPlantVisibleInstanceCount?: number;
+    gameCameraSnapshot?: GameCameraSnapshot;
+    gardenStructureBlockedTransitionCount?: number;
+    gardenStructureCameraActivePointerCount?: number;
+    gardenStructureCameraMode?: 'browse' | 'building' | 'restoring';
+    gardenStructureCameraPositionX?: number;
+    gardenStructureCameraPositionY?: number;
+    gardenStructureCameraPositionZ?: number;
+    gardenStructureCameraTargetX?: number;
+    gardenStructureCameraTargetY?: number;
+    gardenStructureCameraTargetZ?: number;
+    gardenStructureCameraZoom?: number;
+    gardenStructureCollisionBoxCount?: number;
+    gardenStructureCollisionBucketCount?: number;
+    gardenStructureCompileDurationMs?: number;
+    gardenStructureDocumentPayloadBytes?: number;
+    gardenStructureFootprintCellCount?: number;
+    gardenStructureOpenPortalCount?: number;
+    gardenStructurePlanCacheEstimatedBytes?: number;
+    gardenStructurePlanCacheEvictionCount?: number;
+    gardenStructurePlanCacheHitCount?: number;
+    gardenStructurePlanCacheMissCount?: number;
+    gardenStructureProjectedBottom?: number;
+    gardenStructureProjectedLeft?: number;
+    gardenStructureProjectedRight?: number;
+    gardenStructureProjectedTop?: number;
+    gardenStructureRenderBatchCount?: number;
+    gardenStructureRenderInstanceCount?: number;
+    gardenStructureVisibleBottom?: number;
+    gardenStructureVisibleLeft?: number;
+    gardenStructureVisibleRight?: number;
+    gardenStructureVisibleTop?: number;
+    profileAnimalCommandAcknowledgedIds?: string[];
+    profileAnimalCommandAcknowledgementCount?: number;
+    profileAnimalCommandBehavior?: string;
+    profileAnimalCommandMovingAcknowledgedIds?: string[];
+    profileAnimalCommandMovingAcknowledgementCount?: number;
+    profileAnimalCommandSequence?: number;
+    profileAnimalCommandSpecies?: string;
+    profileGardenBlockCount?: number;
+    profileGardenBlockCountsByName?: Record<string, number>;
+    profileGardenId?: number;
+    profileGardenRaisedBedCount?: number;
+    profileGardenStackCount?: number;
     instancedInteractionControllerCount?: number;
     instancedInteractionResolutionCount?: number;
     instancedInteractionResolutionMaxMs?: number;
@@ -337,6 +414,7 @@ export type GameProfileMetadata = {
     rendererShaders?: number;
     rendererTextures?: number;
     rendererTriangles?: number;
+    runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     shadowMapAutoUpdate?: boolean;
     shadowMapDynamicRefreshMs?: number;
     shadowMapInvalidationCount?: number;

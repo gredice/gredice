@@ -14,6 +14,7 @@ function createGarden(stacks: GardenStack[]): CurrentGarden {
         backgroundPalette: 'current',
         homeCamera: null,
         stacks,
+        structures: [],
         location: {
             lat: 45,
             lon: 16,

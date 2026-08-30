@@ -255,6 +255,26 @@ Custom Tab fallback before its web association is considered complete.
 
 ## Play test and rollout
 
+### Delivery server kill switch
+
+`DELIVERY_ANDROID_AUTO_ENABLED` guards the Delivery native token and route
+surface in the API project. It is fail-closed: an absent value, `false`, or any
+value other than `true` returns `ANDROID_AUTO_DISABLED` before issuing or
+rotating credentials and before reading driver route data. Native session
+revocation remains available so a driver can always disconnect the device.
+
+Before enabling a Play test, configure the API deployment environment with
+`DELIVERY_ANDROID_AUTO_ENABLED=true` and verify the exact deployment. To stop
+the car surface, set it to `false`, redeploy the API, and verify token exchange,
+token refresh, and `GET /api/delivery/mobile/v1/active-route` return `503` with
+the stable code. Confirm the car clears any cached stops and shows the phone-app
+fallback, while logout still removes the local and server session family.
+
+Do not treat changing the environment value as live evidence until the API
+deployment containing that value is ready and the endpoints have been read
+back. Keep the flag disabled in new environments until their auth, privacy,
+and synthetic-route checks are complete.
+
 Only upload `<prefix>.aab`; do not upload the diagnostic APK. Reconcile the
 text and graphics in `<prefix>-store-assets.zip` manually with the target Play
 listing, including Data safety and app-access answers.

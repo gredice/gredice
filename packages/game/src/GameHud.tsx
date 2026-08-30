@@ -3,7 +3,7 @@
 import { IconButton } from '@gredice/ui/IconButton';
 import { Megaphone } from '@gredice/ui/icons';
 import { cx } from '@gredice/ui/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GardenViewMode } from './gardenViewMode';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
 import { useCurrentUser } from './hooks/useCurrentUser';
@@ -37,6 +37,8 @@ import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
+import { GardenStructureVerticalSliceHud } from './structures/GardenStructureVerticalSliceHud';
+import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
 export const gameHudBottomBarClassName =
@@ -64,11 +66,15 @@ export function getGameHudBottomCloseupClassName(isCloseup: boolean) {
 
 export function GameHud({
     debugHud,
+    gardenStructureDebugFixture,
+    gardenStructureDebugPlan,
     noWeather,
     suppressOpeningHud,
     viewMode = '3d',
 }: {
     debugHud?: boolean;
+    gardenStructureDebugFixture?: boolean;
+    gardenStructureDebugPlan?: GardenStructureSemanticPlan;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
     viewMode?: GardenViewMode;
@@ -84,6 +90,28 @@ export function GameHud({
     }>({ confirmed: false, gardenId: null });
     const isCloseup = useGameState((state) => state.view) === 'closeup';
     const gardenAvatarView = useGameState((state) => state.gardenAvatarView);
+    const structureBuildSession = useGameState(
+        (state) => state.structureBuildSession,
+    );
+    const restoreStructureEntryFocusRef = useRef(false);
+    useEffect(() => {
+        if (structureBuildSession) {
+            restoreStructureEntryFocusRef.current = true;
+            return;
+        }
+        if (!restoreStructureEntryFocusRef.current) {
+            return;
+        }
+        restoreStructureEntryFocusRef.current = false;
+        const frame = requestAnimationFrame(() =>
+            document
+                .querySelector<HTMLButtonElement>(
+                    '[data-testid="garden-structure-build-entry"]',
+                )
+                ?.focus(),
+        );
+        return () => cancelAnimationFrame(frame);
+    }, [structureBuildSession]);
     const { data: currentGarden } = useCurrentGarden();
     const { data: currentUser } = useCurrentUser();
     const markTutorialChecklistTaskReady = useMarkTutorialChecklistTaskReady();
@@ -117,6 +145,17 @@ export function GameHud({
         (isSandbox || raisedBedOnboardingChecklistResolved);
     const whatsNewHudEnabled =
         !isLocalSandbox && !suppressOpeningHud && openingFlowComplete;
+
+    if (gardenStructureDebugFixture && structureBuildSession) {
+        return (
+            <>
+                <GardenStructureVerticalSliceHud
+                    plan={gardenStructureDebugPlan}
+                />
+                {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
+            </>
+        );
+    }
 
     if (gardenAvatarView !== 'overview') {
         // Interacting with a garden box or a sign while walking has to open its
@@ -289,6 +328,11 @@ export function GameHud({
                 </>
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
+            {gardenStructureDebugFixture ? (
+                <GardenStructureVerticalSliceHud
+                    plan={gardenStructureDebugPlan}
+                />
+            ) : null}
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
         </SuncokretChatProvider>
     );

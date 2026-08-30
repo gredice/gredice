@@ -919,6 +919,7 @@ export function PickableGroup({
             await recycleBlock
                 .mutateAsync({
                     position: stack.position,
+                    blockId: block.id,
                     blockIndex,
                     raisedBedId: raisedBed?.id,
                     onOptimisticUpdate: activePreviewReset.queue,
@@ -1007,6 +1008,7 @@ export function PickableGroup({
             await recycleBlock
                 .mutateAsync({
                     position: stack.position,
+                    blockId: block.id,
                     blockIndex,
                     raisedBedId: raisedBed?.id,
                     onOptimisticUpdate: activePreviewReset.queue,

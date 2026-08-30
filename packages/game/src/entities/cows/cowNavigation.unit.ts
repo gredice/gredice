@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../../localSandboxBlockData';
 import type { Stack } from '../../types/Stack';
+import { createAllAnimalDebugStacks } from '../animals/allAnimalDebugStacks';
 import {
     type CowHabitat,
     type CowTarget,
@@ -184,5 +185,62 @@ describe('cow navigation', () => {
             },
         });
         assert.equal(runtime.phase, 'moving');
+    });
+
+    it('keeps every fauna profile cow target reachable for a moving trot', () => {
+        const stacks: Stack[] = createAllAnimalDebugStacks().map(
+            ({ blocks, position }) => ({
+                blocks,
+                position: new Vector3(position.x, position.y, position.z),
+            }),
+        );
+        const cowHomes = stacks.flatMap((candidateStack) => {
+            const block = candidateStack.blocks.find(
+                (candidate) => candidate.name === 'CowShelter',
+            );
+            return block ? [{ block, stack: candidateStack }] : [];
+        });
+        const probeAngles = Array.from(
+            { length: 8 },
+            (_, index) => index * (Math.PI / 4),
+        );
+
+        assert.equal(cowHomes.length, 2);
+        for (const { block, stack: homeStack } of cowHomes) {
+            const habitat = createCowHabitat({
+                block,
+                blockData: getLocalSandboxBlockData(),
+                stack: homeStack,
+                stacks,
+            });
+
+            assert.ok(habitat.roamAnchors.length > 0);
+            for (const anchor of habitat.roamAnchors) {
+                for (const radius of [0.08, 0.26]) {
+                    for (const angle of probeAngles) {
+                        const runtime = resolveCowRuntimeForTarget({
+                            from: habitat.home.position,
+                            habitat,
+                            now: 0,
+                            random: () => 0,
+                            target: {
+                                behavior: 'trot',
+                                id: `profile-trot-${anchor.id}`,
+                                position: new Vector3(
+                                    anchor.position.x +
+                                        Math.cos(angle) * radius,
+                                    anchor.position.y,
+                                    anchor.position.z +
+                                        Math.sin(angle) * radius,
+                                ),
+                            },
+                        });
+
+                        assert.equal(runtime.phase, 'moving');
+                        assert.equal(runtime.target.behavior, 'trot');
+                    }
+                }
+            }
+        }
     });
 });

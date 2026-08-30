@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { Vector3 } from 'three';
 import { getGameTimeOfDay } from '../utils/timeOfDay';
 import { getPublicGardenRaisedBedInteractionTargets } from './PublicGardenRaisedBedInteractions';
 import {
@@ -8,9 +9,12 @@ import {
     getPublicGardenInitialView,
     getPublicGardenRaisedBedsWithBlocks,
     getPublicGardenStacksCenter,
+    getPublicGardenStructureInitialViewKey,
+    isPublicGardenStructureCaptureReady,
     normalizePublicGardenStacks,
     type PublicGardenCapturePhase,
     type PublicGardenStack,
+    resolvePublicGardenSceneInitialView,
     shouldRenderPublicGardenGroundDecorations,
 } from './PublicGardenViewer';
 
@@ -183,6 +187,220 @@ describe('getPublicGardenInitialView', () => {
         assert.equal(view.cameraTarget.y, 0);
         assert.equal(view.cameraTarget.z, 7);
         assert.equal(view.cameraZoom, 90);
+    });
+
+    it('centers a structure-only public scene for normal and preview rendering', () => {
+        const structureBounds = {
+            depth: 10,
+            height: 3,
+            maxHeight: 3,
+            maxX: 30,
+            maxY: 5,
+            minHeight: 0,
+            minX: 20,
+            minY: -5,
+            width: 10,
+        };
+
+        const view = getPublicGardenInitialView({
+            stacks: [],
+            structureBounds,
+        });
+        const capture = getPublicGardenCaptureInitialView({
+            stacks: [],
+            structureBounds,
+            viewport: { height: 844, width: 390 },
+        });
+
+        assert.deepEqual(view.cameraTarget.toArray(), [25, 0, 0]);
+        assert.deepEqual(capture.cameraTarget.toArray(), [25, 0, 0]);
+        assert.ok(capture.cameraZoom >= 24);
+        assert.ok(capture.cameraZoom < 90);
+    });
+});
+
+describe('resolvePublicGardenSceneInitialView', () => {
+    it('preserves an explicit or saved-home view instead of structure framing', () => {
+        const initialView = {
+            cameraPosition: new Vector3(12, 80, -18),
+            cameraTarget: new Vector3(4, 0, -6),
+            cameraZoom: 140,
+        };
+
+        const resolved = resolvePublicGardenSceneInitialView({
+            captureFitGarden: false,
+            initialView,
+            resolveStructureFraming: false,
+            stacks: [],
+            structureBounds: {
+                depth: 10,
+                maxX: 30,
+                maxY: 5,
+                minX: 20,
+                minY: -5,
+                width: 10,
+            },
+        });
+
+        assert.equal(resolved, initialView);
+    });
+
+    it('fits a capture from the validated compiled structure bounds', () => {
+        const resolved = resolvePublicGardenSceneInitialView({
+            captureFitGarden: true,
+            captureViewport: { height: 844, width: 390 },
+            initialView: {
+                cameraPosition: new Vector3(-100, 100, -100),
+                cameraTarget: new Vector3(0, 0, 0),
+                cameraZoom: 90,
+            },
+            resolveStructureFraming: true,
+            stacks: [],
+            structureBounds: {
+                depth: 10,
+                maxX: 30,
+                maxY: 5,
+                minX: 20,
+                minY: -5,
+                width: 10,
+            },
+        });
+
+        assert.deepEqual(resolved.cameraTarget.toArray(), [25, 0, 0]);
+        assert.ok(resolved.cameraZoom >= 24);
+        assert.ok(resolved.cameraZoom < 90);
+    });
+});
+
+describe('getPublicGardenStructureInitialViewKey', () => {
+    const bounds = {
+        depth: 2,
+        maxX: 4,
+        maxY: 3,
+        minX: 2,
+        minY: 1,
+        width: 2,
+    };
+
+    it('changes for validated footprint movement but not revision-only or furniture edits', () => {
+        const original = [
+            {
+                footprint: { bounds },
+                furnitureIds: ['table-1'],
+                revision: 1,
+                structureId: 'house-1',
+            },
+        ];
+        const revisionAndFurnitureOnly = [
+            {
+                footprint: { bounds },
+                furnitureIds: ['table-2'],
+                revision: 2,
+                structureId: 'house-1',
+            },
+        ];
+        const moved = [
+            {
+                footprint: {
+                    bounds: {
+                        ...bounds,
+                        maxX: 9,
+                        minX: 7,
+                    },
+                },
+                furnitureIds: ['table-2'],
+                revision: 3,
+                structureId: 'house-1',
+            },
+        ];
+
+        const originalKey = getPublicGardenStructureInitialViewKey({
+            gardenId: 7,
+            structures: original,
+        });
+
+        assert.equal(
+            getPublicGardenStructureInitialViewKey({
+                gardenId: 7,
+                structures: revisionAndFurnitureOnly,
+            }),
+            originalKey,
+        );
+        assert.notEqual(
+            getPublicGardenStructureInitialViewKey({
+                gardenId: 7,
+                structures: moved,
+            }),
+            originalKey,
+        );
+    });
+});
+
+describe('isPublicGardenStructureCaptureReady', () => {
+    it('allows gardens without structures and fully ready compiled plans', () => {
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'ready',
+                hasPlan: false,
+                rejectedRecordCount: 0,
+                savedStructureCount: 0,
+            }),
+            true,
+        );
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'ready',
+                hasPlan: true,
+                rejectedRecordCount: 0,
+                savedStructureCount: 1,
+            }),
+            true,
+        );
+    });
+
+    it('allows warning-only plans while blocking rejected saved structures', () => {
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'rendered-with-diagnostics',
+                hasPlan: true,
+                rejectedRecordCount: 0,
+                savedStructureCount: 1,
+            }),
+            true,
+        );
+
+        for (const diagnosticStatus of [
+            'collection-rejected',
+            'collision-rejected',
+        ] as const) {
+            assert.equal(
+                isPublicGardenStructureCaptureReady({
+                    diagnosticStatus,
+                    hasPlan: false,
+                    rejectedRecordCount: 1,
+                    savedStructureCount: 1,
+                }),
+                false,
+            );
+        }
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'rendered-with-diagnostics',
+                hasPlan: true,
+                rejectedRecordCount: 1,
+                savedStructureCount: 1,
+            }),
+            false,
+        );
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'ready',
+                hasPlan: false,
+                rejectedRecordCount: 0,
+                savedStructureCount: 1,
+            }),
+            false,
+        );
     });
 });
 

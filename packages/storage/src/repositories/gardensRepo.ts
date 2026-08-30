@@ -613,8 +613,11 @@ export async function deleteGardenIfNoActiveRaisedBeds(gardenId: number) {
     };
 }
 
-export async function getGardenBlocks(gardenId: number) {
-    return storage().query.gardenBlocks.findMany({
+export async function getGardenBlocks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenBlocks.findMany({
         where: and(
             eq(gardenBlocks.gardenId, gardenId),
             eq(gardenBlocks.isDeleted, false),
@@ -644,15 +647,51 @@ export async function getGardenBoxBlocksForAccount(accountId: string) {
         .orderBy(asc(gardens.createdAt), asc(gardenBlocks.createdAt));
 }
 
-export async function getGardenBlock(gardenId: number, blockId: string) {
+export async function getGardenBlock(
+    gardenId: number,
+    blockId: string,
+    db: DatabaseClient = storage(),
+) {
     return (
-        (await storage().query.gardenBlocks.findFirst({
+        (await db.query.gardenBlocks.findFirst({
             where: and(
                 eq(gardenBlocks.gardenId, gardenId),
                 eq(gardenBlocks.id, blockId),
                 eq(gardenBlocks.isDeleted, false),
             ),
         })) ?? null
+    );
+}
+
+export async function getGardenBlockForUpdate(
+    {
+        blockId,
+        gardenId,
+        includeDeleted = false,
+    }: {
+        blockId: string;
+        gardenId: number;
+        includeDeleted?: boolean;
+    },
+    db: TransactionClient,
+) {
+    const conditions = [
+        eq(gardenBlocks.gardenId, gardenId),
+        eq(gardenBlocks.id, blockId),
+    ];
+    if (!includeDeleted) {
+        conditions.push(eq(gardenBlocks.isDeleted, false));
+    }
+
+    return (
+        (
+            await db
+                .select()
+                .from(gardenBlocks)
+                .where(and(...conditions))
+                .for('update')
+                .limit(1)
+        )[0] ?? null
     );
 }
 
@@ -736,8 +775,61 @@ export async function deleteGardenBlock(
     );
 }
 
-export async function getGardenStacks(gardenId: number) {
-    return storage().query.gardenStacks.findMany({
+export type SoftDeleteGardenBlockResult =
+    | 'deleted'
+    | 'already-deleted'
+    | 'not-found';
+
+/**
+ * Soft-delete one locked garden block and append its removal event exactly
+ * once. Retry callers can distinguish an already-applied deletion from a
+ * block that never belonged to the requested garden.
+ */
+export async function softDeleteGardenBlockOnce(
+    gardenId: number,
+    blockId: string,
+    db: TransactionClient,
+): Promise<SoftDeleteGardenBlockResult> {
+    const block = await getGardenBlockForUpdate(
+        { blockId, gardenId, includeDeleted: true },
+        db,
+    );
+    if (!block) {
+        return 'not-found';
+    }
+    if (block.isDeleted) {
+        return 'already-deleted';
+    }
+
+    const [deletedBlock] = await db
+        .update(gardenBlocks)
+        .set({ isDeleted: true })
+        .where(
+            and(
+                eq(gardenBlocks.gardenId, gardenId),
+                eq(gardenBlocks.id, blockId),
+                eq(gardenBlocks.isDeleted, false),
+            ),
+        )
+        .returning({ id: gardenBlocks.id });
+    if (!deletedBlock) {
+        throw new Error('Locked garden block changed before deletion.');
+    }
+
+    await createEvent(
+        knownEvents.gardens.blockRemovedV1(gardenId.toString(), {
+            id: blockId,
+        }),
+        db,
+    );
+    return 'deleted';
+}
+
+export async function getGardenStacks(
+    gardenId: number,
+    db: DatabaseClient = storage(),
+) {
+    return db.query.gardenStacks.findMany({
         where: and(
             eq(gardenStacks.gardenId, gardenId),
             eq(gardenStacks.isDeleted, false),
@@ -748,9 +840,10 @@ export async function getGardenStacks(gardenId: number) {
 export async function getGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
     return (
-        (await storage().query.gardenStacks.findFirst({
+        (await db.query.gardenStacks.findFirst({
             where: and(
                 eq(gardenStacks.gardenId, gardenId),
                 eq(gardenStacks.positionX, x),
@@ -871,8 +964,9 @@ export async function updateGardenStack(
 export async function deleteGardenStack(
     gardenId: number,
     { x, y }: { x: number; y: number },
+    db: DatabaseClient = storage(),
 ) {
-    await storage()
+    await db
         .update(gardenStacks)
         .set({ isDeleted: true })
         .where(

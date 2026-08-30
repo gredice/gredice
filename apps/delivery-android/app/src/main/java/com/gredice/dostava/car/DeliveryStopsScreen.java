@@ -173,6 +173,9 @@ final class DeliveryStopsScreen extends Screen {
         if (status == DeliveryRouteStatus.STALE_OFFLINE) {
             return message(R.string.car_route_stale, true);
         }
+        if (status == DeliveryRouteStatus.DISABLED) {
+            return message(R.string.car_android_auto_disabled, false);
+        }
         if (status == DeliveryRouteStatus.UNSUPPORTED) {
             return message(R.string.car_route_unsupported, false);
         }

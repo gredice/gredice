@@ -11,6 +11,7 @@ import {
     type PropsWithChildren,
     useCallback,
     useEffect,
+    useMemo,
     useRef,
 } from 'react';
 import {
@@ -31,7 +32,11 @@ import {
     adaptiveHighQualityLevels,
 } from './adaptiveHighQuality';
 import { GardenLightProvider } from './GardenLightProvider';
-import { updateGameProfileMetadata } from './gameProfileMetadata';
+import {
+    createRuntimeFrameLoopProfileTelemetry,
+    readGameProfileMetadata,
+    updateGameProfileMetadata,
+} from './gameProfileMetadata';
 import {
     type GameQualityProfile,
     resolveGameQualityProfile,
@@ -55,6 +60,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         onContextLost?: () => void;
         pixelRatio?: number;
         position: FiberVector3;
+        profileStats?: boolean;
         quality?: GameQualityProfile;
         rendererOptions?: WebGLRendererParameters;
         staticOpaqueCacheEnabled?: boolean;
@@ -214,6 +220,7 @@ export function Scene({
     onContextLost,
     pixelRatio,
     position,
+    profileStats = false,
     quality,
     rendererOptions,
     staticOpaqueCacheEnabled = false,
@@ -256,6 +263,11 @@ export function Scene({
     const ambientFramesPerSecond = adaptiveHighActive
         ? adaptiveHighProfile.ambientFramesPerSecond
         : sceneFrameRates.ambient;
+    const runtimeFrameLoop = useMemo(
+        () =>
+            profileStats ? createRuntimeFrameLoopProfileTelemetry() : undefined,
+        [profileStats],
+    );
     const wireframeDebugVisible = useOptionalGameState(
         (state) => state.wireframeDebugVisible,
         false,
@@ -280,6 +292,21 @@ export function Scene({
             snowOverlayMinCoverage: qualityProfile.snowOverlayMinCoverage,
         });
     }, [effectiveDprCap, qualityProfile]);
+
+    useEffect(() => {
+        if (!runtimeFrameLoop) {
+            return;
+        }
+
+        updateGameProfileMetadata({ runtimeFrameLoop });
+        return () => {
+            if (
+                readGameProfileMetadata()?.runtimeFrameLoop === runtimeFrameLoop
+            ) {
+                updateGameProfileMetadata({ runtimeFrameLoop: undefined });
+            }
+        };
+    }, [runtimeFrameLoop]);
 
     return (
         <Canvas
@@ -307,6 +334,7 @@ export function Scene({
             <SceneTimeProvider
                 baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
+                runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >
                 <GardenLightProvider qualityTier={qualityProfile.tier}>
@@ -336,7 +364,9 @@ export function Scene({
                             >
                                 <HoverOutlineProvider>
                                     <SceneDebugName />
-                                    {debugStats && <RendererStatsReporter />}
+                                    {(debugStats || profileStats) && (
+                                        <RendererStatsReporter />
+                                    )}
                                     <SceneWireframeMode
                                         enabled={Boolean(
                                             debugStats && wireframeDebugVisible,

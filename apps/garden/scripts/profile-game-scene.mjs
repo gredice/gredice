@@ -9,6 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
+const gameProfileComparisonContractVersion = 1;
+const fullSourceCommitPattern = /^[0-9a-f]{40}$/i;
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
 const gameProfileCloseupCommandEventName =
@@ -17,8 +19,92 @@ const gameProfilePlacementCommandEventName =
     'gredice:game-profile-placement-command';
 const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
+const gameProfileAnimalCommandEventName = 'gredice:game-profile-animal-command';
+const gameProfileGardenSwitchEventName = 'gredice:game-profile-garden-switch';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
+const faunaHeavyExpectedGardenId = 99_995;
+const faunaHeavyExpectedGardenStackCount = 117;
+const faunaHeavyExpectedGardenBlockCount = 147;
+const faunaHeavyExpectedGardenDetailBlockCount = 30;
+const faunaHeavyExpectedBlockCountsByName = {
+    BirdHouse: 1,
+    Block_Dry_Ground: 1,
+    Block_Grass: 116,
+    Bucket: 1,
+    Bush: 1,
+    CactusBarrel: 1,
+    CactusPricklyPear: 1,
+    CatPillow: 1,
+    ChickenCoop: 1,
+    Composter: 3,
+    CowShelter: 2,
+    DogHouse: 1,
+    GardenBox: 3,
+    GoatShelter: 1,
+    HorseStable: 1,
+    PigletPen: 1,
+    Pine: 1,
+    RabbitHutch: 1,
+    SheepFold: 2,
+    StoneMedium: 1,
+    Stool: 1,
+    Tree: 1,
+    Tulip: 3,
+    WaterWell: 1,
+};
+const faunaHeavyExpectedFixedSpeciesCounts = {
+    bird: 1,
+    cat: 1,
+    chicken: 1,
+    cow: 2,
+    dog: 1,
+    goat: 1,
+    horse: 1,
+    piglet: 1,
+    rabbit: 1,
+    sheep: 2,
+};
+const faunaHeavyExpectedCowActorIds = [
+    'cow:animal-debug:1:CowShelter:-6:-1:1',
+    'cow:animal-debug:1:CowShelter:3:2:1',
+];
+const gardenSwitchExpectedProfiles = [
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+    'fauna-heavy',
+    'high-target',
+];
+const gardenSwitchExpectedGardenIds = {
+    'fauna-heavy': faunaHeavyExpectedGardenId,
+    'high-target': 99_996,
+};
+const gardenSwitchExpectedFixtures = {
+    'fauna-heavy': {
+        blockCount: faunaHeavyExpectedGardenBlockCount,
+        raisedBedCount: 0,
+        stackCount: faunaHeavyExpectedGardenStackCount,
+    },
+    'high-target': {
+        blockCount: 297,
+        raisedBedCount: 3,
+        stackCount: 270,
+    },
+};
+const gardenSwitchFadeOutDelayMs = 280;
+const gardenSwitchVisualSettleMs = 500;
+const gardenSwitchMaximumDisplayedMs = 1_000;
+const gardenSwitchMaximumVisibleMs = 1_200;
+const gardenSwitchMaximumSettledMs = 1_800;
+const gardenSwitchMaximumFrameStallMs = 500;
+const lifecycleExpectedGardenId = 99_996;
+const lifecycleExpectedGardenStackCount = 270;
+const lifecycleExpectedGardenBlockCount = 297;
+const lifecycleExpectedGardenRaisedBedCount = 3;
+const lifecycleContextEventTimeoutMs = 20_000;
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -296,6 +382,152 @@ const highTargetScenarios = [
         isMobile: false,
         budget: 'gameHighTarget',
         repeat: 3,
+    },
+];
+
+const crossTierProfileMatrix = [
+    {
+        dprCap: 1,
+        groundDecorationDensity: 0,
+        quality: 'low',
+        shadowMapSize: 0,
+        shadows: false,
+        slug: 'low',
+        tier: 'low',
+    },
+    {
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        quality: 'medium',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'medium',
+        tier: 'medium',
+    },
+    {
+        dprCap: 2,
+        groundDecorationDensity: 1,
+        quality: 'high',
+        shadowMapSize: 4_096,
+        shadows: true,
+        slug: 'high',
+        tier: 'high',
+    },
+    {
+        autoQualityDeviceClass: 'standard',
+        dprCap: 1.5,
+        groundDecorationDensity: 0.5,
+        navigatorMetrics: {
+            deviceMemory: 8,
+            hardwareConcurrency: 8,
+        },
+        quality: 'auto',
+        shadowMapSize: 2_048,
+        shadows: true,
+        slug: 'auto-standard',
+        tier: 'medium',
+    },
+    {
+        autoQualityDeviceClass: 'constrained',
+        dprCap: 1,
+        groundDecorationDensity: 0.25,
+        navigatorMetrics: {
+            deviceMemory: 4,
+            hardwareConcurrency: 4,
+        },
+        quality: 'auto',
+        shadowMapSize: 1_024,
+        shadows: true,
+        slug: 'auto-constrained',
+        tier: 'auto-constrained',
+    },
+];
+
+const crossTierPhases = [
+    {
+        controls: '0',
+        name: 'steady',
+    },
+    {
+        controls: '1',
+        motion: 'bounded-zoom-rotate',
+        name: 'camera-motion',
+    },
+];
+
+const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
+    crossTierPhases.map((phase) => ({
+        name: `game-cross-tier-${profile.slug}-${phase.name}-desktop`,
+        path: `/debug/profile/game?mode=details&profile=high-target&quality=${profile.quality}&controls=${phase.controls}&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy${phase.motion ? '&cameraProfile=1' : ''}`,
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        crossTierProfile: true,
+        expectedDprCap: profile.dprCap,
+        expectedGroundDecorationDensity: profile.groundDecorationDensity,
+        expectedQualityTier: profile.tier,
+        expectedShadowMapSize: profile.shadowMapSize,
+        expectedShadows: profile.shadows,
+        motion: phase.motion,
+        outlineProfile: {
+            action: 'show',
+            raisedBedId: 2,
+        },
+        repeat: 3,
+        screenshotWitness: true,
+        ...(profile.autoQualityDeviceClass
+            ? {
+                  autoQualityDeviceClass: profile.autoQualityDeviceClass,
+                  navigatorMetrics: profile.navigatorMetrics,
+              }
+            : {}),
+    })),
+);
+
+const faunaHeavyScenarios = [
+    {
+        name: 'game-fauna-heavy-day-interaction-desktop',
+        path: '/debug/profile/game?mode=details&profile=fauna-heavy&quality=high&controls=0&details=1&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        animalProfileCommand: {
+            behavior: 'trot',
+            species: 'Cow',
+        },
+        faunaProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
+
+const gardenSwitchScenarios = [
+    {
+        name: 'game-garden-switch-high-fauna-single-context-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&gardenSwitch=1&quality=high&controls=0&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        gardenSwitchProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
+    },
+];
+
+const lifecycleScenarios = [
+    {
+        name: 'game-high-target-runtime-lifecycle-desktop',
+        path: '/debug/profile/game?mode=details&profile=high-target&lifecycle=1&quality=high&controls=0&details=1&hud=0&debugHud=0&outline=1&staticSceneCache=legacy&fixedTimeSeconds=43200',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        lifecycleProfile: true,
+        repeat: 3,
+        screenshotWitness: true,
     },
 ];
 
@@ -861,8 +1093,12 @@ const scenarioSets = {
     'adaptive-high': adaptiveHighScenarios,
     'auto-quality': autoQualityScenarios,
     core: coreScenarios,
+    'cross-tier': crossTierScenarios,
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
+    fauna: faunaHeavyScenarios,
+    'garden-switch': gardenSwitchScenarios,
+    lifecycle: lifecycleScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1145,6 +1381,199 @@ function parseArgs(argv) {
     return options;
 }
 
+function normalizeSourceCommit(value) {
+    const commit = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return fullSourceCommitPattern.test(commit) ? commit : null;
+}
+
+function parseDirtyMarker(value) {
+    if (value === true || value === 'true') {
+        return true;
+    }
+    if (value === false || value === 'false') {
+        return false;
+    }
+    return null;
+}
+
+function parseComparisonContractVersion(value) {
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+        return null;
+    }
+    const version = Number(value);
+    return Number.isSafeInteger(version) ? version : null;
+}
+
+function readCommandOutput(command, args) {
+    return new Promise((resolveOutput) => {
+        let output = '';
+        const child = spawn(command, args, {
+            cwd: appRoot,
+            env: process.env,
+            stdio: ['ignore', 'pipe', 'ignore'],
+        });
+
+        child.stdout.on('data', (chunk) => {
+            output += chunk.toString();
+        });
+        child.on('error', () => resolveOutput(null));
+        child.on('close', (code) => {
+            resolveOutput(code === 0 ? output : null);
+        });
+    });
+}
+
+async function readHarnessProvenance() {
+    const [gitCommit, gitStatus] = await Promise.all([
+        readCommandOutput('git', ['rev-parse', 'HEAD']),
+        readCommandOutput('git', [
+            'status',
+            '--porcelain',
+            '--untracked-files=normal',
+        ]),
+    ]);
+    const environmentCommit =
+        process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? null;
+
+    return {
+        commit:
+            normalizeSourceCommit(gitCommit) ??
+            normalizeSourceCommit(environmentCommit),
+        dirty: gitStatus === null ? null : gitStatus.trim().length > 0,
+    };
+}
+
+async function readServedBuildProvenance(page) {
+    const marker = await page.evaluate(() => {
+        const element = document.querySelector(
+            '[data-game-profile-source-commit]',
+        );
+        if (!(element instanceof HTMLElement)) {
+            return {
+                commit: null,
+                comparisonContractVersion: null,
+                dirty: null,
+            };
+        }
+
+        return {
+            commit: element.dataset.gameProfileSourceCommit ?? null,
+            comparisonContractVersion:
+                element.dataset.gameProfileComparisonContractVersion ?? null,
+            dirty: element.dataset.gameProfileSourceDirty ?? null,
+        };
+    });
+    return {
+        commit: marker.commit,
+        comparisonContractVersion: parseComparisonContractVersion(
+            marker.comparisonContractVersion,
+        ),
+        dirty: parseDirtyMarker(marker.dirty),
+    };
+}
+
+function buildReportProvenance({ harness, runtime, scenarios, server }) {
+    const markers = scenarios.map(
+        (scenario) => scenario.servedBuildProvenance ?? null,
+    );
+    const normalizedCommits = markers.map((marker) =>
+        normalizeSourceCommit(marker?.commit),
+    );
+    const normalizedDirtyStates = markers.map((marker) =>
+        parseDirtyMarker(marker?.dirty),
+    );
+    const normalizedContractVersions = markers.map((marker) =>
+        Number.isInteger(marker?.comparisonContractVersion)
+            ? marker.comparisonContractVersion
+            : null,
+    );
+    const commits = new Set(normalizedCommits.filter(Boolean));
+    const dirtyStates = new Set(
+        normalizedDirtyStates.filter((value) => value !== null),
+    );
+    const contractVersions = new Set(
+        normalizedContractVersions.filter((value) => value !== null),
+    );
+    const subjectCommit = commits.size === 1 ? [...commits][0] : null;
+    const subjectDirty = dirtyStates.size === 1 ? [...dirtyStates][0] : null;
+    const subjectContractVersion =
+        contractVersions.size === 1 ? [...contractVersions][0] : null;
+    const harnessCommit = normalizeSourceCommit(harness?.commit);
+    const harnessDirty = parseDirtyMarker(harness?.dirty);
+    const reasons = [];
+
+    if (markers.length === 0 || markers.some((marker) => marker === null)) {
+        reasons.push('served-build-marker-missing');
+    }
+    if (normalizedCommits.some((commit) => commit === null)) {
+        reasons.push('served-build-source-commit-unknown');
+    }
+    if (commits.size > 1) {
+        reasons.push('served-build-source-commit-inconsistent');
+    }
+    if (normalizedDirtyStates.some((dirty) => dirty === null)) {
+        reasons.push('served-build-dirty-state-unknown');
+    }
+    if (dirtyStates.size > 1) {
+        reasons.push('served-build-dirty-state-inconsistent');
+    } else if (subjectDirty) {
+        reasons.push('served-build-dirty');
+    }
+    if (normalizedContractVersions.some((version) => version === null)) {
+        reasons.push('served-build-comparison-contract-unknown');
+    }
+    if (
+        contractVersions.size > 1 ||
+        (subjectContractVersion !== null &&
+            subjectContractVersion !== gameProfileComparisonContractVersion)
+    ) {
+        reasons.push('served-build-comparison-contract-mismatch');
+    }
+    if (!harnessCommit) {
+        reasons.push('harness-source-commit-unknown');
+    }
+    if (harnessDirty === null) {
+        reasons.push('harness-dirty-state-unknown');
+    } else if (harnessDirty) {
+        reasons.push('harness-dirty');
+    }
+    if (subjectCommit && harnessCommit && subjectCommit !== harnessCommit) {
+        reasons.push('source-commit-mismatch');
+    }
+
+    return {
+        comparable: reasons.length === 0,
+        reasons,
+        subject: {
+            commit: subjectCommit,
+            dirty: subjectDirty,
+            source: 'served-build-marker',
+        },
+        harness: {
+            commit: harnessCommit,
+            dirty: harnessDirty,
+        },
+        runtime: {
+            arch: runtime.arch,
+            browserVersion: runtime.browserVersion,
+            nodeVersion: runtime.nodeVersion,
+            platform: runtime.platform,
+        },
+        server: {
+            buildPerformed: server.buildPerformed,
+            mode: server.mode,
+        },
+    };
+}
+
+function shouldFailProfileRun({ failOnBudget, profileSummary, provenance }) {
+    return (
+        failOnBudget === true &&
+        (profileSummary?.failedScenarios !== 0 ||
+            provenance?.comparable !== true)
+    );
+}
+
 function printHelp(options) {
     console.log(
         [
@@ -1164,10 +1593,10 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
-            '  --fail-on-budget       Exit non-zero when a budget check fails.',
+            '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
             '  --help                 Show this help.',
             '',
             'Environment aliases:',
@@ -1190,8 +1619,12 @@ function allScenarios() {
     return [
         ...adaptiveHighScenarios,
         ...coreScenarios,
+        ...crossTierScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...faunaHeavyScenarios,
+        ...gardenSwitchScenarios,
+        ...lifecycleScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -1231,7 +1664,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, dense, dense-mobile, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1340,6 +1773,12 @@ function getScenarioRequest(path) {
         foliageBudget: url.searchParams.get('foliageBudget') ?? '0',
         gardenProfile: url.searchParams.get('profile') ?? 'default',
         hud: url.searchParams.get('hud') ?? '0',
+        ...(url.searchParams.has('lifecycle')
+            ? {
+                  lifecycle:
+                      url.searchParams.get('lifecycle') === '1' ? '1' : '0',
+              }
+            : {}),
         mode: url.searchParams.get('mode') ?? 'baseline',
         operationVisuals: url.searchParams.get('operationVisuals') ?? '0',
         outline: url.searchParams.get('outline') ?? '0',
@@ -1372,6 +1811,136 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
         },
     });
 }
+
+function installLifecycleMilestoneTracker() {
+    if (globalThis.__grediceLifecycleMilestones) {
+        return;
+    }
+
+    const milestones = {
+        canvasAttachmentCount: 0,
+        canvasAttachedMs: null,
+        canvasSizedMs: null,
+        canvasSize: null,
+        domContentLoadedMs: null,
+        firstSubmittedFrameMs: null,
+        installedMs: performance.now(),
+    };
+    globalThis.__grediceLifecycleMilestones = milestones;
+    let observedCanvas = null;
+    let resizeObserver = null;
+    const recordCanvas = () => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            return;
+        }
+        milestones.canvasAttachedMs ??= performance.now();
+        if (canvas !== observedCanvas) {
+            observedCanvas = canvas;
+            milestones.canvasAttachmentCount += 1;
+            globalThis.__grediceLifecycleFirstCanvas ??= canvas;
+            resizeObserver?.disconnect();
+            resizeObserver = new ResizeObserver(recordCanvas);
+            resizeObserver.observe(canvas);
+        }
+        const expectedWidth = Math.round(
+            canvas.clientWidth * globalThis.devicePixelRatio,
+        );
+        const expectedHeight = Math.round(
+            canvas.clientHeight * globalThis.devicePixelRatio,
+        );
+        if (
+            milestones.canvasSizedMs === null &&
+            canvas.clientWidth > 0 &&
+            canvas.clientHeight > 0 &&
+            canvas.width === expectedWidth &&
+            canvas.height === expectedHeight
+        ) {
+            milestones.canvasSizedMs = performance.now();
+            milestones.canvasSize = {
+                clientHeight: canvas.clientHeight,
+                clientWidth: canvas.clientWidth,
+                height: canvas.height,
+                width: canvas.width,
+            };
+        }
+    };
+    globalThis.__grediceLifecycleRecordCanvas = recordCanvas;
+    const mutationObserver = new MutationObserver(recordCanvas);
+    mutationObserver.observe(document, {
+        attributeFilter: ['height', 'style', 'width'],
+        attributes: true,
+        childList: true,
+        subtree: true,
+    });
+    recordCanvas();
+    const recordDomContentLoaded = () => {
+        const navigation = performance.getEntriesByType('navigation')[0];
+        milestones.domContentLoadedMs =
+            navigation?.domContentLoadedEventEnd || performance.now();
+        recordCanvas();
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', recordDomContentLoaded, {
+            capture: true,
+            once: true,
+        });
+    } else {
+        recordDomContentLoaded();
+    }
+}
+
+function installProfileContextTracker() {
+    const installedTracker =
+        globalThis.__grediceGameProfileContextEvents ??
+        globalThis.__grediceGardenSwitchContextEvents;
+    if (installedTracker) {
+        globalThis.__grediceGameProfileContextEvents = installedTracker;
+        globalThis.__grediceGardenSwitchContextEvents = installedTracker;
+        return;
+    }
+
+    const tracker = {
+        lostDefaultPreventedCount: 0,
+        lostDefaultPreventedValues: [],
+        lostCount: 0,
+        lostTimestamps: [],
+        restoredCount: 0,
+        restoredTimestamps: [],
+    };
+    globalThis.__grediceGameProfileContextEvents = tracker;
+    globalThis.__grediceGardenSwitchContextEvents = tracker;
+
+    document.addEventListener(
+        'webglcontextlost',
+        (event) => {
+            if (event.target instanceof HTMLCanvasElement) {
+                tracker.lostCount += 1;
+                tracker.lostTimestamps.push(performance.now());
+                setTimeout(() => {
+                    const prevented = event.defaultPrevented === true;
+                    tracker.lostDefaultPreventedValues.push(prevented);
+                    if (prevented) {
+                        tracker.lostDefaultPreventedCount += 1;
+                    }
+                }, 0);
+            }
+        },
+        true,
+    );
+    document.addEventListener(
+        'webglcontextrestored',
+        (event) => {
+            if (event.target instanceof HTMLCanvasElement) {
+                tracker.restoredCount += 1;
+                tracker.restoredTimestamps.push(performance.now());
+            }
+        },
+        true,
+    );
+}
+
+const installGardenSwitchContextTracker = installProfileContextTracker;
 
 function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     if (globalThis.__gameProfileMetrics) {
@@ -1657,6 +2226,20 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
         prototype[name] = function patchedDrawCall(...args) {
             const metrics = globalThis.__gameProfileMetrics;
             beginGpuFrame(this);
+            const lifecycleMilestones = globalThis.__grediceLifecycleMilestones;
+            if (lifecycleMilestones?.firstSubmittedFrameMs === null) {
+                globalThis.__grediceLifecycleRecordCanvas?.();
+                const lifecycleCanvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                if (
+                    lifecycleCanvas instanceof HTMLCanvasElement &&
+                    this.canvas === lifecycleCanvas
+                ) {
+                    lifecycleMilestones.firstSubmittedFrameMs =
+                        performance.now();
+                }
+            }
             if (metrics.lastRenderedRafTick !== rafTick) {
                 metrics.lastRenderedRafTick = rafTick;
                 metrics.renderedFrames += 1;
@@ -1820,6 +2403,18 @@ function beginInteractiveProfileSample() {
         requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+}
+
+async function primeGardenSwitchProfileSample() {
+    if (!globalThis.__gameProfileInteractiveSample?.running) {
+        throw new Error('No active garden-switch profile sample to prime.');
+    }
+    await new Promise((resolveFrame) => requestAnimationFrame(resolveFrame));
+}
+
+async function beginGardenSwitchProfileSample(page) {
+    await page.evaluate(beginInteractiveProfileSample);
+    await page.evaluate(primeGardenSwitchProfileSample);
 }
 
 async function finishInteractiveProfileSample() {
@@ -2096,6 +2691,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
+        scenario.motion !== 'bounded-zoom-rotate' &&
         scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
@@ -2140,6 +2736,22 @@ async function runScenarioMotion(page, scenario, sampleMs) {
             );
             pointIndex = (pointIndex + 1) % points.length;
             await wait(80);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return;
+    }
+
+    if (scenario.motion === 'bounded-zoom-rotate') {
+        while (Date.now() - startedAt < sampleMs - 240) {
+            await page.mouse.wheel(0, -20);
+            await page.keyboard.press('KeyQ');
+            await wait(120);
+            await page.mouse.wheel(0, 20);
+            await page.keyboard.press('KeyW');
+            await wait(120);
         }
         const remainingMs = sampleMs - (Date.now() - startedAt);
         if (remainingMs > 0) {
@@ -2209,11 +2821,14 @@ function resolveServerPort(baseUrl) {
     return url.protocol === 'https:' ? '443' : '80';
 }
 
-function runPackageScript(script) {
+function runPackageScript(script, environment = {}) {
     return new Promise((resolveRun, rejectRun) => {
         const child = spawn('pnpm', ['run', script], {
             cwd: appRoot,
-            env: process.env,
+            env: {
+                ...process.env,
+                ...environment,
+            },
             stdio: 'inherit',
         });
 
@@ -2564,6 +3179,2482 @@ async function measurePlantCloseup({ cdp, options, page, scenario }) {
     };
 }
 
+async function waitForGardenSwitchFixture(page, profile) {
+    await page.waitForFunction(
+        ({
+            expectedBlockCount,
+            expectedFieldCount,
+            expectedGardenId,
+            expectedInstanceCount,
+            expectedRaisedBedCount,
+            expectedSpeciesCounts,
+            expectedStackCount,
+            profile,
+        }) => {
+            const runtime = globalThis.__grediceGameProfile;
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            const displayedGardenId = Number.parseInt(
+                sceneRoot?.getAttribute('data-scene-garden-id') ?? '',
+                10,
+            );
+            const matchesExpectedEntries = (actual, expected) =>
+                Boolean(
+                    actual &&
+                        typeof actual === 'object' &&
+                        Object.entries(expected).every(
+                            ([name, count]) => actual[name] === count,
+                        ),
+                );
+            const baseReady =
+                runtime?.qualityTier === 'high' &&
+                runtime.profileGardenId === expectedGardenId &&
+                runtime.profileGardenStackCount === expectedStackCount &&
+                runtime.profileGardenBlockCount === expectedBlockCount &&
+                runtime.profileGardenRaisedBedCount ===
+                    expectedRaisedBedCount &&
+                displayedGardenId === expectedGardenId &&
+                sceneRoot?.getAttribute('data-scene-visible') === 'true';
+
+            if (!baseReady) {
+                return false;
+            }
+            if (profile === 'high-target') {
+                return (
+                    runtime.generatedPlantFieldCount === expectedFieldCount &&
+                    runtime.generatedPlantExpectedInstanceCount ===
+                        expectedInstanceCount &&
+                    runtime.generatedPlantInstanceCount ===
+                        expectedInstanceCount &&
+                    runtime.generatedPlantVisibleFieldCount ===
+                        expectedFieldCount &&
+                    runtime.generatedPlantVisibleInstanceCount ===
+                        expectedInstanceCount
+                );
+            }
+
+            return (
+                matchesExpectedEntries(
+                    runtime.actorGroundingShadowSpeciesCounts,
+                    expectedSpeciesCounts,
+                ) && runtime.actorGroundingShadowDroppedCount === 0
+            );
+        },
+        {
+            expectedBlockCount:
+                gardenSwitchExpectedFixtures[profile].blockCount,
+            expectedFieldCount: highTargetExpectedGeneratedPlantFieldCount,
+            expectedGardenId: gardenSwitchExpectedGardenIds[profile],
+            expectedInstanceCount:
+                highTargetExpectedGeneratedPlantInstanceCount,
+            expectedRaisedBedCount:
+                gardenSwitchExpectedFixtures[profile].raisedBedCount,
+            expectedSpeciesCounts: faunaHeavyExpectedFixedSpeciesCounts,
+            expectedStackCount:
+                gardenSwitchExpectedFixtures[profile].stackCount,
+            profile,
+        },
+        { timeout: 60_000 },
+    );
+}
+
+async function dispatchGardenSwitchProfile(page, profile) {
+    const expectedGardenId = gardenSwitchExpectedGardenIds[profile];
+    const dispatched = await page.evaluate(
+        ({ eventName, expectedGardenId, profile }) => {
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            if (!(sceneRoot instanceof HTMLElement)) {
+                throw new Error('Garden-switch Scene root is unavailable.');
+            }
+            const witness = {
+                displayedAt: null,
+                dispatched: false,
+                hiddenAt: null,
+                startedAt: performance.now(),
+                targetGardenId: expectedGardenId,
+                visibleAt: null,
+            };
+            const record = () => {
+                const gardenId = Number.parseInt(
+                    sceneRoot.dataset.sceneGardenId ?? '',
+                    10,
+                );
+                const visible = sceneRoot.dataset.sceneVisible;
+                const now = performance.now();
+                if (visible === 'false' && witness.hiddenAt === null) {
+                    witness.hiddenAt = now;
+                }
+                if (
+                    gardenId === witness.targetGardenId &&
+                    witness.displayedAt === null
+                ) {
+                    witness.displayedAt = now;
+                }
+                if (
+                    gardenId === witness.targetGardenId &&
+                    visible === 'true' &&
+                    witness.hiddenAt !== null &&
+                    witness.visibleAt === null
+                ) {
+                    witness.visibleAt = now;
+                }
+            };
+            const observer = new MutationObserver(record);
+            observer.observe(sceneRoot, {
+                attributeFilter: ['data-scene-garden-id', 'data-scene-visible'],
+            });
+            globalThis.__grediceGardenSwitchProfileWitness = witness;
+            witness.dispatched = globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail: { profile },
+                }),
+            );
+            record();
+            globalThis.__grediceGardenSwitchProfileObserver?.disconnect();
+            globalThis.__grediceGardenSwitchProfileObserver = observer;
+            return witness.dispatched;
+        },
+        {
+            eventName: gameProfileGardenSwitchEventName,
+            expectedGardenId,
+            profile,
+        },
+    );
+    await page.waitForFunction(
+        () => {
+            const witness = globalThis.__grediceGardenSwitchProfileWitness;
+            return Boolean(
+                witness?.dispatched &&
+                    typeof witness.hiddenAt === 'number' &&
+                    typeof witness.displayedAt === 'number' &&
+                    typeof witness.visibleAt === 'number',
+            );
+        },
+        undefined,
+        { timeout: gardenSwitchMaximumVisibleMs + 2_000 },
+    );
+
+    return dispatched;
+}
+
+async function readGardenSwitchTiming(page) {
+    return page.evaluate((settleMs) => {
+        const witness = globalThis.__grediceGardenSwitchProfileWitness;
+        if (!witness) {
+            return null;
+        }
+        const settledAt = performance.now();
+        globalThis.__grediceGardenSwitchProfileObserver?.disconnect();
+        return {
+            dispatched: witness.dispatched === true,
+            displayedMs:
+                typeof witness.displayedAt === 'number'
+                    ? witness.displayedAt - witness.startedAt
+                    : null,
+            hiddenObserved: typeof witness.hiddenAt === 'number',
+            settledMs: settledAt - witness.startedAt,
+            settleTargetMs: settleMs,
+            visibleMs:
+                typeof witness.visibleAt === 'number'
+                    ? witness.visibleAt - witness.startedAt
+                    : null,
+        };
+    }, gardenSwitchVisualSettleMs);
+}
+
+async function dispatchGardenSwitchInteraction(page, profile) {
+    if (profile === 'high-target') {
+        const state = await dispatchOutlineProfileCommand(page, {
+            action: 'show',
+            raisedBedId: 2,
+        });
+        const telemetry = await page.evaluate(() => {
+            const runtime = globalThis.__grediceGameProfile;
+            return {
+                activeTargetCount:
+                    runtime?.hoverOutlineActiveTargetCount ?? null,
+                styleGroupCount: runtime?.hoverOutlineStyleGroupCount ?? null,
+                targetBlockId:
+                    runtime?.hoverOutlineProfileTargetBlockId ?? null,
+                targetRaisedBedId:
+                    runtime?.hoverOutlineProfileTargetRaisedBedId ?? null,
+            };
+        });
+        return {
+            ...telemetry,
+            dispatched: state.dispatched,
+            kind: 'outline',
+        };
+    }
+
+    const command = {
+        behavior: 'trot',
+        species: 'Cow',
+    };
+    const sequenceAtStart = await page.evaluate(
+        () =>
+            globalThis.__grediceGameProfile?.profileAnimalCommandSequence ?? 0,
+    );
+    const dispatched = await page.evaluate(
+        ({ command, eventName }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, { detail: command }),
+            ),
+        {
+            command,
+            eventName: gameProfileAnimalCommandEventName,
+        },
+    );
+    await page.waitForFunction(
+        ({ acknowledgedIds, expectedSequence }) => {
+            const runtime = globalThis.__grediceGameProfile;
+            const matchesIds = (actual) =>
+                Array.isArray(actual) &&
+                actual.length === acknowledgedIds.length &&
+                [...actual]
+                    .sort()
+                    .every(
+                        (value, index) =>
+                            value === [...acknowledgedIds].sort()[index],
+                    );
+            return (
+                runtime?.profileAnimalCommandSequence === expectedSequence &&
+                runtime.profileAnimalCommandSpecies === 'Cow' &&
+                runtime.profileAnimalCommandBehavior === 'trot' &&
+                runtime.profileAnimalCommandAcknowledgementCount === 2 &&
+                runtime.profileAnimalCommandMovingAcknowledgementCount === 2 &&
+                matchesIds(runtime.profileAnimalCommandAcknowledgedIds) &&
+                matchesIds(runtime.profileAnimalCommandMovingAcknowledgedIds)
+            );
+        },
+        {
+            acknowledgedIds: faunaHeavyExpectedCowActorIds,
+            expectedSequence: sequenceAtStart + 1,
+        },
+        { timeout: 20_000 },
+    );
+    const telemetry = await page.evaluate(() => {
+        const runtime = globalThis.__grediceGameProfile;
+        return {
+            acknowledgementCount:
+                runtime?.profileAnimalCommandAcknowledgementCount ?? null,
+            acknowledgedIds:
+                runtime?.profileAnimalCommandAcknowledgedIds ?? null,
+            behavior: runtime?.profileAnimalCommandBehavior ?? null,
+            movingAcknowledgementCount:
+                runtime?.profileAnimalCommandMovingAcknowledgementCount ?? null,
+            movingAcknowledgedIds:
+                runtime?.profileAnimalCommandMovingAcknowledgedIds ?? null,
+            sequence: runtime?.profileAnimalCommandSequence ?? null,
+            species: runtime?.profileAnimalCommandSpecies ?? null,
+        };
+    });
+
+    return {
+        ...telemetry,
+        dispatched,
+        kind: 'animal',
+    };
+}
+
+async function readGardenSwitchArrival(
+    page,
+    persistentCanvas,
+    persistentContext,
+) {
+    return page.evaluate(
+        ({ persistentCanvas, persistentContext }) => {
+            const sceneRoot = document.querySelector('[data-scene-garden-id]');
+            const canvas = sceneRoot?.querySelector('canvas');
+            const context =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const runtime = globalThis.__grediceGameProfile;
+            const numberOrNull = (value) =>
+                typeof value === 'number' && Number.isFinite(value)
+                    ? value
+                    : null;
+            const booleanOrNull = (value) =>
+                typeof value === 'boolean' ? value : null;
+            const recordOrNull = (value) =>
+                value && typeof value === 'object' && !Array.isArray(value)
+                    ? { ...value }
+                    : null;
+
+            return {
+                canvas: {
+                    canvasCount: document.querySelectorAll('canvas').length,
+                    clientHeight:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.clientHeight
+                            : null,
+                    clientWidth:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.clientWidth
+                            : null,
+                    contextLost: context?.isContextLost() ?? null,
+                    contextLostEventCount:
+                        globalThis.__grediceGardenSwitchContextEvents
+                            ?.lostCount ?? null,
+                    contextRestoredEventCount:
+                        globalThis.__grediceGardenSwitchContextEvents
+                            ?.restoredCount ?? null,
+                    gardenId: Number.parseInt(
+                        sceneRoot?.getAttribute('data-scene-garden-id') ?? '',
+                        10,
+                    ),
+                    height:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.height
+                            : null,
+                    sameCanvas: canvas === persistentCanvas,
+                    sameContext: context === persistentContext,
+                    sceneVisible:
+                        sceneRoot?.getAttribute('data-scene-visible') ===
+                        'true',
+                    width:
+                        canvas instanceof HTMLCanvasElement
+                            ? canvas.width
+                            : null,
+                },
+                fixture: {
+                    actorGroundingShadowDroppedCount: numberOrNull(
+                        runtime?.actorGroundingShadowDroppedCount,
+                    ),
+                    blockCount: numberOrNull(runtime?.profileGardenBlockCount),
+                    generatedPlantExpectedInstanceCount: numberOrNull(
+                        runtime?.generatedPlantExpectedInstanceCount,
+                    ),
+                    generatedPlantFieldCount: numberOrNull(
+                        runtime?.generatedPlantFieldCount,
+                    ),
+                    generatedPlantInstanceCount: numberOrNull(
+                        runtime?.generatedPlantInstanceCount,
+                    ),
+                    generatedPlantVisibleFieldCount: numberOrNull(
+                        runtime?.generatedPlantVisibleFieldCount,
+                    ),
+                    generatedPlantVisibleInstanceCount: numberOrNull(
+                        runtime?.generatedPlantVisibleInstanceCount,
+                    ),
+                    raisedBedCount: numberOrNull(
+                        runtime?.profileGardenRaisedBedCount,
+                    ),
+                    speciesCounts: recordOrNull(
+                        runtime?.actorGroundingShadowSpeciesCounts,
+                    ),
+                    stackCount: numberOrNull(runtime?.profileGardenStackCount),
+                },
+                gardenId: numberOrNull(runtime?.profileGardenId),
+                resources: {
+                    rendererGeometries: numberOrNull(
+                        runtime?.rendererGeometries,
+                    ),
+                    rendererLines: numberOrNull(runtime?.rendererLines),
+                    rendererPoints: numberOrNull(runtime?.rendererPoints),
+                    rendererRenderCalls: numberOrNull(
+                        runtime?.rendererRenderCalls,
+                    ),
+                    rendererShaders:
+                        numberOrNull(runtime?.rendererShaders) ??
+                        numberOrNull(
+                            globalThis.__gameProfileMetrics?.rendererShaders,
+                        ),
+                    rendererTextures:
+                        numberOrNull(runtime?.rendererTextures) ??
+                        numberOrNull(
+                            globalThis.__gameProfileMetrics?.rendererTextures,
+                        ),
+                    rendererTriangles: numberOrNull(runtime?.rendererTriangles),
+                    staticOpaqueSceneCacheEnabled: booleanOrNull(
+                        runtime?.staticOpaqueSceneCacheEnabled,
+                    ),
+                },
+            };
+        },
+        { persistentCanvas, persistentContext },
+    );
+}
+
+async function finishGardenSwitchSample({ cdp, page }) {
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    return roundSample(normalizeRenderWork(completion.sample));
+}
+
+async function measureGardenSwitchScenario(
+    browser,
+    baseUrl,
+    scenario,
+    options,
+) {
+    const context = await browser.newContext({
+        deviceScaleFactor: scenario.dpr,
+        hasTouch: scenario.isMobile,
+        isMobile: scenario.isMobile,
+        viewport: scenario.viewport,
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    const apiErrors = [];
+    const apiRequests = [];
+    const consoleMessages = [];
+    const pageErrors = [];
+
+    page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') {
+            const location = message.location();
+            consoleMessages.push({
+                type: message.type(),
+                text: message.text().slice(0, 300),
+                url: location.url || null,
+            });
+        }
+    });
+    page.on('pageerror', (error) => {
+        pageErrors.push(error.message.slice(0, 300));
+    });
+    page.on('response', (response) => {
+        const responseUrl = response.url();
+        if (
+            response.status() >= 400 &&
+            new URL(responseUrl).pathname.includes('/api/')
+        ) {
+            apiErrors.push({ status: response.status(), url: responseUrl });
+        }
+    });
+    page.on('request', (request) => {
+        const requestUrl = request.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({ method: request.method(), url: requestUrl });
+        }
+    });
+
+    await cdp.send('Performance.enable');
+    await page.addInitScript(installGardenSwitchContextTracker);
+    await page.addInitScript(installBrowserMetrics, {
+        externalGpuTimer: true,
+    });
+
+    const url = new URL(scenario.path, baseUrl).toString();
+    const navigationStart = Date.now();
+    try {
+        await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60_000,
+        });
+        const domContentLoadedMs = Date.now() - navigationStart;
+        await page.waitForSelector('[data-scene-garden-id] canvas', {
+            state: 'attached',
+            timeout: 60_000,
+        });
+        const servedBuildProvenance = await readServedBuildProvenance(page);
+        const sceneCanvas = await page
+            .locator('[data-scene-garden-id] canvas')
+            .elementHandle();
+        if (!sceneCanvas) {
+            throw new Error('Garden-switch Canvas handle is unavailable.');
+        }
+        const sceneContext = await sceneCanvas.evaluateHandle(
+            (canvas) =>
+                canvas.getContext('webgl2') ?? canvas.getContext('webgl'),
+        );
+        await waitForGardenSwitchFixture(page, 'high-target');
+        const canvasReadyMs = Date.now() - navigationStart;
+        await page.waitForTimeout(options.warmupMs);
+        const environment = await page.evaluate(() => {
+            const canvas = document.querySelector(
+                '[data-scene-garden-id] canvas',
+            );
+            const gl =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const rendererInfo = gl?.getExtension('WEBGL_debug_renderer_info');
+            return {
+                renderer:
+                    gl && rendererInfo
+                        ? gl.getParameter(rendererInfo.UNMASKED_RENDERER_WEBGL)
+                        : null,
+                userAgent: window.navigator.userAgent,
+                vendor:
+                    gl && rendererInfo
+                        ? gl.getParameter(rendererInfo.UNMASKED_VENDOR_WEBGL)
+                        : null,
+            };
+        });
+        const request = getScenarioRequest(scenario.path);
+        const switchOptIn = await page.evaluate(
+            () =>
+                document
+                    .querySelector('[data-game-profile-mode]')
+                    ?.getAttribute('data-game-profile-garden-switch') ?? null,
+        );
+        const requested = {
+            controls: request.controls,
+            debugHud: request.debugHud,
+            details: request.details,
+            dpr: scenario.dpr,
+            gardenProfile: 'garden-switch',
+            gardenSwitch: switchOptIn,
+            gardenSwitchProfile: true,
+            graphicsBackend: options.graphicsBackend,
+            hud: request.hud,
+            isMobile: scenario.isMobile,
+            mode: request.mode,
+            motion: 'high-fauna-single-context-switch',
+            operationVisuals: request.operationVisuals,
+            outline: request.outline,
+            quality: request.quality,
+            staticSceneCache: request.staticSceneCache,
+            viewport: scenario.viewport,
+        };
+        const arrivals = [];
+        for (const [index, profile] of gardenSwitchExpectedProfiles.entries()) {
+            await beginGardenSwitchProfileSample(page);
+            let timing = { initial: true };
+            if (index > 0) {
+                await dispatchGardenSwitchProfile(page, profile);
+                await waitForGardenSwitchFixture(page, profile);
+                await page.waitForTimeout(gardenSwitchVisualSettleMs);
+                timing = await readGardenSwitchTiming(page);
+            }
+            const interaction = await dispatchGardenSwitchInteraction(
+                page,
+                profile,
+            );
+            await page.waitForTimeout(550);
+            const sample = await finishGardenSwitchSample({ cdp, page });
+            const arrival = await readGardenSwitchArrival(
+                page,
+                sceneCanvas,
+                sceneContext,
+            );
+            const screenshotPath = resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-arrival-${index + 1}-${profile}.png`,
+            );
+            await mkdir(dirname(screenshotPath), { recursive: true });
+            await page.locator('[data-scene-garden-id] canvas').screenshot({
+                animations: 'disabled',
+                path: screenshotPath,
+            });
+            arrivals.push({
+                ...arrival,
+                arrivalIndex: index + 1,
+                interaction,
+                profile,
+                sample,
+                screenshotPath,
+                screenshotWitness:
+                    await measureProfileScreenshotWitness(screenshotPath),
+                timing,
+            });
+        }
+
+        const acceptance = evaluateGardenSwitchAcceptance({
+            apiErrors,
+            apiRequests,
+            arrivals,
+            consoleMessages,
+            pageErrors,
+            requested,
+        });
+        const finalArrival = arrivals.at(-1);
+        const transitionChecks = acceptance.checks.filter(
+            (check) =>
+                check.name.includes('FrameStall') ||
+                check.name.includes('WithinMs') ||
+                check.name.includes('AfterFadeOutMs') ||
+                check.name.includes('SettleDurationMs'),
+        );
+        const budget = {
+            checks: acceptance.checks,
+            pass: acceptance.pass,
+        };
+        return {
+            acceptance,
+            apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
+            budget,
+            budgetName: 'gardenSwitch',
+            canvasReadyMs,
+            consoleMessages: consoleMessages.slice(0, 8),
+            cdp: null,
+            domContentLoadedMs,
+            environment,
+            gardenSwitch: { arrivals },
+            name: scenario.name,
+            pageErrors: pageErrors.slice(0, 8),
+            path: scenario.path,
+            performanceBudget: {
+                checks: transitionChecks,
+                pass: transitionChecks.every((check) => check.pass),
+            },
+            requested,
+            runtime: {
+                ...finalArrival?.fixture,
+                ...finalArrival?.resources,
+                profileGardenId: finalArrival?.gardenId ?? null,
+                qualityTier: 'high',
+            },
+            sample: finalArrival?.sample ?? null,
+            servedBuildProvenance,
+            screenshotPath: finalArrival?.screenshotPath ?? null,
+            screenshotWitness: finalArrival?.screenshotWitness ?? null,
+            url,
+        };
+    } finally {
+        await context.close();
+    }
+}
+
+const runtimeFrameLoopBooleanFields = [
+    'canvasVisible',
+    'documentVisible',
+    'effectiveVisible',
+    'loopActive',
+];
+const runtimeFrameLoopNumberFields = [
+    'activeLeaseCount',
+    'targetFramesPerSecond',
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
+const runtimeFrameLoopCounterFields = [
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
+
+async function readRuntimeFrameLoopSnapshot(page) {
+    return page.evaluate(() => {
+        const telemetry =
+            globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+        return telemetry && typeof telemetry === 'object'
+            ? { ...telemetry }
+            : null;
+    });
+}
+
+async function waitForRuntimeFrameLoopState(page, expected) {
+    await page.waitForFunction(
+        (expectedState) => {
+            const telemetry = globalThis.__grediceGameProfile?.runtimeFrameLoop;
+            return Boolean(
+                telemetry &&
+                    Object.entries(expectedState).every(
+                        ([name, value]) => telemetry[name] === value,
+                    ),
+            );
+        },
+        expected,
+        { timeout: 20_000 },
+    );
+}
+
+function runtimeFrameLoopCounterDeltas(before, after) {
+    return Object.fromEntries(
+        runtimeFrameLoopCounterFields.map((field) => [
+            field,
+            typeof before?.[field] === 'number' &&
+            typeof after?.[field] === 'number'
+                ? after[field] - before[field]
+                : null,
+        ]),
+    );
+}
+
+function lifecycleRuntimeSchedulerZeroObserved(deltas) {
+    return runtimeFrameLoopCounterFields.every(
+        (field) => deltas?.[field] === 0,
+    );
+}
+
+function lifecycleZeroWorkObserved(residual, deltas) {
+    return (
+        lifecycleRuntimeSchedulerZeroObserved(deltas) &&
+        residual?.sample?.renderedFrames === 0 &&
+        residual.sample.drawCalls === 0 &&
+        residual.sample.submittedTriangles === 0
+    );
+}
+
+async function measureLifecycleWindow({ cdp, durationMs, page }) {
+    const before = metricsByName(await cdp.send('Performance.getMetrics'));
+    await page.evaluate(beginInteractiveProfileSample);
+    await page.waitForTimeout(durationMs);
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    const after = metricsByName(completion.endpointMetrics);
+    return {
+        cdp: diffCdpMetrics(before, after),
+        sample: roundSample(normalizeRenderWork(completion.sample)),
+    };
+}
+
+async function moveLifecycleCanvasOffscreen(page, offscreen) {
+    await page.evaluate((shouldMoveOffscreen) => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        let spacer = document.querySelector(
+            '[data-game-profile-lifecycle-spacer]',
+        );
+        if (shouldMoveOffscreen) {
+            if (!spacer) {
+                spacer = document.createElement('div');
+                spacer.setAttribute('data-game-profile-lifecycle-spacer', '1');
+                spacer.setAttribute('aria-hidden', 'true');
+                spacer.style.height = 'calc(100vh + 64px)';
+                spacer.style.width = '1px';
+                document.body.insertBefore(spacer, document.body.firstChild);
+            }
+            return;
+        }
+        spacer?.remove();
+    }, offscreen);
+}
+
+async function installLifecycleIntersectionWitness(page) {
+    await page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        globalThis.__grediceLifecycleIntersectionObserver?.disconnect();
+        globalThis.__grediceLifecycleIntersectionEntries = [];
+        globalThis.__grediceLifecycleIntersectionObserver =
+            new IntersectionObserver(([entry]) => {
+                if (!entry) {
+                    return;
+                }
+                globalThis.__grediceLifecycleIntersectionEntries.push({
+                    height: entry.intersectionRect.height,
+                    isIntersecting: entry.isIntersecting,
+                    time: entry.time,
+                    width: entry.intersectionRect.width,
+                });
+            });
+        globalThis.__grediceLifecycleIntersectionObserver.observe(canvas);
+    });
+    await page.waitForFunction(
+        () =>
+            globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                ?.isIntersecting === true,
+        undefined,
+        { timeout: 20_000 },
+    );
+}
+
+async function readLifecycleIntersectionWitness(page) {
+    return page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        const rect = canvas?.getBoundingClientRect();
+        return {
+            boundingRect: rect
+                ? {
+                      bottom: rect.bottom,
+                      height: rect.height,
+                      left: rect.left,
+                      right: rect.right,
+                      top: rect.top,
+                      width: rect.width,
+                  }
+                : null,
+            entry:
+                globalThis.__grediceLifecycleIntersectionEntries?.at(-1) ??
+                null,
+        };
+    });
+}
+
+async function setSyntheticDocumentHidden(page, hidden) {
+    await page.evaluate((nextHidden) => {
+        if (!globalThis.__grediceSyntheticDocumentVisibility) {
+            globalThis.__grediceSyntheticDocumentVisibility = {
+                hidden: false,
+            };
+        }
+        const state = globalThis.__grediceSyntheticDocumentVisibility;
+        state.hidden = nextHidden;
+        Object.defineProperties(document, {
+            hidden: {
+                configurable: true,
+                get: () => state.hidden,
+            },
+            visibilityState: {
+                configurable: true,
+                get: () => (state.hidden ? 'hidden' : 'visible'),
+            },
+        });
+        document.dispatchEvent(new Event('visibilitychange'));
+    }, hidden);
+}
+
+async function readLifecycleContextState(
+    page,
+    persistentCanvas,
+    persistentContext,
+) {
+    return page.evaluate(
+        ({ persistentCanvas, persistentContext }) => {
+            const canvas = document.querySelector(
+                '[data-scene-garden-id] canvas',
+            );
+            const context =
+                canvas instanceof HTMLCanvasElement
+                    ? (canvas.getContext('webgl2') ??
+                      canvas.getContext('webgl'))
+                    : null;
+            const events = globalThis.__grediceGameProfileContextEvents;
+            return {
+                canvasCount: document.querySelectorAll('canvas').length,
+                contextLost: context?.isContextLost() ?? null,
+                lostDefaultPreventedCount:
+                    events?.lostDefaultPreventedCount ?? null,
+                lostDefaultPreventedValues: [
+                    ...(events?.lostDefaultPreventedValues ?? []),
+                ],
+                lostEventCount: events?.lostCount ?? null,
+                lostTimestamps: [...(events?.lostTimestamps ?? [])],
+                restoredEventCount: events?.restoredCount ?? null,
+                restoredTimestamps: [...(events?.restoredTimestamps ?? [])],
+                sameCanvas: canvas === persistentCanvas,
+                sameContext: context === persistentContext,
+            };
+        },
+        { persistentCanvas, persistentContext },
+    );
+}
+
+async function forceLifecycleContextLoss(page) {
+    return page.evaluate(() => {
+        const canvas = document.querySelector('[data-scene-garden-id] canvas');
+        if (!(canvas instanceof HTMLCanvasElement)) {
+            throw new Error('Lifecycle Canvas is unavailable.');
+        }
+        const context =
+            canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+        const extension = context?.getExtension('WEBGL_lose_context') ?? null;
+        globalThis.__grediceLifecycleContextControl = {
+            context,
+            extension,
+        };
+        extension?.loseContext();
+        return extension !== null;
+    });
+}
+
+async function restoreLifecycleContext(page) {
+    return page.evaluate(() => {
+        const control = globalThis.__grediceLifecycleContextControl;
+        if (!control?.extension) {
+            return false;
+        }
+        control.extension.restoreContext();
+        return true;
+    });
+}
+
+async function hideLifecycleOutline(page) {
+    await page.evaluate(
+        ({ eventName, raisedBedId }) =>
+            globalThis.dispatchEvent(
+                new CustomEvent(eventName, {
+                    detail: { action: 'hide', raisedBedId },
+                }),
+            ),
+        {
+            eventName: gameProfileOutlineCommandEventName,
+            raisedBedId: 2,
+        },
+    );
+    await page.waitForFunction(
+        () => {
+            const profile = globalThis.__grediceGameProfile;
+            return (
+                profile?.hoverOutlineProfileCommandAction === 'hide' &&
+                profile.hoverOutlineProfileTargetBlockId === null &&
+                profile.hoverOutlineProfileTargetRaisedBedId === null &&
+                profile.hoverOutlineActiveTargetCount === 0 &&
+                profile.hoverOutlineStyleGroupCount === 0
+            );
+        },
+        undefined,
+        { timeout: 20_000 },
+    );
+}
+
+async function captureLifecycleActiveControl({
+    page,
+    persistentCanvas,
+    persistentContext,
+    screenshotPath,
+}) {
+    await waitForGardenSwitchFixture(page, 'high-target');
+    await hideLifecycleOutline(page);
+    await page.evaluate(
+        () =>
+            new Promise((resolveFrame) =>
+                requestAnimationFrame(() =>
+                    requestAnimationFrame(resolveFrame),
+                ),
+            ),
+    );
+    const before = await page.evaluate(() => ({
+        drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
+        renderedFrames: globalThis.__gameProfileMetrics?.renderedFrames ?? null,
+        submittedTriangles:
+            globalThis.__gameProfileMetrics?.submittedTriangles ?? null,
+    }));
+    const interaction = await dispatchGardenSwitchInteraction(
+        page,
+        'high-target',
+    );
+    await page.waitForFunction(
+        (start) => {
+            const metrics = globalThis.__gameProfileMetrics;
+            return Boolean(
+                metrics &&
+                    typeof start.drawCalls === 'number' &&
+                    metrics.drawCalls > start.drawCalls &&
+                    typeof start.renderedFrames === 'number' &&
+                    metrics.renderedFrames > start.renderedFrames &&
+                    typeof start.submittedTriangles === 'number' &&
+                    metrics.submittedTriangles > start.submittedTriangles,
+            );
+        },
+        before,
+        { timeout: 20_000 },
+    );
+    const after = await page.evaluate(() => ({
+        drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
+        renderedFrames: globalThis.__gameProfileMetrics?.renderedFrames ?? null,
+        submittedTriangles:
+            globalThis.__gameProfileMetrics?.submittedTriangles ?? null,
+    }));
+    const delta = Object.fromEntries(
+        Object.keys(before).map((field) => [
+            field,
+            typeof before[field] === 'number' &&
+            typeof after[field] === 'number'
+                ? after[field] - before[field]
+                : null,
+        ]),
+    );
+    const fixture = await readGardenSwitchArrival(
+        page,
+        persistentCanvas,
+        persistentContext,
+    );
+    await mkdir(dirname(screenshotPath), { recursive: true });
+    await page.locator('[data-scene-garden-id] canvas').screenshot({
+        animations: 'disabled',
+        path: screenshotPath,
+    });
+
+    return {
+        fixture,
+        interaction,
+        postCommandRender: delta,
+        screenshotPath,
+        screenshotWitness:
+            await measureProfileScreenshotWitness(screenshotPath),
+    };
+}
+
+function evaluateLifecycleAcceptance({
+    active,
+    apiErrors = [],
+    apiRequests = [],
+    cold,
+    consoleMessages = [],
+    context,
+    fixture,
+    hidden,
+    offscreen,
+    pageErrors = [],
+    requested,
+    resolved,
+    restoredInteraction,
+    restoredScreenshotWitness,
+}) {
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const finite = (name, actual) => ({
+        actual,
+        comparison: 'finite',
+        limit: 'finite number',
+        name,
+        pass: typeof actual === 'number' && Number.isFinite(actual),
+    });
+    const runtimeContractChecks = (prefix, telemetry) => [
+        ...runtimeFrameLoopBooleanFields.map((field) =>
+            exact(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
+                typeof telemetry?.[field],
+                'boolean',
+            ),
+        ),
+        ...runtimeFrameLoopNumberFields.map((field) =>
+            finite(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}`,
+                telemetry?.[field],
+            ),
+        ),
+    ];
+    const outlineChecks = (prefix, interaction) => [
+        exact(`${prefix}Kind`, interaction?.kind, 'outline'),
+        exact(`${prefix}Dispatched`, interaction?.dispatched, true),
+        exact(`${prefix}RaisedBedId`, interaction?.targetRaisedBedId, 2),
+        exact(
+            `${prefix}BlockId`,
+            interaction?.targetBlockId,
+            'profile-raised-bed:2:0',
+        ),
+        exact(`${prefix}ActiveTargetCount`, interaction?.activeTargetCount, 2),
+        exact(`${prefix}StyleGroupCount`, interaction?.styleGroupCount, 1),
+    ];
+    const activeControlChecks = (
+        prefix,
+        control,
+        { lostEventCount = 0, restoredEventCount = 0 } = {},
+    ) => [
+        ...outlineChecks(`${prefix}Outline`, control?.interaction),
+        exact(`${prefix}CanvasCount`, control?.fixture?.canvas?.canvasCount, 1),
+        exact(
+            `${prefix}CanvasPersistent`,
+            control?.fixture?.canvas?.sameCanvas,
+            true,
+        ),
+        exact(
+            `${prefix}ContextPersistent`,
+            control?.fixture?.canvas?.sameContext,
+            true,
+        ),
+        exact(
+            `${prefix}ContextHealthy`,
+            control?.fixture?.canvas?.contextLost,
+            false,
+        ),
+        exact(
+            `${prefix}ContextLostEventCount`,
+            control?.fixture?.canvas?.contextLostEventCount,
+            lostEventCount,
+        ),
+        exact(
+            `${prefix}ContextRestoredEventCount`,
+            control?.fixture?.canvas?.contextRestoredEventCount,
+            restoredEventCount,
+        ),
+        exact(
+            `${prefix}GardenId`,
+            control?.fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            `${prefix}FixtureStackCount`,
+            control?.fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            `${prefix}FixtureBlockCount`,
+            control?.fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            `${prefix}FixtureRaisedBedCount`,
+            control?.fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            `${prefix}VisiblePlantFields`,
+            control?.fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            `${prefix}VisiblePlantInstances`,
+            control?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        minimum(
+            `${prefix}PostCommandRenderedFrames`,
+            control?.postCommandRender?.renderedFrames,
+            1,
+        ),
+        minimum(
+            `${prefix}PostCommandDrawCalls`,
+            control?.postCommandRender?.drawCalls,
+            1,
+        ),
+        minimum(
+            `${prefix}PostCommandTriangles`,
+            control?.postCommandRender?.submittedTriangles,
+            1,
+        ),
+        exact(
+            `${prefix}ScreenshotValid`,
+            isProfileScreenshotWitnessValid(control?.screenshotWitness),
+            true,
+        ),
+        exact(
+            `${prefix}ScreenshotWidth`,
+            control?.screenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            `${prefix}ScreenshotHeight`,
+            control?.screenshotWitness?.height,
+            1_440,
+        ),
+    ];
+    const residualWindowChecks = (prefix, phase) => [
+        minimum(
+            `${prefix}ElapsedMs`,
+            phase?.residual?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            `${prefix}RenderedFramesFinite`,
+            phase?.residual?.sample?.renderedFrames,
+            0,
+        ),
+        minimum(
+            `${prefix}DrawCallsFinite`,
+            phase?.residual?.sample?.drawCalls,
+            0,
+        ),
+        minimum(
+            `${prefix}SubmittedTrianglesFinite`,
+            phase?.residual?.sample?.submittedTriangles,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpScriptDuration`,
+            phase?.residual?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpTaskDuration`,
+            phase?.residual?.cdp?.taskDuration,
+            0,
+        ),
+        minimum(
+            `${prefix}CdpLayoutDuration`,
+            phase?.residual?.cdp?.layoutDuration,
+            0,
+        ),
+        ...runtimeFrameLoopCounterFields.map((field) =>
+            minimum(
+                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                phase?.residualDeltas?.[field],
+                0,
+            ),
+        ),
+        exact(
+            `${prefix}ScheduledCallbackDelta`,
+            phase?.residualDeltas?.scheduledCallbackCount,
+            0,
+        ),
+        exact(`${prefix}WakeupDelta`, phase?.residualDeltas?.wakeupCount, 0),
+        exact(
+            `${prefix}OwnedInvalidationDelta`,
+            phase?.residualDeltas?.ownedInvalidationCount,
+            0,
+        ),
+        exact(
+            `${prefix}CancelledCallbackDelta`,
+            phase?.residualDeltas?.cancelledCallbackCount,
+            0,
+        ),
+        exact(
+            `${prefix}SuspendCountDelta`,
+            phase?.residualDeltas?.suspendCount,
+            0,
+        ),
+        exact(
+            `${prefix}ResumeCountDelta`,
+            phase?.residualDeltas?.resumeCount,
+            0,
+        ),
+    ];
+    const minimumActiveFrames = (sample) =>
+        Math.max(1, Math.floor((sample?.elapsedMs ?? 0) / 1_000));
+    const checks = [
+        exact('lifecycleOptIn', requested?.lifecycle, '1'),
+        exact('lifecycleRequestOptIn', requested?.lifecycleRequest, '1'),
+        exact('lifecycleProfile', requested?.lifecycleProfile, true),
+        exact('lifecycleFreshBrowserContext', requested?.freshContext, true),
+        exact('lifecycleFreshContextPageCount', cold?.contextPageCount, 1),
+        exact(
+            'lifecycleColdCanvasAttachmentCount',
+            cold?.canvasAttachmentCount,
+            1,
+        ),
+        exact(
+            'lifecycleColdFirstCanvasPersistent',
+            cold?.firstCanvasPersistent,
+            true,
+        ),
+        exact('lifecycleModeRequest', requested?.mode, 'details'),
+        exact(
+            'lifecycleGardenProfileRequest',
+            requested?.gardenProfile,
+            'high-target',
+        ),
+        exact('lifecycleControlsRequest', requested?.controls, '0'),
+        exact('lifecycleDetailsRequest', requested?.details, '1'),
+        exact('lifecycleHudRequest', requested?.hud, '0'),
+        exact('lifecycleDebugHudRequest', requested?.debugHud, '0'),
+        exact('lifecycleOutlineRequest', requested?.outline, '1'),
+        exact(
+            'lifecycleFixedTimeSecondsRequest',
+            requested?.fixedTimeSeconds,
+            43_200,
+        ),
+        exact('lifecycleQualityRequest', requested?.quality, 'high'),
+        exact('lifecycleResolvedQualityTier', resolved?.qualityTier, 'high'),
+        exact('lifecycleResolvedDprCap', resolved?.dprCap, 2),
+        exact(
+            'lifecycleResolvedShadowsEnabled',
+            resolved?.shadowsEnabled,
+            true,
+        ),
+        exact('lifecycleResolvedShadowMapSize', resolved?.shadowMapSize, 4_096),
+        exact('lifecycleRequestedDpr', requested?.dpr, 2),
+        exact('lifecycleBrowserReportedDpr', resolved?.browserDpr, 2),
+        exact(
+            'lifecycleStaticSceneCacheRequest',
+            requested?.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'lifecycleGardenId',
+            fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            'lifecycleDomGardenId',
+            fixture?.canvas?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact('lifecycleCanvasCount', fixture?.canvas?.canvasCount, 1),
+        exact(
+            'lifecycleCanvasClientWidth',
+            fixture?.canvas?.clientWidth,
+            1_280,
+        ),
+        exact(
+            'lifecycleCanvasClientHeight',
+            fixture?.canvas?.clientHeight,
+            720,
+        ),
+        exact('lifecycleCanvasWidth', fixture?.canvas?.width, 2_560),
+        exact('lifecycleCanvasHeight', fixture?.canvas?.height, 1_440),
+        exact(
+            'lifecycleColdCanvasPersistent',
+            cold?.fixture?.canvas?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleColdContextPersistent',
+            cold?.fixture?.canvas?.sameContext,
+            true,
+        ),
+        exact(
+            'lifecycleColdContextHealthy',
+            cold?.fixture?.canvas?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleColdGardenId',
+            cold?.fixture?.gardenId,
+            lifecycleExpectedGardenId,
+        ),
+        exact(
+            'lifecycleColdFixtureStackCount',
+            cold?.fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            'lifecycleColdFixtureBlockCount',
+            cold?.fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            'lifecycleColdFixtureRaisedBedCount',
+            cold?.fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            'lifecycleColdVisiblePlantFields',
+            cold?.fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleColdVisiblePlantInstances',
+            cold?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleColdStaticOpaqueSceneCacheEnabled',
+            cold?.fixture?.resources?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'lifecycleColdScreenshotValid',
+            isProfileScreenshotWitnessValid(cold?.screenshotWitness),
+            true,
+        ),
+        exact(
+            'lifecycleColdScreenshotWidth',
+            cold?.screenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            'lifecycleColdScreenshotHeight',
+            cold?.screenshotWitness?.height,
+            1_440,
+        ),
+        exact(
+            'lifecycleFixtureStackCount',
+            fixture?.fixture?.stackCount,
+            lifecycleExpectedGardenStackCount,
+        ),
+        exact(
+            'lifecycleFixtureBlockCount',
+            fixture?.fixture?.blockCount,
+            lifecycleExpectedGardenBlockCount,
+        ),
+        exact(
+            'lifecycleFixtureRaisedBedCount',
+            fixture?.fixture?.raisedBedCount,
+            lifecycleExpectedGardenRaisedBedCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantFieldCount',
+            fixture?.fixture?.generatedPlantFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantInstanceCount',
+            fixture?.fixture?.generatedPlantInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantVisibleFieldCount',
+            fixture?.fixture?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'lifecycleGeneratedPlantVisibleInstanceCount',
+            fixture?.fixture?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'lifecycleStaticOpaqueSceneCacheEnabled',
+            fixture?.resources?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        finite('lifecycleColdDomContentLoadedMs', cold?.domContentLoadedMs),
+        finite('lifecycleColdCanvasAttachedMs', cold?.canvasAttachedMs),
+        finite('lifecycleColdCanvasSizedMs', cold?.canvasSizedMs),
+        exact('lifecycleColdCanvasSizedWidth', cold?.canvasSize?.width, 2_560),
+        exact(
+            'lifecycleColdCanvasSizedHeight',
+            cold?.canvasSize?.height,
+            1_440,
+        ),
+        finite(
+            'lifecycleColdFirstSubmittedFrameMs',
+            cold?.firstSubmittedFrameMs,
+        ),
+        finite('lifecycleColdFixtureReadyMs', cold?.fixtureReadyMs),
+        finite('lifecycleColdInteractionReadyMs', cold?.interactionReadyMs),
+        minimum(
+            'lifecycleColdCanvasSizedAfterAttachedMs',
+            cold?.canvasSizedMs - cold?.canvasAttachedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdFixtureAfterCanvasMs',
+            cold?.fixtureReadyMs - cold?.canvasSizedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdFirstSubmissionAfterCanvasSizedMs',
+            cold?.firstSubmittedFrameMs - cold?.canvasSizedMs,
+            0,
+        ),
+        minimum(
+            'lifecycleColdInteractionAfterFixtureMs',
+            cold?.interactionReadyMs - cold?.fixtureReadyMs,
+            0,
+        ),
+        ...outlineChecks('lifecycleInitialOutline', cold?.interaction),
+        ...runtimeContractChecks('lifecycleActive', active?.runtimeFrameLoop),
+        exact(
+            'lifecycleActiveCanvasVisible',
+            active?.runtimeFrameLoop?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveDocumentVisible',
+            active?.runtimeFrameLoop?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveEffectiveVisible',
+            active?.runtimeFrameLoop?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleActiveLoopActive',
+            active?.runtimeFrameLoop?.loopActive,
+            true,
+        ),
+        minimum(
+            'lifecycleActiveElapsedMs',
+            active?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            'lifecycleActiveRenderedFrames',
+            active?.sample?.renderedFrames,
+            minimumActiveFrames(active?.sample),
+        ),
+        minimum('lifecycleActiveRenderedFps', active?.sample?.renderedFps, 1),
+        minimum('lifecycleActiveDrawCalls', active?.sample?.drawCalls, 1),
+        minimum(
+            'lifecycleActiveSubmittedTriangles',
+            active?.sample?.submittedTriangles,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenSignal',
+            offscreen?.signal,
+            'intersection-observer',
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionObserved',
+            offscreen?.suspendedIntersection?.entry?.isIntersecting,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionWidth',
+            offscreen?.suspendedIntersection?.entry?.width,
+            0,
+        ),
+        exact(
+            'lifecycleOffscreenIntersectionHeight',
+            offscreen?.suspendedIntersection?.entry?.height,
+            0,
+        ),
+        minimum(
+            'lifecycleOffscreenBoundingTop',
+            offscreen?.suspendedIntersection?.boundingRect?.top,
+            requested?.viewport?.height ?? 720,
+        ),
+        exact(
+            'lifecycleOffscreenCanvasVisible',
+            offscreen?.suspended?.canvasVisible,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenDocumentVisible',
+            offscreen?.suspended?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenEffectiveVisible',
+            offscreen?.suspended?.effectiveVisible,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenLoopSuspended',
+            offscreen?.suspended?.loopActive,
+            false,
+        ),
+        exact(
+            'lifecycleOffscreenResumedCanvasVisible',
+            offscreen?.resumed?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenResumedIntersectionObserved',
+            offscreen?.resumedIntersection?.entry?.isIntersecting,
+            true,
+        ),
+        minimum(
+            'lifecycleOffscreenResumedIntersectionWidth',
+            offscreen?.resumedIntersection?.entry?.width,
+            1,
+        ),
+        minimum(
+            'lifecycleOffscreenResumedIntersectionHeight',
+            offscreen?.resumedIntersection?.entry?.height,
+            1,
+        ),
+        maximum(
+            'lifecycleOffscreenResumedBoundingTop',
+            offscreen?.resumedIntersection?.boundingRect?.top,
+            requested?.viewport?.height ?? 720,
+        ),
+        exact(
+            'lifecycleOffscreenResumedEffectiveVisible',
+            offscreen?.resumed?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenResumedLoopActive',
+            offscreen?.resumed?.loopActive,
+            true,
+        ),
+        exact(
+            'lifecycleOffscreenSuspendCountDelta',
+            offscreen?.transitionDeltas?.suspendCount,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenTransitionResumeCountDelta',
+            offscreen?.transitionDeltas?.resumeCount,
+            0,
+        ),
+        exact(
+            'lifecycleOffscreenResumeCountDelta',
+            offscreen?.resumeDeltas?.resumeCount,
+            1,
+        ),
+        exact(
+            'lifecycleOffscreenResumeSuspendCountDelta',
+            offscreen?.resumeDeltas?.suspendCount,
+            0,
+        ),
+        ...residualWindowChecks('lifecycleOffscreenResidual', offscreen),
+        ...activeControlChecks(
+            'lifecycleOffscreenResumed',
+            offscreen?.resumedControl,
+        ),
+        exact(
+            'lifecycleHiddenSignal',
+            hidden?.signal,
+            'synthetic-document-hidden',
+        ),
+        exact(
+            'lifecycleHiddenDocumentGetter',
+            hidden?.suspendedDocument?.hidden,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenVisibilityStateGetter',
+            hidden?.suspendedDocument?.visibilityState,
+            'hidden',
+        ),
+        exact(
+            'lifecycleHiddenCanvasVisible',
+            hidden?.suspended?.canvasVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenDocumentVisible',
+            hidden?.suspended?.documentVisible,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenEffectiveVisible',
+            hidden?.suspended?.effectiveVisible,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenLoopSuspended',
+            hidden?.suspended?.loopActive,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenResumedDocumentVisible',
+            hidden?.resumed?.documentVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedEffectiveVisible',
+            hidden?.resumed?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedLoopActive',
+            hidden?.resumed?.loopActive,
+            true,
+        ),
+        exact(
+            'lifecycleHiddenResumedDocumentGetter',
+            hidden?.resumedDocument?.hidden,
+            false,
+        ),
+        exact(
+            'lifecycleHiddenResumedVisibilityStateGetter',
+            hidden?.resumedDocument?.visibilityState,
+            'visible',
+        ),
+        exact(
+            'lifecycleHiddenSuspendCountDelta',
+            hidden?.transitionDeltas?.suspendCount,
+            1,
+        ),
+        exact(
+            'lifecycleHiddenTransitionResumeCountDelta',
+            hidden?.transitionDeltas?.resumeCount,
+            0,
+        ),
+        exact(
+            'lifecycleHiddenResumeCountDelta',
+            hidden?.resumeDeltas?.resumeCount,
+            1,
+        ),
+        exact(
+            'lifecycleHiddenResumeSuspendCountDelta',
+            hidden?.resumeDeltas?.suspendCount,
+            0,
+        ),
+        ...residualWindowChecks('lifecycleHiddenResidual', hidden),
+        ...activeControlChecks(
+            'lifecycleHiddenResumed',
+            hidden?.resumedControl,
+        ),
+        exact(
+            'lifecycleContextPreconditionHealthy',
+            context?.precondition?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleContextPreconditionCanvasPersistent',
+            context?.precondition?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextPreconditionObjectPersistent',
+            context?.precondition?.sameContext,
+            true,
+        ),
+        exact(
+            'lifecycleContextPreconditionLostEvents',
+            context?.precondition?.lostEventCount,
+            0,
+        ),
+        exact(
+            'lifecycleContextPreconditionRestoredEvents',
+            context?.precondition?.restoredEventCount,
+            0,
+        ),
+        exact('lifecycleContextLossSupported', context?.supported, true),
+        exact(
+            'lifecycleContextRestoreRequested',
+            context?.restoreRequested,
+            true,
+        ),
+        exact(
+            'lifecycleContextLostEventCount',
+            context?.lost?.lostEventCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextLossHandledByRuntime',
+            context?.lost?.lostDefaultPreventedCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextLossDefaultPreventedValue',
+            JSON.stringify(context?.lost?.lostDefaultPreventedValues),
+            JSON.stringify([true]),
+        ),
+        exact('lifecycleContextObservedLost', context?.lost?.contextLost, true),
+        exact(
+            'lifecycleContextLostTimestampCount',
+            context?.lost?.lostTimestamps?.length,
+            1,
+        ),
+        finite(
+            'lifecycleContextLostTimestampMs',
+            context?.lost?.lostTimestamps?.[0],
+        ),
+        exact(
+            'lifecycleContextLostCanvasPersistent',
+            context?.lost?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextLostObjectPersistent',
+            context?.lost?.sameContext,
+            true,
+        ),
+        minimum(
+            'lifecycleContextLostWindowElapsedMs',
+            context?.lostWindow?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        exact(
+            'lifecycleContextLostRenderedFrames',
+            context?.lostWindow?.sample?.renderedFrames,
+            0,
+        ),
+        exact(
+            'lifecycleContextLostDrawCalls',
+            context?.lostWindow?.sample?.drawCalls,
+            0,
+        ),
+        exact(
+            'lifecycleContextLostSubmittedTriangles',
+            context?.lostWindow?.sample?.submittedTriangles,
+            0,
+        ),
+        minimum(
+            'lifecycleContextLostCdpScriptDuration',
+            context?.lostWindow?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            'lifecycleContextLostCdpTaskDuration',
+            context?.lostWindow?.cdp?.taskDuration,
+            0,
+        ),
+        exact(
+            'lifecycleContextRestoredEventCount',
+            context?.restored?.restoredEventCount,
+            1,
+        ),
+        exact(
+            'lifecycleContextRestoredTimestampCount',
+            context?.restored?.restoredTimestamps?.length,
+            1,
+        ),
+        finite(
+            'lifecycleContextRestoredTimestampMs',
+            context?.restored?.restoredTimestamps?.[0],
+        ),
+        exact(
+            'lifecycleContextRestoredHealthy',
+            context?.restored?.contextLost,
+            false,
+        ),
+        exact(
+            'lifecycleContextCanvasPersistent',
+            context?.restored?.sameCanvas,
+            true,
+        ),
+        exact(
+            'lifecycleContextObjectPersistent',
+            context?.restored?.sameContext,
+            true,
+        ),
+        exact('lifecycleContextCanvasCount', context?.restored?.canvasCount, 1),
+        minimum(
+            'lifecycleContextRestoreDurationMs',
+            context?.restoreDurationMs,
+            0,
+        ),
+        minimum(
+            'lifecycleContextRestoredWindowElapsedMs',
+            context?.restoredWindow?.sample?.elapsedMs,
+            Math.max(0, (requested?.sampleMs ?? 0) - 100),
+        ),
+        minimum(
+            'lifecycleContextRestoredRenderedFrames',
+            context?.restoredWindow?.sample?.renderedFrames,
+            minimumActiveFrames(context?.restoredWindow?.sample),
+        ),
+        minimum(
+            'lifecycleContextRestoredRenderedFps',
+            context?.restoredWindow?.sample?.renderedFps,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredDrawCalls',
+            context?.restoredWindow?.sample?.drawCalls,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredSubmittedTriangles',
+            context?.restoredWindow?.sample?.submittedTriangles,
+            1,
+        ),
+        minimum(
+            'lifecycleContextRestoredCdpScriptDuration',
+            context?.restoredWindow?.cdp?.scriptDuration,
+            0,
+        ),
+        minimum(
+            'lifecycleContextRestoredCdpTaskDuration',
+            context?.restoredWindow?.cdp?.taskDuration,
+            0,
+        ),
+        ...activeControlChecks(
+            'lifecycleContextRestored',
+            context?.restoredControl,
+            { lostEventCount: 1, restoredEventCount: 1 },
+        ),
+        ...outlineChecks('lifecycleRestoredOutline', restoredInteraction),
+        exact(
+            'lifecycleRestoredScreenshotValid',
+            isProfileScreenshotWitnessValid(restoredScreenshotWitness),
+            true,
+        ),
+        exact(
+            'lifecycleRestoredScreenshotWidth',
+            restoredScreenshotWitness?.width,
+            2_560,
+        ),
+        exact(
+            'lifecycleRestoredScreenshotHeight',
+            restoredScreenshotWitness?.height,
+            1_440,
+        ),
+        exact('lifecycleApiErrors', apiErrors.length, 0),
+        exact('lifecycleApiRequests', apiRequests.length, 0),
+        exact(
+            'lifecycleConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('lifecyclePageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+        residualWorkPolicy: {
+            rendererAndCdpGated: false,
+            runtimeSchedulerGated: true,
+            reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+        },
+    };
+}
+
+async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
+    const context = await browser.newContext({
+        deviceScaleFactor: scenario.dpr,
+        hasTouch: scenario.isMobile,
+        isMobile: scenario.isMobile,
+        viewport: scenario.viewport,
+    });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    const apiErrors = [];
+    const apiRequests = [];
+    const consoleMessages = [];
+    const pageErrors = [];
+
+    page.on('console', (message) => {
+        if (message.type() === 'error' || message.type() === 'warning') {
+            const location = message.location();
+            consoleMessages.push({
+                type: message.type(),
+                text: message.text().slice(0, 300),
+                url: location.url || null,
+            });
+        }
+    });
+    page.on('pageerror', (error) => {
+        pageErrors.push(error.message.slice(0, 300));
+    });
+    page.on('response', (response) => {
+        const responseUrl = response.url();
+        if (
+            response.status() >= 400 &&
+            new URL(responseUrl).pathname.includes('/api/')
+        ) {
+            apiErrors.push({ status: response.status(), url: responseUrl });
+        }
+    });
+    page.on('request', (request) => {
+        const requestUrl = request.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({ method: request.method(), url: requestUrl });
+        }
+    });
+
+    await cdp.send('Performance.enable');
+    await page.addInitScript(installLifecycleMilestoneTracker);
+    await page.addInitScript(installProfileContextTracker);
+    await page.addInitScript(installBrowserMetrics, {
+        externalGpuTimer: false,
+    });
+
+    const url = new URL(scenario.path, baseUrl).toString();
+    try {
+        await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60_000,
+        });
+        await page.waitForSelector('[data-scene-garden-id] canvas', {
+            state: 'attached',
+            timeout: 60_000,
+        });
+        const servedBuildProvenance = await readServedBuildProvenance(page);
+        await page.waitForFunction(
+            () => {
+                const canvas = document.querySelector(
+                    '[data-scene-garden-id] canvas',
+                );
+                return Boolean(canvas && canvas.width > 0 && canvas.height > 0);
+            },
+            undefined,
+            { timeout: 60_000 },
+        );
+        const sceneCanvas = await page
+            .locator('[data-scene-garden-id] canvas')
+            .elementHandle();
+        if (!sceneCanvas) {
+            throw new Error('Lifecycle Canvas handle is unavailable.');
+        }
+        const sceneContext = await sceneCanvas.evaluateHandle(
+            (canvas) =>
+                canvas.getContext('webgl2') ?? canvas.getContext('webgl'),
+        );
+        await page.waitForFunction(
+            () => (globalThis.__gameProfileMetrics?.renderedFrames ?? 0) >= 1,
+            undefined,
+            { timeout: 60_000 },
+        );
+        await waitForGardenSwitchFixture(page, 'high-target');
+        const fixtureReadyMs = await page.evaluate(() => performance.now());
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        await installLifecycleIntersectionWitness(page);
+        const interaction = await dispatchGardenSwitchInteraction(
+            page,
+            'high-target',
+        );
+        const interactionReadyMs = await page.evaluate(() => performance.now());
+        const coldFixture = await readGardenSwitchArrival(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const coldScreenshotPath = resolve(
+            options.outDir,
+            'screenshots',
+            `${scenario.name}-cold.png`,
+        );
+        await mkdir(dirname(coldScreenshotPath), { recursive: true });
+        await page.locator('[data-scene-garden-id] canvas').screenshot({
+            animations: 'disabled',
+            path: coldScreenshotPath,
+        });
+        const coldScreenshotWitness =
+            await measureProfileScreenshotWitness(coldScreenshotPath);
+        const milestones = await page.evaluate(() => ({
+            ...globalThis.__grediceLifecycleMilestones,
+            canvasSize: globalThis.__grediceLifecycleMilestones?.canvasSize
+                ? { ...globalThis.__grediceLifecycleMilestones.canvasSize }
+                : null,
+            domContentLoadedMs:
+                performance.getEntriesByType('navigation')[0]
+                    ?.domContentLoadedEventEnd ??
+                globalThis.__grediceLifecycleMilestones?.domContentLoadedMs ??
+                null,
+            firstCanvasPersistent:
+                globalThis.__grediceLifecycleFirstCanvas ===
+                document.querySelector('[data-scene-garden-id] canvas'),
+        }));
+        const cold = {
+            canvasAttachmentCount: milestones.canvasAttachmentCount,
+            canvasAttachedMs: round(milestones.canvasAttachedMs),
+            canvasSize: milestones.canvasSize,
+            canvasSizedMs: round(milestones.canvasSizedMs),
+            contextPageCount: context.pages().length,
+            domContentLoadedMs: round(milestones.domContentLoadedMs),
+            firstSubmittedFrameMs: round(milestones.firstSubmittedFrameMs),
+            fixtureReadyMs: round(fixtureReadyMs),
+            fixture: coldFixture,
+            firstCanvasPersistent: milestones.firstCanvasPersistent,
+            interaction,
+            interactionReadyMs: round(interactionReadyMs),
+            screenshotPath: coldScreenshotPath,
+            screenshotWitness: coldScreenshotWitness,
+        };
+
+        await hideLifecycleOutline(page);
+        await page.waitForTimeout(options.warmupMs);
+        const sampleMs = scenario.sampleMs ?? options.sampleMs;
+        const activeWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const active = {
+            ...activeWindow,
+            runtimeFrameLoop: await readRuntimeFrameLoopSnapshot(page),
+        };
+
+        const offscreenBefore = await readRuntimeFrameLoopSnapshot(page);
+        await moveLifecycleCanvasOffscreen(page, true);
+        await page.waitForFunction(
+            () => {
+                const entry =
+                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1);
+                return Boolean(
+                    entry?.isIntersecting === false &&
+                        entry.width === 0 &&
+                        entry.height === 0,
+                );
+            },
+            undefined,
+            { timeout: 20_000 },
+        );
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: false,
+            documentVisible: true,
+            effectiveVisible: false,
+            loopActive: false,
+        });
+        const offscreenSuspended = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenSuspendedIntersection =
+            await readLifecycleIntersectionWitness(page);
+        const offscreenWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const offscreenSampleEnd = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenResidualDeltas = runtimeFrameLoopCounterDeltas(
+            offscreenSuspended,
+            offscreenSampleEnd,
+        );
+        await moveLifecycleCanvasOffscreen(page, false);
+        await page.waitForFunction(
+            () =>
+                globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                    ?.isIntersecting === true,
+            undefined,
+            { timeout: 20_000 },
+        );
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const offscreenResumed = await readRuntimeFrameLoopSnapshot(page);
+        const offscreenResumedIntersection =
+            await readLifecycleIntersectionWitness(page);
+        const offscreenResumedControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-offscreen-resumed.png`,
+            ),
+        });
+        const offscreen = {
+            before: offscreenBefore,
+            residual: offscreenWindow,
+            residualDeltas: offscreenResidualDeltas,
+            resumeDeltas: runtimeFrameLoopCounterDeltas(
+                offscreenSampleEnd,
+                offscreenResumed,
+            ),
+            resumed: offscreenResumed,
+            resumedControl: offscreenResumedControl,
+            resumedIntersection: offscreenResumedIntersection,
+            signal: 'intersection-observer',
+            suspended: offscreenSuspended,
+            suspendedIntersection: offscreenSuspendedIntersection,
+            transitionDeltas: runtimeFrameLoopCounterDeltas(
+                offscreenBefore,
+                offscreenSuspended,
+            ),
+            runtimeSchedulerZeroObserved: lifecycleRuntimeSchedulerZeroObserved(
+                offscreenResidualDeltas,
+            ),
+            zeroWorkObserved: lifecycleZeroWorkObserved(
+                offscreenWindow,
+                offscreenResidualDeltas,
+            ),
+        };
+
+        await hideLifecycleOutline(page);
+        const hiddenBefore = await readRuntimeFrameLoopSnapshot(page);
+        await setSyntheticDocumentHidden(page, true);
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: false,
+            effectiveVisible: false,
+            loopActive: false,
+        });
+        const hiddenSuspended = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenSuspendedDocument = await page.evaluate(() => ({
+            hidden: document.hidden,
+            visibilityState: document.visibilityState,
+        }));
+        const hiddenWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const hiddenSampleEnd = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenResidualDeltas = runtimeFrameLoopCounterDeltas(
+            hiddenSuspended,
+            hiddenSampleEnd,
+        );
+        await setSyntheticDocumentHidden(page, false);
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const hiddenResumed = await readRuntimeFrameLoopSnapshot(page);
+        const hiddenResumedDocument = await page.evaluate(() => ({
+            hidden: document.hidden,
+            visibilityState: document.visibilityState,
+        }));
+        const hiddenResumedControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-hidden-resumed.png`,
+            ),
+        });
+        const hidden = {
+            before: hiddenBefore,
+            residual: hiddenWindow,
+            residualDeltas: hiddenResidualDeltas,
+            resumeDeltas: runtimeFrameLoopCounterDeltas(
+                hiddenSampleEnd,
+                hiddenResumed,
+            ),
+            resumed: hiddenResumed,
+            resumedControl: hiddenResumedControl,
+            resumedDocument: hiddenResumedDocument,
+            signal: 'synthetic-document-hidden',
+            suspended: hiddenSuspended,
+            suspendedDocument: hiddenSuspendedDocument,
+            transitionDeltas: runtimeFrameLoopCounterDeltas(
+                hiddenBefore,
+                hiddenSuspended,
+            ),
+            runtimeSchedulerZeroObserved:
+                lifecycleRuntimeSchedulerZeroObserved(hiddenResidualDeltas),
+            zeroWorkObserved: lifecycleZeroWorkObserved(
+                hiddenWindow,
+                hiddenResidualDeltas,
+            ),
+        };
+
+        await hideLifecycleOutline(page);
+        const contextPrecondition = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const supported = await forceLifecycleContextLoss(page);
+        if (supported) {
+            await page.waitForFunction(
+                () => {
+                    const control = globalThis.__grediceLifecycleContextControl;
+                    const events = globalThis.__grediceGameProfileContextEvents;
+                    return Boolean(
+                        control?.context?.isContextLost() === true &&
+                            events?.lostCount === 1,
+                    );
+                },
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfileContextEvents
+                        ?.lostDefaultPreventedValues?.length === 1,
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+        }
+        const lost = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const lostWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const restoreRequested = await restoreLifecycleContext(page);
+        if (restoreRequested) {
+            await page.waitForFunction(
+                () => {
+                    const control = globalThis.__grediceLifecycleContextControl;
+                    const events = globalThis.__grediceGameProfileContextEvents;
+                    return Boolean(
+                        control?.context?.isContextLost() === false &&
+                            events?.restoredCount === 1,
+                    );
+                },
+                undefined,
+                { timeout: lifecycleContextEventTimeoutMs },
+            );
+        }
+        await waitForGardenSwitchFixture(page, 'high-target');
+        await waitForRuntimeFrameLoopState(page, {
+            canvasVisible: true,
+            documentVisible: true,
+            effectiveVisible: true,
+            loopActive: true,
+        });
+        const restoredControl = await captureLifecycleActiveControl({
+            page,
+            persistentCanvas: sceneCanvas,
+            persistentContext: sceneContext,
+            screenshotPath: resolve(
+                options.outDir,
+                'screenshots',
+                `${scenario.name}-restored.png`,
+            ),
+        });
+        const restoredWindow = await measureLifecycleWindow({
+            cdp,
+            durationMs: sampleMs,
+            page,
+        });
+        const restored = await readLifecycleContextState(
+            page,
+            sceneCanvas,
+            sceneContext,
+        );
+        const contextLifecycle = {
+            lost,
+            lostWindow,
+            precondition: contextPrecondition,
+            restoreDurationMs:
+                typeof lost.lostTimestamps?.at(-1) === 'number' &&
+                typeof restored.restoredTimestamps?.at(-1) === 'number'
+                    ? restored.restoredTimestamps.at(-1) -
+                      lost.lostTimestamps.at(-1)
+                    : null,
+            restored,
+            restoredControl,
+            restoredWindow,
+            restoreRequested,
+            supported,
+        };
+        const fixture = restoredControl.fixture;
+        const screenshotPath = restoredControl.screenshotPath;
+        const screenshotWitness = restoredControl.screenshotWitness;
+        const request = getScenarioRequest(scenario.path);
+        const profileMetadata = await page.evaluate(() => {
+            const element = document.querySelector('[data-game-profile-mode]');
+            if (!(element instanceof HTMLElement)) {
+                return null;
+            }
+            const fixedTimeSeconds = Number.parseFloat(
+                element.dataset.gameProfileFixedTimeSeconds ?? '',
+            );
+            return {
+                controls: element.dataset.gameProfileControls ?? null,
+                debugHud: element.dataset.gameProfileDebugHud ?? null,
+                details: element.dataset.gameProfileDetails ?? null,
+                fixedTimeSeconds: Number.isFinite(fixedTimeSeconds)
+                    ? fixedTimeSeconds
+                    : null,
+                gardenProfile: element.dataset.gameProfileGardenProfile ?? null,
+                hud: element.dataset.gameProfileHud ?? null,
+                lifecycle: element.dataset.gameProfileLifecycle ?? null,
+                mode: element.dataset.gameProfileMode ?? null,
+                outline: element.dataset.gameProfileOutline ?? null,
+                quality: element.dataset.gameProfileQuality ?? null,
+                staticSceneCache:
+                    element.dataset.gameProfileStaticSceneCache ?? null,
+            };
+        });
+        const requested = {
+            controls: profileMetadata?.controls ?? request.controls,
+            debugHud: profileMetadata?.debugHud ?? request.debugHud,
+            details: profileMetadata?.details ?? request.details,
+            dpr: scenario.dpr,
+            fixedTimeSeconds: profileMetadata?.fixedTimeSeconds ?? null,
+            freshContext: true,
+            gardenProfile:
+                profileMetadata?.gardenProfile ?? request.gardenProfile,
+            graphicsBackend: options.graphicsBackend,
+            hud: profileMetadata?.hud ?? request.hud,
+            isMobile: scenario.isMobile,
+            lifecycle: profileMetadata?.lifecycle ?? null,
+            lifecycleProfile: true,
+            lifecycleRequest: request.lifecycle ?? '0',
+            mode: profileMetadata?.mode ?? request.mode,
+            motion: 'runtime-lifecycle',
+            outline: profileMetadata?.outline ?? request.outline,
+            quality: profileMetadata?.quality ?? request.quality,
+            sampleMs,
+            staticSceneCache:
+                profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+            viewport: scenario.viewport,
+        };
+        const resolved = await page.evaluate(() => {
+            const profile = globalThis.__grediceGameProfile;
+            return {
+                browserDpr: globalThis.devicePixelRatio,
+                dprCap: profile?.dprCap ?? null,
+                qualityTier: profile?.qualityTier ?? null,
+                shadowMapSize: profile?.shadowMapSize ?? null,
+                shadowsEnabled: profile?.shadowsEnabled ?? null,
+            };
+        });
+        const acceptance = evaluateLifecycleAcceptance({
+            active,
+            apiErrors,
+            apiRequests,
+            cold,
+            consoleMessages,
+            context: contextLifecycle,
+            fixture,
+            hidden,
+            offscreen,
+            pageErrors,
+            requested,
+            resolved,
+            restoredInteraction: restoredControl.interaction,
+            restoredScreenshotWitness: screenshotWitness,
+        });
+        const performanceBudget = evaluateBudget(
+            active.sample,
+            budgets[scenario.budget],
+        );
+        return {
+            acceptance,
+            apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
+            budget: {
+                checks: [...performanceBudget.checks, ...acceptance.checks],
+                pass: performanceBudget.pass && acceptance.pass,
+            },
+            budgetName: scenario.budget,
+            canvasReadyMs: cold.canvasSizedMs,
+            cdp: active.cdp,
+            consoleMessages: consoleMessages.slice(0, 8),
+            domContentLoadedMs: cold.domContentLoadedMs,
+            environment: await page.evaluate(() => {
+                const canvas = document.querySelector('canvas');
+                const gl =
+                    canvas instanceof HTMLCanvasElement
+                        ? (canvas.getContext('webgl2') ??
+                          canvas.getContext('webgl'))
+                        : null;
+                const rendererInfo = gl?.getExtension(
+                    'WEBGL_debug_renderer_info',
+                );
+                return {
+                    renderer:
+                        gl && rendererInfo
+                            ? gl.getParameter(
+                                  rendererInfo.UNMASKED_RENDERER_WEBGL,
+                              )
+                            : null,
+                    userAgent: window.navigator.userAgent,
+                    vendor:
+                        gl && rendererInfo
+                            ? gl.getParameter(
+                                  rendererInfo.UNMASKED_VENDOR_WEBGL,
+                              )
+                            : null,
+                };
+            }),
+            lifecycle: {
+                active,
+                cold,
+                context: contextLifecycle,
+                hidden,
+                offscreen,
+                restoredInteraction: restoredControl.interaction,
+            },
+            name: scenario.name,
+            pageErrors: pageErrors.slice(0, 8),
+            path: scenario.path,
+            performanceBudget,
+            requested,
+            runtime: {
+                ...fixture.fixture,
+                ...fixture.resources,
+                browserDpr: resolved.browserDpr,
+                dprCap: resolved.dprCap,
+                profileGardenId: fixture.gardenId,
+                qualityTier: resolved.qualityTier,
+                runtimeFrameLoop: await readRuntimeFrameLoopSnapshot(page),
+                shadowMapSize: resolved.shadowMapSize,
+                shadowsEnabled: resolved.shadowsEnabled,
+            },
+            sample: active.sample,
+            servedBuildProvenance,
+            screenshotPath,
+            screenshotWitness,
+            url,
+        };
+    } finally {
+        await context.close();
+    }
+}
+
 async function measureScenario(browser, baseUrl, scenario, options) {
     const context = await browser.newContext({
         deviceScaleFactor: scenario.dpr,
@@ -2576,6 +5667,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const apiErrors = [];
     const consoleMessages = [];
     const pageErrors = [];
+    const apiRequests = [];
 
     await cdp.send('Performance.enable');
     if (scenario.navigatorMetrics) {
@@ -2613,6 +5705,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             });
         }
     });
+    page.on('request', (pageRequest) => {
+        const requestUrl = pageRequest.url();
+        if (new URL(requestUrl).pathname.includes('/api/')) {
+            apiRequests.push({
+                method: pageRequest.method(),
+                url: requestUrl,
+            });
+        }
+    });
 
     const url = new URL(scenario.path, baseUrl).toString();
     const navigationStart = Date.now();
@@ -2622,6 +5723,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         state: 'attached',
         timeout: 60000,
     });
+    const servedBuildProvenance = await readServedBuildProvenance(page);
     await page.waitForFunction(
         () => {
             const canvas = document.querySelector('canvas');
@@ -2646,12 +5748,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 expectedFieldVisualInstanceCount,
                 expectedInstanceCount,
                 expectedMulchInstanceCount,
+                expectedQualityTier,
                 allowLegacyOperationVisuals,
                 operationVisuals,
             }) => {
                 const profile = globalThis.__grediceGameProfile;
                 return Boolean(
-                    profile?.qualityTier === 'high' &&
+                    profile?.qualityTier === expectedQualityTier &&
                         profile.generatedPlantFieldCount ===
                             expectedFieldCount &&
                         profile.generatedPlantExpectedInstanceCount ===
@@ -2683,11 +5786,75 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         : highTargetExpectedGeneratedPlantInstanceCount,
                 expectedMulchInstanceCount:
                     highTargetOperationVisualExpectedMulchInstanceCount,
+                expectedQualityTier: scenario.expectedQualityTier ?? 'high',
                 allowLegacyOperationVisuals:
                     options.allowLegacyOperationVisuals,
                 operationVisuals: request.operationVisuals === '1',
             },
             { timeout: 60000 },
+        );
+    }
+    if (scenario.faunaProfile === true) {
+        await page.waitForFunction(
+            ({
+                expectedBlockCount,
+                expectedBlockCountsByName,
+                expectedDetailBlockCount,
+                expectedGardenId,
+                expectedSpeciesCounts,
+                expectedStackCount,
+            }) => {
+                const profile = globalThis.__grediceGameProfile;
+                const blockCounts = profile?.profileGardenBlockCountsByName;
+                const speciesCounts =
+                    profile?.actorGroundingShadowSpeciesCounts;
+                const matchesExpectedEntries = (actual, expected) =>
+                    Boolean(
+                        actual &&
+                            typeof actual === 'object' &&
+                            Object.entries(expected).every(
+                                ([name, count]) => actual[name] === count,
+                            ),
+                    );
+                const blockCountKeysMatch =
+                    blockCounts && typeof blockCounts === 'object'
+                        ? Object.keys(blockCounts).length ===
+                          Object.keys(expectedBlockCountsByName).length
+                        : false;
+
+                return Boolean(
+                    profile?.qualityTier === 'high' &&
+                        profile.profileGardenId === expectedGardenId &&
+                        profile.profileGardenStackCount ===
+                            expectedStackCount &&
+                        profile.profileGardenBlockCount ===
+                            expectedBlockCount &&
+                        profile.profileGardenRaisedBedCount === 0 &&
+                        profile.profileGardenBlockCount -
+                            profile.profileGardenStackCount ===
+                            expectedDetailBlockCount &&
+                        blockCountKeysMatch &&
+                        matchesExpectedEntries(
+                            blockCounts,
+                            expectedBlockCountsByName,
+                        ) &&
+                        matchesExpectedEntries(
+                            speciesCounts,
+                            expectedSpeciesCounts,
+                        ) &&
+                        profile.actorGroundingShadowDroppedCount === 0,
+                );
+            },
+            {
+                expectedBlockCount: faunaHeavyExpectedGardenBlockCount,
+                expectedBlockCountsByName: faunaHeavyExpectedBlockCountsByName,
+                expectedDetailBlockCount:
+                    faunaHeavyExpectedGardenDetailBlockCount,
+                expectedGardenId: faunaHeavyExpectedGardenId,
+                expectedSpeciesCounts: faunaHeavyExpectedFixedSpeciesCounts,
+                expectedStackCount: faunaHeavyExpectedGardenStackCount,
+            },
+            { timeout: 60_000 },
         );
     }
 
@@ -2900,6 +6067,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             apiErrors: apiErrors.slice(0, 8),
+            apiRequests: apiRequests.slice(0, 8),
             budget: evaluateBudget(sample, budgets[scenario.budget]),
             closeup: {
                 cold: closeup.cold,
@@ -2948,6 +6116,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             },
             runtime: closeup.runtime,
             sample,
+            servedBuildProvenance,
             screenshotPath:
                 closeup.cold.screenshots.detailed ??
                 closeup.normalScreenshotPath,
@@ -2966,12 +6135,16 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const weatherSurfaceTransitionRequest =
         scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
+    const animalProfileCommandRequest = scenario.animalProfileCommand ?? null;
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
                 adaptiveHighProfileControlEventName,
                 adaptiveHighProfileControlRecovery,
                 adaptiveHighProfileControlStarted,
+                animalProfileCommandEventName,
+                animalProfileCommandRequest,
+                faunaExpectedSpecies,
                 outlineProfileDispatched,
                 outlineProfileTelemetryAvailable,
                 placementProfileEventName,
@@ -3001,7 +6174,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let adaptiveHighInteractionObserved = false;
             let adaptiveHighLevelMax = null;
             let adaptiveHighProfileControlObserved = false;
+            let actorGroundingShadowSpeciesCountsAtStart = null;
+            let actorGroundingShadowSpeciesCountsMin = null;
             let effectiveDprMin = null;
+            let gameCameraMotionObserved = false;
+            let gameCameraSnapshotAtStart = null;
+            let gameCameraSnapshotVersionMax = null;
+            let generatedPlantVisibleFieldCountMin = null;
+            let generatedPlantVisibleInstanceCountMin = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -3014,10 +6194,103 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'string' ? value : null;
             };
+            const readActorGroundingShadowSpeciesCounts = () => {
+                if (!faunaExpectedSpecies.length) {
+                    return null;
+                }
+                const value =
+                    globalThis.__grediceGameProfile
+                        ?.actorGroundingShadowSpeciesCounts;
+                return Object.fromEntries(
+                    faunaExpectedSpecies.map((species) => {
+                        const count =
+                            value &&
+                            typeof value === 'object' &&
+                            typeof value[species] === 'number' &&
+                            Number.isFinite(value[species])
+                                ? value[species]
+                                : 0;
+                        return [species, count];
+                    }),
+                );
+            };
+            const recordActorGroundingShadowSpeciesCounts = () => {
+                const counts = readActorGroundingShadowSpeciesCounts();
+                if (!counts) {
+                    return null;
+                }
+                actorGroundingShadowSpeciesCountsAtStart ??= { ...counts };
+                actorGroundingShadowSpeciesCountsMin ??= { ...counts };
+                for (const [species, count] of Object.entries(counts)) {
+                    actorGroundingShadowSpeciesCountsMin[species] = Math.min(
+                        actorGroundingShadowSpeciesCountsMin[species],
+                        count,
+                    );
+                }
+                return counts;
+            };
+            const readGameCameraSnapshot = () => {
+                const snapshot =
+                    globalThis.__grediceGameProfile?.gameCameraSnapshot;
+                const validVector = (value) =>
+                    Array.isArray(value) &&
+                    value.length === 3 &&
+                    value.every((component) => Number.isFinite(component));
+                if (
+                    !snapshot ||
+                    !validVector(snapshot.position) ||
+                    !validVector(snapshot.target) ||
+                    !Number.isFinite(snapshot.version) ||
+                    !Number.isFinite(snapshot.zoom)
+                ) {
+                    return null;
+                }
+                return {
+                    position: [...snapshot.position],
+                    target: [...snapshot.target],
+                    version: snapshot.version,
+                    zoom: snapshot.zoom,
+                };
+            };
             const counterDelta = (startValue, endValue) =>
                 startValue === null || endValue === null
                     ? null
                     : endValue - startValue;
+            const recordGameCameraMotion = () => {
+                const snapshot = readGameCameraSnapshot();
+                if (!snapshot) {
+                    return;
+                }
+                gameCameraSnapshotVersionMax =
+                    gameCameraSnapshotVersionMax === null
+                        ? snapshot.version
+                        : Math.max(
+                              gameCameraSnapshotVersionMax,
+                              snapshot.version,
+                          );
+                if (
+                    !gameCameraSnapshotAtStart ||
+                    snapshot.version <= gameCameraSnapshotAtStart.version
+                ) {
+                    return;
+                }
+                const componentDeltas = [
+                    Math.abs(snapshot.zoom - gameCameraSnapshotAtStart.zoom),
+                    ...snapshot.position.map((component, index) =>
+                        Math.abs(
+                            component -
+                                gameCameraSnapshotAtStart.position[index],
+                        ),
+                    ),
+                    ...snapshot.target.map((component, index) =>
+                        Math.abs(
+                            component - gameCameraSnapshotAtStart.target[index],
+                        ),
+                    ),
+                ];
+                gameCameraMotionObserved ||=
+                    Math.max(...componentDeltas) > 0.000_001;
+            };
             const readEffectiveDpr = () => {
                 if (
                     !canvas ||
@@ -3040,6 +6313,32 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     effectiveDprMin === null
                         ? effectiveDpr
                         : Math.min(effectiveDprMin, effectiveDpr);
+            };
+            const recordGeneratedPlantVisibility = () => {
+                const visibleFieldCount = readProfileNumber(
+                    'generatedPlantVisibleFieldCount',
+                );
+                const visibleInstanceCount = readProfileNumber(
+                    'generatedPlantVisibleInstanceCount',
+                );
+                if (visibleFieldCount !== null) {
+                    generatedPlantVisibleFieldCountMin =
+                        generatedPlantVisibleFieldCountMin === null
+                            ? visibleFieldCount
+                            : Math.min(
+                                  generatedPlantVisibleFieldCountMin,
+                                  visibleFieldCount,
+                              );
+                }
+                if (visibleInstanceCount !== null) {
+                    generatedPlantVisibleInstanceCountMin =
+                        generatedPlantVisibleInstanceCountMin === null
+                            ? visibleInstanceCount
+                            : Math.min(
+                                  generatedPlantVisibleInstanceCountMin,
+                                  visibleInstanceCount,
+                              );
+                }
             };
             const recordAdaptiveHighState = () => {
                 const profile = globalThis.__grediceGameProfile;
@@ -3070,7 +6369,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 adaptiveHighProfileControlObserved ||=
                     profile?.adaptiveHighProfileControlActive === true;
             };
+            gameCameraSnapshotAtStart = readGameCameraSnapshot();
+            gameCameraSnapshotVersionMax =
+                gameCameraSnapshotAtStart?.version ?? null;
+            recordGameCameraMotion();
+            recordActorGroundingShadowSpeciesCounts();
             recordEffectiveDpr();
+            recordGeneratedPlantVisibility();
             recordAdaptiveHighState();
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
@@ -3128,6 +6433,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     ? globalThis.__grediceGameProfile
                           .actorGroundingShadowUpdateCount
                     : null;
+            const animalProfileCommandSequenceAtStart = readProfileNumber(
+                'profileAnimalCommandSequence',
+            );
             const animatedCasterShadowRefreshCountAtStart =
                 typeof globalThis.__grediceGameProfile
                     ?.animatedCasterShadowRefreshCount === 'number'
@@ -3157,6 +6465,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     : null;
             const rainMountedAtStart = (rainParticleCountAtStart ?? 0) > 0;
             let rainUnmountMs = null;
+            const animalProfileCommandDispatched = animalProfileCommandRequest
+                ? globalThis.dispatchEvent(
+                      new CustomEvent(animalProfileCommandEventName, {
+                          detail: animalProfileCommandRequest,
+                      }),
+                  )
+                : false;
             const weatherTransitionDispatched = weatherTransitionRequest
                 ? globalThis.dispatchEvent(
                       new CustomEvent(weatherTransitionEventName, {
@@ -3340,7 +6655,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     intervals.push(now - last);
                     last = now;
                     recordAdaptiveHighState();
+                    recordActorGroundingShadowSpeciesCounts();
                     recordEffectiveDpr();
+                    recordGameCameraMotion();
+                    recordGeneratedPlantVisibility();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -3448,6 +6766,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ]);
 
             const sampleEndedAt = performance.now();
+            recordGameCameraMotion();
+            const actorGroundingShadowSpeciesCountsAtEnd =
+                recordActorGroundingShadowSpeciesCounts();
+            const gameCameraSnapshotAtEnd = readGameCameraSnapshot();
+            const gameCameraSnapshotVersionDelta =
+                gameCameraSnapshotAtStart && gameCameraSnapshotAtEnd
+                    ? gameCameraSnapshotAtEnd.version -
+                      gameCameraSnapshotAtStart.version
+                    : null;
             const frameIntervals = intervals.slice(1);
             const sortedIntervals = [...frameIntervals].sort((a, b) => a - b);
             const percentile = (value) =>
@@ -3621,6 +6948,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         ? null
                         : actorGroundingShadowUpdateCountAtEnd -
                           actorGroundingShadowUpdateCountAtStart,
+                actorGroundingShadowSpeciesCountsAtEnd,
+                actorGroundingShadowSpeciesCountsAtStart,
+                actorGroundingShadowSpeciesCountsMin,
+                animalProfileCommandDispatched,
+                animalProfileCommandSequenceAtStart,
                 animatedCasterShadowRefreshCountDelta:
                     animatedCasterShadowRefreshCountAtStart === null ||
                     animatedCasterShadowRefreshCountAtEnd === null
@@ -3653,6 +6985,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 elapsedMs: elapsedSeconds * 1000,
                 fps: rafFrames / safeElapsedSeconds,
                 frames: rafFrames,
+                gameCameraMotionObserved,
+                gameCameraSnapshotAtEnd,
+                gameCameraSnapshotAtStart,
+                gameCameraSnapshotVersionDelta,
+                gameCameraSnapshotVersionMax,
+                generatedPlantVisibleFieldCountMin,
+                generatedPlantVisibleInstanceCountMin,
                 instancedDrawCalls,
                 instancedInteractionResolvedTargetCountDelta:
                     interactionResolvedTargetCountAtStart === null ||
@@ -3765,6 +7104,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             adaptiveHighProfileControlRecovery:
                 scenario.profileControlRecovery === true,
             adaptiveHighProfileControlStarted,
+            animalProfileCommandEventName: gameProfileAnimalCommandEventName,
+            animalProfileCommandRequest,
+            faunaExpectedSpecies:
+                scenario.faunaProfile === true
+                    ? Object.keys(faunaHeavyExpectedFixedSpeciesCounts)
+                    : [],
             outlineProfileDispatched: outlineProfileState.dispatched,
             outlineProfileTelemetryAvailable:
                 outlineProfileState.telemetryAvailable,
@@ -3814,6 +7159,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             typeof value === 'number' ? value : null;
         const stringOrNull = (value) =>
             typeof value === 'string' ? value : null;
+        const numberRecordOrNull = (value) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return null;
+            }
+            const entries = Object.entries(value);
+            if (
+                entries.some(
+                    ([, count]) =>
+                        typeof count !== 'number' ||
+                        !Number.isFinite(count) ||
+                        count < 0,
+                )
+            ) {
+                return null;
+            }
+            return Object.fromEntries(entries);
+        };
+        const stringArrayOrNull = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...value]
+                : null;
 
         return {
             adaptiveHighAmbientFps: numberOrNull(
@@ -3890,6 +7257,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 'number'
                     ? metadata.actorGroundingShadowPrimaryCasterCount
                     : null,
+            actorGroundingShadowSpeciesCounts: numberRecordOrNull(
+                metadata.actorGroundingShadowSpeciesCounts,
+            ),
             actorGroundingShadowUpdateCount:
                 typeof metadata.actorGroundingShadowUpdateCount === 'number'
                     ? metadata.actorGroundingShadowUpdateCount
@@ -4211,6 +7581,40 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.placementShadowFlushCount === 'number'
                     ? metadata.placementShadowFlushCount
                     : null,
+            profileAnimalCommandAcknowledgedIds: stringArrayOrNull(
+                metadata.profileAnimalCommandAcknowledgedIds,
+            ),
+            profileAnimalCommandAcknowledgementCount: numberOrNull(
+                metadata.profileAnimalCommandAcknowledgementCount,
+            ),
+            profileAnimalCommandBehavior: stringOrNull(
+                metadata.profileAnimalCommandBehavior,
+            ),
+            profileAnimalCommandMovingAcknowledgedIds: stringArrayOrNull(
+                metadata.profileAnimalCommandMovingAcknowledgedIds,
+            ),
+            profileAnimalCommandMovingAcknowledgementCount: numberOrNull(
+                metadata.profileAnimalCommandMovingAcknowledgementCount,
+            ),
+            profileAnimalCommandSequence: numberOrNull(
+                metadata.profileAnimalCommandSequence,
+            ),
+            profileAnimalCommandSpecies: stringOrNull(
+                metadata.profileAnimalCommandSpecies,
+            ),
+            profileGardenBlockCount: numberOrNull(
+                metadata.profileGardenBlockCount,
+            ),
+            profileGardenBlockCountsByName: numberRecordOrNull(
+                metadata.profileGardenBlockCountsByName,
+            ),
+            profileGardenId: numberOrNull(metadata.profileGardenId),
+            profileGardenRaisedBedCount: numberOrNull(
+                metadata.profileGardenRaisedBedCount,
+            ),
+            profileGardenStackCount: numberOrNull(
+                metadata.profileGardenStackCount,
+            ),
             qualityTier:
                 typeof metadata.qualityTier === 'string'
                     ? metadata.qualityTier
@@ -4268,6 +7672,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             rendererShaders:
                 numberOrNull(metadata.rendererShaders) ??
                 numberOrNull(resources.rendererShaders),
+            rendererGeometries: numberOrNull(metadata.rendererGeometries),
             rendererTextures:
                 numberOrNull(metadata.rendererTextures) ??
                 numberOrNull(resources.rendererTextures),
@@ -4477,17 +7882,28 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
     const screenshotPath =
         options.screenshots ||
+        scenario.screenshotWitness === true ||
         (scenario.staticSceneCacheBenchmark === true &&
             scenario.staticSceneCacheVisualDeterministic !== false)
             ? resolve(options.outDir, 'screenshots', `${scenario.name}.png`)
             : null;
+    let screenshotWitness = null;
     if (screenshotPath) {
         await mkdir(dirname(screenshotPath), { recursive: true });
-        await page.screenshot({
-            path: screenshotPath,
-            animations: 'disabled',
-            fullPage: false,
-        });
+        if (scenario.screenshotWitness === true) {
+            await page.locator('canvas').first().screenshot({
+                path: screenshotPath,
+                animations: 'disabled',
+            });
+            screenshotWitness =
+                await measureProfileScreenshotWitness(screenshotPath);
+        } else {
+            await page.screenshot({
+                path: screenshotPath,
+                animations: 'disabled',
+                fullPage: false,
+            });
+        }
     }
 
     await context.close();
@@ -4501,14 +7917,31 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
+        crossTierProfile: scenario.crossTierProfile === true,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
+        expectedAutoQualityMetrics: scenario.navigatorMetrics
+            ? {
+                  coarsePointer: false,
+                  coreCount: scenario.navigatorMetrics.hardwareConcurrency,
+                  dpr: scenario.dpr,
+                  memoryGb: scenario.navigatorMetrics.deviceMemory,
+                  narrowViewport: scenario.viewport.width <= 640,
+              }
+            : null,
+        expectedDprCap: scenario.expectedDprCap ?? null,
+        expectedGroundDecorationDensity:
+            scenario.expectedGroundDecorationDensity ?? null,
+        expectedQualityTier: scenario.expectedQualityTier ?? null,
+        expectedShadowMapSize: scenario.expectedShadowMapSize ?? null,
+        expectedShadows: scenario.expectedShadows ?? null,
         foliageBudget: request.foliageBudget,
         fixedTimeSeconds:
             profileMetadata?.fixedTimeSeconds ??
             scenario.fixedTimeSeconds ??
             null,
+        faunaProfile: scenario.faunaProfile === true,
         gardenProfile: profileMetadata?.gardenProfile ?? request.gardenProfile,
         graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
@@ -4524,6 +7957,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenarioName: scenario.name,
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
+        animalProfileCommand: animalProfileCommandRequest,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
@@ -4545,16 +7979,19 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
+        apiRequests,
         consoleMessages,
         environment,
         pageErrors,
         requested,
         runtime,
         sample: roundedSample,
+        screenshotWitness,
     });
     return {
         acceptance,
         apiErrors: apiErrors.slice(0, 8),
+        apiRequests: apiRequests.slice(0, 8),
         budget: {
             checks: [...budget.checks, ...acceptance.checks],
             pass: budget.pass && acceptance.pass,
@@ -4585,7 +8022,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         requested,
         runtime,
         sample: roundedSample,
+        servedBuildProvenance,
         screenshotPath,
+        screenshotWitness,
         url,
         name: scenario.name,
     };
@@ -4731,15 +8170,1243 @@ function isIgnoredLocalProfilerConsoleError(message) {
     }
 }
 
+function isProfileScreenshotWitnessValid(witness) {
+    return Boolean(
+        Number.isFinite(witness?.width) &&
+            Number.isFinite(witness?.height) &&
+            Number.isFinite(witness?.entropy) &&
+            Number.isFinite(witness?.maximumChannelStandardDeviation) &&
+            Number.isFinite(witness?.sampledLumaRange) &&
+            Number.isFinite(witness?.sampledUniqueColorCount) &&
+            witness.width > 0 &&
+            witness.height > 0 &&
+            witness.entropy >= 0.5 &&
+            witness.maximumChannelStandardDeviation >= 5 &&
+            witness.sampledLumaRange >= 20 &&
+            witness.sampledUniqueColorCount >= 16 &&
+            witness.opaque === true,
+    );
+}
+
+async function measureProfileScreenshotWitness(path) {
+    const screenshot = await readFile(path);
+    const [metadata, sampledRgb, stats] = await Promise.all([
+        sharp(screenshot).metadata(),
+        sharp(screenshot)
+            .removeAlpha()
+            .resize({ height: 64, width: 64 })
+            .raw()
+            .toBuffer(),
+        sharp(screenshot).stats(),
+    ]);
+    const sampledColors = new Set();
+    let maximumLuma = Number.NEGATIVE_INFINITY;
+    let minimumLuma = Number.POSITIVE_INFINITY;
+    for (let offset = 0; offset < sampledRgb.length; offset += 3) {
+        const red = sampledRgb[offset];
+        const green = sampledRgb[offset + 1];
+        const blue = sampledRgb[offset + 2];
+        sampledColors.add(`${red}:${green}:${blue}`);
+        const luma = red * 0.2126 + green * 0.7152 + blue * 0.0722;
+        maximumLuma = Math.max(maximumLuma, luma);
+        minimumLuma = Math.min(minimumLuma, luma);
+    }
+
+    return {
+        entropy: round(stats.entropy, 4),
+        height: metadata.height ?? null,
+        maximumChannelStandardDeviation: round(
+            Math.max(
+                0,
+                ...stats.channels.slice(0, 3).map((channel) => channel.stdev),
+            ),
+            4,
+        ),
+        opaque: stats.isOpaque,
+        sampledLumaRange: round(maximumLuma - minimumLuma, 4),
+        sampledUniqueColorCount: sampledColors.size,
+        width: metadata.width ?? null,
+    };
+}
+
+function evaluateGardenSwitchAcceptance({
+    apiErrors = [],
+    apiRequests = [],
+    arrivals = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+}) {
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const exactStringSet = (name, actual, expected) => {
+        const normalize = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...new Set(value)].sort((left, right) =>
+                      left.localeCompare(right),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-string-set',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const checks = [
+        exact('gardenSwitchOptIn', requested?.gardenSwitch, '1'),
+        exact('gardenSwitchQualityRequest', requested?.quality, 'high'),
+        exact('gardenSwitchReportedDpr', requested?.dpr, 2),
+        exact(
+            'gardenSwitchStaticSceneCacheRequest',
+            requested?.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'gardenSwitchProfileSequence',
+            JSON.stringify(arrivals.map((arrival) => arrival.profile)),
+            JSON.stringify(gardenSwitchExpectedProfiles),
+        ),
+        exact(
+            'gardenSwitchArrivalCount',
+            arrivals.length,
+            gardenSwitchExpectedProfiles.length,
+        ),
+        exact('gardenSwitchApiErrors', apiErrors.length, 0),
+        exact('gardenSwitchApiRequests', apiRequests.length, 0),
+        exact(
+            'gardenSwitchConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('gardenSwitchPageErrors', pageErrors.length, 0),
+    ];
+
+    let faunaVisit = 0;
+    for (const [index, arrival] of arrivals.entries()) {
+        const prefix = `gardenSwitchArrival${index + 1}`;
+        const expectedProfile = gardenSwitchExpectedProfiles[index];
+        const expectedFixture = gardenSwitchExpectedFixtures[expectedProfile];
+        checks.push(
+            exact(`${prefix}Profile`, arrival.profile, expectedProfile),
+            exact(
+                `${prefix}GardenId`,
+                arrival.gardenId,
+                gardenSwitchExpectedGardenIds[expectedProfile],
+            ),
+            exact(
+                `${prefix}DomGardenId`,
+                arrival.canvas?.gardenId,
+                gardenSwitchExpectedGardenIds[expectedProfile],
+            ),
+            exact(`${prefix}SceneVisible`, arrival.canvas?.sceneVisible, true),
+            exact(`${prefix}CanvasCount`, arrival.canvas?.canvasCount, 1),
+            exact(
+                `${prefix}CanvasPersistent`,
+                arrival.canvas?.sameCanvas,
+                true,
+            ),
+            exact(
+                `${prefix}ContextPersistent`,
+                arrival.canvas?.sameContext,
+                true,
+            ),
+            exact(`${prefix}ContextLost`, arrival.canvas?.contextLost, false),
+            exact(
+                `${prefix}ContextLostEventCount`,
+                arrival.canvas?.contextLostEventCount,
+                0,
+            ),
+            exact(
+                `${prefix}ContextRestoredEventCount`,
+                arrival.canvas?.contextRestoredEventCount,
+                0,
+            ),
+            exact(
+                `${prefix}CanvasClientWidth`,
+                arrival.canvas?.clientWidth,
+                1_280,
+            ),
+            exact(
+                `${prefix}CanvasClientHeight`,
+                arrival.canvas?.clientHeight,
+                720,
+            ),
+            exact(`${prefix}CanvasWidth`, arrival.canvas?.width, 2_560),
+            exact(`${prefix}CanvasHeight`, arrival.canvas?.height, 1_440),
+            exact(
+                `${prefix}FixtureStackCount`,
+                arrival.fixture?.stackCount,
+                expectedFixture?.stackCount,
+            ),
+            exact(
+                `${prefix}FixtureBlockCount`,
+                arrival.fixture?.blockCount,
+                expectedFixture?.blockCount,
+            ),
+            exact(
+                `${prefix}FixtureRaisedBedCount`,
+                arrival.fixture?.raisedBedCount,
+                expectedFixture?.raisedBedCount,
+            ),
+            exact(
+                `${prefix}ScreenshotValid`,
+                isProfileScreenshotWitnessValid(arrival.screenshotWitness),
+                true,
+            ),
+            exact(
+                `${prefix}ScreenshotWidth`,
+                arrival.screenshotWitness?.width,
+                arrival.canvas?.width,
+            ),
+            exact(
+                `${prefix}ScreenshotHeight`,
+                arrival.screenshotWitness?.height,
+                arrival.canvas?.height,
+            ),
+            minimum(
+                `${prefix}RendererGeometries`,
+                arrival.resources?.rendererGeometries,
+                1,
+            ),
+            minimum(
+                `${prefix}RendererShaders`,
+                arrival.resources?.rendererShaders,
+                1,
+            ),
+            minimum(
+                `${prefix}RendererTextures`,
+                arrival.resources?.rendererTextures,
+                1,
+            ),
+            exact(
+                `${prefix}StaticOpaqueSceneCacheEnabled`,
+                arrival.resources?.staticOpaqueSceneCacheEnabled,
+                false,
+            ),
+            maximum(
+                `${prefix}MaximumFrameStallMs`,
+                arrival.sample?.maxFrameMs,
+                gardenSwitchMaximumFrameStallMs,
+            ),
+        );
+
+        if (index === 0) {
+            checks.push(
+                exact(`${prefix}InitialArrival`, arrival.timing?.initial, true),
+            );
+        } else {
+            checks.push(
+                exact(
+                    `${prefix}SwitchDispatched`,
+                    arrival.timing?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}HiddenObserved`,
+                    arrival.timing?.hiddenObserved,
+                    true,
+                ),
+                exact(
+                    `${prefix}VisualSettleTargetMs`,
+                    arrival.timing?.settleTargetMs,
+                    gardenSwitchVisualSettleMs,
+                ),
+                minimum(
+                    `${prefix}DisplayedAfterFadeOutMs`,
+                    arrival.timing?.displayedMs,
+                    gardenSwitchFadeOutDelayMs - 80,
+                ),
+                maximum(
+                    `${prefix}DisplayedWithinMs`,
+                    arrival.timing?.displayedMs,
+                    gardenSwitchMaximumDisplayedMs,
+                ),
+                maximum(
+                    `${prefix}VisibleWithinMs`,
+                    arrival.timing?.visibleMs,
+                    gardenSwitchMaximumVisibleMs,
+                ),
+                minimum(
+                    `${prefix}VisualSettleDurationMs`,
+                    typeof arrival.timing?.settledMs === 'number' &&
+                        typeof arrival.timing.visibleMs === 'number'
+                        ? arrival.timing.settledMs - arrival.timing.visibleMs
+                        : null,
+                    gardenSwitchVisualSettleMs - 50,
+                ),
+                maximum(
+                    `${prefix}SettledWithinMs`,
+                    arrival.timing?.settledMs,
+                    gardenSwitchMaximumSettledMs,
+                ),
+            );
+        }
+
+        if (expectedProfile === 'high-target') {
+            checks.push(
+                exact(
+                    `${prefix}GeneratedPlantFieldCount`,
+                    arrival.fixture?.generatedPlantFieldCount,
+                    highTargetExpectedGeneratedPlantFieldCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantExpectedInstanceCount`,
+                    arrival.fixture?.generatedPlantExpectedInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantInstanceCount`,
+                    arrival.fixture?.generatedPlantInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantVisibleFieldCount`,
+                    arrival.fixture?.generatedPlantVisibleFieldCount,
+                    highTargetExpectedGeneratedPlantFieldCount,
+                ),
+                exact(
+                    `${prefix}GeneratedPlantVisibleInstanceCount`,
+                    arrival.fixture?.generatedPlantVisibleInstanceCount,
+                    highTargetExpectedGeneratedPlantInstanceCount,
+                ),
+                exact(
+                    `${prefix}InteractionKind`,
+                    arrival.interaction?.kind,
+                    'outline',
+                ),
+                exact(
+                    `${prefix}OutlineDispatched`,
+                    arrival.interaction?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}OutlineRaisedBedId`,
+                    arrival.interaction?.targetRaisedBedId,
+                    2,
+                ),
+                exact(
+                    `${prefix}OutlineBlockId`,
+                    arrival.interaction?.targetBlockId,
+                    'profile-raised-bed:2:0',
+                ),
+                exact(
+                    `${prefix}OutlineActiveTargetCount`,
+                    arrival.interaction?.activeTargetCount,
+                    2,
+                ),
+                exact(
+                    `${prefix}OutlineStyleGroupCount`,
+                    arrival.interaction?.styleGroupCount,
+                    1,
+                ),
+            );
+        } else if (expectedProfile === 'fauna-heavy') {
+            faunaVisit += 1;
+            checks.push(
+                ...Object.entries(faunaHeavyExpectedFixedSpeciesCounts).map(
+                    ([species, count]) =>
+                        exact(
+                            `${prefix}FixedSpecies:${species}`,
+                            arrival.fixture?.speciesCounts?.[species],
+                            count,
+                        ),
+                ),
+                exact(
+                    `${prefix}DroppedGroundingShadows`,
+                    arrival.fixture?.actorGroundingShadowDroppedCount,
+                    0,
+                ),
+                exact(
+                    `${prefix}InteractionKind`,
+                    arrival.interaction?.kind,
+                    'animal',
+                ),
+                exact(
+                    `${prefix}AnimalCommandDispatched`,
+                    arrival.interaction?.dispatched,
+                    true,
+                ),
+                exact(
+                    `${prefix}AnimalCommandSequence`,
+                    arrival.interaction?.sequence,
+                    faunaVisit,
+                ),
+                exact(
+                    `${prefix}AnimalCommandSpecies`,
+                    arrival.interaction?.species,
+                    'Cow',
+                ),
+                exact(
+                    `${prefix}AnimalCommandBehavior`,
+                    arrival.interaction?.behavior,
+                    'trot',
+                ),
+                exact(
+                    `${prefix}AnimalAcknowledgementCount`,
+                    arrival.interaction?.acknowledgementCount,
+                    2,
+                ),
+                exactStringSet(
+                    `${prefix}AnimalAcknowledgedIds`,
+                    arrival.interaction?.acknowledgedIds,
+                    faunaHeavyExpectedCowActorIds,
+                ),
+                exact(
+                    `${prefix}AnimalMovingAcknowledgementCount`,
+                    arrival.interaction?.movingAcknowledgementCount,
+                    2,
+                ),
+                exactStringSet(
+                    `${prefix}AnimalMovingAcknowledgedIds`,
+                    arrival.interaction?.movingAcknowledgedIds,
+                    faunaHeavyExpectedCowActorIds,
+                ),
+            );
+        }
+    }
+
+    for (const [profile, comparison, baselineIndex, repeatedIndex] of [
+        ['fauna-heavy', 'F2-to-F3', 3, 5],
+        ['high-target', 'H3-to-H4', 4, 6],
+    ]) {
+        const baseline = arrivals[baselineIndex]?.resources;
+        const repeated = arrivals[repeatedIndex]?.resources;
+        for (const resourceName of [
+            'rendererGeometries',
+            'rendererShaders',
+            'rendererTextures',
+        ]) {
+            const baselineValue = baseline?.[resourceName];
+            const repeatedValue = repeated?.[resourceName];
+            checks.push({
+                actual: repeatedValue,
+                comparison: 'maximum-warm-repeat',
+                limit: baselineValue,
+                name: `gardenSwitchResourceWarmPlateau:${profile}:${comparison}:${resourceName}`,
+                pass:
+                    typeof baselineValue === 'number' &&
+                    Number.isFinite(baselineValue) &&
+                    typeof repeatedValue === 'number' &&
+                    Number.isFinite(repeatedValue) &&
+                    repeatedValue <= baselineValue,
+            });
+        }
+    }
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function buildGardenSwitchSummary(scenarios) {
+    const switchScenarios = scenarios.filter(
+        (scenario) => scenario.requested?.gardenSwitchProfile === true,
+    );
+    const arrivals = switchScenarios.flatMap(
+        (scenario) => scenario.gardenSwitch?.arrivals ?? [],
+    );
+    const transitions = arrivals.filter(
+        (arrival) => arrival.timing?.initial !== true,
+    );
+    const finiteMaximum = (values) => {
+        const finite = values.filter((value) => Number.isFinite(value));
+        return finite.length > 0 ? round(Math.max(...finite)) : null;
+    };
+    const resourceWarmPlateauChecks = switchScenarios.flatMap((scenario) =>
+        (scenario.acceptance?.checks ?? []).filter((check) =>
+            check.name.startsWith('gardenSwitchResourceWarmPlateau:'),
+        ),
+    );
+
+    return {
+        arrivalCount: arrivals.length,
+        canvasPersistentArrivalCount: arrivals.filter(
+            (arrival) => arrival.canvas?.sameCanvas === true,
+        ).length,
+        contextPersistentArrivalCount: arrivals.filter(
+            (arrival) => arrival.canvas?.sameContext === true,
+        ).length,
+        maximumDisplayedMs: finiteMaximum(
+            transitions.map((arrival) => arrival.timing?.displayedMs),
+        ),
+        maximumFrameMs: finiteMaximum(
+            arrivals.map((arrival) => arrival.sample?.maxFrameMs),
+        ),
+        maximumSettledMs: finiteMaximum(
+            transitions.map((arrival) => arrival.timing?.settledMs),
+        ),
+        passedScenarioCount: switchScenarios.filter(
+            (scenario) => scenario.budget?.pass === true,
+        ).length,
+        resourceWarmPlateauPass:
+            resourceWarmPlateauChecks.length === switchScenarios.length * 6 &&
+            resourceWarmPlateauChecks.every((check) => check.pass),
+        scenarioCount: switchScenarios.length,
+        transitionCount: transitions.length,
+    };
+}
+
+function buildLifecycleSummary(scenarios) {
+    const lifecycleRuns = scenarios.filter(
+        (scenario) => scenario.requested?.lifecycleProfile === true,
+    );
+    const metric = (select) => {
+        const values = lifecycleRuns
+            .map(select)
+            .filter((value) => Number.isFinite(value));
+        return {
+            max: values.length > 0 ? round(Math.max(...values)) : null,
+            median: round(median(values)),
+            min: values.length > 0 ? round(Math.min(...values)) : null,
+        };
+    };
+    const residual = (phase) => ({
+        drawCalls: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.sample?.drawCalls,
+        ),
+        renderedFrames: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.sample?.renderedFrames,
+        ),
+        scriptDuration: metric(
+            (run) => run.lifecycle?.[phase]?.residual?.cdp?.scriptDuration,
+        ),
+        submittedTriangles: metric(
+            (run) =>
+                run.lifecycle?.[phase]?.residual?.sample?.submittedTriangles,
+        ),
+        runtimeSchedulerZeroObservedRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.[phase]?.runtimeSchedulerZeroObserved === true,
+        ).length,
+        zeroWorkObservedRunCount: lifecycleRuns.filter(
+            (run) => run.lifecycle?.[phase]?.zeroWorkObserved === true,
+        ).length,
+    });
+
+    return {
+        baseScenarioCount: new Set(
+            lifecycleRuns.map((run) => run.baseName ?? run.name),
+        ).size,
+        cold: {
+            canvasAttachedMs: metric(
+                (run) => run.lifecycle?.cold?.canvasAttachedMs,
+            ),
+            canvasSizedMs: metric((run) => run.lifecycle?.cold?.canvasSizedMs),
+            domContentLoadedMs: metric(
+                (run) => run.lifecycle?.cold?.domContentLoadedMs,
+            ),
+            firstSubmittedFrameMs: metric(
+                (run) => run.lifecycle?.cold?.firstSubmittedFrameMs,
+            ),
+            fixtureReadyMs: metric(
+                (run) => run.lifecycle?.cold?.fixtureReadyMs,
+            ),
+            interactionReadyMs: metric(
+                (run) => run.lifecycle?.cold?.interactionReadyMs,
+            ),
+        },
+        contextPersistentRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.context?.restored?.sameCanvas === true &&
+                run.lifecycle?.context?.restored?.sameContext === true,
+        ).length,
+        contextRestoredRunCount: lifecycleRuns.filter(
+            (run) =>
+                run.lifecycle?.context?.restored?.restoredEventCount === 1 &&
+                run.lifecycle?.context?.restored?.contextLost === false,
+        ).length,
+        hidden: residual('hidden'),
+        offscreen: residual('offscreen'),
+        passedRunCount: lifecycleRuns.filter((run) => run.budget?.pass === true)
+            .length,
+        runCount: lifecycleRuns.length,
+    };
+}
+
+function evaluateFaunaHeavyAcceptance({
+    apiErrors = [],
+    apiRequests = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+}) {
+    if (requested?.faunaProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const exactRecord = (name, actual, expected) => {
+        const normalize = (record) =>
+            record && typeof record === 'object' && !Array.isArray(record)
+                ? Object.fromEntries(
+                      Object.entries(record).sort(([left], [right]) =>
+                          left.localeCompare(right),
+                      ),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-record',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const exactStringSet = (name, actual, expected) => {
+        const normalize = (value) =>
+            Array.isArray(value) &&
+            value.every((entry) => typeof entry === 'string')
+                ? [...new Set(value)].sort((left, right) =>
+                      left.localeCompare(right),
+                  )
+                : null;
+        const normalizedActual = normalize(actual);
+        const normalizedExpected = normalize(expected);
+        return {
+            actual: normalizedActual,
+            comparison: 'equal-string-set',
+            limit: normalizedExpected,
+            name,
+            pass:
+                normalizedActual !== null &&
+                JSON.stringify(normalizedActual) ===
+                    JSON.stringify(normalizedExpected),
+        };
+    };
+    const commandSequenceAtStart = sample.animalProfileCommandSequenceAtStart;
+    const commandSequenceStartedClean =
+        commandSequenceAtStart === null || commandSequenceAtStart === 0;
+    const expectedCommandSequence = (commandSequenceAtStart ?? 0) + 1;
+    const minimumRenderedFrames = Math.max(
+        1,
+        Math.floor((sample.elapsedMs ?? 0) / 1_000),
+    );
+    const expectedFixedActorCount = Object.values(
+        faunaHeavyExpectedFixedSpeciesCounts,
+    ).reduce((total, count) => total + count, 0);
+    const runtimeSpeciesCount = runtime?.actorGroundingShadowSpeciesCounts
+        ? Object.values(runtime.actorGroundingShadowSpeciesCounts).reduce(
+              (total, count) => total + count,
+              0,
+          )
+        : null;
+    const checks = [
+        exact('faunaGardenProfile', requested.gardenProfile, 'fauna-heavy'),
+        exact('faunaMode', requested.mode, 'details'),
+        exact('faunaControls', requested.controls, '0'),
+        exact('faunaDetails', requested.details, '1'),
+        exact('faunaDebugHud', requested.debugHud, '0'),
+        exact('faunaHud', requested.hud, '0'),
+        exact('faunaFixedTimeSeconds', requested.fixedTimeSeconds, 43_200),
+        exact('faunaQualityRequest', requested.quality, 'high'),
+        exact('faunaQualityTier', runtime?.qualityTier, 'high'),
+        exact('faunaShadowsEnabled', runtime?.shadowsEnabled, true),
+        exact('faunaShadowMapSize', runtime?.shadowMapSize, 4_096),
+        exact(
+            'faunaGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            1,
+        ),
+        exact('faunaRequestedDpr', requested.dpr, 2),
+        exact('faunaReportedDpr', sample.reportedDpr, 2),
+        exact('faunaCanvasClientWidth', sample.canvas?.clientWidth, 1_280),
+        exact('faunaCanvasClientHeight', sample.canvas?.clientHeight, 720),
+        exact('faunaCanvasWidth', sample.canvas?.width, 2_560),
+        exact('faunaCanvasHeight', sample.canvas?.height, 1_440),
+        exact(
+            'faunaStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'faunaStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'faunaGardenId',
+            runtime?.profileGardenId,
+            faunaHeavyExpectedGardenId,
+        ),
+        exact(
+            'faunaGardenStackCount',
+            runtime?.profileGardenStackCount,
+            faunaHeavyExpectedGardenStackCount,
+        ),
+        exact(
+            'faunaGardenBlockCount',
+            runtime?.profileGardenBlockCount,
+            faunaHeavyExpectedGardenBlockCount,
+        ),
+        exact(
+            'faunaGardenRaisedBedCount',
+            runtime?.profileGardenRaisedBedCount,
+            0,
+        ),
+        exact(
+            'faunaGardenDetailBlockCount',
+            typeof runtime?.profileGardenBlockCount === 'number' &&
+                typeof runtime?.profileGardenStackCount === 'number'
+                ? runtime.profileGardenBlockCount -
+                      runtime.profileGardenStackCount
+                : null,
+            faunaHeavyExpectedGardenDetailBlockCount,
+        ),
+        exactRecord(
+            'faunaGardenBlockCountsByName',
+            runtime?.profileGardenBlockCountsByName,
+            faunaHeavyExpectedBlockCountsByName,
+        ),
+        minimum(
+            'faunaActorGroundingShadowCount',
+            runtime?.actorGroundingShadowCount,
+            expectedFixedActorCount,
+        ),
+        exact(
+            'faunaActorGroundingShadowSpeciesTotal',
+            runtime?.actorGroundingShadowCount,
+            runtimeSpeciesCount,
+        ),
+        exact(
+            'faunaActorGroundingShadowDroppedCount',
+            runtime?.actorGroundingShadowDroppedCount,
+            0,
+        ),
+        minimum(
+            'faunaActorGroundingShadowUpdateCountDelta',
+            sample.actorGroundingShadowUpdateCountDelta,
+            1,
+        ),
+        minimum(
+            'faunaActorGroundingShadowVisibleCount',
+            runtime?.actorGroundingShadowVisibleCount,
+            1,
+        ),
+        ...Object.entries(faunaHeavyExpectedFixedSpeciesCounts).flatMap(
+            ([species, count]) => [
+                exact(
+                    `faunaSpeciesStart:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsAtStart?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesMinimum:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsMin?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesEnd:${species}`,
+                    sample.actorGroundingShadowSpeciesCountsAtEnd?.[species],
+                    count,
+                ),
+                exact(
+                    `faunaSpeciesRuntime:${species}`,
+                    runtime?.actorGroundingShadowSpeciesCounts?.[species],
+                    count,
+                ),
+            ],
+        ),
+        exact(
+            'faunaAnimalCommandRequestedSpecies',
+            requested.animalProfileCommand?.species,
+            'Cow',
+        ),
+        exact(
+            'faunaAnimalCommandRequestedBehavior',
+            requested.animalProfileCommand?.behavior,
+            'trot',
+        ),
+        exact(
+            'faunaAnimalCommandDispatched',
+            sample.animalProfileCommandDispatched,
+            true,
+        ),
+        exact(
+            'faunaAnimalCommandSequenceStartedClean',
+            commandSequenceStartedClean,
+            true,
+        ),
+        exact(
+            'faunaAnimalCommandSequence',
+            runtime?.profileAnimalCommandSequence,
+            expectedCommandSequence,
+        ),
+        exact(
+            'faunaAnimalCommandSpecies',
+            runtime?.profileAnimalCommandSpecies,
+            'Cow',
+        ),
+        exact(
+            'faunaAnimalCommandBehavior',
+            runtime?.profileAnimalCommandBehavior,
+            'trot',
+        ),
+        exact(
+            'faunaAnimalCommandAcknowledgementCount',
+            runtime?.profileAnimalCommandAcknowledgementCount,
+            2,
+        ),
+        exactStringSet(
+            'faunaAnimalCommandAcknowledgedIds',
+            runtime?.profileAnimalCommandAcknowledgedIds,
+            faunaHeavyExpectedCowActorIds,
+        ),
+        exact(
+            'faunaAnimalCommandMovingAcknowledgementCount',
+            runtime?.profileAnimalCommandMovingAcknowledgementCount,
+            2,
+        ),
+        exactStringSet(
+            'faunaAnimalCommandMovingAcknowledgedIds',
+            runtime?.profileAnimalCommandMovingAcknowledgedIds,
+            faunaHeavyExpectedCowActorIds,
+        ),
+        exact(
+            'faunaScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'faunaScreenshotWidth',
+            screenshotWitness?.width,
+            sample.canvas?.width,
+        ),
+        exact(
+            'faunaScreenshotHeight',
+            screenshotWitness?.height,
+            sample.canvas?.height,
+        ),
+        exact('faunaScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('faunaScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'faunaScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'faunaScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'faunaScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        minimum('faunaRenderedFps', sample.renderedFps, 1),
+        minimum(
+            'faunaRenderedFrames',
+            sample.renderedFrames,
+            minimumRenderedFrames,
+        ),
+        minimum('faunaDrawCalls', sample.drawCalls, 1),
+        minimum('faunaSubmittedTriangles', sample.submittedTriangles, 1),
+        exact('faunaApiErrors', apiErrors.length, 0),
+        exact('faunaApiRequests', apiRequests.length, 0),
+        exact(
+            'faunaConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('faunaPageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function evaluateCrossTierAcceptance({
+    apiErrors = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+}) {
+    if (requested?.crossTierProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass: typeof actual === 'number' && actual >= limit,
+    });
+    const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
+        const expected =
+            typeof clientSize === 'number' && typeof dpr === 'number'
+                ? Math.round(clientSize * dpr)
+                : null;
+        return {
+            actual,
+            comparison: 'within-pixels',
+            limit: expected,
+            name,
+            pass:
+                typeof actual === 'number' &&
+                expected !== null &&
+                Math.abs(actual - expected) <= 2,
+        };
+    };
+    const autoQualityRequested =
+        requested.autoQualityDeviceClass === 'standard' ||
+        requested.autoQualityDeviceClass === 'constrained';
+    const expectedQualityRequest = autoQualityRequested
+        ? 'auto'
+        : requested.expectedQualityTier;
+    const minimumRenderedFrames = Math.max(
+        1,
+        Math.floor((sample.elapsedMs ?? 0) / 1_000),
+    );
+    const checks = [
+        exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
+        exact(
+            'crossTierQualityRequest',
+            requested.quality,
+            expectedQualityRequest,
+        ),
+        exact(
+            'crossTierQualityTier',
+            runtime?.qualityTier,
+            requested.expectedQualityTier,
+        ),
+        ...(autoQualityRequested
+            ? [
+                  exact(
+                      'crossTierAutoMemoryGb',
+                      requested.autoQualityMetrics?.memoryGb,
+                      requested.expectedAutoQualityMetrics?.memoryGb,
+                  ),
+                  exact(
+                      'crossTierAutoCoreCount',
+                      requested.autoQualityMetrics?.coreCount,
+                      requested.expectedAutoQualityMetrics?.coreCount,
+                  ),
+                  exact(
+                      'crossTierAutoReportedDpr',
+                      requested.autoQualityMetrics?.dpr,
+                      requested.expectedAutoQualityMetrics?.dpr,
+                  ),
+                  exact(
+                      'crossTierAutoCoarsePointer',
+                      requested.autoQualityMetrics?.coarsePointer,
+                      requested.expectedAutoQualityMetrics?.coarsePointer,
+                  ),
+                  exact(
+                      'crossTierAutoNarrowViewport',
+                      requested.autoQualityMetrics?.narrowViewport,
+                      requested.expectedAutoQualityMetrics?.narrowViewport,
+                  ),
+              ]
+            : []),
+        exact('crossTierDprCap', runtime?.dprCap, requested.expectedDprCap),
+        exact(
+            'crossTierShadowsEnabled',
+            runtime?.shadowsEnabled,
+            requested.expectedShadows,
+        ),
+        exact(
+            'crossTierShadowMapSize',
+            runtime?.shadowMapSize,
+            requested.expectedShadowMapSize,
+        ),
+        exact(
+            'crossTierGroundDecorationDensity',
+            runtime?.groundDecorationDensity,
+            requested.expectedGroundDecorationDensity,
+        ),
+        exact('crossTierReportedDpr', sample.reportedDpr, requested.dpr),
+        exact(
+            'crossTierCanvasClientWidth',
+            sample.canvas?.clientWidth,
+            requested.viewport?.width,
+        ),
+        exact(
+            'crossTierCanvasClientHeight',
+            sample.canvas?.clientHeight,
+            requested.viewport?.height,
+        ),
+        canvasMatchesDpr(
+            'crossTierCanvasWidth',
+            sample.canvas?.width,
+            sample.canvas?.clientWidth,
+            requested.expectedDprCap,
+        ),
+        canvasMatchesDpr(
+            'crossTierCanvasHeight',
+            sample.canvas?.height,
+            sample.canvas?.clientHeight,
+            requested.expectedDprCap,
+        ),
+        exact(
+            'crossTierGeneratedPlantFields',
+            runtime?.generatedPlantFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierExpectedGeneratedPlantInstances',
+            runtime?.generatedPlantExpectedInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierGeneratedPlantInstances',
+            runtime?.generatedPlantInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierVisiblePlantFields',
+            runtime?.generatedPlantVisibleFieldCount,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierVisiblePlantInstances',
+            runtime?.generatedPlantVisibleInstanceCount,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        exact(
+            'crossTierMinimumVisiblePlantFields',
+            sample.generatedPlantVisibleFieldCountMin,
+            highTargetExpectedGeneratedPlantFieldCount,
+        ),
+        exact(
+            'crossTierMinimumVisiblePlantInstances',
+            sample.generatedPlantVisibleInstanceCountMin,
+            highTargetExpectedGeneratedPlantInstanceCount,
+        ),
+        ...(requested.motion === 'bounded-zoom-rotate'
+            ? [
+                  exact(
+                      'crossTierCameraMotionObserved',
+                      sample.gameCameraMotionObserved,
+                      true,
+                  ),
+                  minimum(
+                      'crossTierCameraSnapshotVersionDelta',
+                      sample.gameCameraSnapshotVersionDelta,
+                      1,
+                  ),
+              ]
+            : []),
+        exact(
+            'crossTierStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'crossTierStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact('crossTierOutlineFlag', requested.outline, '1'),
+        exact(
+            'crossTierOutlineProfile',
+            requested.outlineProfile,
+            'connected-raised-bed',
+        ),
+        exact('crossTierOutlineRaisedBedId', requested.outlineRaisedBedId, 2),
+        exact(
+            'crossTierOutlineProfileDispatched',
+            sample.outlineProfileDispatched,
+            true,
+        ),
+        exact(
+            'crossTierOutlineTelemetryAvailable',
+            sample.outlineProfileTelemetryAvailable,
+            true,
+        ),
+        exact(
+            'crossTierOutlineActiveTargets',
+            runtime?.hoverOutlineActiveTargetCount,
+            2,
+        ),
+        exact(
+            'crossTierOutlineStyleGroups',
+            runtime?.hoverOutlineStyleGroupCount,
+            1,
+        ),
+        exact(
+            'crossTierOutlineCommandAction',
+            runtime?.hoverOutlineProfileCommandAction,
+            'show',
+        ),
+        exact(
+            'crossTierOutlineTargetBlockId',
+            runtime?.hoverOutlineProfileTargetBlockId,
+            'profile-raised-bed:2:0',
+        ),
+        exact(
+            'crossTierScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'crossTierScreenshotWidth',
+            screenshotWitness?.width,
+            requested.viewport?.width * requested.dpr,
+        ),
+        exact(
+            'crossTierScreenshotHeight',
+            screenshotWitness?.height,
+            requested.viewport?.height * requested.dpr,
+        ),
+        exact('crossTierScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('crossTierScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'crossTierScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'crossTierScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'crossTierScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        minimum('crossTierRenderedFps', sample.renderedFps, 1),
+        minimum(
+            'crossTierRenderedFrames',
+            sample.renderedFrames,
+            minimumRenderedFrames,
+        ),
+        minimum('crossTierDrawCalls', sample.drawCalls, 1),
+        minimum('crossTierSubmittedTriangles', sample.submittedTriangles, 1),
+        exact('crossTierApiErrors', apiErrors.length, 0),
+        exact(
+            'crossTierConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('crossTierPageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
 function evaluateHighTargetAcceptance({
     apiErrors = [],
+    apiRequests = [],
     consoleMessages = [],
     environment,
     pageErrors,
     requested,
     runtime,
     sample,
+    screenshotWitness,
 }) {
+    if (requested?.faunaProfile === true) {
+        return evaluateFaunaHeavyAcceptance({
+            apiErrors,
+            apiRequests,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+        });
+    }
+
+    if (requested?.crossTierProfile === true) {
+        return evaluateCrossTierAcceptance({
+            apiErrors,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+        });
+    }
+
     if (requested.gardenProfile !== 'high-target') {
         return { checks: [], pass: true };
     }
@@ -6374,7 +11041,10 @@ function median(values) {
 function buildHighTargetMedians(scenarios) {
     const groups = Map.groupBy(
         scenarios.filter(
-            (scenario) => scenario.requested?.gardenProfile === 'high-target',
+            (scenario) =>
+                (scenario.requested?.gardenProfile === 'high-target' ||
+                    scenario.requested?.faunaProfile === true) &&
+                scenario.requested?.lifecycleProfile !== true,
         ),
         (scenario) => scenario.baseName ?? scenario.name,
     );
@@ -6399,8 +11069,28 @@ function buildHighTargetMedians(scenarios) {
                 runs,
                 (run) => run.sample.drawCallsPerRenderedFrame,
             );
+            const effectiveDpr = metric(runs, (run) => {
+                if (Number.isFinite(run.sample.effectiveDprAtEnd)) {
+                    return run.sample.effectiveDprAtEnd;
+                }
+                const width = run.sample.canvas?.width;
+                const clientWidth = run.sample.canvas?.clientWidth;
+                return Number.isFinite(width) &&
+                    Number.isFinite(clientWidth) &&
+                    clientWidth > 0
+                    ? width / clientWidth
+                    : null;
+            });
             const gpuElapsedP95Ms = metric(runs, (run) =>
                 run.sample.gpu?.valid ? run.sample.gpu.elapsedP95Ms : null,
+            );
+            const generatedPlantVisibleFieldCountMin = metric(
+                runs,
+                (run) => run.sample.generatedPlantVisibleFieldCountMin,
+            );
+            const generatedPlantVisibleInstanceCountMin = metric(
+                runs,
+                (run) => run.sample.generatedPlantVisibleInstanceCountMin,
             );
             const gpuElapsedP95MsRuns = runs.map((run, index) => {
                 const value = run.sample.gpu?.elapsedP95Ms ?? null;
@@ -6571,8 +11261,16 @@ function buildHighTargetMedians(scenarios) {
                     budgetName,
                     comparisonPair: runs[0]?.requested?.comparisonPair ?? null,
                     comparisonRole: runs[0]?.requested?.comparisonRole ?? null,
+                    crossTierProfile:
+                        runs[0]?.requested?.crossTierProfile === true,
+                    faunaProfile: runs[0]?.requested?.faunaProfile === true,
                     drawCallsPerRenderedFrame,
+                    effectiveDpr,
+                    expectedQualityTier:
+                        runs[0]?.requested?.expectedQualityTier ?? null,
                     failedAcceptanceRuns,
+                    generatedPlantVisibleFieldCountMin,
+                    generatedPlantVisibleInstanceCountMin,
                     gpuElapsedP95Ms,
                     gpuElapsedP95MsRuns,
                     jsHeapMb,
@@ -6588,6 +11286,8 @@ function buildHighTargetMedians(scenarios) {
                         (run) => run.performanceBudget?.pass === true,
                     ).length,
                     renderedFps,
+                    requestedQuality: runs[0]?.requested?.quality ?? null,
+                    resolvedQualityTier: runs[0]?.runtime?.qualityTier ?? null,
                     rendererShaders,
                     rendererShadersRuns,
                     rendererTextures,
@@ -6617,6 +11317,14 @@ function buildHighTargetMedians(scenarios) {
                 },
             ];
         }),
+    );
+}
+
+function buildCrossTierMedians(highTargetMedians) {
+    return Object.fromEntries(
+        Object.entries(highTargetMedians).filter(
+            ([, summary]) => summary.crossTierProfile === true,
+        ),
     );
 }
 
@@ -7652,7 +12360,34 @@ function buildProfileSummary(
     ),
 ) {
     const nonHighTargetScenarios = scenarios.filter(
-        (scenario) => scenario.requested?.gardenProfile !== 'high-target',
+        (scenario) =>
+            scenario.requested?.gardenProfile !== 'high-target' &&
+            scenario.requested?.faunaProfile !== true &&
+            scenario.requested?.gardenSwitchProfile !== true,
+    );
+    const gardenSwitchResults = Array.from(
+        Map.groupBy(
+            scenarios.filter(
+                (scenario) => scenario.requested?.gardenSwitchProfile === true,
+            ),
+            (scenario) => scenario.baseName ?? scenario.name,
+        ),
+        ([name, runs]) => ({
+            name,
+            pass: runs.every((run) => run.budget.pass),
+        }),
+    );
+    const lifecycleResults = Array.from(
+        Map.groupBy(
+            scenarios.filter(
+                (scenario) => scenario.requested?.lifecycleProfile === true,
+            ),
+            (scenario) => scenario.baseName ?? scenario.name,
+        ),
+        ([name, runs]) => ({
+            name,
+            pass: runs.every((run) => run.budget.pass),
+        }),
     );
     const highTargetResults = Object.entries(highTargetMedians);
     const comparativeFailureNames = Object.values(
@@ -7675,6 +12410,12 @@ function buildProfileSummary(
             ...nonHighTargetScenarios
                 .filter((scenario) => !scenario.budget.pass)
                 .map((scenario) => scenario.name),
+            ...gardenSwitchResults
+                .filter((result) => !result.pass)
+                .map((result) => result.name),
+            ...lifecycleResults
+                .filter((result) => !result.pass)
+                .map((result) => result.name),
             ...highTargetResults
                 .filter(([, result]) => !result.pass)
                 .map(([name]) => name),
@@ -7684,7 +12425,10 @@ function buildProfileSummary(
         ]),
     ];
     const totalScenarios =
-        nonHighTargetScenarios.length + highTargetResults.length;
+        nonHighTargetScenarios.length +
+        gardenSwitchResults.length +
+        lifecycleResults.length +
+        highTargetResults.length;
     const failedRuns = scenarios.filter(
         (scenario) => !scenario.budget.pass,
     ).length;
@@ -8368,7 +13112,13 @@ function buildMarkdown(report) {
         `Generated: ${report.generatedAt}`,
         '',
         `Schema: ${report.schemaVersion}`,
+        `Comparison contract: ${report.comparisonContractVersion ?? 'unknown'}`,
         `Source commit: ${report.sourceCommit ?? 'unknown'}`,
+        `Comparable: ${report.provenance?.comparable ? 'yes' : 'no'}`,
+        `Comparability reasons: ${report.provenance?.reasons?.length ? report.provenance.reasons.join(', ') : 'none'}`,
+        `Served build: ${report.provenance?.subject?.commit ?? 'unknown'} (${report.provenance?.subject?.dirty === false ? 'clean' : report.provenance?.subject?.dirty === true ? 'dirty' : 'dirty state unknown'})`,
+        `Profiler harness: ${report.provenance?.harness?.commit ?? 'unknown'} (${report.provenance?.harness?.dirty === false ? 'clean' : report.provenance?.harness?.dirty === true ? 'dirty' : 'dirty state unknown'})`,
+        `Runtime: ${report.provenance?.runtime?.platform ?? 'unknown'}/${report.provenance?.runtime?.arch ?? 'unknown'}, Node ${report.provenance?.runtime?.nodeVersion ?? 'unknown'}, Chromium ${report.provenance?.runtime?.browserVersion ?? 'unknown'}`,
         '',
         `Base URL: ${report.baseUrl}`,
         '',
@@ -8427,7 +13177,160 @@ function buildMarkdown(report) {
         );
     }
 
-    const highTargetMedians = Object.entries(report.highTargetMedians ?? {});
+    const crossTierMedians = Object.entries(
+        report.crossTierMedians ??
+            buildCrossTierMedians(report.highTargetMedians ?? {}),
+    );
+    if (crossTierMedians.length > 0) {
+        lines.push(
+            '',
+            '## Cross-tier repeated-run summary',
+            '',
+            '| Scenario | Requested → resolved | Accepted runs | Performance passing runs | Final | Min visible fields/instances | Effective DPR median [min, max] | p95 median [min, max] | Rendered FPS median [min, max] | Draw/render median [min, max] | Triangles/render median [min, max] | GPU p95 median [min, max] |',
+            '| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+        );
+        const formatRange = (range) =>
+            `${range.median ?? 'n/a'} [${range.min ?? 'n/a'}, ${range.max ?? 'n/a'}]`;
+        for (const [name, summary] of crossTierMedians) {
+            lines.push(
+                `| ${name} | ${summary.requestedQuality ?? 'n/a'} → ${summary.resolvedQualityTier ?? 'n/a'} | ${summary.acceptedRunCount}/${summary.runCount} | ${summary.performancePassedRunCount}/${summary.runCount} | ${summary.pass ? 'pass' : 'fail'} | ${summary.generatedPlantVisibleFieldCountMin?.min ?? 'n/a'}/${summary.generatedPlantVisibleInstanceCountMin?.min ?? 'n/a'} | ${formatRange(summary.effectiveDpr)} | ${formatRange(summary.p95FrameMs)} | ${formatRange(summary.renderedFps)} | ${formatRange(summary.drawCallsPerRenderedFrame)} | ${formatRange(summary.trianglesPerRenderedFrame)} | ${formatRange(summary.gpuElapsedP95Ms)} |`,
+            );
+        }
+    }
+
+    const lifecycleProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.lifecycleProfile === true,
+    );
+    if (lifecycleProfiles.length > 0) {
+        const summary =
+            report.lifecycleSummary ?? buildLifecycleSummary(report.scenarios);
+        const formatMetric = (metric) =>
+            `${metric?.median ?? 'n/a'} [${metric?.min ?? 'n/a'}, ${metric?.max ?? 'n/a'}]`;
+        lines.push(
+            '',
+            '## Runtime lifecycle baseline',
+            '',
+            `Fresh-context runs: ${summary.passedRunCount}/${summary.runCount} passed across ${summary.baseScenarioCount} base scenario; persistent Canvas/context after forced restoration: ${summary.contextPersistentRunCount}/${summary.runCount}; restored contexts: ${summary.contextRestoredRunCount}/${summary.runCount}.`,
+            '',
+            `Cold milestone medians [min, max] in ms — DOMContentLoaded ${formatMetric(summary.cold.domContentLoadedMs)}, Canvas attached ${formatMetric(summary.cold.canvasAttachedMs)}, Canvas sized ${formatMetric(summary.cold.canvasSizedMs)}, first submitted frame ${formatMetric(summary.cold.firstSubmittedFrameMs)}, exact fixture ${formatMetric(summary.cold.fixtureReadyMs)}, outline interaction ${formatMetric(summary.cold.interactionReadyMs)}.`,
+            '',
+            'Offscreen and synthetic document-hidden renderer/CDP residuals are recorded honestly. The structural gate covers SceneTime scheduling counters; residual submitted GL work and CDP script time remain observations for the scheduler optimization.',
+            '',
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; scheduler zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; scheduler zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
+            '| --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- |',
+        );
+        for (const scenario of lifecycleProfiles) {
+            const lifecycle = scenario.lifecycle;
+            const offscreenControl = lifecycle?.offscreen?.resumedControl;
+            const hiddenControl = lifecycle?.hidden?.resumedControl;
+            const restoredControl = lifecycle?.context?.restoredControl;
+            const screenshot = (control) =>
+                `${control?.screenshotWitness?.width ?? 'n/a'}x${control?.screenshotWitness?.height ?? 'n/a'}`;
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.offscreen?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.hidden?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const gardenSwitchProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.gardenSwitchProfile === true,
+    );
+    if (gardenSwitchProfiles.length > 0) {
+        const summary =
+            report.gardenSwitchSummary ??
+            buildGardenSwitchSummary(report.scenarios);
+        lines.push(
+            '',
+            '## Persistent-Canvas garden switching',
+            '',
+            `Single-context runs: ${summary.passedScenarioCount}/${summary.scenarioCount} passed; arrivals: ${summary.arrivalCount}; transitions: ${summary.transitionCount}; persistent Canvas/context witnesses: ${summary.canvasPersistentArrivalCount}/${summary.contextPersistentArrivalCount}; warm resource plateau (fauna F2→F3, High H3→H4): ${summary.resourceWarmPlateauPass ? 'pass' : 'fail'}; maximum displayed/settled/frame: ${summary.maximumDisplayedMs ?? 'n/a'}/${summary.maximumSettledMs ?? 'n/a'}/${summary.maximumFrameMs ?? 'n/a'} ms.`,
+            '',
+            '| Scenario | Arrival | Profile / garden | Fixture stacks/blocks/beds | Fixed / dynamic fauna census | Interaction witness | Canvas / context | Transition displayed/visible/settled | Resources geometries/programs/textures / static cache | Screenshot witness |',
+            '| --- | ---: | --- | ---: | --- | --- | --- | ---: | ---: | --- |',
+        );
+        for (const scenario of gardenSwitchProfiles) {
+            for (const arrival of scenario.gardenSwitch?.arrivals ?? []) {
+                const interaction =
+                    arrival.interaction?.kind === 'animal'
+                        ? `Cow ${arrival.interaction.behavior ?? 'n/a'} #${arrival.interaction.sequence ?? 'n/a'}; acknowledged ${arrival.interaction.acknowledgementCount ?? 'n/a'}/${arrival.interaction.movingAcknowledgementCount ?? 'n/a'} moving`
+                        : `outline bed ${arrival.interaction?.targetRaisedBedId ?? 'n/a'} / ${arrival.interaction?.targetBlockId ?? 'n/a'}; ${arrival.interaction?.activeTargetCount ?? 'n/a'} targets`;
+                const timing = arrival.timing?.initial
+                    ? 'initial'
+                    : `${round(arrival.timing?.displayedMs) ?? 'n/a'}/${round(arrival.timing?.visibleMs) ?? 'n/a'}/${round(arrival.timing?.settledMs) ?? 'n/a'} ms`;
+                const speciesCounts = arrival.fixture?.speciesCounts ?? {};
+                const faunaCensus =
+                    arrival.profile === 'fauna-heavy'
+                        ? `fixed ${Object.entries(
+                              faunaHeavyExpectedFixedSpeciesCounts,
+                          )
+                              .map(
+                                  ([species, expected]) =>
+                                      `${species}:${speciesCounts[species] ?? 'n/a'}/${expected}`,
+                              )
+                              .join(' ')}; dynamic ${
+                              Object.entries(speciesCounts)
+                                  .filter(
+                                      ([species]) =>
+                                          faunaHeavyExpectedFixedSpeciesCounts[
+                                              species
+                                          ] === undefined,
+                                  )
+                                  .sort(([left], [right]) =>
+                                      left.localeCompare(right),
+                                  )
+                                  .map(
+                                      ([species, count]) =>
+                                          `${species}:${count}`,
+                                  )
+                                  .join(' ') || 'none'
+                          }`
+                        : 'n/a';
+                const screenshot = arrival.screenshotWitness;
+                lines.push(
+                    `| ${scenario.name} | ${arrival.arrivalIndex} | ${arrival.profile} / ${arrival.gardenId ?? 'n/a'} | ${arrival.fixture?.stackCount ?? 'n/a'}/${arrival.fixture?.blockCount ?? 'n/a'}/${arrival.fixture?.raisedBedCount ?? 'n/a'} | ${faunaCensus} | ${interaction} | ${arrival.canvas?.sameCanvas ? 'same' : 'changed'} / ${arrival.canvas?.sameContext ? 'same' : 'changed'}; ${arrival.canvas?.contextLost ? 'lost' : 'healthy'}; context events ${arrival.canvas?.contextLostEventCount ?? 'n/a'}/${arrival.canvas?.contextRestoredEventCount ?? 'n/a'} | ${timing} | ${arrival.resources?.rendererGeometries ?? 'n/a'}/${arrival.resources?.rendererShaders ?? 'n/a'}/${arrival.resources?.rendererTextures ?? 'n/a'}; cache ${arrival.resources?.staticOpaqueSceneCacheEnabled === false ? 'off' : arrival.resources?.staticOpaqueSceneCacheEnabled === true ? 'on' : 'n/a'} | ${screenshot?.width ?? 'n/a'}x${screenshot?.height ?? 'n/a'}, entropy ${screenshot?.entropy ?? 'n/a'}, colors ${screenshot?.sampledUniqueColorCount ?? 'n/a'} |`,
+                );
+            }
+        }
+    }
+
+    const faunaProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested.faunaProfile === true,
+    );
+    if (faunaProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Fauna daytime evidence',
+            '',
+            '| Scenario / run | Fixture stacks/blocks/raised beds | Fixed-species minimum census | Shadow total/visible/dropped | Cow command sequence / acknowledged / moving | Screenshot witness | API requests/errors | Result |',
+            '| --- | ---: | --- | ---: | --- | --- | ---: | --- |',
+        );
+        for (const scenario of faunaProfiles) {
+            const speciesMinimums = Object.entries(
+                faunaHeavyExpectedFixedSpeciesCounts,
+            )
+                .map(
+                    ([species, expected]) =>
+                        `${species}:${scenario.sample.actorGroundingShadowSpeciesCountsMin?.[species] ?? 'n/a'}/${expected}`,
+                )
+                .join(' ');
+            const acknowledgementIds =
+                scenario.runtime?.profileAnimalCommandAcknowledgedIds?.join(
+                    '<br>',
+                ) ?? 'n/a';
+            const movingIds =
+                scenario.runtime?.profileAnimalCommandMovingAcknowledgedIds?.join(
+                    '<br>',
+                ) ?? 'n/a';
+            const screenshot = scenario.screenshotWitness;
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.profileGardenStackCount ?? 'n/a'}/${scenario.runtime?.profileGardenBlockCount ?? 'n/a'}/${scenario.runtime?.profileGardenRaisedBedCount ?? 'n/a'} | ${speciesMinimums} | ${scenario.runtime?.actorGroundingShadowCount ?? 'n/a'}/${scenario.runtime?.actorGroundingShadowVisibleCount ?? 'n/a'}/${scenario.runtime?.actorGroundingShadowDroppedCount ?? 'n/a'} | ${scenario.sample.animalProfileCommandSequenceAtStart ?? 0}→${scenario.runtime?.profileAnimalCommandSequence ?? 'n/a'} / ${acknowledgementIds} / ${movingIds} | ${screenshot?.width ?? 'n/a'}x${screenshot?.height ?? 'n/a'}, entropy ${screenshot?.entropy ?? 'n/a'}, RGB σ ${screenshot?.maximumChannelStandardDeviation ?? 'n/a'}, colors ${screenshot?.sampledUniqueColorCount ?? 'n/a'}, luma ${screenshot?.sampledLumaRange ?? 'n/a'} | ${scenario.apiRequests?.length ?? 0}/${scenario.apiErrors?.length ?? 0} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
+    const highTargetMedians = Object.entries(
+        report.highTargetMedians ?? {},
+    ).filter(([, summary]) => summary.crossTierProfile !== true);
     if (highTargetMedians.length > 0) {
         lines.push(
             '',
@@ -8603,19 +13506,21 @@ function buildMarkdown(report) {
 
     lines.push('', '## High-target Aggregate Failures', '');
     const highTargetFailures = [
-        ...highTargetMedians.flatMap(([name, summary]) => [
-            ...(summary.acceptancePass
-                ? []
-                : [
-                      `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
-                  ]),
-            ...summary.performanceBudget.checks
-                .filter((check) => !check.pass)
-                .map(
-                    (check) =>
-                        `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
-                ),
-        ]),
+        ...[...crossTierMedians, ...highTargetMedians].flatMap(
+            ([name, summary]) => [
+                ...(summary.acceptancePass
+                    ? []
+                    : [
+                          `- ${name}: acceptance failed for ${summary.failedAcceptanceRuns.join(', ')}`,
+                      ]),
+                ...summary.performanceBudget.checks
+                    .filter((check) => !check.pass)
+                    .map(
+                        (check) =>
+                            `- ${name} median: ${check.name} ${check.actual} > ${check.limit}`,
+                    ),
+            ],
+        ),
         ...adaptiveHighComparisons.flatMap(([pairName, comparison]) =>
             comparison.relativePerformanceChecks
                 .filter((check) => !check.pass && !check.skipped)
@@ -8659,19 +13564,26 @@ function buildMarkdown(report) {
         scenario.budget.checks
             .filter((check) => !check.pass)
             .map((check) => {
+                const display = (value) =>
+                    value && typeof value === 'object'
+                        ? JSON.stringify(value)
+                        : value;
                 if (check.comparison === 'range') {
-                    return `- ${scenario.name}: ${check.name} ${check.actual} outside [${check.limit.minimum}, ${check.limit.maximum}]`;
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} outside [${check.limit.minimum}, ${check.limit.maximum}]`;
                 }
                 if (check.comparison === 'within-pixels') {
-                    return `- ${scenario.name}: ${check.name} ${check.actual} not within 2px of ${check.limit}`;
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} not within 2px of ${display(check.limit)}`;
                 }
                 const operator =
-                    check.comparison === 'minimum'
+                    check.comparison === 'minimum' ||
+                    check.comparison === 'finite-minimum'
                         ? '<'
-                        : check.comparison === 'equal'
+                        : check.comparison === 'equal' ||
+                            check.comparison === 'equal-record' ||
+                            check.comparison === 'equal-string-set'
                           ? '!='
                           : '>';
-                return `- ${scenario.name}: ${check.name} ${check.actual} ${operator} ${check.limit}`;
+                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit)}`;
             }),
     );
     lines.push(...(failures.length ? failures : ['- None']));
@@ -8895,6 +13807,7 @@ async function main() {
         options.scenarioSet,
         options.scenarios,
     );
+    const harnessProvenance = await readHarnessProvenance();
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -8903,7 +13816,17 @@ async function main() {
     }
 
     if (options.build) {
-        await runPackageScript('build');
+        await runPackageScript('build', {
+            NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION: String(
+                gameProfileComparisonContractVersion,
+            ),
+            NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT:
+                harnessProvenance.commit ?? 'unknown',
+            NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY:
+                harnessProvenance.dirty === null
+                    ? 'unknown'
+                    : String(harnessProvenance.dirty),
+        });
     }
 
     let server;
@@ -8971,18 +13894,33 @@ async function main() {
             console.log(
                 `Profiling ${baseScenario.name}${repeat > 1 ? ` (${runIndex}/${repeat})` : ''}...`,
             );
-            const result = await measureScenario(
-                browser,
-                options.baseUrl,
-                runScenario,
-                options,
-            );
+            const result = baseScenario.lifecycleProfile
+                ? await measureLifecycleScenario(
+                      browser,
+                      options.baseUrl,
+                      runScenario,
+                      options,
+                  )
+                : baseScenario.gardenSwitchProfile
+                  ? await measureGardenSwitchScenario(
+                        browser,
+                        options.baseUrl,
+                        runScenario,
+                        options,
+                    )
+                  : await measureScenario(
+                        browser,
+                        options.baseUrl,
+                        runScenario,
+                        options,
+                    );
             result.baseName = baseScenario.name;
             result.profileRun = runIndex;
             scenarios.push(result);
         }
 
         const highTargetMedians = buildHighTargetMedians(scenarios);
+        const crossTierMedians = buildCrossTierMedians(highTargetMedians);
         const adaptiveHighComparisons =
             buildAdaptiveHighComparisons(highTargetMedians);
         const staticSceneCacheVisualComparisons =
@@ -8998,14 +13936,27 @@ async function main() {
             highTargetMedians,
             staticSceneCacheComparisons,
         );
+        const provenance = buildReportProvenance({
+            harness: harnessProvenance,
+            runtime: {
+                arch: process.arch,
+                browserVersion: browser.version(),
+                nodeVersion: process.version,
+                platform: process.platform,
+            },
+            scenarios,
+            server: {
+                buildPerformed: options.build,
+                mode: options.startServer ? 'managed' : 'external',
+            },
+        });
         const report = {
             baseUrl: options.baseUrl,
+            comparisonContractVersion: gameProfileComparisonContractVersion,
             generatedAt: new Date().toISOString(),
-            schemaVersion: 2,
-            sourceCommit:
-                process.env.VERCEL_GIT_COMMIT_SHA ??
-                process.env.GITHUB_SHA ??
-                null,
+            provenance,
+            schemaVersion: 5,
+            sourceCommit: provenance.subject.commit,
             options: {
                 allowLegacyOperationVisuals:
                     options.allowLegacyOperationVisuals,
@@ -9017,10 +13968,14 @@ async function main() {
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
                 scenarioSet: options.scenarioSet,
+                screenshots: options.screenshots,
                 soakMs: options.soakMs,
                 warmupMs: options.warmupMs,
             },
             adaptiveHighComparisons,
+            crossTierMedians,
+            gardenSwitchSummary: buildGardenSwitchSummary(scenarios),
+            lifecycleSummary: buildLifecycleSummary(scenarios),
             scenarios,
             highTargetMedians,
             plantCloseupMedians: buildPlantCloseupMedians(scenarios),
@@ -9039,8 +13994,17 @@ async function main() {
         console.log(
             `Budget status: ${profileSummary.failedScenarios === 0 ? 'pass' : 'fail'}`,
         );
+        console.log(
+            `Comparability status: ${provenance.comparable ? 'pass' : `fail (${provenance.reasons.join(', ')})`}`,
+        );
 
-        if (profileSummary.failedScenarios > 0 && options.failOnBudget) {
+        if (
+            shouldFailProfileRun({
+                failOnBudget: options.failOnBudget,
+                profileSummary,
+                provenance,
+            })
+        ) {
             process.exitCode = 1;
         }
     } finally {
@@ -9052,32 +14016,50 @@ async function main() {
 }
 
 export {
+    beginGardenSwitchProfileSample,
+    beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
+    buildCrossTierMedians,
+    buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleSummary,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
     buildProfileSummary,
+    buildReportProvenance,
     buildScenarioRunQueue,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
+    evaluateCrossTierAcceptance,
+    evaluateFaunaHeavyAcceptance,
+    evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
+    evaluateLifecycleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
     installBrowserMetrics,
+    installGardenSwitchContextTracker,
+    installLifecycleMilestoneTracker,
+    installProfileContextTracker,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
+    isProfileScreenshotWitnessValid,
+    measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
+    parseComparisonContractVersion,
+    primeGardenSwitchProfileSample,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
+    shouldFailProfileRun,
 };
 
 const invokedModuleUrl = process.argv[1]

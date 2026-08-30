@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { Vector3 } from 'three';
+import { OrthographicCamera, Vector3 } from 'three';
 import {
     getPreservedAngleCameraPosition,
+    getScreenPositionAdjustedCameraTarget,
     resolvePreservedAngleCloseupZoom,
 } from './GameCameraRig';
 
@@ -25,6 +26,42 @@ describe('preserved-angle camera focus', () => {
         assert.deepEqual(cameraPosition.toArray(), [-97, 100, -93]);
         assert.deepEqual(cameraTarget.toArray(), [3, 0, 7]);
         assert.deepEqual(focusTarget.toArray(), [14, 1.4, 22]);
+    });
+
+    it('places a focused point at the requested normalized canvas position', () => {
+        const viewportWidth = 844;
+        const viewportHeight = 390;
+        const zoom = 42;
+        const screenPosition = { x: 0.74, y: 0.525 };
+        const focusTarget = new Vector3(1, 0.5, 2);
+        const cameraOffset = new Vector3(-100, 100, -100);
+        const camera = new OrthographicCamera(
+            -viewportWidth / 2,
+            viewportWidth / 2,
+            viewportHeight / 2,
+            -viewportHeight / 2,
+        );
+        camera.position.copy(focusTarget).add(cameraOffset);
+        camera.lookAt(focusTarget);
+        camera.zoom = zoom;
+        camera.updateProjectionMatrix();
+        camera.updateMatrixWorld();
+
+        const adjustedTarget = getScreenPositionAdjustedCameraTarget({
+            camera,
+            focusTarget,
+            screenPosition,
+            viewportHeight,
+            viewportWidth,
+            zoom,
+        });
+        camera.position.copy(adjustedTarget).add(cameraOffset);
+        camera.lookAt(adjustedTarget);
+        camera.updateMatrixWorld();
+        const projected = focusTarget.clone().project(camera);
+
+        assert.ok(Math.abs((projected.x + 1) / 2 - screenPosition.x) < 1e-6);
+        assert.ok(Math.abs((-projected.y + 1) / 2 - screenPosition.y) < 1e-6);
     });
 
     it('zooms in to the requested closeup without zooming out an existing view', () => {

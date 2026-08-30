@@ -22,6 +22,7 @@ const playwrightFeaturedGardensFixture: LandingGardenCandidate[] = [
             name: 'Istaknuti testni vrt',
             raisedBeds: [],
             stacks: {},
+            structures: [],
             updatedAt: '2026-08-29T12:00:00.000Z',
         },
         owner: {

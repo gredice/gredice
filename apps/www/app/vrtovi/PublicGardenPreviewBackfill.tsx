@@ -61,6 +61,7 @@ function gardenForCapture(garden: GardenResponse): BackfillGarden {
         name: garden.name,
         raisedBeds: garden.raisedBeds,
         stacks: garden.stacks,
+        structures: garden.structures,
         updatedAt: garden.updatedAt,
     };
 }

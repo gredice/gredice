@@ -13,6 +13,7 @@ import { Typography } from '@gredice/ui/Typography';
 import Image from 'next/image';
 import { useCurrentAccount } from '../../hooks/useCurrentAccount';
 import { formatSunflowers } from '../../utils/sunflowerPricing';
+import { getGardenStructureSunflowerHistoryDescription } from './gardenStructureSunflowerReason';
 import { NoSunflowersPlaceholder } from './NoSunflowersPlaceholder';
 
 function sunflowerReasonToDescription(reason: string) {
@@ -140,6 +141,26 @@ function sunflowerReasonToDescription(reason: string) {
         return {
             icon: <span className="text-4xl text-center size-10">↩️</span>,
             label: 'Povrat sredstava za radnju',
+        };
+    }
+
+    const gardenStructureDescription =
+        getGardenStructureSunflowerHistoryDescription(reason);
+    if (gardenStructureDescription) {
+        return {
+            icon: (
+                <span
+                    className="grid size-10 place-items-center text-3xl"
+                    aria-hidden
+                >
+                    {gardenStructureDescription.icon === 'refund'
+                        ? '↩️'
+                        : gardenStructureDescription.icon === 'resize'
+                          ? '📐'
+                          : '🏠'}
+                </span>
+            ),
+            label: gardenStructureDescription.label,
         };
     }
 

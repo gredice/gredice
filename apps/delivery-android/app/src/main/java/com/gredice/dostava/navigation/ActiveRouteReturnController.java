@@ -50,6 +50,7 @@ public final class ActiveRouteReturnController {
         DeliveryRouteStatus status = route.getStatus();
         if (status == DeliveryRouteStatus.SIGNED_OUT
                 || status == DeliveryRouteStatus.EMPTY
+                || status == DeliveryRouteStatus.DISABLED
                 || status == DeliveryRouteStatus.UNSUPPORTED) {
             cancel();
             return;

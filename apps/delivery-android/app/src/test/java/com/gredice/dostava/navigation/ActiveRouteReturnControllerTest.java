@@ -61,6 +61,7 @@ public final class ActiveRouteReturnControllerTest {
         for (DeliveryRouteStatus status : new DeliveryRouteStatus[]{
                 DeliveryRouteStatus.SIGNED_OUT,
                 DeliveryRouteStatus.EMPTY,
+                DeliveryRouteStatus.DISABLED,
                 DeliveryRouteStatus.UNSUPPORTED
         }) {
             Fixture fixture = new Fixture();

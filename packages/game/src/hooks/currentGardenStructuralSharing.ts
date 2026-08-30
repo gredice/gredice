@@ -96,6 +96,33 @@ function shareStacks(previousStacks: GardenStack[], nextStacks: GardenStack[]) {
     return changed ? stacks : previousStacks;
 }
 
+function shareStructures(
+    previousStructures: CurrentGarden['structures'],
+    nextStructures: CurrentGarden['structures'],
+) {
+    if (previousStructures === nextStructures) {
+        return previousStructures;
+    }
+
+    const previousById = new Map(
+        previousStructures.map((structure) => [structure.id, structure]),
+    );
+    let changed = previousStructures.length !== nextStructures.length;
+    const structures = nextStructures.map((nextStructure, index) => {
+        const previousStructure = previousById.get(nextStructure.id);
+        const sharedStructure =
+            previousStructure?.revision === nextStructure.revision
+                ? previousStructure
+                : nextStructure;
+        if (sharedStructure !== previousStructures[index]) {
+            changed = true;
+        }
+        return sharedStructure;
+    });
+
+    return changed ? structures : previousStructures;
+}
+
 function jsonValuesEqual(left: unknown, right: unknown): boolean {
     if (left === right) {
         return true;
@@ -175,6 +202,10 @@ export function shareCurrentGardenData(
         nextGarden.homeCamera,
     );
     const stacks = shareStacks(previousGarden.stacks, nextGarden.stacks);
+    const structures = shareStructures(
+        previousGarden.structures,
+        nextGarden.structures,
+    );
     const location = shareLocation(
         previousGarden.location,
         nextGarden.location,
@@ -195,6 +226,7 @@ export function shareCurrentGardenData(
     if (
         homeCamera === previousGarden.homeCamera &&
         stacks === previousGarden.stacks &&
+        structures === previousGarden.structures &&
         location === previousGarden.location &&
         raisedBeds === previousGarden.raisedBeds &&
         previewImage === previousGarden.previewImage &&
@@ -207,6 +239,7 @@ export function shareCurrentGardenData(
         ...nextGarden,
         homeCamera,
         stacks,
+        structures,
         location,
         raisedBeds,
         previewImage,

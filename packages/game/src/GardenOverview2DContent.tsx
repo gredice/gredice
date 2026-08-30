@@ -6,6 +6,7 @@ import { useGameFlags } from './GameFlagsContext';
 import { GameHud } from './GameHud';
 import styles from './GameScene.module.css';
 import { GardenOverview2DMap } from './GardenOverview2DMap';
+import { GardenStructureOverview2DPanel } from './GardenStructureOverview2DPanel';
 import { useBlockData } from './hooks/useBlockData';
 import { useClearSandboxEnvironmentOverrides } from './hooks/useClearSandboxEnvironmentOverrides';
 import { useCurrentGarden } from './hooks/useCurrentGarden';
@@ -148,6 +149,11 @@ export function GardenOverview2DContent({
                 garden={garden}
                 solarEclipseObscuration={solarEclipseObscuration}
             />
+            {garden.structures.length > 0 ? (
+                <GardenStructureOverview2DPanel
+                    structures={garden.structures}
+                />
+            ) : null}
             {hud}
             {isLocalSandbox ? null : (
                 <span className="sr-only">

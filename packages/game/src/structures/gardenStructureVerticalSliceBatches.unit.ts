@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
+import { compileGardenStructurePlan } from './compileGardenStructurePlan';
+import { debugGardenStructureKitMetadata } from './debugStructureKit';
+import { getGardenStructureVerticalSliceBatches } from './gardenStructureVerticalSliceBatches';
+
+test('keeps open-door asset submissions while semantic collision is passable', () => {
+    const plan = compileGardenStructurePlan({
+        structureId: 'open-house',
+        revision: 1,
+        document: createGardenStructureTemplateSeed('house').document,
+        placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+    });
+    const batches = getGardenStructureVerticalSliceBatches({
+        plan,
+        roofCutaway: false,
+    });
+    const renderedIds = batches.flatMap((batch) => batch.instanceIds);
+
+    assert.ok(plan.openPortals.edgeIds.includes('door-main'));
+    assert.equal(renderedIds.includes('edge:open-house:door-main'), true);
+    assert.ok(renderedIds.some((id) => id.startsWith('edge:open-house:')));
+});
+
+test('removes roof submissions only while cutaway is active', () => {
+    const plan = compileGardenStructurePlan({
+        structureId: 'roofed-house',
+        revision: 1,
+        document: createGardenStructureTemplateSeed('house').document,
+        placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+    });
+
+    assert.ok(
+        getGardenStructureVerticalSliceBatches({
+            plan,
+            roofCutaway: false,
+        }).some((batch) => batch.category === 'roof'),
+    );
+    assert.equal(
+        getGardenStructureVerticalSliceBatches({
+            plan,
+            roofCutaway: true,
+        }).some((batch) => batch.category === 'roof'),
+        false,
+    );
+});
+
+test('rejects a plan from a different immutable kit before visual semantics can drift', () => {
+    const plan = compileGardenStructurePlan({
+        structureId: 'other-kit-house',
+        revision: 1,
+        document: createGardenStructureTemplateSeed('house').document,
+        placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+        kit: {
+            ...debugGardenStructureKitMetadata,
+            kitKey: 'other-kit',
+        },
+    });
+
+    assert.throws(
+        () =>
+            getGardenStructureVerticalSliceBatches({
+                plan,
+                roofCutaway: false,
+            }),
+        /matching immutable debug kit/u,
+    );
+});
