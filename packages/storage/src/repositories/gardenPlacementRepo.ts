@@ -1,6 +1,6 @@
 import 'server-only';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { gardenBlocks, gardenStacks, gardens } from '../schema';
+import { farms, gardenBlocks, gardenStacks, gardens } from '../schema';
 import { storage } from '../storage';
 
 type StorageClient = ReturnType<typeof storage>;
@@ -97,6 +97,38 @@ export type GardenMutationAuthority = Readonly<{
     isDeleted: boolean;
     isSandbox: boolean;
 }>;
+
+export type GardenPlacementLocation = Readonly<{
+    lat: number;
+    lon: number;
+}>;
+
+/**
+ * Read the garden farm coordinates through the transaction that owns the
+ * placement lock. This avoids acquiring a second pooled connection from
+ * inside a long-running purchase transaction.
+ */
+export async function getGardenPlacementLocation(
+    gardenId: number,
+    db: DatabaseClient,
+): Promise<GardenPlacementLocation | null> {
+    assertGardenId(gardenId);
+    return (
+        (
+            await db
+                .select({
+                    lat: farms.latitude,
+                    lon: farms.longitude,
+                })
+                .from(gardens)
+                .innerJoin(farms, eq(gardens.farmId, farms.id))
+                .where(
+                    and(eq(gardens.id, gardenId), eq(gardens.isDeleted, false)),
+                )
+                .limit(1)
+        )[0] ?? null
+    );
+}
 
 /**
  * Lock the owning garden row before consulting a garden-scoped mutation

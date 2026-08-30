@@ -18,8 +18,8 @@ import {
     type GardenMutationOperationExecution,
     type GardenMutationOperationStoredResponse,
     type GardenPlacementTransaction,
-    getGarden,
     getGardenMutationAuthorityForUpdate,
+    getGardenPlacementLocation,
     getGardenPlacementSnapshotForUpdate,
     InsufficientSunflowersError,
     listGardenStructures,
@@ -100,7 +100,10 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         transaction: Transaction,
     ) => Promise<unknown>;
     getBlockData: () => Promise<readonly BlockData[]>;
-    getGardenLocation: (gardenId: number) => Promise<GardenPurchaseLocation>;
+    getGardenLocation: (
+        gardenId: number,
+        transaction: Transaction,
+    ) => Promise<GardenPurchaseLocation>;
     getGardenMutationAuthorityForUpdate: (
         gardenId: number,
         transaction: Transaction,
@@ -593,6 +596,7 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                 const location =
                                                     await dependencies.getGardenLocation(
                                                         command.gardenId,
+                                                        operationTransaction,
                                                     );
                                                 if (
                                                     !snapshot.garden.isSandbox
@@ -915,15 +919,7 @@ const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransa
             );
         },
         getBlockData,
-        getGardenLocation: async (gardenId) => {
-            const garden = await getGarden(gardenId);
-            return garden
-                ? {
-                      lat: garden.farm?.latitude,
-                      lon: garden.farm?.longitude,
-                  }
-                : null;
-        },
+        getGardenLocation: getGardenPlacementLocation,
         getGardenMutationAuthorityForUpdate,
         getGardenPlacementSnapshotForUpdate,
         isBlockPurchaseAvailableNow,

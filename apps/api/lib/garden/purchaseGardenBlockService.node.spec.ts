@@ -269,7 +269,8 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('directory');
             return blockData;
         },
-        getGardenLocation: async () => {
+        getGardenLocation: async (_gardenId, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
             calls.push('location');
             return { lat: 45, lon: 16 };
         },

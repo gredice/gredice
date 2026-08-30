@@ -360,9 +360,134 @@ test('account deletion erases only exact owned garden and inventory event famili
 test('account deletion clears hard FK families while retaining detached commercial history', async (t) => {
     createTestDb();
     const fixtureId = randomUUID();
-    const accountId = await createAccount();
     const userId = `account-delete-user-${fixtureId}`;
     const driverUserId = `account-delete-driver-${fixtureId}`;
+    const entityTypeName = `account-delete-plant-sort-${fixtureId}`;
+    const deliveryRequestId = `account-delete-request-${fixtureId}`;
+    const deliveryRunId = `account-delete-run-${fixtureId}`;
+    const cleanupIds: {
+        accountId?: string;
+        activeRaisedBedId?: number;
+        deletedRaisedBedId?: number;
+        deliveryRunStopId?: number;
+        harvestOperationId?: number;
+        outletOfferId?: number;
+        paidCartId?: number;
+        paidCartItemId?: number;
+        pickupLocationId?: number;
+        plantPlaceEventId?: number;
+        plantSortId?: number;
+        raisedBedFieldId?: number;
+        receiptId?: number;
+        timeSlotId?: number;
+        transactionId?: number;
+    } = {};
+    t.after(async () => {
+        if (cleanupIds.accountId && (await getAccount(cleanupIds.accountId))) {
+            await deleteAccountWithDependencies(cleanupIds.accountId, userId);
+        }
+        await storage().transaction(async (cleanupTransaction) => {
+            if (cleanupIds.deliveryRunStopId !== undefined) {
+                await cleanupTransaction
+                    .delete(deliveryRunStops)
+                    .where(
+                        eq(deliveryRunStops.id, cleanupIds.deliveryRunStopId),
+                    );
+            }
+            await cleanupTransaction
+                .delete(deliveryRuns)
+                .where(eq(deliveryRuns.id, deliveryRunId));
+            await cleanupTransaction
+                .delete(deliveryRequests)
+                .where(eq(deliveryRequests.id, deliveryRequestId));
+            if (cleanupIds.timeSlotId !== undefined) {
+                await cleanupTransaction
+                    .delete(timeSlots)
+                    .where(eq(timeSlots.id, cleanupIds.timeSlotId));
+            }
+            if (cleanupIds.pickupLocationId !== undefined) {
+                await cleanupTransaction
+                    .delete(pickupLocations)
+                    .where(eq(pickupLocations.id, cleanupIds.pickupLocationId));
+            }
+            if (cleanupIds.harvestOperationId !== undefined) {
+                await cleanupTransaction
+                    .delete(operations)
+                    .where(eq(operations.id, cleanupIds.harvestOperationId));
+            }
+            if (cleanupIds.plantPlaceEventId !== undefined) {
+                await cleanupTransaction
+                    .delete(events)
+                    .where(eq(events.id, cleanupIds.plantPlaceEventId));
+            }
+            if (cleanupIds.raisedBedFieldId !== undefined) {
+                await cleanupTransaction
+                    .delete(raisedBedFields)
+                    .where(eq(raisedBedFields.id, cleanupIds.raisedBedFieldId));
+            }
+            const raisedBedIds = [
+                cleanupIds.activeRaisedBedId,
+                cleanupIds.deletedRaisedBedId,
+            ].filter((id): id is number => id !== undefined);
+            if (raisedBedIds.length > 0) {
+                await cleanupTransaction
+                    .delete(raisedBeds)
+                    .where(inArray(raisedBeds.id, raisedBedIds));
+            }
+            if (cleanupIds.paidCartItemId !== undefined) {
+                await cleanupTransaction
+                    .delete(shoppingCartItems)
+                    .where(eq(shoppingCartItems.id, cleanupIds.paidCartItemId));
+            }
+            if (cleanupIds.paidCartId !== undefined) {
+                await cleanupTransaction
+                    .delete(shoppingCarts)
+                    .where(eq(shoppingCarts.id, cleanupIds.paidCartId));
+            }
+            if (cleanupIds.receiptId !== undefined) {
+                await cleanupTransaction
+                    .delete(receipts)
+                    .where(eq(receipts.id, cleanupIds.receiptId));
+            }
+            if (cleanupIds.transactionId !== undefined) {
+                await cleanupTransaction
+                    .delete(transactions)
+                    .where(eq(transactions.id, cleanupIds.transactionId));
+            }
+            if (cleanupIds.outletOfferId !== undefined) {
+                await cleanupTransaction
+                    .delete(outletOffers)
+                    .where(eq(outletOffers.id, cleanupIds.outletOfferId));
+            }
+            if (cleanupIds.plantSortId !== undefined) {
+                await cleanupTransaction
+                    .delete(entitySearchDocuments)
+                    .where(
+                        eq(
+                            entitySearchDocuments.entityId,
+                            cleanupIds.plantSortId,
+                        ),
+                    );
+                await cleanupTransaction
+                    .delete(entityRevisions)
+                    .where(
+                        eq(entityRevisions.entityId, cleanupIds.plantSortId),
+                    );
+                await cleanupTransaction
+                    .delete(entities)
+                    .where(eq(entities.id, cleanupIds.plantSortId));
+            }
+            await cleanupTransaction
+                .delete(entityTypes)
+                .where(eq(entityTypes.name, entityTypeName));
+            await cleanupTransaction
+                .delete(users)
+                .where(eq(users.id, driverUserId));
+        });
+    });
+
+    const accountId = await createAccount();
+    cleanupIds.accountId = accountId;
     await storage()
         .insert(users)
         .values([
@@ -389,11 +514,13 @@ test('account deletion clears hard FK families while retaining detached commerci
         accountId,
         activeBlockId,
     );
+    cleanupIds.activeRaisedBedId = activeRaisedBedId;
     const deletedRaisedBedId = await createTestRaisedBed(
         deletedGardenId,
         accountId,
         deletedBlockId,
     );
+    cleanupIds.deletedRaisedBedId = deletedRaisedBedId;
     await storage()
         .update(gardens)
         .set({ isDeleted: true })
@@ -408,13 +535,14 @@ test('account deletion clears hard FK families while retaining detached commerci
         .values({ raisedBedId: activeRaisedBedId, positionIndex: 0 })
         .returning({ id: raisedBedFields.id });
     assert.ok(raisedBedField);
+    cleanupIds.raisedBedFieldId = raisedBedField.id;
 
-    const entityTypeName = `account-delete-plant-sort-${fixtureId}`;
     await upsertEntityType({
         label: 'Account deletion plant sort',
         name: entityTypeName,
     });
     const plantSortId = await createEntity(entityTypeName);
+    cleanupIds.plantSortId = plantSortId;
     await updateEntity({
         entityTypeName,
         id: plantSortId,
@@ -433,6 +561,7 @@ test('account deletion clears hard FK families while retaining detached commerci
         startAt: new Date('2026-08-01T00:00:00.000Z'),
         status: 'published',
     });
+    cleanupIds.outletOfferId = outletOfferId;
 
     const [newCart] = await storage()
         .insert(shoppingCarts)
@@ -471,6 +600,7 @@ test('account deletion clears hard FK families while retaining detached commerci
         .insert(shoppingCarts)
         .values({ accountId, status: 'paid' })
         .returning({ id: shoppingCarts.id });
+    cleanupIds.paidCartId = paidCart.id;
     const [paidCartItem] = await storage()
         .insert(shoppingCartItems)
         .values({
@@ -484,6 +614,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             status: 'paid',
         })
         .returning({ id: shoppingCartItems.id });
+    cleanupIds.paidCartItemId = paidCartItem.id;
 
     const [transaction] = await storage()
         .insert(transactions)
@@ -496,6 +627,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             stripePaymentId: `pi-account-delete-${fixtureId}`,
         })
         .returning({ id: transactions.id });
+    cleanupIds.transactionId = transaction.id;
     const [invoice] = await storage()
         .insert(invoices)
         .values({
@@ -533,6 +665,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             yearReceiptNumber: `2026-account-delete-${fixtureId}`,
         })
         .returning({ id: receipts.id });
+    cleanupIds.receiptId = receipt.id;
     await storage()
         .insert(sunflowerLedgerEntries)
         .values({
@@ -638,6 +771,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             version: 1,
         })
         .returning({ id: events.id });
+    cleanupIds.plantPlaceEventId = plantPlaceEvent.id;
     const [harvestOperation] = await storage()
         .insert(operations)
         .values({
@@ -649,6 +783,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             raisedBedId: activeRaisedBedId,
         })
         .returning({ id: operations.id });
+    cleanupIds.harvestOperationId = harvestOperation.id;
     const [traceLink] = await storage()
         .insert(harvestTraceLinks)
         .values({
@@ -679,6 +814,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             street1: 'Pickup Street 1',
         })
         .returning({ id: pickupLocations.id });
+    cleanupIds.pickupLocationId = pickupLocation.id;
     const [timeSlot] = await storage()
         .insert(timeSlots)
         .values({
@@ -689,12 +825,11 @@ test('account deletion clears hard FK families while retaining detached commerci
             type: 'pickup',
         })
         .returning({ id: timeSlots.id });
-    const deliveryRequestId = `account-delete-request-${fixtureId}`;
+    cleanupIds.timeSlotId = timeSlot.id;
     await storage().insert(deliveryRequests).values({
         id: deliveryRequestId,
         operationId: harvestOperation.id,
     });
-    const deliveryRunId = `account-delete-run-${fixtureId}`;
     await storage().insert(deliveryRuns).values({
         driverUserId,
         id: deliveryRunId,
@@ -714,73 +849,7 @@ test('account deletion clears hard FK families while retaining detached commerci
             sequence: 1,
         })
         .returning({ id: deliveryRunStops.id });
-
-    t.after(async () => {
-        await storage().transaction(async (cleanupTransaction) => {
-            await cleanupTransaction
-                .delete(deliveryRunStops)
-                .where(eq(deliveryRunStops.id, deliveryRunStop.id));
-            await cleanupTransaction
-                .delete(deliveryRuns)
-                .where(eq(deliveryRuns.id, deliveryRunId));
-            await cleanupTransaction
-                .delete(deliveryRequests)
-                .where(eq(deliveryRequests.id, deliveryRequestId));
-            await cleanupTransaction
-                .delete(timeSlots)
-                .where(eq(timeSlots.id, timeSlot.id));
-            await cleanupTransaction
-                .delete(pickupLocations)
-                .where(eq(pickupLocations.id, pickupLocation.id));
-            await cleanupTransaction
-                .delete(operations)
-                .where(eq(operations.id, harvestOperation.id));
-            await cleanupTransaction
-                .delete(events)
-                .where(eq(events.id, plantPlaceEvent.id));
-            await cleanupTransaction
-                .delete(raisedBedFields)
-                .where(eq(raisedBedFields.id, raisedBedField.id));
-            await cleanupTransaction
-                .delete(raisedBeds)
-                .where(
-                    inArray(raisedBeds.id, [
-                        activeRaisedBedId,
-                        deletedRaisedBedId,
-                    ]),
-                );
-            await cleanupTransaction
-                .delete(shoppingCartItems)
-                .where(eq(shoppingCartItems.id, paidCartItem.id));
-            await cleanupTransaction
-                .delete(shoppingCarts)
-                .where(eq(shoppingCarts.id, paidCart.id));
-            await cleanupTransaction
-                .delete(receipts)
-                .where(eq(receipts.id, receipt.id));
-            await cleanupTransaction
-                .delete(transactions)
-                .where(eq(transactions.id, transaction.id));
-            await cleanupTransaction
-                .delete(outletOffers)
-                .where(eq(outletOffers.id, outletOfferId));
-            await cleanupTransaction
-                .delete(entitySearchDocuments)
-                .where(eq(entitySearchDocuments.entityId, plantSortId));
-            await cleanupTransaction
-                .delete(entityRevisions)
-                .where(eq(entityRevisions.entityId, plantSortId));
-            await cleanupTransaction
-                .delete(entities)
-                .where(eq(entities.id, plantSortId));
-            await cleanupTransaction
-                .delete(entityTypes)
-                .where(eq(entityTypes.name, entityTypeName));
-            await cleanupTransaction
-                .delete(users)
-                .where(eq(users.id, driverUserId));
-        });
-    });
+    cleanupIds.deliveryRunStopId = deliveryRunStop.id;
 
     await deleteAccountWithDependencies(accountId, userId);
     await deleteAccountWithDependencies(accountId, userId);
