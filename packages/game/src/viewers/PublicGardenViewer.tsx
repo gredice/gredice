@@ -471,14 +471,20 @@ export function getPublicGardenStructureInitialViewKey({
 export function isPublicGardenStructureCaptureReady({
     diagnosticStatus,
     hasPlan,
+    rejectedRecordCount,
     savedStructureCount,
 }: {
     diagnosticStatus: GardenStructureSceneDiagnosticStatus;
     hasPlan: boolean;
+    rejectedRecordCount: number;
     savedStructureCount: number;
 }) {
     return (
-        savedStructureCount === 0 || (hasPlan && diagnosticStatus === 'ready')
+        savedStructureCount === 0 ||
+        (hasPlan &&
+            rejectedRecordCount === 0 &&
+            (diagnosticStatus === 'ready' ||
+                diagnosticStatus === 'rendered-with-diagnostics'))
     );
 }
 
@@ -658,6 +664,7 @@ function PublicGardenScene({
     const structureCaptureReady = isPublicGardenStructureCaptureReady({
         diagnosticStatus: structureScene.diagnostics.status,
         hasPlan: structureScene.plan !== null,
+        rejectedRecordCount: structureScene.diagnostics.rejectedRecordCount,
         savedStructureCount,
     });
     const plantSortsQuery = useAllSorts(loadPlantSorts);

@@ -342,6 +342,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
             isPublicGardenStructureCaptureReady({
                 diagnosticStatus: 'ready',
                 hasPlan: false,
+                rejectedRecordCount: 0,
                 savedStructureCount: 0,
             }),
             true,
@@ -350,22 +351,33 @@ describe('isPublicGardenStructureCaptureReady', () => {
             isPublicGardenStructureCaptureReady({
                 diagnosticStatus: 'ready',
                 hasPlan: true,
+                rejectedRecordCount: 0,
                 savedStructureCount: 1,
             }),
             true,
         );
     });
 
-    it('blocks capture when saved structures are rejected or have warnings', () => {
+    it('allows warning-only plans while blocking rejected saved structures', () => {
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'rendered-with-diagnostics',
+                hasPlan: true,
+                rejectedRecordCount: 0,
+                savedStructureCount: 1,
+            }),
+            true,
+        );
+
         for (const diagnosticStatus of [
             'collection-rejected',
             'collision-rejected',
-            'rendered-with-diagnostics',
         ] as const) {
             assert.equal(
                 isPublicGardenStructureCaptureReady({
                     diagnosticStatus,
-                    hasPlan: diagnosticStatus === 'rendered-with-diagnostics',
+                    hasPlan: false,
+                    rejectedRecordCount: 1,
                     savedStructureCount: 1,
                 }),
                 false,
@@ -373,8 +385,18 @@ describe('isPublicGardenStructureCaptureReady', () => {
         }
         assert.equal(
             isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'rendered-with-diagnostics',
+                hasPlan: true,
+                rejectedRecordCount: 1,
+                savedStructureCount: 1,
+            }),
+            false,
+        );
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
                 diagnosticStatus: 'ready',
                 hasPlan: false,
+                rejectedRecordCount: 0,
                 savedStructureCount: 1,
             }),
             false,
