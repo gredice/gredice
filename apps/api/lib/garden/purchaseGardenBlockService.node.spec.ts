@@ -102,6 +102,7 @@ type HarnessOptions = Readonly<{
     blockName?: string;
     directoryPrice?: number;
     failAfterDebit?: boolean;
+    failCacheBust?: boolean;
     gardenAccountId?: string;
     sandbox?: boolean;
     structures?: TestState['structures'];
@@ -203,6 +204,12 @@ function makeHarness(options: HarnessOptions = {}) {
     };
 
     const dependencies: PurchaseGardenBlockDependencies<TestTransaction> = {
+        bustScheduleCache: async () => {
+            calls.push('cache-bust');
+            if (options.failCacheBust) {
+                throw new Error('Schedule cache unavailable');
+            }
+        },
         createAppearanceVariant: () => undefined,
         createGardenBlock: async (
             _gardenId,
@@ -232,7 +239,7 @@ function makeHarness(options: HarnessOptions = {}) {
             });
             calls.push('create-stack');
         },
-        createRaisedBed: async (input, receivedTransaction) => {
+        createRaisedBedInTransaction: async (input, receivedTransaction) => {
             assert.equal(receivedTransaction, transaction);
             state.raisedBeds.push({
                 blockId: input.blockId,
@@ -388,7 +395,9 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('sunflower-lock');
             const before = cloneState(state);
             try {
-                return await callback(transaction);
+                const result = await callback(transaction);
+                calls.push('transaction-committed');
+                return result;
             } catch (error) {
                 state = before;
                 throw error;
@@ -447,6 +456,8 @@ describe('purchaseGardenBlock', () => {
             'update-stack',
             'create-raised-bed',
             'debit',
+            'transaction-committed',
+            'cache-bust',
         ]);
         const state = harness.state();
         assert.equal(state.balance, 925);
@@ -486,6 +497,7 @@ describe('purchaseGardenBlock', () => {
             harness.calls.filter((call) => call === 'snapshot').length,
             1,
         );
+        assert.equal(harness.calls.includes('cache-bust'), false);
     });
 
     it('denies a foreign account before consulting the operation receipt', async () => {
@@ -499,6 +511,7 @@ describe('purchaseGardenBlock', () => {
         });
         assert.equal(harness.calls.includes('operation-receipt'), false);
         assert.equal(harness.calls.includes('snapshot'), false);
+        assert.equal(harness.calls.includes('cache-bust'), false);
     });
 
     it('allows identical purchases when each explicit command has a different operation ID', async () => {
@@ -575,6 +588,30 @@ describe('purchaseGardenBlock', () => {
         assert.equal(state.raisedBeds.length, 0);
         assert.equal(state.debits.length, 0);
         assert.equal(state.receipts.size, 0);
+        assert.equal(harness.calls.includes('transaction-committed'), false);
+        assert.equal(harness.calls.includes('cache-bust'), false);
+    });
+
+    it('keeps the committed purchase successful when post-commit cache invalidation fails', async (testContext) => {
+        testContext.mock.method(console, 'error', () => undefined);
+        const harness = makeHarness({
+            blockName: 'Raised_Bed',
+            failCacheBust: true,
+        });
+
+        const result = await harness.service(harness.command());
+
+        assert.equal(result.ok, true);
+        assert.deepEqual(harness.calls.slice(-2), [
+            'transaction-committed',
+            'cache-bust',
+        ]);
+        const state = harness.state();
+        assert.equal(state.balance, 925);
+        assert.equal(state.blocks.length, 2);
+        assert.equal(state.raisedBeds.length, 1);
+        assert.equal(state.debits.length, 1);
+        assert.equal(state.receipts.size, 1);
     });
 
     it('keeps sandbox purchases free and ignores sale and night restrictions', async () => {

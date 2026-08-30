@@ -6,7 +6,7 @@ import {
     createAccount,
     createGardenBlock,
     createGardenStack,
-    createRaisedBed,
+    createRaisedBedInTransaction,
     earnSunflowersOnce,
     type GardenPlacementTransaction,
     getGarden,
@@ -74,12 +74,14 @@ const blockData = [
 function integrationService(controls: { failAfterDebit: boolean }) {
     const dependencies: PurchaseGardenBlockDependencies<GardenPlacementTransaction> =
         {
+            bustScheduleCache: async () => {},
             createAppearanceVariant: () => undefined,
             createGardenBlock: (gardenId, blockName, variant, transaction) =>
                 createGardenBlock(gardenId, blockName, variant, transaction),
             createGardenOccupancyIndexFromStorageSnapshot,
             createGardenStack,
-            createRaisedBed,
+            createRaisedBedInTransaction: (input, transaction) =>
+                createRaisedBedInTransaction(input, transaction),
             debitSunflowers: async (accountId, amount, reason, transaction) => {
                 await spendSunflowersBatch(
                     accountId,

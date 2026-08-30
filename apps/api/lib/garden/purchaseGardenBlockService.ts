@@ -10,9 +10,10 @@ import type { GardenOccupancyIndex } from '@gredice/js/gardenOccupancy';
 import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
+    bustScheduleCache,
     createGardenBlock,
     createGardenStack,
-    createRaisedBed,
+    createRaisedBedInTransaction,
     GardenMutationOperationConflictError,
     type GardenMutationOperationExecution,
     type GardenMutationOperationStoredResponse,
@@ -66,6 +67,7 @@ type GardenPurchaseLocation = Readonly<{
 }> | null;
 
 export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
+    bustScheduleCache: () => Promise<void>;
     createGardenBlock: (
         gardenId: number,
         blockName: string,
@@ -78,7 +80,7 @@ export type PurchaseGardenBlockDependencies<Transaction> = Readonly<{
         position: Readonly<{ x: number; y: number }>,
         transaction: Transaction,
     ) => Promise<unknown>;
-    createRaisedBed: (
+    createRaisedBedInTransaction: (
         input: Readonly<{
             accountId: string;
             blockId: string;
@@ -516,7 +518,8 @@ export function createPurchaseGardenBlockService<Transaction>(
     ): Promise<PurchaseGardenBlockResult> {
         try {
             assertCommand(command);
-            return await dependencies.withSunflowerAccountTransaction(
+            const { withSunflowerAccountTransaction } = dependencies;
+            const committed = await withSunflowerAccountTransaction(
                 command.accountId,
                 (sunflowerTransaction) =>
                     dependencies.withAccountDeletionFenceTransaction(
@@ -799,7 +802,7 @@ export function createPurchaseGardenBlockService<Transaction>(
                                                     command.blockName ===
                                                     'Raised_Bed'
                                                 ) {
-                                                    await dependencies.createRaisedBed(
+                                                    await dependencies.createRaisedBedInTransaction(
                                                         {
                                                             accountId:
                                                                 command.accountId,
@@ -852,13 +855,28 @@ export function createPurchaseGardenBlockService<Transaction>(
                                         ok: true,
                                         ...decoded,
                                         replayed: execution.replayed,
-                                    };
+                                    } satisfies PurchaseGardenBlockSuccess;
                                 },
                                 accountTransaction,
                             ),
                         sunflowerTransaction,
                     ),
             );
+            if (command.blockName === 'Raised_Bed') {
+                try {
+                    await dependencies.bustScheduleCache();
+                } catch (error) {
+                    console.error(
+                        'Failed to invalidate the schedule cache after raised-bed purchase',
+                        {
+                            gardenId: command.gardenId,
+                            operationId: command.operationId,
+                            error,
+                        },
+                    );
+                }
+            }
+            return committed;
         } catch (error) {
             const failure = failureFrom(error);
             if (failure) return failure;
@@ -881,12 +899,14 @@ export function createPurchaseGardenBlockService<Transaction>(
 
 const defaultDependencies: PurchaseGardenBlockDependencies<GardenPlacementTransaction> =
     {
+        bustScheduleCache,
         createAppearanceVariant: createEntityAppearanceVariantForPlacement,
         createGardenBlock: (gardenId, blockName, variant, transaction) =>
             createGardenBlock(gardenId, blockName, variant, transaction),
         createGardenOccupancyIndexFromStorageSnapshot,
         createGardenStack,
-        createRaisedBed,
+        createRaisedBedInTransaction: (input, transaction) =>
+            createRaisedBedInTransaction(input, transaction),
         debitSunflowers: async (accountId, amount, reason, transaction) => {
             await spendSunflowersBatch(
                 accountId,
