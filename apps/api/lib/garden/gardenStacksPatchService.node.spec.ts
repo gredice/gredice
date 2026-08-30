@@ -192,6 +192,9 @@ function makeHarness(options: HarnessOptions = {}) {
     }
 
     const service = createGardenStacksPatchService({
+        bustScheduleCache: async () => {
+            calls.push('schedule-cache-bust');
+        },
         createGardenStack: async (
             receivedGardenId,
             position,
@@ -470,11 +473,12 @@ describe('garden stack patch orchestration', () => {
             recycledBlock: true,
             refundedSunflowers: 75,
         });
-        assert.deepEqual(harness.calls.slice(-4), [
+        assert.deepEqual(harness.calls.slice(-5), [
             'stack-update:0:0',
             'raised-bed-delete',
             'block-delete',
             'refund',
+            'schedule-cache-bust',
         ]);
         assert.deepEqual(harness.state().refunds, [
             {
@@ -710,6 +714,7 @@ test('real shared transaction rolls back stack, block, event, and refund after a
     const beforeBalance = await getSunflowers(accountId);
 
     const service = createGardenStacksPatchService<GardenPlacementTransaction>({
+        bustScheduleCache: async () => {},
         createGardenStack: createGardenStackRecord,
         earnSunflowersOnce: async (
             receivedAccountId,

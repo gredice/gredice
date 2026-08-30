@@ -1,6 +1,7 @@
 import {
     AccountDeletionInProgressError,
     AccountNotFoundError,
+    bustScheduleCache,
     createGardenStack,
     earnSunflowersOnce,
     type GardenPlacementTransaction,
@@ -79,6 +80,7 @@ type GardenStacksPatchRaisedBed = NonNullable<
 >[number];
 
 export type GardenStacksPatchServiceDependencies<Transaction> = Readonly<{
+    bustScheduleCache: () => Promise<void>;
     createGardenStack: (
         gardenId: number,
         position: Readonly<{ x: number; y: number }>,
@@ -322,156 +324,173 @@ export function createGardenStacksPatchService<Transaction>(
             const command = normalizeCommand(rawCommand);
             const blockData = await loadBlockData(dependencies);
 
-            return await dependencies.withSunflowerAccountTransaction(
-                command.accountId,
-                (sunflowerTransaction) =>
-                    dependencies.withAccountDeletionFenceTransaction(
-                        command.accountId,
-                        (accountTransaction) =>
-                            dependencies.withGardenPlacementTransaction(
-                                command.gardenId,
-                                async (gardenTransaction) => {
-                                    const snapshot =
-                                        await dependencies.getGardenPlacementSnapshotForUpdate(
-                                            command.gardenId,
-                                            gardenTransaction,
-                                        );
-                                    if (
-                                        !snapshot ||
-                                        snapshot.garden.accountId !==
-                                            command.accountId
-                                    ) {
-                                        fail(
-                                            'GARDEN_NOT_FOUND',
-                                            404,
-                                            'Garden not found',
-                                        );
-                                    }
+            const committed =
+                await dependencies.withSunflowerAccountTransaction(
+                    command.accountId,
+                    (sunflowerTransaction) =>
+                        dependencies.withAccountDeletionFenceTransaction(
+                            command.accountId,
+                            (accountTransaction) =>
+                                dependencies.withGardenPlacementTransaction(
+                                    command.gardenId,
+                                    async (gardenTransaction) => {
+                                        const snapshot =
+                                            await dependencies.getGardenPlacementSnapshotForUpdate(
+                                                command.gardenId,
+                                                gardenTransaction,
+                                            );
+                                        if (
+                                            !snapshot ||
+                                            snapshot.garden.accountId !==
+                                                command.accountId
+                                        ) {
+                                            fail(
+                                                'GARDEN_NOT_FOUND',
+                                                404,
+                                                'Garden not found',
+                                            );
+                                        }
 
-                                    const raisedBeds =
-                                        await dependencies.listGardenRaisedBedMetadataForUpdate(
-                                            command.gardenId,
-                                            gardenTransaction,
-                                        );
-                                    const structures =
-                                        await dependencies.listGardenStructures(
-                                            command.gardenId,
-                                            gardenTransaction,
-                                        );
-                                    const planned =
-                                        dependencies.planGardenStacksPatch({
-                                            blockData,
-                                            operations: command.operations,
-                                            snapshot: {
-                                                blocks: snapshot.blocks,
-                                                garden: {
-                                                    isSandbox:
-                                                        snapshot.garden
-                                                            .isSandbox,
-                                                },
-                                                raisedBeds,
-                                                stacks: snapshot.stacks,
-                                                structures,
-                                            },
-                                        });
-                                    if (!planned.ok) {
-                                        fail(
-                                            planned.code,
-                                            planned.status,
-                                            planned.error,
-                                        );
-                                    }
-
-                                    for (const delta of planned.plan
-                                        .stackDeltas) {
-                                        if (delta.create) {
-                                            const created =
-                                                await dependencies.createGardenStack(
-                                                    command.gardenId,
-                                                    {
-                                                        x: delta.x,
-                                                        y: delta.y,
+                                        const raisedBeds =
+                                            await dependencies.listGardenRaisedBedMetadataForUpdate(
+                                                command.gardenId,
+                                                gardenTransaction,
+                                            );
+                                        const structures =
+                                            await dependencies.listGardenStructures(
+                                                command.gardenId,
+                                                gardenTransaction,
+                                            );
+                                        const planned =
+                                            dependencies.planGardenStacksPatch({
+                                                blockData,
+                                                operations: command.operations,
+                                                snapshot: {
+                                                    blocks: snapshot.blocks,
+                                                    garden: {
+                                                        isSandbox:
+                                                            snapshot.garden
+                                                                .isSandbox,
                                                     },
+                                                    raisedBeds,
+                                                    stacks: snapshot.stacks,
+                                                    structures,
+                                                },
+                                            });
+                                        if (!planned.ok) {
+                                            fail(
+                                                planned.code,
+                                                planned.status,
+                                                planned.error,
+                                            );
+                                        }
+
+                                        for (const delta of planned.plan
+                                            .stackDeltas) {
+                                            if (delta.create) {
+                                                const created =
+                                                    await dependencies.createGardenStack(
+                                                        command.gardenId,
+                                                        {
+                                                            x: delta.x,
+                                                            y: delta.y,
+                                                        },
+                                                        gardenTransaction,
+                                                    );
+                                                if (!created) {
+                                                    fail(
+                                                        'GARDEN_STATE_CHANGED',
+                                                        409,
+                                                        'Garden stack changed while applying the patch',
+                                                    );
+                                                }
+                                            }
+                                            await dependencies.updateGardenStack(
+                                                command.gardenId,
+                                                {
+                                                    blocks: [
+                                                        ...delta.nextBlocks,
+                                                    ],
+                                                    x: delta.x,
+                                                    y: delta.y,
+                                                },
+                                                gardenTransaction,
+                                            );
+                                        }
+
+                                        const recycle = planned.plan.recycle;
+                                        if (
+                                            recycle?.raisedBedId !== undefined
+                                        ) {
+                                            const deletedRaisedBed =
+                                                await dependencies.softDeleteNewRaisedBedOnce(
+                                                    recycle.raisedBedId,
                                                     gardenTransaction,
                                                 );
-                                            if (!created) {
+                                            if (!deletedRaisedBed) {
                                                 fail(
                                                     'GARDEN_STATE_CHANGED',
                                                     409,
-                                                    'Garden stack changed while applying the patch',
+                                                    'Raised bed changed while applying the patch',
                                                 );
                                             }
                                         }
-                                        await dependencies.updateGardenStack(
-                                            command.gardenId,
-                                            {
-                                                blocks: [...delta.nextBlocks],
-                                                x: delta.x,
-                                                y: delta.y,
-                                            },
-                                            gardenTransaction,
-                                        );
-                                    }
+                                        if (recycle) {
+                                            const deletedBlock =
+                                                await dependencies.softDeleteGardenBlockOnce(
+                                                    command.gardenId,
+                                                    recycle.blockId,
+                                                    gardenTransaction,
+                                                );
+                                            if (deletedBlock !== 'deleted') {
+                                                fail(
+                                                    'GARDEN_STATE_CHANGED',
+                                                    409,
+                                                    'Garden block changed while applying the patch',
+                                                );
+                                            }
+                                            if (
+                                                !snapshot.garden.isSandbox &&
+                                                recycle.refundSunflowers > 0
+                                            ) {
+                                                await dependencies.earnSunflowersOnce(
+                                                    command.accountId,
+                                                    recycle.refundSunflowers,
+                                                    `gardenBlock:${command.gardenId.toString()}:recycle:${recycle.blockId}`,
+                                                    gardenTransaction,
+                                                );
+                                            }
+                                        }
 
-                                    const recycle = planned.plan.recycle;
-                                    if (recycle?.raisedBedId !== undefined) {
-                                        const deletedRaisedBed =
-                                            await dependencies.softDeleteNewRaisedBedOnce(
-                                                recycle.raisedBedId,
-                                                gardenTransaction,
-                                            );
-                                        if (!deletedRaisedBed) {
-                                            fail(
-                                                'GARDEN_STATE_CHANGED',
-                                                409,
-                                                'Raised bed changed while applying the patch',
-                                            );
-                                        }
-                                    }
-                                    if (recycle) {
-                                        const deletedBlock =
-                                            await dependencies.softDeleteGardenBlockOnce(
-                                                command.gardenId,
-                                                recycle.blockId,
-                                                gardenTransaction,
-                                            );
-                                        if (deletedBlock !== 'deleted') {
-                                            fail(
-                                                'GARDEN_STATE_CHANGED',
-                                                409,
-                                                'Garden block changed while applying the patch',
-                                            );
-                                        }
-                                        if (
-                                            !snapshot.garden.isSandbox &&
-                                            recycle.refundSunflowers > 0
-                                        ) {
-                                            await dependencies.earnSunflowersOnce(
-                                                command.accountId,
-                                                recycle.refundSunflowers,
-                                                `gardenBlock:${command.gardenId.toString()}:recycle:${recycle.blockId}`,
-                                                gardenTransaction,
-                                            );
-                                        }
-                                    }
-
-                                    return {
-                                        ok: true,
-                                        appliedStackDeltas:
-                                            planned.plan.stackDeltas.length,
-                                        gardenId: command.gardenId,
-                                        recycledBlock: recycle !== undefined,
-                                        refundedSunflowers: snapshot.garden
-                                            .isSandbox
-                                            ? 0
-                                            : (recycle?.refundSunflowers ?? 0),
-                                    } as const;
-                                },
-                                accountTransaction,
-                            ),
-                        sunflowerTransaction,
-                    ),
-            );
+                                        return {
+                                            bustRaisedBedCache:
+                                                recycle?.raisedBedId !==
+                                                undefined,
+                                            result: {
+                                                ok: true,
+                                                appliedStackDeltas:
+                                                    planned.plan.stackDeltas
+                                                        .length,
+                                                gardenId: command.gardenId,
+                                                recycledBlock:
+                                                    recycle !== undefined,
+                                                refundedSunflowers: snapshot
+                                                    .garden.isSandbox
+                                                    ? 0
+                                                    : (recycle?.refundSunflowers ??
+                                                      0),
+                                            } as const,
+                                        };
+                                    },
+                                    accountTransaction,
+                                ),
+                            sunflowerTransaction,
+                        ),
+                );
+            if (committed.bustRaisedBedCache) {
+                await dependencies.bustScheduleCache();
+            }
+            return committed.result;
         } catch (error) {
             const failure = failureFrom(error);
             if (failure) return failure;
@@ -482,6 +501,7 @@ export function createGardenStacksPatchService<Transaction>(
 
 const defaultDependencies: GardenStacksPatchServiceDependencies<GardenPlacementTransaction> =
     {
+        bustScheduleCache,
         createGardenStack,
         earnSunflowersOnce,
         getBlockData,
