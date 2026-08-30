@@ -1,5 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
 import {
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugOperationItems,
@@ -304,7 +305,7 @@ export function useGardenOperations({
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
     const isDeterministicEmptyMock =
-        isMock && mockGardenProfile === 'high-target';
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
 
     return useInfiniteQuery({
         queryKey: gardenOperationsQueryKey({

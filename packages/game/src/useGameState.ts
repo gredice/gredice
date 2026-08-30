@@ -63,6 +63,7 @@ export type GardenAvatarMoveInput = {
 export type MockGardenProfile =
     | 'default'
     | 'dense'
+    | 'fauna-heavy'
     | 'high-target'
     | 'operation-rewards'
     | 'plant-heavy';

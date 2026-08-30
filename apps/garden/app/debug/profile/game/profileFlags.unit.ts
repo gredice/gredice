@@ -75,6 +75,14 @@ describe('resolveGameProfileFlags', () => {
             enableIntegratedWeatherSurfacesFlag: true,
         });
     });
+
+    it('can disable the Debug HUD feature flag for fauna profiles', () => {
+        assert.deepEqual(resolveGameProfileFlags(undefined, undefined, false), {
+            enableDebugHudFlag: false,
+            enableGardenAvatarFlag: false,
+            enableIntegratedWeatherSurfacesFlag: true,
+        });
+    });
 });
 
 describe('resolveGameProfileStaticSceneCache', () => {

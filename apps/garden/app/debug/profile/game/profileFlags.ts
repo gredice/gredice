@@ -42,11 +42,12 @@ export function resolveGameProfileWeatherSurface(
 export function resolveGameProfileFlags(
     weatherSurface: string | undefined,
     gardenAvatar?: string,
+    debugTelemetry = true,
 ) {
     const weatherSurfaceMode = resolveGameProfileWeatherSurface(weatherSurface);
 
     return {
-        enableDebugHudFlag: true,
+        enableDebugHudFlag: debugTelemetry,
         enableGardenAvatarFlag: resolveGameProfileGardenAvatar(gardenAvatar),
         enableIntegratedWeatherSurfacesFlag:
             weatherSurfaceMode === 'integrated',

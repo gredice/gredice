@@ -1,5 +1,6 @@
 import { directoriesClient } from '@gredice/client';
 import { useQuery } from '@tanstack/react-query';
+import { isDeterministicEmptyMockGardenProfile } from '../mockGardenProfilePolicy';
 import {
     highTargetOperationVisualOperationDefinitions,
     isOperationVisualRewardDebugProfile,
@@ -47,7 +48,8 @@ export function useOperations() {
     );
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
-    const isHighTargetMock = isMock && mockGardenProfile === 'high-target';
+    const isDeterministicEmptyMock =
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
     const highTargetOperationVisuals = isHighTargetOperationVisualsProfile(
         isMock,
         mockGardenProfile,
@@ -55,7 +57,7 @@ export function useOperations() {
 
     return useQuery({
         queryKey:
-            isOperationRewardDebug || isHighTargetMock
+            isOperationRewardDebug || isDeterministicEmptyMock
                 ? [
                       'operations',
                       mockGardenProfile,
@@ -69,7 +71,7 @@ export function useOperations() {
                 ? operationVisualRewardDebugOperationDefinitions
                 : highTargetOperationVisuals
                   ? highTargetOperationVisualOperationDefinitions
-                  : isHighTargetMock
+                  : isDeterministicEmptyMock
                     ? []
                     : getOperations(),
         staleTime: 1000 * 60 * 60, // 1 hour
@@ -84,7 +86,8 @@ export function useOperationDefinitions() {
     );
     const isOperationRewardDebug =
         isMock && isOperationVisualRewardDebugProfile(mockGardenProfile);
-    const isHighTargetMock = isMock && mockGardenProfile === 'high-target';
+    const isDeterministicEmptyMock =
+        isMock && isDeterministicEmptyMockGardenProfile(mockGardenProfile);
     const highTargetOperationVisuals = isHighTargetOperationVisualsProfile(
         isMock,
         mockGardenProfile,
@@ -92,7 +95,7 @@ export function useOperationDefinitions() {
 
     return useQuery({
         queryKey: operationDefinitionsQueryKey.byProfile(
-            isOperationRewardDebug || isHighTargetMock
+            isOperationRewardDebug || isDeterministicEmptyMock
                 ? `${mockGardenProfile}:${
                       highTargetOperationVisuals ? 'operation-visuals' : 'empty'
                   }`
@@ -103,7 +106,7 @@ export function useOperationDefinitions() {
                 ? operationVisualRewardDebugOperationDefinitions
                 : highTargetOperationVisuals
                   ? highTargetOperationVisualOperationDefinitions
-                  : isHighTargetMock
+                  : isDeterministicEmptyMock
                     ? []
                     : getOperations({ includeInternal: true }),
         staleTime: 1000 * 60 * 60, // 1 hour

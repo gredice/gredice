@@ -1,4 +1,5 @@
 import {
+    faunaHeavyMockGardenProfile,
     type GameSceneProps,
     isOperationVisualRewardDebugProfile,
     operationVisualRewardDebugProfile,
@@ -108,6 +109,7 @@ function resolveMockGardenProfile(
 ): GameProfileMockGardenProfile {
     if (
         value === 'dense' ||
+        value === faunaHeavyMockGardenProfile ||
         value === 'high-target' ||
         value === operationVisualRewardDebugProfile ||
         value === 'plant-heavy'
@@ -303,6 +305,7 @@ export default async function GameProfilePage({
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
+        mockGardenProfile !== 'fauna-heavy',
     );
     const staticSceneCacheMode = resolveGameProfileStaticSceneCache(
         firstValue(params.staticSceneCache),
@@ -378,6 +381,7 @@ export default async function GameProfilePage({
                 enableGameProfileController={
                     adaptiveHigh ||
                     cameraProfile ||
+                    mockGardenProfile === 'fauna-heavy' ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
                     placementProfile ||
