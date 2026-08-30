@@ -18,6 +18,7 @@ export {
     gardenStructureKitMetadataRegistry,
     getGardenStructureKitMetadata,
 } from './debugStructureKit';
+export * from './editor';
 export { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
 export type {
     GardenStructurePlanCacheDisposalReason,
