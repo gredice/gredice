@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
     buildAdaptiveHighComparisons,
+    buildCrossTierMedians,
     buildHighTargetMedians,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -13,6 +14,7 @@ import {
     buildWeatherSurfaceComparisons,
     drainProfileSample,
     evaluateBudget,
+    evaluateCrossTierAcceptance,
     evaluateHighTargetAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
@@ -174,6 +176,94 @@ test('high target scenario set covers representative High DPR 2 phases', () => {
     assert.equal(scenarios[2].interaction, 'hover-scan');
     assert.equal(scenarios[3].placementProfile.action, 'run');
     assert.equal(getScenarioRequest(scenarios[3].path).placement, '1');
+});
+
+test('cross-tier scenario set replays one High-target garden across every tier and phase', () => {
+    const scenarios = resolveScenarios('cross-tier');
+
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-cross-tier-low-steady-desktop',
+            'game-cross-tier-low-camera-motion-desktop',
+            'game-cross-tier-medium-steady-desktop',
+            'game-cross-tier-medium-camera-motion-desktop',
+            'game-cross-tier-high-steady-desktop',
+            'game-cross-tier-high-camera-motion-desktop',
+            'game-cross-tier-auto-standard-steady-desktop',
+            'game-cross-tier-auto-standard-camera-motion-desktop',
+            'game-cross-tier-auto-constrained-steady-desktop',
+            'game-cross-tier-auto-constrained-camera-motion-desktop',
+        ],
+    );
+    const expectedProfiles = [
+        ['low', 'low', 1, 0, false, 0, null],
+        ['medium', 'medium', 1.5, 0.5, true, 2_048, null],
+        ['high', 'high', 2, 1, true, 4_096, null],
+        ['auto', 'medium', 1.5, 0.5, true, 2_048, 'standard'],
+        ['auto', 'auto-constrained', 1, 0.25, true, 1_024, 'constrained'],
+    ];
+
+    for (const [profileIndex, expected] of expectedProfiles.entries()) {
+        const [quality, tier, dprCap, density, shadows, shadowMapSize, device] =
+            expected;
+        const profileScenarios = scenarios.slice(
+            profileIndex * 2,
+            profileIndex * 2 + 2,
+        );
+
+        assert.deepEqual(
+            profileScenarios.map((scenario) => scenario.motion),
+            [undefined, 'bounded-zoom-rotate'],
+        );
+        assert.deepEqual(
+            profileScenarios.map(
+                (scenario) => getScenarioRequest(scenario.path).controls,
+            ),
+            ['0', '1'],
+        );
+        assert.deepEqual(
+            profileScenarios.map(
+                (scenario) =>
+                    new URL(
+                        scenario.path,
+                        'http://profile.local',
+                    ).searchParams.get('cameraProfile') ?? '0',
+            ),
+            ['0', '1'],
+        );
+        for (const scenario of profileScenarios) {
+            const request = getScenarioRequest(scenario.path);
+            assert.equal(scenario.autoQualityDeviceClass ?? null, device);
+            assert.equal(scenario.budget, 'gameHighTarget');
+            assert.equal(scenario.crossTierProfile, true);
+            assert.equal(scenario.dpr, 2);
+            assert.equal(scenario.expectedDprCap, dprCap);
+            assert.equal(scenario.expectedGroundDecorationDensity, density);
+            assert.equal(scenario.expectedQualityTier, tier);
+            assert.equal(scenario.expectedShadowMapSize, shadowMapSize);
+            assert.equal(scenario.expectedShadows, shadows);
+            assert.equal(scenario.isMobile, false);
+            assert.equal(scenario.repeat, 3);
+            assert.deepEqual(scenario.viewport, { width: 1280, height: 720 });
+            assert.equal(request.debugHud, '0');
+            assert.equal(request.details, '1');
+            assert.equal(request.gardenProfile, 'high-target');
+            assert.equal(request.hud, '0');
+            assert.equal(request.mode, 'details');
+            assert.equal(request.quality, quality);
+            assert.equal(request.staticSceneCache, 'legacy');
+        }
+    }
+
+    assert.deepEqual(scenarios[6].navigatorMetrics, {
+        deviceMemory: 8,
+        hardwareConcurrency: 8,
+    });
+    assert.deepEqual(scenarios[8].navigatorMetrics, {
+        deviceMemory: 4,
+        hardwareConcurrency: 4,
+    });
 });
 
 test('operation-visual High scenario is isolated behind its own opt-in set', () => {
@@ -1339,6 +1429,213 @@ test('high target acceptance proves the intended workload rendered', () => {
             (check) => check.name === 'highTargetConsoleErrors',
         )?.actual,
         0,
+    );
+});
+
+test('cross-tier acceptance verifies resolved quality and capped backing buffer', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            crossTierProfile: true,
+            expectedDprCap: 1,
+            expectedGroundDecorationDensity: 0,
+            expectedQualityTier: 'low',
+            expectedShadowMapSize: 0,
+            expectedShadows: false,
+            dpr: 2,
+            gardenProfile: 'high-target',
+            quality: 'low',
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1280 },
+        },
+        runtime: {
+            dprCap: 1,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationDensity: 0,
+            qualityTier: 'low',
+            shadowMapSize: 0,
+            shadowsEnabled: false,
+            staticOpaqueSceneCacheEnabled: false,
+            weatherDisabled: false,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 720,
+                width: 1280,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            generatedPlantVisibleFieldCountMin: 54,
+            generatedPlantVisibleInstanceCountMin: 537,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+
+    const result = evaluateCrossTierAcceptance(input);
+    assert.equal(result.pass, true);
+    assert.equal(
+        result.checks.every((check) => check.pass),
+        true,
+    );
+
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            runtime: { ...input.runtime, qualityTier: 'medium' },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                canvas: { ...input.sample.canvas, width: 2_560 },
+            },
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            sample: {
+                ...input.sample,
+                generatedPlantVisibleFieldCountMin: 0,
+                generatedPlantVisibleInstanceCountMin: 0,
+            },
+        }).pass,
+        false,
+    );
+
+    const cameraMotionInput = {
+        ...input,
+        requested: {
+            ...input.requested,
+            motion: 'bounded-zoom-rotate',
+        },
+        sample: {
+            ...input.sample,
+            gameCameraMotionObserved: true,
+            gameCameraSnapshotVersionDelta: 20,
+        },
+    };
+    assert.equal(evaluateCrossTierAcceptance(cameraMotionInput).pass, true);
+    const missingCameraMotion = evaluateCrossTierAcceptance({
+        ...cameraMotionInput,
+        sample: {
+            ...cameraMotionInput.sample,
+            gameCameraMotionObserved: false,
+            gameCameraSnapshotVersionDelta: 0,
+        },
+    });
+    assert.equal(missingCameraMotion.pass, false);
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraMotionObserved',
+        )?.pass,
+        false,
+    );
+    assert.equal(
+        missingCameraMotion.checks.find(
+            (check) => check.name === 'crossTierCameraSnapshotVersionDelta',
+        )?.pass,
+        false,
+    );
+});
+
+test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            autoQualityDeviceClass: 'standard',
+            autoQualityMetrics: {
+                coarsePointer: false,
+                coreCount: 8,
+                dpr: 2,
+                memoryGb: 8,
+                narrowViewport: false,
+            },
+            crossTierProfile: true,
+            dpr: 2,
+            expectedAutoQualityMetrics: {
+                coarsePointer: false,
+                coreCount: 8,
+                dpr: 2,
+                memoryGb: 8,
+                narrowViewport: false,
+            },
+            expectedDprCap: 1.5,
+            expectedGroundDecorationDensity: 0.5,
+            expectedQualityTier: 'medium',
+            expectedShadowMapSize: 2_048,
+            expectedShadows: true,
+            gardenProfile: 'high-target',
+            quality: 'auto',
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1280 },
+        },
+        runtime: {
+            dprCap: 1.5,
+            generatedPlantExpectedInstanceCount: 537,
+            generatedPlantFieldCount: 54,
+            generatedPlantInstanceCount: 537,
+            generatedPlantVisibleFieldCount: 54,
+            generatedPlantVisibleInstanceCount: 537,
+            groundDecorationDensity: 0.5,
+            qualityTier: 'medium',
+            shadowMapSize: 2_048,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            canvas: {
+                clientHeight: 720,
+                clientWidth: 1280,
+                height: 1_080,
+                width: 1_920,
+            },
+            drawCalls: 100,
+            elapsedMs: 5_000,
+            generatedPlantVisibleFieldCountMin: 54,
+            generatedPlantVisibleInstanceCountMin: 537,
+            renderedFps: 12,
+            renderedFrames: 60,
+            reportedDpr: 2,
+            submittedTriangles: 1_000_000,
+        },
+    };
+    const result = evaluateCrossTierAcceptance(input);
+
+    assert.equal(result.pass, true);
+    assert.equal(
+        result.checks.every((check) => check.pass),
+        true,
+    );
+    assert.equal(
+        evaluateCrossTierAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
+                autoQualityMetrics: {
+                    ...input.requested.autoQualityMetrics,
+                    coreCount: 12,
+                },
+            },
+        }).pass,
+        false,
     );
 });
 
@@ -3561,6 +3858,159 @@ test('high target aggregate fails when the median exceeds a performance budget',
     assert.equal(aggregate.medianSample.p95FrameMs, 40);
     assert.equal(aggregate.performanceBudget.pass, false);
     assert.equal(aggregate.pass, false);
+});
+
+test('cross-tier medians retain tier identity and render in a separate report section', () => {
+    const crossTierRuns = [10, 20, 30].map((value, index) => {
+        const run = highTargetRun(value, index);
+        const baseName = 'game-cross-tier-low-steady-desktop';
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: {
+                ...run.requested,
+                crossTierProfile: true,
+                quality: 'low',
+            },
+            runtime: { qualityTier: 'low' },
+            sample: {
+                ...run.sample,
+                generatedPlantVisibleFieldCountMin: 54,
+                generatedPlantVisibleInstanceCountMin: 537,
+            },
+        };
+    });
+    const regularRuns = [10, 20, 30].map((value, index) => {
+        const run = highTargetRun(value, index);
+        const baseName = 'game-high-target-clear-idle-desktop';
+        return {
+            ...run,
+            baseName,
+            name: `${baseName}-run-${index + 1}`,
+            requested: { ...run.requested, quality: 'high' },
+            runtime: { qualityTier: 'high' },
+        };
+    });
+    const highTargetMedians = buildHighTargetMedians([
+        ...crossTierRuns,
+        ...regularRuns,
+    ]);
+    const crossTierMedians = buildCrossTierMedians(highTargetMedians);
+    const crossTier = crossTierMedians['game-cross-tier-low-steady-desktop'];
+
+    assert.deepEqual(Object.keys(crossTierMedians), [
+        'game-cross-tier-low-steady-desktop',
+    ]);
+    assert.equal(crossTier.crossTierProfile, true);
+    assert.equal(crossTier.requestedQuality, 'low');
+    assert.equal(crossTier.resolvedQualityTier, 'low');
+    assert.equal(crossTier.generatedPlantVisibleFieldCountMin.min, 54);
+    assert.equal(crossTier.generatedPlantVisibleInstanceCountMin.min, 537);
+
+    const markdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians,
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians,
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'cross-tier',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [],
+        schemaVersion: 2,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 0 },
+        weatherSurfaceComparisons: {},
+    });
+    const section = (heading) => {
+        const start = markdown.indexOf(`## ${heading}`);
+        const end = markdown.indexOf('\n## ', start + 3);
+        return markdown.slice(start, end === -1 ? undefined : end);
+    };
+    const highTargetSection = section('High-target repeated-run summary');
+    const crossTierSection = section('Cross-tier repeated-run summary');
+
+    assert.match(highTargetSection, /game-high-target-clear-idle-desktop/);
+    assert.doesNotMatch(
+        highTargetSection,
+        /game-cross-tier-low-steady-desktop/,
+    );
+    assert.match(crossTierSection, /Requested → resolved/);
+    assert.match(
+        crossTierSection,
+        /game-cross-tier-low-steady-desktop.*low → low.*54\/537/,
+    );
+    assert.doesNotMatch(
+        crossTierSection,
+        /game-high-target-clear-idle-desktop/,
+    );
+
+    crossTier.acceptancePass = false;
+    crossTier.failedAcceptanceRuns = [
+        'game-cross-tier-low-steady-desktop-run-2',
+    ];
+    crossTier.performanceBudget = {
+        pass: false,
+        checks: [
+            {
+                actual: 25,
+                limit: 20,
+                name: 'p95 frame time',
+                pass: false,
+            },
+        ],
+    };
+    const failureMarkdown = buildMarkdown({
+        adaptiveHighComparisons: {},
+        baseUrl: 'http://profile.local',
+        crossTierMedians,
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians,
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'cross-tier',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [],
+        schemaVersion: 3,
+        sourceCommit: null,
+        staticSceneCacheComparisons: {},
+        summary: { failedScenarios: 1 },
+        weatherSurfaceComparisons: {},
+    });
+    const failureSectionStart = failureMarkdown.indexOf(
+        '## High-target Aggregate Failures',
+    );
+    const failureSectionEnd = failureMarkdown.indexOf(
+        '\n## ',
+        failureSectionStart + 3,
+    );
+    const failureSection = failureMarkdown.slice(
+        failureSectionStart,
+        failureSectionEnd,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop: acceptance failed for game-cross-tier-low-steady-desktop-run-2/,
+    );
+    assert.match(
+        failureSection,
+        /game-cross-tier-low-steady-desktop median: p95 frame time 25 > 20/,
+    );
 });
 
 test('adaptive High comparison reports paired pass rates and frame/GPU deltas', () => {

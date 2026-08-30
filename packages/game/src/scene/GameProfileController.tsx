@@ -384,12 +384,15 @@ export function GameProfileController() {
             return;
         }
 
-        recordGeneratedPlantProfileCamera({
-            zoom: gameCamera.getSnapshot().zoom,
-        });
-        return gameCamera.subscribe((snapshot) => {
+        const recordCameraSnapshot = (
+            snapshot: ReturnType<typeof gameCamera.getSnapshot>,
+        ) => {
             recordGeneratedPlantProfileCamera({ zoom: snapshot.zoom });
-        });
+            updateGameProfileMetadata({ gameCameraSnapshot: snapshot });
+        };
+
+        recordCameraSnapshot(gameCamera.getSnapshot());
+        return gameCamera.subscribe(recordCameraSnapshot);
     }, [gameCamera]);
 
     useEffect(() => {

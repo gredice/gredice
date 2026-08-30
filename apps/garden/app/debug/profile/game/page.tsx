@@ -282,6 +282,7 @@ export default async function GameProfilePage({
     const showHud = firstValue(params.hud) === '1';
     const showDebugHud = firstValue(params.debugHud) === '1';
     const enableControls = firstValue(params.controls) === '1';
+    const cameraProfile = firstValue(params.cameraProfile) === '1';
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -376,6 +377,7 @@ export default async function GameProfilePage({
                 initialQualitySetting={quality}
                 enableGameProfileController={
                     adaptiveHigh ||
+                    cameraProfile ||
                     closeupRaisedBedId !== null ||
                     outlineProfile ||
                     placementProfile ||
