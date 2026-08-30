@@ -2,8 +2,8 @@
 
 Date: 2026-08-30
 
-Status: In progress behind a default-off presentation flag; the server mutation
-gate primitive is ready for future structure routes
+Status: In progress behind independent default-off presentation, server
+mutation, and normal-garden commercial gates
 
 ## Outcome
 
@@ -1021,13 +1021,18 @@ desktop keyboard, and with reduced motion, including failure/conflict recovery.
 - Roll out behind a managed feature flag, first in the DB-backed sandbox and
   then to an internal cohort using sandbox gardens only. Keep the Milestone 0
   fixture-only debug spike separate from this persistence evidence.
-- Use two independent default-off gates: the managed Garden flag controls
-  discovery/editor entry and client mutation calls, while
-  `GREDICE_GARDEN_BUILDING_SYSTEM_ENABLED` authorizes server activation and
-  mutations. Neither gate may hide or stop decoding, read-only rendering,
-  public/2D summaries, or semantic collision for already-saved structures.
-  Fixture-only debug routes may opt in explicitly only while they have no
-  production persistence or currency path.
+- Use three independent default-off gates: the managed Garden flag controls
+  discovery/editor entry and client mutation calls;
+  `GREDICE_GARDEN_BUILDING_SYSTEM_ENABLED` authorizes server mutations; and
+  `GREDICE_GARDEN_BUILDING_COMMERCIAL_ENABLED` additionally authorizes normal-
+  garden creation, footprint resizing, and demolition with Sunflower effects.
+  The server gate may be enabled for sandbox proving while the commercial gate
+  remains off. Footprint-neutral replace and placement edits remain available
+  when commerce is paused, and exact operation retries may replay a previously
+  committed canonical result after either gate changes. No gate may hide or
+  stop decoding, read-only rendering, public/2D summaries, or semantic
+  collision for already-saved structures. Fixture-only debug routes may opt in
+  explicitly only while they have no production persistence or currency path.
 - Review completion funnel, error/conflict rates, payload sizes, compile/cache
   behavior, and real-device performance.
 
