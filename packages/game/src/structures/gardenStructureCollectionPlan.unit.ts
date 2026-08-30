@@ -197,6 +197,9 @@ describe('garden structure collection plans', () => {
 
         assert.equal(result.rejectedRecords.length, 0);
         assert.ok(openDoorBatch);
+        assert.deepEqual(openDoorBatch.instanceIds, [
+            'edge:portal-only-fallback:only-open-portal',
+        ]);
         assert.equal(
             batchSnapshot(result.plan).some(({ instanceIds }) =>
                 instanceIds.includes(

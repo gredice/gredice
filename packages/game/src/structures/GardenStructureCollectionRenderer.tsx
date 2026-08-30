@@ -17,6 +17,7 @@ import {
     GardenStructureKitV1AssetBoundary,
     GardenStructureKitV1LoadedInstances,
     type GardenStructureKitV1RuntimeBatch,
+    isGardenStructureKitV1SemanticFallbackBatch,
 } from './GardenStructureKitV1AssetRenderer';
 import {
     type GardenStructureCollectionBatchDescription,
@@ -318,6 +319,10 @@ export function GardenStructureCollectionRenderer({
         () => new Map(batches.map((batch) => [batch.id, batch])),
         [batches],
     );
+    const semanticFallbackBatches = useMemo(
+        () => batches.filter(isGardenStructureKitV1SemanticFallbackBatch),
+        [batches],
+    );
     const getVisibleIndices = useCallback(
         (runtimeBatch: GardenStructureKitV1RuntimeBatch) => {
             const batch = batchById.get(runtimeBatch.id);
@@ -347,7 +352,9 @@ export function GardenStructureCollectionRenderer({
             const unresolvedIds = new Set(batchIds);
             return (
                 <GardenStructureCollectionFallbackRenderer
-                    batches={batches.filter(({ id }) => unresolvedIds.has(id))}
+                    batches={semanticFallbackBatches.filter(({ id }) =>
+                        unresolvedIds.has(id),
+                    )}
                     castShadows={castShadows}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
@@ -356,16 +363,16 @@ export function GardenStructureCollectionRenderer({
             );
         },
         [
-            batches,
             castShadows,
             effectiveVisibleIds,
             onSelect,
             selectedInstanceId,
+            semanticFallbackBatches,
         ],
     );
     const fallback = (
         <GardenStructureCollectionFallbackRenderer
-            batches={batches}
+            batches={semanticFallbackBatches}
             castShadows={castShadows}
             onSelect={onSelect}
             selectedInstanceId={selectedInstanceId}

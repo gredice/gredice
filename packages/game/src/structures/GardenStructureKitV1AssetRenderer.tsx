@@ -31,6 +31,19 @@ export type GardenStructureKitV1RuntimeBatch = Readonly<{
     transformStride: 3 | 4;
 }>;
 
+export function isGardenStructureKitV1SemanticFallbackBatch(
+    batch: Pick<
+        GardenStructureKitV1RuntimeBatch,
+        'geometryId' | 'geometryKind'
+    >,
+) {
+    return !(
+        batch.geometryKind === 'edge-segment' &&
+        gardenStructureKitV1Metadata.edgeParts[batch.geometryId]?.passage ===
+            'open-portal'
+    );
+}
+
 type GardenStructureKitV1AssetBoundaryProps = Readonly<{
     children: ReactNode;
     fallback: ReactNode;

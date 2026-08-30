@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { getGardenStructureKitV1AssetInstanceHeight } from './GardenStructureKitV1AssetRenderer';
+import {
+    getGardenStructureKitV1AssetInstanceHeight,
+    isGardenStructureKitV1SemanticFallbackBatch,
+} from './GardenStructureKitV1AssetRenderer';
 import { gardenStructureKitV1Metadata } from './gardenStructureKitV1Manifest';
 
 describe('GardenStructureKitV1 asset instance height', () => {
@@ -27,5 +30,22 @@ describe('GardenStructureKitV1 asset instance height', () => {
                 0.3,
             );
         }
+    });
+
+    test('never seals an open portal with a box fallback', () => {
+        assert.equal(
+            isGardenStructureKitV1SemanticFallbackBatch({
+                geometryId: 'door.timber-wide-open',
+                geometryKind: 'edge-segment',
+            }),
+            false,
+        );
+        assert.equal(
+            isGardenStructureKitV1SemanticFallbackBatch({
+                geometryId: 'wall.timber',
+                geometryKind: 'edge-segment',
+            }),
+            true,
+        );
     });
 });

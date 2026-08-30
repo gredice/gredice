@@ -22,6 +22,7 @@ import {
     GardenStructureKitV1AssetBoundary,
     GardenStructureKitV1LoadedInstances,
     type GardenStructureKitV1RuntimeBatch,
+    isGardenStructureKitV1SemanticFallbackBatch,
 } from './GardenStructureKitV1AssetRenderer';
 import { getGardenStructureVerticalSliceBatches } from './gardenStructureVerticalSliceBatches';
 import type {
@@ -346,6 +347,10 @@ export function GardenStructureVerticalSlice({
         () => new Map(batches.map((batch) => [batch.id, batch])),
         [batches],
     );
+    const semanticFallbackBatches = useMemo(
+        () => batches.filter(isGardenStructureKitV1SemanticFallbackBatch),
+        [batches],
+    );
     const selectInstance = useCallback(
         (
             runtimeBatch: GardenStructureKitV1RuntimeBatch,
@@ -366,19 +371,27 @@ export function GardenStructureVerticalSlice({
             return (
                 <GardenStructureVerticalSliceFallbackRenderer
                     baseHeight={plan.baseHeight}
-                    batches={batches.filter(({ id }) => unresolvedIds.has(id))}
+                    batches={semanticFallbackBatches.filter(({ id }) =>
+                        unresolvedIds.has(id),
+                    )}
                     geometry={geometry}
                     onSelect={session ? selectPart : undefined}
                     selectedPartId={session?.selectedPartId ?? null}
                 />
             );
         },
-        [batches, geometry, plan.baseHeight, selectPart, session],
+        [
+            geometry,
+            plan.baseHeight,
+            selectPart,
+            semanticFallbackBatches,
+            session,
+        ],
     );
     const fallback = (
         <GardenStructureVerticalSliceFallbackRenderer
             baseHeight={plan.baseHeight}
-            batches={batches}
+            batches={semanticFallbackBatches}
             geometry={geometry}
             onSelect={session ? selectPart : undefined}
             selectedPartId={session?.selectedPartId ?? null}
