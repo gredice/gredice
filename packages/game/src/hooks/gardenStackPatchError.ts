@@ -12,7 +12,7 @@ export async function getGardenStackPatchError(response: Response) {
             'error' in parsedResponse &&
             typeof parsedResponse.error === 'string'
         ) {
-            return parsedResponse.error;
+            return parsedResponse.error.slice(0, 512);
         }
     } catch {
         // Preserve a bounded plain-text server response below.

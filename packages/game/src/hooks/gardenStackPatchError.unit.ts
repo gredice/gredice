@@ -19,3 +19,13 @@ test('bounds an unstructured garden stack patch error', async () => {
 
     assert.equal(message.length, 512);
 });
+
+test('bounds a structured garden stack patch error', async () => {
+    const message = await getGardenStackPatchError(
+        new Response(JSON.stringify({ error: 'x'.repeat(600) }), {
+            status: 500,
+        }),
+    );
+
+    assert.equal(message.length, 512);
+});
