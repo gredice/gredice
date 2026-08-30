@@ -45,7 +45,6 @@ import {
     shoppingCarts,
     transactions,
 } from '../src/schema';
-import { ensureGardenStructureTestTables } from './helpers/gardenStructureTestTables';
 import {
     createTestBlock,
     createTestRaisedBed,
@@ -84,7 +83,6 @@ test('createSandboxGarden falls back to a default name', async () => {
 
 test('deleteSandboxGardenCompletely removes sandbox garden dependencies across retries', async () => {
     createTestDb();
-    await ensureGardenStructureTestTables();
     await ensureFarmId();
     const accountId = await createAccount();
     const gardenId = await createSandboxGarden({ accountId });

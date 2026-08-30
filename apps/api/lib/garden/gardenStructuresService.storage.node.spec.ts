@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import test, { before } from 'node:test';
+import test from 'node:test';
 import type { GardenStructureDocument } from '@gredice/js/gardenStructures';
 import {
     createAccount,
@@ -22,7 +22,6 @@ import {
     withGardenStructureOperation,
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
-import { ensureGardenStructureTestTables } from '../../../../packages/storage/tests/helpers/gardenStructureTestTables';
 import {
     createTestGarden,
     ensureFarmId,
@@ -36,11 +35,6 @@ import {
 
 const storageIntegrationEnabled =
     process.env.TEST_ENV === '1' && Boolean(process.env.POSTGRES_URL);
-
-before(async () => {
-    if (!storageIntegrationEnabled) return;
-    await ensureGardenStructureTestTables();
-});
 
 function twoCellDocument(): GardenStructureDocument {
     return {

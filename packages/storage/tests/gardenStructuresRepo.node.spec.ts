@@ -36,13 +36,11 @@ import {
     gardenStructures,
 } from '../src/schema';
 import { storage } from '../src/storage';
-import { ensureGardenStructureTestTables } from './helpers/gardenStructureTestTables';
 import { createTestGarden, ensureFarmId } from './helpers/testHelpers';
 import { createTestDb } from './testDb';
 
 before(async () => {
     createTestDb();
-    await ensureGardenStructureTestTables();
 });
 
 async function createStructureGarden() {
