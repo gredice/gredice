@@ -375,10 +375,11 @@ export class GardenStructureSceneCache {
                 structure.runtimeSafety.issues.map(({ code }) => code),
             ),
         ];
+        const uniqueIssueCodeCount = new Set(issueCodes).size;
         const sampledIssueCodes = boundedIssueCodes(issueCodes);
         const diagnostics = Object.freeze({
             issueSampleTruncated:
-                issueCodes.length > sampledIssueCodes.length ||
+                uniqueIssueCodeCount > sampledIssueCodes.length ||
                 buildResult.plan.structures.some(
                     (structure) => structure.runtimeSafety.issueSampleTruncated,
                 ),

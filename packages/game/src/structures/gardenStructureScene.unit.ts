@@ -154,7 +154,7 @@ describe('GardenStructureSceneCache', () => {
         assert.equal(cache.snapshot(), null);
     });
 
-    it('omits invalid records and exposes only bounded diagnostic codes', () => {
+    it('deduplicates diagnostic codes without falsely reporting truncation', () => {
         const cache = new GardenStructureSceneCache();
         const invalidRecords = Array.from({ length: 12 }, (_, index) => ({
             ...savedStructure({ id: `invalid-${index.toString()}` }),
@@ -172,7 +172,7 @@ describe('GardenStructureSceneCache', () => {
         assert.deepEqual(snapshot.diagnostics.sampledIssueCodes, [
             'invalid-revision',
         ]);
-        assert.equal(snapshot.diagnostics.issueSampleTruncated, true);
+        assert.equal(snapshot.diagnostics.issueSampleTruncated, false);
     });
 
     it('builds one optional coarse collision world from the rendered collection', () => {
