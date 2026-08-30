@@ -13,12 +13,14 @@ export type GardenStructureRecoveryAvailability =
 
 export function canCommitGardenStructurePlacement({
     fixture,
+    occupancyValid,
     planAvailable,
 }: {
     fixture: boolean;
+    occupancyValid: boolean;
     planAvailable: boolean;
 }) {
-    return fixture || planAvailable;
+    return fixture || (planAvailable && occupancyValid);
 }
 
 export function getGardenStructureSaveStatusLabel({

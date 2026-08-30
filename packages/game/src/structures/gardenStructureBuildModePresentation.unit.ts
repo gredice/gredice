@@ -39,6 +39,7 @@ describe('garden structure build-mode presentation', () => {
         assert.equal(
             canCommitGardenStructurePlacement({
                 fixture: false,
+                occupancyValid: true,
                 planAvailable: false,
             }),
             false,
@@ -46,6 +47,7 @@ describe('garden structure build-mode presentation', () => {
         assert.equal(
             canCommitGardenStructurePlacement({
                 fixture: false,
+                occupancyValid: true,
                 planAvailable: true,
             }),
             true,
@@ -53,9 +55,18 @@ describe('garden structure build-mode presentation', () => {
         assert.equal(
             canCommitGardenStructurePlacement({
                 fixture: true,
+                occupancyValid: false,
                 planAvailable: false,
             }),
             true,
+        );
+        assert.equal(
+            canCommitGardenStructurePlacement({
+                fixture: false,
+                occupancyValid: false,
+                planAvailable: true,
+            }),
+            false,
         );
     });
 

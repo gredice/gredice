@@ -12,6 +12,7 @@ import {
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useBlockData } from '../hooks/useBlockData';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
@@ -71,6 +72,10 @@ import {
     getGardenStructurePricingPresentation,
     getGardenStructureSaveStatusLabel,
 } from './gardenStructureBuildModePresentation';
+import {
+    createGardenStructureEditorOccupancyIndex,
+    validateGardenStructureEditorPlacementOccupancy,
+} from './gardenStructurePlacementOccupancy';
 import { getGardenStructureSelectablePartIds } from './gardenStructureSelectableParts';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 import { useGardenStructureBuildModeHistoryGuard } from './useGardenStructureBuildModeHistoryGuard';
@@ -287,6 +292,7 @@ export function GardenStructureVerticalSliceHud({
     plan?: GardenStructureSemanticPlan;
 }) {
     const { data: garden, refetch: refetchGarden } = useCurrentGarden();
+    const { data: blockData } = useBlockData();
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
     const mutations = useGardenStructureMutations(garden?.id);
@@ -309,8 +315,34 @@ export function GardenStructureVerticalSliceHud({
     const editor = session?.editor;
     const buildActive = Boolean(session);
     const placingTemplate = editor?.workflow.kind === 'placing-template';
+    const placementOccupancyIndex = useMemo(
+        () =>
+            createGardenStructureEditorOccupancyIndex({
+                blockData: buildActive && !fixture ? blockData : null,
+                garden: buildActive && !fixture ? garden : null,
+            }),
+        [blockData, buildActive, fixture, garden],
+    );
+    const placementOccupancy = useMemo(() => {
+        if (fixture) {
+            return { valid: true } as const;
+        }
+        if (!editor) {
+            return { valid: false } as const;
+        }
+        return validateGardenStructureEditorPlacementOccupancy({
+            candidateDocument: editor.snapshot.document,
+            candidateId:
+                editor.origin.kind === 'saved-structure'
+                    ? editor.origin.structureId
+                    : editor.origin.draftId,
+            candidatePlacement: editor.snapshot.placement,
+            occupancy: placementOccupancyIndex,
+        });
+    }, [editor, fixture, placementOccupancyIndex]);
     const placementSupported = canCommitGardenStructurePlacement({
         fixture,
+        occupancyValid: placementOccupancy.valid,
         planAvailable: Boolean(plan),
     });
     const bounds = editor
@@ -853,7 +885,7 @@ export function GardenStructureVerticalSliceHud({
     function confirmPlacement() {
         if (!placementSupported) {
             setAnnouncement(
-                'Položaj mora biti na dostupnim poljima jednake visine.',
+                'Položaj mora biti na slobodnim, dostupnim poljima jednake visine.',
             );
             return;
         }
@@ -1689,7 +1721,8 @@ export function GardenStructureVerticalSliceHud({
                         className="mb-3 rounded-lg border border-destructive/50 bg-destructive/10 px-2 py-1.5 text-xs text-foreground"
                         role="alert"
                     >
-                        Položaj mora biti na dostupnim poljima jednake visine.
+                        Položaj mora biti na slobodnim, dostupnim poljima
+                        jednake visine.
                     </p>
                 ) : null}
 
