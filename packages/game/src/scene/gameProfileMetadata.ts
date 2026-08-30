@@ -190,6 +190,38 @@ export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'passed'
     | 'verifying';
 
+export type RuntimeFrameLoopProfileTelemetry = {
+    activeLeaseCount: number;
+    cancelledCallbackCount: number;
+    canvasVisible: boolean;
+    documentVisible: boolean;
+    effectiveVisible: boolean;
+    loopActive: boolean;
+    ownedInvalidationCount: number;
+    resumeCount: number;
+    scheduledCallbackCount: number;
+    suspendCount: number;
+    targetFramesPerSecond: number;
+    wakeupCount: number;
+};
+
+export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfileTelemetry {
+    return {
+        activeLeaseCount: 0,
+        cancelledCallbackCount: 0,
+        canvasVisible: false,
+        documentVisible: false,
+        effectiveVisible: false,
+        loopActive: false,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        targetFramesPerSecond: 0,
+        wakeupCount: 0,
+    };
+}
+
 export type GameProfileMetadata = {
     adaptiveHighAmbientFps?: number;
     adaptiveHighCloudUpdateMs?: number;
@@ -382,6 +414,7 @@ export type GameProfileMetadata = {
     rendererShaders?: number;
     rendererTextures?: number;
     rendererTriangles?: number;
+    runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     shadowMapAutoUpdate?: boolean;
     shadowMapDynamicRefreshMs?: number;
     shadowMapInvalidationCount?: number;

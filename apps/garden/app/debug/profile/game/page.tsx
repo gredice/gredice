@@ -288,6 +288,7 @@ export default async function GameProfilePage({
     const enableControls = firstValue(params.controls) === '1';
     const cameraProfile = firstValue(params.cameraProfile) === '1';
     const gardenSwitchProfile = firstValue(params.gardenSwitch) === '1';
+    const lifecycleProfile = firstValue(params.lifecycle) === '1';
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -351,6 +352,7 @@ export default async function GameProfilePage({
             data-game-profile-hud={showHud ? '1' : '0'}
             data-game-profile-garden-profile={mockGardenProfile}
             data-game-profile-garden-switch={gardenSwitchProfile ? '1' : '0'}
+            data-game-profile-lifecycle={lifecycleProfile ? '1' : '0'}
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
@@ -398,6 +400,7 @@ export default async function GameProfilePage({
                     adaptiveHigh ||
                     cameraProfile ||
                     gardenSwitchProfile ||
+                    lifecycleProfile ||
                     mockGardenProfile === 'fauna-heavy' ||
                     gardenBuilding ||
                     closeupRaisedBedId !== null ||

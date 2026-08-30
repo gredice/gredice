@@ -230,12 +230,13 @@ need a separate night scenario, while wetland- and rain-dependent fauna such as
 frogs and slugs need separate habitat/weather probes. Passing the daytime
 scenario does not establish those paths or complete fauna coverage.
 
-Run the persistent-Canvas garden-switch baseline independently, or run it with
-the fauna baseline through one release-gate command:
+Run the persistent-Canvas garden-switch and lifecycle baselines independently,
+or run them with the fauna baseline through one release-gate command:
 
 ```bash
 cd apps/garden
 pnpm run profile:game:garden-switch
+pnpm run profile:game:lifecycle
 pnpm run profile:game:runtime-baselines
 ```
 
@@ -271,6 +272,45 @@ plateau compares H3→H4. The later arrival may release resources but must not
 increase live geometry, program, or texture counts. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
+
+The lifecycle scenario is one deterministic High target repeated in three
+fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
+legacy static-scene-cache path. It uses a document-start tracker rather than
+post-wait timestamps for Navigation Timing `DOMContentLoaded`, Canvas DOM
+attachment, the first correctly sized backing store, and the first submitted
+WebGL draw. Exact fixture readiness (270 stacks, 297 blocks, three raised beds,
+54 visible generated-plant fields, and 537 visible instances) and an exact
+raised-bed outline interaction remain separate later milestones. Cold and
+restored screenshots must be nonblank `2560x1440` Canvas captures.
+
+The active phase records the normal render sample and all runtime frame-loop
+telemetry: active lease count, Canvas/document/effective visibility, loop state,
+target FPS, scheduled callbacks, wakeups, owned invalidations, cancellations,
+and suspend/resume counts. The offscreen phase inserts a real viewport spacer
+and requires both the runtime's IntersectionObserver state and an independent
+observer witness to report a zero-area, nonintersecting Canvas. The document
+hidden phase is explicitly synthetic: the profiler overrides
+`document.hidden`/`visibilityState`, dispatches `visibilitychange`, and records
+those getters in the report. It must not be presented as browser lifecycle or
+background-tab proof.
+
+Both suspended phases require the owned SceneTime scheduler to add zero
+callbacks, wakeups, and invalidations. Browser RAF instrumentation itself is
+active, so submitted WebGL frames/draws/triangles and CDP script time are kept
+as honest residual observations rather than release failures in this baseline.
+Each resume must return to the same healthy Canvas and WebGL context, re-prove
+the exact fixture, accept a fresh outline command from an exact zero-target
+state, submit new draw work, and produce a nonblank screenshot.
+
+Finally, the profiler forces `WEBGL_lose_context` without preventing the loss
+event itself. It records that the renderer handled the event, requires one
+ordered lost/restored event pair on the original Canvas/context, samples zero
+submitted frames/draws/triangles while the context is lost, then requires fresh
+interaction, draw work, exact fixture evidence, and a valid screenshot after
+restoration. External GPU timer queries are disabled for this scenario so the
+forced loss cannot invalidate profiler-owned query handles. These are local
+headless production-build lifecycle witnesses; they do not replace a real
+background-tab, device thermal, or deployed-runtime check.
 
 Run every profiler scenario together:
 
@@ -550,6 +590,7 @@ GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=garden-switch pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=lifecycle pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
 GAME_PROFILE_CLOSEUP_REPEAT=1 GAME_PROFILE_SCENARIO_SET=plant-closeup pnpm run profile:game
