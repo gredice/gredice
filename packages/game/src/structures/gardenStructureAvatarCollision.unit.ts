@@ -14,7 +14,10 @@ import {
     mergeGardenAvatarCollisionWorlds,
     resolveGardenAvatarHorizontalMovement,
 } from '../entities/avatar/gardenAvatarMovement';
-import { createGardenStructureAvatarCollisionWorld } from './gardenStructureAvatarCollision';
+import {
+    createGardenStructureAvatarCollisionWorld,
+    createGardenStructureCollectionAvatarCollisionWorld,
+} from './gardenStructureAvatarCollision';
 import {
     compileGardenStructurePlan,
     containsGardenStructureWorldCell,
@@ -153,6 +156,47 @@ describe('garden structure avatar collision', () => {
             createGardenStructureAvatarCollisionWorld(
                 createPlan(minimumWidth, gardenAvatarStandingCollisionHeight),
             ),
+        );
+    });
+
+    test('isolates an undersized future-kit portal with a blocked-footprint fallback', () => {
+        const validPlan = createHousePlan();
+        const unsafePlan = compileGardenStructurePlan({
+            structureId: 'unsafe-future-kit',
+            revision: 1,
+            document: createGardenStructureTemplateSeed('house').document,
+            placement: { anchorX: 30, anchorY: 30, rotation: 0 },
+            kit: {
+                ...debugGardenStructureKitMetadata,
+                edgeParts: {
+                    ...debugGardenStructureKitMetadata.edgeParts,
+                    'door.house-open': {
+                        ...debugGardenStructureKitMetadata.edgeParts[
+                            'door.house-open'
+                        ],
+                        portalClearanceWidth: gardenAvatarRadius,
+                    },
+                },
+            },
+        });
+        const world = createGardenStructureCollectionAvatarCollisionWorld([
+            unsafePlan,
+            validPlan,
+        ]);
+
+        assert.ok(
+            getGardenAvatarCollisionCandidates(world, { x: 0, z: 0 }).surfaces
+                .length > 0,
+        );
+        assert.ok(
+            getGardenAvatarCollisionCandidates(world, { x: 30, z: 30 })
+                .blockedCells.length > 0,
+        );
+        assert.equal(
+            world.surfaces.some((surface) =>
+                surface.debugLabel?.includes('unsafe-future-kit'),
+            ),
+            false,
         );
     });
 

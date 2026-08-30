@@ -4,6 +4,7 @@ import {
     gardenAvatarRadius,
     gardenAvatarStandingCollisionHeight,
 } from '../entities/avatar/gardenAvatarMovement';
+import type { GardenStructureCollectionPlan } from './gardenStructureCollectionPlan';
 import type {
     GardenStructureCollisionBoxes,
     GardenStructureSemanticPlan,
@@ -13,7 +14,7 @@ const collisionBoundsStride = 6;
 const coordinateStride = 2;
 const portalClearanceEpsilon = 0.000_01;
 
-function assertGardenStructurePortalsFitAvatar(
+function getGardenStructurePortalClearanceIssue(
     plan: GardenStructureSemanticPlan,
 ) {
     const minimumWidth = gardenAvatarRadius * 2;
@@ -27,10 +28,18 @@ function assertGardenStructurePortalsFitAvatar(
             clearanceHeight + portalClearanceEpsilon <
                 gardenAvatarStandingCollisionHeight
         ) {
-            throw new Error(
-                `Garden structure portal "${portalId}" does not fit the standing avatar collision envelope.`,
-            );
+            return `Garden structure portal "${portalId}" does not fit the standing avatar collision envelope.`;
         }
+    }
+    return null;
+}
+
+function assertGardenStructurePortalsFitAvatar(
+    plan: GardenStructureSemanticPlan,
+) {
+    const issue = getGardenStructurePortalClearanceIssue(plan);
+    if (issue) {
+        throw new Error(issue);
     }
 }
 
@@ -74,7 +83,7 @@ function collisionSurfacesFromBoxes(
     });
 }
 
-export function createGardenStructureAvatarCollisionWorld(
+export function getGardenStructureAvatarCollisionSurfaces(
     plan: GardenStructureSemanticPlan,
 ) {
     assertGardenStructurePortalsFitAvatar(plan);
@@ -137,13 +146,71 @@ export function createGardenStructureAvatarCollisionWorld(
             ];
         });
 
+    return [
+        ...floorSurfaces,
+        ...collisionSurfacesFromBoxes(plan.wallCollisionBoxes),
+        ...collisionSurfacesFromBoxes(plan.propCollisionBoxes),
+        ...ceilingSurfaces,
+    ];
+}
+
+function getCollectionStructures(
+    collection:
+        | GardenStructureCollectionPlan
+        | readonly GardenStructureSemanticPlan[],
+) {
+    return 'structures' in collection ? collection.structures : collection;
+}
+
+/**
+ * Builds one indexed collision world for every saved structure in a garden.
+ * The deterministic structure order and shared spatial index avoid one world
+ * lookup per building during owned/public avatar movement.
+ */
+export function createGardenStructureCollectionAvatarCollisionWorld(
+    collection:
+        | GardenStructureCollectionPlan
+        | readonly GardenStructureSemanticPlan[],
+) {
+    const blockedCells: Array<{ x: number; z: number }> = [];
+    const surfaces: GardenAvatarMovementSurface[] = [];
+    const structures = [...getCollectionStructures(collection)].sort(
+        (left, right) =>
+            left.structureId < right.structureId
+                ? -1
+                : left.structureId > right.structureId
+                  ? 1
+                  : 0,
+    );
+    for (const structure of structures) {
+        if (getGardenStructurePortalClearanceIssue(structure)) {
+            for (
+                let index = 0;
+                index < structure.footprint.ids.length;
+                index += 1
+            ) {
+                const offset = index * coordinateStride;
+                const x = structure.footprint.coordinates[offset];
+                const z = structure.footprint.coordinates[offset + 1];
+                if (x !== undefined && z !== undefined) {
+                    blockedCells.push({ x, z });
+                }
+            }
+            continue;
+        }
+        surfaces.push(...getGardenStructureAvatarCollisionSurfaces(structure));
+    }
+    return createIndexedGardenAvatarCollisionWorld({
+        blockedCells,
+        surfaces,
+    });
+}
+
+export function createGardenStructureAvatarCollisionWorld(
+    plan: GardenStructureSemanticPlan,
+) {
     return createIndexedGardenAvatarCollisionWorld({
         blockedCells: [],
-        surfaces: [
-            ...floorSurfaces,
-            ...collisionSurfacesFromBoxes(plan.wallCollisionBoxes),
-            ...collisionSurfacesFromBoxes(plan.propCollisionBoxes),
-            ...ceilingSurfaces,
-        ],
+        surfaces: getGardenStructureAvatarCollisionSurfaces(plan),
     });
 }

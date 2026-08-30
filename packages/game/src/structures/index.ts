@@ -19,6 +19,46 @@ export {
     getGardenStructureKitMetadata,
 } from './debugStructureKit';
 export * from './editor';
+export type {
+    GardenStructureCollectionRendererProps,
+    GardenStructureCollectionSelection,
+} from './GardenStructureCollectionRenderer';
+export { GardenStructureCollectionRenderer } from './GardenStructureCollectionRenderer';
+export {
+    createGardenStructureAvatarCollisionWorld,
+    createGardenStructureCollectionAvatarCollisionWorld,
+    getGardenStructureAvatarCollisionSurfaces,
+} from './gardenStructureAvatarCollision';
+export type {
+    GardenStructureCollectionBatchDescription,
+    GardenStructureCollectionBatches,
+    GardenStructureCollectionBuildOptions,
+    GardenStructureCollectionBuildResult,
+    GardenStructureCollectionCacheDisposalReason,
+    GardenStructureCollectionCacheDispose,
+    GardenStructureCollectionCacheOptions,
+    GardenStructureCollectionCacheSnapshot,
+    GardenStructureCollectionPlan,
+    GardenStructureCollectionPlanEntry,
+    GardenStructureCollectionSpatialBucket,
+    GardenStructureCollectionSpatialEntry,
+    GardenStructureCollectionVisibilityPredicate,
+    GardenStructureCollectionWarning,
+    GardenStructureFallbackBoxGeometry,
+} from './gardenStructureCollectionPlan';
+export {
+    compileSavedGardenStructureCollection,
+    createGardenStructureCollectionPlan,
+    GardenStructureCollectionCache,
+    gardenStructureCollectionCacheMaxEntryCount,
+    gardenStructureCollectionCacheMaxEstimatedBytes,
+    gardenStructureCollectionMaxStructureCount,
+    gardenStructureCollectionTransformStride,
+    getGardenStructureCollectionPlanEstimatedBytes,
+    getNearbyGardenStructureCollectionBuckets,
+    getVisibleGardenStructureIds,
+    resolveGardenStructureCollectionSpatialEntry,
+} from './gardenStructureCollectionPlan';
 export { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
 export type {
     GardenStructurePlanCacheDisposalReason,
@@ -33,6 +73,21 @@ export {
     getGardenStructurePlanCacheEntryEstimatedBytes,
     getGardenStructureSemanticPlanEstimatedBytes,
 } from './gardenStructurePlanCache';
+export type {
+    GardenStructureRuntimeKitDefinition,
+    GardenStructureRuntimeKitResolver,
+    GardenStructureSavedRecordAdapterOptions,
+    GardenStructureSavedRecordFailure,
+    GardenStructureSavedRecordIssue,
+    GardenStructureSavedRecordIssueCode,
+    GardenStructureSavedRecordResult,
+    GardenStructureSavedRecordSuccess,
+    SerializedGardenStructureRecord,
+} from './gardenStructureSavedRecord';
+export {
+    decodeSavedGardenStructureRecord,
+    resolveGardenStructureRuntimeKit,
+} from './gardenStructureSavedRecord';
 export type {
     GardenStructureBatchCategory,
     GardenStructureBatchDescription,
