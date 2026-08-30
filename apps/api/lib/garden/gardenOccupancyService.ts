@@ -377,7 +377,7 @@ function parseDirectoryBlockData(value: unknown, collector: IssueCollector) {
         ];
         for (const { key, value: span } of spans) {
             if (
-                span !== undefined &&
+                span != null &&
                 (!isSafeInteger(span) || span <= 0 || span > maximumBlockSpan)
             ) {
                 valid = false;
@@ -387,10 +387,7 @@ function parseDirectoryBlockData(value: unknown, collector: IssueCollector) {
                 });
             }
         }
-        if (
-            placeableOnWater !== undefined &&
-            typeof placeableOnWater !== 'boolean'
-        ) {
+        if (placeableOnWater != null && typeof placeableOnWater !== 'boolean') {
             valid = false;
             addIssue(collector, {
                 code: 'invalid-directory-block-water-flag',
@@ -401,10 +398,10 @@ function parseDirectoryBlockData(value: unknown, collector: IssueCollector) {
             !valid ||
             typeof height !== 'number' ||
             typeof stackable !== 'boolean' ||
-            (placeableOnWater !== undefined &&
+            (placeableOnWater != null &&
                 typeof placeableOnWater !== 'boolean') ||
-            (spanDepth !== undefined && typeof spanDepth !== 'number') ||
-            (spanWidth !== undefined && typeof spanWidth !== 'number')
+            (spanDepth != null && typeof spanDepth !== 'number') ||
+            (spanWidth != null && typeof spanWidth !== 'number')
         ) {
             continue;
         }

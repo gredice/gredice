@@ -5,6 +5,7 @@ import {
     decodeGardenStructureDocument,
     type GardenStructureDocument,
     type GardenStructureFootprintCell,
+    gardenStructureMaxActivePerGarden,
     gardenStructureSunflowerPricePerCell,
     normalizeGardenStructureDocument,
 } from '@gredice/js/gardenStructures';
@@ -651,6 +652,47 @@ async function expectServiceError(
 }
 
 describe('garden structure application service', () => {
+    test('rejects a locked create at the shared active-structure ceiling', async () => {
+        const harness = makeHarness();
+        for (
+            let index = 0;
+            index < gardenStructureMaxActivePerGarden;
+            index += 1
+        ) {
+            const structure = testStructure({
+                id: `existing-${index.toString()}`,
+            });
+            harness.state.structures.set(
+                structureKey(structure.gardenId, structure.id),
+                structure,
+            );
+        }
+
+        await expectServiceError(
+            harness.service.create(
+                createCommand({
+                    operationId: 'create-at-limit',
+                    structureId: 'structure-at-limit',
+                }),
+            ),
+            'STRUCTURE_LIMIT_REACHED',
+            409,
+        );
+
+        assert.equal(
+            harness.state.structures.size,
+            gardenStructureMaxActivePerGarden,
+        );
+        assert.equal(harness.state.balance, 1_000);
+        assert.equal(harness.state.receipts.size, 0);
+        assert.deepEqual(harness.calls, [
+            'account',
+            'account-fence',
+            'garden',
+            'operation',
+        ]);
+    });
+
     test('checks the exact server gate and required client IDs before opening a transaction', async () => {
         const harness = makeHarness();
         harness.controls.enabled = false;

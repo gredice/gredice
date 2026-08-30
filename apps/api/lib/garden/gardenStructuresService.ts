@@ -7,6 +7,7 @@ import {
     type GardenStructureTemplateKey,
     type GardenStructureValidationIssue,
     gardenStructureFootprintsEqual,
+    gardenStructureMaxActivePerGarden,
     gardenStructureSunflowerPricePerCell,
     getGardenStructureDocumentPrice,
     isGardenStructureTemplateAvailable,
@@ -76,6 +77,7 @@ export type GardenStructureServiceErrorCode =
     | 'PRICING_STATE_INVALID'
     | 'REVISION_CONFLICT'
     | 'STRUCTURE_ALREADY_EXISTS'
+    | 'STRUCTURE_LIMIT_REACHED'
     | 'STRUCTURE_KIT_UNAVAILABLE'
     | 'STRUCTURE_NOT_FOUND'
     | 'STORAGE_STATE_INVALID'
@@ -1079,12 +1081,12 @@ export function createGardenStructureApplicationService<Transaction>(
         placementSnapshot: GardenPlacementSnapshot,
         transaction: Transaction,
         excludeCurrent: boolean,
+        knownStructures?: readonly GardenStructureRecordLike[],
     ) {
         const blockData = await loadBlockData();
-        const structures = await activeStructures(
-            placementSnapshot.garden.id,
-            transaction,
-        );
+        const structures =
+            knownStructures ??
+            (await activeStructures(placementSnapshot.garden.id, transaction));
         const result = dependencies.validateStructureCandidate({
             blockData,
             candidate,
@@ -1138,6 +1140,17 @@ export function createGardenStructureApplicationService<Transaction>(
                 command.document,
                 validateReference,
             );
+            const structures = await activeStructures(
+                command.gardenId,
+                context.transaction,
+            );
+            if (structures.length >= gardenStructureMaxActivePerGarden) {
+                throw new GardenStructureServiceError(
+                    'STRUCTURE_LIMIT_REACHED',
+                    409,
+                    `A garden may contain at most ${gardenStructureMaxActivePerGarden.toString()} active structures.`,
+                );
+            }
             const candidate: GardenStructureRecordLike = {
                 anchorX: command.anchorX,
                 anchorY: command.anchorY,
@@ -1159,6 +1172,7 @@ export function createGardenStructureApplicationService<Transaction>(
                 context.placementSnapshot,
                 context.transaction,
                 false,
+                structures,
             );
             const result = await dependencies.createStructure(
                 {

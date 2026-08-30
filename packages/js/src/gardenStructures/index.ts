@@ -57,6 +57,7 @@ export type {
     GardenStructureValidationSeverity,
 } from './types';
 export {
+    gardenStructureMaxActivePerGarden,
     gardenStructureMaxCoordinateMagnitude,
     gardenStructureMaxEdges,
     gardenStructureMaxFootprintCells,

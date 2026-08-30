@@ -1391,7 +1391,9 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
                 stacks,
-                structures: garden.structures,
+                // Tolerate a rolling deployment where an older API response
+                // predates the additive structures collection.
+                structures: garden.structures ?? [],
                 location: {
                     lat: garden.latitude,
                     lon: garden.longitude,

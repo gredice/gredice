@@ -117,6 +117,34 @@ describe('validateStructureCandidateAgainstGarden', () => {
         }
     });
 
+    test('treats nullable optional directory placement fields as absent', () => {
+        const nullableBlockData = [
+            {
+                information: { name: 'Block_Nullable' },
+                attributes: {
+                    height: 1,
+                    placeableOnWater: null,
+                    spanDepth: null,
+                    spanWidth: null,
+                    stackable: true,
+                },
+            },
+        ];
+        const result = validateStructureCandidateAgainstGarden({
+            blockData: nullableBlockData,
+            candidate: structure('house'),
+            snapshot: gardenSnapshot({
+                blocks: [{ id: 'ground', name: 'Block_Nullable' }],
+                stacks: [{ blocks: ['ground'], positionX: 0, positionY: 0 }],
+            }),
+        });
+
+        assert.equal(result.valid, true);
+        if (result.valid) {
+            assert.equal(result.supportHeight, 1);
+        }
+    });
+
     test('supports excluding moving blocks and existing structure footprints', () => {
         const snapshot = gardenSnapshot({
             blocks: [

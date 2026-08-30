@@ -1,4 +1,7 @@
-import type { GardenStructureValidationIssue } from '@gredice/js/gardenStructures';
+import {
+    type GardenStructureValidationIssue,
+    gardenStructureMaxActivePerGarden,
+} from '@gredice/js/gardenStructures';
 import { compileGardenStructurePlan } from './compileGardenStructurePlan';
 import {
     GardenStructurePlanCache,
@@ -28,7 +31,8 @@ const uint64Mask = 0xffff_ffff_ffff_ffffn;
 const sourceBatchTransformStride = 3;
 const packedCellCoordinateStride = 2;
 export const gardenStructureCollectionTransformStride = 4;
-export const gardenStructureCollectionMaxStructureCount = 625;
+export const gardenStructureCollectionMaxStructureCount =
+    gardenStructureMaxActivePerGarden;
 export const gardenStructureCollectionCacheMaxEntryCount = 2;
 export const gardenStructureCollectionCacheMaxEstimatedBytes = 24 * 1024 * 1024;
 
