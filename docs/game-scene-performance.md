@@ -506,6 +506,37 @@ The `dense-mobile` scenario set samples:
 - `game-dense-25x25-windy-mobile`
 - `game-plant-heavy-25x25-mobile`
 
+The `buildings` scenario set is available only when the production server was
+built and started with
+`GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED=true`. The query alone cannot
+enable the fixture. It covers empty shells on desktop and constrained mobile,
+a furnished house, shell and cutaway-interior editing, greenhouse rain,
+furnished 100-cell/301-edge worst-case normal and edit-churn workloads, and
+repeated build-mode entry/exit. Mobile runs use `390x844`, DPR 3, automatic
+quality, and emulated 4 GiB/four-core navigator hints. Active editing explicitly
+bypasses the static opaque cache.
+
+The building report copies only bounded metadata: counts, durations, cache
+outcomes, byte totals, quality/device class, and budget results. It does not
+copy a structure document, player identity, garden identity, or account
+balance. The building gates retain the 33.3 ms mobile p95 frame target, 100 ms
+editor-action p95 target, 500 ms maximum editor stall, 192 KiB document limit,
+and zero debug-kit GLB bytes. Use `GAME_PROFILE_SOAK_MS=600000` to hold each
+normal/editing state for ten minutes before its sample; use
+`GAME_PROFILE_SAMPLE_MS=600000` when the edit-churn or entry/exit actions must
+run for the full soak window.
+
+Run the matrix with:
+
+```bash
+cd apps/garden
+pnpm run profile:game:buildings
+```
+
+These Chromium measurements are automated production-build evidence. They are
+not physical-device frame, memory, thermal, touch, or GPU-resource proof; record
+real iPhone and Android evidence separately before rollout.
+
 The `plant-closeup` scenario set isolates the expensive transition from the
 normal garden camera into a plant-heavy raised bed:
 
@@ -706,6 +737,7 @@ GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=buildings pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=garden-switch pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=lifecycle pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game

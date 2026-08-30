@@ -21,6 +21,7 @@ import {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenBuildingAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
@@ -356,6 +357,125 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
     }
 });
 
+test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
+    const scenarios = resolveScenarios('buildings');
+    assert.equal(scenarios.length, 9);
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-building-empty-shell-desktop',
+            'game-building-empty-shell-constrained-mobile',
+            'game-building-furnished-house-normal-constrained-mobile',
+            'game-building-shell-edit-constrained-mobile',
+            'game-building-interior-edit-cutaway-constrained-mobile',
+            'game-building-greenhouse-rain-constrained-mobile',
+            'game-building-worst-case-furnished-constrained-mobile',
+            'game-building-worst-case-edit-churn-constrained-mobile',
+            'game-building-enter-exit-lifecycle-constrained-mobile',
+        ],
+    );
+    assert.ok(
+        scenarios.every(
+            (scenario) =>
+                scenario.path.includes('building=1') &&
+                scenario.path.includes('staticSceneCache=legacy') &&
+                scenario.buildingProfile,
+        ),
+    );
+    const worstCase = scenarios.find((scenario) =>
+        scenario.name.includes('worst-case-furnished'),
+    );
+    assert.deepEqual(worstCase?.buildingProfile.expected, {
+        edges: 301,
+        footprintCells: 100,
+        props: 100,
+        roofs: 100,
+    });
+    assert.equal(worstCase?.isMobile, true);
+    assert.equal(worstCase?.navigatorMetrics.deviceMemory, 4);
+    assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
+});
+
+test('building acceptance enforces bounded privacy-safe telemetry and editor budgets', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'GET', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+                motion: 'edit-churn',
+                motionResult: { actionCount: 9, kind: 'edit-churn' },
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesRequested: 0,
+            gardenStructureAssetBytesResident: 0,
+            gardenStructureCompileCount: 4,
+            gardenStructureCompileDurationMs: 4.2,
+            gardenStructureDocumentPayloadBytes: 56_759,
+            gardenStructureEdgeCount: 301,
+            gardenStructureEditorActionCount: 12,
+            gardenStructureEditorActionDurationMaxMs: 42,
+            gardenStructureEditorActionDurationP95Ms: 24,
+            gardenStructureEditorActive: true,
+            gardenStructureFootprintCellCount: 100,
+            gardenStructureNavigationCompileDurationMs: 2.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructurePropCount: 100,
+            gardenStructureRoofRegionCount: 100,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+
+    const privateOrSlow = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'POST', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureDocument: { private: true },
+            gardenStructureEditorActionDurationMaxMs: 501,
+        },
+    });
+    assert.equal(privateOrSlow.pass, false);
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingProfileOmitsDocument' && !check.pass,
+        ),
+    );
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+});
+
 test('profile request reads the deterministic closeup target', () => {
     const request = getScenarioRequest(
         '/debug/profile/game?profile=plant-heavy&quality=medium&closeupRaisedBedId=29',
@@ -594,6 +714,8 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
     assert.equal(scenario.repeat, 3);
     assert.deepEqual(getScenarioRequest(scenario.path), {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -1100,6 +1222,8 @@ test('profile request parses the High target fixture contract', () => {
 
     assert.deepEqual(request, {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',

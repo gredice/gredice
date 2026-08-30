@@ -2,6 +2,12 @@ import type { GameSceneProps } from '@gredice/game';
 
 export type GameProfileStaticSceneCacheMode = 'cache' | 'legacy';
 export type GameProfileWeatherSurfaceMode = 'integrated' | 'legacy';
+export type GameProfileGardenBuildingFixture =
+    | 'barn'
+    | 'blank'
+    | 'greenhouse'
+    | 'house'
+    | 'worst-case';
 
 export const highTargetOperationVisualHighlightTarget = {
     fieldId: 201,
@@ -28,6 +34,25 @@ export function resolveGameProfileGardenBuildingFixtureGate(
     value: string | undefined,
 ) {
     return value === 'true';
+}
+
+export function resolveGameProfileGardenBuildingFixture(
+    value: string | undefined,
+    fixtureEnabled = false,
+): GameProfileGardenBuildingFixture | null {
+    if (!fixtureEnabled) {
+        return null;
+    }
+    if (
+        value === 'barn' ||
+        value === 'blank' ||
+        value === 'greenhouse' ||
+        value === 'house' ||
+        value === 'worst-case'
+    ) {
+        return value;
+    }
+    return 'house';
 }
 
 export function resolveGameProfileOperationVisuals(value: string | undefined) {

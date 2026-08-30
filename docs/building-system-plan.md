@@ -876,6 +876,15 @@ baselines:
 - Headless production profiles, real iPhone/Android interaction, and
   physical-device thermal proof are reported as separate evidence.
 
+The automated production profiler now owns a dedicated `buildings` matrix for
+the gated procedural fixture: empty desktop/mobile shells, furnished normal
+view, shell and cutaway-interior editing, greenhouse weather, the valid
+100-cell/301-edge/100-prop worst case, edit churn, and repeated enter/exit.
+Reports enforce the existing mobile frame and editor interaction targets and
+contain bounded counts/durations/cache outcomes only. Ten-minute Chromium
+soaks remain CI/browser evidence; physical-device memory, thermal, interaction,
+and GPU-resource measurements remain a separate rollout gate.
+
 ## Reliability, security, and privacy
 
 - Validate every structure document on the server with the shared versioned

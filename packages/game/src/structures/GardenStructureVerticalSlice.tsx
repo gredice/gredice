@@ -15,7 +15,10 @@ import {
     MeshStandardMaterial,
     Object3D,
 } from 'three';
-import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
+import {
+    recordGardenStructurePointerResolution,
+    updateGameProfileMetadata,
+} from '../scene/gameProfileMetadata';
 import { useGameState } from '../useGameState';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import {
@@ -180,6 +183,7 @@ function GardenStructureFallbackBatchInstances({
 
     const handleClick = useCallback(
         (event: ThreeEvent<MouseEvent>) => {
+            const startedAt = performance.now();
             if (!onSelect || event.instanceId === undefined) {
                 return;
             }
@@ -189,6 +193,9 @@ function GardenStructureFallbackBatchInstances({
             }
             event.stopPropagation();
             onSelect(id);
+            recordGardenStructurePointerResolution(
+                performance.now() - startedAt,
+            );
         },
         [batch.instanceIds, onSelect],
     );
@@ -399,6 +406,20 @@ export function GardenStructureVerticalSlice({
             selectedPartId={session?.selectedPartId ?? null}
         />
     );
+    const renderedPropCount = useMemo(
+        () =>
+            batches
+                .filter((batch) => batch.category === 'props')
+                .reduce((total, batch) => total + batch.instanceIds.length, 0),
+        [batches],
+    );
+    const transparentSurfaceCount = useMemo(
+        () =>
+            batches
+                .filter((batch) => batch.transparency === 'transparent')
+                .reduce((total, batch) => total + batch.instanceIds.length, 0),
+        [batches],
+    );
 
     useEffect(() => {
         updateGameProfileMetadata({
@@ -411,6 +432,13 @@ export function GardenStructureVerticalSlice({
             gardenStructureOpenPortalCount: plan.counts.openPortals,
             gardenStructureRenderBatchCount: batches.length,
             gardenStructureRenderInstanceCount: renderedInstanceCount,
+            gardenStructureRenderTriangleCount: renderedInstanceCount * 12,
+            gardenStructureRenderVertexCount: renderedInstanceCount * 24,
+            gardenStructureTransparentSurfaceCount: transparentSurfaceCount,
+            gardenStructureVisibleInteriorSurfaceCount:
+                plan.counts.floorSurfaces + renderedPropCount,
+            gardenStructureVisiblePropCount: renderedPropCount,
+            gardenStructureWalkableCellCount: plan.counts.walkableCells,
         });
         return () =>
             updateGameProfileMetadata({
@@ -421,8 +449,20 @@ export function GardenStructureVerticalSlice({
                 gardenStructureOpenPortalCount: 0,
                 gardenStructureRenderBatchCount: 0,
                 gardenStructureRenderInstanceCount: 0,
+                gardenStructureRenderTriangleCount: 0,
+                gardenStructureRenderVertexCount: 0,
+                gardenStructureTransparentSurfaceCount: 0,
+                gardenStructureVisibleInteriorSurfaceCount: 0,
+                gardenStructureVisiblePropCount: 0,
+                gardenStructureWalkableCellCount: 0,
             });
-    }, [batches.length, plan.counts, renderedInstanceCount]);
+    }, [
+        batches.length,
+        plan.counts,
+        renderedInstanceCount,
+        renderedPropCount,
+        transparentSurfaceCount,
+    ]);
 
     return (
         <group

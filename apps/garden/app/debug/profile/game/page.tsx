@@ -12,6 +12,7 @@ import {
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
     resolveGameProfileGardenBuilding,
+    resolveGameProfileGardenBuildingFixture,
     resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
@@ -314,6 +315,10 @@ export default async function GameProfilePage({
         firstValue(params.building),
         gardenBuildingFixtureEnabled,
     );
+    const gardenBuildingFixture = resolveGameProfileGardenBuildingFixture(
+        firstValue(params.buildingFixture),
+        gardenBuildingFixtureEnabled,
+    );
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
@@ -360,6 +365,9 @@ export default async function GameProfilePage({
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
             data-game-profile-building={gardenBuilding ? '1' : '0'}
+            data-game-profile-building-fixture={
+                gardenBuilding ? gardenBuildingFixture : undefined
+            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
@@ -420,7 +428,11 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
-                gardenStructureDebugFixture={gardenBuilding}
+                gardenStructureDebugFixture={
+                    gardenBuilding
+                        ? (gardenBuildingFixture ?? 'house')
+                        : undefined
+                }
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

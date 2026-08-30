@@ -936,6 +936,152 @@ const standardAutoQualityDevice = {
     },
 };
 
+const gardenBuildingScenarios = [
+    {
+        name: 'game-building-empty-shell-desktop',
+        path: '/debug/profile/game?mode=baseline&quality=medium&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gardenBuildingDesktop',
+        buildingProfile: {
+            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            fixture: 'blank',
+            mode: 'normal',
+        },
+    },
+    {
+        name: 'game-building-empty-shell-constrained-mobile',
+        path: '/debug/profile/game?mode=baseline&quality=auto&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            fixture: 'blank',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-furnished-house-normal-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            fixture: 'house',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-shell-edit-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=blank&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            category: 'structure',
+            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            fixture: 'blank',
+            mode: 'editing',
+            template: 'blank',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-interior-edit-cutaway-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            category: 'interior',
+            cutaway: true,
+            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            fixture: 'house',
+            mode: 'editing',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-greenhouse-rain-constrained-mobile',
+        path: '/debug/profile/game?mode=rain&quality=auto&building=1&buildingFixture=greenhouse&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWeatherMobile',
+        buildingProfile: {
+            expected: { edges: 14, footprintCells: 12, props: 2, roofs: 1 },
+            fixture: 'greenhouse',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-worst-case-furnished-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=worst-case&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWorstCaseMobile',
+        buildingProfile: {
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-worst-case-edit-churn-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=worst-case&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWorstCaseMobile',
+        buildingProfile: {
+            category: 'interior',
+            cutaway: true,
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'editing',
+            motion: 'edit-churn',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-enter-exit-lifecycle-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            fixture: 'house',
+            mode: 'editing',
+            motion: 'enter-exit',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+];
+
 const plantCloseupScenarios = [
     {
         name: 'game-plant-heavy-closeup-desktop',
@@ -1097,6 +1243,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     fauna: faunaHeavyScenarios,
+    buildings: gardenBuildingScenarios,
     'garden-switch': gardenSwitchScenarios,
     lifecycle: lifecycleScenarios,
     'high-target': highTargetScenarios,
@@ -1128,6 +1275,38 @@ const budgets = {
         drawCallsPerFrame: 250,
         trianglesPerFrame: 800000,
         jsHeapMb: 180,
+    },
+    gardenBuildingDesktop: {
+        p95FrameMs: 16.7,
+        maxFrameMs: 100,
+        longTaskCount: 0,
+        drawCallsPerFrame: 250,
+        trianglesPerFrame: 800000,
+        jsHeapMb: 180,
+    },
+    gardenBuildingMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 180,
+        longTaskCount: 2,
+        drawCallsPerFrame: 320,
+        trianglesPerFrame: 1000000,
+        jsHeapMb: 220,
+    },
+    gardenBuildingWeatherMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 180,
+        longTaskCount: 2,
+        drawCallsPerFrame: 320,
+        trianglesPerFrame: 1000000,
+        jsHeapMb: 220,
+    },
+    gardenBuildingWorstCaseMobile: {
+        p95FrameMs: 33.3,
+        maxFrameMs: 180,
+        longTaskCount: 2,
+        drawCallsPerFrame: 320,
+        trianglesPerFrame: 1000000,
+        jsHeapMb: 220,
     },
     gameDetails: {
         p95FrameMs: 33.3,
@@ -1593,7 +1772,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -1622,6 +1801,7 @@ function allScenarios() {
         ...crossTierScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...gardenBuildingScenarios,
         ...faunaHeavyScenarios,
         ...gardenSwitchScenarios,
         ...lifecycleScenarios,
@@ -1664,7 +1844,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1762,6 +1942,8 @@ function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
         adaptiveHigh: url.searchParams.get('adaptiveHigh') ?? '0',
+        building: url.searchParams.get('building') ?? '0',
+        buildingFixture: url.searchParams.get('buildingFixture') ?? 'house',
         controls: url.searchParams.get('controls') ?? '0',
         closeupRaisedBedId:
             Number.parseInt(
@@ -2687,7 +2869,144 @@ function resolveChromiumGraphicsArgs(
     return ['--use-gl=angle', '--use-angle=metal'];
 }
 
+const gardenBuildingTemplateLabels = {
+    barn: 'Štala',
+    blank: 'Prazno',
+    greenhouse: 'Staklenik',
+    house: 'Kuća',
+};
+
+const gardenBuildingCategoryLabels = {
+    footprint: 'Tlocrt',
+    interior: 'Interijer',
+    roof: 'Krov',
+    structure: 'Konstrukcija',
+};
+
+async function prepareGardenBuildingProfile(page, buildingProfile) {
+    await page.waitForFunction(
+        (expected) => {
+            const profile = globalThis.__grediceGameProfile;
+            return Boolean(
+                profile?.gardenStructureStructureCount === 1 &&
+                    profile.gardenStructureVisibleStructureCount === 1 &&
+                    profile.gardenStructureFootprintCellCount ===
+                        expected.footprintCells &&
+                    profile.gardenStructureEdgeCount === expected.edges &&
+                    profile.gardenStructurePropCount === expected.props &&
+                    profile.gardenStructureRoofRegionCount === expected.roofs &&
+                    profile.gardenStructureAssetBytesRequested === 0 &&
+                    profile.gardenStructureAssetBytesResident === 0,
+            );
+        },
+        buildingProfile.expected,
+        { timeout: 60_000 },
+    );
+    if (buildingProfile.mode !== 'editing') {
+        return;
+    }
+
+    await page.getByTestId('garden-structure-build-entry').click();
+    await page.getByTestId('garden-structure-build-hud').waitFor({
+        state: 'visible',
+        timeout: 20_000,
+    });
+    if (buildingProfile.template) {
+        await page
+            .getByRole('button', {
+                exact: true,
+                name: gardenBuildingTemplateLabels[buildingProfile.template],
+            })
+            .click();
+    }
+    if (buildingProfile.category) {
+        await page
+            .getByRole('button', {
+                exact: true,
+                name: gardenBuildingCategoryLabels[buildingProfile.category],
+            })
+            .click();
+    }
+    if (buildingProfile.cutaway) {
+        await page.getByRole('button', { name: 'Sakrij krov' }).click();
+    }
+    await page.waitForFunction(
+        (expected) => {
+            const profile = globalThis.__grediceGameProfile;
+            return Boolean(
+                profile?.gardenStructureEditorActive === true &&
+                    profile.gardenStructureFootprintCellCount ===
+                        expected.footprintCells &&
+                    profile.gardenStructureEdgeCount === expected.edges &&
+                    profile.gardenStructurePropCount === expected.props &&
+                    profile.gardenStructureRoofRegionCount === expected.roofs,
+            );
+        },
+        buildingProfile.expected,
+        { timeout: 20_000 },
+    );
+}
+
 async function runScenarioMotion(page, scenario, sampleMs) {
+    if (scenario.buildingProfile?.motion === 'edit-churn') {
+        const startedAt = Date.now();
+        let actionCount = 0;
+        while (Date.now() - startedAt < sampleMs - 360) {
+            await page
+                .getByRole('button', { exact: true, name: 'Zakreni 90°' })
+                .click();
+            actionCount += 1;
+            await page
+                .getByRole('button', {
+                    exact: true,
+                    name: actionCount % 2 === 0 ? 'Interijer' : 'Krov',
+                })
+                .click();
+            actionCount += 1;
+            await page
+                .getByRole('button', {
+                    name: /^(Prikaži|Sakrij) krov$/u,
+                })
+                .click();
+            actionCount += 1;
+            await wait(120);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return { actionCount, kind: 'edit-churn' };
+    }
+
+    if (scenario.buildingProfile?.motion === 'enter-exit') {
+        const startedAt = Date.now();
+        let cycleCount = 0;
+        while (Date.now() - startedAt < sampleMs - 700) {
+            await page.getByTestId('garden-structure-build-done').click();
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfile
+                        ?.gardenStructureCameraMode === 'browse',
+                undefined,
+                { timeout: 5_000 },
+            );
+            await page.getByTestId('garden-structure-build-entry').click();
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfile
+                        ?.gardenStructureCameraMode === 'building',
+                undefined,
+                { timeout: 5_000 },
+            );
+            cycleCount += 1;
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return { cycleCount, kind: 'enter-exit' };
+    }
+
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
@@ -2696,13 +3015,13 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         scenario.interaction !== 'hover-scan'
     ) {
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     const canvasBox = await page.locator('canvas').first().boundingBox();
     if (!canvasBox) {
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     const centerX = canvasBox.x + canvasBox.width * 0.52;
@@ -2712,7 +3031,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         await page.mouse.move(centerX, centerY);
         await page.mouse.wheel(0, -920);
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     if (scenario.interaction === 'hover-scan') {
@@ -2741,7 +3060,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         if (remainingMs > 0) {
             await wait(remainingMs);
         }
-        return;
+        return null;
     }
 
     if (scenario.motion === 'bounded-zoom-rotate') {
@@ -2757,7 +3076,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         if (remainingMs > 0) {
             await wait(remainingMs);
         }
-        return;
+        return null;
     }
 
     let direction = 1;
@@ -2781,6 +3100,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (remainingMs > 0) {
         await wait(remainingMs);
     }
+    return null;
 }
 
 async function isReachable(baseUrl) {
@@ -5857,6 +6177,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60_000 },
         );
     }
+    if (scenario.buildingProfile) {
+        await prepareGardenBuildingProfile(page, scenario.buildingProfile);
+    }
 
     await page.evaluate(
         (warmupMs) =>
@@ -5992,6 +6315,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             adaptiveHigh: element.dataset.gameProfileAdaptiveHigh ?? null,
+            building: element.dataset.gameProfileBuilding ?? null,
+            buildingFixture: element.dataset.gameProfileBuildingFixture ?? null,
             autoQualityMetrics: {
                 coarsePointer:
                     typeof window.matchMedia === 'function' &&
@@ -7129,10 +7454,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }),
     );
     const motionPromise =
-        (scenario.motion || scenario.interaction) && !motionRunsBeforeSample
+        (scenario.motion ||
+            scenario.interaction ||
+            scenario.buildingProfile?.motion) &&
+        !motionRunsBeforeSample
             ? runScenarioMotion(page, scenario, sampleMs)
             : Promise.resolve();
-    const [sampleCompletion] = await Promise.all([
+    const [sampleCompletion, scenarioMotionResult] = await Promise.all([
         sampleCompletionPromise,
         motionPromise,
     ]);
@@ -7484,6 +7812,129 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantVisibleInstanceCount === 'number'
                     ? metadata.generatedPlantVisibleInstanceCount
                     : null,
+            gardenStructureActiveRevision: numberOrNull(
+                metadata.gardenStructureActiveRevision,
+            ),
+            gardenStructureAssetBytesRequested: numberOrNull(
+                metadata.gardenStructureAssetBytesRequested,
+            ),
+            gardenStructureAssetBytesResident: numberOrNull(
+                metadata.gardenStructureAssetBytesResident,
+            ),
+            gardenStructureBlockedTransitionCount: numberOrNull(
+                metadata.gardenStructureBlockedTransitionCount,
+            ),
+            gardenStructureCameraMode: stringOrNull(
+                metadata.gardenStructureCameraMode,
+            ),
+            gardenStructureCollisionBoxCount: numberOrNull(
+                metadata.gardenStructureCollisionBoxCount,
+            ),
+            gardenStructureCollisionBucketCount: numberOrNull(
+                metadata.gardenStructureCollisionBucketCount,
+            ),
+            gardenStructureCompileCount: numberOrNull(
+                metadata.gardenStructureCompileCount,
+            ),
+            gardenStructureCompileDurationMs: numberOrNull(
+                metadata.gardenStructureCompileDurationMs,
+            ),
+            gardenStructureDocumentPayloadBytes: numberOrNull(
+                metadata.gardenStructureDocumentPayloadBytes,
+            ),
+            gardenStructureEdgeCount: numberOrNull(
+                metadata.gardenStructureEdgeCount,
+            ),
+            gardenStructureEditorActionCount: numberOrNull(
+                metadata.gardenStructureEditorActionCount,
+            ),
+            gardenStructureEditorActionDurationMaxMs: numberOrNull(
+                metadata.gardenStructureEditorActionDurationMaxMs,
+            ),
+            gardenStructureEditorActionDurationP95Ms: numberOrNull(
+                metadata.gardenStructureEditorActionDurationP95Ms,
+            ),
+            gardenStructureEditorActionDurationTotalMs: numberOrNull(
+                metadata.gardenStructureEditorActionDurationTotalMs,
+            ),
+            gardenStructureEditorActive: booleanOrNull(
+                metadata.gardenStructureEditorActive,
+            ),
+            gardenStructureEditorLastAction: stringOrNull(
+                metadata.gardenStructureEditorLastAction,
+            ),
+            gardenStructureEditorPointerResolutionCount: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionCount,
+            ),
+            gardenStructureEditorPointerResolutionMaxMs: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionMaxMs,
+            ),
+            gardenStructureEditorPointerResolutionTotalMs: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionTotalMs,
+            ),
+            gardenStructureFloorCount: numberOrNull(
+                metadata.gardenStructureFloorCount,
+            ),
+            gardenStructureFootprintCellCount: numberOrNull(
+                metadata.gardenStructureFootprintCellCount,
+            ),
+            gardenStructureNavigationCompileDurationMs: numberOrNull(
+                metadata.gardenStructureNavigationCompileDurationMs,
+            ),
+            gardenStructureOpenPortalCount: numberOrNull(
+                metadata.gardenStructureOpenPortalCount,
+            ),
+            gardenStructurePlanCacheEstimatedBytes: numberOrNull(
+                metadata.gardenStructurePlanCacheEstimatedBytes,
+            ),
+            gardenStructurePlanCacheEvictionCount: numberOrNull(
+                metadata.gardenStructurePlanCacheEvictionCount,
+            ),
+            gardenStructurePlanCacheHitCount: numberOrNull(
+                metadata.gardenStructurePlanCacheHitCount,
+            ),
+            gardenStructurePlanCacheMissCount: numberOrNull(
+                metadata.gardenStructurePlanCacheMissCount,
+            ),
+            gardenStructurePlanCacheOutcome: stringOrNull(
+                metadata.gardenStructurePlanCacheOutcome,
+            ),
+            gardenStructurePropCount: numberOrNull(
+                metadata.gardenStructurePropCount,
+            ),
+            gardenStructureRenderBatchCount: numberOrNull(
+                metadata.gardenStructureRenderBatchCount,
+            ),
+            gardenStructureRenderInstanceCount: numberOrNull(
+                metadata.gardenStructureRenderInstanceCount,
+            ),
+            gardenStructureRenderTriangleCount: numberOrNull(
+                metadata.gardenStructureRenderTriangleCount,
+            ),
+            gardenStructureRenderVertexCount: numberOrNull(
+                metadata.gardenStructureRenderVertexCount,
+            ),
+            gardenStructureRoofRegionCount: numberOrNull(
+                metadata.gardenStructureRoofRegionCount,
+            ),
+            gardenStructureStructureCount: numberOrNull(
+                metadata.gardenStructureStructureCount,
+            ),
+            gardenStructureTransparentSurfaceCount: numberOrNull(
+                metadata.gardenStructureTransparentSurfaceCount,
+            ),
+            gardenStructureVisibleInteriorSurfaceCount: numberOrNull(
+                metadata.gardenStructureVisibleInteriorSurfaceCount,
+            ),
+            gardenStructureVisiblePropCount: numberOrNull(
+                metadata.gardenStructureVisiblePropCount,
+            ),
+            gardenStructureVisibleStructureCount: numberOrNull(
+                metadata.gardenStructureVisibleStructureCount,
+            ),
+            gardenStructureWalkableCellCount: numberOrNull(
+                metadata.gardenStructureWalkableCellCount,
+            ),
             operationVisualHighlightProfileDispatched: booleanOrNull(
                 metadata.operationVisualHighlightProfileDispatched,
             ),
@@ -7917,6 +8368,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
+        building: profileMetadata?.building ?? request.building,
+        buildingFixture:
+            profileMetadata?.buildingFixture ?? request.buildingFixture,
         crossTierProfile: scenario.crossTierProfile === true,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -7947,7 +8401,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
-        motion: scenario.motion ?? scenario.interaction ?? 'none',
+        motion:
+            scenario.motion ??
+            scenario.interaction ??
+            scenario.buildingProfile?.motion ??
+            'none',
         operationVisuals:
             profileMetadata?.operationVisuals ?? request.operationVisuals,
         outline: profileMetadata?.outline ?? request.outline,
@@ -7958,6 +8416,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
         animalProfileCommand: animalProfileCommandRequest,
+        buildingProfile: scenario.buildingProfile
+            ? {
+                  ...scenario.buildingProfile,
+                  motionResult: scenarioMotionResult,
+              }
+            : null,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
@@ -7988,13 +8452,25 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         sample: roundedSample,
         screenshotWitness,
     });
+    const buildingAcceptance = evaluateGardenBuildingAcceptance({
+        apiRequests,
+        requested,
+        runtime,
+    });
     return {
-        acceptance,
+        acceptance: {
+            checks: [...acceptance.checks, ...buildingAcceptance.checks],
+            pass: acceptance.pass && buildingAcceptance.pass,
+        },
         apiErrors: apiErrors.slice(0, 8),
         apiRequests: apiRequests.slice(0, 8),
         budget: {
-            checks: [...budget.checks, ...acceptance.checks],
-            pass: budget.pass && acceptance.pass,
+            checks: [
+                ...budget.checks,
+                ...acceptance.checks,
+                ...buildingAcceptance.checks,
+            ],
+            pass: budget.pass && acceptance.pass && buildingAcceptance.pass,
         },
         budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
@@ -8186,6 +8662,181 @@ function isProfileScreenshotWitnessValid(witness) {
             witness.sampledUniqueColorCount >= 16 &&
             witness.opaque === true,
     );
+}
+
+function evaluateGardenBuildingAcceptance({ apiRequests, requested, runtime }) {
+    const profile = requested?.buildingProfile;
+    if (!profile) {
+        return { checks: [], pass: true };
+    }
+    const exact = (name, actual, expected) => ({
+        actual,
+        expected,
+        name,
+        pass: actual === expected,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        limit,
+        name,
+        pass: typeof actual === 'number' && actual <= limit,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        limit,
+        name,
+        pass: typeof actual === 'number' && actual >= limit,
+    });
+    const checks = [
+        exact('buildingFixtureOptIn', requested.building, '1'),
+        exact(
+            'buildingFixtureKind',
+            requested.buildingFixture,
+            profile.fixture,
+        ),
+        exact(
+            'buildingStructureCount',
+            runtime?.gardenStructureStructureCount,
+            1,
+        ),
+        exact(
+            'buildingVisibleStructureCount',
+            runtime?.gardenStructureVisibleStructureCount,
+            1,
+        ),
+        exact(
+            'buildingFootprintCellCount',
+            runtime?.gardenStructureFootprintCellCount,
+            profile.expected.footprintCells,
+        ),
+        exact(
+            'buildingEdgeCount',
+            runtime?.gardenStructureEdgeCount,
+            profile.expected.edges,
+        ),
+        exact(
+            'buildingPropCount',
+            runtime?.gardenStructurePropCount,
+            profile.expected.props,
+        ),
+        exact(
+            'buildingRoofRegionCount',
+            runtime?.gardenStructureRoofRegionCount,
+            profile.expected.roofs,
+        ),
+        exact(
+            'buildingAssetBytesRequested',
+            runtime?.gardenStructureAssetBytesRequested,
+            0,
+        ),
+        exact(
+            'buildingAssetBytesResident',
+            runtime?.gardenStructureAssetBytesResident,
+            0,
+        ),
+        minimum(
+            'buildingDocumentPayloadBytes',
+            runtime?.gardenStructureDocumentPayloadBytes,
+            1,
+        ),
+        maximum(
+            'buildingDocumentPayloadBudgetBytes',
+            runtime?.gardenStructureDocumentPayloadBytes,
+            192 * 1024,
+        ),
+        maximum(
+            'buildingCompileDurationMs',
+            runtime?.gardenStructureCompileDurationMs,
+            100,
+        ),
+        maximum(
+            'buildingNavigationCompileDurationMs',
+            runtime?.gardenStructureNavigationCompileDurationMs,
+            100,
+        ),
+        exact(
+            'buildingPlanCacheEvictions',
+            runtime?.gardenStructurePlanCacheEvictionCount,
+            0,
+        ),
+        exact(
+            'buildingStaticSceneCacheBypassed',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'buildingNoMutationRequests',
+            apiRequests.some((request) => request.method !== 'GET'),
+            false,
+        ),
+        exact(
+            'buildingProfileOmitsDocument',
+            Object.hasOwn(runtime ?? {}, 'gardenStructureDocument'),
+            false,
+        ),
+    ];
+    if (profile.mode === 'editing') {
+        checks.push(
+            exact(
+                'buildingEditorActive',
+                runtime?.gardenStructureEditorActive,
+                true,
+            ),
+            minimum(
+                'buildingEditorActionCount',
+                runtime?.gardenStructureEditorActionCount,
+                1,
+            ),
+            maximum(
+                'buildingEditorActionP95Ms',
+                runtime?.gardenStructureEditorActionDurationP95Ms,
+                100,
+            ),
+            maximum(
+                'buildingEditorActionMaxMs',
+                runtime?.gardenStructureEditorActionDurationMaxMs,
+                500,
+            ),
+        );
+    } else {
+        checks.push(
+            exact(
+                'buildingEditorInactive',
+                runtime?.gardenStructureEditorActive,
+                false,
+            ),
+        );
+    }
+    if (profile.motion === 'edit-churn') {
+        checks.push(
+            minimum(
+                'buildingEditChurnActions',
+                profile.motionResult?.actionCount,
+                6,
+            ),
+            minimum(
+                'buildingEditChurnCompiles',
+                runtime?.gardenStructureCompileCount,
+                3,
+            ),
+        );
+    }
+    if (profile.motion === 'enter-exit') {
+        checks.push(
+            minimum(
+                'buildingEnterExitCycles',
+                profile.motionResult?.cycleCount,
+                2,
+            ),
+            exact(
+                'buildingEnterExitCameraRestored',
+                runtime?.gardenStructureCameraMode,
+                'building',
+            ),
+        );
+    }
+
+    return { checks, pass: checks.every((check) => check.pass) };
 }
 
 async function measureProfileScreenshotWitness(path) {
@@ -13177,6 +13828,35 @@ function buildMarkdown(report) {
         );
     }
 
+    const buildingProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.buildingProfile,
+    );
+    if (buildingProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Garden building automated evidence',
+            '',
+            'Production-build Chromium evidence only; physical-device frame, memory, thermal, touch, and GPU-resource proof remains separate.',
+            '',
+            '| Scenario | Fixture / state | Cells / edges / roofs / props | Batches / instances / triangles / vertices | Portals / blocked / collision boxes / buckets | Compile / navigation / cache hit-miss-evict | Payload / asset requested-resident | Editor actions p95/max | Motion | Result |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        );
+        for (const scenario of buildingProfiles) {
+            const runtime = scenario.runtime ?? {};
+            const profile = scenario.requested.buildingProfile;
+            const motionResult = profile.motionResult;
+            const motion =
+                motionResult?.kind === 'edit-churn'
+                    ? `${motionResult.kind}: ${motionResult.actionCount ?? 0} actions`
+                    : motionResult?.kind === 'enter-exit'
+                      ? `${motionResult.kind}: ${motionResult.cycleCount ?? 0} cycles`
+                      : (profile.motion ?? 'none');
+            lines.push(
+                `| ${scenario.name} | ${profile.fixture} / ${profile.mode} | ${runtime.gardenStructureFootprintCellCount ?? 'n/a'} / ${runtime.gardenStructureEdgeCount ?? 'n/a'} / ${runtime.gardenStructureRoofRegionCount ?? 'n/a'} / ${runtime.gardenStructurePropCount ?? 'n/a'} | ${runtime.gardenStructureRenderBatchCount ?? 'n/a'} / ${runtime.gardenStructureRenderInstanceCount ?? 'n/a'} / ${runtime.gardenStructureRenderTriangleCount ?? 'n/a'} / ${runtime.gardenStructureRenderVertexCount ?? 'n/a'} | ${runtime.gardenStructureOpenPortalCount ?? 'n/a'} / ${runtime.gardenStructureBlockedTransitionCount ?? 'n/a'} / ${runtime.gardenStructureCollisionBoxCount ?? 'n/a'} / ${runtime.gardenStructureCollisionBucketCount ?? 'n/a'} | ${round(runtime.gardenStructureCompileDurationMs) ?? 'n/a'} ms / ${round(runtime.gardenStructureNavigationCompileDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructurePlanCacheHitCount ?? 'n/a'}-${runtime.gardenStructurePlanCacheMissCount ?? 'n/a'}-${runtime.gardenStructurePlanCacheEvictionCount ?? 'n/a'} | ${runtime.gardenStructureDocumentPayloadBytes ?? 'n/a'} B / ${runtime.gardenStructureAssetBytesRequested ?? 'n/a'}-${runtime.gardenStructureAssetBytesResident ?? 'n/a'} B | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 'n/a'}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 'n/a'} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const crossTierMedians = Object.entries(
         report.crossTierMedians ??
             buildCrossTierMedians(report.highTargetMedians ?? {}),
@@ -14036,6 +14716,7 @@ export {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenBuildingAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,

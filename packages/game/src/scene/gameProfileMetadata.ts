@@ -325,6 +325,9 @@ export type GameProfileMetadata = {
     generatedPlantVisibleInstanceCount?: number;
     gameCameraSnapshot?: GameCameraSnapshot;
     gardenStructureBlockedTransitionCount?: number;
+    gardenStructureActiveRevision?: number;
+    gardenStructureAssetBytesRequested?: number;
+    gardenStructureAssetBytesResident?: number;
     gardenStructureCameraActivePointerCount?: number;
     gardenStructureCameraMode?: 'browse' | 'building' | 'restoring';
     gardenStructureCameraPositionX?: number;
@@ -336,20 +339,44 @@ export type GameProfileMetadata = {
     gardenStructureCameraZoom?: number;
     gardenStructureCollisionBoxCount?: number;
     gardenStructureCollisionBucketCount?: number;
+    gardenStructureCompileCount?: number;
     gardenStructureCompileDurationMs?: number;
     gardenStructureDocumentPayloadBytes?: number;
+    gardenStructureEdgeCount?: number;
+    gardenStructureEditorActionCount?: number;
+    gardenStructureEditorActionDurationMaxMs?: number;
+    gardenStructureEditorActionDurationP95Ms?: number;
+    gardenStructureEditorActionDurationTotalMs?: number;
+    gardenStructureEditorActive?: boolean;
+    gardenStructureEditorLastAction?: string;
+    gardenStructureEditorPointerResolutionCount?: number;
+    gardenStructureEditorPointerResolutionMaxMs?: number;
+    gardenStructureEditorPointerResolutionTotalMs?: number;
+    gardenStructureFloorCount?: number;
     gardenStructureFootprintCellCount?: number;
+    gardenStructureNavigationCompileDurationMs?: number;
     gardenStructureOpenPortalCount?: number;
     gardenStructurePlanCacheEstimatedBytes?: number;
     gardenStructurePlanCacheEvictionCount?: number;
     gardenStructurePlanCacheHitCount?: number;
     gardenStructurePlanCacheMissCount?: number;
+    gardenStructurePlanCacheOutcome?: 'hit' | 'miss' | 'none';
+    gardenStructurePropCount?: number;
     gardenStructureProjectedBottom?: number;
     gardenStructureProjectedLeft?: number;
     gardenStructureProjectedRight?: number;
     gardenStructureProjectedTop?: number;
     gardenStructureRenderBatchCount?: number;
     gardenStructureRenderInstanceCount?: number;
+    gardenStructureRenderTriangleCount?: number;
+    gardenStructureRenderVertexCount?: number;
+    gardenStructureRoofRegionCount?: number;
+    gardenStructureStructureCount?: number;
+    gardenStructureTransparentSurfaceCount?: number;
+    gardenStructureVisibleInteriorSurfaceCount?: number;
+    gardenStructureVisiblePropCount?: number;
+    gardenStructureVisibleStructureCount?: number;
+    gardenStructureWalkableCellCount?: number;
     gardenStructureVisibleBottom?: number;
     gardenStructureVisibleLeft?: number;
     gardenStructureVisibleRight?: number;
@@ -502,4 +529,59 @@ export function updateGameProfileMetadata(metadata: GameProfileMetadata) {
         ...window.__grediceGameProfile,
         ...metadata,
     };
+}
+
+const gardenStructureEditorActionSampleLimit = 64;
+const gardenStructureEditorActionSamples: number[] = [];
+
+export function recordGardenStructureEditorAction(
+    action: string,
+    durationMs: number,
+) {
+    if (!Number.isFinite(durationMs) || durationMs < 0) {
+        return;
+    }
+    gardenStructureEditorActionSamples.push(durationMs);
+    if (
+        gardenStructureEditorActionSamples.length >
+        gardenStructureEditorActionSampleLimit
+    ) {
+        gardenStructureEditorActionSamples.shift();
+    }
+    const sorted = [...gardenStructureEditorActionSamples].sort(
+        (left, right) => left - right,
+    );
+    const p95Index = Math.min(
+        sorted.length - 1,
+        Math.floor(sorted.length * 0.95),
+    );
+    updateGameProfileMetadata({
+        gardenStructureEditorActionCount:
+            gardenStructureEditorActionSamples.length,
+        gardenStructureEditorActionDurationMaxMs: sorted.at(-1) ?? 0,
+        gardenStructureEditorActionDurationP95Ms: sorted[p95Index] ?? 0,
+        gardenStructureEditorActionDurationTotalMs: sorted.reduce(
+            (total, duration) => total + duration,
+            0,
+        ),
+        gardenStructureEditorLastAction: action,
+    });
+}
+
+export function recordGardenStructurePointerResolution(durationMs: number) {
+    if (!Number.isFinite(durationMs) || durationMs < 0) {
+        return;
+    }
+    const current = readGameProfileMetadata();
+    updateGameProfileMetadata({
+        gardenStructureEditorPointerResolutionCount:
+            (current?.gardenStructureEditorPointerResolutionCount ?? 0) + 1,
+        gardenStructureEditorPointerResolutionMaxMs: Math.max(
+            current?.gardenStructureEditorPointerResolutionMaxMs ?? 0,
+            durationMs,
+        ),
+        gardenStructureEditorPointerResolutionTotalMs:
+            (current?.gardenStructureEditorPointerResolutionTotalMs ?? 0) +
+            durationMs,
+    });
 }
