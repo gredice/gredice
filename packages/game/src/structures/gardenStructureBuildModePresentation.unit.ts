@@ -134,4 +134,21 @@ describe('garden structure build-mode presentation', () => {
             },
         );
     });
+
+    test('names an uncertain demolition instead of reporting a clean saved structure', () => {
+        assert.equal(
+            getGardenStructureSaveStatusLabel({
+                demolition: {
+                    status: 'unknown',
+                    code: 'NETWORK_ERROR',
+                    operationId: 'demolish-1',
+                    expectedRevision: 3,
+                },
+                originKind: 'saved-structure',
+                recoveryAvailability: 'available',
+                save: { status: 'clean' },
+            }),
+            'Ishod rušenja nije poznat · lokalna kopija pohranjena na uređaju',
+        );
+    });
 });

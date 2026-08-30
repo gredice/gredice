@@ -16,6 +16,7 @@ import type {
 } from './index';
 import {
     applyGardenStructureEditorCommand,
+    beginGardenStructureEditorDemolition,
     beginGardenStructureEditorSave,
     confirmGardenStructureFootprintChange,
     confirmGardenStructureTemplatePlacement,
@@ -290,6 +291,50 @@ describe('garden structure editor recovery records', () => {
         assert.deepEqual(getGardenStructureEditorExitDecision(restored), {
             kind: 'resolve-conflict',
             serverAcknowledged: false,
+        });
+    });
+
+    test('persists an in-flight demolition as an exact unknown retry even when the structure disappears or advances', () => {
+        const state = unwrap(
+            beginGardenStructureEditorDemolition(
+                createSavedEditor(),
+                'demolish-1',
+            ),
+        );
+        const serialized = unwrap(
+            serializeGardenStructureEditorRecovery(state, 1_800_000_000_000),
+        );
+        const restored = unwrap(
+            restoreGardenStructureEditorRecovery(serialized, {
+                gardenId: 42,
+                structureId: 'structure-1',
+                latestRevision: 4,
+            }),
+        ).state;
+
+        assert.deepEqual(restored.demolition, {
+            status: 'unknown',
+            code: 'demolition-outcome-unknown',
+            operationId: 'demolish-1',
+            expectedRevision: 3,
+        });
+        assert.equal(restored.save.status, 'clean');
+        assert.deepEqual(getGardenStructureEditorExitDecision(restored), {
+            kind: 'local-recovery-only',
+            reason: 'error',
+            serverAcknowledged: false,
+        });
+        assertFailure(
+            beginGardenStructureEditorDemolition(restored, 'demolish-2'),
+            'operation-mismatch',
+        );
+        const retry = unwrap(
+            beginGardenStructureEditorDemolition(restored, 'demolish-1'),
+        );
+        assert.deepEqual(retry.demolition, {
+            status: 'submitting',
+            operationId: 'demolish-1',
+            expectedRevision: 3,
         });
     });
 

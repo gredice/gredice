@@ -1,7 +1,6 @@
 import { clientAuthenticated } from '@gredice/client';
 import {
     decodeGardenStructureDocument,
-    type GardenStructureDocumentV1,
     type GardenStructureRotation,
     type GardenStructureTemplateKey,
     normalizeGardenStructureDocument,
@@ -9,33 +8,18 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { GardenStructureEditorState } from '../structures/editor';
 import { useGameState } from '../useGameState';
-import { classifyGardenStructureMutationHttpOutcome } from './gardenStructureMutationOutcome';
+import {
+    type GardenStructureMutationResult,
+    installGardenStructureMutationInCurrentGarden,
+} from './gardenStructureMutationCache';
+import {
+    classifyGardenStructureMutationHttpOutcome,
+    type GardenStructureMutationOutcome,
+} from './gardenStructureMutationOutcome';
 import { currentAccountKeys } from './useCurrentAccount';
-import { currentGardenKeys } from './useCurrentGarden';
+import { type CurrentGarden, currentGardenKeys } from './useCurrentGarden';
 
-export type GardenStructureMutationResult = Readonly<{
-    economy: Readonly<{
-        debitedSunflowers: number;
-        refundedSunflowers: number;
-    }>;
-    kind: 'create' | 'delete' | 'placement' | 'replace' | 'resize';
-    structure: Readonly<{
-        anchorX: number;
-        anchorY: number;
-        deleted: boolean;
-        document: GardenStructureDocumentV1;
-        gardenId: number;
-        id: string;
-        kitKey: string;
-        kitVersion: string;
-        pricingVersion: number;
-        refundableSunflowerPrincipal: number;
-        revision: number;
-        rotation: GardenStructureRotation;
-        sunflowerPricePerCell: number;
-        templateKey: GardenStructureTemplateKey;
-    }>;
-}>;
+export type { GardenStructureMutationResult } from './gardenStructureMutationCache';
 
 export class GardenStructureMutationClientError extends Error {
     override readonly name = 'GardenStructureMutationClientError';
@@ -43,7 +27,7 @@ export class GardenStructureMutationClientError extends Error {
     constructor(
         message: string,
         readonly code: string,
-        readonly outcome: 'rejected' | 'unknown',
+        readonly outcome: GardenStructureMutationOutcome,
         readonly currentRevision: number | null = null,
     ) {
         super(message);
@@ -150,7 +134,10 @@ function decodeMutationResult(value: unknown): GardenStructureMutationResult {
     };
 }
 
-async function responseFailure(response: Response) {
+async function responseFailure(
+    response: Response,
+    operation: 'demolish' | 'save',
+) {
     let value: unknown;
     try {
         value = await response.json();
@@ -173,7 +160,9 @@ async function responseFailure(response: Response) {
         typeof value.error === 'string' &&
         value.error.length <= 512
             ? value.error
-            : 'Građevinu trenutačno nije moguće spremiti.';
+            : operation === 'demolish'
+              ? 'Građevinu trenutačno nije moguće srušiti.'
+              : 'Građevinu trenutačno nije moguće spremiti.';
     return new GardenStructureMutationClientError(
         message,
         code,
@@ -278,7 +267,7 @@ async function executeGardenStructureSave(
                 break;
         }
         if (!response.ok) {
-            throw await responseFailure(response);
+            throw await responseFailure(response, 'save');
         }
         return decodeMutationResult(await response.json());
     } catch (error) {
@@ -313,7 +302,7 @@ async function executeGardenStructureDelete(input: {
             },
         });
         if (!response.ok) {
-            throw await responseFailure(response);
+            throw await responseFailure(response, 'demolish');
         }
         return decodeMutationResult(await response.json());
     } catch (error) {
@@ -321,7 +310,7 @@ async function executeGardenStructureDelete(input: {
             throw error;
         }
         throw new GardenStructureMutationClientError(
-            'Veza je prekinuta prije potvrde rušenja. Građevina nije označena kao srušena.',
+            'Veza je prekinuta prije potvrde rušenja. Ponovite rušenje kako biste provjerili raniji ishod.',
             'NETWORK_ERROR',
             'unknown',
         );
@@ -340,7 +329,17 @@ export function useGardenStructureMutations(gardenId?: number) {
         undefined,
         localSandboxStorageKey,
     );
-    const refreshAcknowledgedState = async () => {
+    const installAndRefreshAcknowledgedState = async (
+        result: GardenStructureMutationResult,
+    ) => {
+        queryClient.setQueryData<CurrentGarden | null>(
+            gardenQueryKey,
+            (currentGarden) =>
+                installGardenStructureMutationInCurrentGarden(
+                    currentGarden,
+                    result,
+                ),
+        );
         await Promise.all([
             queryClient.invalidateQueries({ queryKey: gardenQueryKey }),
             queryClient.invalidateQueries({ queryKey: currentAccountKeys }),
@@ -350,12 +349,12 @@ export function useGardenStructureMutations(gardenId?: number) {
     const save = useMutation({
         mutationKey: ['gardens', gardenId, 'structures', 'save'],
         mutationFn: executeGardenStructureSave,
-        onSuccess: refreshAcknowledgedState,
+        onSuccess: installAndRefreshAcknowledgedState,
     });
     const demolish = useMutation({
         mutationKey: ['gardens', gardenId, 'structures', 'delete'],
         mutationFn: executeGardenStructureDelete,
-        onSuccess: refreshAcknowledgedState,
+        onSuccess: installAndRefreshAcknowledgedState,
     });
 
     return { demolish, save };

@@ -111,6 +111,7 @@ import { createGardenStructureAvatarCollisionWorld } from './structures/gardenSt
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
 import {
     createGardenStructureSceneBaseHeightResolver,
+    createGardenStructureSceneBuildPreviewCompileInput,
     GardenStructureSceneLayer,
     useGardenStructureSceneSnapshot,
 } from './structures/gardenStructureScene';
@@ -412,6 +413,11 @@ export function GameScene({
     const structureBuildActive = Boolean(
         gardenStructureVerticalSliceEnabled && structureBuildSession,
     );
+    const { data: blockData } = useBlockData();
+    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const { displayedGarden: transitionedGardenData, sceneVisible } =
+        useGardenSceneTransition(gardenData);
+    const garden = useSceneCurrentGarden(transitionedGardenData);
     const editedStructureId =
         structureBuildActive && structureBuildSession
             ? structureBuildSession.editor.origin.kind === 'saved-structure'
@@ -435,13 +441,21 @@ export function GameScene({
             editor.origin.kind === 'saved-structure'
                 ? editor.origin.revision
                 : editor.history.past.length + 1;
+        const compileInput = createGardenStructureSceneBuildPreviewCompileInput(
+            {
+                blockData,
+                document: editor.snapshot.document,
+                placement: editor.snapshot.placement,
+                revision,
+                stacks: garden?.stacks,
+                structureId,
+            },
+        );
+        if (!compileInput) {
+            return null;
+        }
         const startedAt = performance.now();
-        const plan = cache.getOrCompile({
-            structureId,
-            revision,
-            document: editor.snapshot.document,
-            placement: editor.snapshot.placement,
-        });
+        const plan = cache.getOrCompile(compileInput);
         const cacheSnapshot = cache.snapshot();
         return {
             compileDurationMs: performance.now() - startedAt,
@@ -451,7 +465,12 @@ export function GameScene({
             plan,
             cacheSnapshot,
         };
-    }, [gardenStructureVerticalSliceEnabled, structureBuildSession?.editor]);
+    }, [
+        blockData,
+        garden?.stacks,
+        gardenStructureVerticalSliceEnabled,
+        structureBuildSession?.editor,
+    ]);
     const structureFixtureCollisionWorld = useMemo(
         () =>
             structureFixtureBundle
@@ -501,7 +520,10 @@ export function GameScene({
             return;
         }
 
-        if (structureBuildActive && structureFixtureBundle) {
+        if (structureBuildActive) {
+            if (!structureFixtureBundle) {
+                return;
+            }
             if (!structureCameraSnapshotRef.current) {
                 structureCameraSnapshotRef.current = gameCamera.getSnapshot();
             }
@@ -717,13 +739,8 @@ export function GameScene({
         useState<AdaptiveHighQualityLevelProfile>(adaptiveHighQualityLevels.L0);
 
     // Start non-critical metadata early, but don't block the first scene frame.
-    const { data: blockData } = useBlockData();
-    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
-    const { displayedGarden: transitionedGardenData, sceneVisible } =
-        useGardenSceneTransition(gardenData);
     const { isPending: isBlockVariantPending, mutate: updateBlockVariant } =
         useBlockVariant();
-    const garden = useSceneCurrentGarden(transitionedGardenData);
     const browseStructureRecords = useMemo(
         () =>
             garden?.structures.filter(

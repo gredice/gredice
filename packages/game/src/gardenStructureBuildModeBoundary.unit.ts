@@ -10,7 +10,6 @@ const buildHudSource = readFileSync(
     join(sourceRoot, 'structures/GardenStructureVerticalSliceHud.tsx'),
     'utf8',
 );
-
 function sourceBetween(source: string, start: string, end: string) {
     const startIndex = source.indexOf(start);
     const endIndex = source.indexOf(end, startIndex + start.length);
@@ -109,50 +108,9 @@ test('keeps new drafts local until Done and acknowledges the response before clo
     assert.ok(closeIndex > dirtyAcknowledgementIndex);
 });
 
-test('retains operation IDs for ambiguous save and demolition outcomes', () => {
-    const saveFlow = sourceBetween(
-        buildHudSource,
-        'async function saveAndExit',
-        'async function demolishStructure',
-    );
-    const demolishFlow = sourceBetween(
-        buildHudSource,
-        'async function demolishStructure',
-        'useEffect(() =>',
-    );
-
-    assert.match(
-        saveFlow,
-        /editor\.save\.status === 'offline'[\s\S]*?editor\.save\.operationId[\s\S]*?\? editor\.save\.operationId/,
-    );
-    assert.match(
-        saveFlow,
-        /clientError\.outcome === 'unknown'[\s\S]*?markGardenStructureEditorOffline\(/,
-    );
-    assert.match(
-        demolishFlow,
-        /demolishOperationId \?\? createIdentifier\('demolish'\)/,
-    );
-    assert.match(
-        demolishFlow,
-        /error\.outcome === 'rejected'[\s\S]*?setDemolishOperationId\(null\)/,
-    );
-});
-
-test('uses modal alert dialogs with focus containment and an inert editor background', () => {
+test('keeps the editor background inert while a confirmation is open', () => {
     assert.match(
         buildHudSource,
         /aria-hidden=\{confirmationOpen \|\| undefined\}[\s\S]*?inert=\{confirmationOpen \? true : undefined\}/,
     );
-    assert.equal(buildHudSource.match(/role="alertdialog"/g)?.length, 1);
-    assert.equal(buildHudSource.match(/aria-modal="true"/g)?.length, 1);
-    assert.match(buildHudSource, /cancelButtonRef\.current\?\.focus/);
-    assert.match(buildHudSource, /testId="garden-structure-exit-dialog"/);
-    assert.match(buildHudSource, /testId="garden-structure-demolish-dialog"/);
-    assert.match(
-        buildHudSource,
-        /returnTarget\.focus\(\{ preventScroll: true \}\)/,
-    );
-    assert.match(buildHudSource, /entryButtonRef\.current\?\.focus/);
-    assert.match(buildHudSource, /function trapFocus/);
 });

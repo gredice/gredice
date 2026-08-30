@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
     getGardenStructureEditorRecoveryStorageKey,
+    readGardenStructureEditorDemolitionRecoveryPointer,
     readGardenStructureEditorRecoveryStorage,
+    writeGardenStructureEditorDemolitionRecoveryPointer,
     writeGardenStructureEditorRecoveryStorage,
 } from './gardenStructureEditorRecoveryStorage';
 
@@ -100,5 +102,55 @@ describe('garden structure editor recovery storage', () => {
             ),
             false,
         );
+    });
+
+    test('keeps one bounded demolition recovery pointer per garden', () => {
+        const values = new Map<string, string>();
+        const storage = {
+            getItem(key: string) {
+                return values.get(key) ?? null;
+            },
+            removeItem(key: string) {
+                values.delete(key);
+            },
+            setItem(key: string, value: string) {
+                values.set(key, value);
+            },
+        };
+
+        assert.equal(
+            writeGardenStructureEditorDemolitionRecoveryPointer(
+                storage,
+                42,
+                'structure-1',
+            ),
+            true,
+        );
+        assert.equal(
+            readGardenStructureEditorDemolitionRecoveryPointer(storage, 42),
+            'structure-1',
+        );
+        assert.equal(
+            writeGardenStructureEditorDemolitionRecoveryPointer(
+                storage,
+                42,
+                null,
+            ),
+            true,
+        );
+        assert.equal(
+            readGardenStructureEditorDemolitionRecoveryPointer(storage, 42),
+            null,
+        );
+
+        values.set(
+            'gredice:garden-structure-editor:v1:garden:42:demolition',
+            ' '.repeat(200),
+        );
+        assert.equal(
+            readGardenStructureEditorDemolitionRecoveryPointer(storage, 42),
+            null,
+        );
+        assert.equal(values.size, 0);
     });
 });

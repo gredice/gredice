@@ -16,6 +16,7 @@ import {
     gardenStructureCollectionMaxStructureCount,
 } from './gardenStructureCollectionPlan';
 import { decodeSavedGardenStructureRecord } from './gardenStructureSavedRecord';
+import type { GardenStructureCompileInput } from './structurePlanTypes';
 
 const gardenStructureSceneDiagnosticSampleLimit = 8;
 const emptyGardenStructureRecords: readonly unknown[] = Object.freeze([]);
@@ -57,6 +58,21 @@ export type GardenStructureSceneBaseHeightInput = Readonly<{
     records: readonly unknown[] | null | undefined;
     stacks: Stack[] | null | undefined;
 }>;
+
+export type GardenStructureSceneStructureBaseHeightInput = Readonly<{
+    blockData: BlockData[] | null | undefined;
+    document: GardenStructureCompileInput['document'];
+    placement: GardenStructureCompileInput['placement'];
+    stacks: Stack[] | null | undefined;
+}>;
+
+export type GardenStructureSceneBuildPreviewInput = Readonly<
+    Omit<GardenStructureCompileInput, 'baseHeight'> &
+        Pick<
+            GardenStructureSceneStructureBaseHeightInput,
+            'blockData' | 'stacks'
+        >
+>;
 
 const readyDiagnostics = Object.freeze({
     issueSampleTruncated: false,
@@ -113,6 +129,95 @@ function uniqueDecodedStructureInputs(records: readonly unknown[]) {
     return decoded.filter((result) => idCounts.get(result.structureId) === 1);
 }
 
+type GardenStructureSupportContext = Readonly<{
+    blockData: BlockData[] | null | undefined;
+    knownBlockNames: ReadonlySet<string>;
+    stackByCoordinate: ReadonlyMap<string, Stack>;
+}>;
+
+function createGardenStructureSupportContext(
+    blockData: BlockData[] | null | undefined,
+    stacks: Stack[] | null | undefined,
+): GardenStructureSupportContext {
+    return {
+        blockData,
+        knownBlockNames: new Set(
+            blockData?.map((block) => block.information.name) ?? [],
+        ),
+        stackByCoordinate: new Map(
+            (stacks ?? []).map((stack) => [
+                `${stack.position.x}|${stack.position.z}`,
+                stack,
+            ]),
+        ),
+    };
+}
+
+function resolveGardenStructureBaseHeightFromSupport(
+    context: GardenStructureSupportContext,
+    document: GardenStructureCompileInput['document'],
+    placement: GardenStructureCompileInput['placement'],
+) {
+    const heights: number[] = [];
+    for (const cell of getGardenStructureWorldFootprintCells(
+        document,
+        placement,
+    )) {
+        const stack = context.stackByCoordinate.get(`${cell.x}|${cell.y}`);
+        if (
+            !context.blockData ||
+            !stack ||
+            stack.blocks.length === 0 ||
+            stack.blocks.some(
+                (block) => !context.knownBlockNames.has(block.name),
+            )
+        ) {
+            return Number.NaN;
+        }
+        heights.push(
+            stack.position.y + getStackHeight(context.blockData, stack),
+        );
+    }
+
+    const baseHeight = heights[0];
+    return baseHeight !== undefined &&
+        heights.every((height) => Math.abs(height - baseHeight) <= 0.0001)
+        ? baseHeight
+        : Number.NaN;
+}
+
+/**
+ * Resolves one editor preview against the same flat stack-top authority used
+ * by persisted structure rendering.
+ */
+export function resolveGardenStructureSceneStructureBaseHeight({
+    blockData,
+    document,
+    placement,
+    stacks,
+}: GardenStructureSceneStructureBaseHeightInput) {
+    return resolveGardenStructureBaseHeightFromSupport(
+        createGardenStructureSupportContext(blockData, stacks),
+        document,
+        placement,
+    );
+}
+
+/** Returns a supported compile input or withholds a preview at guessed height. */
+export function createGardenStructureSceneBuildPreviewCompileInput({
+    blockData,
+    stacks,
+    ...compileInput
+}: GardenStructureSceneBuildPreviewInput): GardenStructureCompileInput | null {
+    const baseHeight = resolveGardenStructureSceneStructureBaseHeight({
+        blockData,
+        document: compileInput.document,
+        placement: compileInput.placement,
+        stacks,
+    });
+    return Number.isFinite(baseHeight) ? { ...compileInput, baseHeight } : null;
+}
+
 /**
  * Resolves the authoritative flat support top from the same block catalogue
  * heights used by normal entities and avatar terrain. Missing catalogue data,
@@ -134,39 +239,18 @@ export function createGardenStructureSceneBaseHeightResolver({
     }
 
     const baseHeightByStructureId = new Map<string, number>();
-    const knownBlockNames = new Set(
-        blockData?.map((block) => block.information.name) ?? [],
-    );
-    const stackByCoordinate = new Map(
-        (stacks ?? []).map((stack) => [
-            `${stack.position.x}|${stack.position.z}`,
-            stack,
-        ]),
+    const supportContext = createGardenStructureSupportContext(
+        blockData,
+        stacks,
     );
 
     for (const result of decodedStructures) {
-        const heights: number[] = [];
-        for (const cell of getGardenStructureWorldFootprintCells(
+        const baseHeight = resolveGardenStructureBaseHeightFromSupport(
+            supportContext,
             result.input.document,
             result.input.placement,
-        )) {
-            const stack = stackByCoordinate.get(`${cell.x}|${cell.y}`);
-            if (
-                !blockData ||
-                !stack ||
-                stack.blocks.length === 0 ||
-                stack.blocks.some((block) => !knownBlockNames.has(block.name))
-            ) {
-                heights.length = 0;
-                break;
-            }
-            heights.push(stack.position.y + getStackHeight(blockData, stack));
-        }
-        const baseHeight = heights[0];
-        if (
-            baseHeight !== undefined &&
-            heights.every((height) => Math.abs(height - baseHeight) <= 0.0001)
-        ) {
+        );
+        if (Number.isFinite(baseHeight)) {
             baseHeightByStructureId.set(result.structureId, baseHeight);
         }
     }

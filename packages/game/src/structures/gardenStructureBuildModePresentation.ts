@@ -1,5 +1,6 @@
 import { gardenStructureSunflowerPricePerCell } from '@gredice/js/gardenStructures';
 import type {
+    GardenStructureEditorDemolitionState,
     GardenStructureEditorExitDecision,
     GardenStructureEditorPricingPreview,
     GardenStructureEditorSaveState,
@@ -11,10 +12,12 @@ export type GardenStructureRecoveryAvailability =
     | 'unavailable';
 
 export function getGardenStructureSaveStatusLabel({
+    demolition = { status: 'idle' },
     originKind,
     recoveryAvailability,
     save,
 }: {
+    demolition?: GardenStructureEditorDemolitionState;
     originKind: 'new-draft' | 'saved-structure';
     recoveryAvailability: GardenStructureRecoveryAvailability;
     save: GardenStructureEditorSaveState;
@@ -25,6 +28,13 @@ export function getGardenStructureSaveStatusLabel({
             : recoveryAvailability === 'unavailable'
               ? 'lokalna kopija nije dostupna'
               : 'provjera lokalne kopije';
+
+    if (demolition.status === 'submitting') {
+        return 'Rušenje…';
+    }
+    if (demolition.status === 'unknown') {
+        return `Ishod rušenja nije poznat · ${recoverySuffix}`;
+    }
 
     switch (save.status) {
         case 'clean':

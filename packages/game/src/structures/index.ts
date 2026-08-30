@@ -109,16 +109,20 @@ export {
 } from './gardenStructureSavedRecord';
 export type {
     GardenStructureSceneBaseHeightInput,
+    GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCacheOptions,
     GardenStructureSceneDiagnosticStatus,
     GardenStructureSceneDiagnostics,
     GardenStructureSceneResolveInput,
     GardenStructureSceneSnapshot,
+    GardenStructureSceneStructureBaseHeightInput,
 } from './gardenStructureScene';
 export {
     createGardenStructureSceneBaseHeightResolver,
+    createGardenStructureSceneBuildPreviewCompileInput,
     GardenStructureSceneCache,
     GardenStructureSceneLayer,
+    resolveGardenStructureSceneStructureBaseHeight,
     useGardenStructureSceneSnapshot,
 } from './gardenStructureScene';
 export type {

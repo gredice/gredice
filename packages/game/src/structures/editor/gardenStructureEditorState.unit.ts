@@ -21,9 +21,11 @@ import type {
     GardenStructureEditorState,
 } from './index';
 import {
+    abandonGardenStructureEditorDemolitionFailure,
     abandonGardenStructureEditorSaveFailure,
     acknowledgeGardenStructureEditorSave,
     applyGardenStructureEditorCommand,
+    beginGardenStructureEditorDemolition,
     beginGardenStructureEditorSave,
     confirmGardenStructureFootprintChange,
     confirmGardenStructureTemplatePlacement,
@@ -34,6 +36,7 @@ import {
     getGardenStructureEditorExitDecision,
     getGardenStructureEditorPricingPreview,
     markGardenStructureEditorConflict,
+    markGardenStructureEditorDemolitionUnknown,
     markGardenStructureEditorOffline,
     markGardenStructureEditorSaveError,
     redoGardenStructureEditorCommand,
@@ -760,6 +763,11 @@ describe('garden structure editor retry, conflict, and exit safety', () => {
             reason: 'error',
             serverAcknowledged: false,
         });
+        state = placementEdit(state, 'move-after-rejection', 13);
+        assertFailure(
+            beginGardenStructureEditorSave(state, 'save-1'),
+            'invalid-state',
+        );
         state = unwrap(
             abandonGardenStructureEditorSaveFailure(state, 'save-1'),
         );
@@ -768,6 +776,47 @@ describe('garden structure editor retry, conflict, and exit safety', () => {
             operation: 'placement',
             serverAcknowledged: false,
         });
+        state = unwrap(beginGardenStructureEditorSave(state, 'save-2'));
+        assert.equal(state.save.status, 'saving');
+        if (state.save.status === 'saving') {
+            assert.equal(state.save.operationId, 'save-2');
+            assert.equal(state.save.submittedSnapshot.placement.anchorX, 13);
+        }
+    });
+
+    test('keeps an uncertain demolition exact-retryable until a definitive failure is abandoned', () => {
+        let state = createSavedEditor();
+        state = unwrap(
+            beginGardenStructureEditorDemolition(state, 'demolish-1'),
+        );
+        state = unwrap(
+            markGardenStructureEditorDemolitionUnknown(state, {
+                code: 'NETWORK_ERROR',
+                operationId: 'demolish-1',
+            }),
+        );
+        assert.deepEqual(getGardenStructureEditorExitDecision(state), {
+            kind: 'local-recovery-only',
+            reason: 'error',
+            serverAcknowledged: false,
+        });
+        assertFailure(
+            beginGardenStructureEditorDemolition(state, 'demolish-2'),
+            'operation-mismatch',
+        );
+
+        state = unwrap(
+            beginGardenStructureEditorDemolition(state, 'demolish-1'),
+        );
+        assert.deepEqual(state.demolition, {
+            status: 'submitting',
+            operationId: 'demolish-1',
+            expectedRevision: 3,
+        });
+        state = unwrap(
+            abandonGardenStructureEditorDemolitionFailure(state, 'demolish-1'),
+        );
+        assert.deepEqual(state.demolition, { status: 'idle' });
     });
 
     test('blocks editing on conflict and supports reload or an explicitly new draft', () => {

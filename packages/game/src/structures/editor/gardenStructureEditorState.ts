@@ -21,6 +21,7 @@ import {
 } from '@gredice/js/gardenStructures';
 import type {
     GardenStructureEditorCommand,
+    GardenStructureEditorDemolitionState,
     GardenStructureEditorExitDecision,
     GardenStructureEditorFailure,
     GardenStructureEditorFailureCode,
@@ -243,6 +244,7 @@ export function createNewGardenStructureEditorState({
         snapshot: snapshot.value,
         workflow: { kind: 'placing-template' },
         save: { status: 'dirty' },
+        demolition: { status: 'idle' },
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation: null,
     });
@@ -317,6 +319,7 @@ export function createSavedGardenStructureEditorState({
         snapshot: snapshot.value,
         workflow: { kind: 'editing', tool: 'select' },
         save: { status: 'clean' },
+        demolition: { status: 'idle' },
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation: null,
     });
@@ -604,6 +607,12 @@ function requireEditableWorkflow(
         return failure(
             'invalid-state',
             'Document changes are paused while saving or resolving a conflict.',
+        );
+    }
+    if (state.demolition.status !== 'idle') {
+        return failure(
+            'invalid-state',
+            'Resolve the uncertain demolition before editing this structure.',
         );
     }
     return success(state);
@@ -999,13 +1008,28 @@ export function beginGardenStructureEditorSave(
             'There are no unacknowledged changes to save.',
         );
     }
+    if (state.demolition.status !== 'idle') {
+        return failure(
+            'invalid-state',
+            'Resolve the active demolition before saving this structure.',
+        );
+    }
     if (state.save.status === 'saving' || state.save.status === 'conflict') {
         return failure(
             'invalid-state',
             'A save or conflict resolution is already active.',
         );
     }
-    if (state.save.status === 'offline' || state.save.status === 'error') {
+    if (state.save.status === 'error' && state.save.outcome === 'rejected') {
+        return failure(
+            'invalid-state',
+            'Abandon the definitive save failure before starting a new save.',
+        );
+    }
+    if (
+        state.save.status === 'offline' ||
+        (state.save.status === 'error' && state.save.outcome === 'unknown')
+    ) {
         if (
             state.save.operationId !== null &&
             state.save.operationId !== operationId
@@ -1263,6 +1287,7 @@ export function acknowledgeGardenStructureEditorSave(
         snapshot: desiredSnapshot,
         workflow: { kind: 'editing', tool },
         save: { status: 'dirty' },
+        demolition: { status: 'idle' },
         // The acknowledgement advances the immutable base revision. Commands
         // authored against the previous base cannot remain safely undoable,
         // especially when local edits were appended while an offline request
@@ -1380,6 +1405,7 @@ export function resolveGardenStructureEditorConflictWithLatest(
         snapshot: snapshot.value,
         workflow: { kind: 'editing', tool: 'select' },
         save: { status: 'clean' },
+        demolition: { status: 'idle' },
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation: null,
     });
@@ -1412,14 +1438,140 @@ export function resolveGardenStructureEditorConflictAsNewDraft(
         snapshot: state.snapshot,
         workflow: { kind: 'editing', tool: 'select' },
         save: { status: 'dirty' },
+        demolition: { status: 'idle' },
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation: null,
     });
 }
 
+function requireMatchingDemolitionOperation(
+    state: GardenStructureEditorState,
+    operationId: string,
+): GardenStructureEditorResult<
+    Extract<GardenStructureEditorDemolitionState, { status: 'submitting' }>
+> {
+    if (
+        state.demolition.status !== 'submitting' ||
+        state.demolition.operationId !== operationId
+    ) {
+        return failure(
+            'operation-mismatch',
+            'The demolition result does not match the active operation.',
+        );
+    }
+    return success(state.demolition);
+}
+
+export function beginGardenStructureEditorDemolition(
+    state: GardenStructureEditorState,
+    operationId: string,
+): GardenStructureEditorResult<GardenStructureEditorState> {
+    if (state.origin.kind !== 'saved-structure') {
+        return failure(
+            'invalid-state',
+            'Only a saved structure can be demolished.',
+        );
+    }
+    if (!isValidIdentifier(operationId)) {
+        return failure(
+            'operation-mismatch',
+            'Demolition operation IDs must be bounded non-empty identifiers.',
+        );
+    }
+    if (
+        state.save.status === 'saving' ||
+        state.save.status === 'offline' ||
+        state.save.status === 'conflict' ||
+        (state.save.status === 'error' && state.save.outcome === 'unknown')
+    ) {
+        return failure(
+            'invalid-state',
+            'Resolve the active save before demolishing this structure.',
+        );
+    }
+    if (state.demolition.status === 'submitting') {
+        return failure(
+            'invalid-state',
+            'A demolition request is already active.',
+        );
+    }
+    if (
+        state.demolition.status === 'unknown' &&
+        state.demolition.operationId !== operationId
+    ) {
+        return failure(
+            'operation-mismatch',
+            'Retry an uncertain demolition with its original operation ID.',
+        );
+    }
+
+    return success({
+        ...state,
+        demolition: {
+            status: 'submitting',
+            operationId,
+            expectedRevision:
+                state.demolition.status === 'unknown'
+                    ? state.demolition.expectedRevision
+                    : state.origin.revision,
+        },
+    });
+}
+
+export function markGardenStructureEditorDemolitionUnknown(
+    state: GardenStructureEditorState,
+    input: Readonly<{ code: string; operationId: string }>,
+): GardenStructureEditorResult<GardenStructureEditorState> {
+    const demolition = requireMatchingDemolitionOperation(
+        state,
+        input.operationId,
+    );
+    if (!demolition.ok) {
+        return demolition;
+    }
+    if (!isValidIdentifier(input.code)) {
+        return failure(
+            'invalid-state',
+            'Demolition errors require a bounded machine-readable code.',
+        );
+    }
+
+    return success({
+        ...state,
+        demolition: {
+            status: 'unknown',
+            code: input.code,
+            operationId: input.operationId,
+            expectedRevision: demolition.value.expectedRevision,
+        },
+    });
+}
+
+export function abandonGardenStructureEditorDemolitionFailure(
+    state: GardenStructureEditorState,
+    operationId: string,
+): GardenStructureEditorResult<GardenStructureEditorState> {
+    const demolition = requireMatchingDemolitionOperation(state, operationId);
+    if (!demolition.ok) {
+        return demolition;
+    }
+
+    return success({ ...state, demolition: { status: 'idle' } });
+}
+
 export function getGardenStructureEditorExitDecision(
     state: GardenStructureEditorState,
 ): GardenStructureEditorExitDecision {
+    if (state.demolition.status === 'submitting') {
+        return { kind: 'wait-for-save', serverAcknowledged: false };
+    }
+    if (state.demolition.status === 'unknown') {
+        return {
+            kind: 'local-recovery-only',
+            reason: 'error',
+            serverAcknowledged: false,
+        };
+    }
     if (state.workflow.kind === 'confirming-footprint') {
         return {
             kind: 'confirm-footprint-first',

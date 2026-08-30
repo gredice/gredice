@@ -143,11 +143,26 @@ export type GardenStructureEditorSaveState =
           submittedSnapshot: GardenStructureEditorSnapshot | null;
       }>;
 
+export type GardenStructureEditorDemolitionState =
+    | Readonly<{ status: 'idle' }>
+    | Readonly<{
+          status: 'submitting';
+          operationId: string;
+          expectedRevision: number;
+      }>
+    | Readonly<{
+          status: 'unknown';
+          code: string;
+          operationId: string;
+          expectedRevision: number;
+      }>;
+
 export type GardenStructureEditorState = Readonly<{
     origin: GardenStructureEditorOrigin;
     snapshot: GardenStructureEditorSnapshot;
     workflow: GardenStructureEditorWorkflow;
     save: GardenStructureEditorSaveState;
+    demolition: GardenStructureEditorDemolitionState;
     history: GardenStructureEditorHistory;
     resizeConfirmation: GardenStructureEditorResizeConfirmation | null;
 }>;

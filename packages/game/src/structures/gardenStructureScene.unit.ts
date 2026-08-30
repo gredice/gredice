@@ -8,9 +8,11 @@ import { Vector3 } from 'three';
 import { getLocalSandboxBlockData } from '../localSandboxBlockData';
 import {
     createGardenStructureSceneBaseHeightResolver,
+    createGardenStructureSceneBuildPreviewCompileInput,
     type GardenStructureCollectionCacheDisposalReason,
     GardenStructureSceneCache,
     GardenStructureSceneLayer,
+    resolveGardenStructureSceneStructureBaseHeight,
 } from './index';
 
 function savedStructure({
@@ -257,6 +259,52 @@ describe('GardenStructureSceneCache', () => {
                 (surface) => surface.y === 0.4 && surface.roamable,
             ),
         );
+    });
+
+    it('resolves an editor preview to the same ordinary-block support height', () => {
+        const record = savedStructure();
+        const stacks = getGardenStructureWorldFootprintCells(record.document, {
+            anchorX: record.anchorX,
+            anchorY: record.anchorY,
+            rotation: 0,
+        }).map((cell, index) => ({
+            blocks: [
+                {
+                    id: `preview-ground-${index.toString()}`,
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+            position: new Vector3(cell.x, 0, cell.y),
+        }));
+
+        const baseHeight = resolveGardenStructureSceneStructureBaseHeight({
+            blockData: getLocalSandboxBlockData(),
+            document: record.document,
+            placement: {
+                anchorX: record.anchorX,
+                anchorY: record.anchorY,
+                rotation: 0,
+            },
+            stacks,
+        });
+        const previewInput = createGardenStructureSceneBuildPreviewCompileInput(
+            {
+                blockData: getLocalSandboxBlockData(),
+                document: record.document,
+                placement: {
+                    anchorX: record.anchorX,
+                    anchorY: record.anchorY,
+                    rotation: 0,
+                },
+                revision: record.revision,
+                stacks,
+                structureId: record.id,
+            },
+        );
+
+        assert.equal(baseHeight, 0.4);
+        assert.equal(previewInput?.baseHeight, 0.4);
     });
 
     it('excludes unsupported saved structures from render and framing bounds', () => {

@@ -18,6 +18,7 @@ import {
     getGardenStructureEditorPricingPreview,
 } from './gardenStructureEditorState';
 import type {
+    GardenStructureEditorDemolitionState,
     GardenStructureEditorFailure,
     GardenStructureEditorFailureCode,
     GardenStructureEditorResult,
@@ -192,6 +193,26 @@ function saveRecordForState(state: GardenStructureEditorState) {
     }
 }
 
+function demolitionRecordForState(state: GardenStructureEditorState) {
+    switch (state.demolition.status) {
+        case 'idle':
+            return { status: 'idle' };
+        case 'submitting':
+            return {
+                status: 'submitting',
+                operationId: state.demolition.operationId,
+                expectedRevision: state.demolition.expectedRevision,
+            };
+        case 'unknown':
+            return {
+                status: 'unknown',
+                code: state.demolition.code,
+                operationId: state.demolition.operationId,
+                expectedRevision: state.demolition.expectedRevision,
+            };
+    }
+}
+
 function originRecordForState(state: GardenStructureEditorState) {
     if (state.origin.kind === 'new-draft') {
         return state.origin;
@@ -216,6 +237,7 @@ export function serializeGardenStructureEditorRecovery(
     if (
         state.origin.kind === 'saved-structure' &&
         state.save.status === 'clean' &&
+        state.demolition.status === 'idle' &&
         areGardenStructureEditorSnapshotsEqual(
             state.snapshot,
             state.origin.acknowledged,
@@ -239,6 +261,7 @@ export function serializeGardenStructureEditorRecovery(
                 ? 'placing-template'
                 : 'editing',
         save: saveRecordForState(state),
+        demolition: demolitionRecordForState(state),
         resizeConfirmation: state.resizeConfirmation
             ? {
                   baseRevision: state.resizeConfirmation.baseRevision,
@@ -399,6 +422,55 @@ function readSaveState(
     return failure(
         'invalid-recovery',
         'The recovery save state is unsupported.',
+    );
+}
+
+function readDemolitionState(
+    value: unknown,
+    origin: GardenStructureEditorState['origin'],
+): GardenStructureEditorResult<GardenStructureEditorDemolitionState> {
+    if (value === undefined) {
+        return success({ status: 'idle' });
+    }
+    if (!isRecord(value) || typeof value.status !== 'string') {
+        return failure(
+            'invalid-recovery',
+            'The recovery demolition state is invalid.',
+        );
+    }
+    if (value.status === 'idle') {
+        return success({ status: 'idle' });
+    }
+    if (
+        origin.kind !== 'saved-structure' ||
+        !isBoundedIdentifier(value.operationId) ||
+        value.expectedRevision !== origin.revision
+    ) {
+        return failure(
+            'invalid-recovery',
+            'The recovery demolition envelope does not match its saved structure.',
+        );
+    }
+    if (value.status === 'submitting') {
+        return success({
+            status: 'unknown',
+            code: 'demolition-outcome-unknown',
+            operationId: value.operationId,
+            expectedRevision: origin.revision,
+        });
+    }
+    if (value.status === 'unknown' && isBoundedIdentifier(value.code)) {
+        return success({
+            status: 'unknown',
+            code: value.code,
+            operationId: value.operationId,
+            expectedRevision: origin.revision,
+        });
+    }
+
+    return failure(
+        'invalid-recovery',
+        'The recovery demolition state is unsupported.',
     );
 }
 
@@ -572,6 +644,13 @@ export function restoreGardenStructureEditorRecovery(
     if (!save.ok) {
         return save;
     }
+    const demolition = readDemolitionState(
+        parsed.demolition,
+        initial.value.origin,
+    );
+    if (!demolition.ok) {
+        return demolition;
+    }
 
     let resizeConfirmation: GardenStructureEditorState['resizeConfirmation'] =
         null;
@@ -614,6 +693,7 @@ export function restoreGardenStructureEditorRecovery(
                 ? { kind: 'placing-template' }
                 : { kind: 'editing', tool: 'select' },
         save: save.value,
+        demolition: demolition.value,
         history: createGardenStructureEditorEmptyHistory(),
         resizeConfirmation,
     };
@@ -629,7 +709,10 @@ export function restoreGardenStructureEditorRecovery(
                 'The supplied latest revision is incompatible with recovery.',
             );
         }
-        if (scope.latestRevision > state.origin.revision) {
+        if (
+            scope.latestRevision > state.origin.revision &&
+            state.demolition.status === 'idle'
+        ) {
             state = {
                 ...state,
                 workflow: { kind: 'editing', tool: 'select' },
