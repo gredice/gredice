@@ -47,7 +47,7 @@ test('flag discovery merges all code-defined and managed Vercel metadata', () =>
 
     expect(discoveredFlagKeys).toEqual(gardenFlagKeys);
     expect(flagsSource).toMatch(
-        /enableGardenBuildingSystemFlag[\s\S]*adapter: vercelAdapter,[\s\S]*defaultValue: false/u,
+        /enableGardenBuildingSystemFlag[\s\S]*process\.env\.FLAGS[\s\S]*adapter: vercelAdapter[\s\S]*decide: \(\) => false[\s\S]*defaultValue: false/u,
     );
 });
 
