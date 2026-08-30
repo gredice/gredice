@@ -6,6 +6,7 @@ import {
     type ReactNode,
     Suspense,
     useCallback,
+    useEffect,
     useLayoutEffect,
     useMemo,
     useRef,
@@ -176,6 +177,11 @@ function GardenStructureKitV1PrimitiveInstances({
         () => getVisibleInstanceIndices?.(batch) ?? allInstanceIndices(batch),
         [batch, getVisibleInstanceIndices],
     );
+
+    useEffect(() => {
+        const mesh = meshRef.current;
+        return () => mesh?.dispose();
+    }, []);
 
     useLayoutEffect(() => {
         const mesh = meshRef.current;
