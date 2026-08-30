@@ -49,6 +49,9 @@ test('lets farmers exclude labels and restore the full print selection', async (
         name: 'Ispis dnevnih etiketa',
     });
 
+    await expect(dialog.getByRole('tab', { name: 'V2 · jasnija' })).toHaveCount(
+        0,
+    );
     await expect(dialog.getByText('Odabrano: 3 od 3 etiketa')).toBeVisible();
     await expect(dialog.getByText('QR trag uključen')).toHaveCount(0);
     const secondLabel = dialog.getByRole('checkbox', {
@@ -134,55 +137,4 @@ test('keeps identical duplicate labels independently selectable', async ({
     await expect(firstCheckbox).toBeChecked();
     await expect(secondCheckbox).not.toBeChecked();
     await expect(dialog.getByText('Odabrano: 1 od 2 etiketa')).toBeVisible();
-});
-
-test('offers the v2 field layout without replacing the existing default', async ({
-    mount,
-    page,
-}) => {
-    await mount(
-        <FieldOperationPrintModal
-            title="Odabir izgleda etikete"
-            description="Usporedite postojeću i novu etiketu."
-            labelData={[
-                firstLabel,
-                {
-                    raisedBedPhysicalId: 'Sjever-18',
-                    fieldLabel: '2-7',
-                    detailLabel: 'Branje 25% najzrelijih plodova',
-                    plantSortName:
-                        'Grah mahunar Meraviglia di Veneya a grano nero',
-                    dateLabel: '02.08.2026.',
-                },
-            ]}
-            triggerLabel="Usporedi etikete"
-        />,
-    );
-
-    await page.getByRole('button', { name: 'Usporedi etikete' }).click();
-    const dialog = page.getByRole('dialog', {
-        name: 'Odabir izgleda etikete',
-    });
-    const v1Tab = dialog.getByRole('tab', { name: 'V1 · postojeća' });
-    const v2Tab = dialog.getByRole('tab', { name: 'V2 · jasnija' });
-
-    await expect(v1Tab).toHaveAttribute('aria-selected', 'true');
-    const v1Canvases = dialog.locator('canvas[data-label-version="v1"]');
-    await expect(v1Canvases).toHaveCount(2);
-    await expect(v1Canvases.first()).toBeVisible();
-
-    await v2Tab.click();
-
-    await expect(v2Tab).toHaveAttribute('aria-selected', 'true');
-    const v2Canvases = dialog.locator('canvas[data-label-version="v2"]');
-    await expect(v2Canvases).toHaveCount(2);
-    await expect(v2Canvases.first()).toBeVisible();
-    await expect(v2Canvases.first()).toHaveAttribute('width', '400');
-    await expect(v2Canvases.first()).toHaveAttribute('height', '240');
-    await expect(v2Canvases.last()).toBeVisible();
-    await expect(
-        dialog.getByRole('button', {
-            name: 'Ispiši odabrane etikete (2) · V2',
-        }),
-    ).toBeVisible();
 });

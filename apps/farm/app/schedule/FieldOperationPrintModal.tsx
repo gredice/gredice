@@ -3,7 +3,6 @@
 import {
     DEFAULT_HARVEST_LABEL_PRESET,
     type FieldOperationLabelData,
-    type FieldOperationLabelVersion,
     GrediceLabelPrinter,
     getLabelPrinterAvailabilityMessage,
 } from '@gredice/label-printer';
@@ -12,7 +11,6 @@ import { Checkbox } from '@gredice/ui/Checkbox';
 import { LinkOff, Reset } from '@gredice/ui/icons';
 import { Modal } from '@gredice/ui/Modal';
 import { Stack } from '@gredice/ui/Stack';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@gredice/ui/Tabs';
 import { Typography } from '@gredice/ui/Typography';
 import { type ReactNode, useEffect, useState } from 'react';
 import { FieldOperationLabelPreviewCanvas } from '../../components/labels/FieldOperationLabelPreviewCanvas';
@@ -110,8 +108,6 @@ export function FieldOperationPrintModal({
     const [isDisconnecting, setIsDisconnecting] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [labelVersion, setLabelVersion] =
-        useState<FieldOperationLabelVersion>('v1');
     const selectedLabelPreviewItems = labelPreviewItems.filter(
         (item) => !excludedLabelKeys.has(item.key),
     );
@@ -131,7 +127,6 @@ export function FieldOperationPrintModal({
 
         if (open) {
             setExcludedLabelKeys(new Set());
-            setLabelVersion('v1');
         }
 
         if (open && snapshot.isConnected) {
@@ -215,29 +210,16 @@ export function FieldOperationPrintModal({
                     return;
                 }
 
-                if (labelVersion === 'v2') {
-                    await sharedLabelPrinter.printFieldOperationLabelV2(
-                        firstLabel,
-                        { preset: DEFAULT_HARVEST_LABEL_PRESET },
-                    );
-                } else {
-                    await sharedLabelPrinter.printFieldOperationLabel(
-                        firstLabel,
-                        { preset: DEFAULT_HARVEST_LABEL_PRESET },
-                    );
-                }
+                await sharedLabelPrinter.printFieldOperationLabel(firstLabel, {
+                    preset: DEFAULT_HARVEST_LABEL_PRESET,
+                });
             } else {
-                if (labelVersion === 'v2') {
-                    await sharedLabelPrinter.printFieldOperationLabelsV2(
-                        selectedLabels,
-                        { preset: DEFAULT_HARVEST_LABEL_PRESET },
-                    );
-                } else {
-                    await sharedLabelPrinter.printFieldOperationLabels(
-                        selectedLabels,
-                        { preset: DEFAULT_HARVEST_LABEL_PRESET },
-                    );
-                }
+                await sharedLabelPrinter.printFieldOperationLabels(
+                    selectedLabels,
+                    {
+                        preset: DEFAULT_HARVEST_LABEL_PRESET,
+                    },
+                );
             }
 
             const traceLinkIds = getTraceLinkIds(selectedLabels);
@@ -277,53 +259,6 @@ export function FieldOperationPrintModal({
         labels.length > 1
             ? `${resolvedPrintButtonLabel} (${selectedLabels.length})`
             : resolvedPrintButtonLabel;
-    const resolvedPrintButtonText =
-        labelVersion === 'v2' ? `${printButtonText} · V2` : printButtonText;
-
-    const renderLabelPreviews = (version: FieldOperationLabelVersion) => (
-        <div
-            className={
-                labels.length > 1
-                    ? 'grid max-h-[28rem] gap-3 overflow-y-auto sm:grid-cols-2'
-                    : ''
-            }
-        >
-            {labelPreviewItems.map((item) => {
-                const isSelected = !excludedLabelKeys.has(item.key);
-
-                return (
-                    <div key={item.key} className="min-w-0">
-                        {labels.length > 1 && (
-                            <div className="mb-2 flex min-h-11 items-center">
-                                <Checkbox
-                                    checked={isSelected}
-                                    disabled={snapshot.isPrinting}
-                                    label={`Uključi etiketu #${item.position}`}
-                                    onCheckedChange={(checked) =>
-                                        handleToggleLabel(
-                                            item.key,
-                                            checked === true,
-                                        )
-                                    }
-                                />
-                            </div>
-                        )}
-                        <div
-                            className={
-                                isSelected ? undefined : 'opacity-45 grayscale'
-                            }
-                        >
-                            <FieldOperationLabelPreviewCanvas
-                                labelData={item.label}
-                                version={version}
-                                className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
-                            />
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
 
     return (
         <Modal
@@ -347,79 +282,86 @@ export function FieldOperationPrintModal({
                 {description}
 
                 <div className="rounded-lg border bg-muted/20 p-3">
-                    <Tabs
-                        value={labelVersion}
-                        onValueChange={(value) => {
-                            if (value === 'v1' || value === 'v2') {
-                                setLabelVersion(value);
-                                setActionError(null);
-                                setSuccessMessage(null);
-                            }
-                        }}
-                    >
-                        <Stack spacing={2}>
+                    <Stack spacing={2}>
+                        {labels.length > 1 && (
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <Typography
                                     level="body2"
-                                    semiBold
-                                    className="text-foreground"
+                                    className="text-muted-foreground"
                                 >
-                                    Izgled etikete
+                                    Odabrano: {selectedLabels.length} od{' '}
+                                    {labels.length} etiketa
                                 </Typography>
-                                <TabsList aria-label="Verzija etikete">
-                                    <TabsTrigger
-                                        value="v1"
-                                        disabled={snapshot.isPrinting}
-                                    >
-                                        V1 · postojeća
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="v2"
-                                        disabled={snapshot.isPrinting}
-                                    >
-                                        V2 · jasnija
-                                    </TabsTrigger>
-                                </TabsList>
+                                <Checkbox
+                                    checked={
+                                        allLabelsSelected
+                                            ? true
+                                            : someLabelsSelected
+                                              ? 'indeterminate'
+                                              : false
+                                    }
+                                    disabled={snapshot.isPrinting}
+                                    label={
+                                        allLabelsSelected
+                                            ? 'Poništi odabir svih'
+                                            : 'Odaberi sve'
+                                    }
+                                    onCheckedChange={(checked) =>
+                                        handleToggleAllLabels(checked === true)
+                                    }
+                                />
                             </div>
-                            {labels.length > 1 && (
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <Typography
-                                        level="body2"
-                                        className="text-muted-foreground"
-                                    >
-                                        Odabrano: {selectedLabels.length} od{' '}
-                                        {labels.length} etiketa
-                                    </Typography>
-                                    <Checkbox
-                                        checked={
-                                            allLabelsSelected
-                                                ? true
-                                                : someLabelsSelected
-                                                  ? 'indeterminate'
-                                                  : false
-                                        }
-                                        disabled={snapshot.isPrinting}
-                                        label={
-                                            allLabelsSelected
-                                                ? 'Poništi odabir svih'
-                                                : 'Odaberi sve'
-                                        }
-                                        onCheckedChange={(checked) =>
-                                            handleToggleAllLabels(
-                                                checked === true,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            )}
-                            <TabsContent value="v1" className="mt-0">
-                                {renderLabelPreviews('v1')}
-                            </TabsContent>
-                            <TabsContent value="v2" className="mt-0">
-                                {renderLabelPreviews('v2')}
-                            </TabsContent>
-                        </Stack>
-                    </Tabs>
+                        )}
+                        <div
+                            className={
+                                labels.length > 1
+                                    ? 'grid max-h-[28rem] gap-3 overflow-y-auto sm:grid-cols-2'
+                                    : ''
+                            }
+                        >
+                            {labelPreviewItems.map((item) => {
+                                const isSelected = !excludedLabelKeys.has(
+                                    item.key,
+                                );
+
+                                return (
+                                    <div key={item.key} className="min-w-0">
+                                        {labels.length > 1 && (
+                                            <div className="mb-2 flex min-h-11 items-center">
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    disabled={
+                                                        snapshot.isPrinting
+                                                    }
+                                                    label={`Uključi etiketu #${item.position}`}
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        handleToggleLabel(
+                                                            item.key,
+                                                            checked === true,
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                        <div
+                                            className={
+                                                isSelected
+                                                    ? undefined
+                                                    : 'opacity-45 grayscale'
+                                            }
+                                        >
+                                            <FieldOperationLabelPreviewCanvas
+                                                labelData={item.label}
+                                                className="mx-auto block w-full max-w-sm rounded border bg-white shadow-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Stack>
                 </div>
 
                 {availabilityMessage ? (
@@ -538,7 +480,7 @@ export function FieldOperationPrintModal({
                                 loading={snapshot.isPrinting}
                                 disabled={!canPrint}
                             >
-                                {resolvedPrintButtonText}
+                                {printButtonText}
                             </Button>
                         </div>
                     </Stack>

@@ -6,7 +6,6 @@ import {
     type PrinterInfo,
     type RfidInfo,
 } from '@mmote/niimbluelib';
-import { renderFieldOperationLabelV2 } from './fieldOperationLabelCanvasV2';
 import {
     DEFAULT_HARVEST_LABEL_PRESET,
     renderFieldOperationLabel,
@@ -520,35 +519,6 @@ export class GrediceLabelPrinter {
             data.map(
                 (labelData) => (canvas, preset) =>
                     renderFieldOperationLabel(canvas, labelData, preset),
-            ),
-            options,
-        );
-    }
-
-    async printFieldOperationLabelV2(
-        data: FieldOperationLabelData,
-        options?: {
-            quantity?: number;
-            preset?: HarvestLabelPreset;
-        },
-    ) {
-        await this.printCanvasLabel(
-            (canvas, preset) =>
-                renderFieldOperationLabelV2(canvas, data, preset),
-            options,
-        );
-    }
-
-    async printFieldOperationLabelsV2(
-        data: FieldOperationLabelData[],
-        options?: {
-            preset?: HarvestLabelPreset;
-        },
-    ) {
-        await this.printCanvasLabels(
-            data.map(
-                (labelData) => (canvas, preset) =>
-                    renderFieldOperationLabelV2(canvas, labelData, preset),
             ),
             options,
         );

@@ -127,7 +127,11 @@ function drawQrCode(
     const moduleCount = qrCode.modules.size;
     const quietModules = 4;
     const totalModules = moduleCount + quietModules * 2;
-    const moduleSize = Math.max(1, Math.floor(size / totalModules));
+    if (totalModules > size) {
+        throw new Error('QR sadržaj je predug za dostupnu površinu etikete.');
+    }
+
+    const moduleSize = Math.floor(size / totalModules);
     const renderedSize = moduleSize * totalModules;
     const offsetX = x + Math.floor((size - renderedSize) / 2);
     const offsetY = y + Math.floor((size - renderedSize) / 2);
@@ -292,7 +296,11 @@ function drawTopValue(
     );
     context.textBaseline = 'alphabetic';
     context.font = `800 ${fontSize}px ${FONT_FAMILY}`;
-    context.fillText(value, centerX, valueBaseline);
+    context.fillText(
+        clampWithEllipsis(context, value, maxWidth),
+        centerX,
+        valueBaseline,
+    );
 }
 
 function drawBottomCell(
@@ -339,8 +347,8 @@ function drawBottomCell(
 
 /**
  * Alternative field-operation label layout focused on fast scanning in the
- * field. V1 remains the default renderer; this renderer is used only when the
- * caller explicitly selects the V2 label version.
+ * field. V1 remains the production renderer; this experimental renderer is
+ * currently exposed only through the Farm label debugger.
  */
 export function renderFieldOperationLabelV2(
     canvas: HTMLCanvasElement,
