@@ -282,13 +282,13 @@ async function getLatestRaisedBedPhotoOperationsByIds(
     );
 }
 
-export async function createRaisedBed(
+async function insertRaisedBed(
     raisedBed: Omit<InsertRaisedBed, 'name'> & {
         orientation?: RaisedBedOrientation;
     },
-    db: DatabaseClient = storage(),
+    db: DatabaseClient,
 ) {
-    const result = (
+    return (
         await db
             .insert(raisedBeds)
             .values({
@@ -298,6 +298,29 @@ export async function createRaisedBed(
             })
             .returning({ id: raisedBeds.id })
     )[0].id;
+}
+
+/**
+ * Creates one raised-bed projection inside a caller-owned transaction. Cache
+ * invalidation belongs to that caller after the transaction commits.
+ */
+export function createRaisedBedInTransaction(
+    raisedBed: Omit<InsertRaisedBed, 'name'> & {
+        orientation?: RaisedBedOrientation;
+    },
+    transaction: TransactionClient,
+) {
+    return insertRaisedBed(raisedBed, transaction);
+}
+
+/** Creates one standalone raised bed and invalidates schedule reads afterward. */
+export async function createRaisedBed(
+    raisedBed: Omit<InsertRaisedBed, 'name'> & {
+        orientation?: RaisedBedOrientation;
+    },
+    db: DatabaseClient = storage(),
+) {
+    const result = await insertRaisedBed(raisedBed, db);
     await bustScheduleCache();
     return result;
 }

@@ -11,6 +11,7 @@ import {
     createOrUpdateUserPasswordLogin,
     createOrUpdateUserWithOauth,
     createRefreshToken,
+    createSandboxGarden,
     createTemporaryUserAndAccount,
     createUserWithPassword,
     deleteGardenIfNoActiveRaisedBeds,
@@ -313,6 +314,10 @@ test('promoteTemporaryUser converts a temporary user to email identity', async (
     await ensureFarmId();
 
     const temporary = await createTemporaryUserAndAccount();
+    const playGardenId = await createSandboxGarden({
+        accountId: temporary.accountId,
+        name: 'Igra ostaje igra',
+    });
     const promotedEmail = `promoted-temp-${randomUUID()}@example.com`;
     await createOrUpdateUserPasswordLogin(
         temporary.userId,
@@ -345,7 +350,14 @@ test('promoteTemporaryUser converts a temporary user to email identity', async (
     assert.equal(loginAfterRetirementAttempt?.id, login?.id);
 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
-    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(
+        gardens.find((garden) => garden.id === playGardenId)?.isSandbox,
+        true,
+    );
+    assert.equal(
+        gardens.find((garden) => garden.id !== playGardenId)?.isSandbox,
+        false,
+    );
 });
 
 test('attachTemporaryAccountsToUser moves accounts, favorites, and deletes temporary auth rows', async () => {
@@ -357,6 +369,10 @@ test('attachTemporaryAccountsToUser moves accounts, favorites, and deletes tempo
         'secret-password',
     );
     const temporary = await createTemporaryUserAndAccount();
+    const playGardenId = await createSandboxGarden({
+        accountId: temporary.accountId,
+        name: 'Prenesena igra',
+    });
     await createOrUpdateUserPasswordLogin(
         temporary.userId,
         `temp-${randomUUID()}@example.com`,
@@ -441,7 +457,14 @@ test('attachTemporaryAccountsToUser moves accounts, favorites, and deletes tempo
     assert.equal(movedLink?.userId, targetUserId);
 
     const gardens = await getAccountGardensMetadata(temporary.accountId);
-    assert.equal(gardens[0].isSandbox, false);
+    assert.equal(
+        gardens.find((garden) => garden.id === playGardenId)?.isSandbox,
+        true,
+    );
+    assert.equal(
+        gardens.find((garden) => garden.id !== playGardenId)?.isSandbox,
+        false,
+    );
 
     const targetFavorites = await listUserFavorites({ userId: targetUserId });
     assert.deepEqual(

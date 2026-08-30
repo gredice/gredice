@@ -9,6 +9,7 @@ import {
     createAccount,
     deleteGarden,
     deleteGardenIfNoActiveRaisedBeds,
+    getGardenDeletionTargetForUpdate,
     getGardenPreview,
     getGardenPreviewBlobScanCursor,
     listGardenPreviewBlobDeletions,
@@ -19,6 +20,7 @@ import {
     removeGardenPreviewAndQueueBlobDeletion,
     replaceGardenPreview,
     setGardenPreviewBlobScanCursor,
+    softDeleteGardenOnce,
     storage,
     updateGarden,
 } from '@gredice/storage';
@@ -291,6 +293,49 @@ test('soft garden deletion helpers remove previews and queue their Blobs', async
         queued.find((row) => row.pathname === conditionalPathname)?.reason,
         'garden_deleted',
     );
+});
+
+test('transactional garden deletion emits its effect only once', async () => {
+    const gardenId = await createPublicGarden();
+    const pathname = `garden-previews/${gardenId.toString()}/delete-once.webp`;
+    await replaceGardenPreview(
+        previewInput({ gardenId, pathname, requestedAt: new Date() }),
+    );
+    assert.equal(
+        (
+            await storage().transaction((transaction) =>
+                getGardenDeletionTargetForUpdate(gardenId, transaction),
+            )
+        )?.isDeleted,
+        false,
+    );
+
+    assert.equal(
+        await storage().transaction((transaction) =>
+            softDeleteGardenOnce(gardenId, transaction),
+        ),
+        'deleted',
+    );
+    assert.equal(
+        await storage().transaction((transaction) =>
+            softDeleteGardenOnce(gardenId, transaction),
+        ),
+        'already-deleted',
+    );
+    assert.equal(await getGardenPreview(gardenId), null);
+    assert.equal(
+        (
+            await storage().transaction((transaction) =>
+                getGardenDeletionTargetForUpdate(gardenId, transaction),
+            )
+        )?.isDeleted,
+        true,
+    );
+
+    const queued = await listGardenPreviewBlobDeletions({
+        now: new Date('2100-07-11T12:02:00.000Z'),
+    });
+    assert.equal(queued.filter((row) => row.pathname === pathname).length, 1);
 });
 
 test('Blob deletion claims complete successes and reschedule failures safely', async () => {

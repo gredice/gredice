@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import type { BlockData } from '@gredice/directory-types';
 import { woodenSignBlockName } from '@gredice/js/woodenSign';
-import { GardenBoxInventoryLimitError } from '@gredice/storage';
+import {
+    GardenBoxInventoryLimitError,
+    GardenMutationOperationConflictError,
+} from '@gredice/storage';
 import {
     createGardenBoxBlockStorageService,
     type GardenBoxBlockStorageCommand,
+    getGardenBoxBlockStorageOperationId,
 } from './gardenBoxBlockStorageService';
 import { validatePersistedStructuresAfterBlockMutation } from './gardenOccupancyService';
 
@@ -61,8 +65,12 @@ const command: GardenBoxBlockStorageCommand = {
 };
 
 type HarnessOptions = Readonly<{
+    authorityAccountId?: string;
     blockMessage?: string | null;
     blockName?: string;
+    dependencyPreparationTimeoutMs?: number;
+    directoryPending?: () => boolean;
+    directoryUnavailable?: () => boolean;
     failInventoryAdd?: boolean;
     structures?: readonly Readonly<{
         anchorX: number;
@@ -76,6 +84,7 @@ type HarnessOptions = Readonly<{
 function makeHarness(options: HarnessOptions = {}) {
     const calls: string[] = [];
     const transaction = { id: 'shared-transaction' };
+    let transactionActive = false;
     const blockName = options.blockName ?? 'Shade';
     const blockData = [
         directoryBlock(1, 'Block_Grass'),
@@ -119,9 +128,25 @@ function makeHarness(options: HarnessOptions = {}) {
         ],
         structures: [...(options.structures ?? [])],
     };
+    let receipt:
+        | Readonly<{
+              payload: unknown;
+              response: Readonly<{
+                  gardenBoxBlockId: string;
+                  item: Readonly<{
+                      amount: 1;
+                      entityId: string;
+                      entityTypeName: 'block';
+                  }>;
+              }>;
+          }>
+        | undefined;
 
     function cloneState() {
-        return structuredClone(state);
+        return {
+            receipt: structuredClone(receipt),
+            state: structuredClone(state),
+        };
     }
 
     let snapshotReads = 0;
@@ -141,7 +166,7 @@ function makeHarness(options: HarnessOptions = {}) {
                 entityTypeName: 'block',
                 entityId: '101',
                 amount: 1,
-                source: 'gardenBox:drop',
+                source: `gardenBox:store:${getGardenBoxBlockStorageOperationId(command.blockId)}`,
             });
             calls.push('inventory-add');
             if (options.failInventoryAdd) {
@@ -155,11 +180,63 @@ function makeHarness(options: HarnessOptions = {}) {
             calls.push('delete-block');
             state.blocks = state.blocks.filter((block) => block.id !== blockId);
         },
+        dependencyPreparationTimeoutMs: options.dependencyPreparationTimeoutMs,
         getBlockData: async () => {
+            assert.equal(transactionActive, false);
             calls.push('catalog');
+            if (options.directoryPending?.()) {
+                return new Promise(() => undefined);
+            }
+            if (options.directoryUnavailable?.()) {
+                throw new Error('Directory unavailable');
+            }
             return blockData;
         },
-        getGardenPlacementSnapshot: async (gardenId, receivedTransaction) => {
+        getGardenBlockForUpdate: async (input, receivedTransaction) => {
+            assert.equal(receivedTransaction, transaction);
+            calls.push('target-box');
+            const block = state.blocks.find(
+                (candidate) => candidate.id === input.blockId,
+            );
+            return block
+                ? { id: block.id, isDeleted: false, name: block.name }
+                : null;
+        },
+        getGardenMutationAuthorityForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
+            assert.equal(gardenId, command.gardenId);
+            assert.equal(receivedTransaction, transaction);
+            calls.push('authority');
+            return {
+                accountId: options.authorityAccountId ?? command.accountId,
+                id: gardenId,
+                isDeleted: false,
+                isSandbox: false,
+            };
+        },
+        getGardenMutationOperationReceipt: async (
+            input,
+            receivedTransaction,
+        ) => {
+            assert.equal(
+                input.operationId,
+                getGardenBoxBlockStorageOperationId(command.blockId),
+            );
+            assert.equal(receivedTransaction, transaction);
+            calls.push('receipt-read');
+            return receipt
+                ? {
+                      kind: 'garden-box-block-store',
+                      response: receipt.response,
+                  }
+                : null;
+        },
+        getGardenPlacementSnapshotForUpdate: async (
+            gardenId,
+            receivedTransaction,
+        ) => {
             assert.equal(receivedTransaction, transaction);
             assert.equal(gardenId, command.gardenId);
             snapshotReads += 1;
@@ -222,19 +299,76 @@ function makeHarness(options: HarnessOptions = {}) {
             assert.equal(gardenId, command.gardenId);
             assert.equal(gardenBoxBlockId, command.gardenBoxBlockId);
             calls.push('inventory-lock');
+            calls.push('account-lock');
             const before = cloneState();
+            transactionActive = true;
             try {
                 const result = await callback(transaction);
                 calls.push('commit');
                 return result;
             } catch (error) {
-                state.blocks = before.blocks;
-                state.inventoryAdds = before.inventoryAdds;
-                state.stacks = before.stacks;
-                state.structures = before.structures;
+                state.blocks = before.state.blocks;
+                state.inventoryAdds = before.state.inventoryAdds;
+                state.stacks = before.state.stacks;
+                state.structures = before.state.structures;
+                receipt = before.receipt;
                 calls.push('rollback');
                 throw error;
+            } finally {
+                transactionActive = false;
             }
+        },
+        withGardenMutationOperation: async (
+            operation,
+            callback,
+            receivedTransaction,
+        ) => {
+            assert.equal(receivedTransaction, transaction);
+            calls.push('receipt');
+            if (receipt) {
+                if (
+                    JSON.stringify(receipt.payload) !==
+                    JSON.stringify(operation.payload)
+                ) {
+                    throw new GardenMutationOperationConflictError(
+                        operation.gardenId,
+                        operation.operationId,
+                    );
+                }
+                return {
+                    receipt: {
+                        createdAt: new Date(),
+                        gardenId: operation.gardenId,
+                        kind: operation.kind,
+                        operationId: operation.operationId,
+                        payloadHash: '0'.repeat(64),
+                        response: receipt.response,
+                    },
+                    replayed: true,
+                };
+            }
+            const mutation = await callback(transaction);
+            const response = {
+                gardenBoxBlockId: command.gardenBoxBlockId,
+                item: {
+                    amount: 1,
+                    entityId: '101',
+                    entityTypeName: 'block',
+                },
+            } as const;
+            assert.deepEqual(mutation.response, response);
+            receipt = { payload: operation.payload, response };
+            return {
+                receipt: {
+                    createdAt: new Date(),
+                    gardenId: operation.gardenId,
+                    kind: operation.kind,
+                    operationId: operation.operationId,
+                    payloadHash: '0'.repeat(64),
+                    response,
+                },
+                replayed: false,
+            };
         },
         withGardenPlacementTransaction: async (
             gardenId,
@@ -248,12 +382,32 @@ function makeHarness(options: HarnessOptions = {}) {
         },
     });
 
-    return { calls, service, state };
+    return { calls, receipt: () => receipt, service, state };
 }
 
 describe('storeGardenBlockInGardenBox', () => {
-    test('locks inventory before garden and source row, then commits every write once', async () => {
-        const harness = makeHarness();
+    test('derives one bounded operation identity from the source block', () => {
+        const operationId = getGardenBoxBlockStorageOperationId(
+            command.blockId,
+        );
+
+        assert.equal(operationId.length <= 96, true);
+        assert.equal(
+            operationId,
+            getGardenBoxBlockStorageOperationId(command.blockId),
+        );
+        assert.notEqual(
+            operationId,
+            getGardenBoxBlockStorageOperationId('different-source-block'),
+        );
+    });
+
+    test('loads the directory before inventory and garden locks, then commits every write once', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
 
         const result = await harness.service(command);
 
@@ -265,14 +419,20 @@ describe('storeGardenBlockInGardenBox', () => {
                 entityId: '101',
                 amount: 1,
             },
+            replayed: false,
         });
         assert.deepEqual(harness.calls, [
             'catalog',
             'inventory-lock',
+            'account-lock',
             'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
             'snapshot:1',
             'source-row',
             'snapshot:2',
+            'receipt',
             'update-stack',
             'delete-block',
             'snapshot:3',
@@ -287,6 +447,108 @@ describe('storeGardenBlockInGardenBox', () => {
         );
         assert.deepEqual(harness.state.stacks[0]?.blocks, []);
         assert.equal(harness.state.inventoryAdds, 1);
+
+        harness.calls.length = 0;
+        assert.deepEqual(await harness.service(command), {
+            ...result,
+            replayed: true,
+        });
+        assert.deepEqual(harness.calls, [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+        assert.equal(harness.state.inventoryAdds, 1);
+
+        harness.calls.length = 0;
+        directoryPending = true;
+        const conflict = await harness.service({
+            ...command,
+            sourcePosition: { x: 1, z: 0 },
+        });
+        assert.equal(!conflict.ok && conflict.code, 'OPERATION_CONFLICT');
+        assert.equal(harness.state.inventoryAdds, 1);
+    });
+
+    test('replays a committed storage operation when the cold directory read fails', async () => {
+        let directoryUnavailable = false;
+        const harness = makeHarness({
+            directoryUnavailable: () => directoryUnavailable,
+        });
+        const first = await harness.service(command);
+        directoryUnavailable = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+    });
+
+    test('replays a committed storage operation when the cold directory read stalls', async () => {
+        let directoryPending = false;
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => directoryPending,
+        });
+        const first = await harness.service(command);
+        directoryPending = true;
+
+        const replay = await harness.service(command);
+
+        assert.equal(first.ok && first.replayed, false);
+        assert.equal(replay.ok && replay.replayed, true);
+        assert.equal(harness.state.inventoryAdds, 1);
+        assert.deepEqual(harness.calls.slice(-9), [
+            'catalog',
+            'inventory-lock',
+            'account-lock',
+            'garden-lock',
+            'authority',
+            'target-box',
+            'receipt-read',
+            'receipt',
+            'commit',
+        ]);
+    });
+
+    test('returns a retryable directory failure without storage effects when a new cold read stalls', async () => {
+        const harness = makeHarness({
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
+        const before = structuredClone(harness.state);
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'BLOCK_DIRECTORY_UNAVAILABLE',
+            error: 'Garden block directory data is unavailable',
+            status: 503,
+        });
+        assert.deepEqual(harness.state, before);
+        assert.equal(harness.receipt(), undefined);
+        assert.equal(harness.calls.includes('receipt'), false);
+        assert.equal(harness.calls.includes('update-stack'), false);
+        assert.equal(harness.calls.includes('delete-block'), false);
+        assert.equal(harness.calls.includes('inventory-add'), false);
+        assert.equal(harness.calls.at(-1), 'rollback');
     });
 
     test('rolls stack, block, and inventory changes back when support validation fails', async () => {
@@ -357,5 +619,22 @@ describe('storeGardenBlockInGardenBox', () => {
             assert.deepEqual(harness.state, before);
             assert.equal(harness.calls.at(-1), 'rollback');
         }
+    });
+
+    test('denies a foreign account before reading an operation receipt', async () => {
+        const harness = makeHarness({
+            authorityAccountId: 'account-2',
+            dependencyPreparationTimeoutMs: 5,
+            directoryPending: () => true,
+        });
+
+        assert.deepEqual(await harness.service(command), {
+            ok: false,
+            code: 'GARDEN_NOT_FOUND',
+            error: 'Garden not found',
+            status: 404,
+        });
+        assert.equal(harness.calls.includes('receipt-read'), false);
+        assert.equal(harness.calls.includes('receipt'), false);
     });
 });

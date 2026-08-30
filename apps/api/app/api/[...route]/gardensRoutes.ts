@@ -1,9 +1,3 @@
-import {
-    createEntityAppearanceVariantForPlacement,
-    isAppearanceVariantEntityName,
-    isValidEntityAppearanceVariant,
-    requiresExplicitAppearanceVariantSelection,
-} from '@gredice/js/entityAppearanceVariants';
 import { gameBackgroundPaletteKeys } from '@gredice/js/gameBackground';
 import {
     gardenPreviewContentType,
@@ -32,6 +26,8 @@ import {
 import { notifyOperationUpdate } from '@gredice/notifications';
 import { signalcoClient } from '@gredice/signalco';
 import {
+    AccountDeletionInProgressError,
+    AccountNotFoundError,
     abandonRaisedBed,
     acquireGardenPreviewCaptureLease,
     CannotLikeOwnGardenError,
@@ -45,10 +41,7 @@ import {
     countRaisedBedsByAccount,
     createDefaultGardenForAccount,
     createEvent,
-    createGardenBlock,
-    createGardenStack,
     createSandboxGarden,
-    deleteGardenIfNoActiveRaisedBeds,
     deleteSandboxGardenCompletely,
     GardenDiaryCancelError,
     GardenDiaryRescheduleError,
@@ -100,26 +93,20 @@ import {
     setAllNotificationsRead,
     setGardenLike,
     sowSandboxField,
-    spendSunflowers,
-    deleteGardenBlock as storageDeleteGardenBlock,
     toGardenPreviewImage,
     updateGarden,
-    updateGardenStack,
     updateRaisedBed,
     withPlantingScheduleTaskTransaction,
 } from '@gredice/storage';
 import { del, put } from '@vercel/blob';
 import { type Context, Hono } from 'hono';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { describeRoute, validator as zValidator } from 'hono-openapi';
 import { z } from 'zod';
-import { getBlockData } from '../../../lib/blocks/blockDataService';
 import { authSecurity, publicSecurity } from '../../../lib/docs/security';
 import {
     isAppliedOperationCurrentForRaisedBedFields,
     serializeAppliedRaisedBedOperation,
 } from '../../../lib/garden/appliedRaisedBedOperations';
-import { resolveGardenBlockPlacement } from '../../../lib/garden/blockPlacementService';
 import {
     buildDetailedRaisedBedInspectionReports,
     detailedInspectionOperationId,
@@ -128,7 +115,15 @@ import {
     recycleGardenBlockForAccount,
     updateGardenBlockForAccount,
 } from '../../../lib/garden/gardenBlockMutationService';
+import {
+    gardenBlockPurchaseBodySchema,
+    gardenBlockPurchaseParamSchema,
+} from '../../../lib/garden/gardenBlockPurchaseSchemas';
 import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
+import {
+    deleteRealGardenForAccount,
+    parseGardenDeletionId,
+} from '../../../lib/garden/gardenDeletionService';
 import { serializeGardenOperationEvidence } from '../../../lib/garden/gardenOperationsSerialization';
 import {
     canAccessGardenPreviewSource,
@@ -141,9 +136,7 @@ import {
     processGardenPreviewBlobDeletions,
 } from '../../../lib/garden/gardenPreviewBlobDeletion';
 import { patchGardenStacksForAccount } from '../../../lib/garden/gardenStacksPatchService';
-import { synchronizeGardenStacksAndRaisedBeds } from '../../../lib/garden/gardenStacksSyncService';
 import { serializeGardenStructures } from '../../../lib/garden/gardenStructureSerialization';
-import { isBlockPurchaseAvailableNow } from '../../../lib/garden/nightOnlyBlockPurchases';
 import {
     countPublicGardenActivePlants,
     serializePublicRaisedBedField,
@@ -247,6 +240,7 @@ type AnalyzeImageBody = z.infer<typeof analyzeImageBodySchema>;
 
 const storeBlockInGardenBoxBodySchema = z.object({
     gardenBoxBlockId: z.string().trim().min(1).max(128),
+    entityId: z.string().trim().min(1).max(100).optional(),
     sourcePosition: z.object({
         x: z.number().int(),
         z: z.number().int(),
@@ -2344,7 +2338,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId',
         describeRoute({
             description:
-                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds. Large sandbox deletions may return 202 and should be retried until complete.',
+                'Delete a garden accessible to the current user. Sandbox gardens are deleted completely, including related blocks, raised beds, notifications, operations, cart rows, transactions, and events. Real gardens are soft-deleted only when they have no active raised beds or structures. Large sandbox deletions may return 202 and should be retried until complete.',
             security: authSecurity,
         }),
         zValidator(
@@ -2356,8 +2350,8 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
+            const gardenIdNumber = parseGardenDeletionId(gardenId);
+            if (gardenIdNumber === null) {
                 return context.json({ error: 'Invalid garden ID' }, 400);
             }
 
@@ -2376,23 +2370,39 @@ const app = new Hono<{ Variables: AuthVariables }>()
             const existingPreviews = await getGardenPreviews(gardenIdNumber);
 
             if (!garden.isSandbox) {
-                const result =
-                    await deleteGardenIfNoActiveRaisedBeds(gardenIdNumber);
-                if (result.activeRaisedBedCount > 0) {
+                const result = await deleteRealGardenForAccount({
+                    accountId: garden.accountId,
+                    gardenId: gardenIdNumber,
+                });
+                if (!result.ok) {
                     return context.json(
                         {
-                            error: 'Garden cannot be deleted while it has active raised beds',
-                            activeRaisedBedCount: result.activeRaisedBedCount,
+                            code: result.code,
+                            error: result.error,
+                            ...(result.activeRaisedBedCount === undefined
+                                ? {}
+                                : {
+                                      activeRaisedBedCount:
+                                          result.activeRaisedBedCount,
+                                  }),
+                            ...(result.activeStructureCount === undefined
+                                ? {}
+                                : {
+                                      activeStructureCount:
+                                          result.activeStructureCount,
+                                  }),
                         },
-                        409,
+                        result.status,
                     );
                 }
 
-                await deleteGardenPreviewBlobs({
-                    gardenId: gardenIdNumber,
-                    previews: existingPreviews,
-                    reason: 'garden_deleted',
-                });
+                if (result.deleted) {
+                    await deleteGardenPreviewBlobs({
+                        gardenId: gardenIdNumber,
+                        previews: existingPreviews,
+                        reason: 'garden_deleted',
+                    });
+                }
 
                 return context.json(
                     {
@@ -2404,17 +2414,30 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 );
             }
 
-            const result = await deleteSandboxGardenCompletely(gardenIdNumber);
-            await deleteGardenPreviewBlobs({
-                gardenId: gardenIdNumber,
-                previews: existingPreviews,
-                reason: 'garden_deleted',
-            });
+            try {
+                const result = await deleteSandboxGardenCompletely(
+                    gardenIdNumber,
+                    { accountId: garden.accountId },
+                );
+                await deleteGardenPreviewBlobs({
+                    gardenId: gardenIdNumber,
+                    previews: existingPreviews,
+                    reason: 'garden_deleted',
+                });
 
-            return context.json(
-                { success: true, ...result },
-                result.complete ? 200 : 202,
-            );
+                return context.json(
+                    { success: true, ...result },
+                    result.complete ? 200 : 202,
+                );
+            } catch (error) {
+                if (error instanceof AccountDeletionInProgressError) {
+                    return context.json({ error: error.message }, 409);
+                }
+                if (error instanceof AccountNotFoundError) {
+                    return context.json({ error: 'Garden not found' }, 404);
+                }
+                throw error;
+            }
         },
     )
     // See: https://datatracker.ietf.org/doc/html/rfc6902
@@ -2502,7 +2525,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         '/:gardenId/blocks/:blockId/store-in-garden-box',
         describeRoute({
             description:
-                'Move a garden block into a garden box inventory for the current user.',
+                'Atomically move a garden block into garden-box inventory with deterministic exact replay from the source block identity.',
             security: authSecurity,
             tags: ['Gardens'],
         }),
@@ -2517,7 +2540,7 @@ const app = new Hono<{ Variables: AuthVariables }>()
         authValidator(['user', 'admin']),
         async (context) => {
             const { gardenId, blockId } = context.req.valid('param');
-            const { blockIndex, gardenBoxBlockId, sourcePosition } =
+            const { blockIndex, entityId, gardenBoxBlockId, sourcePosition } =
                 context.req.valid('json');
             const gardenIdNumber = parseInt(gardenId, 10);
             if (Number.isNaN(gardenIdNumber) || gardenIdNumber <= 0) {
@@ -2530,12 +2553,16 @@ const app = new Hono<{ Variables: AuthVariables }>()
                     accountId,
                     blockId,
                     blockIndex,
+                    entityId,
                     gardenBoxBlockId,
                     gardenId: gardenIdNumber,
                     sourcePosition,
                 });
                 if (!result.ok) {
-                    return context.json({ error: result.error }, result.status);
+                    return context.json(
+                        { code: result.code, error: result.error },
+                        result.status,
+                    );
                 }
 
                 return context.json({
@@ -2588,14 +2615,12 @@ const app = new Hono<{ Variables: AuthVariables }>()
                 timeZone,
             });
 
-            if ('errorStatus' in result) {
+            if (!result.ok) {
                 return context.json(
-                    { error: result.errorMessage },
-                    result.errorStatus as ContentfulStatusCode,
+                    { code: result.code, error: result.error },
+                    result.status,
                 );
             }
-
-            await synchronizeGardenStacksAndRaisedBeds(gardenIdNumber);
 
             return context.json({ reward: result.reward }, 200);
         },
@@ -2603,209 +2628,42 @@ const app = new Hono<{ Variables: AuthVariables }>()
     .post(
         '/:gardenId/blocks',
         describeRoute({
-            description: 'Place a block in a garden',
+            description:
+                'Purchase and atomically place a block in a garden for the current user. Exact retries with the same client-supplied operation ID replay the saved result; legacy requests without one receive a new server-generated ID per request.',
+            security: authSecurity,
+            tags: ['Gardens'],
         }),
-        zValidator(
-            'param',
-            z.object({
-                gardenId: z.string(),
-            }),
-        ),
-        zValidator(
-            'json',
-            z.object({
-                blockName: z.string(),
-                expectedExistingBlocks: z.array(z.string()).optional(),
-                variant: z.number().int().nonnegative().optional(),
-                position: z
-                    .object({
-                        x: z.number().int(),
-                        y: z.number().int(),
-                    })
-                    .optional(),
-            }),
-        ),
+        zValidator('param', gardenBlockPurchaseParamSchema),
+        zValidator('json', gardenBlockPurchaseBodySchema),
         authValidator(['user', 'admin']),
         async (context) => {
-            const { gardenId } = context.req.valid('param');
-            const gardenIdNumber = parseInt(gardenId, 10);
-            if (Number.isNaN(gardenIdNumber)) {
-                return context.json({ error: 'Invalid garden ID' }, 400);
-            }
+            const { gardenId: gardenIdNumber } = context.req.valid('param');
 
-            // Check garden exists and is owned by user
             const { accountId } = context.get('authContext');
-
-            const [garden, gardenBlocks, blockData] = await Promise.all([
-                getGarden(gardenIdNumber),
-                getGardenBlocks(gardenIdNumber),
-                getBlockData(),
-            ]);
-
-            if (!garden || garden.accountId !== accountId) {
-                return context.json(
-                    {
-                        error: 'Garden not found',
-                    },
-                    404,
-                );
-            }
-
             const {
                 blockName,
                 expectedExistingBlocks,
+                operationId,
                 position,
-                variant: requestedVariant,
+                variant,
             } = context.req.valid('json');
-
-            if (
-                !isAppearanceVariantEntityName(blockName) &&
-                requestedVariant !== undefined
-            ) {
-                return context.json(
-                    { error: 'Ovaj predmet nema varijante izgleda.' },
-                    400,
-                );
-            }
-            if (
-                requestedVariant !== undefined &&
-                !isValidEntityAppearanceVariant(blockName, requestedVariant)
-            ) {
-                return context.json(
-                    { error: 'Neispravna varijanta izgleda predmeta.' },
-                    400,
-                );
-            }
-            const appearanceVariant =
-                requestedVariant ??
-                createEntityAppearanceVariantForPlacement(
-                    blockName,
-                    Math.random,
-                ) ??
-                null;
-            if (
-                requiresExplicitAppearanceVariantSelection(blockName) &&
-                appearanceVariant === null
-            ) {
-                return context.json(
-                    { error: 'Odaberi boju konja prije postavljanja.' },
-                    400,
-                );
-            }
-
-            // Retrieve block information (cost)
-            const block = blockData.find(
-                (block) => block.information?.name === blockName,
-            );
-            if (!block) {
-                return context.json(
-                    { error: 'Requested block not found' },
-                    400,
-                );
-            }
-            const cost = block.prices?.sunflowers ?? 0;
-            // Sandbox ("play") gardens build for free: no cost, no inventory,
-            // no night-only restriction and nothing is debited.
-            if (!garden.isSandbox) {
-                if (cost <= 0) {
-                    return context.json(
-                        { error: 'Requested block not for sale' },
-                        400,
-                    );
-                }
-
-                if (
-                    !isBlockPurchaseAvailableNow({
-                        block,
-                        location: {
-                            lat: garden.farm?.latitude,
-                            lon: garden.farm?.longitude,
-                        },
-                    })
-                ) {
-                    return context.json(
-                        {
-                            error: 'Ovaj blok moguće je kupiti samo noću.',
-                        },
-                        400,
-                    );
-                }
-            }
-
-            const blockNameById = new Map(
-                gardenBlocks.map((block) => [block.id, block.name] as const),
-            );
-            const blockRotationById = new Map(
-                gardenBlocks.map((block) => [block.id, block.rotation]),
-            );
-            const blockDataByName = new Map<
-                string,
-                (typeof blockData)[number]
-            >();
-            for (const candidate of blockData) {
-                const candidateName = candidate.information?.name;
-                if (candidateName) {
-                    blockDataByName.set(candidateName, candidate);
-                }
-            }
-            const placement = resolveGardenBlockPlacement({
-                blockName,
-                stacks: garden.stacks,
-                blockNameById,
-                blockRotationById,
-                blockDataByName,
-                requestedPosition: position,
-            });
-            if (!placement.valid) {
-                return context.json({ error: placement.error }, 400);
-            }
-
-            const { x, y, existingBlocks } = placement.placement;
-            if (
-                expectedExistingBlocks &&
-                (expectedExistingBlocks.length !== existingBlocks.length ||
-                    expectedExistingBlocks.some(
-                        (blockId, index) => blockId !== existingBlocks[index],
-                    ))
-            ) {
-                return context.json(
-                    {
-                        error: 'Invalid block placement: stack changed while placing block',
-                    },
-                    409,
-                );
-            }
-
-            const hasTargetStack = garden.stacks.some(
-                (stack) => stack.positionX === x && stack.positionY === y,
-            );
             const purchaseResult = await purchaseGardenBlock({
                 accountId,
                 blockName,
-                cost: garden.isSandbox ? 0 : cost,
-                dependencies: {
-                    createGardenBlock: (targetGardenId, name, variant) =>
-                        createGardenBlock(targetGardenId, name, variant),
-                    createGardenStack,
-                    deleteGardenBlock: storageDeleteGardenBlock,
-                    spendSunflowers: garden.isSandbox
-                        ? async () => undefined
-                        : spendSunflowers,
-                    synchronizeGardenStacksAndRaisedBeds,
-                    updateGardenStack,
-                },
+                expectedExistingBlocks,
                 gardenId: gardenIdNumber,
-                hasTargetStack,
-                placement: {
-                    x,
-                    y,
-                    existingBlocks,
-                },
-                variant: appearanceVariant,
+                operationId:
+                    operationId ??
+                    `legacy-block-purchase-${globalThis.crypto.randomUUID()}`,
+                position,
+                variant,
             });
             if (!purchaseResult.ok) {
                 return context.json(
-                    { error: purchaseResult.error },
+                    {
+                        code: purchaseResult.code,
+                        error: purchaseResult.error,
+                    },
                     purchaseResult.status,
                 );
             }

@@ -740,6 +740,25 @@ export async function listGardenStructures(
         .orderBy(asc(gardenStructures.id));
 }
 
+/** Lock active structures for a garden in stable ID order. */
+export async function listGardenStructuresForUpdate(
+    gardenId: number,
+    db: GardenStructureTransaction,
+) {
+    assertGardenId(gardenId);
+    return db
+        .select()
+        .from(gardenStructures)
+        .where(
+            and(
+                eq(gardenStructures.gardenId, gardenId),
+                eq(gardenStructures.isDeleted, false),
+            ),
+        )
+        .orderBy(asc(gardenStructures.id))
+        .for('update');
+}
+
 export async function getGardenStructure(
     {
         gardenId,

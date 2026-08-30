@@ -12,6 +12,7 @@ import {
     getGardenBlock,
     getGardenBlockForUpdate,
     getGardenBlocks,
+    getGardenPlacementLocation,
     getGardenPlacementSnapshot,
     getGardenPlacementSnapshotForUpdate,
     getGardenStack,
@@ -120,6 +121,23 @@ test('placement snapshots read active authoritative rows through the lock transa
         snapshot.blocks.map((block) => block.id),
         [blockId],
     );
+});
+
+test('placement location reads farm coordinates through the lock transaction', async () => {
+    createTestDb();
+    const { gardenId } = await createPlacementGarden();
+    const garden = await getGarden(gardenId);
+    assert.ok(garden?.farm);
+
+    const location = await withGardenPlacementTransaction(
+        gardenId,
+        (transaction) => getGardenPlacementLocation(gardenId, transaction),
+    );
+
+    assert.deepEqual(location, {
+        lat: garden.farm.latitude,
+        lon: garden.farm.longitude,
+    });
 });
 
 test('locked placement snapshots return active rows in stable ID order', async () => {

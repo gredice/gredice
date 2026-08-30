@@ -1,6 +1,7 @@
 import { clientAuthenticated } from '@gredice/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGameState } from '../useGameState';
+import { ensureBlockPlaceOperationId } from './blockPlaceOperation';
 import {
     createOptimisticBlockPlacement,
     replaceOptimisticBlockId,
@@ -41,6 +42,7 @@ export type GardenBoxPlaceBlockArgs = {
     gardenId: number;
     gardenBoxBlockId: string;
     entityId: string;
+    operationId?: string;
 };
 
 function decrementGardenBoxInventoryItem(
@@ -109,11 +111,9 @@ export function useGardenBoxPlaceBlock() {
 
     return useMutation({
         mutationKey,
-        mutationFn: async ({
-            entityId,
-            gardenBoxBlockId,
-            gardenId,
-        }: GardenBoxPlaceBlockArgs) => {
+        mutationFn: async (variables: GardenBoxPlaceBlockArgs) => {
+            const operationId = ensureBlockPlaceOperationId(variables);
+            const { entityId, gardenBoxBlockId, gardenId } = variables;
             const response = await clientAuthenticated().api.inventory[
                 'garden-boxes'
             ][':gardenId'][':blockId'].items.block[':entityId'].place.$post({
@@ -122,6 +122,7 @@ export function useGardenBoxPlaceBlock() {
                     blockId: gardenBoxBlockId,
                     entityId,
                 },
+                json: { operationId },
             });
 
             if (!response.ok) {
@@ -131,6 +132,7 @@ export function useGardenBoxPlaceBlock() {
             return await response.json();
         },
         onMutate: async (args) => {
+            ensureBlockPlaceOperationId(args);
             const gardenQueryKey = currentGardenKeys(winterMode, args.gardenId);
             await Promise.all([
                 queryClient.cancelQueries({ queryKey: inventoryQueryKey }),

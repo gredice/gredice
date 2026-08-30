@@ -80,6 +80,13 @@ describe('getCurrentAdventDay', () => {
             0,
         );
     });
+
+    it('should not reopen the historical calendar in a later December', () => {
+        assert.strictEqual(
+            getCurrentAdventDay(CET_TIMEZONE, cetDate(2026, 12, 3, 12, 0, 0)),
+            0,
+        );
+    });
 });
 
 describe('isAdventDayAvailable', () => {
@@ -158,6 +165,14 @@ describe('isAdventDayAvailable', () => {
         assert.strictEqual(isAdventDayAvailable(1, CET_TIMEZONE, dec25), false);
         assert.strictEqual(
             isAdventDayAvailable(24, CET_TIMEZONE, dec25),
+            false,
+        );
+    });
+
+    it('should NOT provision 2025 awards in a later December', () => {
+        const dec3NextYear = cetDate(2026, 12, 3, 12, 0, 0);
+        assert.strictEqual(
+            isAdventDayAvailable(3, CET_TIMEZONE, dec3NextYear),
             false,
         );
     });

@@ -134,6 +134,7 @@ export type GardenStacksPatchPlannerErrorCode =
     | 'GARDEN_OCCUPANCY_CONFLICT'
     | 'GARDEN_OCCUPANCY_INVALID_INPUT'
     | 'GARDEN_OCCUPANCY_INVALID_STATE'
+    | 'GARDEN_BOX_NOT_RECYCLABLE'
     | 'INDEX_OUT_OF_BOUNDS'
     | 'INVALID_GARDEN_STATE'
     | 'INVALID_OPERATION'
@@ -440,6 +441,13 @@ function getRecycleDelta({
     isSandbox: boolean;
     raisedBeds: readonly GardenStacksPatchRaisedBed[];
 }>): GardenStacksPatchRecycleDelta {
+    if (blockName === 'GardenBox') {
+        fail(
+            'GARDEN_BOX_NOT_RECYCLABLE',
+            400,
+            'Garden boxes cannot be recycled because they may contain stored blocks',
+        );
+    }
     const matchingRaisedBeds = raisedBeds.filter(
         (raisedBed) => raisedBed.blockId === blockId,
     );
