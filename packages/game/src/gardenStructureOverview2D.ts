@@ -110,7 +110,11 @@ function readTemplateKey(value: unknown): GardenStructureTemplateKey | null {
 function createSummary(
     record: unknown,
 ): GardenStructureOverview2DSummary | null {
-    if (!isRecord(record) || record.isDeleted !== false) {
+    if (
+        !isRecord(record) ||
+        record.isDeleted !== false ||
+        (Object.hasOwn(record, 'deleted') && record.deleted !== false)
+    ) {
         return null;
     }
 

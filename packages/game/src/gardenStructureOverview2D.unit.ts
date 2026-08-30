@@ -169,6 +169,10 @@ test('omits malformed, unknown-kit, deleted, and duplicate records', () => {
         { ...structureRecord({ id: 'bad-document' }), document: {} },
         { ...structureRecord({ id: 'unknown-kit' }), kitVersion: '404' },
         { ...structureRecord({ id: 'deleted' }), isDeleted: true },
+        {
+            ...structureRecord({ id: 'ambiguous-delete-state' }),
+            deleted: true,
+        },
         structureRecord({ id: 'duplicate' }),
         structureRecord({ id: 'duplicate' }),
         structureRecord({ id: 'ambiguous' }),

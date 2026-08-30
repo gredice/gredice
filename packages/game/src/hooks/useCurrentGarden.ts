@@ -930,6 +930,7 @@ function faunaHeavyMockGarden(): useCurrentGardenResponse {
         backgroundPalette: defaultGameBackgroundPaletteKey,
         homeCamera: null,
         stacks: createAllAnimalDebugStacks(),
+        structures: [],
         location: { lat: 45.739, lon: 16.572 },
         raisedBeds: [],
     };
