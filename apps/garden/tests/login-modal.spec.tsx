@@ -293,11 +293,29 @@ test('preserves registration submission and error feedback', async ({
     await mount(<LoginModalStory />);
 
     await page.getByRole('button', { name: 'Nastavi s emailom' }).click();
-    await page.getByRole('tab', { name: 'Registracija' }).click();
-    await page.getByLabel('Email').fill('nova@example.com');
-    await page.getByLabel('Zaporka').fill('sigurna-zaporka');
-    await page.getByLabel('Ponovi zaporku').fill('sigurna-zaporka');
-    await page.getByRole('button', { name: 'Registriraj se' }).click();
+    const registrationTab = page.getByRole('tab', { name: 'Registracija' });
+    await registrationTab.click();
+    await expect(registrationTab).toHaveAttribute('aria-selected', 'true');
+
+    const registrationPanel = page.getByRole('tabpanel');
+    const registrationButton = registrationPanel.getByRole('button', {
+        name: 'Registriraj se',
+    });
+    const registrationEmail = registrationPanel.getByLabel('Email');
+    const registrationPassword = registrationPanel.getByLabel('Zaporka', {
+        exact: true,
+    });
+    const registrationRepeatPassword =
+        registrationPanel.getByLabel('Ponovi zaporku');
+    await expect(registrationEmail).toBeFocused();
+    await registrationEmail.fill('nova@example.com');
+    await registrationPassword.fill('sigurna-zaporka');
+    await registrationRepeatPassword.fill('sigurna-zaporka');
+    await expect(registrationEmail).toHaveValue('nova@example.com');
+    await expect(registrationPassword).toHaveValue('sigurna-zaporka');
+    await expect(registrationRepeatPassword).toHaveValue('sigurna-zaporka');
+    await expect(registrationButton).toBeEnabled();
+    await registrationButton.click();
 
     await expect(
         page.getByText('Registracija nije uspjela. Pokušaj ponovno.'),
