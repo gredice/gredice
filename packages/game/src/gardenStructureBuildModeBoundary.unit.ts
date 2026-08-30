@@ -44,11 +44,11 @@ test('uses only the managed building flag for build-mode discovery while saved s
     );
     assert.match(
         gameSceneSource,
-        /<GardenStructureSceneLayer[\s\S]*?snapshot=\{savedStructureScene\}/,
+        /<GardenStructureSceneLayerDynamic[\s\S]*?snapshot=\{savedStructureScene\}/,
     );
 });
 
-test('suspends normal block and avatar interactions only for an active build session', () => {
+test('suspends world interactions while retaining build-mode camera gestures', () => {
     assert.match(
         gameSceneSource,
         /const structureBuildActive = Boolean\(\s*gardenStructureVerticalSliceEnabled && structureBuildSession,?\s*\)/,
@@ -64,7 +64,11 @@ test('suspends normal block and avatar interactions only for an active build ses
     );
     assert.match(
         overviewCamera,
-        /controlsEnabled=\{\s*!noControls &&\s*!gardenAvatarActive &&\s*!structureBuildActive\s*\}/,
+        /controlsEnabled=\{\s*!noControls && !gardenAvatarActive\s*\}/,
+    );
+    assert.doesNotMatch(
+        overviewCamera,
+        /controlsEnabled=\{[^}]*structureBuildActive/,
     );
     assert.match(
         gameSceneSource,

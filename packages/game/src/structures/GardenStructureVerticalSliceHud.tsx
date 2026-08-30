@@ -285,15 +285,17 @@ function writeGardenStructureRecovery({
     };
 }
 
+export type GardenStructureVerticalSliceHudProps = Readonly<{
+    enabled: boolean;
+    fixture?: boolean;
+    plan?: GardenStructureSemanticPlan;
+}>;
+
 export function GardenStructureVerticalSliceHud({
     enabled,
     fixture = false,
     plan,
-}: {
-    enabled: boolean;
-    fixture?: boolean;
-    plan?: GardenStructureSemanticPlan;
-}) {
+}: GardenStructureVerticalSliceHudProps) {
     const { data: garden, refetch: refetchGarden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const session = useGameState((state) => state.structureBuildSession);

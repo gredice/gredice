@@ -6,7 +6,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { GardenAvatarCollisionWorld } from '../entities/avatar/gardenAvatarMovement';
 import type { Stack } from '../types/Stack';
 import { getStackHeight } from '../utils/stackHeightCore';
-import { GardenStructureCollectionRenderer } from './GardenStructureCollectionRenderer';
 import { createGardenStructureCollectionAvatarCollisionWorld } from './gardenStructureAvatarCollision';
 import {
     GardenStructureCollectionCache,
@@ -470,39 +469,4 @@ export function useGardenStructureSceneSnapshot({
     );
 
     return snapshot;
-}
-
-export function GardenStructureSceneLayer({
-    castShadows = true,
-    renderProps = true,
-    snapshot,
-}: Readonly<{
-    castShadows?: boolean;
-    renderProps?: boolean;
-    snapshot: GardenStructureSceneSnapshot;
-}>) {
-    const plan = snapshot.plan;
-    if (!plan || plan.structures.length === 0) {
-        return null;
-    }
-
-    return (
-        <group
-            name="GardenStructures:SavedSceneLayer"
-            userData={{
-                diagnosticIssueCodes:
-                    snapshot.diagnostics.sampledIssueCodes.join(','),
-                diagnosticStatus: snapshot.diagnostics.status,
-                rejectedRecordCount: snapshot.diagnostics.rejectedRecordCount,
-                structureCount: plan.structures.length,
-                warningCount: snapshot.diagnostics.warningCount,
-            }}
-        >
-            <GardenStructureCollectionRenderer
-                castShadows={castShadows}
-                plan={plan}
-                renderProps={renderProps}
-            />
-        </group>
-    );
 }

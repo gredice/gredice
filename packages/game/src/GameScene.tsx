@@ -106,14 +106,14 @@ import {
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
-import { GardenStructureVerticalSlice } from './structures/GardenStructureVerticalSlice';
+import { GardenStructureSceneLayerDynamic } from './structures/GardenStructureSceneLayerDynamic';
+import { GardenStructureVerticalSliceDynamic } from './structures/GardenStructureVerticalSliceDynamic';
 import { createGardenStructureAvatarCollisionWorld } from './structures/gardenStructureAvatarCollision';
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
 import {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
     createGardenStructureSceneFixtureBuildPreviewCompileInput,
-    GardenStructureSceneLayer,
     useGardenStructureSceneSnapshot,
 } from './structures/gardenStructureScene';
 import { resolveGardenStructureBuildCameraFrame } from './structures/structureBuildCamera';
@@ -392,9 +392,6 @@ export function GameScene({
     const structureCameraSnapshotRef = useRef<GameCameraSnapshot | null>(null);
     const structureCameraFrameSignatureRef = useRef<string | null>(null);
     const structurePlanCacheRef = useRef<GardenStructurePlanCache | null>(null);
-    if (!structurePlanCacheRef.current) {
-        structurePlanCacheRef.current = new GardenStructurePlanCache();
-    }
     const setGardenAvatarView = useGameState(
         (state) => state.setGardenAvatarView,
     );
@@ -433,10 +430,9 @@ export function GameScene({
         if (!gardenStructureVerticalSliceEnabled || !editor) {
             return null;
         }
-        const cache = structurePlanCacheRef.current;
-        if (!cache) {
-            return null;
-        }
+        const cache =
+            structurePlanCacheRef.current ?? new GardenStructurePlanCache();
+        structurePlanCacheRef.current = cache;
         const structureId =
             editor.origin.kind === 'new-draft'
                 ? editor.origin.draftId
@@ -1133,17 +1129,20 @@ export function GameScene({
                                     renderDetails={renderDetails}
                                     weather={weather}
                                 />
-                                <GardenStructureSceneLayer
-                                    castShadows={
-                                        qualityProfile.shadows && zoom !== 'far'
-                                    }
-                                    renderProps={
-                                        renderDetails && zoom !== 'far'
-                                    }
-                                    snapshot={savedStructureScene}
-                                />
+                                {savedStructureScene.plan?.structures.length ? (
+                                    <GardenStructureSceneLayerDynamic
+                                        castShadows={
+                                            qualityProfile.shadows &&
+                                            zoom !== 'far'
+                                        }
+                                        renderProps={
+                                            renderDetails && zoom !== 'far'
+                                        }
+                                        snapshot={savedStructureScene}
+                                    />
+                                ) : null}
                                 {structureFixtureBundle ? (
-                                    <GardenStructureVerticalSlice
+                                    <GardenStructureVerticalSliceDynamic
                                         plan={structureFixtureBundle.plan}
                                     />
                                 ) : null}
@@ -1351,9 +1350,7 @@ export function GameScene({
                             </group>
                             <GameCameraRig
                                 controlsEnabled={
-                                    !noControls &&
-                                    !gardenAvatarActive &&
-                                    !structureBuildActive
+                                    !noControls && !gardenAvatarActive
                                 }
                                 gestureResetKey={structureBuildActive}
                                 initialPosition={sceneCameraPosition}

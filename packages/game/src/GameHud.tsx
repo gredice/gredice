@@ -37,7 +37,7 @@ import { AdventModal } from './modals/advent/AdventModal';
 import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
-import { GardenStructureVerticalSliceHud } from './structures/GardenStructureVerticalSliceHud';
+import { GardenStructureVerticalSliceHudDynamic } from './structures/GardenStructureVerticalSliceHudDynamic';
 import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
@@ -151,7 +151,7 @@ export function GameHud({
     if (gardenStructureBuildEnabled && structureBuildSession) {
         return (
             <>
-                <GardenStructureVerticalSliceHud
+                <GardenStructureVerticalSliceHudDynamic
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
@@ -333,7 +333,7 @@ export function GameHud({
             )}
             {!isLocalSandbox && <PaymentSuccessfulMessage />}
             {gardenStructureBuildEnabled ? (
-                <GardenStructureVerticalSliceHud
+                <GardenStructureVerticalSliceHudDynamic
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}

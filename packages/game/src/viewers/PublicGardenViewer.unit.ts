@@ -343,6 +343,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
                 diagnosticStatus: 'ready',
                 hasPlan: false,
                 rejectedRecordCount: 0,
+                rendererReady: false,
                 savedStructureCount: 0,
             }),
             true,
@@ -352,9 +353,20 @@ describe('isPublicGardenStructureCaptureReady', () => {
                 diagnosticStatus: 'ready',
                 hasPlan: true,
                 rejectedRecordCount: 0,
+                rendererReady: true,
                 savedStructureCount: 1,
             }),
             true,
+        );
+        assert.equal(
+            isPublicGardenStructureCaptureReady({
+                diagnosticStatus: 'ready',
+                hasPlan: true,
+                rejectedRecordCount: 0,
+                rendererReady: false,
+                savedStructureCount: 1,
+            }),
+            false,
         );
     });
 
@@ -364,6 +376,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
                 diagnosticStatus: 'rendered-with-diagnostics',
                 hasPlan: true,
                 rejectedRecordCount: 0,
+                rendererReady: true,
                 savedStructureCount: 1,
             }),
             true,
@@ -378,6 +391,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
                     diagnosticStatus,
                     hasPlan: false,
                     rejectedRecordCount: 1,
+                    rendererReady: false,
                     savedStructureCount: 1,
                 }),
                 false,
@@ -388,6 +402,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
                 diagnosticStatus: 'rendered-with-diagnostics',
                 hasPlan: true,
                 rejectedRecordCount: 1,
+                rendererReady: true,
                 savedStructureCount: 1,
             }),
             false,
@@ -397,6 +412,7 @@ describe('isPublicGardenStructureCaptureReady', () => {
                 diagnosticStatus: 'ready',
                 hasPlan: false,
                 rejectedRecordCount: 0,
+                rendererReady: false,
                 savedStructureCount: 1,
             }),
             false,

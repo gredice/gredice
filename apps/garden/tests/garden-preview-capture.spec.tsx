@@ -51,6 +51,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     const blockData = getLocalSandboxBlockData();
     const authenticatedViewerRequests: string[] = [];
     const browserErrors: string[] = [];
+    const buildingAssetRequests: string[] = [];
     const apiRequests: string[] = [];
     const apiResponses: string[] = [];
 
@@ -66,6 +67,9 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     });
     page.on('request', (request) => {
         const url = request.url();
+        if (new URL(url).pathname.endsWith('/GardenStructureKitV1.glb')) {
+            buildingAssetRequests.push(url);
+        }
         if (url.includes('/api/gredice/')) {
             apiRequests.push(new URL(url).pathname);
         }
@@ -238,9 +242,14 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.size).toBeLessThanOrEqual(2 * 1024 * 1024);
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
+    expect(buildingAssetRequests).toHaveLength(1);
     await expect(captureScene).toHaveAttribute(
         'data-public-garden-capture-structures-ready',
         'true',
+    );
+    await expect(captureScene).toHaveAttribute(
+        'data-garden-structure-rendered-count',
+        '1',
     );
 
     await page.waitForTimeout(1_000);

@@ -13,7 +13,6 @@ import {
     type GardenStructureCollectionCacheDisposalReason,
     type GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCache,
-    GardenStructureSceneLayer,
     resolveGardenStructureSceneStructureBaseHeight,
 } from './index';
 
@@ -53,7 +52,6 @@ describe('GardenStructureSceneCache', () => {
         assert.equal(snapshot.collisionWorld, undefined);
         assert.equal(snapshot.diagnostics.status, 'ready');
         assert.equal(cache.snapshot(), null);
-        assert.equal(GardenStructureSceneLayer({ snapshot }), null);
     });
 
     it('does not inspect block or stack inputs for a garden without structures', () => {

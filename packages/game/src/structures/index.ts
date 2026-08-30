@@ -122,7 +122,6 @@ export {
     createGardenStructureSceneBuildPreviewCompileInput,
     createGardenStructureSceneFixtureBuildPreviewCompileInput,
     GardenStructureSceneCache,
-    GardenStructureSceneLayer,
     resolveGardenStructureSceneStructureBaseHeight,
     useGardenStructureSceneSnapshot,
 } from './gardenStructureScene';
