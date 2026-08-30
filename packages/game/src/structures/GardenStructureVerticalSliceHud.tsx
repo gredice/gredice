@@ -23,6 +23,7 @@ import {
     type GardenStructureBuildCategory,
     type GardenStructureBuildSession,
     useGameState,
+    useGameStateStore,
 } from '../useGameState';
 import {
     abandonGardenStructureEditorDemolitionFailure,
@@ -72,6 +73,7 @@ import {
     getGardenStructurePricingPresentation,
     getGardenStructureSaveStatusLabel,
 } from './gardenStructureBuildModePresentation';
+import { getMatchingGardenStructureConflictSession } from './gardenStructureConflictSession';
 import {
     createGardenStructureEditorOccupancyIndex,
     validateGardenStructureEditorPlacementOccupancy,
@@ -295,6 +297,7 @@ export function GardenStructureVerticalSliceHud({
     const { data: blockData } = useBlockData();
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
+    const gameStateStore = useGameStateStore();
     const mutations = useGardenStructureMutations(garden?.id);
     const confirmationReturnFocusRef = useRef<HTMLElement | null>(null);
     const doneButtonRef = useRef<HTMLButtonElement>(null);
@@ -1083,6 +1086,18 @@ export function GardenStructureVerticalSliceHud({
         setAnnouncement('Učitavanje najnovije građevine…');
         try {
             const latestGardenResult = await refetchGarden();
+            const activeConflictSession =
+                getMatchingGardenStructureConflictSession(
+                    gameStateStore.getState().structureBuildSession,
+                    {
+                        gardenId: editor.origin.gardenId,
+                        operationId: conflictOperationId,
+                        structureId,
+                    },
+                );
+            if (!activeConflictSession) {
+                return;
+            }
             if (latestGardenResult.error) {
                 throw latestGardenResult.error;
             }
@@ -1129,11 +1144,23 @@ export function GardenStructureVerticalSliceHud({
             }
             removeRecovery(conflictedEditor);
             mutations.save.reset();
-            setSession({ ...session, editor: resolved.value });
+            setSession({ ...activeConflictSession, editor: resolved.value });
             setAnnouncement(
                 'Učitana je najnovija poslužiteljska verzija. Lokalne izmjene su odbačene.',
             );
         } catch (error) {
+            if (
+                !getMatchingGardenStructureConflictSession(
+                    gameStateStore.getState().structureBuildSession,
+                    {
+                        gardenId: editor.origin.gardenId,
+                        operationId: conflictOperationId,
+                        structureId,
+                    },
+                )
+            ) {
+                return;
+            }
             const message =
                 error instanceof Error
                     ? error.message
