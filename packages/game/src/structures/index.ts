@@ -61,6 +61,25 @@ export {
 } from './gardenStructureCollectionPlan';
 export { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
 export type {
+    GardenStructureKitAnchor,
+    GardenStructureKitAssetManifest,
+    GardenStructureKitBounds,
+    GardenStructureKitEdgeAssetPart,
+    GardenStructureKitFloorAssetPart,
+    GardenStructureKitManifestIssue,
+    GardenStructureKitNodeBinding,
+    GardenStructureKitPropAssetPart,
+    GardenStructureKitRoofAssetPart,
+    GardenStructureKitSemanticMaterial,
+    GardenStructureKitVector3,
+} from './gardenStructureKitV1Manifest';
+export {
+    gardenStructureKitV1AssetManifest,
+    gardenStructureKitV1Metadata,
+    getGardenStructureKitV1NodeNames,
+    validateGardenStructureKitV1Manifest,
+} from './gardenStructureKitV1Manifest';
+export type {
     GardenStructurePlanCacheDisposalReason,
     GardenStructurePlanCacheDispose,
     GardenStructurePlanCacheOptions,

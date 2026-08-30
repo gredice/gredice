@@ -2804,6 +2804,38 @@
                 "WoodenSign_Frame",
                 "WoodenSign_Fasteners"
             ]
+        },
+        {
+            "name": "GardenStructureKitV1",
+            "source": "GardenStructureKitV1.blend",
+            "output": "GardenStructureKitV1.glb",
+            "version": "07365ed157cb",
+            "preload": "lazy",
+            "objects": [
+                "GardenStructureKitV1_FloorLimestone",
+                "GardenStructureKitV1_FloorStone",
+                "GardenStructureKitV1_FloorTimber",
+                "GardenStructureKitV1_WallTimber",
+                "GardenStructureKitV1_WallPlaster",
+                "GardenStructureKitV1_WallGreenhouseFrame",
+                "GardenStructureKitV1_WallGreenhouseGlass",
+                "GardenStructureKitV1_DoorTimberWideOpen",
+                "GardenStructureKitV1_DoorHouseOpen",
+                "GardenStructureKitV1_DoorGreenhouseOpenFrame",
+                "GardenStructureKitV1_DoorGreenhouseOpenGlass",
+                "GardenStructureKitV1_WindowHouseFrame",
+                "GardenStructureKitV1_WindowHouseGlass",
+                "GardenStructureKitV1_RoofGable",
+                "GardenStructureKitV1_RoofShed",
+                "GardenStructureKitV1_RoofGreenhouseGableFrame",
+                "GardenStructureKitV1_RoofGreenhouseGableGlass",
+                "GardenStructureKitV1_PropTable",
+                "GardenStructureKitV1_PropWorkbench",
+                "GardenStructureKitV1_PropPlanter",
+                "GardenStructureKitV1_PropChair",
+                "GardenStructureKitV1_PropShelf",
+                "GardenStructureKitV1_PropCrate"
+            ]
         }
     ]
 }
