@@ -1067,7 +1067,11 @@ export function GameScene({
                                 {renderDetails && zoom !== 'far' && (
                                     <Suspense fallback={null}>
                                         <SunflowerDropReward
-                                            enabled={!isLocalSandbox && !isMock}
+                                            enabled={
+                                                !isLocalSandbox &&
+                                                !isMock &&
+                                                !structureBuildActive
+                                            }
                                             garden={garden}
                                             onClaimed={
                                                 setSunflowerDropFlyOrigin
@@ -1298,7 +1302,7 @@ export function GameScene({
                 />
             ) : null}
             <GardenPreviewCaptureController
-                enabled={!isLocalSandbox && !isMock}
+                enabled={!isLocalSandbox && !isMock && !structureBuildActive}
                 garden={garden}
             />
             {!hideHud && (

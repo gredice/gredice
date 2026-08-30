@@ -11,7 +11,14 @@ import {
     getGardenStructureFootprintBounds,
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    type KeyboardEvent as ReactKeyboardEvent,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
 import {
@@ -47,6 +54,13 @@ import {
     updateNewGardenStructureTemplatePlacement,
     writeGardenStructureEditorRecoveryStorage,
 } from './editor';
+import {
+    canExitGardenStructureEditorWithoutConfirmation,
+    type GardenStructureRecoveryAvailability,
+    getGardenStructureExitConfirmationPresentation,
+    getGardenStructurePricingPresentation,
+    getGardenStructureSaveStatusLabel,
+} from './gardenStructureBuildModePresentation';
 import { getGardenStructureSelectablePartIds } from './gardenStructureSelectableParts';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 
@@ -73,6 +87,119 @@ const categoryOptions: readonly {
 
 const controlClassName =
     'pointer-events-auto min-h-11 min-w-11 rounded-xl border border-border/70 bg-background/90 px-3 py-2 text-sm font-medium text-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-45';
+
+function GardenStructureConfirmationDialog({
+    cancelDisabled = false,
+    cancelLabel,
+    confirmDisabled = false,
+    confirmLabel,
+    description,
+    destructive = false,
+    onCancel,
+    onConfirm,
+    testId,
+    title,
+}: {
+    cancelDisabled?: boolean;
+    cancelLabel: string;
+    confirmDisabled?: boolean;
+    confirmLabel: string;
+    description: string;
+    destructive?: boolean;
+    onCancel: () => void;
+    onConfirm: () => void;
+    testId: string;
+    title: string;
+}) {
+    const cancelButtonRef = useRef<HTMLButtonElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const descriptionId = useId();
+    const titleId = useId();
+
+    useEffect(() => {
+        const timeout = window.setTimeout(
+            () => cancelButtonRef.current?.focus({ preventScroll: true }),
+            0,
+        );
+        return () => window.clearTimeout(timeout);
+    }, []);
+
+    function trapFocus(event: ReactKeyboardEvent<HTMLDivElement>) {
+        if (event.key !== 'Tab') {
+            return;
+        }
+        const focusable = Array.from(
+            dialogRef.current?.querySelectorAll<HTMLButtonElement>(
+                'button:not(:disabled)',
+            ) ?? [],
+        );
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+            return;
+        }
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    return (
+        <div className="pointer-events-auto absolute inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+            <div
+                aria-describedby={descriptionId}
+                aria-labelledby={titleId}
+                aria-modal="true"
+                className={cx(
+                    'w-full max-w-md rounded-2xl border bg-background p-4 text-foreground shadow-2xl',
+                    destructive
+                        ? 'border-destructive/60'
+                        : 'border-amber-600/60',
+                )}
+                data-testid={testId}
+                onKeyDown={trapFocus}
+                ref={dialogRef}
+                role="alertdialog"
+            >
+                <p className="text-base font-semibold" id={titleId}>
+                    {title}
+                </p>
+                <p
+                    className="mt-1 text-sm text-muted-foreground"
+                    id={descriptionId}
+                >
+                    {description}
+                </p>
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <button
+                        type="button"
+                        className={controlClassName}
+                        disabled={cancelDisabled}
+                        onClick={onCancel}
+                        ref={cancelButtonRef}
+                    >
+                        {cancelLabel}
+                    </button>
+                    <button
+                        type="button"
+                        className={cx(
+                            controlClassName,
+                            destructive &&
+                                'border-destructive bg-destructive text-destructive-foreground',
+                        )}
+                        disabled={confirmDisabled}
+                        onClick={onConfirm}
+                    >
+                        {confirmLabel}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 const initialPlacement: GardenStructurePlacement = {
     anchorX: -1,
@@ -191,25 +318,27 @@ function createSavedSession(
         : null;
 }
 
-function saveStatusLabel(editor: GardenStructureEditorState) {
-    switch (editor.save.status) {
-        case 'clean':
-            return 'Spremljeno';
-        case 'dirty':
-            return editor.origin.kind === 'new-draft'
-                ? 'Lokalni nacrt'
-                : 'Nespremljene promjene';
-        case 'saving':
-            return 'Spremanje…';
-        case 'offline':
-            return 'Izvan mreže · lokalno sačuvano';
-        case 'conflict':
-            return 'Sukob revizije';
-        case 'error':
-            return editor.save.outcome === 'unknown'
-                ? 'Ishod spremanja nije poznat'
-                : 'Spremanje nije uspjelo';
-    }
+function writeGardenStructureRecovery({
+    now,
+    state,
+    storage,
+}: {
+    now: number;
+    state: GardenStructureEditorState;
+    storage: Pick<Storage, 'removeItem' | 'setItem'>;
+}) {
+    const key = getGardenStructureEditorRecoveryStorageKey(state.origin);
+    const recovery = serializeGardenStructureEditorRecovery(state, now);
+    const available = recovery.ok
+        ? writeGardenStructureEditorRecoveryStorage(
+              storage,
+              key,
+              recovery.value,
+          )
+        : recovery.error.code === 'nothing-to-recover'
+          ? writeGardenStructureEditorRecoveryStorage(storage, key, null)
+          : false;
+    return { available, editor: state, key };
 }
 
 export function GardenStructureVerticalSliceHud({
@@ -225,14 +354,22 @@ export function GardenStructureVerticalSliceHud({
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
     const mutations = useGardenStructureMutations(garden?.id);
+    const confirmationReturnFocusRef = useRef<HTMLElement | null>(null);
     const doneButtonRef = useRef<HTMLButtonElement>(null);
+    const entryButtonRef = useRef<HTMLButtonElement>(null);
     const placementButtonRef = useRef<HTMLButtonElement>(null);
+    const restoreEntryFocusRef = useRef(false);
     const [announcement, setAnnouncement] = useState('');
     const [demolishConfirmation, setDemolishConfirmation] = useState(false);
     const [demolishOperationId, setDemolishOperationId] = useState<
         string | null
     >(null);
     const [exitConfirmation, setExitConfirmation] = useState(false);
+    const [recoveryWriteState, setRecoveryWriteState] = useState<Readonly<{
+        available: boolean;
+        editor: GardenStructureEditorState;
+        key: string;
+    }> | null>(null);
     const editor = session?.editor;
     const buildActive = Boolean(session);
     const placingTemplate = editor?.workflow.kind === 'placing-template';
@@ -263,6 +400,33 @@ export function GardenStructureVerticalSliceHud({
         () => garden?.structures.filter(isOwnerGardenStructure) ?? [],
         [garden?.structures],
     );
+    const recoveryStorageKey =
+        session?.persistence === 'remote'
+            ? getGardenStructureEditorRecoveryStorageKey(session.editor.origin)
+            : null;
+    const recoveryAvailability: GardenStructureRecoveryAvailability =
+        recoveryStorageKey &&
+        recoveryWriteState?.key === recoveryStorageKey &&
+        recoveryWriteState.editor === session?.editor
+            ? recoveryWriteState.available
+                ? 'available'
+                : 'unavailable'
+            : 'checking';
+    const confirmationOpen = exitConfirmation || demolishConfirmation;
+    const exitConfirmationPresentation =
+        getGardenStructureExitConfirmationPresentation(recoveryAvailability);
+    const pricingPresentation =
+        editor && pricing && garden
+            ? getGardenStructurePricingPresentation({
+                  isSandbox: garden.isSandbox,
+                  originKind: editor.origin.kind,
+                  pricing,
+                  sunflowerPricePerCell:
+                      editor.origin.kind === 'saved-structure'
+                          ? editor.origin.sunflowerPricePerCell
+                          : gardenStructureSunflowerPricePerCell,
+              })
+            : null;
 
     useEffect(() => {
         if (session && garden && session.editor.origin.gardenId !== garden.id) {
@@ -300,12 +464,54 @@ export function GardenStructureVerticalSliceHud({
 
     function removeRecovery(state: GardenStructureEditorState) {
         if (session?.persistence === 'remote') {
-            writeGardenStructureEditorRecoveryStorage(
+            return writeGardenStructureEditorRecoveryStorage(
                 localStorage,
                 getGardenStructureEditorRecoveryStorageKey(state.origin),
                 null,
             );
         }
+        return true;
+    }
+
+    function persistRecovery(state: GardenStructureEditorState) {
+        const nextWriteState = writeGardenStructureRecovery({
+            now: Date.now(),
+            state,
+            storage: localStorage,
+        });
+        setRecoveryWriteState(nextWriteState);
+        return nextWriteState.available;
+    }
+
+    function rememberConfirmationFocus() {
+        confirmationReturnFocusRef.current =
+            document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+    }
+
+    function showExitConfirmation() {
+        rememberConfirmationFocus();
+        setDemolishConfirmation(false);
+        setExitConfirmation(true);
+    }
+
+    function showDemolishConfirmation() {
+        rememberConfirmationFocus();
+        setExitConfirmation(false);
+        setDemolishConfirmation(true);
+    }
+
+    function dismissConfirmation() {
+        const returnTarget = confirmationReturnFocusRef.current;
+        confirmationReturnFocusRef.current = null;
+        setDemolishConfirmation(false);
+        setExitConfirmation(false);
+        window.setTimeout(() => {
+            if (returnTarget?.isConnected) {
+                returnTarget.focus({ preventScroll: true });
+            }
+        }, 0);
     }
 
     function closeBuildMode(options?: { keepRecovery?: boolean }) {
@@ -315,6 +521,8 @@ export function GardenStructureVerticalSliceHud({
         setDemolishConfirmation(false);
         setDemolishOperationId(null);
         setExitConfirmation(false);
+        confirmationReturnFocusRef.current = null;
+        restoreEntryFocusRef.current = true;
         setSession(null);
     }
 
@@ -325,24 +533,25 @@ export function GardenStructureVerticalSliceHud({
         }
         const decision = getGardenStructureEditorExitDecision(editor);
         if (
-            decision.kind === 'exit-safe' ||
-            decision.kind === 'discard-unplaced-draft'
+            canExitGardenStructureEditorWithoutConfirmation(
+                decision,
+                recoveryAvailability,
+            )
         ) {
-            closeBuildMode();
+            closeBuildMode({
+                keepRecovery:
+                    decision.kind === 'local-recovery-only' ||
+                    decision.kind === 'resolve-conflict',
+            });
             return;
         }
-        if (
-            decision.kind === 'local-recovery-only' ||
-            decision.kind === 'resolve-conflict'
-        ) {
-            closeBuildMode({ keepRecovery: true });
-            return;
-        }
-        setExitConfirmation(true);
+        showExitConfirmation();
         setAnnouncement(
             decision.kind === 'wait-for-save'
                 ? 'Pričekajte potvrdu spremanja.'
-                : 'Građevina ima nespremljene promjene.',
+                : recoveryAvailability === 'unavailable'
+                  ? 'Lokalna kopija nije dostupna. Izlazak bi odbacio promjene.'
+                  : 'Građevina ima nespremljene promjene.',
         );
     }
 
@@ -578,21 +787,26 @@ export function GardenStructureVerticalSliceHud({
                 setAnnouncement(acknowledged.error.message);
                 return;
             }
+            setSession({ ...session, editor: acknowledged.value });
             removeRecovery(editor);
-            writeGardenStructureEditorRecoveryStorage(
-                localStorage,
-                getGardenStructureEditorRecoveryStorageKey(
-                    acknowledged.value.origin,
-                ),
-                null,
-            );
+            if (acknowledged.value.save.status === 'dirty') {
+                const recoveryAvailable = persistRecovery(acknowledged.value);
+                setAnnouncement(
+                    recoveryAvailable
+                        ? 'Ranije spremanje je potvrđeno. Novije promjene ostaju u lokalnom nacrtu.'
+                        : 'Ranije spremanje je potvrđeno. Novije promjene nisu pohranjene na uređaju.',
+                );
+                return;
+            }
+            removeRecovery(acknowledged.value);
+            restoreEntryFocusRef.current = true;
             setSession(null);
         } catch (error) {
             const clientError =
                 error instanceof GardenStructureMutationClientError
                     ? error
                     : new GardenStructureMutationClientError(
-                          'Spremanje nije potvrđeno. Nacrt je ostao lokalno sačuvan.',
+                          'Spremanje nije potvrđeno. Provjerite status lokalne kopije prije izlaska.',
                           'UNKNOWN_ERROR',
                           'unknown',
                       );
@@ -651,7 +865,15 @@ export function GardenStructureVerticalSliceHud({
 
     useEffect(() => {
         if (!buildActive) {
-            return;
+            if (!restoreEntryFocusRef.current) {
+                return;
+            }
+            restoreEntryFocusRef.current = false;
+            const timeout = window.setTimeout(
+                () => entryButtonRef.current?.focus({ preventScroll: true }),
+                0,
+            );
+            return () => window.clearTimeout(timeout);
         }
         const focusTarget = placingTemplate
             ? placementButtonRef.current
@@ -668,22 +890,13 @@ export function GardenStructureVerticalSliceHud({
         if (session?.persistence !== 'remote') {
             return;
         }
-        const recovery = serializeGardenStructureEditorRecovery(
-            session.editor,
-            Date.now(),
+        setRecoveryWriteState(
+            writeGardenStructureRecovery({
+                now: Date.now(),
+                state: session.editor,
+                storage: localStorage,
+            }),
         );
-        const key = getGardenStructureEditorRecoveryStorageKey(
-            session.editor.origin,
-        );
-        if (recovery.ok) {
-            writeGardenStructureEditorRecoveryStorage(
-                localStorage,
-                key,
-                recovery.value,
-            );
-        } else if (recovery.error.code === 'nothing-to-recover') {
-            writeGardenStructureEditorRecoveryStorage(localStorage, key, null);
-        }
     }, [session]);
 
     useEffect(() => {
@@ -694,38 +907,65 @@ export function GardenStructureVerticalSliceHud({
             if (event.key === 'Escape') {
                 event.preventDefault();
                 if (demolishConfirmation) {
+                    if (mutations.demolish.isPending) {
+                        return;
+                    }
+                    const returnTarget = confirmationReturnFocusRef.current;
+                    confirmationReturnFocusRef.current = null;
                     setDemolishConfirmation(false);
+                    window.setTimeout(() => {
+                        if (returnTarget?.isConnected) {
+                            returnTarget.focus({ preventScroll: true });
+                        }
+                    }, 0);
                 } else if (exitConfirmation) {
+                    const returnTarget = confirmationReturnFocusRef.current;
+                    confirmationReturnFocusRef.current = null;
                     setExitConfirmation(false);
+                    window.setTimeout(() => {
+                        if (returnTarget?.isConnected) {
+                            returnTarget.focus({ preventScroll: true });
+                        }
+                    }, 0);
                 } else if (session.persistence === 'fixture') {
+                    restoreEntryFocusRef.current = true;
                     setSession(null);
                 } else {
                     const decision = getGardenStructureEditorExitDecision(
                         session.editor,
                     );
                     if (
-                        decision.kind === 'exit-safe' ||
-                        decision.kind === 'discard-unplaced-draft'
+                        canExitGardenStructureEditorWithoutConfirmation(
+                            decision,
+                            recoveryAvailability,
+                        )
                     ) {
-                        writeGardenStructureEditorRecoveryStorage(
-                            localStorage,
-                            getGardenStructureEditorRecoveryStorageKey(
-                                session.editor.origin,
-                            ),
-                            null,
-                        );
-                        setSession(null);
-                    } else if (
-                        decision.kind === 'local-recovery-only' ||
-                        decision.kind === 'resolve-conflict'
-                    ) {
+                        if (
+                            decision.kind !== 'local-recovery-only' &&
+                            decision.kind !== 'resolve-conflict'
+                        ) {
+                            writeGardenStructureEditorRecoveryStorage(
+                                localStorage,
+                                getGardenStructureEditorRecoveryStorageKey(
+                                    session.editor.origin,
+                                ),
+                                null,
+                            );
+                        }
+                        restoreEntryFocusRef.current = true;
                         setSession(null);
                     } else {
+                        confirmationReturnFocusRef.current =
+                            document.activeElement instanceof HTMLElement
+                                ? document.activeElement
+                                : null;
                         setExitConfirmation(true);
                         setAnnouncement(
                             decision.kind === 'wait-for-save'
                                 ? 'Pričekajte potvrdu spremanja.'
-                                : 'Građevina ima nespremljene promjene.',
+                                : recoveryAvailability === 'unavailable'
+                                  ? 'Lokalna kopija nije dostupna. Izlazak bi odbacio promjene.'
+                                  : 'Građevina ima nespremljene promjene.',
                         );
                     }
                 }
@@ -806,12 +1046,20 @@ export function GardenStructureVerticalSliceHud({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [demolishConfirmation, editor, exitConfirmation, session, setSession]);
+    }, [
+        demolishConfirmation,
+        editor,
+        exitConfirmation,
+        mutations.demolish.isPending,
+        recoveryAvailability,
+        session,
+        setSession,
+    ]);
 
     if (!enabled || !garden) {
         return null;
     }
-    if (!session || !editor || !bounds || !pricing) {
+    if (!session || !editor || !bounds || !pricing || !pricingPresentation) {
         return (
             <div className="pointer-events-none absolute inset-0 z-30">
                 <button
@@ -822,6 +1070,7 @@ export function GardenStructureVerticalSliceHud({
                     )}
                     data-testid="garden-structure-build-entry"
                     onClick={enterBuildMode}
+                    ref={entryButtonRef}
                 >
                     Gradnja
                 </button>
@@ -847,13 +1096,21 @@ export function GardenStructureVerticalSliceHud({
             }
             data-testid="garden-structure-build-hud"
         >
-            <header className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-start justify-between gap-2">
+            <header
+                aria-hidden={confirmationOpen || undefined}
+                className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-start justify-between gap-2"
+                inert={confirmationOpen ? true : undefined}
+            >
                 <div className="pointer-events-auto rounded-xl border border-border/60 bg-background/90 px-3 py-2 shadow-lg backdrop-blur-md">
                     <p className="text-sm font-semibold text-foreground">
                         {originTemplateLabel}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        {saveStatusLabel(editor)}
+                        {getGardenStructureSaveStatusLabel({
+                            originKind: editor.origin.kind,
+                            recoveryAvailability,
+                            save: editor.save,
+                        })}
                     </p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
@@ -913,8 +1170,10 @@ export function GardenStructureVerticalSliceHud({
             </header>
 
             <div
+                aria-hidden={confirmationOpen || undefined}
                 className="pointer-events-auto absolute right-[calc(var(--game-safe-area-right,0px)+0.5rem)] bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] mx-auto max-h-[min(48dvh,24rem)] w-auto max-w-2xl overflow-y-auto rounded-2xl border border-border/70 bg-background/95 p-3 shadow-2xl backdrop-blur-lg landscape:top-[calc(var(--game-safe-area-top,0px)+4.75rem)] landscape:right-auto landscape:bottom-[calc(var(--game-safe-area-bottom,0px)+0.5rem)] landscape:max-h-none landscape:max-w-sm md:right-auto md:max-w-sm"
                 data-testid="garden-structure-build-sheet"
+                inert={confirmationOpen ? true : undefined}
             >
                 <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-muted/70 px-3 py-2 text-xs text-foreground">
                     <span>
@@ -925,11 +1184,9 @@ export function GardenStructureVerticalSliceHud({
                         {displayedWidth} × {displayedDepth} /{' '}
                         {gardenStructureMaxSideLength}
                     </span>
-                    <span>
-                        {gardenStructureSunflowerPricePerCell} 🌻 / polje
-                    </span>
+                    <span>{pricingPresentation.rateLabel}</span>
                     <span className="text-right font-semibold">
-                        {pricing.totalPrice.toLocaleString('hr-HR')} 🌻
+                        {pricingPresentation.actionLabel}
                     </span>
                 </div>
 
@@ -1162,9 +1419,12 @@ export function GardenStructureVerticalSliceHud({
 
                 {editor.save.status === 'conflict' ? (
                     <div className="mt-3 rounded-xl border border-amber-600/60 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-50">
-                        Građevina je promijenjena na drugom uređaju. Lokalni
-                        nacrt je sačuvan; izađite i ponovno otvorite građevinu
-                        nakon osvježavanja vrta.
+                        Građevina je promijenjena na drugom uređaju.{' '}
+                        {recoveryAvailability === 'available'
+                            ? 'Lokalni nacrt je pohranjen; izađite i ponovno otvorite građevinu nakon osvježavanja vrta.'
+                            : recoveryAvailability === 'unavailable'
+                              ? 'Lokalni nacrt nije moguće pohraniti. Nastavite uređivati dok ne odlučite što učiniti s promjenama.'
+                              : 'Provjera lokalne kopije je u tijeku. Nemojte izlaziti dok se status ne potvrdi.'}
                     </div>
                 ) : null}
                 {mutations.save.error ? (
@@ -1176,93 +1436,66 @@ export function GardenStructureVerticalSliceHud({
                     </div>
                 ) : null}
 
-                {exitConfirmation ? (
-                    <div className="mt-3 rounded-xl border border-amber-600/60 p-3">
-                        <p className="text-sm font-semibold">
-                            Nespremljene promjene
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Nacrt ostaje samo na ovom uređaju dok spremanje nije
-                            potvrđeno.
-                        </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                className={controlClassName}
-                                onClick={() => setExitConfirmation(false)}
-                            >
-                                Nastavi uređivati
-                            </button>
-                            <button
-                                type="button"
-                                className={controlClassName}
-                                onClick={() =>
-                                    closeBuildMode({ keepRecovery: true })
-                                }
-                            >
-                                Izađi uz lokalni nacrt
-                            </button>
-                        </div>
-                    </div>
-                ) : null}
-
                 {editor.origin.kind === 'saved-structure' ? (
-                    demolishConfirmation ? (
-                        <div className="mt-3 rounded-xl border border-destructive/60 p-3">
-                            <p className="text-sm font-semibold">
-                                Srušiti građevinu?
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                Nakon potvrde vraća se{' '}
-                                {editor.origin.refundablePrincipal.toLocaleString(
-                                    'hr-HR',
-                                )}{' '}
-                                🌻.
-                            </p>
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    className={controlClassName}
-                                    disabled={mutations.demolish.isPending}
-                                    onClick={() =>
-                                        setDemolishConfirmation(false)
-                                    }
-                                >
-                                    Ne ruši
-                                </button>
-                                <button
-                                    type="button"
-                                    className={cx(
-                                        controlClassName,
-                                        'border-destructive bg-destructive text-destructive-foreground',
-                                    )}
-                                    disabled={mutations.demolish.isPending}
-                                    onClick={demolishStructure}
-                                >
-                                    {mutations.demolish.isPending
-                                        ? 'Rušenje…'
-                                        : `Sruši i vrati ${editor.origin.refundablePrincipal.toLocaleString('hr-HR')} 🌻`}
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button
-                            type="button"
-                            className={cx(
-                                controlClassName,
-                                'mt-3 w-full border-destructive/60 text-destructive',
-                            )}
-                            onClick={() => setDemolishConfirmation(true)}
-                        >
-                            Sruši građevinu…
-                        </button>
-                    )
+                    <button
+                        type="button"
+                        className={cx(
+                            controlClassName,
+                            'mt-3 w-full border-destructive/60 text-destructive',
+                        )}
+                        onClick={showDemolishConfirmation}
+                    >
+                        Sruši građevinu…
+                    </button>
                 ) : null}
             </div>
 
+            {exitConfirmation ? (
+                <GardenStructureConfirmationDialog
+                    cancelLabel="Nastavi uređivati"
+                    confirmDisabled={editor.save.status === 'saving'}
+                    confirmLabel={exitConfirmationPresentation.actionLabel}
+                    description={
+                        editor.save.status === 'saving'
+                            ? 'Spremanje je još u tijeku. Pričekajte potvrdu prije izlaska.'
+                            : exitConfirmationPresentation.description
+                    }
+                    destructive={!exitConfirmationPresentation.keepRecovery}
+                    onCancel={dismissConfirmation}
+                    onConfirm={() =>
+                        closeBuildMode({
+                            keepRecovery:
+                                exitConfirmationPresentation.keepRecovery,
+                        })
+                    }
+                    testId="garden-structure-exit-dialog"
+                    title="Nespremljene promjene"
+                />
+            ) : null}
+
+            {demolishConfirmation &&
+            editor.origin.kind === 'saved-structure' ? (
+                <GardenStructureConfirmationDialog
+                    cancelDisabled={mutations.demolish.isPending}
+                    cancelLabel="Ne ruši"
+                    confirmDisabled={mutations.demolish.isPending}
+                    confirmLabel={
+                        mutations.demolish.isPending
+                            ? 'Rušenje…'
+                            : `Sruši i vrati ${editor.origin.refundablePrincipal.toLocaleString('hr-HR')} 🌻`
+                    }
+                    description={`Nakon potvrde vraća se ${editor.origin.refundablePrincipal.toLocaleString('hr-HR')} 🌻.`}
+                    destructive
+                    onCancel={dismissConfirmation}
+                    onConfirm={demolishStructure}
+                    testId="garden-structure-demolish-dialog"
+                    title="Srušiti građevinu?"
+                />
+            ) : null}
+
             <p className="sr-only" aria-live="polite" aria-atomic="true">
                 {announcement ||
-                    `${originTemplateLabel}, ${pricing.cellCount.toString()} polja, cijena ${pricing.totalPrice.toLocaleString('hr-HR')} suncokreta.`}
+                    `${originTemplateLabel}, ${pricing.cellCount.toString()} polja, ${pricingPresentation.actionLabel}.`}
             </p>
         </section>
     );

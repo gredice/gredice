@@ -62,6 +62,14 @@ test('suspends normal block and avatar interactions only for an active build ses
         gameSceneSource,
         /noControls=\{\s*noControls \|\|\s*structureBuildActive\s*\}/,
     );
+    assert.match(
+        gameSceneSource,
+        /<SunflowerDropReward[\s\S]*?enabled=\{\s*!isLocalSandbox &&\s*!isMock &&\s*!structureBuildActive\s*\}/,
+    );
+    assert.match(
+        gameSceneSource,
+        /<GardenPreviewCaptureController[\s\S]*?enabled=\{\s*!isLocalSandbox && !isMock && !structureBuildActive\s*\}/,
+    );
 });
 
 test('keeps new drafts local until Done and acknowledges the response before closing', () => {
@@ -87,8 +95,64 @@ test('keeps new drafts local until Done and acknowledges the response before clo
     const acknowledgeIndex = saveFlow.indexOf(
         'acknowledgeGardenStructureEditorSave',
     );
+    const installIndex = saveFlow.indexOf(
+        'setSession({ ...session, editor: acknowledged.value })',
+    );
+    const dirtyAcknowledgementIndex = saveFlow.indexOf(
+        "acknowledged.value.save.status === 'dirty'",
+    );
     const closeIndex = saveFlow.indexOf('setSession(null)');
     assert.notEqual(mutationIndex, -1);
     assert.ok(acknowledgeIndex > mutationIndex);
-    assert.ok(closeIndex > acknowledgeIndex);
+    assert.ok(installIndex > acknowledgeIndex);
+    assert.ok(dirtyAcknowledgementIndex > installIndex);
+    assert.ok(closeIndex > dirtyAcknowledgementIndex);
+});
+
+test('retains operation IDs for ambiguous save and demolition outcomes', () => {
+    const saveFlow = sourceBetween(
+        buildHudSource,
+        'async function saveAndExit',
+        'async function demolishStructure',
+    );
+    const demolishFlow = sourceBetween(
+        buildHudSource,
+        'async function demolishStructure',
+        'useEffect(() =>',
+    );
+
+    assert.match(
+        saveFlow,
+        /editor\.save\.status === 'offline'[\s\S]*?editor\.save\.operationId[\s\S]*?\? editor\.save\.operationId/,
+    );
+    assert.match(
+        saveFlow,
+        /clientError\.outcome === 'unknown'[\s\S]*?markGardenStructureEditorOffline\(/,
+    );
+    assert.match(
+        demolishFlow,
+        /demolishOperationId \?\? createIdentifier\('demolish'\)/,
+    );
+    assert.match(
+        demolishFlow,
+        /error\.outcome === 'rejected'[\s\S]*?setDemolishOperationId\(null\)/,
+    );
+});
+
+test('uses modal alert dialogs with focus containment and an inert editor background', () => {
+    assert.match(
+        buildHudSource,
+        /aria-hidden=\{confirmationOpen \|\| undefined\}[\s\S]*?inert=\{confirmationOpen \? true : undefined\}/,
+    );
+    assert.equal(buildHudSource.match(/role="alertdialog"/g)?.length, 1);
+    assert.equal(buildHudSource.match(/aria-modal="true"/g)?.length, 1);
+    assert.match(buildHudSource, /cancelButtonRef\.current\?\.focus/);
+    assert.match(buildHudSource, /testId="garden-structure-exit-dialog"/);
+    assert.match(buildHudSource, /testId="garden-structure-demolish-dialog"/);
+    assert.match(
+        buildHudSource,
+        /returnTarget\.focus\(\{ preventScroll: true \}\)/,
+    );
+    assert.match(buildHudSource, /entryButtonRef\.current\?\.focus/);
+    assert.match(buildHudSource, /function trapFocus/);
 });

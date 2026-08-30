@@ -9,6 +9,7 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { GardenStructureEditorState } from '../structures/editor';
 import { useGameState } from '../useGameState';
+import { classifyGardenStructureMutationHttpOutcome } from './gardenStructureMutationOutcome';
 import { currentAccountKeys } from './useCurrentAccount';
 import { currentGardenKeys } from './useCurrentGarden';
 
@@ -176,7 +177,7 @@ async function responseFailure(response: Response) {
     return new GardenStructureMutationClientError(
         message,
         code,
-        'rejected',
+        classifyGardenStructureMutationHttpOutcome(response.status),
         currentRevision,
     );
 }
@@ -285,7 +286,7 @@ async function executeGardenStructureSave(
             throw error;
         }
         throw new GardenStructureMutationClientError(
-            'Veza je prekinuta prije potvrde spremanja. Nacrt je sačuvan lokalno.',
+            'Veza je prekinuta prije potvrde spremanja. Provjerite status lokalne kopije prije izlaska.',
             'NETWORK_ERROR',
             'unknown',
         );
