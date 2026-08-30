@@ -116,19 +116,19 @@ describe('garden structure avatar collision', () => {
                 revision: 1,
                 document: createGardenStructureTemplateSeed('house').document,
                 placement: { anchorX: 0, anchorY: 0, rotation: 0 },
-                kit: {
+                kit: Object.freeze({
                     ...debugGardenStructureKitMetadata,
-                    edgeParts: {
+                    edgeParts: Object.freeze({
                         ...debugGardenStructureKitMetadata.edgeParts,
-                        'door.house-open': {
+                        'door.house-open': Object.freeze({
                             ...debugGardenStructureKitMetadata.edgeParts[
                                 'door.house-open'
                             ],
                             portalClearanceWidth: clearanceWidth,
                             portalClearanceHeight: clearanceHeight,
-                        },
-                    },
-                },
+                        }),
+                    }),
+                }),
             });
         const minimumWidth = gardenAvatarRadius * 2;
 
@@ -166,18 +166,18 @@ describe('garden structure avatar collision', () => {
             revision: 1,
             document: createGardenStructureTemplateSeed('house').document,
             placement: { anchorX: 30, anchorY: 30, rotation: 0 },
-            kit: {
+            kit: Object.freeze({
                 ...debugGardenStructureKitMetadata,
-                edgeParts: {
+                edgeParts: Object.freeze({
                     ...debugGardenStructureKitMetadata.edgeParts,
-                    'door.house-open': {
+                    'door.house-open': Object.freeze({
                         ...debugGardenStructureKitMetadata.edgeParts[
                             'door.house-open'
                         ],
                         portalClearanceWidth: gardenAvatarRadius,
-                    },
-                },
-            },
+                    }),
+                }),
+            }),
         });
         const world = createGardenStructureCollectionAvatarCollisionWorld([
             unsafePlan,

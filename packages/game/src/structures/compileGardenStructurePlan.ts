@@ -12,6 +12,10 @@ import {
 } from '@gredice/js/gardenStructures';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
+import {
+    type GardenStructureKitMetadataValidation,
+    validateGardenStructureDocumentKitMetadata,
+} from './gardenStructureKitMetadataValidation';
 import type {
     GardenStructureBatchCategory,
     GardenStructureBatchDescription,
@@ -920,23 +924,159 @@ function createWorldBounds({
     });
 }
 
-export function getGardenStructurePlanCacheKey({
-    structureId,
-    revision,
-    document,
-    placement,
-    kit = debugGardenStructureKitMetadata,
-    baseHeight = 0,
-}: GardenStructureCompileInput) {
+function getGardenStructureKitCacheSegment(
+    kit: GardenStructureKitMetadata,
+    validation: GardenStructureKitMetadataValidation,
+) {
+    if (validation.valid) {
+        return `kit=${kit.kitKey}@${kit.kitVersion}`;
+    }
+    const issueSignature = [
+        ...new Set(
+            validation.issues.map(
+                ({ code, path }) => `${code}:${encodeURIComponent(path)}`,
+            ),
+        ),
+    ]
+        .sort(compareStrings)
+        .join(',');
+    return `kit=fallback:${issueSignature || 'invalid'}:${validation.issueSampleTruncated ? 'truncated' : 'complete'}`;
+}
+
+function createGardenStructurePlanCacheKey(
+    {
+        structureId,
+        revision,
+        document,
+        placement,
+        kit = debugGardenStructureKitMetadata,
+        baseHeight = 0,
+    }: GardenStructureCompileInput,
+    validation: GardenStructureKitMetadataValidation,
+) {
     const documentFingerprint = getGardenStructureDocumentFingerprint(document);
     return [
         `structure=${structureId}`,
         `revision=${revision.toString()}`,
         `document=${documentFingerprint}`,
-        `kit=${kit.kitKey}@${kit.kitVersion}`,
+        getGardenStructureKitCacheSegment(kit, validation),
         `placement=${placement.anchorX.toString()},${placement.anchorY.toString()},${placement.rotation.toString()}`,
         `baseHeight=${baseHeight.toString()}`,
     ].join('|');
+}
+
+export function getGardenStructurePlanCacheKey(
+    input: GardenStructureCompileInput,
+) {
+    const kit = input.kit ?? debugGardenStructureKitMetadata;
+    const validation = validateGardenStructureDocumentKitMetadata(
+        input.document,
+        kit,
+    );
+    return createGardenStructurePlanCacheKey(input, validation);
+}
+
+function createGardenStructureFootprintFallbackPlan({
+    structureId,
+    revision,
+    canonicalDocument,
+    placement,
+    kit,
+    baseHeight,
+    footprintEntries,
+    validation,
+}: Readonly<{
+    structureId: string;
+    revision: number;
+    canonicalDocument: GardenStructureCompileInput['document'];
+    placement: GardenStructureCompileInput['placement'];
+    kit: GardenStructureKitMetadata;
+    baseHeight: number;
+    footprintEntries: readonly FootprintEntry[];
+    validation: GardenStructureKitMetadataValidation;
+}>): GardenStructureSemanticPlan {
+    const footprint = createFootprintPlan(structureId, footprintEntries);
+    const floors = createFloorPlan(structureId, [], baseHeight);
+    const walkable = createWalkablePlan(structureId, [], new Set());
+    const openPortals = createOpenPortalPlan([]);
+    const blockedTransitions = createBlockedTransitionPlan([]);
+    const wallCollisionBoxes = createWallCollisionBoxes(structureId, []);
+    const propCollisionBoxes = createWallCollisionBoxes(structureId, []);
+    const ceilingProxies = createCeilingProxies([]);
+    const batches = createBatchPlan({
+        opaque: new Map(),
+        transparent: new Map(),
+        roof: new Map(),
+        props: new Map(),
+    });
+    const emptyIndices = new Uint32Array(0);
+    const spatialBuckets = Object.freeze(
+        footprintEntries.map((cell) => {
+            const key = worldCellKey(cell);
+            return Object.freeze({
+                id: `bucket:${structureId}:${key}`,
+                key,
+                x: cell.x,
+                y: cell.y,
+                walkableCellIndices: emptyIndices,
+                floorIndices: emptyIndices,
+                openPortalIndices: emptyIndices,
+                blockedTransitionIndices: emptyIndices,
+                wallBoxIndices: emptyIndices,
+                propBoxIndices: emptyIndices,
+                ceilingProxyIndices: emptyIndices,
+            });
+        }),
+    );
+    const withoutCounts = Object.freeze({
+        id: `structure-plan:${structureId}:${revision.toString()}`,
+        cacheKey: createGardenStructurePlanCacheKey(
+            {
+                structureId,
+                revision,
+                document: canonicalDocument,
+                placement,
+                kit,
+                baseHeight,
+            },
+            validation,
+        ),
+        structureId,
+        revision,
+        kitKey: 'invalid-kit',
+        kitVersion: 'invalid',
+        placement: Object.freeze({ ...placement }),
+        baseHeight,
+        worldBounds: Object.freeze({
+            ...footprint.bounds,
+            minHeight: baseHeight,
+            maxHeight: baseHeight + 0.025,
+            height: 0.025,
+        }),
+        footprint,
+        floors,
+        walkable,
+        openPortals,
+        blockedTransitions,
+        wallCollisionBoxes,
+        propCollisionBoxes,
+        ceilingProxies,
+        spatialBuckets,
+        spatialBucketIndexByKey: createIndexByKey(
+            spatialBuckets.map(({ key }) => key),
+        ),
+        batches,
+        interactionIds: Object.freeze([]),
+        runtimeSafety: Object.freeze({
+            collisionMode: 'blocked-footprint' as const,
+            issueSampleTruncated: validation.issueSampleTruncated,
+            issues: validation.issues,
+        }),
+    });
+    return Object.freeze({
+        ...withoutCounts,
+        counts: getGardenStructureCompilerCounts(withoutCounts),
+    });
 }
 
 export function compileGardenStructurePlan({
@@ -957,6 +1097,10 @@ export function compileGardenStructurePlan({
         );
     }
     const canonicalDocument = decodedDocument.document;
+    const kitValidation = validateGardenStructureDocumentKitMetadata(
+        canonicalDocument,
+        kit,
+    );
     const rotated = rotateGardenStructureDocument(
         canonicalDocument,
         placement.rotation,
@@ -968,6 +1112,18 @@ export function compileGardenStructurePlan({
             spaceKind: cell.spaceKind,
         }))
         .sort(compareCells);
+    if (!kitValidation.valid) {
+        return createGardenStructureFootprintFallbackPlan({
+            structureId,
+            revision,
+            canonicalDocument,
+            placement,
+            kit,
+            baseHeight,
+            footprintEntries,
+            validation: kitValidation,
+        });
+    }
     const floorEntries = rotated.floors
         .map((floor) => ({
             x: floor.cell.x + placement.anchorX,
@@ -1235,14 +1391,17 @@ export function compileGardenStructurePlan({
             .flatMap((batch) => batch.instanceIds)
             .sort(compareStrings),
     );
-    const cacheKey = getGardenStructurePlanCacheKey({
-        structureId,
-        revision,
-        document: canonicalDocument,
-        placement,
-        kit,
-        baseHeight,
-    });
+    const cacheKey = createGardenStructurePlanCacheKey(
+        {
+            structureId,
+            revision,
+            document: canonicalDocument,
+            placement,
+            kit,
+            baseHeight,
+        },
+        kitValidation,
+    );
     const withoutCounts = Object.freeze({
         id: `structure-plan:${structureId}:${revision.toString()}`,
         cacheKey,
@@ -1274,6 +1433,11 @@ export function compileGardenStructurePlan({
         spatialBucketIndexByKey: spatial.indexByKey,
         batches,
         interactionIds,
+        runtimeSafety: Object.freeze({
+            collisionMode: 'semantic' as const,
+            issueSampleTruncated: false,
+            issues: Object.freeze([]),
+        }),
     });
 
     return Object.freeze({

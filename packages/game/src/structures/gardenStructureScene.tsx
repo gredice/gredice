@@ -14,7 +14,10 @@ import {
     type GardenStructureCollectionPlan,
     gardenStructureCollectionMaxStructureCount,
 } from './gardenStructureCollectionPlan';
-import { decodeSavedGardenStructureRecord } from './gardenStructureSavedRecord';
+import {
+    decodeSavedGardenStructureRecord,
+    type GardenStructureRuntimeKitResolver,
+} from './gardenStructureSavedRecord';
 import type { GardenStructureCompileInput } from './structurePlanTypes';
 
 const gardenStructureSceneDiagnosticSampleLimit = 8;
@@ -50,6 +53,7 @@ export type GardenStructureSceneResolveInput = Readonly<{
     includeCollision?: boolean;
     records?: readonly unknown[] | null;
     resolveBaseHeight?: (structureId: string) => number | undefined;
+    resolveKit?: GardenStructureRuntimeKitResolver;
 }>;
 
 export type GardenStructureSceneBaseHeightInput = Readonly<{
@@ -317,6 +321,7 @@ export class GardenStructureSceneCache {
         includeCollision = true,
         records = emptyGardenStructureRecords,
         resolveBaseHeight,
+        resolveKit,
     }: GardenStructureSceneResolveInput): GardenStructureSceneSnapshot {
         const nextGardenKey = gardenKey(gardenId);
         if (
@@ -341,6 +346,7 @@ export class GardenStructureSceneCache {
         try {
             buildResult = cache.getOrCompile(resolvedRecords, {
                 resolveBaseHeight,
+                resolveKit,
             });
         } catch {
             this.releaseAllCollections();
@@ -365,17 +371,21 @@ export class GardenStructureSceneCache {
                 record.issues.map((issue) => issue.code),
             ),
             ...buildResult.warnings.map((warning) => warning.warning.code),
+            ...buildResult.plan.structures.flatMap((structure) =>
+                structure.runtimeSafety.issues.map(({ code }) => code),
+            ),
         ];
         const sampledIssueCodes = boundedIssueCodes(issueCodes);
         const diagnostics = Object.freeze({
-            issueSampleTruncated: issueCodes.length > sampledIssueCodes.length,
+            issueSampleTruncated:
+                issueCodes.length > sampledIssueCodes.length ||
+                buildResult.plan.structures.some(
+                    (structure) => structure.runtimeSafety.issueSampleTruncated,
+                ),
             rejectedRecordCount: buildResult.rejectedRecords.length,
             sampledIssueCodes,
             status:
-                buildResult.rejectedRecords.length > 0 ||
-                buildResult.warnings.length > 0
-                    ? 'rendered-with-diagnostics'
-                    : 'ready',
+                issueCodes.length > 0 ? 'rendered-with-diagnostics' : 'ready',
             warningCount: buildResult.warnings.length,
         }) satisfies GardenStructureSceneDiagnostics;
 
@@ -445,6 +455,7 @@ export function useGardenStructureSceneSnapshot({
     includeCollision = true,
     records,
     resolveBaseHeight,
+    resolveKit,
 }: GardenStructureSceneResolveInput): GardenStructureSceneSnapshot {
     const cacheRef = useRef<GardenStructureSceneCache | null>(null);
     if (!cacheRef.current) {
@@ -457,8 +468,9 @@ export function useGardenStructureSceneSnapshot({
                 includeCollision,
                 records,
                 resolveBaseHeight,
+                resolveKit,
             }) ?? emptySceneSnapshot,
-        [gardenId, includeCollision, records, resolveBaseHeight],
+        [gardenId, includeCollision, records, resolveBaseHeight, resolveKit],
     );
 
     useEffect(

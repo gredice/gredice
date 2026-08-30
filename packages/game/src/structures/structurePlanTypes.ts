@@ -3,6 +3,7 @@ import type {
     GardenStructurePlacement,
     GardenStructureRotation,
 } from '@gredice/js/gardenStructures';
+import type { GardenStructureKitMetadataIssue } from './gardenStructureKitMetadataValidation';
 
 export type GardenStructureMaterialTransparency = 'opaque' | 'transparent';
 
@@ -220,6 +221,12 @@ export type GardenStructureCompilerCounts = Readonly<{
     interactionIds: number;
 }>;
 
+export type GardenStructureRuntimeSafety = Readonly<{
+    collisionMode: 'semantic' | 'blocked-footprint';
+    issueSampleTruncated: boolean;
+    issues: readonly GardenStructureKitMetadataIssue[];
+}>;
+
 export type GardenStructureSemanticPlan = Readonly<{
     id: string;
     cacheKey: string;
@@ -246,6 +253,7 @@ export type GardenStructureSemanticPlan = Readonly<{
     spatialBucketIndexByKey: Readonly<Record<string, number>>;
     batches: GardenStructureBatchPlan;
     interactionIds: readonly string[];
+    runtimeSafety: GardenStructureRuntimeSafety;
     counts: GardenStructureCompilerCounts;
 }>;
 

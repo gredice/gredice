@@ -11,6 +11,10 @@ import {
     normalizeGardenStructureDocument,
 } from '@gredice/js/gardenStructures';
 import { getGardenStructureKitMetadata } from './debugStructureKit';
+import {
+    hasFatalGardenStructureKitResolutionIssue,
+    validateGardenStructureKitMetadata,
+} from './gardenStructureKitMetadataValidation';
 import type {
     GardenStructureCompileInput,
     GardenStructureKitMetadata,
@@ -129,168 +133,6 @@ function readRotation(value: unknown) {
           );
 }
 
-function positiveFinite(value: number) {
-    return Number.isFinite(value) && value > 0;
-}
-
-function nonNegativeFinite(value: number) {
-    return Number.isFinite(value) && value >= 0;
-}
-
-function validateKitMetadata(
-    definition: GardenStructureRuntimeKitDefinition,
-    kitKey: string,
-    kitVersion: string,
-) {
-    const metadata = definition.metadata;
-    const metadataCollections = [
-        metadata.materials,
-        metadata.edgeParts,
-        metadata.propParts,
-        metadata.roofStyles,
-    ];
-    if (
-        !Object.isFrozen(metadata) ||
-        metadataCollections.some(
-            (collection) =>
-                !Object.isFrozen(collection) ||
-                Object.values(collection).some(
-                    (entry) => !Object.isFrozen(entry),
-                ),
-        )
-    ) {
-        return issue(
-            'kit-metadata-incomplete',
-            'kitVersion',
-            'Resolved kit metadata must be an immutable published version.',
-        );
-    }
-    if (metadata.kitKey !== kitKey || metadata.kitVersion !== kitVersion) {
-        return issue(
-            'kit-metadata-incomplete',
-            'kitVersion',
-            'Resolved immutable kit metadata does not match the saved kit identity.',
-        );
-    }
-    if (
-        !positiveFinite(metadata.floorThickness) ||
-        !positiveFinite(metadata.ceilingThickness) ||
-        !nonNegativeFinite(metadata.visualHorizontalPadding)
-    ) {
-        return issue(
-            'kit-metadata-incomplete',
-            'kitVersion',
-            'Resolved immutable kit geometry metadata is invalid.',
-        );
-    }
-
-    for (const material of Object.values(metadata.materials)) {
-        if (
-            material.transparency !== 'opaque' &&
-            material.transparency !== 'transparent'
-        ) {
-            return issue(
-                'kit-metadata-incomplete',
-                'kitVersion',
-                'Resolved immutable kit material metadata is invalid.',
-            );
-        }
-    }
-    for (const edgePart of Object.values(metadata.edgeParts)) {
-        const portalDimensionsValid =
-            edgePart.passage !== 'open-portal' ||
-            (positiveFinite(edgePart.portalClearanceHeight ?? 0) &&
-                positiveFinite(edgePart.portalClearanceWidth ?? 0));
-        if (
-            !positiveFinite(edgePart.collisionHeight) ||
-            !positiveFinite(edgePart.collisionThickness) ||
-            !portalDimensionsValid ||
-            !Object.hasOwn(metadata.materials, edgePart.materialId)
-        ) {
-            return issue(
-                'kit-metadata-incomplete',
-                'kitVersion',
-                'Resolved immutable kit edge metadata is incomplete.',
-            );
-        }
-    }
-    for (const propPart of Object.values(metadata.propParts)) {
-        if (
-            !positiveFinite(propPart.collisionWidth) ||
-            !positiveFinite(propPart.collisionDepth) ||
-            !positiveFinite(propPart.collisionHeight) ||
-            !Object.hasOwn(metadata.materials, propPart.materialId)
-        ) {
-            return issue(
-                'kit-metadata-incomplete',
-                'kitVersion',
-                'Resolved immutable kit prop metadata is incomplete.',
-            );
-        }
-    }
-    for (const roofStyle of Object.values(metadata.roofStyles)) {
-        if (
-            !positiveFinite(roofStyle.ceilingHeight) ||
-            !positiveFinite(roofStyle.maximumHeight) ||
-            roofStyle.maximumHeight < roofStyle.ceilingHeight
-        ) {
-            return issue(
-                'kit-metadata-incomplete',
-                'kitVersion',
-                'Resolved immutable kit roof metadata is incomplete.',
-            );
-        }
-    }
-    return null;
-}
-
-function validateDecodedDocumentMetadata(
-    result: GardenStructureSavedRecordSuccess['input']['document'],
-    kit: GardenStructureKitMetadata,
-) {
-    for (const floor of result.floors) {
-        if (!Object.hasOwn(kit.materials, floor.materialId)) {
-            return issue(
-                'kit-metadata-incomplete',
-                'document.floors',
-                'The immutable kit has no render metadata for a validated floor material.',
-            );
-        }
-    }
-    for (const edge of result.edges) {
-        const metadata = kit.edgeParts[edge.partId];
-        if (!metadata || metadata.edgeKind !== edge.kind) {
-            return issue(
-                'kit-metadata-incomplete',
-                'document.edges',
-                'The immutable kit has no compatible render metadata for a validated edge part.',
-            );
-        }
-    }
-    for (const roof of result.roofRegions) {
-        if (
-            !Object.hasOwn(kit.roofStyles, roof.styleId) ||
-            !Object.hasOwn(kit.materials, roof.materialId)
-        ) {
-            return issue(
-                'kit-metadata-incomplete',
-                'document.roofRegions',
-                'The immutable kit has no render metadata for a validated roof.',
-            );
-        }
-    }
-    for (const prop of result.props) {
-        if (!Object.hasOwn(kit.propParts, prop.partId)) {
-            return issue(
-                'kit-metadata-incomplete',
-                'document.props',
-                'The immutable kit has no render metadata for a validated prop.',
-            );
-        }
-    }
-    return null;
-}
-
 function freezeGardenStructureDocument(
     document: GardenStructureDocumentV1,
 ): GardenStructureDocumentV1 {
@@ -351,8 +193,9 @@ export function resolveGardenStructureRuntimeKit(
 
 /**
  * Converts an untrusted API/storage-shaped record into a compiler input. The
- * adapter rejects deleted, malformed, unknown-kit, and kit-incompatible data;
- * callers never receive a partially decoded document.
+ * adapter rejects deleted, malformed, unknown-kit, and identity/immutability
+ * failures. Immutable numeric or reference metadata failures continue to the
+ * compiler, which emits a visible blocked-footprint fallback.
  */
 export function decodeSavedGardenStructureRecord(
     value: unknown,
@@ -473,9 +316,37 @@ export function decodeSavedGardenStructureRecord(
         };
     }
 
-    const kitIssue = validateKitMetadata(definition, kitKey, kitVersion);
-    if (kitIssue) {
-        return { valid: false, structureId: id, issues: [kitIssue] };
+    const kitValidation = validateGardenStructureKitMetadata(
+        definition.metadata,
+    );
+    if (hasFatalGardenStructureKitResolutionIssue(kitValidation)) {
+        return {
+            valid: false,
+            structureId: id,
+            issues: [
+                issue(
+                    'kit-metadata-incomplete',
+                    'kitVersion',
+                    'Resolved kit metadata must be a readable immutable published version.',
+                ),
+            ],
+        };
+    }
+    if (
+        definition.metadata.kitKey !== kitKey ||
+        definition.metadata.kitVersion !== kitVersion
+    ) {
+        return {
+            valid: false,
+            structureId: id,
+            issues: [
+                issue(
+                    'kit-metadata-incomplete',
+                    'kitVersion',
+                    'Resolved immutable kit metadata does not match the saved kit identity.',
+                ),
+            ],
+        };
     }
 
     const decoded = decodeGardenStructureDocument(value.document, {
@@ -494,13 +365,6 @@ export function decodeSavedGardenStructureRecord(
     const document = freezeGardenStructureDocument(
         normalizeGardenStructureDocument(decoded.document),
     );
-    const metadataIssue = validateDecodedDocumentMetadata(
-        document,
-        definition.metadata,
-    );
-    if (metadataIssue) {
-        return { valid: false, structureId: id, issues: [metadataIssue] };
-    }
 
     let baseHeight = 0;
     try {

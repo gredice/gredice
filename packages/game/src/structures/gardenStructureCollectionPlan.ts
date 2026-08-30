@@ -557,7 +557,10 @@ export function createGardenStructureCollectionPlan(
     );
     const structureIds = new Set<string>();
     for (const { kit, plan } of entries) {
-        if (kit.kitKey !== plan.kitKey || kit.kitVersion !== plan.kitVersion) {
+        if (
+            plan.runtimeSafety.collisionMode === 'semantic' &&
+            (kit.kitKey !== plan.kitKey || kit.kitVersion !== plan.kitVersion)
+        ) {
             throw new Error(
                 'A structure collection entry must use its compiled immutable kit.',
             );
