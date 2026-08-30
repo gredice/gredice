@@ -47,7 +47,10 @@ import {
     withSunflowerAccountTransaction,
 } from '@gredice/storage';
 import { getBlockData } from '../blocks/blockDataService';
-import { isGardenBuildingSystemServerEnabled } from './gardenBuildingSystemServerFlag';
+import {
+    isGardenBuildingSystemCommercialEnabled,
+    isGardenBuildingSystemServerEnabled,
+} from './gardenBuildingSystemServerFlag';
 import {
     type GardenOccupancyDirectoryBlockLike,
     type GardenOccupancyServiceError,
@@ -62,6 +65,7 @@ export type GardenStructureServiceErrorStatus = 400 | 404 | 409 | 503;
 
 export type GardenStructureServiceErrorCode =
     | 'ACCOUNT_UNAVAILABLE'
+    | 'BUILDING_COMMERCIAL_DISABLED'
     | 'BUILDING_SYSTEM_DISABLED'
     | 'CATALOG_UNAVAILABLE'
     | 'FOOTPRINT_CHANGE_REQUIRES_RESIZE'
@@ -295,6 +299,7 @@ export type GardenStructureApplicationServiceDependencies<Transaction> =
             transaction: Transaction,
         ) => Promise<GardenStructureRecordLike | null>;
         isEnabled: () => boolean;
+        isCommercialEnabled: () => boolean;
         lockAccountAndAssertNotDeleting: (
             accountId: string,
             transaction: Transaction,
@@ -901,6 +906,21 @@ export function createGardenStructureApplicationService<Transaction>(
         assertCommandBase(command);
     }
 
+    function assertCommercialMutationAllowed(
+        placementSnapshot: GardenPlacementSnapshot,
+    ) {
+        if (
+            !placementSnapshot.garden.isSandbox &&
+            !dependencies.isCommercialEnabled()
+        ) {
+            throw new GardenStructureServiceError(
+                'BUILDING_COMMERCIAL_DISABLED',
+                503,
+                'Garden structure purchases and refunds are disabled.',
+            );
+        }
+    }
+
     async function executeMutation(
         command: GardenStructureCommandBase,
         kind: GardenStructureOperationKind,
@@ -1120,6 +1140,7 @@ export function createGardenStructureApplicationService<Transaction>(
             templateKey: command.templateKey,
         };
         return executeMutation(command, 'create', payload, async (context) => {
+            assertCommercialMutationAllowed(context.placementSnapshot);
             const existing = await dependencies.getStructure(
                 {
                     gardenId: command.gardenId,
@@ -1277,6 +1298,7 @@ export function createGardenStructureApplicationService<Transaction>(
             structureId: command.structureId,
         };
         return executeMutation(command, 'resize', payload, async (context) => {
+            assertCommercialMutationAllowed(context.placementSnapshot);
             const current = await currentStructure(
                 command,
                 context.transaction,
@@ -1398,6 +1420,7 @@ export function createGardenStructureApplicationService<Transaction>(
             structureId: command.structureId,
         };
         return executeMutation(command, 'delete', payload, async (context) => {
+            assertCommercialMutationAllowed(context.placementSnapshot);
             await currentStructure(command, context.transaction);
             const result = await dependencies.deleteStructure(
                 {
@@ -1445,6 +1468,7 @@ const defaultDependencies: GardenStructureApplicationServiceDependencies<GardenP
         getStructure: (input, transaction) =>
             getGardenStructure(input, transaction),
         isEnabled: isGardenBuildingSystemServerEnabled,
+        isCommercialEnabled: isGardenBuildingSystemCommercialEnabled,
         lockAccountAndAssertNotDeleting: async (accountId, transaction) =>
             Boolean(
                 await lockAccountAndAssertNotDeleting(accountId, transaction),

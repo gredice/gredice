@@ -82,6 +82,7 @@ function integrationService(controls: { failAfterPricing: boolean }) {
             getStructure: (input, transaction) =>
                 getGardenStructure(input, transaction),
             isEnabled: () => true,
+            isCommercialEnabled: () => true,
             listStructures: (gardenId, transaction) =>
                 listGardenStructures(gardenId, transaction),
             lockAccountAndAssertNotDeleting: async (accountId, transaction) =>

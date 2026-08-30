@@ -278,6 +278,7 @@ function makeHarness({
     const controls: {
         accountDeleting: boolean;
         accountExists: boolean;
+        commercialEnabled: boolean;
         enabled: boolean;
         failAfterPricing?: PricedKind;
         occupancyConflict: boolean;
@@ -285,6 +286,7 @@ function makeHarness({
     } = {
         accountDeleting: false,
         accountExists: true,
+        commercialEnabled: true,
         enabled: true,
         occupancyConflict: false,
         ownerAccountId: 'account-1',
@@ -439,6 +441,7 @@ function makeHarness({
                 return structure;
             },
             isEnabled: () => controls.enabled,
+            isCommercialEnabled: () => controls.commercialEnabled,
             listStructures: async (gardenId, transaction) =>
                 [...transaction.state.structures.values()].filter(
                     (structure) =>
@@ -762,6 +765,95 @@ describe('garden structure application service', () => {
             400,
         );
         assert.deepEqual(harness.calls, []);
+    });
+
+    test('keeps normal-garden commerce independently gated while allowing safe edits and exact replay', async () => {
+        const harness = makeHarness();
+        const create = createCommand({ operationId: 'commercial-create' });
+        const created = await harness.service.create(create);
+        assert.equal(created.structure.revision, 1);
+
+        harness.controls.commercialEnabled = false;
+        const replay = await harness.service.create(create);
+        assert.deepEqual(replay, created);
+
+        const moved = await harness.service.updatePlacement({
+            accountId: create.accountId,
+            anchorX: 1,
+            anchorY: 1,
+            expectedRevision: 1,
+            gardenId: create.gardenId,
+            operationId: 'commercial-placement',
+            rotation: 1,
+            structureId: create.structureId,
+        });
+        assert.equal(moved.structure.revision, 2);
+
+        const replaced = await harness.service.replace({
+            accountId: create.accountId,
+            document: create.document,
+            expectedRevision: 2,
+            gardenId: create.gardenId,
+            operationId: 'commercial-replace',
+            structureId: create.structureId,
+        });
+        assert.equal(replaced.structure.revision, 3);
+
+        await expectServiceError(
+            harness.service.resize({
+                accountId: create.accountId,
+                document: structureDocument([0, 0], [1, 0], [2, 0]),
+                expectedRevision: 3,
+                gardenId: create.gardenId,
+                operationId: 'commercial-resize',
+                structureId: create.structureId,
+            }),
+            'BUILDING_COMMERCIAL_DISABLED',
+            503,
+        );
+        await expectServiceError(
+            harness.service.remove({
+                accountId: create.accountId,
+                expectedRevision: 3,
+                gardenId: create.gardenId,
+                operationId: 'commercial-delete',
+                structureId: create.structureId,
+            }),
+            'BUILDING_COMMERCIAL_DISABLED',
+            503,
+        );
+        assert.equal(
+            harness.state.structures.get('1:structure-1')?.revision,
+            3,
+        );
+        assert.equal(harness.state.balance, 900);
+    });
+
+    test('keeps sandbox create, resize, and demolition currency-free when commerce is disabled', async () => {
+        const harness = makeHarness({ isSandbox: true });
+        harness.controls.commercialEnabled = false;
+        const create = createCommand({ operationId: 'sandbox-create-gated' });
+
+        const created = await harness.service.create(create);
+        const resized = await harness.service.resize({
+            accountId: create.accountId,
+            document: structureDocument([0, 0], [1, 0], [2, 0]),
+            expectedRevision: created.structure.revision,
+            gardenId: create.gardenId,
+            operationId: 'sandbox-resize-gated',
+            structureId: create.structureId,
+        });
+        const removed = await harness.service.remove({
+            accountId: create.accountId,
+            expectedRevision: resized.structure.revision,
+            gardenId: create.gardenId,
+            operationId: 'sandbox-delete-gated',
+            structureId: create.structureId,
+        });
+
+        assert.equal(removed.structure.deleted, true);
+        assert.equal(harness.state.balance, 1_000);
+        assert.equal(harness.state.ledgerEvents.size, 0);
     });
 
     test('executes all commands under one lock order with authoritative v1 pricing and exact replay', async () => {
