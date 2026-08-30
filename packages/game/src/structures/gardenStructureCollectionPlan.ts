@@ -329,12 +329,6 @@ function createCollectionBatches(
             ...plan.batches.props,
         ];
         for (const batch of planBatches) {
-            if (
-                batch.geometryKind === 'edge-segment' &&
-                kit.edgeParts[batch.geometryId]?.passage === 'open-portal'
-            ) {
-                continue;
-            }
             const key = collectionBatchKey(plan, batch);
             let builder = builders.get(key);
             if (!builder) {

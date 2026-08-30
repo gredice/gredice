@@ -173,7 +173,7 @@ describe('garden structure collection plans', () => {
         );
     });
 
-    test('keeps an open-portal-only structure visible through the footprint fallback', () => {
+    test('keeps an open-portal-only structure visible through its open-door asset batch', () => {
         const seed = createGardenStructureTemplateSeed('blank');
         const result = compileSavedGardenStructureCollection([
             savedStructure('blank', 'portal-only-fallback', {
@@ -191,18 +191,26 @@ describe('garden structure collection plans', () => {
                 },
             }),
         ]);
-        const semanticBatch = result.plan.batches.transparent.find(
-            ({ geometryId }) => geometryId === 'semantic-footprint',
+        const openDoorBatch = result.plan.batches.opaque.find(
+            ({ geometryId }) => geometryId === 'door.timber-wide-open',
         );
 
         assert.equal(result.rejectedRecords.length, 0);
-        assert.ok(semanticBatch);
-        assert.equal(semanticBatch.instanceIds.length, 4);
+        assert.ok(openDoorBatch);
+        assert.deepEqual(openDoorBatch.instanceIds, [
+            'edge:portal-only-fallback:only-open-portal',
+        ]);
         assert.equal(
             batchSnapshot(result.plan).some(({ instanceIds }) =>
                 instanceIds.includes(
                     'edge:portal-only-fallback:only-open-portal',
                 ),
+            ),
+            true,
+        );
+        assert.equal(
+            result.plan.batches.transparent.some(
+                ({ geometryId }) => geometryId === 'semantic-footprint',
             ),
             false,
         );
@@ -236,7 +244,7 @@ describe('garden structure collection plans', () => {
             batchSnapshot(forward.plan).some(({ instanceIds }) =>
                 instanceIds.includes('edge:b-house:door-main'),
             ),
-            false,
+            true,
         );
         assert.ok(
             batchSnapshot(forward.plan).some(

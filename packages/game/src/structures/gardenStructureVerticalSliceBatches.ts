@@ -1,21 +1,5 @@
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
-import type {
-    GardenStructureBatchDescription,
-    GardenStructureSemanticPlan,
-} from './structurePlanTypes';
-
-export function isGardenStructureVerticalSliceBatchVisible(
-    batch: GardenStructureBatchDescription,
-) {
-    if (batch.geometryKind !== 'edge-segment') {
-        return true;
-    }
-
-    return (
-        debugGardenStructureKitMetadata.edgeParts[batch.geometryId]?.passage !==
-        'open-portal'
-    );
-}
+import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 
 export function getGardenStructureVerticalSliceBatches({
     plan,
@@ -38,5 +22,5 @@ export function getGardenStructureVerticalSliceBatches({
         ...plan.batches.transparent,
         ...(roofCutaway ? [] : plan.batches.roof),
         ...plan.batches.props,
-    ].filter(isGardenStructureVerticalSliceBatchVisible);
+    ];
 }
