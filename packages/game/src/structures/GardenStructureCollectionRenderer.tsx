@@ -331,6 +331,30 @@ export function GardenStructureCollectionRenderer({
             ),
         [availableBatches],
     );
+    const representedStructureIds = useMemo(
+        () => new Set(batches.flatMap(({ structureIds }) => structureIds)),
+        [batches],
+    );
+    const orphanAssetFallbackStructureIds = useMemo(
+        () =>
+            new Set(
+                assetFallbackOnlyBatches.flatMap(({ structureIds }) =>
+                    structureIds.filter(
+                        (structureId) =>
+                            !representedStructureIds.has(structureId),
+                    ),
+                ),
+            ),
+        [assetFallbackOnlyBatches, representedStructureIds],
+    );
+    const orphanAssetFallbackVisibleIds = useMemo(
+        () =>
+            intersectVisibleStructureIds(
+                effectiveVisibleIds,
+                orphanAssetFallbackStructureIds,
+            ),
+        [effectiveVisibleIds, orphanAssetFallbackStructureIds],
+    );
     const batchById = useMemo(
         () => new Map(batches.map((batch) => [batch.id, batch])),
         [batches],
@@ -481,6 +505,15 @@ export function GardenStructureCollectionRenderer({
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
                     visibleStructureIds={effectiveVisibleIds}
+                />
+            ) : null}
+            {orphanAssetFallbackStructureIds.size > 0 ? (
+                <GardenStructureCollectionFallbackRenderer
+                    batches={assetFallbackOnlyBatches}
+                    castShadows={castShadows}
+                    onSelect={onSelect}
+                    selectedInstanceId={selectedInstanceId}
+                    visibleStructureIds={orphanAssetFallbackVisibleIds}
                 />
             ) : null}
             {assetBatches.length > 0 ? (

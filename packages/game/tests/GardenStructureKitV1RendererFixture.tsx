@@ -33,6 +33,7 @@ export type GardenStructureKitV1RendererFixtureMode =
     | 'missing'
     | 'portal-asset-error'
     | 'portal-missing-mixed'
+    | 'prop-only-hidden-mixed'
     | 'production';
 
 type RendererReadback = Readonly<{
@@ -85,6 +86,22 @@ function createPortalDocument(includeTable: boolean) {
                   ]
                 : [],
         ),
+    });
+}
+
+function createPropOnlyDocument() {
+    const seed = createGardenStructureTemplateSeed('blank');
+    return Object.freeze({
+        ...seed.document,
+        props: Object.freeze([
+            Object.freeze({
+                id: 'only-table',
+                partId: 'prop.table',
+                x: 0,
+                y: 0,
+                rotation: 0 as const,
+            }),
+        ]),
     });
 }
 
@@ -178,6 +195,25 @@ const portalErrorSourcePlan = createGardenStructureCollectionPlan([
     {
         kit: debugGardenStructureKitMetadata,
         plan: compileFixtureStructure('fixture-error-house', 'house'),
+    },
+]);
+
+const propOnlyHiddenMixedSourcePlan = createGardenStructureCollectionPlan([
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compileGardenStructurePlan({
+            structureId: 'fixture-hidden-prop-only',
+            revision: 1,
+            document: createPropOnlyDocument(),
+            placement: { anchorX: -2, anchorY: 0, rotation: 0 },
+        }),
+    },
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compilePortalFixtureStructure({
+            anchorX: 1,
+            structureId: 'fixture-visible-portal-peer',
+        }),
     },
 ]);
 
@@ -347,6 +383,13 @@ function fixturePlan(
             transparent: Object.freeze([portalErrorFootprintBatch]),
         });
     }
+    if (mode === 'prop-only-hidden-mixed') {
+        return withFixtureBatches(
+            propOnlyHiddenMixedSourcePlan,
+            mode,
+            propOnlyHiddenMixedSourcePlan.batches,
+        );
+    }
     const useProductionBatches =
         mode === 'asset-error' || mode === 'production';
     return withFixtureBatches(sourceCollectionPlan, mode, {
@@ -420,7 +463,11 @@ function RendererProbe({
             const collection = scene.getObjectByName(
                 'GardenStructures:Collection',
             );
-            if (mode === 'portal-missing-mixed' && !asset) {
+            if (
+                (mode === 'portal-missing-mixed' ||
+                    mode === 'prop-only-hidden-mixed') &&
+                !asset
+            ) {
                 frame = window.requestAnimationFrame(inspect);
                 return;
             }
@@ -451,7 +498,8 @@ function RendererProbe({
                               'GardenStructureKitV1_PropTable_Mesh',
                       )
                     : mode === 'portal-asset-error' ||
-                        mode === 'portal-missing-mixed'
+                        mode === 'portal-missing-mixed' ||
+                        mode === 'prop-only-hidden-mixed'
                       ? fallbackMeshes.find(({ name }) =>
                             name.includes('semantic-footprint'),
                         )
@@ -585,7 +633,10 @@ export function GardenStructureKitV1RendererFixture({
                                 setSelectedStructureId(structureId);
                             }}
                             plan={plan}
-                            renderProps={mode !== 'incompatible-portal-prop'}
+                            renderProps={
+                                mode !== 'incompatible-portal-prop' &&
+                                mode !== 'prop-only-hidden-mixed'
+                            }
                             selectedInstanceId={selectedInstanceId}
                         />
                     ) : null}

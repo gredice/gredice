@@ -234,6 +234,48 @@ test('isolates a missing portal footprint from a resolved portal peer', async ({
     expect(browserErrors).toEqual([]);
 });
 
+test('keeps a prop-only footprint when props are hidden without duplicating its portal peer', async ({
+    mount,
+    page,
+}) => {
+    const assetRequests = observeGardenStructureKitRequests(page);
+    const browserErrors: string[] = [];
+    page.on('console', (message) => {
+        if (message.type() === 'error') {
+            browserErrors.push(message.text());
+        }
+    });
+    page.on('pageerror', (error) => browserErrors.push(error.message));
+
+    const fixture = await mount(
+        <GardenStructureKitV1RendererFixture mode="prop-only-hidden-mixed" />,
+    );
+    await expect(fixture).toHaveAttribute('data-renderer-ready', 'true');
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+    const result = await readRendererResult(fixture);
+
+    expect(result).toMatchObject({
+        fallbackInstanceCount: 4,
+        fallbackMeshCount: 1,
+        unresolvedBatchCount: 0,
+    });
+    expect(result.opaqueDrawCount).toBeGreaterThan(0);
+    expect(
+        result.productionNodeNames.some((name) =>
+            name.includes('DoorTimberWideOpen'),
+        ),
+    ).toBe(true);
+    expect(
+        result.productionNodeNames.some((name) => name.includes('PropTable')),
+    ).toBe(false);
+    await fixture.locator('canvas').click({ position: result.target });
+    await expect(
+        fixture.getByTestId('garden-structure-kit-v1-selection-structure'),
+    ).toHaveText('fixture-hidden-prop-only');
+    expect(assetRequests).toHaveLength(1);
+    expect(browserErrors).toEqual([]);
+});
+
 test('uses a shallow portal footprint when the shared asset load fails', async ({
     mount,
     page,
