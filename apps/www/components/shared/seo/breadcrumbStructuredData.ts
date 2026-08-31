@@ -1,14 +1,19 @@
 import { PUBLIC_SITE_ORIGIN } from '../../../lib/seo/publicMetadata.ts';
 
-export type PublicBreadcrumbItem = {
-    href?: string;
+export type PublicBreadcrumbLink = {
+    href: string;
+    label: string;
+};
+
+export type PublicBreadcrumbCurrentItem = {
+    href?: never;
     label: string;
 };
 
 export type PublicBreadcrumbItems = readonly [
-    PublicBreadcrumbItem,
-    PublicBreadcrumbItem,
-    ...PublicBreadcrumbItem[],
+    PublicBreadcrumbLink,
+    ...PublicBreadcrumbLink[],
+    PublicBreadcrumbCurrentItem,
 ];
 
 export function createPublicBreadcrumbStructuredData(
