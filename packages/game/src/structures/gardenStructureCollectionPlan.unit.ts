@@ -7,6 +7,7 @@ import {
     type GardenStructureTemplateKey,
 } from '@gredice/js/gardenStructures';
 import { getGardenAvatarCollisionCandidates } from '../entities/avatar/gardenAvatarMovement';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 import {
     compileGardenStructurePlan,
     compileSavedGardenStructureCollection,
@@ -229,6 +230,13 @@ describe('garden structure collection plans', () => {
         assert.ok(
             tableBatches.every(
                 ({ structureIds }) => new Set(structureIds).size === 1,
+            ),
+        );
+        assert.ok(
+            tableBatches.every(
+                (batch) =>
+                    !isGardenStructureKitV1DefinitionCompatible(batch) &&
+                    batch.rendersSemanticFallback,
             ),
         );
     });

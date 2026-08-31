@@ -56,6 +56,7 @@ export type GardenStructureCollectionBatchDescription = Readonly<{
     kitKey: string;
     kitVersion: string;
     materialId: string;
+    rendersSemanticFallback: boolean;
     structureIds: readonly string[];
     transformStride: typeof gardenStructureCollectionTransformStride;
     /** Packed as worldX, worldY/z, quarterTurns, baseHeight. */
@@ -167,6 +168,7 @@ type CollectionBatchBuilder = {
     kitKey: string;
     kitVersion: string;
     materialId: string;
+    rendersSemanticFallback: boolean;
     structureIds: string[];
     transforms: number[];
     transparency: GardenStructureMaterialTransparency;
@@ -280,6 +282,17 @@ function getFallbackGeometry(
     }
 }
 
+function rendersSemanticFallback(
+    geometryKind: GardenStructureBatchGeometryKind,
+    geometryId: string,
+    kit: GardenStructureKitMetadata,
+) {
+    return !(
+        geometryKind === 'edge-segment' &&
+        kit.edgeParts[geometryId]?.passage === 'open-portal'
+    );
+}
+
 const gardenStructureCollectionBatchChunkSize = 32;
 
 function collectionBatchChunk(plan: GardenStructureSemanticPlan) {
@@ -342,6 +355,11 @@ function createCollectionBatches(
                     geometryId: batch.geometryId,
                     ...(batch.variantId ? { variantId: batch.variantId } : {}),
                     materialId: batch.materialId,
+                    rendersSemanticFallback: rendersSemanticFallback(
+                        batch.geometryKind,
+                        batch.geometryId,
+                        kit,
+                    ),
                     transparency: batch.transparency,
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
@@ -402,6 +420,7 @@ function createCollectionBatches(
                     geometryKind: 'floor-cell',
                     geometryId: 'semantic-footprint',
                     materialId: 'semantic-footprint',
+                    rendersSemanticFallback: true,
                     transparency: 'transparent',
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
@@ -450,6 +469,7 @@ function createCollectionBatches(
                 geometryId: builder.geometryId,
                 ...(builder.variantId ? { variantId: builder.variantId } : {}),
                 materialId: builder.materialId,
+                rendersSemanticFallback: builder.rendersSemanticFallback,
                 transparency: builder.transparency,
                 kitKey: builder.kitKey,
                 kitVersion: builder.kitVersion,
