@@ -4,6 +4,7 @@ import {
 } from '@gredice/js/gardenStructures';
 import { compileGardenStructurePlan } from './compileGardenStructurePlan';
 import { validateGardenStructureKitMetadata } from './gardenStructureKitMetadataValidation';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 import {
     GardenStructurePlanCache,
     type GardenStructurePlanCacheOptions,
@@ -339,6 +340,7 @@ function createCollectionBatches(
     const builders = new Map<string, CollectionBatchBuilder>();
     for (const { kit, plan } of entries) {
         let emittedInstanceCount = 0;
+        let emittedSemanticFallbackInstanceCount = 0;
         const planBatches = [
             ...plan.batches.opaque,
             ...plan.batches.transparent,
@@ -395,10 +397,17 @@ function createCollectionBatches(
                 builder.structureIds.push(plan.structureId);
                 builder.transforms.push(x, y, rotation, plan.baseHeight);
                 emittedInstanceCount += 1;
+                if (builder.rendersSemanticFallback) {
+                    emittedSemanticFallbackInstanceCount += 1;
+                }
             }
         }
 
-        if (emittedInstanceCount === 0) {
+        if (
+            emittedInstanceCount === 0 ||
+            (!isGardenStructureKitV1DefinitionCompatible(plan) &&
+                emittedSemanticFallbackInstanceCount === 0)
+        ) {
             const chunk = collectionBatchChunk(plan);
             const key = [
                 plan.kitKey,

@@ -308,6 +308,56 @@ describe('garden structure collection plans', () => {
         );
     });
 
+    test('adds a nonblocking footprint for an incompatible open-portal-only structure', () => {
+        const seed = createGardenStructureTemplateSeed('blank');
+        const incompatibleKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const plan = compileGardenStructurePlan({
+            structureId: 'incompatible-portal-only',
+            revision: 1,
+            document: {
+                ...seed.document,
+                edges: [
+                    {
+                        id: 'only-open-portal',
+                        from: { x: 0, y: 0 },
+                        direction: 'north',
+                        partId: 'door.timber-wide-open',
+                        kind: 'door',
+                    },
+                ],
+            },
+            placement: { anchorX: 4, anchorY: 6, rotation: 0 },
+            kit: incompatibleKit,
+        });
+        const collection = createGardenStructureCollectionPlan([
+            { kit: incompatibleKit, plan },
+        ]);
+        const openDoorBatch = collection.batches.opaque.find(
+            ({ geometryId }) => geometryId === 'door.timber-wide-open',
+        );
+        const semanticBatch = collection.batches.transparent.find(
+            ({ geometryId }) => geometryId === 'semantic-footprint',
+        );
+
+        assert.ok(openDoorBatch);
+        assert.equal(
+            isGardenStructureKitV1DefinitionCompatible(openDoorBatch),
+            false,
+        );
+        assert.equal(openDoorBatch.rendersSemanticFallback, false);
+        assert.ok(semanticBatch);
+        assert.equal(semanticBatch.rendersSemanticFallback, true);
+        assert.equal(semanticBatch.fallbackGeometry.height, 0.025);
+        assert.deepEqual(
+            [...new Set(semanticBatch.structureIds)],
+            ['incompatible-portal-only'],
+        );
+        assert.deepEqual(
+            Array.from(semanticBatch.transforms),
+            [4, 6, 0, 0, 5, 6, 0, 0, 4, 7, 0, 0, 5, 7, 0, 0],
+        );
+    });
+
     test('is stable across source order and batches compatible instances across structures', () => {
         const house = savedStructure('house', 'b-house', {
             anchorX: 10,
