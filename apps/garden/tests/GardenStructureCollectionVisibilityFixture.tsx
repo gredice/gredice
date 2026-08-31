@@ -8,17 +8,17 @@ import { debugGardenStructureKitMetadata } from '../../../packages/game/src/stru
 import { GardenStructureCollectionRenderer } from '../../../packages/game/src/structures/GardenStructureCollectionRenderer';
 import { createGardenStructureCollectionPlan } from '../../../packages/game/src/structures/gardenStructureCollectionPlan';
 
-const document = createGardenStructureTemplateSeed('house').document;
+const houseDocument = createGardenStructureTemplateSeed('house').document;
 const primary = compileGardenStructurePlan({
     baseHeight: 0.3,
-    document,
+    document: houseDocument,
     placement: { anchorX: 0, anchorY: 0, rotation: 0 },
     revision: 1,
     structureId: 'visibility-primary',
 });
 const neighbor = compileGardenStructurePlan({
     baseHeight: 0.3,
-    document,
+    document: houseDocument,
     placement: { anchorX: 10, anchorY: 0, rotation: 0 },
     revision: 1,
     structureId: 'visibility-neighbor',
