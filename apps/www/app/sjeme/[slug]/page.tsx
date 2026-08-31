@@ -1,6 +1,5 @@
 import { decodeRouteParam } from '@gredice/js/uri';
 import { BarcodeValue } from '@gredice/ui/Barcode';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { ImageGallery } from '@gredice/ui/ImageGallery';
 import {
     Euro,
@@ -20,6 +19,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AttributeCard } from '../../../components/attributes/DetailCard';
 import { FeedbackModal } from '../../../components/shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { formatPrice } from '../../../lib/formatPrice';
 import { getSeedsData } from '../../../lib/seeds/getSeedsData';
@@ -163,28 +163,11 @@ export default async function SeedPage(props: PageProps<'/sjeme/[slug]'>) {
                                 '@id': `${canonicalUrl}#webpage`,
                             },
                         },
-                        {
-                            '@type': 'BreadcrumbList',
-                            itemListElement: [
-                                {
-                                    '@type': 'ListItem',
-                                    position: 1,
-                                    name: 'Sjeme',
-                                    item: `https://www.gredice.com${KnownPages.Seeds}`,
-                                },
-                                {
-                                    '@type': 'ListItem',
-                                    position: 2,
-                                    name: seed.information.name,
-                                    item: canonicalUrl,
-                                },
-                            ],
-                        },
                     ],
                 }}
             />
             <Stack spacing={8}>
-                <Breadcrumbs
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Sjeme', href: KnownPages.Seeds },
                         { label: seed.information.name },

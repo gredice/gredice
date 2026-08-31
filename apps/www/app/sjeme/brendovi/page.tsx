@@ -1,8 +1,8 @@
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { NavigatingButton } from '@gredice/ui/NavigatingButton';
 import { PageHeader } from '@gredice/ui/PageHeader';
 import { Stack } from '@gredice/ui/Stack';
 import type { Metadata } from 'next';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { StructuredDataScript } from '../../../components/shared/seo/StructuredDataScript';
 import { getSeedBrandsData } from '../../../lib/seeds/getSeedBrandsData';
 import { getSeedsData } from '../../../lib/seeds/getSeedsData';
@@ -70,27 +70,10 @@ export default async function SeedBrandsPage() {
                                 }),
                             ),
                         },
-                        {
-                            '@type': 'BreadcrumbList',
-                            itemListElement: [
-                                {
-                                    '@type': 'ListItem',
-                                    position: 1,
-                                    name: 'Sjeme',
-                                    item: `https://www.gredice.com${KnownPages.Seeds}`,
-                                },
-                                {
-                                    '@type': 'ListItem',
-                                    position: 2,
-                                    name: pageTitle,
-                                    item: canonicalUrl,
-                                },
-                            ],
-                        },
                     ],
                 }}
             />
-            <Breadcrumbs
+            <PublicBreadcrumbs
                 items={[
                     { label: 'Sjeme', href: KnownPages.Seeds },
                     { label: pageTitle },

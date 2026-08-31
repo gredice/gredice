@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createPublicBreadcrumbStructuredData } from './breadcrumbStructuredData.ts';
 import {
     serializeValidStructuredData,
     validateSerializedStructuredData,
@@ -186,6 +187,89 @@ test('rejects invalid JSON and non-schema.org roots', () => {
                 'Structured data root must use the https://schema.org context.',
         },
     ]);
+});
+
+test('builds valid BreadcrumbList data from the visible breadcrumb items', () => {
+    const structuredData = createPublicBreadcrumbStructuredData([
+        { label: 'Sjeme', href: '/sjeme' },
+        { label: 'Brendovi sjemena', href: '/sjeme/brendovi' },
+        { label: 'Royal Seeds' },
+    ]);
+
+    assert.deepEqual(structuredData.itemListElement, [
+        {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Sjeme',
+            item: 'https://www.gredice.com/sjeme',
+        },
+        {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Brendovi sjemena',
+            item: 'https://www.gredice.com/sjeme/brendovi',
+        },
+        {
+            '@type': 'ListItem',
+            position: 3,
+            name: 'Royal Seeds',
+        },
+    ]);
+    assert.deepEqual(validateStructuredData(structuredData), []);
+});
+
+test('rejects BreadcrumbLists that do not meet Google requirements', () => {
+    const issues = validateStructuredData({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            {
+                '@type': 'Thing',
+                position: 2.5,
+                name: '',
+                item: '/sjeme',
+            },
+            {
+                '@type': 'ListItem',
+                position: 3,
+                name: 'Detalj',
+                item: '/sjeme/detalj',
+            },
+        ],
+    });
+
+    assert.deepEqual(
+        issues.map((issue) => issue.message),
+        [
+            'BreadcrumbList entries must use @type ListItem.',
+            'Breadcrumb ListItem positions must be sequential positive integers.',
+            'Breadcrumb ListItem must have a non-empty name.',
+            'Breadcrumb ListItem must have an absolute HTTP(S) item URL unless it is last.',
+            'Breadcrumb ListItem positions must be sequential positive integers.',
+            'Breadcrumb ListItem must have an absolute HTTP(S) item URL unless it is last.',
+        ],
+    );
+
+    assert.deepEqual(
+        validateStructuredData({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+                {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: 'Sjeme',
+                    item: 'https://www.gredice.com/sjeme',
+                },
+            ],
+        }),
+        [
+            {
+                path: '$',
+                message: 'BreadcrumbList must contain at least two ListItems.',
+            },
+        ],
+    );
 });
 
 test('serializes only valid structured data and escapes HTML delimiters', () => {
