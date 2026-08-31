@@ -234,6 +234,8 @@ export type GardenStructureSemanticPlan = Readonly<{
     revision: number;
     kitKey: string;
     kitVersion: string;
+    /** Stable identity for the exact validated kit definition, when semantic. */
+    kitDefinitionFingerprint: string | null;
     placement: Readonly<{
         anchorX: number;
         anchorY: number;

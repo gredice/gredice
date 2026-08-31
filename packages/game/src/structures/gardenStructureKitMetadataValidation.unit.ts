@@ -5,6 +5,7 @@ import {
     compileGardenStructurePlan,
     compileSavedGardenStructureCollection,
     createGardenStructureAvatarCollisionWorld,
+    createGardenStructureCollectionPlan,
     debugGardenStructureKitMetadata,
     decodeSavedGardenStructureRecord,
     type GardenStructureKitMetadata,
@@ -191,7 +192,7 @@ describe('garden structure runtime kit metadata validation', () => {
         );
     });
 
-    test('reuses prepared validation when a plan cache misses', () => {
+    test('reuses one descriptor snapshot when a plan cache misses', () => {
         const directKit = observableKitReads();
         const cachedKit = observableKitReads();
 
@@ -204,7 +205,7 @@ describe('garden structure runtime kit metadata validation', () => {
 
         assert.equal(direct.runtimeSafety.collisionMode, 'semantic');
         assert.equal(cached.runtimeSafety.collisionMode, 'semantic');
-        assert.ok(directKit.readCount > 0);
+        assert.equal(directKit.readCount, 0);
         assert.equal(cachedKit.readCount, directKit.readCount);
     });
 
@@ -482,6 +483,150 @@ describe('garden structure runtime kit metadata validation', () => {
         assert.ok(validation.kitDefinitionFingerprint);
         assert.equal(decoded.valid, false);
         assert.equal(decoded.issues[0]?.code, 'kit-metadata-incomplete');
+    });
+
+    test('compiles direct and saved inputs from a complete hostile-proxy snapshot', () => {
+        const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+        assert.ok(table);
+        const hostileTable = new Proxy(table, {
+            get() {
+                throw new Error('nested runtime kit reads are unavailable');
+            },
+        });
+        const hostilePropPartsTarget = Object.freeze({
+            ...debugGardenStructureKitMetadata.propParts,
+            'prop.table': hostileTable,
+        });
+        const hostilePropParts = new Proxy(hostilePropPartsTarget, {
+            get() {
+                throw new Error('collection runtime kit reads are unavailable');
+            },
+        });
+        const hostileTarget = Object.freeze({
+            ...debugGardenStructureKitMetadata,
+            propParts: hostilePropParts,
+        });
+        const hostileKit = new Proxy(hostileTarget, {
+            get(target, property, receiver) {
+                if (property === 'floorThickness') {
+                    throw new Error(
+                        'selected runtime kit reads are unavailable',
+                    );
+                }
+                return Reflect.get(target, property, receiver);
+            },
+        });
+        const definition = resolveGardenStructureRuntimeKit(
+            debugGardenStructureKitMetadata.kitKey,
+            debugGardenStructureKitMetadata.kitVersion,
+        );
+        assert.ok(definition);
+
+        assert.throws(() => hostileKit.floorThickness, /selected runtime/u);
+        assert.throws(
+            () => hostileKit.propParts['prop.table']?.collisionWidth,
+            /collection runtime/u,
+        );
+        assert.throws(() => hostileTable.collisionWidth, /nested runtime/u);
+        const validation = validateGardenStructureKitMetadata(hostileKit);
+        assert.equal(validation.valid, true);
+        assert.ok(validation.metadataSnapshot);
+        assert.notEqual(validation.metadataSnapshot, hostileKit);
+        assert.equal(validation.metadataSnapshot.floorThickness, 0.08);
+        assert.equal(
+            validation.metadataSnapshot.propParts['prop.table']?.collisionWidth,
+            table.collisionWidth,
+        );
+
+        const directPlan = compileGardenStructurePlan(
+            houseInput(hostileKit, 'hostile-direct'),
+        );
+        assert.equal(directPlan.runtimeSafety.collisionMode, 'semantic');
+        assert.equal(
+            createGardenStructureCollectionPlan([
+                { kit: hostileKit, plan: directPlan },
+            ]).structures[0],
+            directPlan,
+        );
+
+        const decoded = decodeSavedGardenStructureRecord(
+            savedHouse('hostile-saved'),
+            {
+                resolveKit: () =>
+                    Object.freeze({ ...definition, metadata: hostileKit }),
+            },
+        );
+        assert.equal(decoded.valid, true);
+        if (!decoded.valid) {
+            return;
+        }
+        assert.equal(decoded.input.kit, validation.metadataSnapshot);
+        assert.equal(
+            compileGardenStructurePlan(decoded.input).runtimeSafety
+                .collisionMode,
+            'semantic',
+        );
+        const collection = compileSavedGardenStructureCollection(
+            [savedHouse('hostile-collection')],
+            {
+                resolveKit: () =>
+                    Object.freeze({ ...definition, metadata: hostileKit }),
+            },
+        );
+        assert.equal(collection.rejectedRecords.length, 0);
+        assert.equal(
+            collection.plan.structures[0]?.runtimeSafety.collisionMode,
+            'semantic',
+        );
+    });
+
+    test('contains unreadable resolver definitions and reference validators', () => {
+        const definition = resolveGardenStructureRuntimeKit(
+            debugGardenStructureKitMetadata.kitKey,
+            debugGardenStructureKitMetadata.kitVersion,
+        );
+        assert.ok(definition);
+
+        for (const unreadableProperty of [
+            'metadata',
+            'isReferenceAllowed',
+        ] as const) {
+            const hostileDefinition = new Proxy(definition, {
+                get(target, property, receiver) {
+                    if (property === unreadableProperty) {
+                        throw new Error('definition property is unavailable');
+                    }
+                    return Reflect.get(target, property, receiver);
+                },
+            });
+            const decoded = decodeSavedGardenStructureRecord(
+                savedHouse(`hostile-definition-${unreadableProperty}`),
+                { resolveKit: () => hostileDefinition },
+            );
+
+            assert.equal(decoded.valid, false);
+            assert.equal(decoded.issues[0]?.code, 'kit-metadata-incomplete');
+        }
+
+        const throwingReferenceValidator = decodeSavedGardenStructureRecord(
+            savedHouse('hostile-reference-validator'),
+            {
+                resolveKit: () =>
+                    Object.freeze({
+                        ...definition,
+                        isReferenceAllowed: () => {
+                            throw new Error(
+                                'reference validation is unavailable',
+                            );
+                        },
+                    }),
+            },
+        );
+        assert.equal(throwingReferenceValidator.valid, false);
+        assert.equal(
+            throwingReferenceValidator.issues[0]?.code,
+            'kit-metadata-incomplete',
+        );
     });
 
     test('encodes malformed Unicode diagnostic paths without throwing', () => {

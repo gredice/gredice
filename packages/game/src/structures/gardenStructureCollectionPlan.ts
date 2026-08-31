@@ -3,6 +3,7 @@ import {
     gardenStructureMaxActivePerGarden,
 } from '@gredice/js/gardenStructures';
 import { compileGardenStructurePlan } from './compileGardenStructurePlan';
+import { validateGardenStructureKitMetadata } from './gardenStructureKitMetadataValidation';
 import {
     GardenStructurePlanCache,
     type GardenStructurePlanCacheOptions,
@@ -51,6 +52,7 @@ export type GardenStructureCollectionBatchDescription = Readonly<{
     geometryKind: GardenStructureBatchGeometryKind;
     id: string;
     instanceIds: readonly string[];
+    kitDefinitionFingerprint: string | null;
     kitKey: string;
     kitVersion: string;
     materialId: string;
@@ -161,6 +163,7 @@ type CollectionBatchBuilder = {
     geometryId: string;
     geometryKind: GardenStructureBatchGeometryKind;
     instanceIds: string[];
+    kitDefinitionFingerprint: string | null;
     kitKey: string;
     kitVersion: string;
     materialId: string;
@@ -305,6 +308,7 @@ function collectionBatchKey(
     return [
         plan.kitKey,
         plan.kitVersion,
+        plan.kitDefinitionFingerprint ?? 'invalid-kit-definition',
         chunk.x,
         chunk.y,
         batch.category,
@@ -341,6 +345,7 @@ function createCollectionBatches(
                     transparency: batch.transparency,
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
+                    kitDefinitionFingerprint: plan.kitDefinitionFingerprint,
                     fallbackGeometry: getFallbackGeometry(
                         batch.geometryKind,
                         batch.geometryId,
@@ -380,6 +385,7 @@ function createCollectionBatches(
             const key = [
                 plan.kitKey,
                 plan.kitVersion,
+                plan.kitDefinitionFingerprint ?? 'invalid-kit-definition',
                 chunk.x,
                 chunk.y,
                 'transparent',
@@ -399,6 +405,7 @@ function createCollectionBatches(
                     transparency: 'transparent',
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
+                    kitDefinitionFingerprint: plan.kitDefinitionFingerprint,
                     fallbackGeometry: Object.freeze({
                         kind: 'box',
                         centerHeightOffset: 0.0125,
@@ -446,6 +453,7 @@ function createCollectionBatches(
                 transparency: builder.transparency,
                 kitKey: builder.kitKey,
                 kitVersion: builder.kitVersion,
+                kitDefinitionFingerprint: builder.kitDefinitionFingerprint,
                 fallbackGeometry: builder.fallbackGeometry,
                 instanceIds: Object.freeze(builder.instanceIds),
                 structureIds: Object.freeze(builder.structureIds),
@@ -552,19 +560,34 @@ function createCollectionWorldBounds(
 export function createGardenStructureCollectionPlan(
     inputEntries: readonly GardenStructureCollectionPlanEntry[],
 ): GardenStructureCollectionPlan {
-    const entries = [...inputEntries].sort((left, right) =>
-        compareStrings(left.plan.structureId, right.plan.structureId),
-    );
+    const entries = inputEntries
+        .map(({ kit, plan }) => {
+            const kitValidation = validateGardenStructureKitMetadata(kit);
+            if (
+                plan.runtimeSafety.collisionMode === 'semantic' &&
+                (!kitValidation.valid ||
+                    !kitValidation.identity ||
+                    !kitValidation.kitDefinitionFingerprint ||
+                    !kitValidation.metadataSnapshot ||
+                    kitValidation.identity.kitKey !== plan.kitKey ||
+                    kitValidation.identity.kitVersion !== plan.kitVersion ||
+                    kitValidation.kitDefinitionFingerprint !==
+                        plan.kitDefinitionFingerprint)
+            ) {
+                throw new Error(
+                    'A structure collection entry must use its compiled immutable kit definition.',
+                );
+            }
+            return Object.freeze({
+                kit: kitValidation.metadataSnapshot ?? kit,
+                plan,
+            });
+        })
+        .sort((left, right) =>
+            compareStrings(left.plan.structureId, right.plan.structureId),
+        );
     const structureIds = new Set<string>();
-    for (const { kit, plan } of entries) {
-        if (
-            plan.runtimeSafety.collisionMode === 'semantic' &&
-            (kit.kitKey !== plan.kitKey || kit.kitVersion !== plan.kitVersion)
-        ) {
-            throw new Error(
-                'A structure collection entry must use its compiled immutable kit.',
-            );
-        }
+    for (const { plan } of entries) {
         if (structureIds.has(plan.structureId)) {
             throw new Error(
                 'A structure collection cannot contain duplicate structure IDs.',

@@ -8,13 +8,18 @@ import {
 } from '@gredice/js/gardenStructures';
 import { getGardenAvatarCollisionCandidates } from '../entities/avatar/gardenAvatarMovement';
 import {
+    compileGardenStructurePlan,
     compileSavedGardenStructureCollection,
     containsGardenStructureWorldCell,
     createGardenStructureCollectionAvatarCollisionWorld,
+    createGardenStructureCollectionPlan,
+    debugGardenStructureKitMetadata,
     decodeSavedGardenStructureRecord,
     GardenStructureCollectionCache,
     type GardenStructureCollectionCacheDisposalReason,
     type GardenStructureCollectionPlan,
+    type GardenStructureKitMetadata,
+    type GardenStructurePropPartMetadata,
     gardenStructureCollectionTransformStride,
     getNearbyGardenStructureCollectionBuckets,
     getVisibleGardenStructureIds,
@@ -22,6 +27,20 @@ import {
     resolveGardenStructureRuntimeKit,
     type SerializedGardenStructureRecord,
 } from './index';
+
+function kitWithTableMetadata(
+    overrides: Partial<GardenStructurePropPartMetadata>,
+): GardenStructureKitMetadata {
+    const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+    assert.ok(table);
+    return Object.freeze({
+        ...debugGardenStructureKitMetadata,
+        propParts: Object.freeze({
+            ...debugGardenStructureKitMetadata.propParts,
+            'prop.table': Object.freeze({ ...table, ...overrides }),
+        }),
+    });
+}
 
 function savedStructure(
     templateKey: GardenStructureTemplateKey,
@@ -149,6 +168,71 @@ describe('saved garden structure runtime adapter', () => {
 });
 
 describe('garden structure collection plans', () => {
+    test('separates batches for distinct same-identity kit definitions', () => {
+        const document = createGardenStructureTemplateSeed('house').document;
+        const narrowKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const wideKit = kitWithTableMetadata({ collisionWidth: 0.71 });
+        const narrowPlan = compileGardenStructurePlan({
+            structureId: 'narrow-table',
+            revision: 1,
+            document,
+            placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+            kit: narrowKit,
+        });
+        const widePlan = compileGardenStructurePlan({
+            structureId: 'wide-table',
+            revision: 1,
+            document,
+            placement: { anchorX: 5, anchorY: 0, rotation: 0 },
+            kit: wideKit,
+        });
+
+        assert.notEqual(
+            narrowPlan.kitDefinitionFingerprint,
+            widePlan.kitDefinitionFingerprint,
+        );
+        assert.throws(
+            () =>
+                createGardenStructureCollectionPlan([
+                    { kit: wideKit, plan: narrowPlan },
+                ]),
+            /compiled immutable kit definition/u,
+        );
+
+        const collection = createGardenStructureCollectionPlan([
+            { kit: narrowKit, plan: narrowPlan },
+            { kit: wideKit, plan: widePlan },
+        ]);
+        const tableBatches = collection.batches.props.filter(
+            ({ geometryId }) => geometryId === 'prop.table',
+        );
+
+        assert.equal(tableBatches.length, 2);
+        assert.deepEqual(
+            tableBatches
+                .map(({ fallbackGeometry }) => fallbackGeometry.width)
+                .sort((left, right) => left - right),
+            [0.7, 0.71],
+        );
+        assert.equal(
+            new Set(
+                tableBatches.map(
+                    ({ kitDefinitionFingerprint }) => kitDefinitionFingerprint,
+                ),
+            ).size,
+            2,
+        );
+        assert.deepEqual(
+            new Set(tableBatches.flatMap(({ structureIds }) => structureIds)),
+            new Set(['narrow-table', 'wide-table']),
+        );
+        assert.ok(
+            tableBatches.every(
+                ({ structureIds }) => new Set(structureIds).size === 1,
+            ),
+        );
+    });
+
     test('renders an empty valid structure as a semantic footprint fallback', () => {
         const result = compileSavedGardenStructureCollection([
             savedStructure('blank', 'blank-fallback', {

@@ -328,9 +328,39 @@ export function decodeSavedGardenStructureRecord(
         };
     }
 
-    const kitValidation = validateGardenStructureKitMetadata(
-        definition.metadata,
-    );
+    let metadata: GardenStructureKitMetadata;
+    let isReferenceAllowed: GardenStructureReferenceValidator;
+    try {
+        metadata = definition.metadata;
+        isReferenceAllowed = definition.isReferenceAllowed;
+    } catch {
+        return {
+            valid: false,
+            structureId: id,
+            issues: [
+                issue(
+                    'kit-metadata-incomplete',
+                    'kitVersion',
+                    'Resolved kit definition properties could not be read safely.',
+                ),
+            ],
+        };
+    }
+    if (typeof isReferenceAllowed !== 'function') {
+        return {
+            valid: false,
+            structureId: id,
+            issues: [
+                issue(
+                    'kit-metadata-incomplete',
+                    'kitVersion',
+                    'Resolved kit definition has no safe reference validator.',
+                ),
+            ],
+        };
+    }
+
+    const kitValidation = validateGardenStructureKitMetadata(metadata);
     if (hasFatalGardenStructureKitResolutionIssue(kitValidation)) {
         return {
             valid: false,
@@ -349,7 +379,7 @@ export function decodeSavedGardenStructureRecord(
         !kitIdentity ||
         kitIdentity.kitKey !== kitKey ||
         kitIdentity.kitVersion !== kitVersion ||
-        !runtimeKitIdentityMatches(definition.metadata, kitKey, kitVersion)
+        !runtimeKitIdentityMatches(metadata, kitKey, kitVersion)
     ) {
         return {
             valid: false,
@@ -364,9 +394,24 @@ export function decodeSavedGardenStructureRecord(
         };
     }
 
-    const decoded = decodeGardenStructureDocument(value.document, {
-        isReferenceAllowed: definition.isReferenceAllowed,
-    });
+    let decoded: ReturnType<typeof decodeGardenStructureDocument>;
+    try {
+        decoded = decodeGardenStructureDocument(value.document, {
+            isReferenceAllowed,
+        });
+    } catch {
+        return {
+            valid: false,
+            structureId: id,
+            issues: [
+                issue(
+                    'kit-metadata-incomplete',
+                    'kitVersion',
+                    'Resolved kit reference validation could not run safely.',
+                ),
+            ],
+        };
+    }
     if (!decoded.valid) {
         return {
             valid: false,
@@ -413,7 +458,7 @@ export function decodeSavedGardenStructureRecord(
             revision: Number(value.revision),
             document,
             placement: Object.freeze({ anchorX, anchorY, rotation }),
-            kit: definition.metadata,
+            kit: kitValidation.metadataSnapshot ?? metadata,
             baseHeight,
         }),
     });

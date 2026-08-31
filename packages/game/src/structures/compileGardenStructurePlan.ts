@@ -1009,11 +1009,12 @@ export function prepareGardenStructurePlanCompilation({
         canonicalDocument,
         kit,
     );
+    const isolatedKit = kitValidation.metadataSnapshot ?? kit;
     const cacheKey = createGardenStructurePlanCacheKey(
         {
             baseHeight,
             document: canonicalDocument,
-            kit,
+            kit: isolatedKit,
             placement,
             revision,
             structureId,
@@ -1024,7 +1025,7 @@ export function prepareGardenStructurePlanCompilation({
         baseHeight,
         cacheKey,
         canonicalDocument,
-        kit,
+        kit: isolatedKit,
         kitValidation,
         placement,
         revision,
@@ -1095,6 +1096,7 @@ function createGardenStructureFootprintFallbackPlan({
         revision,
         kitKey: 'invalid-kit',
         kitVersion: 'invalid',
+        kitDefinitionFingerprint: null,
         placement: Object.freeze({ ...placement }),
         baseHeight,
         worldBounds: Object.freeze({
@@ -1439,6 +1441,7 @@ export function compilePreparedGardenStructurePlan({
         revision,
         kitKey: kitValidation.identity.kitKey,
         kitVersion: kitValidation.identity.kitVersion,
+        kitDefinitionFingerprint: kitValidation.kitDefinitionFingerprint,
         placement: Object.freeze({ ...placement }),
         baseHeight,
         worldBounds: createWorldBounds({
