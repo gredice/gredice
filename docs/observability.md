@@ -35,6 +35,13 @@ errors, and the explicit high-signal request logs above. This prevents routine
 cron completion and health records from forcing an outgoing OTLP request every
 minute while retaining operational failures.
 
+WWW log flushes share the batch processor's one-second collection window. A
+single post-response flush then covers concurrent high-signal records, and a
+failed forced flush pauses additional forced attempts for 30 seconds while the
+batch processor keeps its normal export schedule. OTLP exports and forced
+flushes have bounded timeouts so telemetry cannot occupy the full function
+lifetime.
+
 ## Cron schedules
 
 Do not reduce one-minute schedules from event counts alone. Checkout outboxes,
