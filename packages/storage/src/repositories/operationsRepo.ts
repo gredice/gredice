@@ -1306,10 +1306,10 @@ export async function getAppliedRaisedBedOperationsForGarden(
     accountId: string,
     gardenId: number,
 ) {
+    // Select matching operation rows directly. Re-hydrating an intermediate
+    // ID list creates an unbounded IN query for long-lived gardens.
     const rows = await storage()
-        .select({
-            id: operations.id,
-        })
+        .select()
         .from(operations)
         .where(
             and(
@@ -1320,16 +1320,7 @@ export async function getAppliedRaisedBedOperationsForGarden(
         )
         .orderBy(desc(operations.timestamp));
 
-    const operationIds = rows.map((row) => row.id);
-    const hydratedOperations = await getOperationsByIds(operationIds);
-    const hydratedOperationsById = new Map(
-        hydratedOperations.map((operation) => [operation.id, operation]),
-    );
-
-    return operationIds.flatMap((operationId) => {
-        const operation = hydratedOperationsById.get(operationId);
-        return operation ? [operation] : [];
-    });
+    return fillOperationAggregates(rows);
 }
 
 export async function getAllOperations(filter?: {
