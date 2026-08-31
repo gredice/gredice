@@ -222,6 +222,60 @@ describe('GardenStructureSceneCache', () => {
         assert.deepEqual(snapshot.diagnostics.sampledIssueCodes, [
             'collision-rejected',
         ]);
+        assert.equal(snapshot.diagnostics.issueSampleTruncated, false);
+    });
+
+    it('marks a full diagnostic sample truncated after collision rejection', () => {
+        const validRecord = savedStructure();
+        const records = [
+            validRecord,
+            null,
+            { ...validRecord, id: '' },
+            { ...validRecord, anchorX: 0.5, id: 'invalid-placement' },
+            { ...validRecord, id: 'invalid-revision', revision: 0 },
+            {
+                ...validRecord,
+                deleted: true,
+                id: 'ambiguous-delete-state',
+                isDeleted: false,
+            },
+            {
+                ...validRecord,
+                id: 'kit-unavailable',
+                kitVersion: 'missing',
+            },
+            {
+                ...validRecord,
+                document: { ...validRecord.document, schemaVersion: 2 },
+                id: 'unsupported-schema-version',
+            },
+        ];
+        const cache = new GardenStructureSceneCache({
+            createCollisionWorld: () => {
+                throw new Error('collision unavailable');
+            },
+        });
+
+        const renderOnly = cache.resolve({
+            gardenId: 1,
+            includeCollision: false,
+            records,
+        });
+        const interactive = cache.resolve({
+            gardenId: 1,
+            includeCollision: true,
+            records,
+        });
+
+        assert.equal(renderOnly.diagnostics.sampledIssueCodes.length, 8);
+        assert.equal(renderOnly.diagnostics.issueSampleTruncated, false);
+        assert.equal(interactive.diagnostics.sampledIssueCodes.length, 8);
+        assert.ok(
+            interactive.diagnostics.sampledIssueCodes.includes(
+                'collision-rejected',
+            ),
+        );
+        assert.equal(interactive.diagnostics.issueSampleTruncated, true);
     });
 
     it('grounds visual and collision plans on the validated flat block support', () => {

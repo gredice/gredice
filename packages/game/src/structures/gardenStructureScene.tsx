@@ -408,13 +408,19 @@ export class GardenStructureSceneCache {
             });
         } catch {
             this.releaseAllCollections();
+            const collisionIssueCodes = [
+                ...diagnostics.sampledIssueCodes,
+                'collision-rejected',
+            ];
+            const sampledIssueCodes = boundedIssueCodes(collisionIssueCodes);
             return Object.freeze({
                 diagnostics: Object.freeze({
                     ...diagnostics,
-                    sampledIssueCodes: boundedIssueCodes([
-                        ...diagnostics.sampledIssueCodes,
-                        'collision-rejected',
-                    ]),
+                    issueSampleTruncated:
+                        diagnostics.issueSampleTruncated ||
+                        new Set(collisionIssueCodes).size >
+                            sampledIssueCodes.length,
+                    sampledIssueCodes,
                     status: 'collision-rejected',
                 }),
                 // Never show passable walls. Rendering may resume when the
