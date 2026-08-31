@@ -59,6 +59,7 @@ export type GardenStructureSceneResolveInput = Readonly<{
 export type GardenStructureSceneBaseHeightInput = Readonly<{
     blockData: BlockData[] | null | undefined;
     records: readonly unknown[] | null | undefined;
+    resolveKit?: GardenStructureRuntimeKitResolver;
     stacks: Stack[] | null | undefined;
 }>;
 
@@ -115,12 +116,17 @@ function collectionRejectedDiagnostics(
     });
 }
 
-function uniqueDecodedStructureInputs(records: readonly unknown[]) {
+function uniqueDecodedStructureInputs(
+    records: readonly unknown[],
+    resolveKit?: GardenStructureRuntimeKitResolver,
+) {
     if (records.length > gardenStructureCollectionMaxStructureCount) {
         return [];
     }
     const decoded = records
-        .map((record) => decodeSavedGardenStructureRecord(record))
+        .map((record) =>
+            decodeSavedGardenStructureRecord(record, { resolveKit }),
+        )
         .filter((result) => result.valid);
     const idCounts = new Map<string, number>();
     for (const result of decoded) {
@@ -269,13 +275,17 @@ export function createGardenStructureSceneFixtureBuildPreviewCompileInput(
 export function createGardenStructureSceneBaseHeightResolver({
     blockData,
     records,
+    resolveKit,
     stacks,
 }: GardenStructureSceneBaseHeightInput) {
     const resolvedRecords = records ?? emptyGardenStructureRecords;
     if (resolvedRecords.length === 0) {
         return () => Number.NaN;
     }
-    const decodedStructures = uniqueDecodedStructureInputs(resolvedRecords);
+    const decodedStructures = uniqueDecodedStructureInputs(
+        resolvedRecords,
+        resolveKit,
+    );
     if (decodedStructures.length === 0) {
         return () => Number.NaN;
     }

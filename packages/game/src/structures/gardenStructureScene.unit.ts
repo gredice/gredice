@@ -13,6 +13,7 @@ import {
     type GardenStructureCollectionCacheDisposalReason,
     type GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCache,
+    resolveGardenStructureRuntimeKit,
     resolveGardenStructureSceneStructureBaseHeight,
 } from './index';
 
@@ -313,6 +314,75 @@ describe('GardenStructureSceneCache', () => {
                 (surface) => surface.y === 0.4 && surface.roamable,
             ),
         );
+    });
+
+    it('uses the custom runtime kit resolver while prefiltering base heights', () => {
+        const record = savedStructure();
+        const defaultDefinition = resolveGardenStructureRuntimeKit(
+            record.kitKey,
+            record.kitVersion,
+        );
+        assert.ok(defaultDefinition);
+        const customKitKey = 'custom.structure-kit';
+        const customKitVersion = '2026.08';
+        const customMetadata = Object.freeze({
+            ...defaultDefinition.metadata,
+            kitKey: customKitKey,
+            kitVersion: customKitVersion,
+        });
+        const customRecord = {
+            ...record,
+            kitKey: customKitKey,
+            kitVersion: customKitVersion,
+        };
+        const resolveKit = (kitKey: string, kitVersion: string) =>
+            kitKey === customKitKey && kitVersion === customKitVersion
+                ? Object.freeze({
+                      ...defaultDefinition,
+                      metadata: customMetadata,
+                  })
+                : undefined;
+        const stacks = getGardenStructureWorldFootprintCells(
+            customRecord.document,
+            {
+                anchorX: customRecord.anchorX,
+                anchorY: customRecord.anchorY,
+                rotation: 0,
+            },
+        ).map((cell, index) => ({
+            blocks: [
+                {
+                    id: `custom-kit-ground-${index.toString()}`,
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+            position: new Vector3(cell.x, 0, cell.y),
+        }));
+
+        const withoutCustomKit = createGardenStructureSceneBaseHeightResolver({
+            blockData: getLocalSandboxBlockData(),
+            records: [customRecord],
+            stacks,
+        });
+        const resolveBaseHeight = createGardenStructureSceneBaseHeightResolver({
+            blockData: getLocalSandboxBlockData(),
+            records: [customRecord],
+            resolveKit,
+            stacks,
+        });
+        const snapshot = new GardenStructureSceneCache().resolve({
+            gardenId: 1,
+            records: [customRecord],
+            resolveBaseHeight,
+            resolveKit,
+        });
+
+        assert.equal(Number.isNaN(withoutCustomKit(customRecord.id)), true);
+        assert.equal(resolveBaseHeight(customRecord.id), 0.4);
+        assert.equal(snapshot.plan?.structures[0]?.baseHeight, 0.4);
+        assert.equal(snapshot.plan?.structures[0]?.kitKey, customKitKey);
+        assert.equal(snapshot.diagnostics.status, 'ready');
     });
 
     it('resolves an editor preview to the same ordinary-block support height', () => {

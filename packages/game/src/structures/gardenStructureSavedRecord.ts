@@ -133,6 +133,18 @@ function readRotation(value: unknown) {
           );
 }
 
+function runtimeKitIdentityMatches(
+    metadata: GardenStructureKitMetadata,
+    kitKey: string,
+    kitVersion: string,
+) {
+    try {
+        return metadata.kitKey === kitKey && metadata.kitVersion === kitVersion;
+    } catch {
+        return false;
+    }
+}
+
 function freezeGardenStructureDocument(
     document: GardenStructureDocumentV1,
 ): GardenStructureDocumentV1 {
@@ -332,9 +344,12 @@ export function decodeSavedGardenStructureRecord(
             ],
         };
     }
+    const kitIdentity = kitValidation.identity;
     if (
-        definition.metadata.kitKey !== kitKey ||
-        definition.metadata.kitVersion !== kitVersion
+        !kitIdentity ||
+        kitIdentity.kitKey !== kitKey ||
+        kitIdentity.kitVersion !== kitVersion ||
+        !runtimeKitIdentityMatches(definition.metadata, kitKey, kitVersion)
     ) {
         return {
             valid: false,

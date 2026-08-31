@@ -53,6 +53,25 @@ function kitWithInvalidPropEntries(count: number): GardenStructureKitMetadata {
     });
 }
 
+function reverseFrozenRecord<T>(record: Readonly<Record<string, T>>) {
+    return Object.freeze(Object.fromEntries(Object.entries(record).reverse()));
+}
+
+function observableKitReads() {
+    let readCount = 0;
+    return {
+        get readCount() {
+            return readCount;
+        },
+        kit: new Proxy(debugGardenStructureKitMetadata, {
+            get(target, property, receiver) {
+                readCount += 1;
+                return Reflect.get(target, property, receiver);
+            },
+        }),
+    };
+}
+
 function houseInput(kit: GardenStructureKitMetadata, structureId: string) {
     return {
         structureId,
@@ -117,6 +136,76 @@ describe('garden structure runtime kit metadata validation', () => {
         assert.deepEqual(plan.runtimeSafety.issues, []);
         assert.equal(allPlanNumbersAreFinite(plan), true);
         assert.ok(plan.batches.props.length > 0);
+    });
+
+    test('separates same-version kit definitions in the semantic plan cache', () => {
+        const firstKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const equivalentSource = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const equivalentKit = Object.freeze({
+            ...equivalentSource,
+            edgeParts: reverseFrozenRecord(equivalentSource.edgeParts),
+            materials: reverseFrozenRecord(equivalentSource.materials),
+            propParts: reverseFrozenRecord(equivalentSource.propParts),
+            roofStyles: reverseFrozenRecord(equivalentSource.roofStyles),
+        });
+        const changedKit = kitWithTableMetadata({ collisionWidth: 0.71 });
+        const firstValidation = validateGardenStructureKitMetadata(firstKit);
+        const equivalentValidation =
+            validateGardenStructureKitMetadata(equivalentKit);
+        const changedValidation =
+            validateGardenStructureKitMetadata(changedKit);
+        const cache = new GardenStructurePlanCache();
+
+        const first = cache.getOrCompile(
+            houseInput(firstKit, 'kit-fingerprint'),
+        );
+        const changed = cache.getOrCompile(
+            houseInput(changedKit, 'kit-fingerprint'),
+        );
+        const repeatedChanged = cache.getOrCompile(
+            houseInput(changedKit, 'kit-fingerprint'),
+        );
+
+        assert.equal(firstValidation.valid, true);
+        assert.equal(equivalentValidation.valid, true);
+        assert.equal(changedValidation.valid, true);
+        assert.equal(
+            firstValidation.kitDefinitionFingerprint,
+            equivalentValidation.kitDefinitionFingerprint,
+        );
+        assert.notEqual(
+            firstValidation.kitDefinitionFingerprint,
+            changedValidation.kitDefinitionFingerprint,
+        );
+        assert.notEqual(first.cacheKey, changed.cacheKey);
+        assert.notEqual(first, changed);
+        assert.equal(repeatedChanged, changed);
+        assert.deepEqual(
+            {
+                entries: cache.snapshot().entryCount,
+                hits: cache.snapshot().hitCount,
+                misses: cache.snapshot().missCount,
+                writes: cache.snapshot().writeCount,
+            },
+            { entries: 2, hits: 1, misses: 2, writes: 2 },
+        );
+    });
+
+    test('reuses prepared validation when a plan cache misses', () => {
+        const directKit = observableKitReads();
+        const cachedKit = observableKitReads();
+
+        const direct = compileGardenStructurePlan(
+            houseInput(directKit.kit, 'direct-preparation'),
+        );
+        const cached = new GardenStructurePlanCache().getOrCompile(
+            houseInput(cachedKit.kit, 'cached-preparation'),
+        );
+
+        assert.equal(direct.runtimeSafety.collisionMode, 'semantic');
+        assert.equal(cached.runtimeSafety.collisionMode, 'semantic');
+        assert.ok(directKit.readCount > 0);
+        assert.equal(cachedKit.readCount, directKit.readCount);
     });
 
     test('turns NaN prop collision metadata into a finite blocked-footprint plan', () => {
@@ -357,6 +446,40 @@ describe('garden structure runtime kit metadata validation', () => {
         assert.equal(validation.issues[0]?.code, 'kit-metadata-unreadable');
         assert.equal(plan.runtimeSafety.collisionMode, 'blocked-footprint');
         assert.equal(allPlanNumbersAreFinite(plan), true);
+        assert.equal(decoded.valid, false);
+        assert.equal(decoded.issues[0]?.code, 'kit-metadata-incomplete');
+    });
+
+    test('rejects safely when a runtime kit proxy throws on property reads', () => {
+        const throwingMetadata = new Proxy(debugGardenStructureKitMetadata, {
+            get() {
+                throw new Error('ordinary runtime kit reads are unavailable');
+            },
+        });
+        const definition = resolveGardenStructureRuntimeKit(
+            debugGardenStructureKitMetadata.kitKey,
+            debugGardenStructureKitMetadata.kitVersion,
+        );
+        assert.ok(definition);
+
+        const validation = validateGardenStructureKitMetadata(throwingMetadata);
+        const decoded = decodeSavedGardenStructureRecord(
+            savedHouse('throwing-get-kit'),
+            {
+                resolveKit: () =>
+                    Object.freeze({
+                        ...definition,
+                        metadata: throwingMetadata,
+                    }),
+            },
+        );
+
+        assert.equal(validation.valid, true);
+        assert.deepEqual(validation.identity, {
+            kitKey: debugGardenStructureKitMetadata.kitKey,
+            kitVersion: debugGardenStructureKitMetadata.kitVersion,
+        });
+        assert.ok(validation.kitDefinitionFingerprint);
         assert.equal(decoded.valid, false);
         assert.equal(decoded.issues[0]?.code, 'kit-metadata-incomplete');
     });

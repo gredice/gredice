@@ -925,11 +925,14 @@ function createWorldBounds({
 }
 
 function getGardenStructureKitCacheSegment(
-    kit: GardenStructureKitMetadata,
     validation: GardenStructureKitMetadataValidation,
 ) {
-    if (validation.valid) {
-        return `kit=${kit.kitKey}@${kit.kitVersion}`;
+    if (
+        validation.valid &&
+        validation.identity &&
+        validation.kitDefinitionFingerprint
+    ) {
+        return `kit=${validation.identity.kitKey}@${validation.identity.kitVersion}:${validation.kitDefinitionFingerprint}`;
     }
     const issueSignature = [
         ...new Set(
@@ -958,7 +961,6 @@ function createGardenStructurePlanCacheKey(
         revision,
         document,
         placement,
-        kit = debugGardenStructureKitMetadata,
         baseHeight = 0,
     }: GardenStructureCompileInput,
     validation: GardenStructureKitMetadataValidation,
@@ -968,38 +970,87 @@ function createGardenStructurePlanCacheKey(
         `structure=${structureId}`,
         `revision=${revision.toString()}`,
         `document=${documentFingerprint}`,
-        getGardenStructureKitCacheSegment(kit, validation),
+        getGardenStructureKitCacheSegment(validation),
         `placement=${placement.anchorX.toString()},${placement.anchorY.toString()},${placement.rotation.toString()}`,
         `baseHeight=${baseHeight.toString()}`,
     ].join('|');
 }
 
+export type PreparedGardenStructurePlanCompilation = Readonly<{
+    baseHeight: number;
+    cacheKey: string;
+    canonicalDocument: GardenStructureCompileInput['document'];
+    kit: GardenStructureKitMetadata;
+    kitValidation: GardenStructureKitMetadataValidation;
+    placement: GardenStructureCompileInput['placement'];
+    revision: number;
+    structureId: string;
+}>;
+
+export function prepareGardenStructurePlanCompilation({
+    structureId,
+    revision,
+    document,
+    placement,
+    kit = debugGardenStructureKitMetadata,
+    baseHeight = 0,
+}: GardenStructureCompileInput): PreparedGardenStructurePlanCompilation {
+    const decodedDocument = decodeGardenStructureDocument(document);
+    if (!decodedDocument.valid) {
+        const issueCodes = [
+            ...new Set(decodedDocument.issues.map((issue) => issue.code)),
+        ].join(', ');
+        throw new Error(
+            `Cannot compile an invalid garden structure document: ${issueCodes}.`,
+        );
+    }
+    const canonicalDocument = decodedDocument.document;
+    const kitValidation = validateGardenStructureDocumentKitMetadata(
+        canonicalDocument,
+        kit,
+    );
+    const cacheKey = createGardenStructurePlanCacheKey(
+        {
+            baseHeight,
+            document: canonicalDocument,
+            kit,
+            placement,
+            revision,
+            structureId,
+        },
+        kitValidation,
+    );
+    return Object.freeze({
+        baseHeight,
+        cacheKey,
+        canonicalDocument,
+        kit,
+        kitValidation,
+        placement,
+        revision,
+        structureId,
+    });
+}
+
 export function getGardenStructurePlanCacheKey(
     input: GardenStructureCompileInput,
 ) {
-    const kit = input.kit ?? debugGardenStructureKitMetadata;
-    const validation = validateGardenStructureDocumentKitMetadata(
-        input.document,
-        kit,
-    );
-    return createGardenStructurePlanCacheKey(input, validation);
+    return prepareGardenStructurePlanCompilation(input).cacheKey;
 }
 
 function createGardenStructureFootprintFallbackPlan({
     structureId,
     revision,
-    canonicalDocument,
+    cacheKey,
     placement,
-    kit,
     baseHeight,
     footprintEntries,
     validation,
 }: Readonly<{
     structureId: string;
     revision: number;
-    canonicalDocument: GardenStructureCompileInput['document'];
+    cacheKey: string;
     placement: GardenStructureCompileInput['placement'];
-    kit: GardenStructureKitMetadata;
     baseHeight: number;
     footprintEntries: readonly FootprintEntry[];
     validation: GardenStructureKitMetadataValidation;
@@ -1039,17 +1090,7 @@ function createGardenStructureFootprintFallbackPlan({
     );
     const withoutCounts = Object.freeze({
         id: `structure-plan:${structureId}:${revision.toString()}`,
-        cacheKey: createGardenStructurePlanCacheKey(
-            {
-                structureId,
-                revision,
-                document: canonicalDocument,
-                placement,
-                kit,
-                baseHeight,
-            },
-            validation,
-        ),
+        cacheKey,
         structureId,
         revision,
         kitKey: 'invalid-kit',
@@ -1088,28 +1129,16 @@ function createGardenStructureFootprintFallbackPlan({
     });
 }
 
-export function compileGardenStructurePlan({
+export function compilePreparedGardenStructurePlan({
     structureId,
     revision,
-    document,
+    canonicalDocument,
     placement,
-    kit = debugGardenStructureKitMetadata,
-    baseHeight = 0,
-}: GardenStructureCompileInput): GardenStructureSemanticPlan {
-    const decodedDocument = decodeGardenStructureDocument(document);
-    if (!decodedDocument.valid) {
-        const issueCodes = [
-            ...new Set(decodedDocument.issues.map((issue) => issue.code)),
-        ].join(', ');
-        throw new Error(
-            `Cannot compile an invalid garden structure document: ${issueCodes}.`,
-        );
-    }
-    const canonicalDocument = decodedDocument.document;
-    const kitValidation = validateGardenStructureDocumentKitMetadata(
-        canonicalDocument,
-        kit,
-    );
+    kit,
+    baseHeight,
+    kitValidation,
+    cacheKey,
+}: PreparedGardenStructurePlanCompilation): GardenStructureSemanticPlan {
     const rotated = rotateGardenStructureDocument(
         canonicalDocument,
         placement.rotation,
@@ -1121,13 +1150,16 @@ export function compileGardenStructurePlan({
             spaceKind: cell.spaceKind,
         }))
         .sort(compareCells);
-    if (!kitValidation.valid) {
+    if (
+        !kitValidation.valid ||
+        !kitValidation.identity ||
+        !kitValidation.kitDefinitionFingerprint
+    ) {
         return createGardenStructureFootprintFallbackPlan({
             structureId,
             revision,
-            canonicalDocument,
+            cacheKey,
             placement,
-            kit,
             baseHeight,
             footprintEntries,
             validation: kitValidation,
@@ -1400,24 +1432,13 @@ export function compileGardenStructurePlan({
             .flatMap((batch) => batch.instanceIds)
             .sort(compareStrings),
     );
-    const cacheKey = createGardenStructurePlanCacheKey(
-        {
-            structureId,
-            revision,
-            document: canonicalDocument,
-            placement,
-            kit,
-            baseHeight,
-        },
-        kitValidation,
-    );
     const withoutCounts = Object.freeze({
         id: `structure-plan:${structureId}:${revision.toString()}`,
         cacheKey,
         structureId,
         revision,
-        kitKey: kit.kitKey,
-        kitVersion: kit.kitVersion,
+        kitKey: kitValidation.identity.kitKey,
+        kitVersion: kitValidation.identity.kitVersion,
         placement: Object.freeze({ ...placement }),
         baseHeight,
         worldBounds: createWorldBounds({
@@ -1453,6 +1474,14 @@ export function compileGardenStructurePlan({
         ...withoutCounts,
         counts: getGardenStructureCompilerCounts(withoutCounts),
     });
+}
+
+export function compileGardenStructurePlan(
+    input: GardenStructureCompileInput,
+): GardenStructureSemanticPlan {
+    return compilePreparedGardenStructurePlan(
+        prepareGardenStructurePlanCompilation(input),
+    );
 }
 
 export function containsGardenStructureWorldCell(

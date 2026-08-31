@@ -12,6 +12,10 @@ const maximumCellSpan = 1;
 const maximumCellInset = 0.5;
 const maximumVerticalExtent = gardenStructureMaxCoordinateMagnitude;
 const maximumDiagnosticPathLength = 160;
+const kitDefinitionFingerprintVersion = 1;
+const fnv1a64Offset = 0xcbf2_9ce4_8422_2325n;
+const fnv1a64Prime = 0x0000_0100_0000_01b3n;
+const uint64Mask = 0xffff_ffff_ffff_ffffn;
 
 export type GardenStructureKitMetadataIssueCode =
     | 'kit-document-reference-missing'
@@ -40,10 +44,17 @@ export type GardenStructureKitMetadataIssue = Readonly<{
     path: string;
 }>;
 
+export type GardenStructureKitMetadataIdentity = Readonly<{
+    kitKey: string;
+    kitVersion: string;
+}>;
+
 export type GardenStructureKitMetadataValidation = Readonly<{
     hasFatalResolutionIssue: boolean;
+    identity?: GardenStructureKitMetadataIdentity;
     issueSampleTruncated: boolean;
     issues: readonly GardenStructureKitMetadataIssue[];
+    kitDefinitionFingerprint?: string;
     valid: boolean;
 }>;
 
@@ -58,7 +69,10 @@ type IssueCollector = Readonly<{
         path: string,
         message: string,
     ) => void;
-    result: () => GardenStructureKitMetadataValidation;
+    result: (
+        identity?: GardenStructureKitMetadataIdentity,
+        createKitDefinitionFingerprint?: () => string,
+    ) => GardenStructureKitMetadataValidation;
 }>;
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
@@ -167,14 +181,44 @@ function createIssueCollector(): IssueCollector {
                 );
             }
         },
-        result: () =>
-            Object.freeze({
+        result: (identity, createKitDefinitionFingerprint) => {
+            const valid = issueCount === 0;
+            return Object.freeze({
                 hasFatalResolutionIssue,
+                ...(identity ? { identity } : {}),
                 issueSampleTruncated: issueCount > issues.length,
                 issues: Object.freeze(issues),
-                valid: issueCount === 0,
-            }),
+                ...(valid && createKitDefinitionFingerprint
+                    ? {
+                          kitDefinitionFingerprint:
+                              createKitDefinitionFingerprint(),
+                      }
+                    : {}),
+                valid,
+            });
+        },
     };
+}
+
+function compareStrings(left: string, right: string) {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function fnv1a64(value: string) {
+    let hash = fnv1a64Offset;
+    for (let index = 0; index < value.length; index++) {
+        hash ^= BigInt(value.charCodeAt(index));
+        hash = (hash * fnv1a64Prime) & uint64Mask;
+    }
+    return hash.toString(16).padStart(16, '0');
+}
+
+function createGardenStructureKitDefinitionFingerprint(value: unknown) {
+    const canonical = JSON.stringify(value);
+    if (typeof canonical !== 'string') {
+        throw new TypeError('Kit metadata could not be fingerprinted.');
+    }
+    return `v${kitDefinitionFingerprintVersion.toString()}-${canonical.length.toString(36)}-${fnv1a64(canonical)}`;
 }
 
 function boundedEntries(
@@ -306,6 +350,10 @@ function validateKitMetadataUncached(
             'Runtime kit identity values must be bounded identifiers.',
         );
     }
+    const identity =
+        isBoundedIdentifier(kitKey) && isBoundedIdentifier(kitVersion)
+            ? Object.freeze({ kitKey, kitVersion })
+            : undefined;
 
     const floorThickness = readOwnDataProperty(
         metadata,
@@ -362,6 +410,9 @@ function validateKitMetadataUncached(
         'materials',
         collector,
     );
+    const materialFingerprintEntries: Array<
+        Readonly<{ id: string; transparency: unknown }>
+    > = [];
     const materialIds = new Set<string>();
     for (const [materialId, material] of materialEntries) {
         const path = metadataEntryPath('materials', materialId);
@@ -374,6 +425,9 @@ function validateKitMetadataUncached(
             'transparency',
             `${path}.transparency`,
             collector,
+        );
+        materialFingerprintEntries.push(
+            Object.freeze({ id: materialId, transparency }),
         );
         if (transparency !== 'opaque' && transparency !== 'transparent') {
             collector.add(
@@ -391,6 +445,18 @@ function validateKitMetadataUncached(
         collector,
     );
     const edgeEntries = validateCollection(edgeParts, 'edgeParts', collector);
+    const edgeFingerprintEntries: Array<
+        Readonly<{
+            collisionHeight: unknown;
+            collisionThickness: unknown;
+            edgeKind: unknown;
+            id: string;
+            materialId: unknown;
+            passage: unknown;
+            portalClearanceHeight: unknown;
+            portalClearanceWidth: unknown;
+        }>
+    > = [];
     let maximumSolidEdgeThickness = 0;
     for (const [partId, part] of edgeEntries) {
         const path = metadataEntryPath('edgeParts', partId);
@@ -496,6 +562,18 @@ function validateKitMetadataUncached(
             `${path}.portalClearanceWidth`,
             collector,
         );
+        edgeFingerprintEntries.push(
+            Object.freeze({
+                collisionHeight,
+                collisionThickness,
+                edgeKind,
+                id: partId,
+                materialId,
+                passage,
+                portalClearanceHeight: portalClearanceHeight ?? null,
+                portalClearanceWidth: portalClearanceWidth ?? null,
+            }),
+        );
         if (passage === 'open-portal') {
             if (
                 edgeKind !== 'door' ||
@@ -535,6 +613,15 @@ function validateKitMetadataUncached(
         collector,
     );
     const propEntries = validateCollection(propParts, 'propParts', collector);
+    const propFingerprintEntries: Array<
+        Readonly<{
+            collisionDepth: unknown;
+            collisionHeight: unknown;
+            collisionWidth: unknown;
+            id: string;
+            materialId: unknown;
+        }>
+    > = [];
     for (const [partId, part] of propEntries) {
         const path = metadataEntryPath('propParts', partId);
         if (!validateEntryIdentity(partId, part, path, collector)) {
@@ -597,6 +684,15 @@ function validateKitMetadataUncached(
             `${path}.materialId`,
             collector,
         );
+        propFingerprintEntries.push(
+            Object.freeze({
+                collisionDepth,
+                collisionHeight,
+                collisionWidth,
+                id: partId,
+                materialId,
+            }),
+        );
         if (!isBoundedIdentifier(materialId) || !materialIds.has(materialId)) {
             collector.add(
                 'kit-material-reference-missing',
@@ -613,6 +709,13 @@ function validateKitMetadataUncached(
         collector,
     );
     const roofEntries = validateCollection(roofStyles, 'roofStyles', collector);
+    const roofFingerprintEntries: Array<
+        Readonly<{
+            ceilingHeight: unknown;
+            id: string;
+            maximumHeight: unknown;
+        }>
+    > = [];
     for (const [styleId, style] of roofEntries) {
         const path = metadataEntryPath('roofStyles', styleId);
         if (!validateEntryIdentity(styleId, style, path, collector)) {
@@ -629,6 +732,9 @@ function validateKitMetadataUncached(
             'maximumHeight',
             `${path}.maximumHeight`,
             collector,
+        );
+        roofFingerprintEntries.push(
+            Object.freeze({ ceilingHeight, id: styleId, maximumHeight }),
         );
         if (!isFiniteNumber(ceilingHeight) || !isFiniteNumber(maximumHeight)) {
             collector.add(
@@ -649,7 +755,27 @@ function validateKitMetadataUncached(
         }
     }
 
-    return collector.result();
+    return collector.result(identity, () =>
+        createGardenStructureKitDefinitionFingerprint({
+            ceilingThickness,
+            edgeParts: edgeFingerprintEntries.sort((left, right) =>
+                compareStrings(left.id, right.id),
+            ),
+            floorThickness,
+            kitKey,
+            kitVersion,
+            materials: materialFingerprintEntries.sort((left, right) =>
+                compareStrings(left.id, right.id),
+            ),
+            propParts: propFingerprintEntries.sort((left, right) =>
+                compareStrings(left.id, right.id),
+            ),
+            roofStyles: roofFingerprintEntries.sort((left, right) =>
+                compareStrings(left.id, right.id),
+            ),
+            visualHorizontalPadding,
+        }),
+    );
 }
 
 export class GardenStructureKitMetadataValidationCache {
@@ -774,7 +900,12 @@ export function validateGardenStructureDocumentKitMetadata(
             'Runtime kit document references could not be read safely.',
         );
     }
-    return collector.result();
+    const kitDefinitionFingerprint =
+        metadataValidation.kitDefinitionFingerprint;
+    return collector.result(
+        metadataValidation.identity,
+        kitDefinitionFingerprint ? () => kitDefinitionFingerprint : undefined,
+    );
 }
 
 export function hasFatalGardenStructureKitResolutionIssue(
