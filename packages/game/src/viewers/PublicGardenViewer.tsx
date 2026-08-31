@@ -757,6 +757,7 @@ function PublicGardenScene({
         >
             {blockDataLoaded ? (
                 <Scene
+                    baseFramesPerSecond={capture ? 0 : undefined}
                     fixedTimeSeconds={
                         capture
                             ? publicGardenCaptureSceneTimeSeconds

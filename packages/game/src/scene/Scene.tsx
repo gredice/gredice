@@ -52,6 +52,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighInteractionActive?: boolean;
         adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
         adaptiveHighProfileControlEnabled?: boolean;
+        baseFramesPerSecond?: number;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
         onAdaptiveHighProfileChange?: (
@@ -213,6 +214,7 @@ export function Scene({
     adaptiveHighInteractionActive = false,
     adaptiveHighProfile = adaptiveHighQualityLevels.L0,
     adaptiveHighProfileControlEnabled = false,
+    baseFramesPerSecond,
     children,
     debugStats,
     fixedTimeSeconds,
@@ -260,9 +262,11 @@ export function Scene({
     const effectiveDprCap = adaptiveHighActive
         ? adaptiveHighProfile.dpr
         : qualityProfile.dpr;
-    const ambientFramesPerSecond = adaptiveHighActive
-        ? adaptiveHighProfile.ambientFramesPerSecond
-        : sceneFrameRates.ambient;
+    const ambientFramesPerSecond =
+        baseFramesPerSecond ??
+        (adaptiveHighActive
+            ? adaptiveHighProfile.ambientFramesPerSecond
+            : sceneFrameRates.ambient);
     const runtimeFrameLoop = useMemo(
         () =>
             profileStats ? createRuntimeFrameLoopProfileTelemetry() : undefined,
