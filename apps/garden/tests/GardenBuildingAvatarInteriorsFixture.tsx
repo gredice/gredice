@@ -14,6 +14,7 @@ import {
     currentGardenKeys,
 } from '../../../packages/game/src/hooks/useCurrentGarden';
 import { createGardenPosition } from '../../../packages/game/src/types/Stack';
+import { gardenBuildingAvatarDoorwayFixture } from './gardenBuildingAvatarInteriorsFixtureContract';
 
 const structureSeed = createGardenStructureTemplateSeed('house');
 const ownedStructure = {
@@ -71,7 +72,11 @@ function createFixtureQueryClient() {
     return queryClient;
 }
 
-export function GardenBuildingAvatarInteriorsFixture() {
+export function GardenBuildingAvatarInteriorsFixture({
+    initialSpawnZ = gardenBuildingAvatarDoorwayFixture.roomSpawnZ,
+}: {
+    initialSpawnZ?: number;
+}) {
     const [queryClient] = useState(createFixtureQueryClient);
 
     return (
@@ -88,7 +93,10 @@ export function GardenBuildingAvatarInteriorsFixture() {
                         deferDetails={false}
                         flags={{ enableGardenAvatarFlag: true }}
                         gardenAvatarActivationRequest={1}
-                        gardenAvatarInitialSpawnPoint={{ x: 1, z: 2 }}
+                        gardenAvatarInitialSpawnPoint={{
+                            x: 1,
+                            z: initialSpawnZ,
+                        }}
                         gardenStructureDebugFixture
                         hideHud
                         mockGarden

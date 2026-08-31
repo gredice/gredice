@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { getLocalSandboxBlockData } from '../../../packages/game/src/localSandboxBlockData';
 import { GardenBuildingAvatarInteriorsFixture } from './GardenBuildingAvatarInteriorsFixture';
 import { GardenStructureCollectionVisibilityFixture } from './GardenStructureCollectionVisibilityFixture';
+import { gardenBuildingAvatarDoorwayFixture } from './gardenBuildingAvatarInteriorsFixtureContract';
 import { PublicGardenSwitchFixture } from './PublicGardenSwitchFixture';
 
 async function installBlockDataRoute(page: Page) {
@@ -28,7 +29,7 @@ async function rotateLockedAvatarCamera(canvas: Locator, movementX: number) {
     }, movementX);
 }
 
-async function verifyEntryExitWithPersistentCanvas({
+async function prepareStructureAvatarScene({
     activateWithPrompt = true,
     canvasKey,
     expectedStructureId,
@@ -101,20 +102,19 @@ async function verifyEntryExitWithPersistentCanvas({
             .toBeLessThan(0.001);
     }
 
+    return { canvas, structureScene };
+}
+
+async function moveAvatarUntil(page: Page, assertion: () => Promise<void>) {
     await page.keyboard.down('s');
     try {
-        await expect(structureScene).toHaveAttribute(
-            'data-garden-structure-interior-id',
-            'outside',
-            { timeout: 8_000 },
-        );
+        await assertion();
     } finally {
         await page.keyboard.up('s');
     }
-    await expect(structureScene).toHaveAttribute(
-        'data-garden-structure-hidden-instance-count',
-        '0',
-    );
+}
+
+async function expectPersistentCanvas(canvas: Locator, canvasKey: string) {
     await expect(canvas).toHaveCount(1);
     await expect
         .poll(() =>
@@ -126,7 +126,41 @@ async function verifyEntryExitWithPersistentCanvas({
         .toBe(true);
 }
 
-test('owned avatar enters and exits one semantic structure without replacing the canvas', async ({
+async function verifyFootprintExitWithPersistentCanvas({
+    activateWithPrompt = true,
+    canvasKey,
+    expectedStructureId,
+    fixture,
+    page,
+}: {
+    activateWithPrompt?: boolean;
+    canvasKey: string;
+    expectedStructureId: string;
+    fixture: Locator;
+    page: Page;
+}) {
+    const { canvas, structureScene } = await prepareStructureAvatarScene({
+        activateWithPrompt,
+        canvasKey,
+        expectedStructureId,
+        fixture,
+        page,
+    });
+    await moveAvatarUntil(page, () =>
+        expect(structureScene).toHaveAttribute(
+            'data-garden-structure-interior-id',
+            'outside',
+            { timeout: 8_000 },
+        ),
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-hidden-instance-count',
+        '0',
+    );
+    await expectPersistentCanvas(canvas, canvasKey);
+}
+
+test('owned avatar crosses the open room doorway into the covered porch without replacing the canvas', async ({
     mount,
     page,
 }) => {
@@ -142,20 +176,64 @@ test('owned avatar enters and exits one semantic structure without replacing the
     );
     await expect(structureScene).toHaveAttribute(
         'data-garden-avatar-debug-z',
-        '2',
+        gardenBuildingAvatarDoorwayFixture.roomSpawnZ.toString(),
     );
 
-    await verifyEntryExitWithPersistentCanvas({
+    const canvasKey = '__grediceOwnedDoorwayCanvas';
+    const { canvas } = await prepareStructureAvatarScene({
         activateWithPrompt: false,
-        canvasKey: '__grediceOwnedInteriorCanvas',
+        canvasKey,
         expectedStructureId: 'owned-interior-house',
         fixture,
         page,
         verifyCameraOrbit: true,
     });
+    await moveAvatarUntil(page, () =>
+        expect
+            .poll(
+                async () =>
+                    Number(
+                        await structureScene.getAttribute(
+                            'data-garden-avatar-debug-z',
+                        ),
+                    ),
+                { timeout: 8_000 },
+            )
+            .toBeGreaterThan(gardenBuildingAvatarDoorwayFixture.portalZ),
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-interior-id',
+        'owned-interior-house',
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-hidden-instance-count',
+        /[1-9]\d*/u,
+    );
+    await expectPersistentCanvas(canvas, canvasKey);
 });
 
-test('public avatar uses the same entry and exit cutaway contract', async ({
+test('owned avatar exits the covered porch footprint without replacing the canvas', async ({
+    mount,
+    page,
+}) => {
+    test.setTimeout(45_000);
+    await installBlockDataRoute(page);
+    const fixture = await mount(
+        <GardenBuildingAvatarInteriorsFixture
+            initialSpawnZ={gardenBuildingAvatarDoorwayFixture.porchSpawnZ}
+        />,
+    );
+
+    await verifyFootprintExitWithPersistentCanvas({
+        activateWithPrompt: false,
+        canvasKey: '__grediceOwnedFootprintExitCanvas',
+        expectedStructureId: 'owned-interior-house',
+        fixture,
+        page,
+    });
+});
+
+test('public avatar exits the covered porch with the same cutaway contract', async ({
     mount,
     page,
 }) => {
@@ -163,8 +241,8 @@ test('public avatar uses the same entry and exit cutaway contract', async ({
     await installBlockDataRoute(page);
     const fixture = await mount(<PublicGardenSwitchFixture />);
 
-    await verifyEntryExitWithPersistentCanvas({
-        canvasKey: '__gredicePublicInteriorCanvas',
+    await verifyFootprintExitWithPersistentCanvas({
+        canvasKey: '__gredicePublicFootprintExitCanvas',
         expectedStructureId: 'structure-1',
         fixture,
         page,

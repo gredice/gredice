@@ -132,7 +132,7 @@ export function PublicGardenSwitchFixture() {
                     className="size-full"
                     deferDetails={false}
                     garden={selectedGarden}
-                    localVisitorSpawnPoint={{ x: 1, z: 2 }}
+                    localVisitorSpawnPoint={{ x: 1, z: 3.25 }}
                     noControls
                     noSound
                     noWeather
