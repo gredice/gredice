@@ -52,12 +52,46 @@ test('rejects a plan from a different immutable kit before visual semantics can 
         revision: 1,
         document: createGardenStructureTemplateSeed('house').document,
         placement: { anchorX: 0, anchorY: 0, rotation: 0 },
-        kit: {
+        kit: Object.freeze({
             ...debugGardenStructureKitMetadata,
             kitKey: 'other-kit',
-        },
+        }),
     });
 
+    assert.throws(
+        () =>
+            getGardenStructureVerticalSliceBatches({
+                plan,
+                roofCutaway: false,
+            }),
+        /matching immutable debug kit/u,
+    );
+});
+
+test('rejects same-identity metadata drift before fixture geometry can diverge', () => {
+    const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+    assert.ok(table);
+    const driftedKit = Object.freeze({
+        ...debugGardenStructureKitMetadata,
+        propParts: Object.freeze({
+            ...debugGardenStructureKitMetadata.propParts,
+            'prop.table': Object.freeze({
+                ...table,
+                collisionWidth: 0.7,
+            }),
+        }),
+    });
+    const plan = compileGardenStructurePlan({
+        structureId: 'same-identity-drift',
+        revision: 1,
+        document: createGardenStructureTemplateSeed('house').document,
+        placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+        kit: driftedKit,
+    });
+
+    assert.equal(plan.runtimeSafety.collisionMode, 'semantic');
+    assert.equal(plan.kitKey, debugGardenStructureKitMetadata.kitKey);
+    assert.equal(plan.kitVersion, debugGardenStructureKitMetadata.kitVersion);
     assert.throws(
         () =>
             getGardenStructureVerticalSliceBatches({

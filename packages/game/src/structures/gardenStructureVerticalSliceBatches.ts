@@ -1,5 +1,11 @@
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
+import { validateGardenStructureKitMetadata } from './gardenStructureKitMetadataValidation';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
+
+const debugGardenStructureKitDefinitionFingerprint =
+    validateGardenStructureKitMetadata(
+        debugGardenStructureKitMetadata,
+    ).kitDefinitionFingerprint;
 
 export function getGardenStructureVerticalSliceBatches({
     plan,
@@ -10,7 +16,10 @@ export function getGardenStructureVerticalSliceBatches({
 }) {
     if (
         plan.kitKey !== debugGardenStructureKitMetadata.kitKey ||
-        plan.kitVersion !== debugGardenStructureKitMetadata.kitVersion
+        plan.kitVersion !== debugGardenStructureKitMetadata.kitVersion ||
+        !debugGardenStructureKitDefinitionFingerprint ||
+        plan.kitDefinitionFingerprint !==
+            debugGardenStructureKitDefinitionFingerprint
     ) {
         throw new Error(
             'The fixture renderer only supports its matching immutable debug kit.',
