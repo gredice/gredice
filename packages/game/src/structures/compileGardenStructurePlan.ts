@@ -934,13 +934,22 @@ function getGardenStructureKitCacheSegment(
     const issueSignature = [
         ...new Set(
             validation.issues.map(
-                ({ code, path }) => `${code}:${encodeURIComponent(path)}`,
+                ({ code, path }) =>
+                    `${code}:${encodeGardenStructureFallbackIssuePath(path)}`,
             ),
         ),
     ]
         .sort(compareStrings)
         .join(',');
     return `kit=fallback:${issueSignature || 'invalid'}:${validation.issueSampleTruncated ? 'truncated' : 'complete'}`;
+}
+
+function encodeGardenStructureFallbackIssuePath(path: string) {
+    try {
+        return encodeURIComponent(path);
+    } catch {
+        return encodeURIComponent(path.replace(/[\uD800-\uDFFF]/gu, '\uFFFD'));
+    }
 }
 
 function createGardenStructurePlanCacheKey(

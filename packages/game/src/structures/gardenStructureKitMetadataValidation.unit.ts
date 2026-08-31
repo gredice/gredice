@@ -329,6 +329,69 @@ describe('garden structure runtime kit metadata validation', () => {
         assert.equal(allPlanNumbersAreFinite(hiddenEntryPlan), true);
     });
 
+    test('fails closed for revoked runtime kit metadata proxies', () => {
+        const revoked = Proxy.revocable(debugGardenStructureKitMetadata, {});
+        revoked.revoke();
+        const validation = validateGardenStructureKitMetadata(revoked.proxy);
+        const plan = compileGardenStructurePlan(
+            houseInput(revoked.proxy, 'revoked-kit'),
+        );
+        const definition = resolveGardenStructureRuntimeKit(
+            debugGardenStructureKitMetadata.kitKey,
+            debugGardenStructureKitMetadata.kitVersion,
+        );
+        assert.ok(definition);
+        const decoded = decodeSavedGardenStructureRecord(
+            savedHouse('revoked-kit'),
+            {
+                resolveKit: () =>
+                    Object.freeze({ ...definition, metadata: revoked.proxy }),
+            },
+        );
+
+        assert.equal(validation.valid, false);
+        assert.equal(
+            hasFatalGardenStructureKitResolutionIssue(validation),
+            true,
+        );
+        assert.equal(validation.issues[0]?.code, 'kit-metadata-unreadable');
+        assert.equal(plan.runtimeSafety.collisionMode, 'blocked-footprint');
+        assert.equal(allPlanNumbersAreFinite(plan), true);
+        assert.equal(decoded.valid, false);
+        assert.equal(decoded.issues[0]?.code, 'kit-metadata-incomplete');
+    });
+
+    test('encodes malformed Unicode diagnostic paths without throwing', () => {
+        const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+        assert.ok(table);
+        const loneHighSurrogate = '\uD800';
+        const kit = Object.freeze({
+            ...debugGardenStructureKitMetadata,
+            propParts: Object.freeze({
+                ...debugGardenStructureKitMetadata.propParts,
+                [loneHighSurrogate]: Object.freeze({
+                    ...table,
+                    collisionWidth: 2,
+                }),
+            }),
+        });
+        const input = houseInput(kit, 'malformed-unicode-path');
+        const validation = validateGardenStructureKitMetadata(kit);
+        const plan = compileGardenStructurePlan(input);
+
+        assert.ok(
+            validation.issues.some(
+                ({ code, path }) =>
+                    code === 'kit-prop-out-of-cell' &&
+                    path === `propParts.${loneHighSurrogate}.collision`,
+            ),
+        );
+        assert.equal(plan.runtimeSafety.collisionMode, 'blocked-footprint');
+        assert.equal(allPlanNumbersAreFinite(plan), true);
+        assert.match(plan.cacheKey, /%EF%BF%BD/u);
+        assert.equal(getGardenStructurePlanCacheKey(input), plan.cacheKey);
+    });
+
     test('bounds invalid-kit diagnostics before scene aggregation', () => {
         const kit = kitWithInvalidPropEntries(20);
         const definition = resolveGardenStructureRuntimeKit(

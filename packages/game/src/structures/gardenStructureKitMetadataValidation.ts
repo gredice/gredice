@@ -62,7 +62,14 @@ type IssueCollector = Readonly<{
 }>;
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    try {
+        return !Array.isArray(value);
+    } catch {
+        return false;
+    }
 }
 
 function isBoundedIdentifier(value: unknown): value is string {
