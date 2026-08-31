@@ -13,7 +13,9 @@ import {
 
 const minimumWarmupMs = 1500;
 const minimumStableMs = 500;
-const minimumStableFrames = 12;
+const minimumStableFrames = 2;
+const minimumFallbackFrames = 2;
+const fallbackStabilityWaitMs = 5000;
 const snapshotTimeoutMs = 45_000;
 const encodeTimeoutMs = 30_000;
 const maximumCaptureWaitMs = 30_000;
@@ -111,6 +113,94 @@ function frameSignature({
     triangles: number;
 }) {
     return `${calls}|${triangles}|${points}|${geometries}|${textures}`;
+}
+
+export type CaptureStabilityState = {
+    eligibleSince: number | null;
+    firstNonBlankAt: number | null;
+    signature: string | null;
+    stableFrames: number;
+    stableSince: number | null;
+    validFrames: number;
+};
+
+export function createCaptureStabilityState(): CaptureStabilityState {
+    return {
+        eligibleSince: null,
+        firstNonBlankAt: null,
+        signature: null,
+        stableFrames: 0,
+        stableSince: null,
+        validFrames: 0,
+    };
+}
+
+export function resetCaptureStabilityState(state: CaptureStabilityState) {
+    state.eligibleSince = null;
+    state.firstNonBlankAt = null;
+    state.signature = null;
+    state.stableFrames = 0;
+    state.stableSince = null;
+    state.validFrames = 0;
+}
+
+export function observeCaptureStability(
+    state: CaptureStabilityState,
+    {
+        now,
+        signature,
+    }: {
+        now: number;
+        signature: string;
+    },
+) {
+    state.eligibleSince ??= now;
+    state.firstNonBlankAt ??= now;
+    state.validFrames += 1;
+
+    if (state.signature !== signature) {
+        state.signature = signature;
+        state.stableFrames = 1;
+        state.stableSince = now;
+    } else {
+        state.stableFrames += 1;
+        state.stableSince ??= now;
+    }
+
+    const warmupReady = now - state.eligibleSince >= minimumWarmupMs;
+    const normalStabilityReady =
+        state.stableFrames >= minimumStableFrames &&
+        state.stableSince !== null &&
+        now - state.stableSince >= minimumStableMs;
+    const fallbackStabilityReady =
+        state.validFrames >= minimumFallbackFrames &&
+        now - state.firstNonBlankAt >= fallbackStabilityWaitMs;
+
+    return warmupReady && (normalStabilityReady || fallbackStabilityReady);
+}
+
+export function getNextCaptureStabilityFrameDelay(
+    state: CaptureStabilityState,
+    now: number,
+) {
+    if (
+        state.eligibleSince === null ||
+        state.firstNonBlankAt === null ||
+        state.stableSince === null
+    ) {
+        return 0;
+    }
+
+    const normalReadyAt = Math.max(
+        state.eligibleSince + minimumWarmupMs,
+        state.stableSince + minimumStableMs,
+    );
+    const fallbackReadyAt = Math.max(
+        state.eligibleSince + minimumWarmupMs,
+        state.firstNonBlankAt + fallbackStabilityWaitMs,
+    );
+
+    return Math.max(0, Math.min(normalReadyAt, fallbackReadyAt) - now);
 }
 
 function validateSourceCanvas(
@@ -284,9 +374,9 @@ async function encodeCapture(
             );
             const context = encodingCanvas.getContext('2d');
             if (context) {
-                // ImageBitmap moves the expensive WebGL readback off the main
-                // thread. The 2D copy keeps the exact rendered frame, including
-                // shader output, without reimplementing the renderer.
+                // The bitmap already contains the WebGL snapshot. The 2D copy
+                // preserves that exact shader output without re-rendering the
+                // scene.
                 context.drawImage(snapshot, 0, 0);
                 try {
                     const blob = await withTimeout(
@@ -326,13 +416,12 @@ export function PublicGardenCaptureProbe({
     queriesIdle,
 }: PublicGardenCaptureProbeProps) {
     const attemptedRef = useRef(false);
-    const eligibleSinceRef = useRef<number | null>(null);
     const firstFrameRef = useRef<number | null>(null);
+    const invalidationTimerRef = useRef<number | null>(null);
     const mountedRef = useRef(true);
+    const nextStabilityFrameAtRef = useRef<number | null>(null);
     const secondFrameRef = useRef<number | null>(null);
-    const stableFramesRef = useRef(0);
-    const stableSinceRef = useRef<number | null>(null);
-    const signatureRef = useRef<string | null>(null);
+    const stabilityRef = useRef(createCaptureStabilityState());
     const fitBoundsSignatureRef = useRef<string | null>(null);
     const fitBoxRef = useRef(new Box3());
     const fitPointRef = useRef(new Vector3());
@@ -349,7 +438,15 @@ export function PublicGardenCaptureProbe({
     useEffect(() => {
         if (enabled && queriesIdle) {
             invalidate();
+            return;
         }
+
+        if (invalidationTimerRef.current !== null) {
+            window.clearTimeout(invalidationTimerRef.current);
+            invalidationTimerRef.current = null;
+        }
+        nextStabilityFrameAtRef.current = null;
+        resetCaptureStabilityState(stabilityRef.current);
     }, [enabled, invalidate, queriesIdle]);
 
     useEffect(() => {
@@ -371,6 +468,9 @@ export function PublicGardenCaptureProbe({
             if (secondFrameRef.current !== null) {
                 window.cancelAnimationFrame(secondFrameRef.current);
             }
+            if (invalidationTimerRef.current !== null) {
+                window.clearTimeout(invalidationTimerRef.current);
+            }
         };
     }, []);
 
@@ -381,34 +481,41 @@ export function PublicGardenCaptureProbe({
 
         const assetsLoading = useProgress.getState().active;
         const now = performance.now();
+        const resetStability = () => {
+            if (invalidationTimerRef.current !== null) {
+                window.clearTimeout(invalidationTimerRef.current);
+                invalidationTimerRef.current = null;
+            }
+            nextStabilityFrameAtRef.current = null;
+            resetCaptureStabilityState(stabilityRef.current);
+        };
+        const keepHardGateFrameTrainAlive = () => {
+            resetStability();
+            invalidate();
+        };
         if (!enabled || !queriesIdle) {
-            eligibleSinceRef.current = null;
-            stableFramesRef.current = 0;
-            stableSinceRef.current = null;
-            signatureRef.current = null;
+            resetStability();
             return;
         }
 
-        // Public capture scenes render on demand. Keep a bounded frame train
-        // alive after late query or production-asset readiness so the warmup
-        // and stability gates do not depend on unrelated scene activity.
-        invalidate();
+        // Public capture scenes render on demand. Keep immediate frames alive
+        // while hard gates settle, then schedule valid frames at the next
+        // readiness deadline so snapshot readback has less queued GPU work.
         if (assetsLoading) {
-            eligibleSinceRef.current = null;
-            stableFramesRef.current = 0;
-            stableSinceRef.current = null;
-            signatureRef.current = null;
+            keepHardGateFrameTrainAlive();
             return;
         }
 
         if (fitSceneObjectName && camera instanceof OrthographicCamera) {
             const target = scene.getObjectByName(fitSceneObjectName);
             if (!target) {
+                keepHardGateFrameTrainAlive();
                 return;
             }
 
             const box = fitBoxRef.current.setFromObject(target, true);
             if (box.isEmpty()) {
+                keepHardGateFrameTrainAlive();
                 return;
             }
 
@@ -450,23 +557,17 @@ export function PublicGardenCaptureProbe({
                     camera.zoom = Math.max(24, Math.min(500, zoom));
                     camera.updateProjectionMatrix();
                 }
-                eligibleSinceRef.current = null;
-                stableFramesRef.current = 0;
-                stableSinceRef.current = null;
-                signatureRef.current = null;
+                keepHardGateFrameTrainAlive();
                 return;
             }
         }
 
-        eligibleSinceRef.current ??= now;
         if (
             gl.info.render.calls < 1 ||
             gl.info.render.triangles < 1 ||
             gl.info.memory.geometries < 1
         ) {
-            stableFramesRef.current = 0;
-            stableSinceRef.current = null;
-            signatureRef.current = null;
+            keepHardGateFrameTrainAlive();
             return;
         }
         const signature = frameSignature({
@@ -476,23 +577,41 @@ export function PublicGardenCaptureProbe({
             textures: gl.info.memory.textures,
             triangles: gl.info.render.triangles,
         });
-        if (signatureRef.current !== signature) {
-            signatureRef.current = signature;
-            stableFramesRef.current = 0;
-            stableSinceRef.current = now;
-            return;
-        }
-
-        stableFramesRef.current += 1;
-        stableSinceRef.current ??= now;
+        const signatureChanged =
+            stabilityRef.current.signature !== null &&
+            stabilityRef.current.signature !== signature;
         if (
-            now - eligibleSinceRef.current < minimumWarmupMs ||
-            now - stableSinceRef.current < minimumStableMs ||
-            stableFramesRef.current < minimumStableFrames
+            nextStabilityFrameAtRef.current !== null &&
+            now < nextStabilityFrameAtRef.current &&
+            !signatureChanged
         ) {
             return;
         }
+        nextStabilityFrameAtRef.current = null;
+        if (
+            !observeCaptureStability(stabilityRef.current, { now, signature })
+        ) {
+            if (invalidationTimerRef.current !== null) {
+                window.clearTimeout(invalidationTimerRef.current);
+            }
+            const nextFrameDelay = getNextCaptureStabilityFrameDelay(
+                stabilityRef.current,
+                now,
+            );
+            invalidationTimerRef.current = window.setTimeout(() => {
+                invalidationTimerRef.current = null;
+                if (mountedRef.current && !attemptedRef.current) {
+                    invalidate();
+                }
+            }, nextFrameDelay);
+            nextStabilityFrameAtRef.current = now + nextFrameDelay;
+            return;
+        }
 
+        if (invalidationTimerRef.current !== null) {
+            window.clearTimeout(invalidationTimerRef.current);
+            invalidationTimerRef.current = null;
+        }
         attemptedRef.current = true;
         firstFrameRef.current = window.requestAnimationFrame(() => {
             firstFrameRef.current = null;
