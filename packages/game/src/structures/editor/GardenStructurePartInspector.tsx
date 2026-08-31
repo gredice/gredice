@@ -13,6 +13,7 @@ import { cx } from '@gredice/ui/utils';
 import { useId, useState } from 'react';
 import { GardenStructureCatalogPicker } from '../catalog/GardenStructureCatalogPicker';
 import {
+    type GardenStructureCatalogEntry,
     gardenStructureKitV1Catalog,
     getGardenStructureKitV1MaterialCatalogEntry,
     getGardenStructureKitV1PartCatalogEntry,
@@ -55,6 +56,13 @@ function nextRotation(
         case 3:
             return 0;
     }
+}
+
+function catalogEntryKey(
+    entries: readonly GardenStructureCatalogEntry[],
+    id: string | null | undefined,
+) {
+    return entries.find((entry) => entry.id === id)?.key ?? null;
 }
 
 export type GardenStructurePartInspectorEdgeSelection = Readonly<{
@@ -272,15 +280,18 @@ export function GardenStructurePartInspector({
                                     <GardenStructureCatalogPicker
                                         ariaLabel="Materijal poda"
                                         entries={floorMaterialCatalogEntries}
-                                        onSelectionChange={(materialId) => {
-                                            if (materialId) {
+                                        onSelectionChange={(entry) => {
+                                            if (entry) {
                                                 onSetFloorMaterial(
                                                     selectedCellCoordinate,
-                                                    materialId,
+                                                    entry.id,
                                                 );
                                             }
                                         }}
-                                        selectedId={floor?.materialId ?? null}
+                                        selectedKey={catalogEntryKey(
+                                            floorMaterialCatalogEntries,
+                                            floor?.materialId,
+                                        )}
                                     />
                                     <button
                                         className={cx(
@@ -334,9 +345,9 @@ export function GardenStructurePartInspector({
                                                         edgePartCatalogEntries
                                                     }
                                                     onSelectionChange={(
-                                                        partId,
+                                                        entry,
                                                     ) => {
-                                                        if (!partId) {
+                                                        if (!entry) {
                                                             if (edge) {
                                                                 onRemoveEdgePart(
                                                                     selectedCellCoordinate,
@@ -347,7 +358,7 @@ export function GardenStructurePartInspector({
                                                         }
                                                         const kind =
                                                             kit.edgeParts[
-                                                                partId
+                                                                entry.id
                                                             ];
                                                         if (kind) {
                                                             onSetEdgePart(
@@ -355,14 +366,15 @@ export function GardenStructurePartInspector({
                                                                 side,
                                                                 {
                                                                     kind,
-                                                                    partId,
+                                                                    partId: entry.id,
                                                                 },
                                                             );
                                                         }
                                                     }}
-                                                    selectedId={
-                                                        edge?.partId ?? null
-                                                    }
+                                                    selectedKey={catalogEntryKey(
+                                                        edgePartCatalogEntries,
+                                                        edge?.partId,
+                                                    )}
                                                 />
                                             </div>
                                         );
@@ -386,10 +398,11 @@ export function GardenStructurePartInspector({
                                     <GardenStructureCatalogPicker
                                         ariaLabel="Stil krova"
                                         entries={roofStyleCatalogEntries}
-                                        onSelectionChange={(styleId) => {
-                                            if (!styleId) {
+                                        onSelectionChange={(entry) => {
+                                            if (!entry) {
                                                 return;
                                             }
+                                            const styleId = entry.id;
                                             const materialIds =
                                                 kit.roofStyles[styleId] ?? [];
                                             const materialId =
@@ -413,7 +426,10 @@ export function GardenStructurePartInspector({
                                                 );
                                             }
                                         }}
-                                        selectedId={roofRegion?.styleId ?? null}
+                                        selectedKey={catalogEntryKey(
+                                            roofStyleCatalogEntries,
+                                            roofRegion?.styleId,
+                                        )}
                                     />
                                 </div>
                                 <div className="min-w-0 space-y-1 text-xs font-medium text-foreground">
@@ -422,23 +438,24 @@ export function GardenStructurePartInspector({
                                         ariaLabel="Materijal krova"
                                         disabled={!roofRegion}
                                         entries={roofMaterialCatalogEntries}
-                                        onSelectionChange={(materialId) => {
-                                            if (roofRegion && materialId) {
+                                        onSelectionChange={(entry) => {
+                                            if (roofRegion && entry) {
                                                 onSetRoofCoverage(
                                                     selectedCellCoordinate,
                                                     {
                                                         styleId:
                                                             roofRegion.styleId,
-                                                        materialId,
+                                                        materialId: entry.id,
                                                         rotation:
                                                             roofRegion.rotation,
                                                     },
                                                 );
                                             }
                                         }}
-                                        selectedId={
-                                            roofRegion?.materialId ?? null
-                                        }
+                                        selectedKey={catalogEntryKey(
+                                            roofMaterialCatalogEntries,
+                                            roofRegion?.materialId,
+                                        )}
                                     />
                                 </div>
                             </div>
@@ -513,11 +530,14 @@ export function GardenStructurePartInspector({
                                 <GardenStructureCatalogPicker
                                     ariaLabel="Predmet"
                                     entries={propPartCatalogEntries}
-                                    onSelectionChange={(partId) => {
-                                        setRequestedPropPartId(partId ?? '');
+                                    onSelectionChange={(entry) => {
+                                        setRequestedPropPartId(entry?.id ?? '');
                                         setRequestedPropVariantId('');
                                     }}
-                                    selectedId={propPartId || null}
+                                    selectedKey={catalogEntryKey(
+                                        propPartCatalogEntries,
+                                        propPartId,
+                                    )}
                                 />
                                 {propVariantIds.length > 0 ? (
                                     <label

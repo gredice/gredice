@@ -115,6 +115,16 @@ export function shouldGameCameraOwnPointerGesture(
     return pointerCount >= 2 || (pointerCount === 1 && singlePointerPanEnabled);
 }
 
+export function shouldReleaseGameCameraPointerCapture(
+    pointerCount: number,
+    singlePointerPanEnabled: boolean,
+) {
+    return !shouldGameCameraOwnPointerGesture(
+        pointerCount,
+        singlePointerPanEnabled,
+    );
+}
+
 export function shouldUseImmediateGameCameraTransition(
     duration: number,
     reducedMotion: boolean,
@@ -993,11 +1003,24 @@ export function GameCameraRig({
             );
             activePointersRef.current.delete(event.pointerId);
             publishActivePointerCount();
+            const releaseRemainingPointerCapture =
+                shouldReleaseGameCameraPointerCapture(
+                    activePointersRef.current.size,
+                    singlePointerPanEnabled,
+                );
             if (
                 cameraOwnedGesture &&
                 element.hasPointerCapture(event.pointerId)
             ) {
                 element.releasePointerCapture(event.pointerId);
+            }
+            if (releaseRemainingPointerCapture) {
+                for (const pointerId of activePointersRef.current.keys()) {
+                    if (element.hasPointerCapture(pointerId)) {
+                        element.releasePointerCapture(pointerId);
+                    }
+                }
+                setCameraDragging(false);
             }
             updatePointerState();
             if (activePointersRef.current.size === 0) {

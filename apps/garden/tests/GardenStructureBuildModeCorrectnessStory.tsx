@@ -338,7 +338,7 @@ export function GardenStructureExistingAutosaveStory() {
     const [attempts, setAttempts] = useState<readonly number[]>([]);
 
     useGardenStructureExistingStructureAutosave({
-        delayMs: 80,
+        delayMs: 1_000,
         editor,
         onAutosave: (current) =>
             setAttempts((values) => [

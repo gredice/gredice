@@ -1,5 +1,7 @@
+import { execFile as executeFile } from 'node:child_process';
 import { mkdir, rm, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { promisify } from 'node:util';
 import { expect, test } from '@playwright/experimental-ct-react';
 import sharp from 'sharp';
 import {
@@ -7,20 +9,77 @@ import {
     gardenStructureKitV1CatalogEntries,
 } from '../../../packages/game/src/structures/catalog/gardenStructureKitV1Catalog';
 import { GardenStructureKitV1CatalogSnapshotViewer } from '../../../packages/game/tests/GardenStructureKitV1CatalogSnapshotViewer';
+import { isGardenStructureKitV1CatalogSnapshotReady } from '../../../packages/game/tests/gardenStructureKitV1CatalogSnapshotReadiness';
 
 const SNAPSHOT_SIZE = 180;
 const OUTPUT_ROOT = resolve(
     './public/assets/structures/gredice-buildings/v1/catalog',
 );
 const MODEL_PATH = resolve('./public/assets/models/GardenStructureKitV1.glb');
+const execFile = promisify(executeFile);
 
 function outputPath(src: string) {
     return resolve('./public', src.slice(1));
 }
 
+export function assertCleanCatalogOutput(gitStatus: string) {
+    if (!gitStatus.trim()) {
+        return;
+    }
+    throw new Error(
+        `Refusing to replace dirty Garden Structure Kit V1 catalogue output: ${gitStatus.trim()}`,
+    );
+}
+
+async function assertCatalogOutputIsClean() {
+    const { stdout } = await execFile('git', [
+        'status',
+        '--porcelain=v1',
+        '--untracked-files=all',
+        '--ignored=matching',
+        '--',
+        OUTPUT_ROOT,
+    ]);
+    assertCleanCatalogOutput(stdout);
+}
+
 test.use({
     deviceScaleFactor: 1,
     viewport: { height: SNAPSHOT_SIZE, width: SNAPSHOT_SIZE },
+});
+
+test('refuses to replace dirty catalogue output', () => {
+    expect(() =>
+        assertCleanCatalogOutput(
+            ' M public/assets/structures/catalog/part.webp\n',
+        ),
+    ).toThrow(/Refusing to replace dirty/);
+    expect(() =>
+        assertCleanCatalogOutput(
+            '?? public/assets/structures/catalog/new.webp\n',
+        ),
+    ).toThrow(/Refusing to replace dirty/);
+    expect(() =>
+        assertCleanCatalogOutput(
+            '!! public/assets/structures/catalog/local.webp\n',
+        ),
+    ).toThrow(/Refusing to replace dirty/);
+    assertCleanCatalogOutput('');
+});
+
+test('waits for the matching catalogue entry before reporting readiness', () => {
+    expect(
+        isGardenStructureKitV1CatalogSnapshotReady(
+            'gredice-buildings@1:part:floor.timber',
+            'gredice-buildings@1:part:floor.timber',
+        ),
+    ).toBe(true);
+    expect(
+        isGardenStructureKitV1CatalogSnapshotReady(
+            'gredice-buildings@1:material:floor.timber',
+            'gredice-buildings@1:part:floor.timber',
+        ),
+    ).toBe(false);
 });
 
 test('generate Garden Structure Kit V1 catalogue media', async ({
@@ -43,6 +102,7 @@ test('generate Garden Structure Kit V1 catalogue media', async ({
     page.on('pageerror', (error) => pageErrors.push(error.message));
 
     // This directory contains generator-owned, immutable-version catalogue media.
+    await assertCatalogOutputIsClean();
     await rm(OUTPUT_ROOT, { force: true, recursive: true });
     await mkdir(OUTPUT_ROOT, { recursive: true });
 

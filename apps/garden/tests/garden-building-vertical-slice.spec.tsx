@@ -810,6 +810,14 @@ test('supports keyboard authoring, reduced motion, Escape unwinding, and focus r
     await page.keyboard.press('Enter');
     const done = page.getByTestId('garden-structure-build-done');
     await expect(done).toBeFocused();
+    await page.evaluate(() => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+            activeElement.blur();
+        }
+    });
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByText('Položaj 0, -1.')).toBeVisible();
 
     const structureTool = page.getByRole('button', {
         name: 'Konstrukcija',

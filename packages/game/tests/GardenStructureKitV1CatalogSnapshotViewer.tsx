@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GardenStructureCatalogEntry } from '../src/structures/catalog/gardenStructureKitV1Catalog';
 import {
     createGameState,
@@ -11,6 +11,7 @@ import {
 } from '../src/useGameState';
 import { GardenStructureKitV1CatalogSnapshotScene } from './GardenStructureKitV1CatalogSnapshotScene';
 import { createGardenStructureKitV1CatalogSnapshot } from './gardenStructureKitV1CatalogSnapshot';
+import { isGardenStructureKitV1CatalogSnapshotReady } from './gardenStructureKitV1CatalogSnapshotReadiness';
 
 export function GardenStructureKitV1CatalogSnapshotViewer({
     entry,
@@ -19,7 +20,7 @@ export function GardenStructureKitV1CatalogSnapshotViewer({
     entry: GardenStructureCatalogEntry;
     size: number;
 }>) {
-    const [ready, setReady] = useState(false);
+    const [readyEntryKey, setReadyEntryKey] = useState<string | null>(null);
     const storeRef = useRef<GameStateStore>(null);
     if (!storeRef.current) {
         storeRef.current = createGameState({
@@ -33,7 +34,24 @@ export function GardenStructureKitV1CatalogSnapshotViewer({
         () => createGardenStructureKitV1CatalogSnapshot(entry),
         [entry],
     );
-    const markReady = useCallback(() => setReady(true), []);
+    useEffect(() => {
+        setReadyEntryKey((currentReadyEntryKey) =>
+            isGardenStructureKitV1CatalogSnapshotReady(
+                entry.key,
+                currentReadyEntryKey,
+            )
+                ? currentReadyEntryKey
+                : null,
+        );
+    }, [entry.key]);
+    const markReady = useCallback(
+        (readyKey: string) => setReadyEntryKey(readyKey),
+        [],
+    );
+    const ready = isGardenStructureKitV1CatalogSnapshotReady(
+        entry.key,
+        readyEntryKey,
+    );
 
     return (
         <div

@@ -12,7 +12,10 @@ const meta = {
         ariaLabel: 'Predložak građevine',
         entries: gardenStructureKitV1Catalog.templates,
         onSelectionChange: () => undefined,
-        selectedId: 'house',
+        selectedKey:
+            gardenStructureKitV1Catalog.templates.find(
+                (entry) => entry.id === 'house',
+            )?.key ?? null,
     },
     parameters: {
         docs: {
@@ -44,7 +47,10 @@ export const EdgePartsWithOpenChoice: Story = {
         entries: gardenStructureKitV1Catalog.parts.filter(
             (entry) => entry.category === 'edge',
         ),
-        selectedId: 'door.house-open',
+        selectedKey:
+            gardenStructureKitV1Catalog.parts.find(
+                (entry) => entry.id === 'door.house-open',
+            )?.key ?? null,
     },
 };
 
@@ -54,7 +60,10 @@ export const RoofMaterials: Story = {
         entries: gardenStructureKitV1Catalog.materials.filter((entry) =>
             entry.id.startsWith('roof.'),
         ),
-        selectedId: 'roof.clay',
+        selectedKey:
+            gardenStructureKitV1Catalog.materials.find(
+                (entry) => entry.id === 'roof.clay',
+            )?.key ?? null,
     },
 };
 

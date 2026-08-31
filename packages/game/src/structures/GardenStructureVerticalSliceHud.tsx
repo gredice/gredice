@@ -2350,7 +2350,12 @@ export function GardenStructureVerticalSliceHud({
                 }
                 return;
             }
-            const delta = editingLocked
+            const placementLocked =
+                session.editor.save.status === 'saving' ||
+                session.editor.save.status === 'conflict' ||
+                session.editor.demolition.status !== 'idle' ||
+                session.editor.workflow.kind === 'confirming-footprint';
+            const delta = placementLocked
                 ? null
                 : event.key === 'ArrowLeft'
                   ? [-1, 0]
@@ -2596,15 +2601,17 @@ export function GardenStructureVerticalSliceHud({
                         <GardenStructureCatalogPicker
                             ariaLabel="Predložak"
                             entries={templateCatalogEntries}
-                            onSelectionChange={(templateKey) => {
-                                const option = templateOptions.find(
-                                    ({ key }) => key === templateKey,
-                                );
-                                if (option) {
-                                    startTemplate(option.key);
+                            onSelectionChange={(entry) => {
+                                if (entry?.kind === 'template') {
+                                    startTemplate(entry.id);
                                 }
                             }}
-                            selectedId={editor.origin.templateKey}
+                            selectedKey={
+                                templateCatalogEntries.find(
+                                    (entry) =>
+                                        entry.id === editor.origin.templateKey,
+                                )?.key ?? null
+                            }
                             testId="garden-structure-template-catalog"
                         />
                         {!fixture ? (
@@ -2852,12 +2859,16 @@ export function GardenStructureVerticalSliceHud({
                                     ariaLabel="Dio lanca"
                                     disabled={interactionLocked}
                                     entries={edgePartCatalogEntries}
-                                    onSelectionChange={(partId) => {
-                                        if (partId) {
-                                            selectEdgePart(partId);
+                                    onSelectionChange={(entry) => {
+                                        if (entry) {
+                                            selectEdgePart(entry.id);
                                         }
                                     }}
-                                    selectedId={edgePartId || null}
+                                    selectedKey={
+                                        edgePartCatalogEntries.find(
+                                            (entry) => entry.id === edgePartId,
+                                        )?.key ?? null
+                                    }
                                     testId="garden-structure-edge-catalog"
                                 />
                                 <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">

@@ -24,7 +24,7 @@ export function GardenStructureKitV1CatalogSnapshotScene({
     onReady,
 }: Readonly<{
     entry: GardenStructureCatalogEntry;
-    onReady: () => void;
+    onReady: (entryKey: string) => void;
 }>) {
     const camera = useThree((state) => state.camera);
     const invalidate = useThree((state) => state.invalidate);
@@ -70,14 +70,14 @@ export function GardenStructureKitV1CatalogSnapshotScene({
             invalidate();
             secondFrame = window.requestAnimationFrame(() => {
                 invalidate();
-                onReady();
+                onReady(entry.key);
             });
         });
         return () => {
             window.cancelAnimationFrame(firstFrame);
             window.cancelAnimationFrame(secondFrame);
         };
-    }, [invalidate, onReady]);
+    }, [entry.key, invalidate, onReady]);
 
     const groundSize = Math.max(
         snapshot.extent.width,

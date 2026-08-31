@@ -7,7 +7,10 @@ import {
     gardenStructureCatalogTotalMaxBytes,
     gardenStructureKitV1CatalogEntries,
 } from '../../../packages/game/src/structures/catalog/gardenStructureKitV1Catalog';
-import { GardenStructureCatalogPickerStory } from './GardenStructureCatalogPickerStory';
+import {
+    GardenStructureCatalogMixedPickerStory,
+    GardenStructureCatalogPickerStory,
+} from './GardenStructureCatalogPickerStory';
 
 const publicRoot = resolve('./public');
 const catalogRoot = resolve(
@@ -165,7 +168,9 @@ test('catalogue picker supports radio keyboard and touch selection', async ({
     await barn.focus();
     await page.keyboard.press('ArrowRight');
     await expect(house).toBeChecked();
-    await group.locator('label:has(input[value="greenhouse"])').tap();
+    await group
+        .locator('label:has(input[value$=":template:greenhouse"])')
+        .click();
     await expect(greenhouse).toBeChecked();
     await expect(group.locator('img').first()).toHaveAttribute(
         'src',
@@ -175,7 +180,29 @@ test('catalogue picker supports radio keyboard and touch selection', async ({
     expect(modelRequests).toEqual([]);
     expect(
         await group
-            .locator('label:has(input[value="greenhouse"]) > span')
+            .locator('label:has(input:checked) > span')
             .evaluate((element) => element.getBoundingClientRect().height),
     ).toBeGreaterThanOrEqual(44);
+});
+
+test('catalogue picker distinguishes mixed entry kinds that share an ID', async ({
+    mount,
+    page,
+}) => {
+    const component = await mount(<GardenStructureCatalogMixedPickerStory />);
+    const group = page.getByRole('group', { name: 'Miješani katalog' });
+    const part = group.getByRole('radio', { name: 'Drveni pod' });
+    const material = group.getByRole('radio', { name: 'Toplo drvo poda' });
+
+    await expect(part).toBeChecked();
+    await expect(part).toHaveAttribute('value', /:part:floor\.timber$/);
+    await expect(material).toHaveAttribute('value', /:material:floor\.timber$/);
+    await group
+        .locator('label:has(input[value$=":material:floor.timber"])')
+        .click();
+    await expect(part).not.toBeChecked();
+    await expect(material).toBeChecked();
+    await expect(component.getByTestId('mixed-catalog-selection')).toHaveText(
+        /:material:floor\.timber$/,
+    );
 });

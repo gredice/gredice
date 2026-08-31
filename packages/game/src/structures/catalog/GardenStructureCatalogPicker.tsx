@@ -5,14 +5,16 @@ import { useId } from 'react';
 import { GardenStructureCatalogThumbnail } from './GardenStructureCatalogThumbnail';
 import type { GardenStructureCatalogEntry } from './gardenStructureKitV1Catalog';
 
-export type GardenStructureCatalogPickerProps = Readonly<{
+export type GardenStructureCatalogPickerProps<
+    Entry extends GardenStructureCatalogEntry = GardenStructureCatalogEntry,
+> = Readonly<{
     ariaLabel: string;
     className?: string;
     disabled?: boolean;
     emptyLabel?: string;
-    entries: readonly GardenStructureCatalogEntry[];
-    onSelectionChange: (id: string | null) => void;
-    selectedId: string | null;
+    entries: readonly Entry[];
+    onSelectionChange: (entry: Entry | null) => void;
+    selectedKey: string | null;
     testId?: string;
 }>;
 
@@ -20,16 +22,18 @@ export type GardenStructureCatalogPickerProps = Readonly<{
  * Static-image palette with native radio semantics. Radios retain Tab and
  * arrow-key behavior while every label remains a 44px-or-larger touch target.
  */
-export function GardenStructureCatalogPicker({
+export function GardenStructureCatalogPicker<
+    Entry extends GardenStructureCatalogEntry,
+>({
     ariaLabel,
     className,
     disabled = false,
     emptyLabel,
     entries,
     onSelectionChange,
-    selectedId,
+    selectedKey,
     testId,
-}: GardenStructureCatalogPickerProps) {
+}: GardenStructureCatalogPickerProps<Entry>) {
     const name = useId();
 
     return (
@@ -43,7 +47,7 @@ export function GardenStructureCatalogPicker({
                 {emptyLabel ? (
                     <label className="min-w-0 cursor-pointer">
                         <input
-                            checked={selectedId === null}
+                            checked={selectedKey === null}
                             className="peer sr-only"
                             name={name}
                             onChange={() => onSelectionChange(null)}
@@ -64,12 +68,12 @@ export function GardenStructureCatalogPicker({
                 {entries.map((entry) => (
                     <label className="min-w-0 cursor-pointer" key={entry.key}>
                         <input
-                            checked={selectedId === entry.id}
+                            checked={selectedKey === entry.key}
                             className="peer sr-only"
                             name={name}
-                            onChange={() => onSelectionChange(entry.id)}
+                            onChange={() => onSelectionChange(entry)}
                             type="radio"
-                            value={entry.id}
+                            value={entry.key}
                         />
                         <span className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-lg border border-border/70 bg-background p-2 text-center text-[0.6875rem] font-medium leading-tight text-foreground transition-colors peer-checked:border-amber-600 peer-checked:bg-amber-100 peer-checked:text-amber-950 peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-amber-500 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 dark:peer-checked:bg-amber-950 dark:peer-checked:text-amber-50">
                             <GardenStructureCatalogThumbnail

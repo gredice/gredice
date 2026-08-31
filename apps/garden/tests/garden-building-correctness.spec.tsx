@@ -300,7 +300,7 @@ test('shows only the selected authoring category and provides accessible prop ta
     ).toHaveAttribute('src', /\/v1\/catalog\/parts\//);
     await page
         .getByRole('group', { name: 'Predmet', exact: true })
-        .locator('label:has(input[value="prop.planter"])')
+        .locator('label:has(input[value$=":part:prop.planter"])')
         .click();
     await page
         .getByRole('button', { name: 'Zamijeni Table odabranim predmetom' })
