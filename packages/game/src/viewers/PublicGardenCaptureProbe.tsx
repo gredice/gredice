@@ -373,6 +373,30 @@ export function resolveCaptureFencePollOutcome({
     return 'failed';
 }
 
+export function pollCaptureFence({
+    alreadySignaled,
+    conditionSatisfied,
+    syncFlushCommandsBit,
+    timeoutExpired,
+    wait,
+    waitFailed,
+}: {
+    alreadySignaled: number;
+    conditionSatisfied: number;
+    syncFlushCommandsBit: number;
+    timeoutExpired: number;
+    wait: (flags: number, timeout: number) => number;
+    waitFailed: number;
+}) {
+    return resolveCaptureFencePollOutcome({
+        alreadySignaled,
+        conditionSatisfied,
+        status: wait(syncFlushCommandsBit, 0),
+        timeoutExpired,
+        waitFailed,
+    });
+}
+
 function waitForCaptureFence(
     context: WebGL2RenderingContext,
     sync: WebGLSync,
@@ -396,11 +420,13 @@ function waitForCaptureFence(
                     return;
                 }
 
-                const outcome = resolveCaptureFencePollOutcome({
+                const outcome = pollCaptureFence({
                     alreadySignaled: context.ALREADY_SIGNALED,
                     conditionSatisfied: context.CONDITION_SATISFIED,
-                    status: context.clientWaitSync(sync, 0, 0),
+                    syncFlushCommandsBit: context.SYNC_FLUSH_COMMANDS_BIT,
                     timeoutExpired: context.TIMEOUT_EXPIRED,
+                    wait: (flags, timeout) =>
+                        context.clientWaitSync(sync, flags, timeout),
                     waitFailed: context.WAIT_FAILED,
                 });
                 if (outcome === 'failed') {

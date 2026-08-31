@@ -5,6 +5,7 @@ import {
     flipCapturePixelRows,
     getNextCaptureStabilityFrameDelay,
     observeCaptureStability,
+    pollCaptureFence,
     resetCaptureStabilityState,
     resolveCaptureCameraZoom,
     resolveCaptureContextUnpremultiplyAlpha,
@@ -219,6 +220,24 @@ describe('capture pixel readback', () => {
             }),
             'failed',
         );
+    });
+
+    it('flushes queued commands while polling the fence without blocking', () => {
+        const calls: Array<readonly [number, number]> = [];
+        const outcome = pollCaptureFence({
+            alreadySignaled: 3,
+            conditionSatisfied: 4,
+            syncFlushCommandsBit: 5,
+            timeoutExpired: 1,
+            wait: (flags, timeout) => {
+                calls.push([flags, timeout]);
+                return 1;
+            },
+            waitFailed: 2,
+        });
+
+        assert.equal(outcome, 'waiting');
+        assert.deepEqual(calls, [[5, 0]]);
     });
 });
 
