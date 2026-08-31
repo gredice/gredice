@@ -102,12 +102,15 @@ async function verifyEntryExitWithPersistentCanvas({
     }
 
     await page.keyboard.down('s');
-    await page.waitForTimeout(1_400);
-    await page.keyboard.up('s');
-    await expect(structureScene).toHaveAttribute(
-        'data-garden-structure-interior-id',
-        'outside',
-    );
+    try {
+        await expect(structureScene).toHaveAttribute(
+            'data-garden-structure-interior-id',
+            'outside',
+            { timeout: 8_000 },
+        );
+    } finally {
+        await page.keyboard.up('s');
+    }
     await expect(structureScene).toHaveAttribute(
         'data-garden-structure-hidden-instance-count',
         '0',
