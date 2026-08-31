@@ -1,6 +1,6 @@
 import {
-    compileGardenStructurePlan,
-    getGardenStructurePlanCacheKey,
+    compilePreparedGardenStructurePlan,
+    prepareGardenStructurePlanCompilation,
 } from './compileGardenStructurePlan';
 import type {
     GardenStructureCompileInput,
@@ -168,13 +168,14 @@ export class GardenStructurePlanCache {
     }
 
     getOrCompile(input: GardenStructureCompileInput) {
-        const expectedKey = getGardenStructurePlanCacheKey(input);
+        const preparation = prepareGardenStructurePlanCompilation(input);
+        const expectedKey = preparation.cacheKey;
         const cached = this.get(expectedKey);
         if (cached) {
             return cached;
         }
 
-        const plan = compileGardenStructurePlan(input);
+        const plan = compilePreparedGardenStructurePlan(preparation);
         if (plan.cacheKey !== expectedKey) {
             throw new Error(
                 'Structure compiler returned an unexpected cache key.',

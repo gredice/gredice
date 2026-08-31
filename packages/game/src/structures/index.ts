@@ -61,6 +61,20 @@ export {
 } from './gardenStructureCollectionPlan';
 export { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
 export type {
+    GardenStructureKitMetadataIssue,
+    GardenStructureKitMetadataIssueCode,
+    GardenStructureKitMetadataValidation,
+    GardenStructureKitMetadataValidationCacheSnapshot,
+} from './gardenStructureKitMetadataValidation';
+export {
+    GardenStructureKitMetadataValidationCache,
+    gardenStructureKitMetadataCollectionEntryLimit,
+    gardenStructureKitMetadataValidationIssueLimit,
+    hasFatalGardenStructureKitResolutionIssue,
+    validateGardenStructureDocumentKitMetadata,
+    validateGardenStructureKitMetadata,
+} from './gardenStructureKitMetadataValidation';
+export type {
     GardenStructureKitAnchor,
     GardenStructureKitAssetManifest,
     GardenStructureKitBounds,
@@ -149,6 +163,7 @@ export type {
     GardenStructurePackedCells,
     GardenStructurePropPartMetadata,
     GardenStructureRoofStyleMetadata,
+    GardenStructureRuntimeSafety,
     GardenStructureSemanticPlan,
     GardenStructureSpatialBucket,
     GardenStructureWalkablePlan,

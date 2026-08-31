@@ -12,6 +12,10 @@ import {
 } from '@gredice/js/gardenStructures';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import { getGardenStructureDocumentFingerprint } from './gardenStructureDocumentFingerprint';
+import {
+    type GardenStructureKitMetadataValidation,
+    validateGardenStructureDocumentKitMetadata,
+} from './gardenStructureKitMetadataValidation';
 import type {
     GardenStructureBatchCategory,
     GardenStructureBatchDescription,
@@ -920,33 +924,77 @@ function createWorldBounds({
     });
 }
 
-export function getGardenStructurePlanCacheKey({
-    structureId,
-    revision,
-    document,
-    placement,
-    kit = debugGardenStructureKitMetadata,
-    baseHeight = 0,
-}: GardenStructureCompileInput) {
+function getGardenStructureKitCacheSegment(
+    validation: GardenStructureKitMetadataValidation,
+) {
+    if (
+        validation.valid &&
+        validation.identity &&
+        validation.kitDefinitionFingerprint
+    ) {
+        return `kit=${validation.identity.kitKey}@${validation.identity.kitVersion}:${validation.kitDefinitionFingerprint}`;
+    }
+    const issueSignature = [
+        ...new Set(
+            validation.issues.map(
+                ({ code, path }) =>
+                    `${code}:${encodeGardenStructureFallbackIssuePath(path)}`,
+            ),
+        ),
+    ]
+        .sort(compareStrings)
+        .join(',');
+    return `kit=fallback:${issueSignature || 'invalid'}:${validation.issueSampleTruncated ? 'truncated' : 'complete'}`;
+}
+
+function encodeGardenStructureFallbackIssuePath(path: string) {
+    try {
+        return encodeURIComponent(path);
+    } catch {
+        return encodeURIComponent(path.replace(/[\uD800-\uDFFF]/gu, '\uFFFD'));
+    }
+}
+
+function createGardenStructurePlanCacheKey(
+    {
+        structureId,
+        revision,
+        document,
+        placement,
+        baseHeight = 0,
+    }: GardenStructureCompileInput,
+    validation: GardenStructureKitMetadataValidation,
+) {
     const documentFingerprint = getGardenStructureDocumentFingerprint(document);
     return [
         `structure=${structureId}`,
         `revision=${revision.toString()}`,
         `document=${documentFingerprint}`,
-        `kit=${kit.kitKey}@${kit.kitVersion}`,
+        getGardenStructureKitCacheSegment(validation),
         `placement=${placement.anchorX.toString()},${placement.anchorY.toString()},${placement.rotation.toString()}`,
         `baseHeight=${baseHeight.toString()}`,
     ].join('|');
 }
 
-export function compileGardenStructurePlan({
+export type PreparedGardenStructurePlanCompilation = Readonly<{
+    baseHeight: number;
+    cacheKey: string;
+    canonicalDocument: GardenStructureCompileInput['document'];
+    kit: GardenStructureKitMetadata;
+    kitValidation: GardenStructureKitMetadataValidation;
+    placement: GardenStructureCompileInput['placement'];
+    revision: number;
+    structureId: string;
+}>;
+
+export function prepareGardenStructurePlanCompilation({
     structureId,
     revision,
     document,
     placement,
     kit = debugGardenStructureKitMetadata,
     baseHeight = 0,
-}: GardenStructureCompileInput): GardenStructureSemanticPlan {
+}: GardenStructureCompileInput): PreparedGardenStructurePlanCompilation {
     const decodedDocument = decodeGardenStructureDocument(document);
     if (!decodedDocument.valid) {
         const issueCodes = [
@@ -957,6 +1005,142 @@ export function compileGardenStructurePlan({
         );
     }
     const canonicalDocument = decodedDocument.document;
+    const kitValidation = validateGardenStructureDocumentKitMetadata(
+        canonicalDocument,
+        kit,
+    );
+    const isolatedKit = kitValidation.metadataSnapshot ?? kit;
+    const cacheKey = createGardenStructurePlanCacheKey(
+        {
+            baseHeight,
+            document: canonicalDocument,
+            kit: isolatedKit,
+            placement,
+            revision,
+            structureId,
+        },
+        kitValidation,
+    );
+    return Object.freeze({
+        baseHeight,
+        cacheKey,
+        canonicalDocument,
+        kit: isolatedKit,
+        kitValidation,
+        placement,
+        revision,
+        structureId,
+    });
+}
+
+export function getGardenStructurePlanCacheKey(
+    input: GardenStructureCompileInput,
+) {
+    return prepareGardenStructurePlanCompilation(input).cacheKey;
+}
+
+function createGardenStructureFootprintFallbackPlan({
+    structureId,
+    revision,
+    cacheKey,
+    placement,
+    baseHeight,
+    footprintEntries,
+    validation,
+}: Readonly<{
+    structureId: string;
+    revision: number;
+    cacheKey: string;
+    placement: GardenStructureCompileInput['placement'];
+    baseHeight: number;
+    footprintEntries: readonly FootprintEntry[];
+    validation: GardenStructureKitMetadataValidation;
+}>): GardenStructureSemanticPlan {
+    const footprint = createFootprintPlan(structureId, footprintEntries);
+    const floors = createFloorPlan(structureId, [], baseHeight);
+    const walkable = createWalkablePlan(structureId, [], new Set());
+    const openPortals = createOpenPortalPlan([]);
+    const blockedTransitions = createBlockedTransitionPlan([]);
+    const wallCollisionBoxes = createWallCollisionBoxes(structureId, []);
+    const propCollisionBoxes = createWallCollisionBoxes(structureId, []);
+    const ceilingProxies = createCeilingProxies([]);
+    const batches = createBatchPlan({
+        opaque: new Map(),
+        transparent: new Map(),
+        roof: new Map(),
+        props: new Map(),
+    });
+    const emptyIndices = new Uint32Array(0);
+    const spatialBuckets = Object.freeze(
+        footprintEntries.map((cell) => {
+            const key = worldCellKey(cell);
+            return Object.freeze({
+                id: `bucket:${structureId}:${key}`,
+                key,
+                x: cell.x,
+                y: cell.y,
+                walkableCellIndices: emptyIndices,
+                floorIndices: emptyIndices,
+                openPortalIndices: emptyIndices,
+                blockedTransitionIndices: emptyIndices,
+                wallBoxIndices: emptyIndices,
+                propBoxIndices: emptyIndices,
+                ceilingProxyIndices: emptyIndices,
+            });
+        }),
+    );
+    const withoutCounts = Object.freeze({
+        id: `structure-plan:${structureId}:${revision.toString()}`,
+        cacheKey,
+        structureId,
+        revision,
+        kitKey: 'invalid-kit',
+        kitVersion: 'invalid',
+        kitDefinitionFingerprint: null,
+        placement: Object.freeze({ ...placement }),
+        baseHeight,
+        worldBounds: Object.freeze({
+            ...footprint.bounds,
+            minHeight: baseHeight,
+            maxHeight: baseHeight + 0.025,
+            height: 0.025,
+        }),
+        footprint,
+        floors,
+        walkable,
+        openPortals,
+        blockedTransitions,
+        wallCollisionBoxes,
+        propCollisionBoxes,
+        ceilingProxies,
+        spatialBuckets,
+        spatialBucketIndexByKey: createIndexByKey(
+            spatialBuckets.map(({ key }) => key),
+        ),
+        batches,
+        interactionIds: Object.freeze([]),
+        runtimeSafety: Object.freeze({
+            collisionMode: 'blocked-footprint' as const,
+            issueSampleTruncated: validation.issueSampleTruncated,
+            issues: validation.issues,
+        }),
+    });
+    return Object.freeze({
+        ...withoutCounts,
+        counts: getGardenStructureCompilerCounts(withoutCounts),
+    });
+}
+
+export function compilePreparedGardenStructurePlan({
+    structureId,
+    revision,
+    canonicalDocument,
+    placement,
+    kit,
+    baseHeight,
+    kitValidation,
+    cacheKey,
+}: PreparedGardenStructurePlanCompilation): GardenStructureSemanticPlan {
     const rotated = rotateGardenStructureDocument(
         canonicalDocument,
         placement.rotation,
@@ -968,6 +1152,21 @@ export function compileGardenStructurePlan({
             spaceKind: cell.spaceKind,
         }))
         .sort(compareCells);
+    if (
+        !kitValidation.valid ||
+        !kitValidation.identity ||
+        !kitValidation.kitDefinitionFingerprint
+    ) {
+        return createGardenStructureFootprintFallbackPlan({
+            structureId,
+            revision,
+            cacheKey,
+            placement,
+            baseHeight,
+            footprintEntries,
+            validation: kitValidation,
+        });
+    }
     const floorEntries = rotated.floors
         .map((floor) => ({
             x: floor.cell.x + placement.anchorX,
@@ -1235,21 +1434,14 @@ export function compileGardenStructurePlan({
             .flatMap((batch) => batch.instanceIds)
             .sort(compareStrings),
     );
-    const cacheKey = getGardenStructurePlanCacheKey({
-        structureId,
-        revision,
-        document: canonicalDocument,
-        placement,
-        kit,
-        baseHeight,
-    });
     const withoutCounts = Object.freeze({
         id: `structure-plan:${structureId}:${revision.toString()}`,
         cacheKey,
         structureId,
         revision,
-        kitKey: kit.kitKey,
-        kitVersion: kit.kitVersion,
+        kitKey: kitValidation.identity.kitKey,
+        kitVersion: kitValidation.identity.kitVersion,
+        kitDefinitionFingerprint: kitValidation.kitDefinitionFingerprint,
         placement: Object.freeze({ ...placement }),
         baseHeight,
         worldBounds: createWorldBounds({
@@ -1274,12 +1466,25 @@ export function compileGardenStructurePlan({
         spatialBucketIndexByKey: spatial.indexByKey,
         batches,
         interactionIds,
+        runtimeSafety: Object.freeze({
+            collisionMode: 'semantic' as const,
+            issueSampleTruncated: false,
+            issues: Object.freeze([]),
+        }),
     });
 
     return Object.freeze({
         ...withoutCounts,
         counts: getGardenStructureCompilerCounts(withoutCounts),
     });
+}
+
+export function compileGardenStructurePlan(
+    input: GardenStructureCompileInput,
+): GardenStructureSemanticPlan {
+    return compilePreparedGardenStructurePlan(
+        prepareGardenStructurePlanCompilation(input),
+    );
 }
 
 export function containsGardenStructureWorldCell(

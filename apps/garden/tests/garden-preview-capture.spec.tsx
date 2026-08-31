@@ -218,7 +218,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                 },
                 { timeout: 80_000 },
             )
-            .not.toBe('waiting');
+            .toMatch(/^(?:captured|error)$/);
     } catch (error) {
         const diagnostics = {
             apiRequests,
@@ -248,7 +248,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
             webgl,
         };
         throw new Error(
-            `Garden preview capture did not leave its waiting state. Diagnostics: ${JSON.stringify(diagnostics)}`,
+            `Garden preview capture did not reach a terminal state. Diagnostics: ${JSON.stringify(diagnostics)}`,
             { cause: error },
         );
     }

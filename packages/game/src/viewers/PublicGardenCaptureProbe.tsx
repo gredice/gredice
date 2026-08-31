@@ -19,6 +19,7 @@ const fallbackStabilityWaitMs = 5000;
 const snapshotTimeoutMs = 45_000;
 const encodeTimeoutMs = 30_000;
 const maximumCaptureWaitMs = 30_000;
+const pixelReadPollIntervalMs = 8;
 const webpQuality = 0.9;
 
 export type PublicGardenCaptureOutput = {
@@ -236,14 +237,25 @@ function validateEncodedBlob(blob: Blob, output: ResolvedCaptureOutput) {
 }
 
 function withTimeout<T>(
-    promise: Promise<T>,
+    operation: (signal: AbortSignal) => Promise<T>,
     timeoutMs: number,
     timeoutMessage: string,
 ) {
     return new Promise<T>((resolve, reject) => {
+        const abortController = new AbortController();
         const timeout = window.setTimeout(() => {
+            abortController.abort();
             reject(new Error(timeoutMessage));
         }, timeoutMs);
+
+        let promise: Promise<T>;
+        try {
+            promise = operation(abortController.signal);
+        } catch (error) {
+            window.clearTimeout(timeout);
+            reject(toError(error));
+            return;
+        }
 
         void promise.then(
             (value) => {
@@ -256,6 +268,285 @@ function withTimeout<T>(
             },
         );
     });
+}
+
+export function flipCapturePixelRows(
+    source: Uint8Array,
+    width: number,
+    height: number,
+    unpremultiplyAlpha: boolean,
+) {
+    const bytesPerRow = width * 4;
+    if (
+        !Number.isSafeInteger(width) ||
+        !Number.isSafeInteger(height) ||
+        width < 1 ||
+        height < 1 ||
+        source.byteLength !== bytesPerRow * height
+    ) {
+        throw new Error('Garden preview pixel buffer has invalid dimensions.');
+    }
+
+    const flipped = new Uint8ClampedArray(source.byteLength);
+    for (let targetRow = 0; targetRow < height; targetRow += 1) {
+        const sourceRow = height - targetRow - 1;
+        const sourceOffset = sourceRow * bytesPerRow;
+        const targetOffset = targetRow * bytesPerRow;
+        for (let column = 0; column < width; column += 1) {
+            const sourcePixelOffset = sourceOffset + column * 4;
+            const targetPixelOffset = targetOffset + column * 4;
+            const alpha = source[sourcePixelOffset + 3] ?? 0;
+            if (unpremultiplyAlpha && alpha > 0 && alpha < 255) {
+                flipped[targetPixelOffset] = Math.min(
+                    255,
+                    Math.round(
+                        ((source[sourcePixelOffset] ?? 0) * 255) / alpha,
+                    ),
+                );
+                flipped[targetPixelOffset + 1] = Math.min(
+                    255,
+                    Math.round(
+                        ((source[sourcePixelOffset + 1] ?? 0) * 255) / alpha,
+                    ),
+                );
+                flipped[targetPixelOffset + 2] = Math.min(
+                    255,
+                    Math.round(
+                        ((source[sourcePixelOffset + 2] ?? 0) * 255) / alpha,
+                    ),
+                );
+            } else if (alpha === 0) {
+                flipped[targetPixelOffset] = 0;
+                flipped[targetPixelOffset + 1] = 0;
+                flipped[targetPixelOffset + 2] = 0;
+            } else {
+                flipped[targetPixelOffset] = source[sourcePixelOffset] ?? 0;
+                flipped[targetPixelOffset + 1] =
+                    source[sourcePixelOffset + 1] ?? 0;
+                flipped[targetPixelOffset + 2] =
+                    source[sourcePixelOffset + 2] ?? 0;
+            }
+            flipped[targetPixelOffset + 3] = alpha;
+        }
+    }
+    return flipped;
+}
+
+export type CaptureFencePollOutcome = 'failed' | 'ready' | 'waiting';
+
+export function resolveCaptureContextUnpremultiplyAlpha(
+    attributes: Readonly<{
+        premultipliedAlpha?: boolean;
+        preserveDrawingBuffer?: boolean;
+    }> | null,
+) {
+    if (attributes?.preserveDrawingBuffer !== true) {
+        throw new Error(
+            'Garden preview capture requires a preserved WebGL drawing buffer.',
+        );
+    }
+    return attributes.premultipliedAlpha === true;
+}
+
+export function resolveCaptureFencePollOutcome({
+    alreadySignaled,
+    conditionSatisfied,
+    status,
+    timeoutExpired,
+    waitFailed,
+}: {
+    alreadySignaled: number;
+    conditionSatisfied: number;
+    status: number;
+    timeoutExpired: number;
+    waitFailed: number;
+}): CaptureFencePollOutcome {
+    if (status === waitFailed) {
+        return 'failed';
+    }
+    if (status === timeoutExpired) {
+        return 'waiting';
+    }
+    if (status === alreadySignaled || status === conditionSatisfied) {
+        return 'ready';
+    }
+    return 'failed';
+}
+
+export function pollCaptureFence({
+    alreadySignaled,
+    conditionSatisfied,
+    syncFlushCommandsBit,
+    timeoutExpired,
+    wait,
+    waitFailed,
+}: {
+    alreadySignaled: number;
+    conditionSatisfied: number;
+    syncFlushCommandsBit: number;
+    timeoutExpired: number;
+    wait: (flags: number, timeout: number) => number;
+    waitFailed: number;
+}) {
+    return resolveCaptureFencePollOutcome({
+        alreadySignaled,
+        conditionSatisfied,
+        status: wait(syncFlushCommandsBit, 0),
+        timeoutExpired,
+        waitFailed,
+    });
+}
+
+function waitForCaptureFence(
+    context: WebGL2RenderingContext,
+    sync: WebGLSync,
+    signal: AbortSignal,
+) {
+    return new Promise<void>((resolve, reject) => {
+        const poll = () => {
+            try {
+                if (signal.aborted) {
+                    reject(
+                        new Error('Garden preview pixel read was cancelled.'),
+                    );
+                    return;
+                }
+                if (context.isContextLost()) {
+                    reject(
+                        new Error(
+                            'Garden preview WebGL context was lost during capture.',
+                        ),
+                    );
+                    return;
+                }
+
+                const outcome = pollCaptureFence({
+                    alreadySignaled: context.ALREADY_SIGNALED,
+                    conditionSatisfied: context.CONDITION_SATISFIED,
+                    syncFlushCommandsBit: context.SYNC_FLUSH_COMMANDS_BIT,
+                    timeoutExpired: context.TIMEOUT_EXPIRED,
+                    wait: (flags, timeout) =>
+                        context.clientWaitSync(sync, flags, timeout),
+                    waitFailed: context.WAIT_FAILED,
+                });
+                if (outcome === 'failed') {
+                    reject(new Error('Garden preview pixel read failed.'));
+                    return;
+                }
+                if (outcome === 'ready') {
+                    resolve();
+                    return;
+                }
+                window.setTimeout(poll, pixelReadPollIntervalMs);
+            } catch (error) {
+                reject(toError(error));
+            }
+        };
+
+        window.setTimeout(poll, pixelReadPollIntervalMs);
+    });
+}
+
+function isWebGl2CaptureContext(
+    context: WebGLRenderingContext | WebGL2RenderingContext,
+): context is WebGL2RenderingContext {
+    return (
+        typeof WebGL2RenderingContext !== 'undefined' &&
+        context instanceof WebGL2RenderingContext
+    );
+}
+
+async function readCapturePixels(
+    context: WebGL2RenderingContext,
+    width: number,
+    height: number,
+    signal: AbortSignal,
+) {
+    const pixels = new Uint8Array(width * height * 4);
+    const pixelBuffer = context.createBuffer();
+    if (!pixelBuffer) {
+        throw new Error('Garden preview pixel buffer is unavailable.');
+    }
+
+    const previousPixelBuffer: WebGLBuffer | null = context.getParameter(
+        context.PIXEL_PACK_BUFFER_BINDING,
+    );
+    const previousReadFramebuffer: WebGLFramebuffer | null =
+        context.getParameter(context.READ_FRAMEBUFFER_BINDING);
+    const previousReadBuffer: number = context.getParameter(
+        context.READ_BUFFER,
+    );
+    let initialStateRestored = false;
+    let sync: WebGLSync | null = null;
+    const restoreInitialState = () => {
+        if (!context.isContextLost()) {
+            context.bindBuffer(context.PIXEL_PACK_BUFFER, previousPixelBuffer);
+            context.bindFramebuffer(
+                context.READ_FRAMEBUFFER,
+                previousReadFramebuffer,
+            );
+            context.readBuffer(previousReadBuffer);
+        }
+        initialStateRestored = true;
+    };
+    try {
+        if (signal.aborted) {
+            throw new Error('Garden preview pixel read was cancelled.');
+        }
+        context.bindFramebuffer(context.READ_FRAMEBUFFER, null);
+        context.readBuffer(context.BACK);
+        context.bindBuffer(context.PIXEL_PACK_BUFFER, pixelBuffer);
+        context.bufferData(
+            context.PIXEL_PACK_BUFFER,
+            pixels.byteLength,
+            context.STREAM_READ,
+        );
+        context.readPixels(
+            0,
+            0,
+            width,
+            height,
+            context.RGBA,
+            context.UNSIGNED_BYTE,
+            0,
+        );
+        sync = context.fenceSync(context.SYNC_GPU_COMMANDS_COMPLETE, 0);
+        if (!sync) {
+            throw new Error('Garden preview pixel fence is unavailable.');
+        }
+        context.flush();
+        restoreInitialState();
+
+        await waitForCaptureFence(context, sync, signal);
+        if (context.isContextLost()) {
+            throw new Error(
+                'Garden preview WebGL context was lost during capture.',
+            );
+        }
+        const pixelBufferBeforeCopy: WebGLBuffer | null = context.getParameter(
+            context.PIXEL_PACK_BUFFER_BINDING,
+        );
+        try {
+            context.bindBuffer(context.PIXEL_PACK_BUFFER, pixelBuffer);
+            context.getBufferSubData(context.PIXEL_PACK_BUFFER, 0, pixels);
+        } finally {
+            if (!context.isContextLost()) {
+                context.bindBuffer(
+                    context.PIXEL_PACK_BUFFER,
+                    pixelBufferBeforeCopy,
+                );
+            }
+        }
+        return pixels;
+    } finally {
+        if (!initialStateRestored) {
+            restoreInitialState();
+        }
+        if (sync) {
+            context.deleteSync(sync);
+        }
+        context.deleteBuffer(pixelBuffer);
+    }
 }
 
 function canvasElementToBlob(
@@ -283,127 +574,53 @@ function canvasElementToBlob(
     });
 }
 
-function encodeWithHtmlCanvas(
-    source: CanvasImageSource,
-    output: ResolvedCaptureOutput,
-) {
-    const encodingCanvas = document.createElement('canvas');
-    encodingCanvas.width = output.width;
-    encodingCanvas.height = output.height;
-    const context = encodingCanvas.getContext('2d');
-    if (!context) {
-        return Promise.reject(
-            new Error('Garden preview encoder is unavailable.'),
-        );
-    }
-
-    context.drawImage(source, 0, 0, output.width, output.height);
-    return canvasElementToBlob(encodingCanvas, output);
-}
-
-class GardenPreviewSnapshotTimeoutError extends Error {}
-
-function createSnapshot(sourceCanvas: HTMLCanvasElement) {
-    const snapshotPromise = window.createImageBitmap(sourceCanvas);
-    let timedOut = false;
-
-    return new Promise<ImageBitmap>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-            timedOut = true;
-            reject(
-                new GardenPreviewSnapshotTimeoutError(
-                    'Garden preview snapshot timed out.',
-                ),
-            );
-        }, snapshotTimeoutMs);
-
-        void snapshotPromise.then(
-            (bitmap) => {
-                window.clearTimeout(timeout);
-                if (timedOut) {
-                    bitmap.close();
-                    return;
-                }
-                resolve(bitmap);
-            },
-            (error: unknown) => {
-                window.clearTimeout(timeout);
-                if (!timedOut) {
-                    reject(toError(error));
-                }
-            },
-        );
-    });
-}
-
 async function encodeCapture(
     sourceCanvas: HTMLCanvasElement,
+    context: WebGL2RenderingContext,
     output: ResolvedCaptureOutput,
 ) {
     validateSourceCanvas(sourceCanvas, output);
-
-    if (typeof window.createImageBitmap !== 'function') {
-        const blob = await withTimeout(
-            canvasElementToBlob(sourceCanvas, output),
-            encodeTimeoutMs,
-            'Garden capture encoding timed out.',
-        );
-        return validateEncodedBlob(blob, output);
-    }
-
-    let snapshot: ImageBitmap;
-    try {
-        snapshot = await createSnapshot(sourceCanvas);
-    } catch (error) {
-        if (error instanceof GardenPreviewSnapshotTimeoutError) {
-            throw error;
-        }
-        const blob = await withTimeout(
-            canvasElementToBlob(sourceCanvas, output),
-            encodeTimeoutMs,
-            'Garden capture encoding timed out.',
-        );
-        return validateEncodedBlob(blob, output);
-    }
-
-    try {
-        if (typeof OffscreenCanvas !== 'undefined') {
-            const encodingCanvas = new OffscreenCanvas(
+    const unpremultiplyAlpha = resolveCaptureContextUnpremultiplyAlpha(
+        context.getContextAttributes(),
+    );
+    const pixels = await withTimeout(
+        (signal) =>
+            readCapturePixels(
+                context,
                 sourceCanvas.width,
                 sourceCanvas.height,
-            );
-            const context = encodingCanvas.getContext('2d');
-            if (context) {
-                // The bitmap already contains the WebGL snapshot. The 2D copy
-                // preserves that exact shader output without re-rendering the
-                // scene.
-                context.drawImage(snapshot, 0, 0);
-                try {
-                    const blob = await withTimeout(
-                        encodingCanvas.convertToBlob({
-                            quality: output.quality,
-                            type: output.contentType,
-                        }),
-                        encodeTimeoutMs,
-                        'Garden capture encoding timed out.',
-                    );
-                    return validateEncodedBlob(blob, output);
-                } catch {
-                    // Some browsers expose OffscreenCanvas without support for
-                    // the requested encoder. Fall through to HTML canvas.
-                }
-            }
-        }
-
-        const blob = await withTimeout(
-            encodeWithHtmlCanvas(snapshot, output),
-            encodeTimeoutMs,
-            'Garden capture encoding timed out.',
-        );
-        return validateEncodedBlob(blob, output);
-    } finally {
-        snapshot.close();
+                signal,
+            ),
+        snapshotTimeoutMs,
+        'Garden preview snapshot timed out.',
+    );
+    const encodingCanvas = document.createElement('canvas');
+    encodingCanvas.width = output.width;
+    encodingCanvas.height = output.height;
+    const encodingContext = encodingCanvas.getContext('2d');
+    if (!encodingContext) {
+        throw new Error('Garden preview encoder is unavailable.');
     }
+    encodingContext.putImageData(
+        new ImageData(
+            flipCapturePixelRows(
+                pixels,
+                output.width,
+                output.height,
+                unpremultiplyAlpha,
+            ),
+            output.width,
+            output.height,
+        ),
+        0,
+        0,
+    );
+    const blob = await withTimeout(
+        () => canvasElementToBlob(encodingCanvas, output),
+        encodeTimeoutMs,
+        'Garden capture encoding timed out.',
+    );
+    return validateEncodedBlob(blob, output);
 }
 
 export function PublicGardenCaptureProbe({
@@ -623,7 +840,16 @@ export function PublicGardenCaptureProbe({
                 if (!mountedRef.current) {
                     return;
                 }
-                void encodeCapture(gl.domElement, resolvedOutput)
+                const context = gl.getContext();
+                if (!isWebGl2CaptureContext(context)) {
+                    onErrorRef.current(
+                        new Error(
+                            'Garden preview capture requires WebGL 2 asynchronous readback.',
+                        ),
+                    );
+                    return;
+                }
+                void encodeCapture(gl.domElement, context, resolvedOutput)
                     .then((blob) => {
                         if (mountedRef.current) {
                             onCaptureRef.current(blob);

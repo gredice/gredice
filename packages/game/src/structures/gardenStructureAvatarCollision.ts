@@ -17,6 +17,9 @@ const portalClearanceEpsilon = 0.000_01;
 function getGardenStructurePortalClearanceIssue(
     plan: GardenStructureSemanticPlan,
 ) {
+    if (plan.runtimeSafety.collisionMode === 'blocked-footprint') {
+        return 'Garden structure runtime metadata requires a blocked-footprint collision fallback.';
+    }
     const minimumWidth = gardenAvatarRadius * 2;
     for (const [index, portalId] of plan.openPortals.ids.entries()) {
         const clearanceWidth = plan.openPortals.clearances[index * 2];
@@ -32,6 +35,20 @@ function getGardenStructurePortalClearanceIssue(
         }
     }
     return null;
+}
+
+function appendGardenStructureFootprintBlockedCells(
+    plan: GardenStructureSemanticPlan,
+    blockedCells: Array<{ x: number; z: number }>,
+) {
+    for (let index = 0; index < plan.footprint.ids.length; index += 1) {
+        const offset = index * coordinateStride;
+        const x = plan.footprint.coordinates[offset];
+        const z = plan.footprint.coordinates[offset + 1];
+        if (x !== undefined && z !== undefined) {
+            blockedCells.push({ x, z });
+        }
+    }
 }
 
 function assertGardenStructurePortalsFitAvatar(
@@ -184,18 +201,7 @@ export function createGardenStructureCollectionAvatarCollisionWorld(
     );
     for (const structure of structures) {
         if (getGardenStructurePortalClearanceIssue(structure)) {
-            for (
-                let index = 0;
-                index < structure.footprint.ids.length;
-                index += 1
-            ) {
-                const offset = index * coordinateStride;
-                const x = structure.footprint.coordinates[offset];
-                const z = structure.footprint.coordinates[offset + 1];
-                if (x !== undefined && z !== undefined) {
-                    blockedCells.push({ x, z });
-                }
-            }
+            appendGardenStructureFootprintBlockedCells(structure, blockedCells);
             continue;
         }
         surfaces.push(...getGardenStructureAvatarCollisionSurfaces(structure));
@@ -209,6 +215,14 @@ export function createGardenStructureCollectionAvatarCollisionWorld(
 export function createGardenStructureAvatarCollisionWorld(
     plan: GardenStructureSemanticPlan,
 ) {
+    if (plan.runtimeSafety.collisionMode === 'blocked-footprint') {
+        const blockedCells: Array<{ x: number; z: number }> = [];
+        appendGardenStructureFootprintBlockedCells(plan, blockedCells);
+        return createIndexedGardenAvatarCollisionWorld({
+            blockedCells,
+            surfaces: [],
+        });
+    }
     return createIndexedGardenAvatarCollisionWorld({
         blockedCells: [],
         surfaces: getGardenStructureAvatarCollisionSurfaces(plan),

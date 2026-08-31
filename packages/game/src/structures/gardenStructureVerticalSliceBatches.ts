@@ -1,4 +1,4 @@
-import { debugGardenStructureKitMetadata } from './debugStructureKit';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 
 export function getGardenStructureVerticalSliceBatches({
@@ -8,10 +8,7 @@ export function getGardenStructureVerticalSliceBatches({
     plan: GardenStructureSemanticPlan;
     roofCutaway: boolean;
 }) {
-    if (
-        plan.kitKey !== debugGardenStructureKitMetadata.kitKey ||
-        plan.kitVersion !== debugGardenStructureKitMetadata.kitVersion
-    ) {
+    if (!isGardenStructureKitV1DefinitionCompatible(plan)) {
         throw new Error(
             'The fixture renderer only supports its matching immutable debug kit.',
         );

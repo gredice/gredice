@@ -13,6 +13,7 @@ import {
     type GardenStructureCollectionCacheDisposalReason,
     type GardenStructureSceneBuildPreviewInput,
     GardenStructureSceneCache,
+    resolveGardenStructureRuntimeKit,
     resolveGardenStructureSceneStructureBaseHeight,
 } from './index';
 
@@ -154,7 +155,7 @@ describe('GardenStructureSceneCache', () => {
         assert.equal(cache.snapshot(), null);
     });
 
-    it('omits invalid records and exposes only bounded diagnostic codes', () => {
+    it('deduplicates diagnostic codes without falsely reporting truncation', () => {
         const cache = new GardenStructureSceneCache();
         const invalidRecords = Array.from({ length: 12 }, (_, index) => ({
             ...savedStructure({ id: `invalid-${index.toString()}` }),
@@ -172,7 +173,7 @@ describe('GardenStructureSceneCache', () => {
         assert.deepEqual(snapshot.diagnostics.sampledIssueCodes, [
             'invalid-revision',
         ]);
-        assert.equal(snapshot.diagnostics.issueSampleTruncated, true);
+        assert.equal(snapshot.diagnostics.issueSampleTruncated, false);
     });
 
     it('builds one optional coarse collision world from the rendered collection', () => {
@@ -222,6 +223,60 @@ describe('GardenStructureSceneCache', () => {
         assert.deepEqual(snapshot.diagnostics.sampledIssueCodes, [
             'collision-rejected',
         ]);
+        assert.equal(snapshot.diagnostics.issueSampleTruncated, false);
+    });
+
+    it('marks a full diagnostic sample truncated after collision rejection', () => {
+        const validRecord = savedStructure();
+        const records = [
+            validRecord,
+            null,
+            { ...validRecord, id: '' },
+            { ...validRecord, anchorX: 0.5, id: 'invalid-placement' },
+            { ...validRecord, id: 'invalid-revision', revision: 0 },
+            {
+                ...validRecord,
+                deleted: true,
+                id: 'ambiguous-delete-state',
+                isDeleted: false,
+            },
+            {
+                ...validRecord,
+                id: 'kit-unavailable',
+                kitVersion: 'missing',
+            },
+            {
+                ...validRecord,
+                document: { ...validRecord.document, schemaVersion: 2 },
+                id: 'unsupported-schema-version',
+            },
+        ];
+        const cache = new GardenStructureSceneCache({
+            createCollisionWorld: () => {
+                throw new Error('collision unavailable');
+            },
+        });
+
+        const renderOnly = cache.resolve({
+            gardenId: 1,
+            includeCollision: false,
+            records,
+        });
+        const interactive = cache.resolve({
+            gardenId: 1,
+            includeCollision: true,
+            records,
+        });
+
+        assert.equal(renderOnly.diagnostics.sampledIssueCodes.length, 8);
+        assert.equal(renderOnly.diagnostics.issueSampleTruncated, false);
+        assert.equal(interactive.diagnostics.sampledIssueCodes.length, 8);
+        assert.ok(
+            interactive.diagnostics.sampledIssueCodes.includes(
+                'collision-rejected',
+            ),
+        );
+        assert.equal(interactive.diagnostics.issueSampleTruncated, true);
     });
 
     it('grounds visual and collision plans on the validated flat block support', () => {
@@ -259,6 +314,75 @@ describe('GardenStructureSceneCache', () => {
                 (surface) => surface.y === 0.4 && surface.roamable,
             ),
         );
+    });
+
+    it('uses the custom runtime kit resolver while prefiltering base heights', () => {
+        const record = savedStructure();
+        const defaultDefinition = resolveGardenStructureRuntimeKit(
+            record.kitKey,
+            record.kitVersion,
+        );
+        assert.ok(defaultDefinition);
+        const customKitKey = 'custom.structure-kit';
+        const customKitVersion = '2026.08';
+        const customMetadata = Object.freeze({
+            ...defaultDefinition.metadata,
+            kitKey: customKitKey,
+            kitVersion: customKitVersion,
+        });
+        const customRecord = {
+            ...record,
+            kitKey: customKitKey,
+            kitVersion: customKitVersion,
+        };
+        const resolveKit = (kitKey: string, kitVersion: string) =>
+            kitKey === customKitKey && kitVersion === customKitVersion
+                ? Object.freeze({
+                      ...defaultDefinition,
+                      metadata: customMetadata,
+                  })
+                : undefined;
+        const stacks = getGardenStructureWorldFootprintCells(
+            customRecord.document,
+            {
+                anchorX: customRecord.anchorX,
+                anchorY: customRecord.anchorY,
+                rotation: 0,
+            },
+        ).map((cell, index) => ({
+            blocks: [
+                {
+                    id: `custom-kit-ground-${index.toString()}`,
+                    name: 'Block_Grass',
+                    rotation: 0,
+                },
+            ],
+            position: new Vector3(cell.x, 0, cell.y),
+        }));
+
+        const withoutCustomKit = createGardenStructureSceneBaseHeightResolver({
+            blockData: getLocalSandboxBlockData(),
+            records: [customRecord],
+            stacks,
+        });
+        const resolveBaseHeight = createGardenStructureSceneBaseHeightResolver({
+            blockData: getLocalSandboxBlockData(),
+            records: [customRecord],
+            resolveKit,
+            stacks,
+        });
+        const snapshot = new GardenStructureSceneCache().resolve({
+            gardenId: 1,
+            records: [customRecord],
+            resolveBaseHeight,
+            resolveKit,
+        });
+
+        assert.equal(Number.isNaN(withoutCustomKit(customRecord.id)), true);
+        assert.equal(resolveBaseHeight(customRecord.id), 0.4);
+        assert.equal(snapshot.plan?.structures[0]?.baseHeight, 0.4);
+        assert.equal(snapshot.plan?.structures[0]?.kitKey, customKitKey);
+        assert.equal(snapshot.diagnostics.status, 'ready');
     });
 
     it('resolves an editor preview to the same ordinary-block support height', () => {

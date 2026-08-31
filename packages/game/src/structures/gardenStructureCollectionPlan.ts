@@ -3,6 +3,8 @@ import {
     gardenStructureMaxActivePerGarden,
 } from '@gredice/js/gardenStructures';
 import { compileGardenStructurePlan } from './compileGardenStructurePlan';
+import { validateGardenStructureKitMetadata } from './gardenStructureKitMetadataValidation';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 import {
     GardenStructurePlanCache,
     type GardenStructurePlanCacheOptions,
@@ -45,15 +47,19 @@ export type GardenStructureFallbackBoxGeometry = Readonly<{
 }>;
 
 export type GardenStructureCollectionBatchDescription = Readonly<{
+    /** Dormant in normal passes; shown only when compatible kit assets cannot render. */
+    assetFallbackOnly: boolean;
     category: GardenStructureBatchCategory;
     fallbackGeometry: GardenStructureFallbackBoxGeometry;
     geometryId: string;
     geometryKind: GardenStructureBatchGeometryKind;
     id: string;
     instanceIds: readonly string[];
+    kitDefinitionFingerprint: string | null;
     kitKey: string;
     kitVersion: string;
     materialId: string;
+    rendersSemanticFallback: boolean;
     structureIds: readonly string[];
     transformStride: typeof gardenStructureCollectionTransformStride;
     /** Packed as worldX, worldY/z, quarterTurns, baseHeight. */
@@ -156,14 +162,17 @@ export type GardenStructureCollectionCacheSnapshot = Readonly<{
 }>;
 
 type CollectionBatchBuilder = {
+    assetFallbackOnly: boolean;
     category: GardenStructureBatchCategory;
     fallbackGeometry: GardenStructureFallbackBoxGeometry;
     geometryId: string;
     geometryKind: GardenStructureBatchGeometryKind;
     instanceIds: string[];
+    kitDefinitionFingerprint: string | null;
     kitKey: string;
     kitVersion: string;
     materialId: string;
+    rendersSemanticFallback: boolean;
     structureIds: string[];
     transforms: number[];
     transparency: GardenStructureMaterialTransparency;
@@ -277,6 +286,17 @@ function getFallbackGeometry(
     }
 }
 
+function rendersSemanticFallback(
+    geometryKind: GardenStructureBatchGeometryKind,
+    geometryId: string,
+    kit: GardenStructureKitMetadata,
+) {
+    return !(
+        geometryKind === 'edge-segment' &&
+        kit.edgeParts[geometryId]?.passage === 'open-portal'
+    );
+}
+
 const gardenStructureCollectionBatchChunkSize = 32;
 
 function collectionBatchChunk(plan: GardenStructureSemanticPlan) {
@@ -305,6 +325,7 @@ function collectionBatchKey(
     return [
         plan.kitKey,
         plan.kitVersion,
+        plan.kitDefinitionFingerprint ?? 'invalid-kit-definition',
         chunk.x,
         chunk.y,
         batch.category,
@@ -322,6 +343,7 @@ function createCollectionBatches(
     const builders = new Map<string, CollectionBatchBuilder>();
     for (const { kit, plan } of entries) {
         let emittedInstanceCount = 0;
+        let emittedSemanticFallbackNonPropInstanceCount = 0;
         const planBatches = [
             ...plan.batches.opaque,
             ...plan.batches.transparent,
@@ -333,14 +355,21 @@ function createCollectionBatches(
             let builder = builders.get(key);
             if (!builder) {
                 builder = {
+                    assetFallbackOnly: false,
                     category: batch.category,
                     geometryKind: batch.geometryKind,
                     geometryId: batch.geometryId,
                     ...(batch.variantId ? { variantId: batch.variantId } : {}),
                     materialId: batch.materialId,
+                    rendersSemanticFallback: rendersSemanticFallback(
+                        batch.geometryKind,
+                        batch.geometryId,
+                        kit,
+                    ),
                     transparency: batch.transparency,
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
+                    kitDefinitionFingerprint: plan.kitDefinitionFingerprint,
                     fallbackGeometry: getFallbackGeometry(
                         batch.geometryKind,
                         batch.geometryId,
@@ -372,19 +401,34 @@ function createCollectionBatches(
                 builder.structureIds.push(plan.structureId);
                 builder.transforms.push(x, y, rotation, plan.baseHeight);
                 emittedInstanceCount += 1;
+                if (
+                    builder.category !== 'props' &&
+                    builder.rendersSemanticFallback
+                ) {
+                    emittedSemanticFallbackNonPropInstanceCount += 1;
+                }
             }
         }
 
-        if (emittedInstanceCount === 0) {
+        const kitV1Compatible =
+            isGardenStructureKitV1DefinitionCompatible(plan);
+        const needsSemanticFootprint =
+            emittedInstanceCount === 0 ||
+            emittedSemanticFallbackNonPropInstanceCount === 0;
+        if (needsSemanticFootprint) {
+            const assetFallbackOnly =
+                emittedInstanceCount > 0 && kitV1Compatible;
             const chunk = collectionBatchChunk(plan);
             const key = [
                 plan.kitKey,
                 plan.kitVersion,
+                plan.kitDefinitionFingerprint ?? 'invalid-kit-definition',
                 chunk.x,
                 chunk.y,
                 'transparent',
                 'floor-cell',
                 'semantic-footprint',
+                assetFallbackOnly ? 'asset-fallback-only' : 'required-fallback',
                 '',
                 'semantic-footprint',
                 'transparent',
@@ -392,13 +436,16 @@ function createCollectionBatches(
             let builder = builders.get(key);
             if (!builder) {
                 builder = {
+                    assetFallbackOnly,
                     category: 'transparent',
                     geometryKind: 'floor-cell',
                     geometryId: 'semantic-footprint',
                     materialId: 'semantic-footprint',
+                    rendersSemanticFallback: true,
                     transparency: 'transparent',
                     kitKey: plan.kitKey,
                     kitVersion: plan.kitVersion,
+                    kitDefinitionFingerprint: plan.kitDefinitionFingerprint,
                     fallbackGeometry: Object.freeze({
                         kind: 'box',
                         centerHeightOffset: 0.0125,
@@ -438,14 +485,17 @@ function createCollectionBatches(
         grouped[builder.category].push(
             Object.freeze({
                 id: `structure-collection-batch:${key}`,
+                assetFallbackOnly: builder.assetFallbackOnly,
                 category: builder.category,
                 geometryKind: builder.geometryKind,
                 geometryId: builder.geometryId,
                 ...(builder.variantId ? { variantId: builder.variantId } : {}),
                 materialId: builder.materialId,
+                rendersSemanticFallback: builder.rendersSemanticFallback,
                 transparency: builder.transparency,
                 kitKey: builder.kitKey,
                 kitVersion: builder.kitVersion,
+                kitDefinitionFingerprint: builder.kitDefinitionFingerprint,
                 fallbackGeometry: builder.fallbackGeometry,
                 instanceIds: Object.freeze(builder.instanceIds),
                 structureIds: Object.freeze(builder.structureIds),
@@ -552,16 +602,34 @@ function createCollectionWorldBounds(
 export function createGardenStructureCollectionPlan(
     inputEntries: readonly GardenStructureCollectionPlanEntry[],
 ): GardenStructureCollectionPlan {
-    const entries = [...inputEntries].sort((left, right) =>
-        compareStrings(left.plan.structureId, right.plan.structureId),
-    );
+    const entries = inputEntries
+        .map(({ kit, plan }) => {
+            const kitValidation = validateGardenStructureKitMetadata(kit);
+            if (
+                plan.runtimeSafety.collisionMode === 'semantic' &&
+                (!kitValidation.valid ||
+                    !kitValidation.identity ||
+                    !kitValidation.kitDefinitionFingerprint ||
+                    !kitValidation.metadataSnapshot ||
+                    kitValidation.identity.kitKey !== plan.kitKey ||
+                    kitValidation.identity.kitVersion !== plan.kitVersion ||
+                    kitValidation.kitDefinitionFingerprint !==
+                        plan.kitDefinitionFingerprint)
+            ) {
+                throw new Error(
+                    'A structure collection entry must use its compiled immutable kit definition.',
+                );
+            }
+            return Object.freeze({
+                kit: kitValidation.metadataSnapshot ?? kit,
+                plan,
+            });
+        })
+        .sort((left, right) =>
+            compareStrings(left.plan.structureId, right.plan.structureId),
+        );
     const structureIds = new Set<string>();
-    for (const { kit, plan } of entries) {
-        if (kit.kitKey !== plan.kitKey || kit.kitVersion !== plan.kitVersion) {
-            throw new Error(
-                'A structure collection entry must use its compiled immutable kit.',
-            );
-        }
+    for (const { plan } of entries) {
         if (structureIds.has(plan.structureId)) {
             throw new Error(
                 'A structure collection cannot contain duplicate structure IDs.',

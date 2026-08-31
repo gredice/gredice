@@ -17,7 +17,6 @@ import {
     GardenStructureKitV1AssetBoundary,
     GardenStructureKitV1LoadedInstances,
     type GardenStructureKitV1RuntimeBatch,
-    isGardenStructureKitV1SemanticFallbackBatch,
 } from './GardenStructureKitV1AssetRenderer';
 import {
     type GardenStructureCollectionBatchDescription,
@@ -26,6 +25,7 @@ import {
     gardenStructureCollectionTransformStride,
     getVisibleGardenStructureIds,
 } from './gardenStructureCollectionPlan';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 
 export type GardenStructureCollectionSelection = Readonly<{
     instanceId: string;
@@ -308,7 +308,7 @@ export function GardenStructureCollectionRenderer({
             ),
         [predicateVisibleIds, visibleStructureIds],
     );
-    const batches = useMemo(
+    const availableBatches = useMemo(
         () => [
             ...plan.batches.opaque,
             ...plan.batches.transparent,
@@ -317,13 +317,83 @@ export function GardenStructureCollectionRenderer({
         ],
         [plan.batches, renderProps],
     );
+    const batches = useMemo(
+        () =>
+            availableBatches.filter(
+                ({ assetFallbackOnly }) => !assetFallbackOnly,
+            ),
+        [availableBatches],
+    );
+    const assetFallbackOnlyBatches = useMemo(
+        () =>
+            availableBatches.filter(
+                ({ assetFallbackOnly }) => assetFallbackOnly,
+            ),
+        [availableBatches],
+    );
+    const representedStructureIds = useMemo(
+        () => new Set(batches.flatMap(({ structureIds }) => structureIds)),
+        [batches],
+    );
+    const orphanAssetFallbackStructureIds = useMemo(
+        () =>
+            new Set(
+                assetFallbackOnlyBatches.flatMap(({ structureIds }) =>
+                    structureIds.filter(
+                        (structureId) =>
+                            !representedStructureIds.has(structureId),
+                    ),
+                ),
+            ),
+        [assetFallbackOnlyBatches, representedStructureIds],
+    );
+    const orphanAssetFallbackVisibleIds = useMemo(
+        () =>
+            intersectVisibleStructureIds(
+                effectiveVisibleIds,
+                orphanAssetFallbackStructureIds,
+            ),
+        [effectiveVisibleIds, orphanAssetFallbackStructureIds],
+    );
     const batchById = useMemo(
         () => new Map(batches.map((batch) => [batch.id, batch])),
         [batches],
     );
-    const semanticFallbackBatches = useMemo(
-        () => batches.filter(isGardenStructureKitV1SemanticFallbackBatch),
+    const assetBatches = useMemo(
+        () => batches.filter(isGardenStructureKitV1DefinitionCompatible),
         [batches],
+    );
+    const assetBatchIds = useMemo(
+        () => new Set(assetBatches.map(({ id }) => id)),
+        [assetBatches],
+    );
+    const semanticFallbackBatches = useMemo(
+        () =>
+            batches.filter(
+                ({ rendersSemanticFallback }) => rendersSemanticFallback,
+            ),
+        [batches],
+    );
+    const incompatibleFallbackBatches = useMemo(
+        () =>
+            semanticFallbackBatches.filter(({ id }) => !assetBatchIds.has(id)),
+        [assetBatchIds, semanticFallbackBatches],
+    );
+    const assetFallbackBatches = useMemo(
+        () => semanticFallbackBatches.filter(({ id }) => assetBatchIds.has(id)),
+        [assetBatchIds, semanticFallbackBatches],
+    );
+    const assetStructureIds = useMemo(
+        () => new Set(assetBatches.flatMap(({ structureIds }) => structureIds)),
+        [assetBatches],
+    );
+    const assetFallbackVisibleIds = useMemo(
+        () =>
+            intersectVisibleStructureIds(
+                effectiveVisibleIds,
+                assetStructureIds,
+            ),
+        [assetStructureIds, effectiveVisibleIds],
     );
     const getVisibleIndices = useCallback(
         (runtimeBatch: GardenStructureKitV1RuntimeBatch) => {
@@ -352,35 +422,72 @@ export function GardenStructureCollectionRenderer({
     const renderFallback = useCallback(
         (batchIds: readonly string[]) => {
             const unresolvedIds = new Set(batchIds);
+            const unresolvedBatches = batchIds.flatMap((id) => {
+                const batch = batchById.get(id);
+                return batch ? [batch] : [];
+            });
+            const unresolvedWithoutBoxStructureIds = new Set(
+                unresolvedBatches.flatMap((batch) =>
+                    batch.rendersSemanticFallback ? [] : batch.structureIds,
+                ),
+            );
+            const footprintVisibleIds = intersectVisibleStructureIds(
+                effectiveVisibleIds,
+                unresolvedWithoutBoxStructureIds,
+            );
+            const unresolvedFallbackBatches = assetFallbackBatches.filter(
+                ({ id }) => unresolvedIds.has(id),
+            );
             return (
-                <GardenStructureCollectionFallbackRenderer
-                    batches={semanticFallbackBatches.filter(({ id }) =>
-                        unresolvedIds.has(id),
-                    )}
-                    castShadows={castShadows}
-                    onSelect={onSelect}
-                    selectedInstanceId={selectedInstanceId}
-                    visibleStructureIds={effectiveVisibleIds}
-                />
+                <>
+                    {unresolvedFallbackBatches.length > 0 ? (
+                        <GardenStructureCollectionFallbackRenderer
+                            batches={unresolvedFallbackBatches}
+                            castShadows={castShadows}
+                            onSelect={onSelect}
+                            selectedInstanceId={selectedInstanceId}
+                            visibleStructureIds={effectiveVisibleIds}
+                        />
+                    ) : null}
+                    {unresolvedWithoutBoxStructureIds.size > 0 ? (
+                        <GardenStructureCollectionFallbackRenderer
+                            batches={assetFallbackOnlyBatches}
+                            castShadows={castShadows}
+                            onSelect={onSelect}
+                            selectedInstanceId={selectedInstanceId}
+                            visibleStructureIds={footprintVisibleIds}
+                        />
+                    ) : null}
+                </>
             );
         },
         [
+            assetFallbackOnlyBatches,
             castShadows,
+            batchById,
             effectiveVisibleIds,
             onSelect,
             selectedInstanceId,
-            semanticFallbackBatches,
+            assetFallbackBatches,
         ],
     );
     const fallback = (
         <GardenStructureCollectionFallbackRenderer
-            batches={semanticFallbackBatches}
+            batches={[...assetFallbackBatches, ...assetFallbackOnlyBatches]}
             castShadows={castShadows}
             onSelect={onSelect}
             selectedInstanceId={selectedInstanceId}
-            visibleStructureIds={effectiveVisibleIds}
+            visibleStructureIds={assetFallbackVisibleIds}
         />
     );
+
+    const fallbackOnlyPlanCacheKey =
+        assetBatches.length === 0 ? plan.cacheKey : null;
+    useEffect(() => {
+        if (fallbackOnlyPlanCacheKey !== null) {
+            onRendererReady?.();
+        }
+    }, [fallbackOnlyPlanCacheKey, onRendererReady]);
 
     return (
         <group
@@ -391,21 +498,41 @@ export function GardenStructureCollectionRenderer({
                 structureCount: plan.structures.length,
             }}
         >
-            <GardenStructureKitV1AssetBoundary
-                fallback={fallback}
-                onErrorFallbackReady={onRendererReady}
-            >
-                <GardenStructureKitV1LoadedInstances
-                    batches={batches}
+            {incompatibleFallbackBatches.length > 0 ? (
+                <GardenStructureCollectionFallbackRenderer
+                    batches={incompatibleFallbackBatches}
                     castShadows={castShadows}
-                    getVisibleInstanceIndices={getVisibleIndices}
-                    namePrefix="GardenStructureCollectionKitV1Batch"
-                    onInstancesReady={onRendererReady}
-                    onSelectInstance={onSelect ? selectInstance : undefined}
-                    renderFallback={renderFallback}
+                    onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visibleStructureIds={effectiveVisibleIds}
                 />
-            </GardenStructureKitV1AssetBoundary>
+            ) : null}
+            {orphanAssetFallbackStructureIds.size > 0 ? (
+                <GardenStructureCollectionFallbackRenderer
+                    batches={assetFallbackOnlyBatches}
+                    castShadows={castShadows}
+                    onSelect={onSelect}
+                    selectedInstanceId={selectedInstanceId}
+                    visibleStructureIds={orphanAssetFallbackVisibleIds}
+                />
+            ) : null}
+            {assetBatches.length > 0 ? (
+                <GardenStructureKitV1AssetBoundary
+                    fallback={fallback}
+                    onErrorFallbackReady={onRendererReady}
+                >
+                    <GardenStructureKitV1LoadedInstances
+                        batches={assetBatches}
+                        castShadows={castShadows}
+                        getVisibleInstanceIndices={getVisibleIndices}
+                        namePrefix="GardenStructureCollectionKitV1Batch"
+                        onInstancesReady={onRendererReady}
+                        onSelectInstance={onSelect ? selectInstance : undefined}
+                        renderFallback={renderFallback}
+                        selectedInstanceId={selectedInstanceId}
+                    />
+                </GardenStructureKitV1AssetBoundary>
+            ) : null}
         </group>
     );
 }

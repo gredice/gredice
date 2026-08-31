@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     createCaptureStabilityState,
+    flipCapturePixelRows,
     getNextCaptureStabilityFrameDelay,
     observeCaptureStability,
+    pollCaptureFence,
     resetCaptureStabilityState,
     resolveCaptureCameraZoom,
+    resolveCaptureContextUnpremultiplyAlpha,
+    resolveCaptureFencePollOutcome,
 } from './PublicGardenCaptureProbe';
 
 describe('capture stability', () => {
@@ -98,6 +102,142 @@ describe('capture stability', () => {
             }),
             true,
         );
+    });
+});
+
+describe('capture pixel readback', () => {
+    it('flips bottom-origin WebGL rows into top-origin image rows', () => {
+        const bottomLeft = [1, 2, 3, 4];
+        const bottomRight = [5, 6, 7, 8];
+        const topLeft = [9, 10, 11, 12];
+        const topRight = [13, 14, 15, 16];
+
+        assert.deepEqual(
+            [
+                ...flipCapturePixelRows(
+                    new Uint8Array([
+                        ...bottomLeft,
+                        ...bottomRight,
+                        ...topLeft,
+                        ...topRight,
+                    ]),
+                    2,
+                    2,
+                    false,
+                ),
+            ],
+            [...topLeft, ...topRight, ...bottomLeft, ...bottomRight],
+        );
+    });
+
+    it('rejects malformed readback dimensions before encoding', () => {
+        assert.throws(
+            () => flipCapturePixelRows(new Uint8Array(4), 2, 1, false),
+            /invalid dimensions/,
+        );
+    });
+
+    it('unpremultiplies translucent RGB before ImageData premultiplies it again', () => {
+        assert.deepEqual(
+            [
+                ...flipCapturePixelRows(
+                    new Uint8Array([64, 32, 16, 128, 200, 150, 100, 0]),
+                    2,
+                    1,
+                    true,
+                ),
+            ],
+            [128, 64, 32, 128, 0, 0, 0, 0],
+        );
+    });
+
+    it('requires the capture-owned preserved drawing buffer', () => {
+        assert.equal(
+            resolveCaptureContextUnpremultiplyAlpha({
+                premultipliedAlpha: true,
+                preserveDrawingBuffer: true,
+            }),
+            true,
+        );
+        assert.equal(
+            resolveCaptureContextUnpremultiplyAlpha({
+                premultipliedAlpha: false,
+                preserveDrawingBuffer: true,
+            }),
+            false,
+        );
+        assert.throws(
+            () =>
+                resolveCaptureContextUnpremultiplyAlpha({
+                    preserveDrawingBuffer: false,
+                }),
+            /preserved WebGL drawing buffer/,
+        );
+        assert.throws(
+            () => resolveCaptureContextUnpremultiplyAlpha(null),
+            /preserved WebGL drawing buffer/,
+        );
+    });
+
+    it('maps fence statuses without treating a timeout poll as failure', () => {
+        assert.equal(
+            resolveCaptureFencePollOutcome({
+                alreadySignaled: 3,
+                conditionSatisfied: 4,
+                status: 1,
+                timeoutExpired: 1,
+                waitFailed: 2,
+            }),
+            'waiting',
+        );
+        assert.equal(
+            resolveCaptureFencePollOutcome({
+                alreadySignaled: 3,
+                conditionSatisfied: 4,
+                status: 2,
+                timeoutExpired: 1,
+                waitFailed: 2,
+            }),
+            'failed',
+        );
+        assert.equal(
+            resolveCaptureFencePollOutcome({
+                alreadySignaled: 3,
+                conditionSatisfied: 4,
+                status: 3,
+                timeoutExpired: 1,
+                waitFailed: 2,
+            }),
+            'ready',
+        );
+        assert.equal(
+            resolveCaptureFencePollOutcome({
+                alreadySignaled: 3,
+                conditionSatisfied: 4,
+                status: 99,
+                timeoutExpired: 1,
+                waitFailed: 2,
+            }),
+            'failed',
+        );
+    });
+
+    it('flushes queued commands while polling the fence without blocking', () => {
+        const calls: Array<readonly [number, number]> = [];
+        const outcome = pollCaptureFence({
+            alreadySignaled: 3,
+            conditionSatisfied: 4,
+            syncFlushCommandsBit: 5,
+            timeoutExpired: 1,
+            wait: (flags, timeout) => {
+                calls.push([flags, timeout]);
+                return 1;
+            },
+            waitFailed: 2,
+        });
+
+        assert.equal(outcome, 'waiting');
+        assert.deepEqual(calls, [[5, 0]]);
     });
 });
 

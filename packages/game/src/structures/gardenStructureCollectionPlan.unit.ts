@@ -7,14 +7,20 @@ import {
     type GardenStructureTemplateKey,
 } from '@gredice/js/gardenStructures';
 import { getGardenAvatarCollisionCandidates } from '../entities/avatar/gardenAvatarMovement';
+import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
 import {
+    compileGardenStructurePlan,
     compileSavedGardenStructureCollection,
     containsGardenStructureWorldCell,
     createGardenStructureCollectionAvatarCollisionWorld,
+    createGardenStructureCollectionPlan,
+    debugGardenStructureKitMetadata,
     decodeSavedGardenStructureRecord,
     GardenStructureCollectionCache,
     type GardenStructureCollectionCacheDisposalReason,
     type GardenStructureCollectionPlan,
+    type GardenStructureKitMetadata,
+    type GardenStructurePropPartMetadata,
     gardenStructureCollectionTransformStride,
     getNearbyGardenStructureCollectionBuckets,
     getVisibleGardenStructureIds,
@@ -22,6 +28,20 @@ import {
     resolveGardenStructureRuntimeKit,
     type SerializedGardenStructureRecord,
 } from './index';
+
+function kitWithTableMetadata(
+    overrides: Partial<GardenStructurePropPartMetadata>,
+): GardenStructureKitMetadata {
+    const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+    assert.ok(table);
+    return Object.freeze({
+        ...debugGardenStructureKitMetadata,
+        propParts: Object.freeze({
+            ...debugGardenStructureKitMetadata.propParts,
+            'prop.table': Object.freeze({ ...table, ...overrides }),
+        }),
+    });
+}
 
 function savedStructure(
     templateKey: GardenStructureTemplateKey,
@@ -149,6 +169,78 @@ describe('saved garden structure runtime adapter', () => {
 });
 
 describe('garden structure collection plans', () => {
+    test('separates batches for distinct same-identity kit definitions', () => {
+        const document = createGardenStructureTemplateSeed('house').document;
+        const narrowKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const wideKit = kitWithTableMetadata({ collisionWidth: 0.71 });
+        const narrowPlan = compileGardenStructurePlan({
+            structureId: 'narrow-table',
+            revision: 1,
+            document,
+            placement: { anchorX: 0, anchorY: 0, rotation: 0 },
+            kit: narrowKit,
+        });
+        const widePlan = compileGardenStructurePlan({
+            structureId: 'wide-table',
+            revision: 1,
+            document,
+            placement: { anchorX: 5, anchorY: 0, rotation: 0 },
+            kit: wideKit,
+        });
+
+        assert.notEqual(
+            narrowPlan.kitDefinitionFingerprint,
+            widePlan.kitDefinitionFingerprint,
+        );
+        assert.throws(
+            () =>
+                createGardenStructureCollectionPlan([
+                    { kit: wideKit, plan: narrowPlan },
+                ]),
+            /compiled immutable kit definition/u,
+        );
+
+        const collection = createGardenStructureCollectionPlan([
+            { kit: narrowKit, plan: narrowPlan },
+            { kit: wideKit, plan: widePlan },
+        ]);
+        const tableBatches = collection.batches.props.filter(
+            ({ geometryId }) => geometryId === 'prop.table',
+        );
+
+        assert.equal(tableBatches.length, 2);
+        assert.deepEqual(
+            tableBatches
+                .map(({ fallbackGeometry }) => fallbackGeometry.width)
+                .sort((left, right) => left - right),
+            [0.7, 0.71],
+        );
+        assert.equal(
+            new Set(
+                tableBatches.map(
+                    ({ kitDefinitionFingerprint }) => kitDefinitionFingerprint,
+                ),
+            ).size,
+            2,
+        );
+        assert.deepEqual(
+            new Set(tableBatches.flatMap(({ structureIds }) => structureIds)),
+            new Set(['narrow-table', 'wide-table']),
+        );
+        assert.ok(
+            tableBatches.every(
+                ({ structureIds }) => new Set(structureIds).size === 1,
+            ),
+        );
+        assert.ok(
+            tableBatches.every(
+                (batch) =>
+                    !isGardenStructureKitV1DefinitionCompatible(batch) &&
+                    batch.rendersSemanticFallback,
+            ),
+        );
+    });
+
     test('renders an empty valid structure as a semantic footprint fallback', () => {
         const result = compileSavedGardenStructureCollection([
             savedStructure('blank', 'blank-fallback', {
@@ -167,13 +259,14 @@ describe('garden structure collection plans', () => {
             ['blank-fallback'],
         );
         assert.equal(semanticBatch.fallbackGeometry.kind, 'box');
+        assert.equal(semanticBatch.assetFallbackOnly, false);
         assert.deepEqual(
             Array.from(semanticBatch.transforms),
             [4, 6, 0, 0, 5, 6, 0, 0, 4, 7, 0, 0, 5, 7, 0, 0],
         );
     });
 
-    test('keeps an open-portal-only structure visible through its open-door asset batch', () => {
+    test('keeps a compatible open-portal-only footprint dormant behind its asset batch', () => {
         const seed = createGardenStructureTemplateSeed('blank');
         const result = compileSavedGardenStructureCollection([
             savedStructure('blank', 'portal-only-fallback', {
@@ -194,6 +287,9 @@ describe('garden structure collection plans', () => {
         const openDoorBatch = result.plan.batches.opaque.find(
             ({ geometryId }) => geometryId === 'door.timber-wide-open',
         );
+        const semanticBatch = result.plan.batches.transparent.find(
+            ({ geometryId }) => geometryId === 'semantic-footprint',
+        );
 
         assert.equal(result.rejectedRecords.length, 0);
         assert.ok(openDoorBatch);
@@ -208,11 +304,114 @@ describe('garden structure collection plans', () => {
             ),
             true,
         );
+        assert.equal(openDoorBatch.rendersSemanticFallback, false);
+        assert.equal(openDoorBatch.assetFallbackOnly, false);
+        assert.ok(semanticBatch);
+        assert.equal(semanticBatch.rendersSemanticFallback, true);
+        assert.equal(semanticBatch.assetFallbackOnly, true);
+    });
+
+    test('adds a nonblocking footprint for an incompatible open-portal-only structure', () => {
+        const seed = createGardenStructureTemplateSeed('blank');
+        const incompatibleKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const plan = compileGardenStructurePlan({
+            structureId: 'incompatible-portal-only',
+            revision: 1,
+            document: {
+                ...seed.document,
+                edges: [
+                    {
+                        id: 'only-open-portal',
+                        from: { x: 0, y: 0 },
+                        direction: 'north',
+                        partId: 'door.timber-wide-open',
+                        kind: 'door',
+                    },
+                ],
+            },
+            placement: { anchorX: 4, anchorY: 6, rotation: 0 },
+            kit: incompatibleKit,
+        });
+        const collection = createGardenStructureCollectionPlan([
+            { kit: incompatibleKit, plan },
+        ]);
+        const openDoorBatch = collection.batches.opaque.find(
+            ({ geometryId }) => geometryId === 'door.timber-wide-open',
+        );
+        const semanticBatch = collection.batches.transparent.find(
+            ({ geometryId }) => geometryId === 'semantic-footprint',
+        );
+
+        assert.ok(openDoorBatch);
         assert.equal(
-            result.plan.batches.transparent.some(
-                ({ geometryId }) => geometryId === 'semantic-footprint',
-            ),
+            isGardenStructureKitV1DefinitionCompatible(openDoorBatch),
             false,
+        );
+        assert.equal(openDoorBatch.rendersSemanticFallback, false);
+        assert.ok(semanticBatch);
+        assert.equal(semanticBatch.rendersSemanticFallback, true);
+        assert.equal(semanticBatch.assetFallbackOnly, false);
+        assert.equal(semanticBatch.fallbackGeometry.height, 0.025);
+        assert.deepEqual(
+            [...new Set(semanticBatch.structureIds)],
+            ['incompatible-portal-only'],
+        );
+        assert.deepEqual(
+            Array.from(semanticBatch.transforms),
+            [4, 6, 0, 0, 5, 6, 0, 0, 4, 7, 0, 0, 5, 7, 0, 0],
+        );
+    });
+
+    test('requires a footprint when incompatible portal and prop batches can both disappear', () => {
+        const seed = createGardenStructureTemplateSeed('blank');
+        const incompatibleKit = kitWithTableMetadata({ collisionWidth: 0.7 });
+        const plan = compileGardenStructurePlan({
+            structureId: 'incompatible-portal-prop',
+            revision: 1,
+            document: {
+                ...seed.document,
+                edges: [
+                    {
+                        id: 'only-open-portal',
+                        from: { x: 0, y: 0 },
+                        direction: 'north',
+                        partId: 'door.timber-wide-open',
+                        kind: 'door',
+                    },
+                ],
+                props: [
+                    {
+                        id: 'only-table',
+                        partId: 'prop.table',
+                        x: 0,
+                        y: 0,
+                        rotation: 0,
+                    },
+                ],
+            },
+            placement: { anchorX: 4, anchorY: 6, rotation: 0 },
+            kit: incompatibleKit,
+        });
+        const collection = createGardenStructureCollectionPlan([
+            { kit: incompatibleKit, plan },
+        ]);
+        const semanticBatch = collection.batches.transparent.find(
+            ({ geometryId }) => geometryId === 'semantic-footprint',
+        );
+
+        assert.equal(collection.batches.props.length, 1);
+        assert.equal(
+            collection.batches.opaque.some(
+                ({ geometryId }) => geometryId === 'door.timber-wide-open',
+            ),
+            true,
+        );
+        assert.ok(semanticBatch);
+        assert.equal(semanticBatch.assetFallbackOnly, false);
+        assert.equal(semanticBatch.fallbackGeometry.height, 0.025);
+        assert.deepEqual(
+            [...new Set(semanticBatch.structureIds)],
+            ['incompatible-portal-prop'],
         );
     });
 
