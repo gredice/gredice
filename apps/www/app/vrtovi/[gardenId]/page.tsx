@@ -1,10 +1,10 @@
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Card } from '@gredice/ui/Card';
 import { Calendar, Sprout } from '@gredice/ui/icons';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PublicBreadcrumbs } from '../../../components/shared/seo/PublicBreadcrumbs';
 import { KnownPages } from '../../../src/KnownPages';
 import { PublicGardenExplorer } from '../PublicGardenExplorer';
 import { PublicGardenLikeButton } from '../PublicGardenLikeButton';
@@ -101,7 +101,7 @@ export default async function PublicGardenPage({
 
     return (
         <Stack spacing={2} className="py-6">
-            <Breadcrumbs
+            <PublicBreadcrumbs
                 className="px-1"
                 items={[
                     { label: 'Vrtovi', href: KnownPages.PublicGardens },

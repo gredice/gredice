@@ -1,11 +1,11 @@
 import { decodeRouteParam } from '@gredice/js/uri';
-import { Breadcrumbs } from '@gredice/ui/Breadcrumbs';
 import { Row } from '@gredice/ui/Row';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { FeedbackModal } from '../../../../components/shared/feedback/FeedbackModal';
+import { PublicBreadcrumbs } from '../../../../components/shared/seo/PublicBreadcrumbs';
 import { getPlantSortsData } from '../../../../lib/plants/getPlantSortsData';
 import { getPlantsData } from '../../../../lib/plants/getPlantsData';
 import { createPublicMetadata } from '../../../../lib/seo/publicMetadata';
@@ -107,7 +107,7 @@ export default async function BlockPlantDetailPage(
     return (
         <div className="py-6 sm:py-8">
             <Stack spacing={6}>
-                <Breadcrumbs
+                <PublicBreadcrumbs
                     items={[
                         { label: 'Blokovi', href: KnownPages.Blocks },
                         { label: 'Biljke', href: KnownPages.BlockPlants },
