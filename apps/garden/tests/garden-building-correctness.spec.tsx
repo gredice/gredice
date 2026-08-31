@@ -212,6 +212,8 @@ test('unmounting Build Mode does not pop a newer client-side route entry', async
     await expect
         .poll(() => page.evaluate(() => window.history.length))
         .toBe(historyLengthBeforeRemount);
+});
+
 test('shows exact footprint impact and exposes explicit confirm and cancel controls', async ({
     mount,
     page,
