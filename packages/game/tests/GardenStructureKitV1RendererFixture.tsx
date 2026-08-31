@@ -29,10 +29,14 @@ import {
 export type GardenStructureKitV1RendererFixtureMode =
     | 'asset-error'
     | 'empty'
+    | 'incompatible-portal-prop'
     | 'missing'
+    | 'portal-asset-error'
+    | 'portal-missing-mixed'
     | 'production';
 
 type RendererReadback = Readonly<{
+    fallbackInstanceCount: number;
     fallbackMeshCount: number;
     materialNames: readonly string[];
     opaqueDrawCount: number;
@@ -55,6 +59,74 @@ function compileFixtureStructure(
     });
 }
 
+function createPortalDocument(includeTable: boolean) {
+    const seed = createGardenStructureTemplateSeed('blank');
+    return Object.freeze({
+        ...seed.document,
+        edges: Object.freeze([
+            Object.freeze({
+                id: 'only-open-portal',
+                from: Object.freeze({ x: 0, y: 0 }),
+                direction: 'north' as const,
+                partId: 'door.timber-wide-open',
+                kind: 'door' as const,
+            }),
+        ]),
+        props: Object.freeze(
+            includeTable
+                ? [
+                      Object.freeze({
+                          id: 'only-table',
+                          partId: 'prop.table',
+                          x: 0,
+                          y: 0,
+                          rotation: 0 as const,
+                      }),
+                  ]
+                : [],
+        ),
+    });
+}
+
+function createIncompatibleFixtureKit() {
+    const table = debugGardenStructureKitMetadata.propParts['prop.table'];
+    if (!table) {
+        throw new Error('Missing fixture table metadata.');
+    }
+    return Object.freeze({
+        ...debugGardenStructureKitMetadata,
+        propParts: Object.freeze({
+            ...debugGardenStructureKitMetadata.propParts,
+            'prop.table': Object.freeze({
+                ...table,
+                collisionWidth: 0.7,
+            }),
+        }),
+    });
+}
+
+const incompatibleFixtureKit = createIncompatibleFixtureKit();
+
+function compilePortalFixtureStructure({
+    anchorX,
+    includeTable = false,
+    incompatible = false,
+    structureId,
+}: Readonly<{
+    anchorX: number;
+    includeTable?: boolean;
+    incompatible?: boolean;
+    structureId: string;
+}>) {
+    return compileGardenStructurePlan({
+        structureId,
+        revision: 1,
+        document: createPortalDocument(includeTable),
+        placement: { anchorX, anchorY: 0, rotation: 0 },
+        ...(incompatible ? { kit: incompatibleFixtureKit } : {}),
+    });
+}
+
 const sourceCollectionPlan = createGardenStructureCollectionPlan([
     {
         kit: debugGardenStructureKitMetadata,
@@ -63,6 +135,49 @@ const sourceCollectionPlan = createGardenStructureCollectionPlan([
     {
         kit: debugGardenStructureKitMetadata,
         plan: compileFixtureStructure('fixture-greenhouse', 'greenhouse'),
+    },
+]);
+
+const portalSourceCollectionPlan = createGardenStructureCollectionPlan([
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compilePortalFixtureStructure({
+            anchorX: -2,
+            structureId: 'fixture-missing-portal',
+        }),
+    },
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compilePortalFixtureStructure({
+            anchorX: 1,
+            structureId: 'fixture-resolved-portal',
+        }),
+    },
+]);
+
+const incompatiblePortalPropSourcePlan = createGardenStructureCollectionPlan([
+    {
+        kit: incompatibleFixtureKit,
+        plan: compilePortalFixtureStructure({
+            anchorX: 0,
+            includeTable: true,
+            incompatible: true,
+            structureId: 'fixture-incompatible-portal-prop',
+        }),
+    },
+]);
+
+const portalErrorSourcePlan = createGardenStructureCollectionPlan([
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compilePortalFixtureStructure({
+            anchorX: -1,
+            structureId: 'fixture-error-portal',
+        }),
+    },
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compileFixtureStructure('fixture-error-house', 'house'),
     },
 ]);
 
@@ -95,6 +210,41 @@ function isolateBatch(
     }) satisfies GardenStructureCollectionBatchDescription;
 }
 
+function isolateBatchForStructure(
+    batch: GardenStructureCollectionBatchDescription,
+    id: string,
+    structureId: string,
+) {
+    const sourceIndices = batch.structureIds.flatMap((candidate, index) =>
+        candidate === structureId ? [index] : [],
+    );
+    if (sourceIndices.length === 0) {
+        throw new Error(`Missing fixture batch structure ${structureId}.`);
+    }
+    return Object.freeze({
+        ...batch,
+        id,
+        instanceIds: Object.freeze(
+            sourceIndices.flatMap((index) => {
+                const instanceId = batch.instanceIds[index];
+                return instanceId ? [instanceId] : [];
+            }),
+        ),
+        structureIds: Object.freeze(sourceIndices.map(() => structureId)),
+        transforms: new Float32Array(
+            sourceIndices.flatMap((index) => {
+                const offset = index * batch.transformStride;
+                return Array.from(
+                    batch.transforms.slice(
+                        offset,
+                        offset + batch.transformStride,
+                    ),
+                );
+            }),
+        ),
+    }) satisfies GardenStructureCollectionBatchDescription;
+}
+
 const tableBatch = isolateBatch(
     requireBatch(sourceCollectionPlan.batches.props, 'prop.table'),
     'fixture:table',
@@ -122,25 +272,92 @@ const missingBatch = Object.freeze({
     transforms: new Float32Array([0, 0, 0, 0]),
 }) satisfies GardenStructureCollectionBatchDescription;
 
+const sharedPortalBatch = requireBatch(
+    portalSourceCollectionPlan.batches.opaque,
+    'door.timber-wide-open',
+);
+const missingPortalBatch = Object.freeze({
+    ...isolateBatchForStructure(
+        sharedPortalBatch,
+        'fixture:missing-portal',
+        'fixture-missing-portal',
+    ),
+    geometryId: 'door.fixture-missing-open-portal',
+    materialId: 'door.fixture-missing-open-portal',
+}) satisfies GardenStructureCollectionBatchDescription;
+const resolvedPortalBatch = isolateBatchForStructure(
+    sharedPortalBatch,
+    'fixture:resolved-portal',
+    'fixture-resolved-portal',
+);
+const sharedPortalFootprintBatch = requireBatch(
+    portalSourceCollectionPlan.batches.transparent,
+    'semantic-footprint',
+);
+
+const portalErrorBatch = requireBatch(
+    portalErrorSourcePlan.batches.opaque,
+    'door.timber-wide-open',
+);
+const portalErrorTableBatch = requireBatch(
+    portalErrorSourcePlan.batches.props,
+    'prop.table',
+);
+const portalErrorFootprintBatch = requireBatch(
+    portalErrorSourcePlan.batches.transparent,
+    'semantic-footprint',
+);
+
+function withFixtureBatches(
+    source: GardenStructureCollectionPlan,
+    mode: string,
+    batches: GardenStructureCollectionPlan['batches'],
+) {
+    return Object.freeze({
+        ...source,
+        batches: Object.freeze(batches),
+        cacheKey: `fixture:${mode}`,
+        id: `fixture:${mode}`,
+    }) satisfies GardenStructureCollectionPlan;
+}
+
 function fixturePlan(
     mode: Exclude<GardenStructureKitV1RendererFixtureMode, 'empty'>,
 ): GardenStructureCollectionPlan {
+    if (mode === 'incompatible-portal-prop') {
+        return withFixtureBatches(
+            incompatiblePortalPropSourcePlan,
+            mode,
+            incompatiblePortalPropSourcePlan.batches,
+        );
+    }
+    if (mode === 'portal-missing-mixed') {
+        return withFixtureBatches(portalSourceCollectionPlan, mode, {
+            opaque: Object.freeze([missingPortalBatch, resolvedPortalBatch]),
+            props: Object.freeze([]),
+            roof: Object.freeze([]),
+            transparent: Object.freeze([sharedPortalFootprintBatch]),
+        });
+    }
+    if (mode === 'portal-asset-error') {
+        return withFixtureBatches(portalErrorSourcePlan, mode, {
+            opaque: Object.freeze([portalErrorBatch]),
+            props: Object.freeze([portalErrorTableBatch]),
+            roof: Object.freeze([]),
+            transparent: Object.freeze([portalErrorFootprintBatch]),
+        });
+    }
     const useProductionBatches =
         mode === 'asset-error' || mode === 'production';
-    return Object.freeze({
-        ...sourceCollectionPlan,
-        batches: Object.freeze({
-            opaque: Object.freeze([]),
-            props: Object.freeze(
-                useProductionBatches ? [tableBatch] : [missingBatch],
-            ),
-            roof: Object.freeze([]),
-            transparent: Object.freeze(
-                useProductionBatches ? [greenhouseWallBatch] : [],
-            ),
-        }),
-        cacheKey: `fixture:${mode}`,
-        id: `fixture:${mode}`,
+    return withFixtureBatches(sourceCollectionPlan, mode, {
+        opaque: Object.freeze([]),
+        props: Object.freeze(
+            useProductionBatches ? [tableBatch] : [missingBatch],
+        ),
+        roof: Object.freeze([]),
+        transparent: Object.freeze(
+            useProductionBatches ? [greenhouseWallBatch] : [],
+        ),
     });
 }
 
@@ -200,7 +417,14 @@ function RendererProbe({
             const fullFallback = scene.getObjectByName(
                 'GardenStructures:CollectionSemanticFallback',
             );
-            const inspectedRoot = asset ?? fullFallback;
+            const collection = scene.getObjectByName(
+                'GardenStructures:Collection',
+            );
+            if (mode === 'portal-missing-mixed' && !asset) {
+                frame = window.requestAnimationFrame(inspect);
+                return;
+            }
+            const inspectedRoot = collection ?? asset ?? fullFallback;
             if (!inspectedRoot) {
                 frame = window.requestAnimationFrame(inspect);
                 return;
@@ -226,7 +450,12 @@ function RendererProbe({
                               userData.sourcePrimitiveNodeName ===
                               'GardenStructureKitV1_PropTable_Mesh',
                       )
-                    : fallbackMeshes[0];
+                    : mode === 'portal-asset-error' ||
+                        mode === 'portal-missing-mixed'
+                      ? fallbackMeshes.find(({ name }) =>
+                            name.includes('semantic-footprint'),
+                        )
+                      : fallbackMeshes[0];
             if (!target) {
                 frame = window.requestAnimationFrame(inspect);
                 return;
@@ -249,6 +478,10 @@ function RendererProbe({
             );
             published.current = true;
             onReady({
+                fallbackInstanceCount: fallbackMeshes.reduce(
+                    (total, mesh) => total + mesh.count,
+                    0,
+                ),
                 fallbackMeshCount: fallbackMeshes.length,
                 materialNames: [
                     ...new Set(productionMeshes.flatMap(materialNames)),
@@ -290,6 +523,9 @@ export function GardenStructureKitV1RendererFixture({
     const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
         null,
     );
+    const [selectedStructureId, setSelectedStructureId] = useState<
+        string | null
+    >(null);
     const [rendererReady, setRendererReady] = useState(false);
     const plan = useMemo(
         () => (mode === 'empty' ? null : fixturePlan(mode)),
@@ -324,6 +560,12 @@ export function GardenStructureKitV1RendererFixture({
             >
                 {selectedInstanceId ?? ''}
             </output>
+            <output
+                data-testid="garden-structure-kit-v1-selection-structure"
+                style={{ display: 'none' }}
+            >
+                {selectedStructureId ?? ''}
+            </output>
             <FixtureGameStateProvider>
                 <Canvas
                     orthographic
@@ -338,10 +580,12 @@ export function GardenStructureKitV1RendererFixture({
                     {plan ? (
                         <GardenStructureCollectionRenderer
                             onRendererReady={handleRendererReady}
-                            onSelect={({ instanceId }) =>
-                                setSelectedInstanceId(instanceId)
-                            }
+                            onSelect={({ instanceId, structureId }) => {
+                                setSelectedInstanceId(instanceId);
+                                setSelectedStructureId(structureId);
+                            }}
                             plan={plan}
+                            renderProps={mode !== 'incompatible-portal-prop'}
                             selectedInstanceId={selectedInstanceId}
                         />
                     ) : null}

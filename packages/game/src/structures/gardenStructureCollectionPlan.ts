@@ -47,6 +47,8 @@ export type GardenStructureFallbackBoxGeometry = Readonly<{
 }>;
 
 export type GardenStructureCollectionBatchDescription = Readonly<{
+    /** Dormant in normal passes; shown only when compatible kit assets cannot render. */
+    assetFallbackOnly: boolean;
     category: GardenStructureBatchCategory;
     fallbackGeometry: GardenStructureFallbackBoxGeometry;
     geometryId: string;
@@ -160,6 +162,7 @@ export type GardenStructureCollectionCacheSnapshot = Readonly<{
 }>;
 
 type CollectionBatchBuilder = {
+    assetFallbackOnly: boolean;
     category: GardenStructureBatchCategory;
     fallbackGeometry: GardenStructureFallbackBoxGeometry;
     geometryId: string;
@@ -340,7 +343,7 @@ function createCollectionBatches(
     const builders = new Map<string, CollectionBatchBuilder>();
     for (const { kit, plan } of entries) {
         let emittedInstanceCount = 0;
-        let emittedSemanticFallbackInstanceCount = 0;
+        let emittedSemanticFallbackNonPropInstanceCount = 0;
         const planBatches = [
             ...plan.batches.opaque,
             ...plan.batches.transparent,
@@ -352,6 +355,7 @@ function createCollectionBatches(
             let builder = builders.get(key);
             if (!builder) {
                 builder = {
+                    assetFallbackOnly: false,
                     category: batch.category,
                     geometryKind: batch.geometryKind,
                     geometryId: batch.geometryId,
@@ -397,17 +401,23 @@ function createCollectionBatches(
                 builder.structureIds.push(plan.structureId);
                 builder.transforms.push(x, y, rotation, plan.baseHeight);
                 emittedInstanceCount += 1;
-                if (builder.rendersSemanticFallback) {
-                    emittedSemanticFallbackInstanceCount += 1;
+                if (
+                    builder.category !== 'props' &&
+                    builder.rendersSemanticFallback
+                ) {
+                    emittedSemanticFallbackNonPropInstanceCount += 1;
                 }
             }
         }
 
-        if (
+        const kitV1Compatible =
+            isGardenStructureKitV1DefinitionCompatible(plan);
+        const needsSemanticFootprint =
             emittedInstanceCount === 0 ||
-            (!isGardenStructureKitV1DefinitionCompatible(plan) &&
-                emittedSemanticFallbackInstanceCount === 0)
-        ) {
+            emittedSemanticFallbackNonPropInstanceCount === 0;
+        if (needsSemanticFootprint) {
+            const assetFallbackOnly =
+                emittedInstanceCount > 0 && kitV1Compatible;
             const chunk = collectionBatchChunk(plan);
             const key = [
                 plan.kitKey,
@@ -418,6 +428,7 @@ function createCollectionBatches(
                 'transparent',
                 'floor-cell',
                 'semantic-footprint',
+                assetFallbackOnly ? 'asset-fallback-only' : 'required-fallback',
                 '',
                 'semantic-footprint',
                 'transparent',
@@ -425,6 +436,7 @@ function createCollectionBatches(
             let builder = builders.get(key);
             if (!builder) {
                 builder = {
+                    assetFallbackOnly,
                     category: 'transparent',
                     geometryKind: 'floor-cell',
                     geometryId: 'semantic-footprint',
@@ -473,6 +485,7 @@ function createCollectionBatches(
         grouped[builder.category].push(
             Object.freeze({
                 id: `structure-collection-batch:${key}`,
+                assetFallbackOnly: builder.assetFallbackOnly,
                 category: builder.category,
                 geometryKind: builder.geometryKind,
                 geometryId: builder.geometryId,
