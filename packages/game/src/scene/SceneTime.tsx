@@ -11,6 +11,7 @@ import {
 import {
     createContext,
     type PropsWithChildren,
+    useCallback,
     useContext,
     useEffect,
     useLayoutEffect,
@@ -39,6 +40,8 @@ export const sceneFrameRates = {
     ambient: 30,
     interactive: 60,
 } as const;
+
+const sceneTimeFramePriority = -1_000;
 
 type SceneTimeContextValue = {
     acquireContinuousRender: (
@@ -90,11 +93,13 @@ function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
 
 function R3FRootInvalidationBroker({
     enabled,
+    isFrameRendering,
     rawInvalidate,
     rootStore,
     scheduler,
 }: {
     enabled: boolean;
+    isFrameRendering: () => boolean;
     rawInvalidate: RootState['invalidate'];
     rootStore: RootStore;
     scheduler: GameRuntimeScheduler;
@@ -115,13 +120,14 @@ function R3FRootInvalidationBroker({
 
         return installR3FRootInvalidationBroker({
             isEnabled: () => enabledRef.current,
+            isFrameRendering,
             owner: ownerRef.current,
             rawInvalidate,
             requestCoalescedRender: (reason, frames) =>
                 requestCoalescedRenderRef.current(reason, frames),
             store: rootStore,
         });
-    }, [enabled, rawInvalidate, rootStore]);
+    }, [enabled, isFrameRendering, rawInvalidate, rootStore]);
 
     return null;
 }
@@ -187,6 +193,7 @@ export function SceneTimeProvider({
     const lifecycleGenerationRef = useRef(0);
     const renderedThisLoopRef = useRef(false);
     const visibilityReadyRef = useRef(false);
+    const isFrameRendering = useCallback(() => renderedThisLoopRef.current, []);
 
     useEffect(
         () =>
@@ -335,7 +342,7 @@ export function SceneTimeProvider({
     useFrame(({ clock: sceneClock }) => {
         timeUniform.value = fixedTime ?? sceneClock.elapsedTime;
         renderedThisLoopRef.current = true;
-    });
+    }, sceneTimeFramePriority);
 
     const contextValue = useMemo<SceneTimeContextValue>(
         () => ({
@@ -365,6 +372,7 @@ export function SceneTimeProvider({
         <SceneTimeContext.Provider value={contextValue}>
             <R3FRootInvalidationBroker
                 enabled={continuousRenderLeasesEnabled}
+                isFrameRendering={isFrameRendering}
                 rawInvalidate={rawInvalidate}
                 rootStore={rootStore}
                 scheduler={scheduler}

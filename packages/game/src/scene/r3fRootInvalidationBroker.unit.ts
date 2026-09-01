@@ -36,17 +36,20 @@ function createTestRoot(frameloop: RootState['frameloop'] = 'demand') {
 
 function installBroker({
     enabled = true,
+    isFrameRendering = () => false,
     owner = Symbol('test-root-owner'),
     requestCoalescedRender = () => true,
     root,
 }: {
     enabled?: boolean;
+    isFrameRendering?: () => boolean;
     owner?: symbol;
     requestCoalescedRender?: (reason: string, frames?: number) => boolean;
     root: TestRoot;
 }) {
     return installR3FRootInvalidationBroker({
         isEnabled: () => enabled,
+        isFrameRendering,
         owner,
         rawInvalidate: readRawR3FRootInvalidate(root.store),
         requestCoalescedRender,
@@ -77,6 +80,56 @@ describe('R3F root invalidation broker', () => {
 
         assert.deepEqual(requests, [{ frames: 3, reason: 'r3f-root-update' }]);
         assert.equal(root.rawInvalidationCount, 1);
+
+        release();
+        await flushBrokerCleanup();
+    });
+
+    it('retains the native follow-up frame for default and one-frame invalidations during a render', async () => {
+        const root = createTestRoot();
+        let frameRendering = false;
+        const requests: Array<number | undefined> = [];
+        const release = installBroker({
+            isFrameRendering: () => frameRendering,
+            requestCoalescedRender: (_reason, frames) => {
+                requests.push(frames);
+                return true;
+            },
+            root,
+        });
+
+        root.state.invalidate();
+        root.state.invalidate(1);
+        frameRendering = true;
+        root.state.invalidate();
+        root.state.invalidate(1);
+        root.state.invalidate(0.5);
+        root.state.invalidate(3);
+
+        assert.deepEqual(requests, [undefined, 1, 2, 2, 2, 3]);
+        assert.equal(root.rawInvalidationCount, 0);
+
+        release();
+        await flushBrokerCleanup();
+    });
+
+    it('preserves native fallback semantics for non-positive frame counts', async () => {
+        const root = createTestRoot();
+        let requestCount = 0;
+        const release = installBroker({
+            isFrameRendering: () => true,
+            requestCoalescedRender: () => {
+                requestCount += 1;
+                return true;
+            },
+            root,
+        });
+
+        root.state.invalidate(0);
+        root.state.invalidate(-1);
+
+        assert.equal(requestCount, 0);
+        assert.equal(root.rawInvalidationCount, 2);
 
         release();
         await flushBrokerCleanup();

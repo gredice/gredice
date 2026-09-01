@@ -1300,6 +1300,29 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(queue.pendingTaskCount, 0);
     });
 
+    it('retains one coalesced follow-up after the current external frame receipt', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        scheduler.requestCoalescedRender('r3f-host', 2);
+
+        scheduler.recordFrameCallback(queue.currentTime);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            ['r3f-host'],
+        );
+        assert.equal(invalidations.length, 0);
+        assert.equal(queue.pendingTaskCount, 1);
+
+        queue.runUntil(40);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
     it('renders one coalesced request while otherwise idle', () => {
         const { invalidations, queue, scheduler } = createScheduler({
             simulateFrameCallbacks: true,

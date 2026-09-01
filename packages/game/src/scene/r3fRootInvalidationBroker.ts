@@ -13,6 +13,7 @@ type RootInvalidationBrokerRegistration = {
     brokerInvalidate: RootInvalidate;
     generation: number;
     isEnabled: () => boolean;
+    isFrameRendering: () => boolean;
     owner: symbol;
     pendingRelease: boolean;
     rawInvalidate: RootInvalidate;
@@ -39,12 +40,14 @@ export function readRawR3FRootInvalidate(store: R3FRootInvalidationStore) {
 
 export function installR3FRootInvalidationBroker({
     isEnabled,
+    isFrameRendering,
     owner,
     rawInvalidate,
     requestCoalescedRender,
     store,
 }: {
     isEnabled: () => boolean;
+    isFrameRendering: () => boolean;
     owner: symbol;
     rawInvalidate: RootInvalidate;
     requestCoalescedRender: (reason: string, frames?: number) => boolean;
@@ -69,6 +72,7 @@ export function installR3FRootInvalidationBroker({
             ? currentRegistration
             : createRegistration({
                   isEnabled,
+                  isFrameRendering,
                   owner,
                   rawInvalidate:
                       currentRegistration?.rawInvalidate ?? rawInvalidate,
@@ -77,6 +81,7 @@ export function installR3FRootInvalidationBroker({
               });
     registration.generation += 1;
     registration.isEnabled = isEnabled;
+    registration.isFrameRendering = isFrameRendering;
     registration.pendingRelease = false;
     registration.requestCoalescedRender = requestCoalescedRender;
     const installationGeneration = registration.generation;
@@ -122,12 +127,14 @@ export function installR3FRootInvalidationBroker({
 
 function createRegistration({
     isEnabled,
+    isFrameRendering,
     owner,
     rawInvalidate,
     requestCoalescedRender,
     store,
 }: {
     isEnabled: () => boolean;
+    isFrameRendering: () => boolean;
     owner: symbol;
     rawInvalidate: RootInvalidate;
     requestCoalescedRender: (reason: string, frames?: number) => boolean;
@@ -137,18 +144,34 @@ function createRegistration({
         brokerInvalidate: () => undefined,
         generation: 0,
         isEnabled,
+        isFrameRendering,
         owner,
         pendingRelease: false,
         rawInvalidate,
         requestCoalescedRender,
     };
     registration.brokerInvalidate = (frames) => {
+        const invalidFrames =
+            typeof frames === 'number' &&
+            (!Number.isFinite(frames) || frames <= 0);
         if (
             !registration.isEnabled() ||
             store.getState().frameloop !== 'demand' ||
+            invalidFrames
+        ) {
+            registration.rawInvalidate(frames);
+            return;
+        }
+
+        const oneFrameRequest =
+            frames === undefined ||
+            (Number.isFinite(frames) && frames > 0 && frames <= 1);
+        const coalescedFrames =
+            registration.isFrameRendering() && oneFrameRequest ? 2 : frames;
+        if (
             !registration.requestCoalescedRender(
                 rootInvalidationBrokerReason,
-                frames,
+                coalescedFrames,
             )
         ) {
             registration.rawInvalidate(frames);
