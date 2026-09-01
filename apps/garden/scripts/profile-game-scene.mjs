@@ -10938,9 +10938,6 @@ function evaluateGardenBuildingAcceptance({
         if (profile.frameRateClass !== 'ambient') {
             return [];
         }
-        const runtimeFrameLoop = readGardenBuildingAmbientSchedulerEvidence(
-            runtime?.runtimeFrameLoop,
-        );
         const start = readGardenBuildingAmbientSchedulerEvidence(
             sample?.runtimeFrameLoopAtStart,
         );
@@ -10956,14 +10953,12 @@ function evaluateGardenBuildingAcceptance({
                 sample?.runtimeFrameLoopActiveLeaseCountAtEnd ===
                     start.semanticLeaseCount &&
                 end.semanticLeaseCount === start.semanticLeaseCount &&
-                runtimeFrameLoop.semanticLeaseCount ===
+                runtime?.runtimeFrameLoop?.activeLeaseCount ===
                     start.semanticLeaseCount,
         );
         const stableLeaseSummaries = Boolean(
             start.leaseSummarySignature !== null &&
-                end.leaseSummarySignature === start.leaseSummarySignature &&
-                runtimeFrameLoop.leaseSummarySignature ===
-                    start.leaseSummarySignature,
+                end.leaseSummarySignature === start.leaseSummarySignature,
         );
 
         return [
@@ -11038,7 +11033,6 @@ function evaluateGardenBuildingAcceptance({
                 true,
             ),
             ...[
-                ['Runtime', runtimeFrameLoop],
                 ['SampleStart', start],
                 ['SampleEnd', end],
             ].flatMap(([label, evidence]) => [

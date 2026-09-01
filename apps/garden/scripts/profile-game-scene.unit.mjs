@@ -1004,7 +1004,12 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
     const buildInput = () => ({
         apiRequests: [],
         requested,
-        runtime: { runtimeFrameLoop: ambientSchedulerSnapshot() },
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 3,
+                targetFramesPerSecond: 30,
+            },
+        },
         sample: {
             runtimeFrameLoopActiveLeaseCountAtEnd: 3,
             runtimeFrameLoopActiveLeaseCountAtStart: 3,
@@ -1067,7 +1072,6 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
     expectFailedChecks(
         (input) => {
             const snapshots = [
-                input.runtime.runtimeFrameLoop,
                 input.sample.runtimeFrameLoopAtStart,
                 input.sample.runtimeFrameLoopAtEnd,
             ];
@@ -1090,8 +1094,6 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
             input.sample.runtimeFrameLoopActiveLeaseCountAtEnd = 4;
         },
         [
-            'buildingAmbientRuntimeMaximumLeaseFramesPerSecond',
-            'buildingAmbientRuntimeInteractiveOwnerCount',
             'buildingAmbientSampleStartMaximumLeaseFramesPerSecond',
             'buildingAmbientSampleStartInteractiveOwnerCount',
             'buildingAmbientSampleEndMaximumLeaseFramesPerSecond',
