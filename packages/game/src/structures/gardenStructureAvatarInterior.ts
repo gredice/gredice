@@ -358,23 +358,25 @@ function hasSafeRelocationEscapeRoute({
     structure: GardenStructureSemanticPlan;
     world: GardenAvatarCollisionWorld;
 }) {
-    const minCellX = Math.ceil(structure.footprint.bounds.minX);
-    const minCellZ = Math.ceil(structure.footprint.bounds.minY);
-    const maxCellX = Math.floor(structure.footprint.bounds.maxX);
-    const maxCellZ = Math.floor(structure.footprint.bounds.maxY);
-    const searchMinX = minCellX - 1;
-    const searchMinZ = minCellZ - 1;
-    const searchMaxX = maxCellX + 1;
-    const searchMaxZ = maxCellZ + 1;
+    const {
+        minX: footprintMinX,
+        minY: footprintMinZ,
+        maxX: footprintMaxX,
+        maxY: footprintMaxZ,
+    } = structure.footprint.bounds;
+    const searchMinX = footprintMinX - 1;
+    const searchMinZ = footprintMinZ - 1;
+    const searchMaxX = footprintMaxX + 1;
+    const searchMaxZ = footprintMaxZ + 1;
     // Valid structures are capped at 20x20, so this recovery-only flood fill
-    // visits at most the surrounding 22x22 cell window.
+    // visits at most the surrounding 23x23 position window.
     const maximumVisitedCells =
         (searchMaxX - searchMinX + 1) * (searchMaxZ - searchMinZ + 1);
     const isExterior = (point: Pick<GardenAvatarPoint, 'x' | 'z'>) =>
-        point.x < minCellX ||
-        point.x > maxCellX ||
-        point.z < minCellZ ||
-        point.z > maxCellZ;
+        point.x < footprintMinX ||
+        point.x >= footprintMaxX ||
+        point.z < footprintMinZ ||
+        point.z >= footprintMaxZ;
     if (isExterior(position)) {
         return true;
     }

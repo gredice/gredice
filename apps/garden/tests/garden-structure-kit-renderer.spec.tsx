@@ -317,6 +317,47 @@ test('uses a shallow portal footprint when the shared asset load fails', async (
     );
 });
 
+test('does not overlap dormant footprints with prop boxes after a shared asset error', async ({
+    mount,
+    page,
+}) => {
+    const assetRequests = observeGardenStructureKitRequests(page);
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await page.route('**/GardenStructureKitV1.glb*', (route) =>
+        route.fulfill({
+            body: 'intentional prop fallback renderer fixture failure',
+            contentType: 'text/plain',
+            status: 503,
+        }),
+    );
+
+    const fixture = await mount(
+        <GardenStructureKitV1RendererFixture mode="prop-fallback-asset-error" />,
+    );
+    await expect(fixture).toHaveAttribute('data-renderer-ready', 'true');
+    await expect(fixture).toHaveAttribute('data-render-ready', 'true');
+    const result = await readRendererResult(fixture);
+
+    expect(result).toMatchObject({
+        fallbackInstanceCount: 2,
+        fallbackMeshCount: 1,
+        opaqueDrawCount: 0,
+        productionNodeNames: [],
+        transparentDrawCount: 0,
+        unresolvedBatchCount: 1,
+    });
+    await fixture.locator('canvas').click({ position: result.target });
+    await expect(
+        fixture.getByTestId('garden-structure-kit-v1-selection-structure'),
+    ).toHaveText('fixture-error-a-prop-only');
+    expect(assetRequests).toHaveLength(1);
+    expect(pageErrors).toHaveLength(1);
+    expect(pageErrors[0]).toContain(
+        'Could not load /assets/models/GardenStructureKitV1.glb',
+    );
+});
+
 test('does not request the lazy kit when no structure plan is mounted', async ({
     mount,
     page,

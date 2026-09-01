@@ -412,29 +412,43 @@ describe('garden structure avatar mutation recovery', () => {
         });
         const plan = collection([sealedRoom]);
         const world = createGardenStructureAvatarCollisionWorld(sealedRoom);
-        const position = { x: 0, y: baseHeight, z: 0 };
+        const positions = [
+            { label: 'cell center', x: 0 },
+            {
+                label: 'inside the half-cell footprint fringe',
+                x: sealedRoom.footprint.bounds.maxX - 0.25,
+            },
+        ];
 
-        assert.equal(
-            resolveGardenStructureAvatarWorldChangePose({
-                grounded: true,
-                groundY: baseHeight,
-                position,
-                world,
-            }).requiresRelocation,
-            false,
-            'the actor envelope itself remains clear',
-        );
-        assert.equal(
-            resolveGardenStructureAvatarWorldChangePose({
-                collection: plan,
-                grounded: true,
-                groundY: baseHeight,
-                position,
-                world,
-            }).requiresRelocation,
-            true,
-            'bounded topology validation detects the missing exit route',
-        );
+        for (const { label, x } of positions) {
+            const position = { x, y: baseHeight, z: 0 };
+            assert.equal(
+                findContainingGardenStructure(plan, position),
+                sealedRoom,
+                `${label} remains inside the structure footprint`,
+            );
+            assert.equal(
+                resolveGardenStructureAvatarWorldChangePose({
+                    grounded: true,
+                    groundY: baseHeight,
+                    position,
+                    world,
+                }).requiresRelocation,
+                false,
+                `${label} keeps a clear actor envelope`,
+            );
+            assert.equal(
+                resolveGardenStructureAvatarWorldChangePose({
+                    collection: plan,
+                    grounded: true,
+                    groundY: baseHeight,
+                    position,
+                    world,
+                }).requiresRelocation,
+                true,
+                `${label} detects the missing exit route`,
+            );
+        }
     });
 
     test('relocates an invalid actor to the nearest deterministic cardinal portal or perimeter point', () => {
