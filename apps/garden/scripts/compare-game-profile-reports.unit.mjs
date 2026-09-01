@@ -14,6 +14,23 @@ import {
 
 const baselineCommit = '1'.repeat(40);
 const candidateCommit = '2'.repeat(40);
+const sharedHarnessCommit = 'f'.repeat(40);
+
+function crossTierLeaseTopology() {
+    return {
+        activeLeaseCount: 10,
+        activeRenderLeaseCount: 10,
+        renderLeaseOwners: ['scene-ambient'],
+        renderLeaseSummaries: [
+            {
+                framesPerSecond: 30,
+                leaseCount: 10,
+                owner: 'scene-ambient',
+            },
+        ],
+        targetFramesPerSecond: 30,
+    };
+}
 
 function sample(overrides = {}) {
     return {
@@ -96,6 +113,11 @@ function normalScenario(profileRun, overrides = {}) {
             renderer: 'ANGLE Metal Renderer',
             userAgent: 'Profile Browser/1',
             vendor: 'Profile Vendor',
+        },
+        memory: {
+            jsHeapBeforeCollectionMb: 72,
+            measurementMode: 'post-scenario-forced-gc-v1',
+            retainedJsHeapMb: 64,
         },
         name: `${baseName}-run-${profileRun}`,
         path: '/debug/profile/game?mode=details&profile=high-target&quality=high',
@@ -299,17 +321,22 @@ function gardenSwitchScenario(profileRun) {
     return scenario;
 }
 
-function report({ commit, scenarios, overrides = {} }) {
+function report({
+    commit,
+    harnessCommit = sharedHarnessCommit,
+    scenarios,
+    overrides = {},
+}) {
     return {
         comparisonContractVersion: 1,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
-            build: true,
+            build: false,
             closeupRepeat: null,
             closeupTimeoutMs: 30_000,
             graphicsBackend: 'angle-metal',
-            managedServer: true,
+            managedServer: false,
             sampleMs: 5_000,
             scenarioSet: 'high-target',
             scenarios: [],
@@ -319,7 +346,7 @@ function report({ commit, scenarios, overrides = {} }) {
         },
         provenance: {
             comparable: true,
-            harness: { commit, dirty: false },
+            harness: { commit: harnessCommit, dirty: false },
             reasons: [],
             runtime: {
                 arch: 'arm64',
@@ -327,7 +354,7 @@ function report({ commit, scenarios, overrides = {} }) {
                 nodeVersion: 'v24.15.0',
                 platform: 'darwin',
             },
-            server: { buildPerformed: true, mode: 'managed' },
+            server: { buildPerformed: false, mode: 'external' },
             subject: {
                 commit,
                 dirty: false,
@@ -537,23 +564,30 @@ function regressionScenario(baseName, profileRun) {
         scenario.sample = {
             ...scenario.sample,
             frames: 300,
+            performanceMeasurementMode: 'separate-observer-free-window-v1',
             renderedFrames: 150,
             runtimeFrameLoopActiveLeaseCountAtEnd: 10,
             runtimeFrameLoopActiveLeaseCountMin: 10,
             runtimeFrameLoopActiveLeaseCountAtStart: 10,
             runtimeFrameLoopActiveLeaseCountMax: 10,
             runtimeFrameLoopAtEnd: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopAtStart: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopCounterDeltas: {
                 r3fFrameCallbackCount: 150,
             },
             runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopObservationMode: 'separate-semantic-raf-window-v1',
+            runtimeFrameLoopObservationRafFrameCount: 300,
+            runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                crossTierLeaseTopology(),
             runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
             runtimeFrameLoopTargetFramesPerSecondMin: 30,
             runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
@@ -914,8 +948,14 @@ test('valid schema-v6 reports compare raw runs and ignore scenario order', () =>
         ),
     );
     assert.deepEqual(
-        comparison.comparisons.map((result) => result.id),
-        [...comparison.comparisons.map((result) => result.id)].sort(),
+        comparison.comparisons.map(
+            (result) => `${result.scenario}::${result.phase}::${result.id}`,
+        ),
+        [
+            ...comparison.comparisons.map(
+                (result) => `${result.scenario}::${result.phase}::${result.id}`,
+            ),
+        ].sort(),
     );
 });
 
@@ -1131,7 +1171,7 @@ test('same-commit browser noise stays inside the frozen practical floors', () =>
         const scenario = baseline.scenarios[index];
         scenario.canvasReadyMs = values.canvas;
         scenario.domContentLoadedMs = values.dom;
-        scenario.cdp.jsHeapMb = values.heap;
+        scenario.memory.retainedJsHeapMb = values.heap;
         scenario.cdp.scriptDuration = values.script;
         scenario.runtime.rendererGeometries = values.geometry;
         scenario.sample.gpu = {
@@ -1150,7 +1190,7 @@ test('same-commit browser noise stays inside the frozen practical floors', () =>
         const scenario = candidate.scenarios[index];
         scenario.canvasReadyMs = values.canvas;
         scenario.domContentLoadedMs = values.dom;
-        scenario.cdp.jsHeapMb = values.heap;
+        scenario.memory.retainedJsHeapMb = values.heap;
         scenario.cdp.scriptDuration = values.script;
         scenario.runtime.rendererGeometries = values.geometry;
         scenario.sample.gpu = {
@@ -1169,6 +1209,122 @@ test('same-commit browser noise stays inside the frozen practical floors', () =>
     const comparison = comparePartialReports(baseline, candidate);
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.summary.failedComparisons, 0);
+});
+
+test('retained heap is compared once per scenario run outside phase samples', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of candidate.scenarios) {
+        scenario.cdp.jsHeapMb = 640;
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.jsHeapMb = 640;
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const retainedHeap = comparison.comparisons.filter(
+        (result) => result.id === 'memory.js_heap_mb',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(retainedHeap.length, 1);
+    assert.equal(retainedHeap[0].phase, 'post-scenario');
+    assert.equal(retainedHeap[0].individual.length, 3);
+    assert.deepEqual(
+        retainedHeap[0].individual.map(
+            ({ baseline: before, candidate: after }) => [before, after],
+        ),
+        [
+            [64, 64],
+            [64, 64],
+            [64, 64],
+        ],
+    );
+});
+
+test('retained heap uses the frozen scenario-level relative and absolute limits', () => {
+    const { baseline, candidate } = reportPair();
+    for (const scenario of candidate.scenarios) {
+        scenario.memory.retainedJsHeapMb = 81;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const retainedHeap = comparison.comparisons.find(
+        (result) => result.id === 'memory.js_heap_mb',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(retainedHeap.baselineMedian, 64);
+    assert.equal(retainedHeap.candidateMedian, 81);
+    assert.equal(retainedHeap.medianLimit, 1.15);
+    assert.equal(retainedHeap.medianAbsoluteTolerance, 8);
+    assert.equal(retainedHeap.runLimit, 1.3);
+    assert.equal(retainedHeap.runAbsoluteTolerance, 16);
+    assert.equal(retainedHeap.pass, false);
+});
+
+test('schema-v6 retained-heap witnesses fail closed for garden-switch evidence', async (t) => {
+    const cases = {
+        'symmetric witness absence': {
+            expected: /memory is missing/,
+            mutate: ({ baseline, candidate }) => {
+                for (const scenario of [
+                    ...baseline.scenarios,
+                    ...candidate.scenarios,
+                ]) {
+                    delete scenario.memory;
+                }
+            },
+        },
+        'symmetric measurement-mode drift': {
+            expected:
+                /memory\.measurementMode must be "post-scenario-forced-gc-v1"/,
+            mutate: ({ baseline, candidate }) => {
+                for (const scenario of [
+                    ...baseline.scenarios,
+                    ...candidate.scenarios,
+                ]) {
+                    scenario.memory.measurementMode = 'phase-end-snapshot-v0';
+                }
+            },
+        },
+        'non-positive pre-collection heap': {
+            expected:
+                /memory\.jsHeapBeforeCollectionMb must be a positive finite number/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].memory.jsHeapBeforeCollectionMb = 0;
+            },
+        },
+        'non-finite retained heap': {
+            expected:
+                /memory\.retainedJsHeapMb must be a positive finite number/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].memory.retainedJsHeapMb =
+                    Number.POSITIVE_INFINITY;
+            },
+        },
+    };
+
+    for (const [name, { expected, mutate }] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const pair = reportPair(gardenSwitchScenario);
+            mutate(pair);
+
+            const comparison = comparePartialReports(
+                pair.baseline,
+                pair.candidate,
+            );
+            assert.equal(pair.baseline.schemaVersion, 6);
+            assert.equal(pair.candidate.schemaVersion, 6);
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.equal(comparison.comparisons.length, 0);
+            assert.match(comparison.validationErrors.join('\n'), expected);
+            assert.doesNotMatch(
+                buildMarkdown(comparison),
+                /retained JavaScript heap/,
+            );
+        });
+    }
 });
 
 test('a relative-only signal requires a rerun and clears when not reproduced', () => {
@@ -1592,9 +1748,24 @@ test('cross-tier semantic rendered-FPS gate fails closed for incomplete or drift
                 candidate.scenarios[0].sample.runtimeFrameLoopActiveLeaseCountMin = 9;
             },
         },
+        'candidate semantic lease topology drift': {
+            expected: /semantic and observer-free lease topologies must match/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseOwners =
+                    ['different-owner'];
+                candidate.scenarios[0].sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseSummaries[0].owner =
+                    'different-owner';
+            },
+        },
+        'candidate observer-free lease topology drift': {
+            expected: /semantic and observer-free lease topologies must match/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].framesPerSecond = 60;
+            },
+        },
         'candidate incomplete observation coverage': {
             expected:
-                /runtimeFrameLoopObservationCount must equal sample\.frames \+ 3/,
+                /runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount \+ 3/,
             mutate: ({ candidate }) => {
                 candidate.scenarios[0].sample.runtimeFrameLoopObservationCount = 302;
             },
@@ -1622,6 +1793,75 @@ test('cross-tier semantic rendered-FPS gate fails closed for incomplete or drift
                 pair.baseline,
                 pair.candidate,
             );
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+});
+
+test('canonical cross-tier evidence versions observer-isolated measurement windows', async (t) => {
+    const crossTierScenario = (reportValue) =>
+        reportValue.scenarios.find(
+            (scenario) =>
+                scenario.baseName ===
+                    'game-cross-tier-high-camera-motion-desktop' &&
+                scenario.profileRun === 1,
+        );
+
+    const accepted = regressionReportPair();
+    for (const reportValue of [accepted.baseline, accepted.candidate]) {
+        const sampleValue = crossTierScenario(reportValue).sample;
+        sampleValue.runtimeFrameLoopObservationRafFrameCount = 240;
+        sampleValue.runtimeFrameLoopObservationCount = 243;
+        assert.equal(sampleValue.frames, 300);
+    }
+    const acceptedComparison = compareReports(
+        accepted.baseline,
+        accepted.candidate,
+    );
+    assert.notEqual(acceptedComparison.status, 'invalid');
+    assert.deepEqual(acceptedComparison.validationErrors, []);
+
+    const cases = {
+        'performance window mode drift': {
+            expected:
+                /performanceMeasurementMode must be "separate-observer-free-window-v1"/,
+            mutate: (sampleValue) => {
+                sampleValue.performanceMeasurementMode = 'observer-active-v0';
+            },
+        },
+        'semantic rAF window mode drift': {
+            expected:
+                /runtimeFrameLoopObservationMode must be "separate-semantic-raf-window-v1"/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopObservationMode = 'timed-window-v0';
+            },
+        },
+        'non-positive semantic rAF frame count': {
+            expected:
+                /runtimeFrameLoopObservationRafFrameCount must be a positive integer/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopObservationRafFrameCount = 0;
+            },
+        },
+        'observation count derived from the performance frame count': {
+            expected:
+                /runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount \+ 3/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopObservationRafFrameCount = 240;
+                sampleValue.runtimeFrameLoopObservationCount =
+                    sampleValue.frames + 3;
+            },
+        },
+    };
+
+    for (const [name, { expected, mutate }] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            mutate(crossTierScenario(pair.candidate).sample);
+
+            const comparison = compareReports(pair.baseline, pair.candidate);
             assert.equal(comparison.status, 'invalid');
             assert.equal(comparison.exitCode, 2);
             assert.match(comparison.validationErrors.join('\n'), expected);
@@ -1798,7 +2038,7 @@ test('garden-switch arrivals pair by phase and compare transition timings', () =
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of candidate.scenarios) {
         scenario.gardenSwitch.arrivals[1].timing.settledMs = 1_170;
-        scenario.gardenSwitch.arrivals[1].sample.jsHeapMb = 81;
+        scenario.memory.retainedJsHeapMb = 81;
     }
 
     const comparison = comparePartialReports(baseline, candidate);
@@ -1812,7 +2052,7 @@ test('garden-switch arrivals pair by phase and compare transition timings', () =
         comparison.comparisons.find(
             (result) =>
                 result.id === 'memory.js_heap_mb' &&
-                result.phase === 'arrival-2-fauna-heavy',
+                result.phase === 'post-scenario',
         ).pass,
         false,
     );
@@ -2293,9 +2533,6 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
         'mismatched source alias': ({ candidate }) => {
             candidate.sourceCommit = baselineCommit;
         },
-        'mismatched harness commit': ({ candidate }) => {
-            candidate.provenance.harness.commit = baselineCommit;
-        },
         'nonempty reasons despite comparable': ({ candidate }) => {
             candidate.provenance.reasons = ['hidden mismatch'];
         },
@@ -2331,7 +2568,6 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
 
     const { baseline, candidate } = reportPair();
     candidate.provenance.subject.commit = baselineCommit;
-    candidate.provenance.harness.commit = baselineCommit;
     candidate.sourceCommit = baselineCommit;
     for (const scenario of candidate.scenarios) {
         scenario.servedBuildProvenance.commit = baselineCommit;
@@ -2355,6 +2591,62 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
         comparePartialReports(lowercase, uppercase, { allowSameSource: true })
             .exitCode,
         2,
+    );
+});
+
+test('different subjects are comparable when profiler harness provenance matches', () => {
+    const { baseline, candidate } = reportPair();
+
+    assert.notEqual(
+        baseline.provenance.subject.commit,
+        candidate.provenance.subject.commit,
+    );
+    assert.notEqual(
+        baseline.provenance.subject.commit,
+        baseline.provenance.harness.commit,
+    );
+    assert.notEqual(
+        candidate.provenance.subject.commit,
+        candidate.provenance.harness.commit,
+    );
+    assert.deepEqual(baseline.provenance.harness, candidate.provenance.harness);
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.comparable, true);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
+});
+
+test('mismatched profiler harness provenance invalidates the report pair', () => {
+    const { baseline, candidate } = reportPair();
+    candidate.provenance.harness.commit = 'e'.repeat(40);
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.comparable, false);
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /profiler harness provenance differs/,
+    );
+});
+
+test('a managed report cannot separate its served subject from its harness', () => {
+    const { baseline, candidate } = reportPair();
+    candidate.options.build = true;
+    candidate.options.managedServer = true;
+    candidate.provenance.server = {
+        buildPerformed: true,
+        mode: 'managed',
+    };
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.comparable, false);
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /must match the served-build subject commit for a managed server/,
     );
 });
 

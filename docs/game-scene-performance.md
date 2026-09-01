@@ -370,7 +370,7 @@ GAME_PROFILE_SCENARIO_SET=static-idle \
   pnpm run profile:game
 ```
 
-The final local closure bundle is retained under
+The required final local closure bundle must be captured under
 `test-results/game-profile/4717-final/acceptance`. It combines three repeated
 static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
 for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
@@ -404,25 +404,131 @@ headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
 Capture the complete regression bundle before and after a runtime change with
-the same machine, browser, options, and deterministic fixtures. Use distinct
-output directories so the candidate run cannot overwrite the baseline:
+the same machine, browser, options, deterministic fixtures, and one exact clean
+profiler harness. The harness is the checkout that runs
+`profile-game-scene.mjs`; select its commit after the profiling contract is
+final, then keep that checkout at the same clean `HEAD` for all four reports.
+Do not run the baseline reports with the profiler script from the baseline
+checkout and the candidate reports with the script from the candidate checkout.
+
+Each report records two separate provenance identities:
+
+- The **subject commit** is the clean commit baked into the served Garden build
+  through `NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT`. It is the runtime being
+  measured and is authoritative for baseline-versus-candidate identity.
+- The **harness commit** is the clean commit of the checkout executing the
+  profiler. It defines how all four subjects are observed and must be identical
+  across both baseline reports and both candidate reports.
+
+The baseline subject and the harness are therefore allowed to be different
+commits. That difference is intentional: only the subject changes across the
+comparison, while the harness remains fixed. This split is valid only for an
+externally supplied server. A managed profiler build still requires its subject
+and harness commits to match and treats a difference as stale-build provenance.
+Build and start the baseline and candidate subjects as external servers from
+separate clean worktrees. Confirm cleanliness before marking the embedded dirty
+state `false`; the current comparison contract is `1`. Run only one subject
+server and capture at a time so the other server cannot perturb the sample:
+
+```bash
+# Baseline subject worktree, terminal 1
+profile_subject_commit=$(git rev-parse HEAD) &&
+test -z "$(git status --porcelain --untracked-files=normal)" &&
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=1 \
+  pnpm --filter garden build &&
+GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
+
+# After both baseline captures finish, stop terminal 1. Then start the candidate
+# subject worktree in terminal 2.
+profile_subject_commit=$(git rev-parse HEAD) &&
+test -z "$(git status --porcelain --untracked-files=normal)" &&
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
+NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=1 \
+  pnpm --filter garden build &&
+GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
+```
+
+Run all four captures from the unchanged clean harness worktree. Use distinct
+output directories so no report can overwrite another:
 
 ```bash
 cd apps/garden
+test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
+
 GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline \
-  pnpm run profile:game:regression-baselines
+GAME_PROFILE_BASE_URL=http://localhost:3101 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 
-# Capture an independent repeat of the exact same clean baseline commit:
+# Independent second capture of the same clean baseline subject with the same
+# exact clean harness; this must be a new profiler run, not a copied report.
 GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline-confirmation \
-  pnpm run profile:game:regression-baselines
+GAME_PROFILE_BASE_URL=http://localhost:3101 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 
-# After checking out and building the candidate commit:
 GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate \
-  pnpm run profile:game:regression-baselines
+GAME_PROFILE_BASE_URL=http://localhost:3102 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 
-# Capture an independent repeat of the exact same clean candidate commit:
+# Independent second capture of the same clean candidate subject with the same
+# exact clean harness.
 GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate-confirmation \
-  pnpm run profile:game:regression-baselines
+GAME_PROFILE_BASE_URL=http://localhost:3102 \
+GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
+GAME_PROFILE_BUILD=0 \
+GAME_PROFILE_CLOSEUP_REPEAT= \
+GAME_PROFILE_CLOSEUP_TIMEOUT_MS=30000 \
+GAME_PROFILE_START_SERVER=0 \
+GAME_PROFILE_SCENARIOS= \
+GAME_PROFILE_SCENARIO_SET=cross-tier,fauna,garden-switch,lifecycle \
+GAME_PROFILE_WARMUP_MS=5000 \
+GAME_PROFILE_SAMPLE_MS=5000 \
+GAME_PROFILE_SOAK_MS=0 \
+GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game:existing
 ```
 
 Compare the four raw repeated-run reports with the checked-in relative policy:
@@ -460,14 +566,40 @@ also marks its output diagnostic and returns `needs-rerun` for an otherwise
 passing canonical pair; only the complete confirmed API can emit a
 non-diagnostic pass.
 
-Each repeat must preserve its source commit, fixtures, options, runtime, and
-environment while using a different report path and valid capture timestamp.
-A timestamp-only copy of an existing JSON report is rejected because it is not
-independent evidence. If a screened metric is unavailable in any required
-pairing, the confirmed result returns `needs-rerun` rather than passing open.
+Each repeat must preserve its subject commit, harness commit, fixtures, options,
+runtime, and environment while using a different report path and valid capture
+timestamp. Both baseline captures must name the same clean baseline subject;
+both candidate captures must name the same clean candidate subject; the
+baseline and candidate subjects must differ; and all four reports must name the
+same clean harness commit. A dirty or unknown identity, a harness mismatch in
+any pairing, a changed subject within either confirmation pair, or a served
+comparison-contract mismatch makes the release matrix invalid and incomparable.
+The comparator fails closed instead of treating any of those provenance errors
+as performance noise. A timestamp-only copy of an existing JSON report is
+rejected because it is not independent evidence. If a screened metric is
+unavailable in any required pairing, the confirmed result returns
+`needs-rerun` rather than passing open.
+
+Timed samples retain Chromium's natural garbage-collection behavior, including
+any resulting script time or long task. For scenario-level memory evidence,
+only after the complete scenario has finished—including every garden-switch
+arrival, lifecycle phase, or close-up pass—does the profiler read the current
+heap, force one JavaScript heap collection, and read retained heap. It records
+those values once in
+`memory.jsHeapBeforeCollectionMb` and `memory.retainedJsHeapMb` with the
+`post-scenario-forced-gc-v1` mode. No profiler-owned collection runs between
+sequential phases. The comparator requires and gates this scenario-level
+retained-heap witness; per-window `sample.jsHeapMb` and `cdp.jsHeapMb` remain
+natural endpoint allocation diagnostics and never decide budget status. The
+existing per-scenario `jsHeapMb` budget limit is applied to
+`memory.retainedJsHeapMb`. If Chromium does not expose either
+required scenario-level reading, profiling fails closed. Canonical cross-tier
+profiles also collect once at the boundary between their semantic witness and
+performance control, as described below; neither collection occurs inside a
+timed window or between production lifecycle/switch phases.
 
 The floors cover observed same-commit variation in browser startup clocks, GPU
-queries, uncollected heap snapshots, script counters, and isolated long tasks;
+queries, retained heap measurements, script counters, and isolated long tasks;
 deterministic fixture, quality, interaction, provenance, and lifecycle
 owned-scheduling witnesses remain hard checks in every raw run. Long-task counts
 compare batch medians, and duration medians use bounded millisecond floors, so
@@ -481,7 +613,7 @@ matrix.
 | p95 frame duration | 15% | 2 ms |
 | Rendered FPS | 10% | 5 FPS |
 | Draws / triangles per rendered frame | 5% | none |
-| JavaScript heap snapshot | 15% | 8 MiB |
+| Retained JavaScript heap | 15% | 8 MiB |
 | Script duration | 15% | 0.5 s |
 | GPU p95 duration | 15% | 3 ms |
 | DOM content loaded | 25% | 25 ms |
@@ -514,14 +646,16 @@ Exit `0` means compatible evidence and all confirmed relative gates passed.
 Exit `1` means either `needs-rerun` or a regression, and exit `2` means the
 reports are invalid or incomparable. The generated comparison report uses
 schema version 2 and distinguishes screening signals from reproduced
-regressions. The gate fails closed for dirty, unknown,
-same-commit, stale-build, or mismatched served-build provenance, changed
-fixtures/options/runtime, missing runs, and one-sided required measurements. The
-default gate requires the complete `cross-tier,fauna,garden-switch,lifecycle`
-manifest with three raw repeats per scenario, and it rejects an output directory
-that contains either input report. `--allow-partial` and `--allow-same-source`
-exist only for local harness diagnostics, are marked as diagnostic in the
-generated report, and must not be used as release evidence.
+regressions. The gate fails closed for dirty or unknown subjects, dirty or
+unknown harnesses, different harness commits anywhere in the four-report
+matrix, same-subject baseline/candidate pairs, stale or mismatched served-build
+markers, changed fixtures/options/runtime, missing runs, and one-sided required
+measurements. The default gate requires the complete
+`cross-tier,fauna,garden-switch,lifecycle` manifest with three raw repeats per
+scenario, and it rejects an output directory that contains either input report.
+`--allow-partial` and `--allow-same-source` exist only for local harness
+diagnostics, are marked as diagnostic in the generated report, and must not be
+used as release evidence.
 
 Run every profiler scenario together:
 
@@ -567,9 +701,12 @@ as both `latest.json` and `latest.md`; timestamped copies are kept beside them.
 The JSON is intended for CI/trend comparison, while the Markdown summary is meant
 for quick review in a PR. Reports also include whether the profiler ran a build
 and whether the server was managed with `pnpm start` or supplied externally.
-Schema-v5 reports distinguish the profiler harness commit from the commit baked
-into the served Garden build. Only the served-build marker is authoritative for
-the comparison subject; a runner environment SHA is not deployment proof.
+Schema-v6 reports distinguish the profiler harness commit from the commit baked
+into the served Garden build. A valid release matrix intentionally permits the
+baseline subject to differ from its harness, but requires the one exact clean
+harness commit across all four reports. Only the served-build marker is
+authoritative for the comparison subject; a harness or runner-environment SHA
+is not deployment proof.
 
 The default `core` scenario set currently samples these scenarios:
 
@@ -1297,10 +1434,27 @@ timeouts, while R3F frame callbacks remain a separate receipt count.
 Display-interval telemetry remains observational and never steers scheduling.
 
 Cross-tier owner profiles integrate how long the scheduler actually advertises
-30 FPS ambient and 60 FPS interaction targets. Profiler RAFs sample only that
-target state and elapsed time; actual WebGL-rendered frames and R3F receipts are
-counted independently. Each target-rate window must deliver within its bounded
-frame budget, so declared lease rates alone cannot satisfy the cadence gate.
+30 FPS ambient and 60 FPS interaction targets. The canonical cross-tier scalar
+observation path reads only `targetFramesPerSecond` and `activeLeaseCount` from
+a compact frequent snapshot. It does not sort owners, build lease summaries, or
+copy the complete telemetry object on every browser frame. That semantic window
+hard-gates target extrema, lease stability, and observation coverage. The
+profiler then repeats the same steady or closed camera-motion workload in a
+separate window that reads full scheduler state only at its endpoints. The
+semantic and control endpoints must preserve the same exact render-lease owners,
+rates, and counts. Rendered-frame delivery and R3F receipts are gated together
+from the control window, so they describe the same observer-free work as the
+CPU, GPU, frame, render-work, and long-task regression metrics. Those metrics
+come from this `separate-observer-free-window-v1` control, while the paired
+semantic evidence is marked `separate-semantic-raf-window-v1`. Both markers and
+the observed RAF count are mandatory comparison inputs. A forced collection
+after the semantic window and before the control removes observer-only
+allocation residue; the control's endpoint heap and CPU still reflect its own
+natural collection behavior. Runtime-owner acceptance intentionally takes full
+RAF snapshots because it must inspect lease summaries; that richer diagnostic
+path remains outside the scalar optimization. Each target-rate window must
+deliver within its bounded frame budget, so declared lease rates alone cannot
+satisfy the cadence gate.
 
 The canonical cross-tier regression matrix has a different input contract: its
 wheel and rotation-key actions are discrete requests over a persistent 30 FPS
@@ -1308,21 +1462,29 @@ ambient owner set. It observes the scalar target on every RAF and hard-gates
 28–32 rendered FPS; sustained held-input 60 FPS remains the responsibility of
 the runtime-owner profiles above.
 
-Profiler telemetry is pull-based: a synchronous property-read or
-`structuredClone` burst shares one exact scheduler snapshot until its queued
-reset runs. Normal frames and scheduler wakeups therefore do not push, allocate,
-or deep-copy telemetry merely because the profiling fixture is enabled.
+Full profiler telemetry remains pull-based and coherent. A consumer that reads
+the full object, including a `structuredClone` burst, receives one exact full
+scheduler snapshot for that synchronous read window; owner arrays, counters,
+pending-callback state, and lease summaries are never reconstructed from
+separately sampled hot scalars. The full snapshot supersedes the compact view
+for the remainder of that read burst, and both caches reset together afterward.
+Normal frames and scheduler wakeups therefore do not push or deep-copy full
+telemetry merely because the profiling fixture is enabled, while exact endpoint
+and lifecycle assertions still observe a coherent state.
 
-Release evidence:
+Required release evidence before merge:
 
 - `4717-final/acceptance` is the 21-run static, live-lifecycle, and cross-policy
   semantic-owner gate.
 - `4717-final/building-ambient` is the focused two-run control proving an
   ordinary ambient structure fixture holds one stable 30 FPS owner set.
 - `4717-origin-main-vs-candidate/baseline-1` and `baseline-2` are independent
-  clean `origin/main` captures; `candidate-final-1` and `candidate-final-2` are
-  independent clean candidate captures of the same 39 canonical runs.
-  `comparison-final` is the fail-closed symmetric 2x2 result.
+  captures of the same clean `origin/main` subject, collected by the same exact
+  clean profiler harness used for `candidate-final-1` and `candidate-final-2`.
+  The candidate pair independently captures the same clean candidate subject
+  and the same 39 canonical runs. `comparison-final` is the fail-closed
+  symmetric 2x2 result; “independent” means separate profiler executions and
+  reports, not different harness commits.
 - Garden-switch comparison keeps the first short new-context GPU window visible
   as a diagnostic and hard-gates aggregate elapsed GPU occupancy across all
   seven arrivals, alongside the later per-arrival occupancy gates. It does not

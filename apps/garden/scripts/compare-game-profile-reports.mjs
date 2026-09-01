@@ -18,6 +18,10 @@ const defaultOutDir = resolve(
     'test-results/game-profile/comparisons',
 );
 const commitPattern = /^[0-9a-f]{40}$/;
+const retainedHeapMeasurementMode = 'post-scenario-forced-gc-v1';
+const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
+const crossTierRuntimeFrameLoopObservationMode =
+    'separate-semantic-raf-window-v1';
 const regressionScenarioSet = 'cross-tier,fauna,garden-switch,lifecycle';
 const regressionScenarioBaseNames = [
     'game-cross-tier-low-steady-desktop',
@@ -160,17 +164,6 @@ const ratioMetricRegistry = [
         unit: 'triangles/frame',
     },
     {
-        id: 'memory.js_heap_mb',
-        label: 'JavaScript heap',
-        direction: 'maximum',
-        medianAbsoluteTolerance: 8,
-        medianLimit: 1.15,
-        runAbsoluteTolerance: 16,
-        runLimit: 1.3,
-        read: ({ cdp, sample }) => cdp?.jsHeapMb ?? sample?.jsHeapMb,
-        unit: 'MiB',
-    },
-    {
         id: 'cpu.script_duration_s',
         label: 'script duration',
         direction: 'maximum',
@@ -182,6 +175,17 @@ const ratioMetricRegistry = [
         unit: 's',
     },
 ];
+
+const retainedHeapMetric = {
+    id: 'memory.js_heap_mb',
+    label: 'retained JavaScript heap',
+    direction: 'maximum',
+    medianAbsoluteTolerance: 8,
+    medianLimit: 1.15,
+    runAbsoluteTolerance: 16,
+    runLimit: 1.3,
+    unit: 'MiB',
+};
 
 function timingThresholds(metricId) {
     if (metricId === 'cold.dom_content_loaded_ms') {
@@ -394,6 +398,176 @@ function validateExactValue(errors, value, expected, path) {
     }
 }
 
+function validateRetainedHeapEvidence(errors, memory, path) {
+    if (!isRecord(memory)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        memory.measurementMode,
+        retainedHeapMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    validatePositiveNumber(
+        errors,
+        memory.jsHeapBeforeCollectionMb,
+        `${path}.jsHeapBeforeCollectionMb`,
+    );
+    validatePositiveNumber(
+        errors,
+        memory.retainedJsHeapMb,
+        `${path}.retainedJsHeapMb`,
+    );
+}
+
+function readCrossTierLeaseTopology(value) {
+    if (
+        !isRecord(value) ||
+        !Number.isInteger(value.activeLeaseCount) ||
+        value.activeLeaseCount <= 0 ||
+        !Number.isInteger(value.activeRenderLeaseCount) ||
+        value.activeRenderLeaseCount !== value.activeLeaseCount ||
+        !isFiniteNumber(value.targetFramesPerSecond) ||
+        value.targetFramesPerSecond <= 0 ||
+        !Array.isArray(value.renderLeaseOwners) ||
+        value.renderLeaseOwners.some((owner) => !isNonEmptyString(owner)) ||
+        !Array.isArray(value.renderLeaseSummaries) ||
+        value.renderLeaseSummaries.some(
+            (summary) =>
+                !isRecord(summary) ||
+                !isNonEmptyString(summary.owner) ||
+                !isFiniteNumber(summary.framesPerSecond) ||
+                summary.framesPerSecond <= 0 ||
+                !Number.isInteger(summary.leaseCount) ||
+                summary.leaseCount <= 0,
+        )
+    ) {
+        return null;
+    }
+
+    const summaryLeaseCount = value.renderLeaseSummaries.reduce(
+        (total, summary) => total + summary.leaseCount,
+        0,
+    );
+    const summaryOwners = [
+        ...new Set(value.renderLeaseSummaries.map((summary) => summary.owner)),
+    ].sort();
+    if (
+        summaryLeaseCount !== value.activeRenderLeaseCount ||
+        canonicalJson(summaryOwners) !== canonicalJson(value.renderLeaseOwners)
+    ) {
+        return null;
+    }
+
+    return {
+        activeLeaseCount: value.activeLeaseCount,
+        activeRenderLeaseCount: value.activeRenderLeaseCount,
+        renderLeaseOwners: value.renderLeaseOwners,
+        renderLeaseSummaries: value.renderLeaseSummaries,
+        targetFramesPerSecond: value.targetFramesPerSecond,
+    };
+}
+
+function validateCrossTierObserverIsolation(errors, sample, path) {
+    if (!isRecord(sample)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        sample.performanceMeasurementMode,
+        crossTierPerformanceMeasurementMode,
+        `${path}.performanceMeasurementMode`,
+    );
+    validateExactValue(
+        errors,
+        sample.runtimeFrameLoopObservationMode,
+        crossTierRuntimeFrameLoopObservationMode,
+        `${path}.runtimeFrameLoopObservationMode`,
+    );
+
+    const rafFrameCount = sample.runtimeFrameLoopObservationRafFrameCount;
+    if (!Number.isInteger(rafFrameCount) || rafFrameCount <= 0) {
+        errors.push(
+            `${path}.runtimeFrameLoopObservationRafFrameCount must be a positive integer`,
+        );
+    }
+    const observationCount = sample.runtimeFrameLoopObservationCount;
+    if (
+        !Number.isInteger(observationCount) ||
+        observationCount !== rafFrameCount + 3
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount + 3`,
+        );
+    }
+
+    const leaseFields = [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ];
+    const leaseCounts = leaseFields.map((field) => sample[field]);
+    for (const [index, leaseCount] of leaseCounts.entries()) {
+        if (!Number.isInteger(leaseCount) || leaseCount <= 0) {
+            errors.push(
+                `${path}.${leaseFields[index]} must be a positive integer`,
+            );
+        }
+    }
+    if (
+        leaseCounts.every(
+            (leaseCount) => Number.isInteger(leaseCount) && leaseCount > 0,
+        ) &&
+        new Set(leaseCounts).size !== 1
+    ) {
+        errors.push(
+            `${path} runtime frame-loop active lease counts must remain stable`,
+        );
+    }
+
+    const topologyEntries = [
+        [
+            'runtimeFrameLoopSemanticLeaseTopologyAtStart',
+            sample.runtimeFrameLoopSemanticLeaseTopologyAtStart,
+        ],
+        [
+            'runtimeFrameLoopSemanticLeaseTopologyAtEnd',
+            sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd,
+        ],
+        ['runtimeFrameLoopAtStart', sample.runtimeFrameLoopAtStart],
+        ['runtimeFrameLoopAtEnd', sample.runtimeFrameLoopAtEnd],
+    ].map(([field, value]) => ({
+        field,
+        topology: readCrossTierLeaseTopology(value),
+    }));
+    for (const entry of topologyEntries) {
+        if (entry.topology === null) {
+            errors.push(`${path}.${entry.field} has invalid lease topology`);
+        }
+    }
+    if (topologyEntries.every((entry) => entry.topology !== null)) {
+        const topologyKeys = topologyEntries.map((entry) =>
+            canonicalJson(entry.topology),
+        );
+        if (new Set(topologyKeys).size !== 1) {
+            errors.push(
+                `${path} semantic and observer-free lease topologies must match`,
+            );
+        }
+        if (
+            Number.isInteger(leaseCounts[0]) &&
+            topologyEntries[0].topology.activeLeaseCount !== leaseCounts[0]
+        ) {
+            errors.push(
+                `${path} semantic lease topology count must match runtimeFrameLoopActiveLeaseCountAtStart`,
+            );
+        }
+    }
+}
+
 function validatePassingChecks(errors, value, path) {
     if (!isRecord(value)) {
         errors.push(`${path} is missing`);
@@ -542,6 +716,11 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
     }
 
     if (scenario.baseName.startsWith('game-cross-tier-')) {
+        validateCrossTierObserverIsolation(
+            errors,
+            scenario.sample,
+            `${path} sample`,
+        );
         const profileSlug = crossTierBaseNamePattern.exec(
             scenario.baseName,
         )?.[1];
@@ -972,11 +1151,6 @@ function validateReport(report, label, { allowPartial = false } = {}) {
         if (harness.dirty !== false) {
             errors.push(`${label}.provenance.harness.dirty must be false`);
         }
-        if (isRecord(subject) && harness.commit !== subject.commit) {
-            errors.push(
-                `${label}.provenance.harness.commit must match the served-build subject commit`,
-            );
-        }
     }
 
     for (const field of ['platform', 'arch', 'nodeVersion', 'browserVersion']) {
@@ -992,6 +1166,16 @@ function validateReport(report, label, { allowPartial = false } = {}) {
     }
     if (!['managed', 'external'].includes(provenance.server?.mode)) {
         errors.push(`${label}.provenance.server.mode is invalid`);
+    }
+    if (
+        provenance.server?.mode === 'managed' &&
+        isRecord(subject) &&
+        isRecord(harness) &&
+        harness.commit !== subject.commit
+    ) {
+        errors.push(
+            `${label}.provenance.harness.commit must match the served-build subject commit for a managed server`,
+        );
     }
 
     const seen = new Set();
@@ -1149,6 +1333,11 @@ function validateReport(report, label, { allowPartial = false } = {}) {
                 }
             }
         }
+        validateRetainedHeapEvidence(
+            errors,
+            scenario.memory,
+            `${label} scenario ${key} memory`,
+        );
         if (!allowPartial) {
             validateCanonicalScenarioEvidence(errors, scenario, label, key);
         }
@@ -1854,17 +2043,10 @@ function validateCrossTierCandidateFrameContract(row, errors) {
     }
 
     const frames = sample?.frames;
-    const observationCount = sample?.runtimeFrameLoopObservationCount;
     if (!Number.isInteger(frames) || frames <= 0) {
         errors.push(`${path}.frames must be a positive integer`);
-    } else if (
-        !Number.isInteger(observationCount) ||
-        observationCount !== frames + 3
-    ) {
-        errors.push(
-            `${path}.runtimeFrameLoopObservationCount must equal sample.frames + 3`,
-        );
     }
+    validateCrossTierObserverIsolation(errors, sample, path);
 
     const renderedFrames = sample?.renderedFrames;
     const r3fFrameCallbackCount =
@@ -1995,12 +2177,20 @@ function comparePairedScenarios(
     const invariants = [];
     const skipped = [];
     const gardenSwitchWorkflowRows = [];
+    const retainedHeapRows = [];
     const sampleRows = [];
     const timingRows = [];
 
     for (const { baseline, candidate } of pairs) {
         const baseName = scenarioBaseName(baseline);
         const profileRun = scenarioRun(baseline);
+        retainedHeapRows.push({
+            baseline: baseline.memory.retainedJsHeapMb,
+            candidate: candidate.memory.retainedJsHeapMb,
+            phase: 'post-scenario',
+            profileRun,
+            scenario: baseName,
+        });
         if (baseName === gardenSwitchScenarioBaseName) {
             const baselineWorkflow = gpuElapsedWorkflowOccupancyState(baseline);
             const candidateWorkflow =
@@ -2199,10 +2389,7 @@ function comparePairedScenarios(
                     metricId: metric.id,
                     positiveRequired: true,
                     required:
-                        ![
-                            'cpu.script_duration_s',
-                            'memory.js_heap_mb',
-                        ].includes(metric.id) ||
+                        metric.id !== 'cpu.script_duration_s' ||
                         isRecord(row.baseline.cdp) ||
                         isRecord(row.candidate.cdp),
                     row,
@@ -2386,6 +2573,17 @@ function comparePairedScenarios(
         }
     }
 
+    for (const group of groupRows(retainedHeapRows)) {
+        comparisons.push({
+            phase: group.phase,
+            scenario: group.scenario,
+            ...buildRatioComparison({
+                ...retainedHeapMetric,
+                rows: group.rows,
+            }),
+        });
+    }
+
     if (gardenSwitchWorkflowRows.length > 0) {
         comparisons.push({
             phase: 'workflow',
@@ -2498,6 +2696,12 @@ function compareReportPair(
             'comparison contract',
             baseline.comparisonContractVersion,
             candidate.comparisonContractVersion,
+        );
+        pushMismatch(
+            validationErrors,
+            'profiler harness provenance',
+            baseline.provenance.harness,
+            candidate.provenance.harness,
         );
         pushMismatch(
             validationErrors,

@@ -23,6 +23,7 @@ import {
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
+    collectScenarioMemoryEvidence,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
@@ -66,6 +67,22 @@ import {
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
+
+function crossTierLeaseTopology() {
+    return {
+        activeLeaseCount: 10,
+        activeRenderLeaseCount: 10,
+        renderLeaseOwners: ['scene-ambient'],
+        renderLeaseSummaries: [
+            {
+                framesPerSecond: 30,
+                leaseCount: 10,
+                owner: 'scene-ambient',
+            },
+        ],
+        targetFramesPerSecond: 30,
+    };
+}
 
 test('full scheduler snapshots are sampled per RAF only for runtime-owner acceptance', () => {
     const countRafSnapshotReads = (runtimeOwnerLeaseExpectations) => {
@@ -208,6 +225,25 @@ test('report provenance validates regular, switch, and lifecycle served-build ma
     });
 });
 
+test('report provenance allows a clean external subject to differ from its clean harness', () => {
+    const provenance = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        server: {
+            buildPerformed: false,
+            mode: 'external',
+        },
+    });
+
+    assert.equal(provenance.comparable, true);
+    assert.deepEqual(provenance.reasons, []);
+    assert.equal(provenance.subject.commit, provenanceCommitA);
+    assert.equal(provenance.harness.commit, provenanceCommitB);
+    assert.deepEqual(provenance.server, {
+        buildPerformed: false,
+        mode: 'external',
+    });
+});
+
 test('comparison contract markers require one complete canonical integer', () => {
     assert.equal(parseComparisonContractVersion('1'), 1);
     assert.equal(parseComparisonContractVersion('12'), 12);
@@ -268,7 +304,7 @@ test('report provenance fails closed for unknown or dirty sources', () => {
     assert.ok(dirty.reasons.includes('harness-dirty'));
 });
 
-test('report provenance rejects served-build, harness, and contract mismatches', () => {
+test('report provenance rejects served-build, managed harness, and contract mismatches', () => {
     const provenance = profileProvenance({
         scenarios: [
             { servedBuildProvenance: cleanServedBuildMarker },
@@ -303,6 +339,59 @@ test('report provenance rejects served-build, harness, and contract mismatches',
     });
     assert.equal(harnessMismatch.comparable, false);
     assert.ok(harnessMismatch.reasons.includes('source-commit-mismatch'));
+});
+
+test('external report provenance still rejects served-build and contract mismatches', () => {
+    const externalServer = {
+        buildPerformed: false,
+        mode: 'external',
+    };
+    const servedBuildMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        scenarios: [
+            { servedBuildProvenance: cleanServedBuildMarker },
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    commit: provenanceCommitB,
+                },
+            },
+        ],
+        server: externalServer,
+    });
+    assert.equal(servedBuildMismatch.comparable, false);
+    assert.ok(
+        servedBuildMismatch.reasons.includes(
+            'served-build-source-commit-inconsistent',
+        ),
+    );
+    assert.equal(
+        servedBuildMismatch.reasons.includes('source-commit-mismatch'),
+        false,
+    );
+
+    const contractMismatch = profileProvenance({
+        harness: { commit: provenanceCommitB, dirty: false },
+        scenarios: [
+            {
+                servedBuildProvenance: {
+                    ...cleanServedBuildMarker,
+                    comparisonContractVersion: 2,
+                },
+            },
+        ],
+        server: externalServer,
+    });
+    assert.equal(contractMismatch.comparable, false);
+    assert.ok(
+        contractMismatch.reasons.includes(
+            'served-build-comparison-contract-mismatch',
+        ),
+    );
+    assert.equal(
+        contractMismatch.reasons.includes('source-commit-mismatch'),
+        false,
+    );
 });
 
 test('budget-enforced profiling fails closed for incomparable provenance', () => {
@@ -2647,7 +2736,9 @@ test('render budgets gate calls and triangles per rendered frame', () => {
         trianglesPerRenderedFrame: 3_000_000,
     };
 
-    const result = evaluateBudget(sample, budget);
+    const result = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 200,
+    });
     const callsCheck = result.checks.find(
         (check) => check.name === 'drawCallsPerRenderedFrame',
     );
@@ -2668,6 +2759,51 @@ test('render budgets gate calls and triangles per rendered frame', () => {
         pass: true,
         skipped: true,
     });
+});
+
+test('render budgets gate retained heap and keep window heap diagnostic', () => {
+    const sample = {
+        drawCallsPerRenderedFrame: 100,
+        gpu: { elapsedP95Ms: null, supported: false },
+        jsHeapMb: 10_000,
+        longTaskCount: 0,
+        maxFrameMs: 20,
+        p95FrameMs: 16,
+        trianglesPerRenderedFrame: 1_000_000,
+    };
+    const budget = {
+        drawCallsPerRenderedFrame: 600,
+        gpuElapsedP95Ms: 33.3,
+        jsHeapMb: 320,
+        longTaskCount: 2,
+        maxFrameMs: 180,
+        p95FrameMs: 33.3,
+        trianglesPerRenderedFrame: 3_000_000,
+    };
+
+    const passing = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 200,
+    });
+    const failing = evaluateBudget(sample, budget, {
+        retainedJsHeapMb: 321,
+    });
+
+    assert.equal(passing.pass, true);
+    assert.equal(
+        passing.checks.some((check) => check.name === 'jsHeapMb'),
+        false,
+    );
+    assert.deepEqual(
+        passing.checks.find((check) => check.name === 'retainedJsHeapMb'),
+        {
+            actual: 200,
+            limit: 320,
+            name: 'retainedJsHeapMb',
+            pass: true,
+        },
+    );
+    assert.equal(failing.pass, false);
+    assert.equal(evaluateBudget(sample, budget).pass, false);
 });
 
 test('render work normalization separates rendered work from rAF responsiveness', () => {
@@ -3499,10 +3635,11 @@ test('garden-switch sampling primes the discarded RAF before switch work', async
     );
 });
 
-test('profile finalization captures CDP before draining GPU queries', async () => {
+test('profile finalization captures timed CDP counters before draining GPU queries', async () => {
     const calls = [];
     const sampleAtEndpoint = {
         drawCalls: 12,
+        jsHeapMb: 48,
         sampleWindow: {
             endedAt: 200,
             startedAt: 100,
@@ -3512,7 +3649,9 @@ test('profile finalization captures CDP before draining GPU queries', async () =
         cdp: {
             async send(command) {
                 calls.push(`cdp:${command}`);
-                return { metrics: [{ name: 'TaskDuration', value: 1 }] };
+                return {
+                    metrics: [{ name: 'TaskDuration', value: 1 }],
+                };
             },
         },
         page: {
@@ -3534,8 +3673,77 @@ test('profile finalization captures CDP before draining GPU queries', async () =
         metrics: [{ name: 'TaskDuration', value: 1 }],
     });
     assert.equal(result.sample.drawCalls, 12);
+    assert.equal(result.sample.jsHeapMb, 48);
     assert.equal(result.sample.longTaskCount, 1);
     assert.equal(result.sample.sampleWindow, undefined);
+});
+
+test('scenario memory evidence collects once and preserves both heap readings', async () => {
+    const calls = [];
+    const mebibyte = 1024 * 1024;
+    let performanceMetricReadCount = 0;
+    const memory = await collectScenarioMemoryEvidence({
+        async send(command) {
+            calls.push(command);
+            if (command === 'HeapProfiler.collectGarbage') {
+                return {};
+            }
+            performanceMetricReadCount += 1;
+            return {
+                metrics: [
+                    {
+                        name: 'JSHeapUsedSize',
+                        value:
+                            (performanceMetricReadCount === 1 ? 42 : 30) *
+                            mebibyte,
+                    },
+                ],
+            };
+        },
+    });
+
+    assert.deepEqual(calls, [
+        'Performance.getMetrics',
+        'HeapProfiler.collectGarbage',
+        'Performance.getMetrics',
+    ]);
+    assert.deepEqual(memory, {
+        jsHeapBeforeCollectionMb: 42,
+        measurementMode: 'post-scenario-forced-gc-v1',
+        retainedJsHeapMb: 30,
+    });
+});
+
+test('scenario memory evidence fails closed without both CDP heap readings', async () => {
+    for (const missingRead of ['before', 'after']) {
+        let performanceMetricReadCount = 0;
+        await assert.rejects(
+            collectScenarioMemoryEvidence({
+                async send(command) {
+                    if (command === 'HeapProfiler.collectGarbage') {
+                        return {};
+                    }
+                    performanceMetricReadCount += 1;
+                    const reading =
+                        performanceMetricReadCount === 1 ? 'before' : 'after';
+                    return {
+                        metrics:
+                            reading === missingRead
+                                ? []
+                                : [
+                                      {
+                                          name: 'JSHeapUsedSize',
+                                          value: 30 * 1024 * 1024,
+                                      },
+                                  ],
+                    };
+                },
+            }),
+            new RegExp(
+                `CDP did not report JSHeapUsedSize ${missingRead} scenario-end garbage collection`,
+            ),
+        );
+    }
 });
 
 test('render budgets enforce GPU p95 when timer queries are supported', () => {
@@ -3558,6 +3766,7 @@ test('render budgets enforce GPU p95 when timer queries are supported', () => {
             p95FrameMs: 33.3,
             trianglesPerRenderedFrame: 3_000_000,
         },
+        { retainedJsHeapMb: 200 },
     );
     const gpuCheck = result.checks.find(
         (check) => check.name === 'gpuElapsedP95Ms',
@@ -3609,6 +3818,7 @@ test('render budgets skip incomplete or disjoint GPU timer results', () => {
                 p95FrameMs: 33.3,
                 trianglesPerRenderedFrame: 3_000_000,
             },
+            { retainedJsHeapMb: 200 },
         );
 
         assert.equal(result.pass, true);
@@ -3816,6 +4026,7 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             drawCalls: 100,
             elapsedMs: 5_000,
             frames: 300,
+            performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
             outlineProfileDispatched: true,
@@ -3828,17 +4039,23 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             runtimeFrameLoopActiveLeaseCountMax: 10,
             runtimeFrameLoopActiveLeaseCountMin: 10,
             runtimeFrameLoopAtEnd: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopAtStart: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopCounterDeltas: {
                 r3fFrameCallbackCount: 150,
             },
             runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopObservationMode: 'separate-semantic-raf-window-v1',
+            runtimeFrameLoopObservationRafFrameCount: 300,
+            runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                crossTierLeaseTopology(),
             runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
             runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
             runtimeFrameLoopTargetFramesPerSecondMax: 30,
@@ -3942,11 +4159,34 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         },
         ['crossTierSampleMinimumActiveLeaseCount'],
     );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].framesPerSecond = 60;
+        },
+        ['crossTierControlEndLeaseTopology'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseOwners =
+                ['different-owner'];
+            candidate.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd.renderLeaseSummaries[0].owner =
+                'different-owner';
+        },
+        ['crossTierSemanticEndLeaseTopology'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopObservationRafFrameCount = 0;
+            candidate.sample.runtimeFrameLoopObservationCount = 3;
+        },
+        ['crossTierSemanticRafFrames'],
+    );
     for (const observationCountDelta of [2, 4]) {
         expectFailedChecks(
             (candidate) => {
                 candidate.sample.runtimeFrameLoopObservationCount =
-                    candidate.sample.frames + observationCountDelta;
+                    candidate.sample.runtimeFrameLoopObservationRafFrameCount +
+                    observationCountDelta;
             },
             ['crossTierRuntimeFrameLoopObservationCount'],
         );
@@ -4133,6 +4373,7 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             drawCalls: 100,
             elapsedMs: 5_000,
             frames: 300,
+            performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
             outlineProfileDispatched: true,
@@ -4145,17 +4386,23 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             runtimeFrameLoopActiveLeaseCountMax: 10,
             runtimeFrameLoopActiveLeaseCountMin: 10,
             runtimeFrameLoopAtEnd: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopAtStart: {
+                ...crossTierLeaseTopology(),
                 effectiveVisible: true,
-                targetFramesPerSecond: 30,
             },
             runtimeFrameLoopCounterDeltas: {
                 r3fFrameCallbackCount: 150,
             },
             runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopObservationMode: 'separate-semantic-raf-window-v1',
+            runtimeFrameLoopObservationRafFrameCount: 300,
+            runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                crossTierLeaseTopology(),
+            runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                crossTierLeaseTopology(),
             runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
             runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
             runtimeFrameLoopTargetFramesPerSecondMax: 30,
@@ -4394,6 +4641,7 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
         baseName: 'game-fauna-heavy-day-interaction-desktop',
         budget: { pass: true },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 100 },
         name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
         performanceBudget: { pass: true },
         profileRun,
@@ -4863,6 +5111,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         baseName: 'game-fauna-heavy-day-interaction-desktop',
         budget: { pass: true },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 100 },
         name: `game-fauna-heavy-day-interaction-desktop-run-${profileRun}`,
         performanceBudget: { pass: true },
         profileRun,
@@ -9783,6 +10032,7 @@ function highTargetRun(value, index, acceptancePass = true) {
         acceptance: { pass: acceptancePass },
         budget: { pass: acceptancePass && performancePass },
         budgetName: 'gameHighTarget',
+        memory: { retainedJsHeapMb: 200 },
         name: `game-high-target-clear-idle-desktop-run-${index + 1}`,
         performanceBudget: { pass: performancePass },
         profileRun: index + 1,

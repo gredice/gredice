@@ -10,6 +10,9 @@ const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
 const gameProfileComparisonContractVersion = 1;
+const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
+const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
+const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
 const fullSourceCommitPattern = /^[0-9a-f]{40}$/i;
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
@@ -2100,7 +2103,12 @@ function buildReportProvenance({ harness, runtime, scenarios, server }) {
     } else if (harnessDirty) {
         reasons.push('harness-dirty');
     }
-    if (subjectCommit && harnessCommit && subjectCommit !== harnessCommit) {
+    if (
+        server?.mode !== 'external' &&
+        subjectCommit &&
+        harnessCommit &&
+        subjectCommit !== harnessCommit
+    ) {
         reasons.push('source-commit-mismatch');
     }
 
@@ -3183,6 +3191,33 @@ async function finalizeProfileSampleAtEndpoint({
     };
 }
 
+async function collectScenarioMemoryEvidence(cdp) {
+    const beforeCollection = metricsByName(
+        await cdp.send('Performance.getMetrics'),
+    );
+    if (!Number.isFinite(beforeCollection.JSHeapUsedSize)) {
+        throw new Error(
+            'CDP did not report JSHeapUsedSize before scenario-end garbage collection.',
+        );
+    }
+    await cdp.send('HeapProfiler.collectGarbage');
+    const retained = metricsByName(await cdp.send('Performance.getMetrics'));
+    if (!Number.isFinite(retained.JSHeapUsedSize)) {
+        throw new Error(
+            'CDP did not report JSHeapUsedSize after scenario-end garbage collection.',
+        );
+    }
+
+    return {
+        jsHeapBeforeCollectionMb: round(
+            beforeCollection.JSHeapUsedSize / 1024 / 1024,
+            1,
+        ),
+        measurementMode: scenarioMemoryMeasurementMode,
+        retainedJsHeapMb: round(retained.JSHeapUsedSize / 1024 / 1024, 1),
+    };
+}
+
 async function wait(milliseconds) {
     await new Promise((resolveWait) => setTimeout(resolveWait, milliseconds));
 }
@@ -4010,6 +4045,89 @@ function diffCdpMetrics(before, after) {
             (after.TaskDuration ?? 0) - (before.TaskDuration ?? 0),
             4,
         ),
+    };
+}
+
+function runtimeFrameLoopLeaseTopology(snapshot) {
+    if (
+        !snapshot ||
+        !Number.isInteger(snapshot.activeLeaseCount) ||
+        snapshot.activeLeaseCount <= 0 ||
+        !Number.isInteger(snapshot.activeRenderLeaseCount) ||
+        snapshot.activeRenderLeaseCount !== snapshot.activeLeaseCount ||
+        !Number.isFinite(snapshot.targetFramesPerSecond) ||
+        snapshot.targetFramesPerSecond <= 0 ||
+        !Array.isArray(snapshot.renderLeaseOwners) ||
+        snapshot.renderLeaseOwners.some((owner) => typeof owner !== 'string') ||
+        !Array.isArray(snapshot.renderLeaseSummaries) ||
+        snapshot.renderLeaseSummaries.some(
+            (summary) =>
+                !summary ||
+                typeof summary.owner !== 'string' ||
+                !Number.isFinite(summary.framesPerSecond) ||
+                summary.framesPerSecond <= 0 ||
+                !Number.isInteger(summary.leaseCount) ||
+                summary.leaseCount <= 0,
+        )
+    ) {
+        return null;
+    }
+
+    const summaryLeaseCount = snapshot.renderLeaseSummaries.reduce(
+        (total, summary) => total + summary.leaseCount,
+        0,
+    );
+    const summaryOwners = [
+        ...new Set(
+            snapshot.renderLeaseSummaries.map((summary) => summary.owner),
+        ),
+    ].sort();
+    if (
+        summaryLeaseCount !== snapshot.activeRenderLeaseCount ||
+        JSON.stringify(summaryOwners) !==
+            JSON.stringify(snapshot.renderLeaseOwners)
+    ) {
+        return null;
+    }
+
+    return {
+        activeLeaseCount: snapshot.activeLeaseCount,
+        activeRenderLeaseCount: snapshot.activeRenderLeaseCount,
+        renderLeaseOwners: [...snapshot.renderLeaseOwners],
+        renderLeaseSummaries: snapshot.renderLeaseSummaries.map((summary) => ({
+            framesPerSecond: summary.framesPerSecond,
+            leaseCount: summary.leaseCount,
+            owner: summary.owner,
+        })),
+        targetFramesPerSecond: snapshot.targetFramesPerSecond,
+    };
+}
+
+async function measureObserverFreeScenarioPerformance({
+    cdp,
+    page,
+    sampleMs,
+    scenario,
+}) {
+    const before = metricsByName(await cdp.send('Performance.getMetrics'));
+    await page.evaluate(beginInteractiveProfileSample);
+    await Promise.all([
+        page.waitForTimeout(sampleMs),
+        runScenarioMotion(page, scenario, sampleMs),
+    ]);
+    const sampleAtEndpoint = await page.evaluate(
+        finishInteractiveProfileSample,
+    );
+    const completion = await finalizeProfileSampleAtEndpoint({
+        cdp,
+        page,
+        sampleAtEndpoint,
+    });
+    const after = metricsByName(completion.endpointMetrics);
+
+    return {
+        cdp: diffCdpMetrics(before, after),
+        sample: normalizeRenderWork(completion.sample),
     };
 }
 
@@ -4856,6 +4974,7 @@ async function measureGardenSwitchScenario(
                 timing,
             });
         }
+        const memory = await collectScenarioMemoryEvidence(cdp);
 
         const acceptance = evaluateGardenSwitchAcceptance({
             apiErrors,
@@ -4889,6 +5008,7 @@ async function measureGardenSwitchScenario(
             domContentLoadedMs,
             environment,
             gardenSwitch: { arrivals },
+            memory,
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
             path: scenario.path,
@@ -7700,9 +7820,11 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             restoredInteraction: restoredControl.interaction,
             restoredScreenshotWitness: screenshotWitness,
         });
+        const memory = await collectScenarioMemoryEvidence(cdp);
         const performanceBudget = evaluateBudget(
             active.sample,
             budgets[scenario.budget],
+            memory,
         );
         return {
             acceptance,
@@ -7751,6 +7873,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 offscreen,
                 restoredInteraction: restoredControl.interaction,
             },
+            memory,
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
             path: scenario.path,
@@ -8237,12 +8360,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         });
         const sample = closeup.cold.steady.sample;
         const request = getScenarioRequest(scenario.path);
+        const memory = await collectScenarioMemoryEvidence(cdp);
         await context.close();
 
         return {
             apiErrors: apiErrors.slice(0, 8),
             apiRequests: apiRequests.slice(0, 8),
-            budget: evaluateBudget(sample, budgets[scenario.budget]),
+            budget: evaluateBudget(sample, budgets[scenario.budget], memory),
             closeup: {
                 cold: closeup.cold,
                 normalScreenshotPath: closeup.normalScreenshotPath,
@@ -8254,6 +8378,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             domContentLoadedMs,
             environment,
             canvasReadyMs,
+            memory,
             pageErrors,
             path: scenario.path,
             requested: {
@@ -9648,13 +9773,66 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         sampleCompletionPromise,
         motionPromise,
     ]);
-    const sample = normalizeRenderWork(sampleCompletion.sample);
+    const semanticSample = normalizeRenderWork(sampleCompletion.sample);
     const after = Object.fromEntries(
         sampleCompletion.endpointMetrics.metrics.map((metric) => [
             metric.name,
             metric.value,
         ]),
     );
+    const observerFreePerformance =
+        scenario.crossTierProfile === true
+            ? await (async () => {
+                  // The semantic witness intentionally exercises subject-side
+                  // telemetry on every RAF. Start the performance control from
+                  // a clean heap so those observer allocations cannot spill
+                  // into its natural-GC and script-duration measurements.
+                  await cdp.send('HeapProfiler.collectGarbage');
+                  return measureObserverFreeScenarioPerformance({
+                      cdp,
+                      page,
+                      sampleMs,
+                      scenario,
+                  });
+              })()
+            : null;
+    const sample = observerFreePerformance
+        ? {
+              ...semanticSample,
+              ...observerFreePerformance.sample,
+              performanceMeasurementMode: crossTierPerformanceMeasurementMode,
+              runtimeFrameLoopActiveLeaseCountAtEnd:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountAtEnd,
+              runtimeFrameLoopActiveLeaseCountAtStart:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountAtStart,
+              runtimeFrameLoopActiveLeaseCountMax:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountMax,
+              runtimeFrameLoopActiveLeaseCountMin:
+                  semanticSample.runtimeFrameLoopActiveLeaseCountMin,
+              runtimeFrameLoopObservationCount:
+                  semanticSample.runtimeFrameLoopObservationCount,
+              runtimeFrameLoopObservationMode: crossTierRuntimeObservationMode,
+              runtimeFrameLoopObservationRafFrameCount: semanticSample.frames,
+              runtimeFrameLoopSemanticLeaseTopologyAtEnd:
+                  runtimeFrameLoopLeaseTopology(
+                      semanticSample.runtimeFrameLoopAtEnd,
+                  ),
+              runtimeFrameLoopSemanticLeaseTopologyAtStart:
+                  runtimeFrameLoopLeaseTopology(
+                      semanticSample.runtimeFrameLoopAtStart,
+                  ),
+              runtimeFrameLoopTargetFramesPerSecondAtEnd:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+              runtimeFrameLoopTargetFramesPerSecondAtStart:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondAtStart,
+              runtimeFrameLoopTargetFramesPerSecondMax:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondMax,
+              runtimeFrameLoopTargetFramesPerSecondMin:
+                  semanticSample.runtimeFrameLoopTargetFramesPerSecondMin,
+          }
+        : semanticSample;
+    const scenarioCdp =
+        observerFreePerformance?.cdp ?? diffCdpMetrics(before, after);
 
     const instrumentedRendererResources = {
         rendererShaders: sample.rendererShaders,
@@ -10720,6 +10898,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }
     }
 
+    const memory = await collectScenarioMemoryEvidence(cdp);
     await context.close();
 
     const roundedSample = roundSample(sample);
@@ -10814,7 +10993,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         weatherSurfaceTransition: weatherSurfaceTransitionRequest ?? 'none',
         weatherTransition: weatherTransitionRequest ?? 'none',
     };
-    const budget = evaluateBudget(roundedSample, budgets[scenario.budget]);
+    const budget = evaluateBudget(
+        roundedSample,
+        budgets[scenario.budget],
+        memory,
+    );
     const acceptance = evaluateHighTargetAcceptance({
         apiErrors,
         apiRequests,
@@ -10854,24 +11037,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         },
         budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
-        cdp: {
-            jsHeapMb: round((after.JSHeapUsedSize ?? 0) / 1024 / 1024, 1),
-            layoutDuration: round(
-                (after.LayoutDuration ?? 0) - (before.LayoutDuration ?? 0),
-                4,
-            ),
-            scriptDuration: round(
-                (after.ScriptDuration ?? 0) - (before.ScriptDuration ?? 0),
-                4,
-            ),
-            taskDuration: round(
-                (after.TaskDuration ?? 0) - (before.TaskDuration ?? 0),
-                4,
-            ),
-        },
+        cdp: scenarioCdp,
         domContentLoadedMs,
         environment,
         canvasReadyMs,
+        memory,
         pageErrors,
         path: scenario.path,
         performanceBudget: budget,
@@ -10960,18 +11130,26 @@ function roundSample(sample) {
     };
 }
 
-function evaluateBudget(sample, budget) {
+function evaluateBudget(sample, budget, memory = null) {
     const checks = [
         ['p95FrameMs', sample.p95FrameMs, budget.p95FrameMs],
         ['maxFrameMs', sample.maxFrameMs, budget.maxFrameMs],
         ['longTaskCount', sample.longTaskCount, budget.longTaskCount],
-        ['jsHeapMb', sample.jsHeapMb ?? 0, budget.jsHeapMb],
     ].map(([name, actual, limit]) => ({
         actual,
         limit,
         name,
         pass: actual <= limit,
     }));
+    if (budget.jsHeapMb !== undefined) {
+        const actual = memory?.retainedJsHeapMb ?? null;
+        checks.push({
+            actual,
+            limit: budget.jsHeapMb,
+            name: 'retainedJsHeapMb',
+            pass: Number.isFinite(actual) && actual <= budget.jsHeapMb,
+        });
+    }
     for (const name of [
         'drawCallsPerFrame',
         'drawCallsPerRenderedFrame',
@@ -13266,11 +13444,29 @@ function evaluateCrossTierAcceptance({
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
     const expectedRuntimeFrameLoopObservationCount =
-        Number.isInteger(sample?.frames) && sample.frames >= 0
-            ? sample.frames + 3
+        Number.isInteger(sample?.runtimeFrameLoopObservationRafFrameCount) &&
+        sample.runtimeFrameLoopObservationRafFrameCount > 0
+            ? sample.runtimeFrameLoopObservationRafFrameCount + 3
             : null;
     const activeLeaseCountAtStart =
         sample?.runtimeFrameLoopActiveLeaseCountAtStart;
+    const semanticLeaseTopologyAtStart = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopSemanticLeaseTopologyAtStart,
+    );
+    const semanticLeaseTopologyAtEnd = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopSemanticLeaseTopologyAtEnd,
+    );
+    const controlLeaseTopologyAtStart = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopAtStart,
+    );
+    const controlLeaseTopologyAtEnd = runtimeFrameLoopLeaseTopology(
+        sample?.runtimeFrameLoopAtEnd,
+    );
+    const leaseTopologyKey = (topology) =>
+        topology === null ? null : JSON.stringify(topology);
+    const semanticLeaseTopologyAtStartKey = leaseTopologyKey(
+        semanticLeaseTopologyAtStart,
+    );
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
         exact(
@@ -13451,11 +13647,56 @@ function evaluateCrossTierAcceptance({
             sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
             activeLeaseCountAtStart,
         ),
+        exact(
+            'crossTierSemanticLeaseTopologyAvailable',
+            semanticLeaseTopologyAtStartKey !== null,
+            true,
+        ),
+        exact(
+            'crossTierSemanticStartLeaseTopologyCount',
+            semanticLeaseTopologyAtStart?.activeLeaseCount,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSemanticEndLeaseTopologyCount',
+            semanticLeaseTopologyAtEnd?.activeLeaseCount,
+            sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+        ),
+        exact(
+            'crossTierSemanticEndLeaseTopology',
+            leaseTopologyKey(semanticLeaseTopologyAtEnd),
+            semanticLeaseTopologyAtStartKey,
+        ),
+        exact(
+            'crossTierControlStartLeaseTopology',
+            leaseTopologyKey(controlLeaseTopologyAtStart),
+            semanticLeaseTopologyAtStartKey,
+        ),
+        exact(
+            'crossTierControlEndLeaseTopology',
+            leaseTopologyKey(controlLeaseTopologyAtEnd),
+            semanticLeaseTopologyAtStartKey,
+        ),
         minimum('crossTierRafFrames', sample?.frames, 1),
+        minimum(
+            'crossTierSemanticRafFrames',
+            sample?.runtimeFrameLoopObservationRafFrameCount,
+            1,
+        ),
         exact(
             'crossTierRuntimeFrameLoopObservationCount',
             sample?.runtimeFrameLoopObservationCount,
             expectedRuntimeFrameLoopObservationCount,
+        ),
+        exact(
+            'crossTierPerformanceMeasurementMode',
+            sample?.performanceMeasurementMode,
+            crossTierPerformanceMeasurementMode,
+        ),
+        exact(
+            'crossTierRuntimeFrameLoopObservationMode',
+            sample?.runtimeFrameLoopObservationMode,
+            crossTierRuntimeObservationMode,
         ),
         exact(
             'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
@@ -15812,6 +16053,10 @@ function buildHighTargetMedians(scenarios) {
                 };
             });
             const jsHeapMb = metric(runs, (run) => run.sample.jsHeapMb);
+            const retainedJsHeapMb = metric(
+                runs,
+                (run) => run.memory?.retainedJsHeapMb,
+            );
             const longTaskCount = metric(
                 runs,
                 (run) => run.sample.longTaskCount,
@@ -15952,6 +16197,7 @@ function buildHighTargetMedians(scenarios) {
             const performanceBudget = evaluateBudget(
                 medianSample,
                 budgets[budgetName] ?? budgets.gameHighTarget,
+                { retainedJsHeapMb: retainedJsHeapMb.median },
             );
             const failedAcceptanceRuns = runs
                 .filter((run) => run.acceptance?.pass !== true)
@@ -15997,6 +16243,7 @@ function buildHighTargetMedians(scenarios) {
                     rendererShadersRuns,
                     rendererTextures,
                     rendererTexturesRuns,
+                    retainedJsHeapMb,
                     runCount: runs.length,
                     staticOpaqueSceneCacheCaptureSubmissionCount,
                     staticOpaqueSceneCacheCaptureTriangleCount,
@@ -18969,6 +19216,7 @@ export {
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
+    collectScenarioMemoryEvidence,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
