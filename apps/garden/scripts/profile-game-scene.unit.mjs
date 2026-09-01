@@ -1055,6 +1055,7 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
     const ambientSchedulerSnapshot = () => ({
         activeLeaseCount: 3,
         activeRenderLeaseCount: 3,
+        coalescedRenderRequestReasons: [],
         effectiveVisible: true,
         renderLeaseOwners: ['cloud-layer', 'plant-sway'],
         renderLeaseSummaries: [
@@ -1079,6 +1080,9 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
             runtimeFrameLoopActiveLeaseCountMax: 3,
             runtimeFrameLoopAtEnd: ambientSchedulerSnapshot(),
             runtimeFrameLoopAtStart: ambientSchedulerSnapshot(),
+            runtimeFrameLoopCounterDeltas: {
+                hiddenDeferredCoalescedRenderRequestCount: 0,
+            },
             runtimeFrameLoopObservationCount: 301,
             runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
             runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
@@ -1106,6 +1110,24 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
     const passing = evaluateGardenBuildingAcceptance(buildInput());
     assert.equal(passing.pass, true);
 
+    const allowedCoalescedRequest = buildInput();
+    for (const snapshot of [
+        allowedCoalescedRequest.sample.runtimeFrameLoopAtStart,
+        allowedCoalescedRequest.sample.runtimeFrameLoopAtEnd,
+    ]) {
+        snapshot.coalescedRenderRequestReasons = ['r3f-root-update'];
+    }
+    assert.equal(
+        evaluateGardenBuildingAcceptance(allowedCoalescedRequest).pass,
+        true,
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount = 1;
+        },
+        ['buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta'],
+    );
+
     expectFailedChecks(
         (input) => {
             input.sample.runtimeFrameLoopTargetFramesPerSecondMax = 60;
@@ -1119,6 +1141,27 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
         [
             'buildingAmbientSampleEndVisible',
             'buildingAmbientSampleEndSchedulerSettled',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons = [
+                'unexpected-root-update',
+            ];
+        },
+        [
+            'buildingAmbientSampleEndCoalescedRenderRequestReasonsBounded',
+            'buildingAmbientSampleEndSchedulerSettled',
+        ],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopAtStart.coalescedRenderRequestReasons =
+                ['r3f-root-update', 'r3f-root-update'];
+        },
+        [
+            'buildingAmbientSampleStartCoalescedRenderRequestReasonsBounded',
+            'buildingAmbientSampleStartSchedulerSettled',
         ],
     );
     expectFailedChecks(
@@ -3142,6 +3185,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         displayFrameIntervalMs: 1000 / 60,
         fixedStepFailureCount: 0,
         fixedStepOwners: ['game-time'],
+        hiddenDeferredCoalescedRenderRequestCount: 1,
         hiddenDeferredRenderRequestCount: 1,
         invalidationFailureCount: 0,
         missedFrameReceiptCount: 0,
@@ -3171,6 +3215,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.displayFrameIntervalMs = 1000 / 120;
         runtimeFrameLoop.fixedStepOwners.push('weather');
         runtimeFrameLoop.fixedStepFailureCount = 1;
+        runtimeFrameLoop.hiddenDeferredCoalescedRenderRequestCount = 4;
         runtimeFrameLoop.hiddenDeferredRenderRequestCount = 3;
         runtimeFrameLoop.invalidationFailureCount = 2;
         runtimeFrameLoop.missedFrameReceiptCount = 1;
@@ -3226,6 +3271,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             cancelledCallbackCount: 1,
             displayFrameCalibrationCount: 1,
             fixedStepFailureCount: 1,
+            hiddenDeferredCoalescedRenderRequestCount: 3,
             hiddenDeferredRenderRequestCount: 2,
             invalidationFailureCount: 2,
             missedFrameReceiptCount: 1,
@@ -3289,6 +3335,7 @@ test('interactive sampling preserves absent scheduler telemetry without changing
             cancelledCallbackCount: null,
             displayFrameCalibrationCount: null,
             fixedStepFailureCount: null,
+            hiddenDeferredCoalescedRenderRequestCount: null,
             hiddenDeferredRenderRequestCount: null,
             invalidationFailureCount: null,
             missedFrameReceiptCount: null,
@@ -3309,6 +3356,20 @@ test('interactive sampling preserves absent scheduler telemetry without changing
             { gpu: null, longTasks: [] },
         );
         assert.equal('runtimeFrameLoopCounterDeltas' in legacySample, false);
+
+        const legacySchedulerSample = mergeProfileSampleDrain(
+            {
+                runtimeFrameLoopAtEnd: { wakeupCount: 2 },
+                runtimeFrameLoopAtStart: { wakeupCount: 1 },
+                sampleWindow: { endedAt: 2, startedAt: 1 },
+            },
+            { gpu: null, longTasks: [] },
+        );
+        assert.equal(
+            legacySchedulerSample.runtimeFrameLoopCounterDeltas
+                .hiddenDeferredCoalescedRenderRequestCount,
+            0,
+        );
     } finally {
         for (const key of keys) {
             const descriptor = descriptors.get(key);
@@ -4802,6 +4863,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         callbackPending: false,
         cancelledCallbackCount: 2,
         canvasVisible: true,
+        coalescedRenderRequestReasons: [],
         deadlineCount: 3,
         deadlineOwners: [],
         deferredWorkCount: 0,
@@ -4896,6 +4958,10 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
     assert.equal(staticIdle.schedulerSettledAtStart, true);
     assert.equal(staticIdle.schedulerSettledAtEnd, true);
     assert.equal(staticIdle.schedulerZeroObserved, true);
+    assert.equal(
+        staticIdle.counterDeltas.hiddenDeferredCoalescedRenderRequestCount,
+        0,
+    );
     assert.equal(staticIdle.rendererZeroObserved, true);
     assert.equal(staticIdle.zeroWorkObserved, true);
     const passing = evaluateStaticIdleAcceptance(input);
@@ -4917,6 +4983,21 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
             ...input,
             sample: withR3fWork,
             staticIdle: r3fEvidence,
+        }).pass,
+        false,
+    );
+
+    const withCoalescedRequest = structuredClone(sample);
+    withCoalescedRequest.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons = [
+        'r3f-root-update',
+    ];
+    const coalescedEvidence = buildStaticIdleEvidence(withCoalescedRequest);
+    assert.equal(coalescedEvidence.schedulerSettledAtEnd, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withCoalescedRequest,
+            staticIdle: coalescedEvidence,
         }).pass,
         false,
     );
@@ -5269,6 +5350,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
         };
         for (const field of [
             'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -5279,6 +5361,8 @@ function createPassingLifecycleLiveAcceptanceInput() {
         }
         startCounters.renderRequestReasons = [];
         endCounters.renderRequestReasons = [];
+        startCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
         return buildLifecycleResumeWindowEvidence({
             cdp: {
                 layoutDuration: 0.001,
@@ -5315,6 +5399,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
         };
         for (const field of [
             'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -5325,6 +5410,8 @@ function createPassingLifecycleLiveAcceptanceInput() {
         }
         startCounters.renderRequestReasons = ['deferred-shadow-refresh'];
         endCounters.renderRequestReasons = [];
+        startCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
         return buildLifecycleResumeTransitionEvidence({
             cdp: {
                 layoutDuration: 0.001,
@@ -5363,6 +5450,10 @@ function createPassingLifecycleLiveAcceptanceInput() {
                 startCounters.r3fFrameCallbackCount + lateFrameCount,
             suspendCount: startCounters.suspendCount + 1,
         };
+        startCounters.hiddenDeferredCoalescedRenderRequestCount = 0;
+        endCounters.hiddenDeferredCoalescedRenderRequestCount = 1;
+        startCounters.coalescedRenderRequestReasons = [];
+        endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
         return buildLifecycleSuspendTransitionEvidence({
             cdp: {
                 layoutDuration: 0,
@@ -5396,6 +5487,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
     const activeRuntimeFrameLoop = {
         ...input.active.runtimeFrameLoop,
         activeLeaseCount: 5,
+        coalescedRenderRequestReasons: ['r3f-root-update'],
         renderLeaseSummaries: [
             ...persistentLeaseSummaries,
             {
@@ -5408,6 +5500,17 @@ function createPassingLifecycleLiveAcceptanceInput() {
         targetFramesPerSecond: 30,
     };
     input.active.runtimeFrameLoop = activeRuntimeFrameLoop;
+    input.active.sample.runtimeFrameLoopAtStart = {
+        coalescedRenderRequestReasons: ['r3f-root-update'],
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+    };
+    input.active.sample.runtimeFrameLoopAtEnd = {
+        coalescedRenderRequestReasons: ['r3f-root-update'],
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+    };
+    input.active.sample.runtimeFrameLoopCounterDeltas = {
+        hiddenDeferredCoalescedRenderRequestCount: 0,
+    };
     input.requested.fixedTimeSeconds = null;
     input.requested.lifecycleLiveProfile = true;
 
@@ -5415,6 +5518,16 @@ function createPassingLifecycleLiveAcceptanceInput() {
         const phase = input[phaseName];
         phase.residualDeltas = fullRuntimeCounterValues();
         phase.residualSceneTimeDeltaSeconds = 0;
+        const residualRuntimeFrameLoop = {
+            ...fullRuntimeCounterValues(10),
+            coalescedRenderRequestReasons: ['r3f-root-update'],
+        };
+        phase.residual.sample.runtimeFrameLoopAtStart = {
+            ...residualRuntimeFrameLoop,
+        };
+        phase.residual.sample.runtimeFrameLoopAtEnd = {
+            ...residualRuntimeFrameLoop,
+        };
         phase.resumeTransition = resumeTransition(100 + index);
         phase.resumeWindow = resumeWindow(101 + index);
         phase.suspendTransition = suspendTransition(
@@ -5457,6 +5570,8 @@ test('lifecycle suspension evidence requires a settled endpoint and causal frame
         callbackPending: false,
         deferredWorkCount: start.deferredWorkCount + 1,
         effectiveVisible: false,
+        hiddenDeferredCoalescedRenderRequestCount:
+            start.hiddenDeferredCoalescedRenderRequestCount + 1,
         loopActive: false,
         nonessentialHiddenWorkCount: start.nonessentialHiddenWorkCount + 3,
         pendingCallbackKind: 'none',
@@ -5544,6 +5659,64 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
                 .pass,
             true,
             `${phaseName}:settled-endpoint`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            true,
+            `${phaseName}:one-coalesced-hidden-request`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            true,
+            `${phaseName}:allowed-coalesced-reason`,
+        );
+
+        const excessiveCoalescedHiddenWork = structuredClone(input);
+        excessiveCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
+            2;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveCoalescedHiddenWork,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:coalesced-hidden-request-burst`,
+        );
+
+        const unexpectedCoalescedReason = structuredClone(input);
+        unexpectedCoalescedReason[
+            phaseName
+        ].suspendTransition.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons =
+            ['unexpected-root-update'];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                unexpectedCoalescedReason,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            false,
+            `${phaseName}:unexpected-coalesced-reason`,
+        );
+
+        const excessiveCoalescedReasons = structuredClone(input);
+        excessiveCoalescedReasons[
+            phaseName
+        ].suspendTransition.sample.runtimeFrameLoopAtEnd.coalescedRenderRequestReasons =
+            ['r3f-root-update', 'r3f-root-update'];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveCoalescedReasons,
+                `${prefix}EndCoalescedRenderRequestReasonsBounded`,
+            ).pass,
+            false,
+            `${phaseName}:too-many-coalesced-reasons`,
         );
 
         const rendererBurst = structuredClone(input);
@@ -5831,6 +6004,7 @@ test('live lifecycle resume transition bounds owned cadence, browser frames, req
 
         for (const field of [
             'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -5902,6 +6076,20 @@ test('live lifecycle steady resume keeps owned and R3F cadence strict with no pe
                 `${phaseName}:${endpoint}`,
             );
         }
+
+        const coalescedHiddenWork = structuredClone(input);
+        coalescedHiddenWork[
+            phaseName
+        ].resumeWindow.counterDeltas.hiddenDeferredCoalescedRenderRequestCount =
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                coalescedHiddenWork,
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:coalesced-hidden-work`,
+        );
     }
 });
 
@@ -5915,6 +6103,32 @@ test('live lifecycle acceptance gates exhaustive zero work, bounded resume healt
             .filter((check) => !check.pass)
             .map((check) => check.name)
             .join(', '),
+    );
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            input,
+            'lifecycleLiveActiveCoalescedRenderRequestReasonsBounded',
+        ).pass,
+        true,
+    );
+    const unexpectedActiveCoalescedReason = structuredClone(input);
+    unexpectedActiveCoalescedReason.active.runtimeFrameLoop.coalescedRenderRequestReasons =
+        ['unexpected-root-update'];
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            unexpectedActiveCoalescedReason,
+            'lifecycleLiveActiveCoalescedRenderRequestReasonsBounded',
+        ).pass,
+        false,
+    );
+    const activeCoalescedHiddenWork = structuredClone(input);
+    activeCoalescedHiddenWork.active.sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            activeCoalescedHiddenWork,
+            'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
+        ).pass,
+        false,
     );
     assert.deepEqual(passing.residualWorkPolicy, {
         cdpFiniteDiagnostic: true,
@@ -6098,6 +6312,7 @@ test('live lifecycle acceptance gates exhaustive zero work, bounded resume healt
         );
         for (const field of [
             'fixedStepFailureCount',
+            'hiddenDeferredCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -6237,6 +6452,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
             motionWarmupCameraSnapshotVersionDelta: 4,
             renderedFrames: 150,
             runtimeFrameLoopCounterDeltas: {
+                hiddenDeferredCoalescedRenderRequestCount: 0,
                 ownedInvalidationCount: 150,
                 r3fFrameCallbackCount: 150,
             },
@@ -6465,6 +6681,11 @@ test('runtime-owner acceptance fails closed on sample, target, visual, and error
             'sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount',
             0,
             'runtimeOwnersR3fFrameCallbackDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount',
+            1,
+            'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
         ],
         ['sample.renderedFrames', 0, 'runtimeOwnersRenderedFrames'],
         ['sample.drawCalls', 0, 'runtimeOwnersDrawCalls'],

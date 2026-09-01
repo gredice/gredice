@@ -4924,6 +4924,9 @@ const runtimeFrameLoopCounterFields = [
     'suspendCount',
     'resumeCount',
 ];
+const allowedCoalescedRenderRequestReasons = new Set(['r3f-root-update']);
+const hiddenDeferredCoalescedRenderRequestCounterField =
+    'hiddenDeferredCoalescedRenderRequestCount';
 const fullRuntimeFrameLoopCounterFields = [
     'scheduledCallbackCount',
     'wakeupCount',
@@ -4941,6 +4944,7 @@ const fullRuntimeFrameLoopCounterFields = [
     'fixedStepFailureCount',
     'invalidationFailureCount',
     'r3fFrameCallbackCount',
+    hiddenDeferredCoalescedRenderRequestCounterField,
     'hiddenDeferredRenderRequestCount',
     'missedFrameReceiptCount',
     'nonessentialHiddenWorkCount',
@@ -4950,6 +4954,7 @@ const genericRuntimeFrameLoopCounterFields = [
     'displayFrameCalibrationCount',
     'fixedStepFailureCount',
     'r3fFrameCallbackCount',
+    hiddenDeferredCoalescedRenderRequestCounterField,
     'hiddenDeferredRenderRequestCount',
     'invalidationFailureCount',
     'missedFrameReceiptCount',
@@ -4989,14 +4994,43 @@ function runtimeFrameLoopCounterDeltas(
     after,
     counterFields = runtimeFrameLoopCounterFields,
 ) {
+    const readCounter = (snapshot, field) => {
+        const value = snapshot?.[field];
+        if (typeof value === 'number') {
+            return value;
+        }
+        return field === hiddenDeferredCoalescedRenderRequestCounterField &&
+            snapshot !== null &&
+            typeof snapshot === 'object' &&
+            !Object.hasOwn(snapshot, field)
+            ? 0
+            : null;
+    };
     return Object.fromEntries(
-        counterFields.map((field) => [
-            field,
-            typeof before?.[field] === 'number' &&
-            typeof after?.[field] === 'number'
-                ? after[field] - before[field]
-                : null,
-        ]),
+        counterFields.map((field) => {
+            const beforeValue = readCounter(before, field);
+            const afterValue = readCounter(after, field);
+            return [
+                field,
+                beforeValue !== null && afterValue !== null
+                    ? afterValue - beforeValue
+                    : null,
+            ];
+        }),
+    );
+}
+
+function coalescedRenderRequestReasonsAreBounded(
+    snapshot,
+    { requireEmpty = false } = {},
+) {
+    const reasons = snapshot?.coalescedRenderRequestReasons;
+    return Boolean(
+        Array.isArray(reasons) &&
+            reasons.length <= (requireEmpty ? 0 : 1) &&
+            reasons.every((reason) =>
+                allowedCoalescedRenderRequestReasons.has(reason),
+            ),
     );
 }
 
@@ -5189,7 +5223,10 @@ function staticIdleSchedulerSettled(snapshot) {
             Array.isArray(snapshot.renderLeaseOwners) &&
             snapshot.renderLeaseOwners.length === 0 &&
             Array.isArray(snapshot.renderRequestReasons) &&
-            snapshot.renderRequestReasons.length === 0,
+            snapshot.renderRequestReasons.length === 0 &&
+            coalescedRenderRequestReasonsAreBounded(snapshot, {
+                requireEmpty: true,
+            }),
     );
 }
 
@@ -5260,7 +5297,11 @@ async function waitForStaticIdleStabilization(page) {
                         telemetry.deadlineOwners?.length === 0 &&
                         telemetry.fixedStepOwners?.length === 0 &&
                         telemetry.renderLeaseOwners?.length === 0 &&
-                        telemetry.renderRequestReasons?.length === 0,
+                        telemetry.renderRequestReasons?.length === 0 &&
+                        Array.isArray(
+                            telemetry.coalescedRenderRequestReasons,
+                        ) &&
+                        telemetry.coalescedRenderRequestReasons.length === 0,
                 );
             },
             {
@@ -5630,6 +5671,19 @@ function evaluateLifecycleAcceptance({
         name,
         pass: JSON.stringify(actual) === JSON.stringify(expected),
     });
+    const coalescedRenderRequestChecks = (
+        prefix,
+        snapshot,
+        { requireEmpty = false } = {},
+    ) => [
+        exact(
+            `${prefix}CoalescedRenderRequestReasonsBounded`,
+            coalescedRenderRequestReasonsAreBounded(snapshot, {
+                requireEmpty,
+            }),
+            true,
+        ),
+    ];
     const runtimeContractChecks = (prefix, telemetry) => [
         ...runtimeFrameLoopBooleanFields.map((field) =>
             exact(
@@ -5853,6 +5907,14 @@ function evaluateLifecycleAcceptance({
                 0,
             ),
         ),
+        ...coalescedRenderRequestChecks(
+            `${prefix}Start`,
+            phase?.residual?.sample?.runtimeFrameLoopAtStart,
+        ),
+        ...coalescedRenderRequestChecks(
+            `${prefix}End`,
+            phase?.residual?.sample?.runtimeFrameLoopAtEnd,
+        ),
         exact(`${prefix}ZeroWorkObserved`, phase?.zeroWorkObserved, true),
     ];
     const residualWindowChecks =
@@ -5866,6 +5928,7 @@ function evaluateLifecycleAcceptance({
                 field !== 'cancelledCallbackCount' &&
                 field !== 'deferredWorkCount' &&
                 field !== 'invalidationCount' &&
+                field !== hiddenDeferredCoalescedRenderRequestCounterField &&
                 field !== 'nonessentialHiddenWorkCount' &&
                 field !== 'ownedInvalidationCount' &&
                 field !== 'r3fFrameCallbackCount' &&
@@ -5905,6 +5968,18 @@ function evaluateLifecycleAcceptance({
                 transition?.counterDeltas?.nonessentialHiddenWorkCount,
                 transition?.causalHiddenWorkBoundary,
             ),
+            minimum(
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDeltaMinimum`,
+                transition?.counterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            maximum(
+                `${prefix}HiddenDeferredCoalescedRenderRequestCountDelta`,
+                transition?.counterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                1,
+            ),
             exact(
                 `${prefix}SuspendCountDelta`,
                 transition?.counterDeltas?.suspendCount,
@@ -5938,6 +6013,14 @@ function evaluateLifecycleAcceptance({
                 transition?.counterDeltas?.r3fFrameCallbackCount,
             ),
             exact(`${prefix}SettledAtEnd`, transition?.settledAtEnd, true),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                transition?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                transition?.sample?.runtimeFrameLoopAtEnd,
+            ),
             ...exactZeroCounterFields.map((field) =>
                 exact(
                     `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
@@ -6040,8 +6123,17 @@ function evaluateLifecycleAcceptance({
                 transition?.sample?.runtimeFrameLoopAtEnd?.renderRequestReasons,
                 [],
             ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                transition?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                transition?.sample?.runtimeFrameLoopAtEnd,
+            ),
             ...[
                 'fixedStepFailureCount',
+                hiddenDeferredCoalescedRenderRequestCounterField,
                 'hiddenDeferredRenderRequestCount',
                 'invalidationFailureCount',
                 'missedFrameReceiptCount',
@@ -6140,8 +6232,17 @@ function evaluateLifecycleAcceptance({
                     ?.renderRequestReasons,
                 [],
             ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}Start`,
+                resumeWindow?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                `${prefix}End`,
+                resumeWindow?.sample?.runtimeFrameLoopAtEnd,
+            ),
             ...[
                 'fixedStepFailureCount',
+                hiddenDeferredCoalescedRenderRequestCounterField,
                 'hiddenDeferredRenderRequestCount',
                 'invalidationFailureCount',
                 'missedFrameReceiptCount',
@@ -6849,6 +6950,24 @@ function evaluateLifecycleAcceptance({
                 'lifecycleLiveActiveTargetFramesPerSecond',
                 active?.runtimeFrameLoop?.targetFramesPerSecond,
                 lifecycleLiveTargetFramesPerSecond,
+            ),
+            exact(
+                'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
+                active?.sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActiveStart',
+                active?.sample?.runtimeFrameLoopAtStart,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActiveEnd',
+                active?.sample?.runtimeFrameLoopAtEnd,
+            ),
+            ...coalescedRenderRequestChecks(
+                'lifecycleLiveActive',
+                active?.runtimeFrameLoop,
             ),
             exact(
                 'lifecycleLiveOffscreenTargetFramesPerSecondRestored',
@@ -10879,6 +10998,8 @@ function readGardenBuildingAmbientSchedulerEvidence(snapshot) {
         Array.isArray(snapshot?.renderRequestReasons) &&
             snapshot.renderRequestReasons.length === 0,
     );
+    const coalescedRenderRequestReasonsBounded =
+        coalescedRenderRequestReasonsAreBounded(snapshot);
     const leaseSummariesBounded = Boolean(
         validSummaries && maximumLeaseFramesPerSecond <= 30,
     );
@@ -10887,6 +11008,7 @@ function readGardenBuildingAmbientSchedulerEvidence(snapshot) {
         visible &&
             snapshot?.targetFramesPerSecond === 30 &&
             renderRequestsDrained &&
+            coalescedRenderRequestReasonsBounded &&
             leaseSummariesBounded &&
             interactiveOwnerCount === 0 &&
             leaseCountsReconciled &&
@@ -10905,6 +11027,7 @@ function readGardenBuildingAmbientSchedulerEvidence(snapshot) {
         : null;
 
     return {
+        coalescedRenderRequestReasonsBounded,
         interactiveOwnerCount,
         leaseCountsReconciled,
         leaseOwnersReconciled,
@@ -11020,6 +11143,12 @@ function evaluateGardenBuildingAcceptance({
                 2,
             ),
             exact(
+                'buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta',
+                sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
                 'buildingAmbientSampleStartTargetFramesPerSecond',
                 sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
                 30,
@@ -11087,6 +11216,11 @@ function evaluateGardenBuildingAcceptance({
                 exact(
                     `buildingAmbient${label}RenderRequestsDrained`,
                     evidence.renderRequestsDrained,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}CoalescedRenderRequestReasonsBounded`,
+                    evidence.coalescedRenderRequestReasonsBounded,
                     true,
                 ),
                 maximum(
@@ -12466,6 +12600,20 @@ function evaluateStaticIdleAcceptance({
         exact('staticIdleCanvasVisibleAtEnd', end?.canvasVisible, true),
         exact('staticIdleDocumentVisibleAtEnd', end?.documentVisible, true),
         exact('staticIdleEffectiveVisibleAtEnd', end?.effectiveVisible, true),
+        exact(
+            'staticIdleCoalescedRenderRequestReasonsEmptyAtStart',
+            coalescedRenderRequestReasonsAreBounded(start, {
+                requireEmpty: true,
+            }),
+            true,
+        ),
+        exact(
+            'staticIdleCoalescedRenderRequestReasonsEmptyAtEnd',
+            coalescedRenderRequestReasonsAreBounded(end, {
+                requireEmpty: true,
+            }),
+            true,
+        ),
         minimum(
             'staticIdleSetupR3fFrameCallbacks',
             start?.r3fFrameCallbackCount,
@@ -13461,6 +13609,12 @@ function evaluateRuntimeOwnersAcceptance({
             'runtimeOwnersR3fFrameCallbackDelta',
             sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
             1,
+        ),
+        exact(
+            'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
+            sample?.runtimeFrameLoopCounterDeltas
+                ?.hiddenDeferredCoalescedRenderRequestCount,
+            0,
         ),
         minimum('runtimeOwnersRenderedFrames', sample?.renderedFrames, 1),
         minimum('runtimeOwnersDrawCalls', sample?.drawCalls, 1),
