@@ -256,6 +256,7 @@ export class GameRuntimeScheduler {
         | ((snapshot: GameRuntimeSchedulerSnapshot) => void)
         | undefined;
     private pendingCallback: PendingCallback | null = null;
+    private readonly coalescedRenderRequests = new Map<string, number>();
     private readonly renderLeases = new Map<symbol, RenderLease>();
     private readonly renderRequests = new Map<string, number>();
     private readonly requestFrameEffect: (
@@ -539,6 +540,37 @@ export class GameRuntimeScheduler {
         return true;
     }
 
+    /** Retains dirty renderer work without raising an active lease cadence. */
+    requestCoalescedRender(reason: string, frames = 1) {
+        if (this.disposed || !Number.isFinite(frames) || frames <= 0) {
+            return false;
+        }
+
+        const previousTarget = this.getRenderFramesPerSecond();
+        const normalizedReason = normalizeOwner(reason);
+        const requestedFrames = Math.min(
+            maximumRequestedFrames,
+            Math.max(1, Math.ceil(frames)),
+        );
+        const previousFrames =
+            this.coalescedRenderRequests.get(normalizedReason) ?? 0;
+        this.coalescedRenderRequests.set(
+            normalizedReason,
+            this.isEffectivelyVisible()
+                ? Math.max(previousFrames, requestedFrames)
+                : 1,
+        );
+        if (!this.isEffectivelyVisible()) {
+            this.counters.hiddenDeferredRenderRequestCount += 1;
+            this.recordNonessentialHiddenWork();
+        }
+        if (this.getRenderFramesPerSecond() !== previousTarget) {
+            this.resetRenderFrameTarget(previousTarget);
+        }
+        this.reconcileSchedule();
+        return true;
+    }
+
     /** Records one root-scoped R3F render after WebGL submission. */
     recordFrameCallback(displayTimestampMs?: number) {
         if (this.disposed) {
@@ -556,13 +588,27 @@ export class GameRuntimeScheduler {
             ? Math.max(0, displayTimestampMs ?? now)
             : now;
         const ownedFrameReceipt = this.awaitingFrameReceipt;
-        if (this.renderRequests.size > 0) {
+        if (
+            this.renderRequests.size > 0 ||
+            this.coalescedRenderRequests.size > 0
+        ) {
             const previousTarget = this.getRenderFramesPerSecond();
             for (const [reason, remainingFrames] of this.renderRequests) {
                 if (remainingFrames <= 1) {
                     this.renderRequests.delete(reason);
                 } else {
                     this.renderRequests.set(reason, remainingFrames - 1);
+                }
+            }
+            for (const [reason, remainingFrames] of this
+                .coalescedRenderRequests) {
+                if (remainingFrames <= 1) {
+                    this.coalescedRenderRequests.delete(reason);
+                } else {
+                    this.coalescedRenderRequests.set(
+                        reason,
+                        remainingFrames - 1,
+                    );
                 }
             }
             if (this.getRenderFramesPerSecond() !== previousTarget) {
@@ -724,6 +770,9 @@ export class GameRuntimeScheduler {
             for (const reason of this.renderRequests.keys()) {
                 this.renderRequests.set(reason, 1);
             }
+            for (const reason of this.coalescedRenderRequests.keys()) {
+                this.coalescedRenderRequests.set(reason, 1);
+            }
             this.cancelPendingCallback();
             this.emitSnapshot();
             return;
@@ -792,9 +841,10 @@ export class GameRuntimeScheduler {
                 [...this.renderLeases.values()].map((lease) => lease.owner),
             ),
             renderLeaseSummaries: this.getRenderLeaseSummaries(),
-            renderRequestReasons: [...this.renderRequests.keys()].sort(
-                (left, right) => left.localeCompare(right),
-            ),
+            renderRequestReasons: uniqueSortedOwners([
+                ...this.renderRequests.keys(),
+                ...this.coalescedRenderRequests.keys(),
+            ]),
             targetFramesPerSecond: this.getTargetFramesPerSecond(),
         };
     }
@@ -809,6 +859,7 @@ export class GameRuntimeScheduler {
             this.renderLeases.size + this.fixedStepLeases.size;
         this.deadlines.clear();
         this.fixedStepLeases.clear();
+        this.coalescedRenderRequests.clear();
         this.renderLeases.clear();
         this.renderRequests.clear();
         this.sharedRenderLeases.clear();
@@ -845,7 +896,9 @@ export class GameRuntimeScheduler {
 
     private getRenderFramesPerSecond() {
         const targetFramesPerSecond = this.getTargetFramesPerSecond();
-        return this.renderRequests.size > 0
+        return this.renderRequests.size > 0 ||
+            (targetFramesPerSecond === 0 &&
+                this.coalescedRenderRequests.size > 0)
             ? Math.max(targetFramesPerSecond, 60)
             : targetFramesPerSecond;
     }

@@ -1215,6 +1215,158 @@ describe('GameRuntimeScheduler idle and cadence', () => {
 });
 
 describe('GameRuntimeScheduler semantic work', () => {
+    it('coalesces an active 30 FPS request burst without raising cadence or rearming', () => {
+        const { frameCallbackTimes, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        const release = scheduler.acquireRenderLease('ambient', 30);
+        const before = scheduler.getSnapshot();
+
+        scheduler.requestCoalescedRender('r3f-host', 3);
+        scheduler.requestCoalescedRender('r3f-host');
+        scheduler.requestCoalescedRender('r3f-reconciler');
+
+        const pending = scheduler.getSnapshot();
+        assert.equal(pending.targetFramesPerSecond, 30);
+        assert.equal(
+            pending.scheduledCallbackCount,
+            before.scheduledCallbackCount,
+        );
+        assert.equal(
+            pending.cancelledCallbackCount,
+            before.cancelledCallbackCount,
+        );
+        assert.deepEqual(pending.renderRequestReasons, [
+            'r3f-host',
+            'r3f-reconciler',
+        ]);
+        assert.equal(queue.pendingTaskCount, 1);
+
+        queue.runUntil(1_000);
+        const steadyFrameCallbackTimes = frameCallbackTimes.filter(
+            (timestamp) => timestamp >= 300,
+        );
+        assert.ok(steadyFrameCallbackTimes.length >= 4);
+        for (
+            let index = 1;
+            index < steadyFrameCallbackTimes.length;
+            index += 1
+        ) {
+            assertNear(
+                (steadyFrameCallbackTimes[index] ?? 0) -
+                    (steadyFrameCallbackTimes[index - 1] ?? 0),
+                1000 / 30,
+            );
+        }
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        release();
+    });
+
+    it('preserves the maximum explicit coalesced frame count without summing bursts', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+
+        scheduler.requestCoalescedRender('r3f-host', 3);
+        scheduler.requestCoalescedRender('r3f-host', 2);
+        scheduler.requestCoalescedRender('r3f-host');
+
+        queue.runUntil(100);
+        assert.equal(invalidations.length, 3);
+        assertNear(
+            (invalidations[1] ?? 0) - (invalidations[0] ?? 0),
+            1000 / 60,
+        );
+        assertNear(
+            (invalidations[2] ?? 0) - (invalidations[1] ?? 0),
+            1000 / 60,
+        );
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
+    it('renders one coalesced request while otherwise idle', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+
+        assert.equal(scheduler.requestCoalescedRender('r3f-host'), true);
+        assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 0);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
+            'r3f-host',
+        ]);
+
+        queue.runUntil(100);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'none');
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
+    it('defers hidden coalesced requests and renders one frame on resume', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        scheduler.setDocumentVisible(false);
+
+        scheduler.requestCoalescedRender('r3f-host', 3);
+        scheduler.requestCoalescedRender('r3f-host');
+        scheduler.requestCoalescedRender('r3f-reconciler', 3);
+        queue.runUntil(100);
+
+        assert.equal(invalidations.length, 0);
+        assert.equal(queue.pendingTaskCount, 0);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
+            'r3f-host',
+            'r3f-reconciler',
+        ]);
+
+        scheduler.setDocumentVisible(true);
+        queue.runUntil(200);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
+    it('finishes a coalesced request when the last lease is released before receipt', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        const release = scheduler.acquireRenderLease('ambient', 30);
+        scheduler.requestCoalescedRender('r3f-host');
+
+        queue.runNext();
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
+            'r3f-host',
+        ]);
+
+        release();
+        assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 0);
+        queue.runUntil(100);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
+    it('keeps urgent multi-frame requests at 60 FPS during a 30 FPS lease', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        const release = scheduler.acquireRenderLease('ambient', 30);
+        scheduler.requestRender('urgent', 2);
+
+        queue.runUntil(100);
+        assert.ok(invalidations.length >= 2);
+        assertNear(
+            (invalidations[1] ?? 0) - (invalidations[0] ?? 0),
+            1000 / 60,
+        );
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 30);
+        release();
+    });
+
     it('lets an external frame satisfy a one-frame request without owned work', () => {
         const { invalidations, queue, scheduler } = createScheduler();
         scheduler.requestRender('external-one-frame');
@@ -1667,6 +1819,7 @@ describe('GameRuntimeScheduler lifecycle and telemetry', () => {
         scheduler.scheduleDeadlineAfter('retry', 10, () =>
             assert.fail('disposed deadline ran'),
         );
+        scheduler.requestCoalescedRender('r3f-host', 3);
         const staleTask = queue.peekNextTask();
         assert.ok(staleTask);
 
@@ -1684,6 +1837,7 @@ describe('GameRuntimeScheduler lifecycle and telemetry', () => {
         );
         queue.invokeStale(staleTask, 100);
         scheduler.requestRender('disposed');
+        assert.equal(scheduler.requestCoalescedRender('disposed', 3), false);
         scheduler.recordFrameCallback();
 
         const snapshot = scheduler.getSnapshot();
@@ -1694,6 +1848,7 @@ describe('GameRuntimeScheduler lifecycle and telemetry', () => {
         assert.equal(snapshot.callbackPending, false);
         assert.equal(snapshot.leaseAcquiredCount, 2);
         assert.equal(snapshot.leaseReleasedCount, 2);
+        assert.deepEqual(snapshot.renderRequestReasons, []);
         assert.deepEqual(invalidations, []);
         assert.equal(queue.pendingTaskCount, 0);
     });
