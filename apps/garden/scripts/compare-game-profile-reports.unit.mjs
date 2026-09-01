@@ -814,6 +814,63 @@ test('valid schema-v6 reports compare raw runs and ignore scenario order', () =>
     );
 });
 
+test('schema-v6 request omissions equal only their semantic defaults', async (t) => {
+    const defaults = {
+        lifecycleLiveProfile: false,
+        motionWarmupMs: 0,
+        runtimeOwnersProfile: false,
+        staticIdle: '0',
+        staticIdleProfile: false,
+    };
+    const nonDefaults = {
+        lifecycleLiveProfile: true,
+        motionWarmupMs: 1,
+        runtimeOwnersProfile: true,
+        staticIdle: '1',
+        staticIdleProfile: true,
+    };
+
+    await t.test('newer explicit defaults match older omissions', () => {
+        const { baseline, candidate } = reportPair();
+        for (const scenario of candidate.scenarios) {
+            Object.assign(scenario.requested, defaults);
+        }
+
+        const comparison = comparePartialReports(baseline, candidate);
+
+        assert.equal(comparison.status, 'pass');
+        assert.equal(comparison.exitCode, 0);
+    });
+
+    await t.test('normalization is symmetric', () => {
+        const { baseline, candidate } = reportPair();
+        for (const scenario of baseline.scenarios) {
+            Object.assign(scenario.requested, defaults);
+        }
+
+        const comparison = comparePartialReports(baseline, candidate);
+
+        assert.equal(comparison.status, 'pass');
+        assert.equal(comparison.exitCode, 0);
+    });
+
+    for (const [field, value] of Object.entries(nonDefaults)) {
+        await t.test(`${field} non-default remains incompatible`, () => {
+            const { baseline, candidate } = reportPair();
+            candidate.scenarios[0].requested[field] = value;
+
+            const comparison = comparePartialReports(baseline, candidate);
+
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(
+                comparison.validationErrors.join('\n'),
+                /scenario\.requested differs/,
+            );
+        });
+    }
+});
+
 test('median frame regression returns exit code 1', () => {
     const { baseline, candidate } = reportPair();
     for (const scenario of candidate.scenarios) {

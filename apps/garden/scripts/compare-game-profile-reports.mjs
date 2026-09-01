@@ -286,6 +286,23 @@ const commonRequestedStringFields = [
     'staticSceneCache',
 ];
 
+// Schema v6 captures exist on both sides of the scheduler rollout. Newer v6
+// harnesses materialize these optional request values while older v6 harnesses
+// omit them. Normalize only the documented semantic defaults so an older
+// omission remains comparable without hiding an enabled profile or warmup.
+const requestedCompatibilityDefaultsBySchemaVersion = new Map([
+    [
+        6,
+        {
+            lifecycleLiveProfile: false,
+            motionWarmupMs: 0,
+            runtimeOwnersProfile: false,
+            staticIdle: '0',
+            staticIdleProfile: false,
+        },
+    ],
+]);
+
 const rendererResourceFields = [
     'rendererGeometries',
     'rendererShaders',
@@ -790,6 +807,15 @@ function pushMismatch(errors, path, baselineValue, candidateValue) {
             `${path} differs: baseline=${canonicalJson(baselineValue)}, candidate=${canonicalJson(candidateValue)}`,
         );
     }
+}
+
+function requestedCompatibilitySignature(requested, schemaVersion) {
+    if (!isRecord(requested)) {
+        return requested;
+    }
+    const defaults =
+        requestedCompatibilityDefaultsBySchemaVersion.get(schemaVersion);
+    return defaults ? { ...defaults, ...requested } : requested;
 }
 
 function validateReport(report, label, { allowPartial = false } = {}) {
@@ -1363,7 +1389,11 @@ function timingPhases(scenario) {
     return phases;
 }
 
-function compareScenarioCompatibility(baseline, candidate) {
+function compareScenarioCompatibility(
+    baseline,
+    candidate,
+    { baselineSchemaVersion, candidateSchemaVersion },
+) {
     const errors = [];
     pushMismatch(errors, 'scenario.name', baseline.name, candidate.name);
     pushMismatch(errors, 'scenario.path', baseline.path, candidate.path);
@@ -1376,8 +1406,14 @@ function compareScenarioCompatibility(baseline, candidate) {
     pushMismatch(
         errors,
         'scenario.requested',
-        baseline.requested,
-        candidate.requested,
+        requestedCompatibilitySignature(
+            baseline.requested,
+            baselineSchemaVersion,
+        ),
+        requestedCompatibilitySignature(
+            candidate.requested,
+            candidateSchemaVersion,
+        ),
     );
     pushMismatch(
         errors,
@@ -2048,6 +2084,10 @@ function compareReportPair(
                     ...compareScenarioCompatibility(
                         pair.baseline,
                         pair.candidate,
+                        {
+                            baselineSchemaVersion: baseline.schemaVersion,
+                            candidateSchemaVersion: candidate.schemaVersion,
+                        },
                     ).map((error) => `${pair.key}: ${error}`),
                 );
             }
