@@ -2,15 +2,21 @@
 
 import {
     createGardenStructureTemplateSeed,
+    type GardenStructureCoordinate,
+    type GardenStructureFootprintCell,
     type GardenStructurePlacement,
     type GardenStructureRotation,
+    type GardenStructureSpaceKind,
     type GardenStructureTemplateKey,
+    gardenStructureCellKey,
     gardenStructureMaxFootprintCells,
     gardenStructureMaxSideLength,
     gardenStructureSunflowerPricePerCell,
     getGardenStructureFootprintBounds,
+    getGardenStructureKitReferenceDefinition,
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
@@ -25,16 +31,28 @@ import {
     useGameState,
     useGameStateStore,
 } from '../useGameState';
+import { GardenStructureCatalogPicker } from './catalog/GardenStructureCatalogPicker';
+import {
+    getGardenStructureKitV1PartCatalogEntry,
+    getGardenStructureKitV1TemplateCatalogEntry,
+} from './catalog/gardenStructureKitV1Catalog';
 import {
     abandonGardenStructureEditorDemolitionFailure,
     abandonGardenStructureEditorSaveFailure,
     acknowledgeGardenStructureEditorSave,
+    addGardenStructureProp,
     applyGardenStructureEditorCommand,
     beginGardenStructureEditorDemolition,
     beginGardenStructureEditorSave,
+    cancelGardenStructureFootprintChange,
+    confirmGardenStructureFootprintChange,
     confirmGardenStructureTemplatePlacement,
     createNewGardenStructureEditorState,
     createSavedGardenStructureEditorState,
+    deleteGardenStructureProp,
+    duplicateGardenStructureProp,
+    type GardenStructureCellSide,
+    type GardenStructureDocumentEditResult,
     type GardenStructureEditorResult,
     type GardenStructureEditorState,
     getGardenStructureEditorExitDecision,
@@ -45,21 +63,53 @@ import {
     markGardenStructureEditorDemolitionUnknown,
     markGardenStructureEditorOffline,
     markGardenStructureEditorSaveError,
+    moveGardenStructureProp,
     readGardenStructureEditorDemolitionRecoveryPointer,
     readGardenStructureEditorRecoveryStorage,
     readGardenStructureEditorSavedRecoveryIndex,
     redoGardenStructureEditorCommand,
+    removeGardenStructureEdgePart,
+    removeGardenStructureFloorMaterial,
+    removeGardenStructureRoofCoverage,
+    replaceGardenStructureProp,
     resolveGardenStructureEditorConflictAsNewDraft,
     resolveGardenStructureEditorConflictWithLatest,
     restoreGardenStructureEditorRecovery,
+    rotateGardenStructureProp,
     serializeGardenStructureEditorRecovery,
+    setGardenStructureEdgeChain,
+    setGardenStructureEdgePart,
     setGardenStructureEditorTool,
+    setGardenStructureFloorMaterial,
+    setGardenStructureRoofCoverage,
+    stageGardenStructureFootprintPaint,
     undoGardenStructureEditorCommand,
     updateNewGardenStructureTemplatePlacement,
     writeGardenStructureEditorDemolitionRecoveryPointer,
     writeGardenStructureEditorRecoveryStorage,
     writeGardenStructureEditorSavedRecoveryIndex,
 } from './editor';
+import { GardenStructureAuthoringInspectors } from './editor/GardenStructureAuthoringInspectors';
+import { GardenStructureFootprintConfirmationDialog } from './editor/GardenStructureFootprintConfirmationDialog';
+import type {
+    GardenStructurePartInspectorEdgeSelection,
+    GardenStructurePartInspectorPropSelection,
+    GardenStructurePartInspectorRoofSelection,
+} from './editor/GardenStructurePartInspector';
+import {
+    type GardenStructurePropTargetAction,
+    type GardenStructureSaveIntent,
+    getGardenStructureDocumentEditErrorMessage,
+    getGardenStructureEditorActionErrorMessage,
+    getGardenStructureFootprintConfirmationSummary,
+    getGardenStructureSaveCompletionAction,
+    getGardenStructureSelectedKeyboardAction,
+} from './editor/gardenStructureAuthoring';
+import {
+    type GardenStructureCanvasEdge,
+    getGardenStructureCanvasEdgeChain,
+} from './editor/gardenStructureCanvasInteraction';
+import { useGardenStructureExistingStructureAutosave } from './editor/useGardenStructureExistingStructureAutosave';
 import {
     gardenStructureBuildModeControlClassName as controlClassName,
     GardenStructureConfirmationDialog,
@@ -83,15 +133,27 @@ import { getGardenStructureSelectablePartIds } from './gardenStructureSelectable
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 import { useGardenStructureBuildModeHistoryGuard } from './useGardenStructureBuildModeHistoryGuard';
 
+const GardenStructureCanvasAuthoring = dynamic(
+    () =>
+        import('./editor/GardenStructureCanvasAuthoring').then(
+            (module) => module.GardenStructureCanvasAuthoring,
+        ),
+    { loading: () => null, ssr: false },
+);
+
 const templateOptions: readonly {
     key: GardenStructureTemplateKey;
     label: string;
 }[] = [
-    { key: 'barn', label: 'Štala' },
+    { key: 'barn', label: 'Staja' },
     { key: 'house', label: 'Kuća' },
     { key: 'greenhouse', label: 'Staklenik' },
-    { key: 'blank', label: 'Prazno' },
+    { key: 'blank', label: 'Prazna građevina' },
 ];
+
+const templateCatalogEntries = templateOptions
+    .map(({ key }) => getGardenStructureKitV1TemplateCatalogEntry(key))
+    .filter((entry) => entry !== undefined);
 
 const categoryOptions: readonly {
     key: GardenStructureBuildCategory;
@@ -109,6 +171,14 @@ const initialPlacement: GardenStructurePlacement = {
     anchorY: -1,
     rotation: 0,
 };
+
+type GardenStructureEdgeChainDraft = Readonly<{
+    edges: readonly GardenStructureCanvasEdge[];
+    end: GardenStructureCanvasEdge | null;
+    error: string | null;
+    start: GardenStructureCanvasEdge;
+    valid: boolean;
+}>;
 
 type OwnerGardenStructure = CurrentGarden['structures'][number] &
     Readonly<{
@@ -291,6 +361,24 @@ export type GardenStructureVerticalSliceHudProps = Readonly<{
     plan?: GardenStructureSemanticPlan;
 }>;
 
+function gardenStructureEditorOriginsMatch(
+    left: GardenStructureEditorState,
+    right: GardenStructureEditorState,
+) {
+    if (
+        left.origin.kind !== right.origin.kind ||
+        left.origin.gardenId !== right.origin.gardenId
+    ) {
+        return false;
+    }
+    return left.origin.kind === 'saved-structure' &&
+        right.origin.kind === 'saved-structure'
+        ? left.origin.structureId === right.origin.structureId
+        : left.origin.kind === 'new-draft' &&
+              right.origin.kind === 'new-draft' &&
+              left.origin.draftId === right.origin.draftId;
+}
+
 export function GardenStructureVerticalSliceHud({
     enabled,
     fixture = false,
@@ -307,7 +395,12 @@ export function GardenStructureVerticalSliceHud({
     const entryButtonRef = useRef<HTMLButtonElement>(null);
     const placementButtonRef = useRef<HTMLButtonElement>(null);
     const restoreEntryFocusRef = useRef(false);
+    const authoringSessionScopeRef = useRef<string | null>(null);
     const [announcement, setAnnouncement] = useState('');
+    const [addSpaceKind, setAddSpaceKind] =
+        useState<GardenStructureSpaceKind>('interior');
+    const [authoringError, setAuthoringError] = useState<string | null>(null);
+    const [canvasPreviewResetKey, setCanvasPreviewResetKey] = useState(0);
     const [demolishConfirmation, setDemolishConfirmation] = useState(false);
     const [conflictResolutionPending, setConflictResolutionPending] = useState<
         'reload' | 'save-as-draft' | null
@@ -320,6 +413,16 @@ export function GardenStructureVerticalSliceHud({
     const [exitConfirmationError, setExitConfirmationError] = useState<
         string | null
     >(null);
+    const [edgeChainDraft, setEdgeChainDraft] =
+        useState<GardenStructureEdgeChainDraft | null>(null);
+    const [edgeChainSide, setEdgeChainSide] =
+        useState<GardenStructureCellSide>('N');
+    const [requestedEdgePartId, setRequestedEdgePartId] = useState('');
+    const [pendingFootprintSelectionKey, setPendingFootprintSelectionKey] =
+        useState<string | null>(null);
+    const [propTargetAction, setPropTargetAction] =
+        useState<GardenStructurePropTargetAction | null>(null);
+    const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null);
     const [recoveryWriteState, setRecoveryWriteState] = useState<Readonly<{
         available: boolean;
         editor: GardenStructureEditorState;
@@ -358,6 +461,9 @@ export function GardenStructureVerticalSliceHud({
         occupancyValid: placementOccupancy.valid,
         planAvailable: Boolean(plan),
     });
+    const footprintConfirmation = editor
+        ? getGardenStructureFootprintConfirmationSummary(editor)
+        : null;
     const bounds = editor
         ? getGardenStructureFootprintBounds(
               editor.snapshot.document.footprint.cells,
@@ -385,6 +491,44 @@ export function GardenStructureVerticalSliceHud({
         () => garden?.structures.filter(isOwnerGardenStructure) ?? [],
         [garden?.structures],
     );
+    const authoringKit = editor
+        ? getGardenStructureKitReferenceDefinition(
+              editor.origin.kitKey,
+              editor.origin.kitVersion,
+          )
+        : undefined;
+    const edgePartEntries = useMemo(
+        () =>
+            Object.entries(authoringKit?.edgeParts ?? {}).toSorted(
+                ([leftId, leftKind], [rightId, rightKind]) =>
+                    ['wall', 'door', 'window'].indexOf(leftKind) -
+                        ['wall', 'door', 'window'].indexOf(rightKind) ||
+                    leftId.localeCompare(rightId),
+            ),
+        [authoringKit],
+    );
+    const edgePartId = edgePartEntries.some(
+        ([partId]) => partId === requestedEdgePartId,
+    )
+        ? requestedEdgePartId
+        : (edgePartEntries[0]?.[0] ?? '');
+    const edgePartCatalogEntries = useMemo(
+        () =>
+            edgePartEntries
+                .map(([partId]) =>
+                    getGardenStructureKitV1PartCatalogEntry(partId),
+                )
+                .filter((entry) => entry !== undefined),
+        [edgePartEntries],
+    );
+    const edgePartKind = edgePartEntries.find(
+        ([partId]) => partId === edgePartId,
+    )?.[1];
+    const authoringSessionScope = editor
+        ? editor.origin.kind === 'saved-structure'
+            ? `${editor.origin.gardenId.toString()}:saved:${editor.origin.structureId}`
+            : `${editor.origin.gardenId.toString()}:draft:${editor.origin.draftId}`
+        : null;
     const recoveryStorageKey =
         session?.persistence === 'remote'
             ? getGardenStructureEditorRecoveryStorageKey(session.editor.origin)
@@ -397,7 +541,10 @@ export function GardenStructureVerticalSliceHud({
                 ? 'available'
                 : 'unavailable'
             : 'checking';
-    const confirmationOpen = exitConfirmation || demolishConfirmation;
+    const confirmationOpen =
+        exitConfirmation ||
+        demolishConfirmation ||
+        Boolean(footprintConfirmation);
     const exitConfirmationPresentation =
         getGardenStructureExitConfirmationPresentation(recoveryAvailability);
     const pricingPresentation =
@@ -429,6 +576,32 @@ export function GardenStructureVerticalSliceHud({
         }
     }, [fixture, garden, session, setSession]);
 
+    useEffect(() => {
+        const cells = editor?.snapshot.document.footprint.cells ?? [];
+        const firstCellKey = cells[0] ? gardenStructureCellKey(cells[0]) : null;
+        if (authoringSessionScopeRef.current !== authoringSessionScope) {
+            authoringSessionScopeRef.current = authoringSessionScope;
+            setAddSpaceKind('interior');
+            setAuthoringError(null);
+            setCanvasPreviewResetKey((value) => value + 1);
+            setEdgeChainDraft(null);
+            setEdgeChainSide('N');
+            setPendingFootprintSelectionKey(null);
+            setPropTargetAction(null);
+            setRequestedEdgePartId('');
+            setSelectedCellKey(firstCellKey);
+            return;
+        }
+        if (
+            selectedCellKey &&
+            !cells.some(
+                (cell) => gardenStructureCellKey(cell) === selectedCellKey,
+            )
+        ) {
+            setSelectedCellKey(firstCellKey);
+        }
+    }, [authoringSessionScope, editor, selectedCellKey]);
+
     function updateSession(
         updates: Partial<
             Pick<
@@ -457,8 +630,13 @@ export function GardenStructureVerticalSliceHud({
         return true;
     }
 
-    function removeRecovery(state: GardenStructureEditorState) {
-        if (session?.persistence === 'remote') {
+    function removeRecovery(
+        state: GardenStructureEditorState,
+        persistence:
+            | GardenStructureBuildSession['persistence']
+            | undefined = session?.persistence,
+    ) {
+        if (persistence === 'remote') {
             const editorRecoveryRemoved =
                 writeGardenStructureEditorRecoveryStorage(
                     localStorage,
@@ -507,6 +685,23 @@ export function GardenStructureVerticalSliceHud({
         return nextWriteState.available;
     }
 
+    function removeSupersededRecovery(
+        previous: GardenStructureEditorState,
+        next: GardenStructureEditorState,
+    ) {
+        const previousKey = getGardenStructureEditorRecoveryStorageKey(
+            previous.origin,
+        );
+        const nextKey = getGardenStructureEditorRecoveryStorageKey(next.origin);
+        return previousKey === nextKey
+            ? true
+            : writeGardenStructureEditorRecoveryStorage(
+                  localStorage,
+                  previousKey,
+                  null,
+              );
+    }
+
     function rememberConfirmationFocus() {
         confirmationReturnFocusRef.current =
             document.activeElement instanceof HTMLElement
@@ -540,15 +735,26 @@ export function GardenStructureVerticalSliceHud({
         }, 0);
     }
 
-    function closeBuildMode(options?: { keepRecovery?: boolean }) {
-        if (editor && !options?.keepRecovery) {
-            removeRecovery(editor);
+    function closeBuildMode(options?: {
+        editor?: GardenStructureEditorState;
+        keepRecovery?: boolean;
+        persistence?: GardenStructureBuildSession['persistence'];
+    }) {
+        const closingEditor = options?.editor ?? editor;
+        if (closingEditor && !options?.keepRecovery) {
+            removeRecovery(closingEditor, options?.persistence);
         }
         releaseBuildModeHistoryGuard();
+        setAuthoringError(null);
+        setCanvasPreviewResetKey((value) => value + 1);
         setDemolishConfirmation(false);
+        setEdgeChainDraft(null);
         setConflictResolutionPending(null);
         setExitConfirmationError(null);
         setExitConfirmation(false);
+        setPendingFootprintSelectionKey(null);
+        setPropTargetAction(null);
+        setSelectedCellKey(null);
         confirmationReturnFocusRef.current = null;
         restoreEntryFocusRef.current = true;
         setSession(null);
@@ -568,7 +774,16 @@ export function GardenStructureVerticalSliceHud({
     }
 
     function requestExit() {
-        if (!editor || session?.persistence === 'fixture') {
+        if (!editor) {
+            return true;
+        }
+        if (editor.workflow.kind === 'confirming-footprint') {
+            setAnnouncement(
+                'Najprije potvrdite ili otkažite promjenu tlocrta.',
+            );
+            return false;
+        }
+        if (session?.persistence === 'fixture') {
             closeBuildMode();
             return true;
         }
@@ -598,8 +813,23 @@ export function GardenStructureVerticalSliceHud({
     }
 
     function handleBuildModeHistoryBack() {
+        if (editor?.workflow.kind === 'confirming-footprint') {
+            cancelFootprintChange();
+            return 'retain' as const;
+        }
         if (demolishConfirmation || exitConfirmation) {
             dismissConfirmation();
+            return 'retain' as const;
+        }
+        if (edgeChainDraft) {
+            setEdgeChainDraft(null);
+            setCanvasPreviewResetKey((value) => value + 1);
+            setAnnouncement('Lanac rubova je otkazan.');
+            return 'retain' as const;
+        }
+        if (propTargetAction) {
+            setPropTargetAction(null);
+            setAnnouncement('Odabir cilja je otkazan.');
             return 'retain' as const;
         }
         if (
@@ -926,12 +1156,417 @@ export function GardenStructureVerticalSliceHud({
         }
     }
 
+    function setAuthoringFailure(message: string) {
+        setAuthoringError(message);
+        setAnnouncement(message);
+    }
+
+    function applyDocumentEdit(
+        result: GardenStructureDocumentEditResult,
+        successMessage: string,
+    ) {
+        if (!editor || !session) {
+            return false;
+        }
+        if (!result.ok) {
+            setAuthoringFailure(
+                getGardenStructureDocumentEditErrorMessage(result.error),
+            );
+            return false;
+        }
+        const applied = applyGardenStructureEditorCommand(editor, {
+            id: createIdentifier('document'),
+            kind: 'document-edit',
+            next: {
+                ...editor.snapshot,
+                document: result.value.document,
+            },
+        });
+        if (!applied.ok) {
+            setAuthoringFailure(
+                getGardenStructureEditorActionErrorMessage(applied.error),
+            );
+            return false;
+        }
+        setSession({
+            ...session,
+            editor: applied.value,
+            selectedPartId: result.value.itemId ?? null,
+        });
+        setAuthoringError(null);
+        setAnnouncement(
+            result.value.warnings.length > 0
+                ? `${successMessage} Provjerite ${result.value.warnings.length.toLocaleString('hr-HR')} upozorenja nacrta.`
+                : successMessage,
+        );
+        return true;
+    }
+
+    function documentEditInput() {
+        if (!editor) {
+            return null;
+        }
+        return {
+            document: editor.snapshot.document,
+            kit: {
+                kitKey: editor.origin.kitKey,
+                kitVersion: editor.origin.kitVersion,
+            },
+        };
+    }
+
+    function stageFootprintOperations(
+        operations: Parameters<
+            typeof stageGardenStructureFootprintPaint
+        >[1]['operations'],
+        nextSelectionKey: string | null,
+        successMessage: string,
+    ) {
+        if (!editor || !session) {
+            return false;
+        }
+        const staged = stageGardenStructureFootprintPaint(editor, {
+            commandId: createIdentifier('footprint'),
+            operations,
+        });
+        if (!staged.ok) {
+            setAuthoringFailure(
+                getGardenStructureEditorActionErrorMessage(staged.error),
+            );
+            return false;
+        }
+        setSession({ ...session, editor: staged.value, selectedPartId: null });
+        setAuthoringError(null);
+        setPropTargetAction(null);
+        if (staged.value.workflow.kind === 'confirming-footprint') {
+            rememberConfirmationFocus();
+            setPendingFootprintSelectionKey(nextSelectionKey);
+            setAnnouncement(
+                'Provjerite cijenu i dimenzije pa potvrdite ili otkažite promjenu tlocrta.',
+            );
+        } else {
+            setSelectedCellKey(nextSelectionKey);
+            setAnnouncement(successMessage);
+        }
+        return true;
+    }
+
+    function addFootprintCell(cell: GardenStructureFootprintCell) {
+        stageFootprintOperations(
+            [{ kind: 'add', cell }],
+            gardenStructureCellKey(cell),
+            `Dodano je polje ${cell.x.toString()}, ${cell.y.toString()}.`,
+        );
+    }
+
+    function removeFootprintCell(cell: GardenStructureCoordinate) {
+        const remainingCell = editor?.snapshot.document.footprint.cells.find(
+            (candidate) => candidate.x !== cell.x || candidate.y !== cell.y,
+        );
+        stageFootprintOperations(
+            [{ kind: 'remove', cell }],
+            remainingCell ? gardenStructureCellKey(remainingCell) : null,
+            `Uklonjeno je polje ${cell.x.toString()}, ${cell.y.toString()}.`,
+        );
+    }
+
+    function setFootprintSpaceKind(
+        cell: GardenStructureCoordinate,
+        spaceKind: GardenStructureSpaceKind,
+    ) {
+        stageFootprintOperations(
+            [{ kind: 'add', cell: { ...cell, spaceKind } }],
+            gardenStructureCellKey(cell),
+            spaceKind === 'interior'
+                ? 'Polje je označeno kao unutarnje.'
+                : 'Polje je označeno kao natkriveno vanjsko.',
+        );
+    }
+
+    function confirmFootprintChange() {
+        if (!editor || !session) {
+            return;
+        }
+        const confirmed = confirmGardenStructureFootprintChange(editor);
+        if (!confirmed.ok) {
+            setAuthoringFailure(
+                getGardenStructureEditorActionErrorMessage(confirmed.error),
+            );
+            return;
+        }
+        const returnTarget = confirmationReturnFocusRef.current;
+        confirmationReturnFocusRef.current = null;
+        setSession({ ...session, editor: confirmed.value });
+        setCanvasPreviewResetKey((value) => value + 1);
+        setSelectedCellKey(pendingFootprintSelectionKey);
+        setPendingFootprintSelectionKey(null);
+        setAuthoringError(null);
+        setAnnouncement(
+            'Promjena tlocrta je potvrđena i čeka spremanje građevine.',
+        );
+        window.setTimeout(() => {
+            if (returnTarget?.isConnected) {
+                returnTarget.focus({ preventScroll: true });
+            }
+        }, 0);
+    }
+
+    function cancelFootprintChange() {
+        if (!editor || !session) {
+            return;
+        }
+        const cancelled = cancelGardenStructureFootprintChange(editor);
+        if (!cancelled.ok) {
+            setAuthoringFailure(
+                getGardenStructureEditorActionErrorMessage(cancelled.error),
+            );
+            return;
+        }
+        const returnTarget = confirmationReturnFocusRef.current;
+        confirmationReturnFocusRef.current = null;
+        setSession({ ...session, editor: cancelled.value });
+        setCanvasPreviewResetKey((value) => value + 1);
+        setPendingFootprintSelectionKey(null);
+        setAuthoringError(null);
+        setAnnouncement('Promjena tlocrta je otkazana.');
+        window.setTimeout(() => {
+            if (returnTarget?.isConnected) {
+                returnTarget.focus({ preventScroll: true });
+            }
+        }, 0);
+    }
+
+    function selectAuthoringCell(cellKey: string) {
+        const nextCellKey = cellKey || null;
+        setSelectedCellKey(nextCellKey);
+        if (!nextCellKey || !propTargetAction || !editor) {
+            return;
+        }
+        const cell = editor.snapshot.document.footprint.cells.find(
+            (candidate) => gardenStructureCellKey(candidate) === nextCellKey,
+        );
+        const input = documentEditInput();
+        if (!cell || !input) {
+            setAuthoringFailure('Odabrano ciljno polje više nije dostupno.');
+            return;
+        }
+        const result =
+            propTargetAction.kind === 'move'
+                ? moveGardenStructureProp({
+                      ...input,
+                      propId: propTargetAction.propId,
+                      cell,
+                  })
+                : duplicateGardenStructureProp({
+                      ...input,
+                      propId: propTargetAction.propId,
+                      cell,
+                  });
+        if (
+            applyDocumentEdit(
+                result,
+                propTargetAction.kind === 'move'
+                    ? `Predmet je premješten na polje ${cell.x.toString()}, ${cell.y.toString()}.`
+                    : `Predmet je kopiran na polje ${cell.x.toString()}, ${cell.y.toString()}.`,
+            )
+        ) {
+            setPropTargetAction(null);
+        }
+    }
+
+    function beginPropTarget(
+        kind: GardenStructurePropTargetAction['kind'],
+        propId: string,
+    ) {
+        if (
+            !editor?.snapshot.document.props.some((prop) => prop.id === propId)
+        ) {
+            setAuthoringFailure('Odabrani predmet više ne postoji.');
+            return;
+        }
+        setAuthoringError(null);
+        setPropTargetAction({ kind, propId });
+        setAnnouncement(
+            kind === 'move'
+                ? 'Odaberite drugo ciljno polje za premještanje predmeta.'
+                : 'Odaberite prazno ciljno polje za kopiju predmeta.',
+        );
+    }
+
+    function partEditInput() {
+        return documentEditInput();
+    }
+
+    function clearCanvasDraft(message?: string) {
+        setEdgeChainDraft(null);
+        setCanvasPreviewResetKey((value) => value + 1);
+        if (message) {
+            setAnnouncement(message);
+        }
+    }
+
+    function selectCanvasTool(tool: 'hand' | 'select') {
+        if (editor?.workflow.kind !== 'editing') {
+            return;
+        }
+        const result = setGardenStructureEditorTool(editor, tool);
+        if (!result.ok) {
+            setAnnouncement(result.error.message);
+            return;
+        }
+        setAuthoringError(null);
+        setPropTargetAction(null);
+        clearCanvasDraft();
+        updateSession({
+            editor: result.value,
+            selectedPartId: null,
+        });
+        setAnnouncement(
+            tool === 'hand'
+                ? 'Alat Ruka. Povucite jednim prstom za pomicanje pogleda.'
+                : 'Alat Odabir.',
+        );
+    }
+
+    function selectEdgePart(partId: string) {
+        if (editor?.workflow.kind !== 'editing' || !authoringKit) {
+            return;
+        }
+        const kind = authoringKit.edgeParts[partId];
+        if (!kind) {
+            setAuthoringFailure('Odabrani rub više nije dostupan.');
+            return;
+        }
+        const result = setGardenStructureEditorTool(
+            editor,
+            kind === 'wall' ? 'shell' : 'openings',
+        );
+        if (!result.ok) {
+            setAnnouncement(result.error.message);
+            return;
+        }
+        setRequestedEdgePartId(partId);
+        setAuthoringError(null);
+        setPropTargetAction(null);
+        clearCanvasDraft();
+        updateSession({
+            category: 'structure',
+            editor: result.value,
+            selectedPartId: null,
+        });
+        setAnnouncement(
+            `${kind === 'wall' ? 'Zid' : kind === 'door' ? 'Vrata' : 'Prozor'} je spreman za lanac rubova.`,
+        );
+    }
+
+    function selectEdgeChainPoint(edge: GardenStructureCanvasEdge) {
+        if (!editor || !edgePartKind || !edgePartId) {
+            setAuthoringFailure('Najprije odaberite dio za lanac rubova.');
+            return;
+        }
+        if (!edgeChainDraft || edgeChainDraft.end) {
+            setEdgeChainDraft({
+                edges: [edge],
+                end: null,
+                error: null,
+                start: edge,
+                valid: true,
+            });
+            setAnnouncement(
+                `Početni rub je odabran na polju ${edge.cell.x.toString()}, ${edge.cell.y.toString()}. Odaberite završni rub.`,
+            );
+            return;
+        }
+        const chain = getGardenStructureCanvasEdgeChain(
+            editor.snapshot.document,
+            edgeChainDraft.start,
+            edge,
+        );
+        if (!chain.ok) {
+            const error =
+                chain.reason === 'not-collinear'
+                    ? 'Početni i završni rub moraju biti u istom ravnom redu.'
+                    : 'Lanac ne smije prelaziti izvan tlocrta.';
+            setEdgeChainDraft({
+                ...edgeChainDraft,
+                edges: [edgeChainDraft.start, edge],
+                end: edge,
+                error,
+                valid: false,
+            });
+            setAuthoringFailure(error);
+            return;
+        }
+        setAuthoringError(null);
+        setEdgeChainDraft({
+            ...edgeChainDraft,
+            edges: chain.edges,
+            end: edge,
+            error: null,
+            valid: true,
+        });
+        setAnnouncement(
+            `Pregled lanca s ${chain.edges.length.toLocaleString('hr-HR')} rubova je spreman. Potvrdite primjenu.`,
+        );
+    }
+
+    function selectEdgeChainPointFromInspector() {
+        const cell = editor?.snapshot.document.footprint.cells.find(
+            (candidate) =>
+                gardenStructureCellKey(candidate) === selectedCellKey,
+        );
+        if (!cell) {
+            setAuthoringFailure('Najprije odaberite polje građevine.');
+            return;
+        }
+        selectEdgeChainPoint({
+            cell: { x: cell.x, y: cell.y },
+            side: edgeChainSide,
+        });
+    }
+
+    function confirmEdgeChain() {
+        const input = partEditInput();
+        if (
+            !input ||
+            !edgeChainDraft?.end ||
+            !edgeChainDraft.valid ||
+            !edgePartKind ||
+            !edgePartId
+        ) {
+            setAuthoringFailure('Lanac rubova još nije spreman za potvrdu.');
+            return;
+        }
+        const applied = applyDocumentEdit(
+            setGardenStructureEdgeChain({
+                ...input,
+                edges: edgeChainDraft.edges,
+                kind: edgePartKind,
+                partId: edgePartId,
+            }),
+            `Lanac s ${edgeChainDraft.edges.length.toLocaleString('hr-HR')} rubova je primijenjen kao jedna promjena.`,
+        );
+        if (applied) {
+            clearCanvasDraft();
+        }
+    }
+
     function selectCategory(option: (typeof categoryOptions)[number]) {
         if (editor?.workflow.kind !== 'editing') {
             return;
         }
-        const result = setGardenStructureEditorTool(editor, option.tool);
+        const result = setGardenStructureEditorTool(
+            editor,
+            option.key === 'structure' && edgePartKind
+                ? edgePartKind === 'wall'
+                    ? 'shell'
+                    : 'openings'
+                : option.tool,
+        );
         if (result.ok) {
+            setAuthoringError(null);
+            setPropTargetAction(null);
+            clearCanvasDraft();
             updateSession({
                 editor: result.value,
                 category: option.key,
@@ -943,8 +1578,170 @@ export function GardenStructureVerticalSliceHud({
         }
     }
 
-    async function saveAndExit() {
-        if (!editor || !session) {
+    function setFloorMaterial(
+        cell: GardenStructureCoordinate,
+        materialId: string,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                setGardenStructureFloorMaterial({
+                    ...input,
+                    cell,
+                    materialId,
+                }),
+                'Materijal poda je promijenjen.',
+            );
+        }
+    }
+
+    function removeFloorMaterial(cell: GardenStructureCoordinate) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                removeGardenStructureFloorMaterial({ ...input, cell }),
+                'Pod je uklonjen s odabranog polja.',
+            );
+        }
+    }
+
+    function setEdgePart(
+        cell: GardenStructureCoordinate,
+        side: GardenStructureCellSide,
+        selection: GardenStructurePartInspectorEdgeSelection,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                setGardenStructureEdgePart({
+                    ...input,
+                    cell,
+                    side,
+                    ...selection,
+                }),
+                'Rub građevine je promijenjen.',
+            );
+        }
+    }
+
+    function removeEdgePart(
+        cell: GardenStructureCoordinate,
+        side: GardenStructureCellSide,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                removeGardenStructureEdgePart({ ...input, cell, side }),
+                'Rub građevine je uklonjen.',
+            );
+        }
+    }
+
+    function setRoofCoverage(
+        cell: GardenStructureCoordinate,
+        selection: GardenStructurePartInspectorRoofSelection,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                setGardenStructureRoofCoverage({
+                    ...input,
+                    cell,
+                    ...selection,
+                }),
+                'Krov odabranog polja je promijenjen.',
+            );
+        }
+    }
+
+    function removeRoofCoverage(cell: GardenStructureCoordinate) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                removeGardenStructureRoofCoverage({ ...input, cell }),
+                'Krov je uklonjen s odabranog polja.',
+            );
+        }
+    }
+
+    function addProp(
+        cell: GardenStructureCoordinate,
+        selection: GardenStructurePartInspectorPropSelection,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                addGardenStructureProp({ ...input, cell, ...selection }),
+                'Predmet je dodan na odabrano polje.',
+            );
+        }
+    }
+
+    function rotateProp(propId: string, rotation: GardenStructureRotation) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                rotateGardenStructureProp({ ...input, propId, rotation }),
+                `Predmet je zakrenut za ${(rotation * 90).toString()} stupnjeva.`,
+            );
+        }
+    }
+
+    function replaceProp(
+        propId: string,
+        selection: GardenStructurePartInspectorPropSelection,
+    ) {
+        const input = partEditInput();
+        if (input) {
+            applyDocumentEdit(
+                replaceGardenStructureProp({
+                    ...input,
+                    propId,
+                    ...selection,
+                }),
+                'Predmet je zamijenjen uz očuvani položaj i zakret.',
+            );
+        }
+    }
+
+    function deleteProp(propId: string) {
+        const input = partEditInput();
+        if (input) {
+            const deleted = applyDocumentEdit(
+                deleteGardenStructureProp({ ...input, propId }),
+                'Predmet je uklonjen.',
+            );
+            if (deleted && propTargetAction?.propId === propId) {
+                setPropTargetAction(null);
+            }
+        }
+    }
+
+    function getMatchingSavingSession(
+        submittedEditor: GardenStructureEditorState,
+        operationId: string,
+    ) {
+        const current = gameStateStore.getState().structureBuildSession;
+        if (
+            current?.persistence !== 'remote' ||
+            !gardenStructureEditorOriginsMatch(
+                current.editor,
+                submittedEditor,
+            ) ||
+            current.editor.save.status !== 'saving' ||
+            current.editor.save.operationId !== operationId
+        ) {
+            return null;
+        }
+        return current;
+    }
+
+    async function saveEditor(
+        requestedEditor: GardenStructureEditorState,
+        intent: GardenStructureSaveIntent,
+    ): Promise<void> {
+        const current = gameStateStore.getState().structureBuildSession;
+        if (!current || current.editor !== requestedEditor) {
             return;
         }
         if (!placementSupported) {
@@ -953,23 +1750,34 @@ export function GardenStructureVerticalSliceHud({
             );
             return;
         }
-        if (session.persistence === 'fixture') {
-            closeBuildMode();
+        if (current.persistence === 'fixture') {
+            if (intent === 'done') {
+                closeBuildMode({
+                    editor: current.editor,
+                    persistence: current.persistence,
+                });
+            }
             return;
         }
-        if (editor.save.status === 'clean') {
-            closeBuildMode();
+        if (requestedEditor.save.status === 'clean') {
+            if (intent === 'done') {
+                closeBuildMode({
+                    editor: requestedEditor,
+                    persistence: current.persistence,
+                });
+            }
             return;
         }
-        let editorForSave = editor;
+
+        let editorForSave = requestedEditor;
         if (
-            editor.save.status === 'error' &&
-            editor.save.outcome === 'rejected' &&
-            editor.save.operationId
+            requestedEditor.save.status === 'error' &&
+            requestedEditor.save.outcome === 'rejected' &&
+            requestedEditor.save.operationId
         ) {
             const abandoned = abandonGardenStructureEditorSaveFailure(
-                editor,
-                editor.save.operationId,
+                requestedEditor,
+                requestedEditor.save.operationId,
             );
             if (!abandoned.ok) {
                 setAnnouncement(abandoned.error.message);
@@ -993,13 +1801,23 @@ export function GardenStructureVerticalSliceHud({
             return;
         }
         mutations.save.reset();
-        updateSession({ editor: begun.value });
-        setAnnouncement('Spremanje građevine…');
+        const savingSession = { ...current, editor: begun.value };
+        gameStateStore.getState().setStructureBuildSession(savingSession);
+        persistRecovery(begun.value);
+        setAnnouncement(
+            intent === 'autosave'
+                ? 'Automatsko spremanje građevine…'
+                : 'Spremanje građevine…',
+        );
 
         try {
             const result = await mutations.save.mutateAsync(begun.value);
+            const active = getMatchingSavingSession(begun.value, operationId);
+            if (!active) {
+                return;
+            }
             const acknowledged = acknowledgeGardenStructureEditorSave(
-                begun.value,
+                active.editor,
                 {
                     operationId,
                     structureId: result.structure.id,
@@ -1023,31 +1841,71 @@ export function GardenStructureVerticalSliceHud({
             );
             if (!acknowledged.ok) {
                 const failed = markGardenStructureEditorOffline(
-                    begun.value,
+                    active.editor,
                     operationId,
                 );
                 if (failed.ok) {
-                    updateSession({ editor: failed.value });
+                    gameStateStore.getState().setStructureBuildSession({
+                        ...active,
+                        editor: failed.value,
+                    });
                     persistRecovery(failed.value);
                 }
                 setAnnouncement(acknowledged.error.message);
                 return;
             }
-            setSession({ ...session, editor: acknowledged.value });
-            removeRecovery(editor);
+
+            const acknowledgedSession = {
+                ...active,
+                editor: acknowledged.value,
+            };
+            gameStateStore
+                .getState()
+                .setStructureBuildSession(acknowledgedSession);
+            const completionAction = getGardenStructureSaveCompletionAction(
+                acknowledged.value,
+                intent,
+            );
+            if (completionAction === 'save-current-again') {
+                if (persistRecovery(acknowledged.value)) {
+                    removeSupersededRecovery(
+                        requestedEditor,
+                        acknowledged.value,
+                    );
+                }
+                await saveEditor(acknowledged.value, 'done');
+                return;
+            }
             if (acknowledged.value.save.status === 'dirty') {
                 const recoveryAvailable = persistRecovery(acknowledged.value);
+                if (recoveryAvailable) {
+                    removeSupersededRecovery(
+                        requestedEditor,
+                        acknowledged.value,
+                    );
+                }
                 setAnnouncement(
                     recoveryAvailable
-                        ? 'Ranije spremanje je potvrđeno. Novije promjene ostaju u lokalnom nacrtu.'
-                        : 'Ranije spremanje je potvrđeno. Novije promjene nisu pohranjene na uređaju.',
+                        ? 'Automatsko spremanje je potvrđeno. Novije promjene ostaju u lokalnom nacrtu.'
+                        : 'Automatsko spremanje je potvrđeno. Novije promjene nisu pohranjene na uređaju.',
                 );
                 return;
             }
-            removeRecovery(acknowledged.value);
-            restoreEntryFocusRef.current = true;
-            setSession(null);
+            removeSupersededRecovery(requestedEditor, acknowledged.value);
+            removeRecovery(acknowledged.value, active.persistence);
+            if (completionAction === 'close') {
+                closeBuildMode({
+                    editor: acknowledged.value,
+                    persistence: active.persistence,
+                });
+            } else {
+                setAnnouncement('Građevina je automatski spremljena.');
+            }
         } catch (error) {
+            const active = getMatchingSavingSession(begun.value, operationId);
+            if (!active) {
+                return;
+            }
             const clientError =
                 error instanceof GardenStructureMutationClientError
                     ? error
@@ -1064,18 +1922,18 @@ export function GardenStructureVerticalSliceHud({
                 });
             const failed =
                 conflictRevision !== undefined
-                    ? markGardenStructureEditorConflict(begun.value, {
+                    ? markGardenStructureEditorConflict(active.editor, {
                           operationId,
                           actualRevision: conflictRevision,
                       })
                     : clientError.outcome === 'unknown'
                       ? markGardenStructureEditorOffline(
-                            begun.value,
+                            active.editor,
                             operationId,
                         )
                       : (() => {
                             const rejected = markGardenStructureEditorSaveError(
-                                begun.value,
+                                active.editor,
                                 {
                                     operationId,
                                     code: clientError.code,
@@ -1089,10 +1947,20 @@ export function GardenStructureVerticalSliceHud({
                                 : rejected;
                         })();
             if (failed.ok) {
-                updateSession({ editor: failed.value });
+                gameStateStore.getState().setStructureBuildSession({
+                    ...active,
+                    editor: failed.value,
+                });
                 persistRecovery(failed.value);
             }
             setAnnouncement(clientError.message);
+        }
+    }
+
+    async function saveAndExit() {
+        const current = gameStateStore.getState().structureBuildSession;
+        if (current) {
+            await saveEditor(current.editor, 'done');
         }
     }
 
@@ -1310,6 +2178,30 @@ export function GardenStructureVerticalSliceHud({
         }
     }
 
+    useGardenStructureExistingStructureAutosave({
+        editor,
+        onAutosave: (autosaveEditor) => {
+            void saveEditor(autosaveEditor, 'autosave');
+        },
+        persistence: session?.persistence,
+    });
+    const keyboardActionsRef = useRef({
+        cancelFootprintChange,
+        deleteProp,
+        handleBuildModeHistoryBack,
+        removeFootprintCell,
+        removeRoofCoverage,
+        requestExit,
+    });
+    keyboardActionsRef.current = {
+        cancelFootprintChange,
+        deleteProp,
+        handleBuildModeHistoryBack,
+        removeFootprintCell,
+        removeRoofCoverage,
+        requestExit,
+    };
+
     useEffect(() => {
         if (!buildActive) {
             if (!restoreEntryFocusRef.current) {
@@ -1353,7 +2245,9 @@ export function GardenStructureVerticalSliceHud({
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                if (demolishConfirmation) {
+                if (session.editor.workflow.kind === 'confirming-footprint') {
+                    keyboardActionsRef.current.cancelFootprintChange();
+                } else if (demolishConfirmation) {
                     if (mutations.demolish.isPending) {
                         return;
                     }
@@ -1374,57 +2268,67 @@ export function GardenStructureVerticalSliceHud({
                             returnTarget.focus({ preventScroll: true });
                         }
                     }, 0);
-                } else if (session.persistence === 'fixture') {
-                    restoreEntryFocusRef.current = true;
-                    setSession(null);
+                } else if (edgeChainDraft) {
+                    setEdgeChainDraft(null);
+                    setCanvasPreviewResetKey((value) => value + 1);
+                    setAnnouncement('Lanac rubova je otkazan.');
+                } else if (propTargetAction) {
+                    setPropTargetAction(null);
+                    setAnnouncement('Odabir cilja je otkazan.');
                 } else {
-                    const decision = getGardenStructureEditorExitDecision(
-                        session.editor,
-                    );
-                    if (
-                        canExitGardenStructureEditorWithoutConfirmation(
-                            decision,
-                            recoveryAvailability,
-                        )
-                    ) {
-                        if (
-                            decision.kind !== 'local-recovery-only' &&
-                            decision.kind !== 'resolve-conflict'
-                        ) {
-                            writeGardenStructureEditorRecoveryStorage(
-                                localStorage,
-                                getGardenStructureEditorRecoveryStorageKey(
-                                    session.editor.origin,
-                                ),
-                                null,
-                            );
-                        }
-                        restoreEntryFocusRef.current = true;
-                        setSession(null);
-                    } else {
-                        confirmationReturnFocusRef.current =
-                            document.activeElement instanceof HTMLElement
-                                ? document.activeElement
-                                : null;
-                        setExitConfirmation(true);
-                        setAnnouncement(
-                            decision.kind === 'wait-for-save'
-                                ? 'Pričekajte potvrdu spremanja.'
-                                : recoveryAvailability === 'unavailable'
-                                  ? 'Lokalna kopija nije dostupna. Izlazak bi odbacio promjene.'
-                                  : 'Građevina ima nespremljene promjene.',
-                        );
-                    }
+                    keyboardActionsRef.current.handleBuildModeHistoryBack();
                 }
                 return;
             }
             if (
                 event.target instanceof HTMLElement &&
-                event.target.matches('button, input, select, textarea')
+                (event.target.matches('button, input, select, textarea') ||
+                    event.target.isContentEditable)
             ) {
                 return;
             }
+            const editingLocked =
+                session.editor.save.status === 'saving' ||
+                session.editor.save.status === 'conflict' ||
+                session.editor.demolition.status !== 'idle' ||
+                session.editor.workflow.kind !== 'editing';
             if (
+                !editingLocked &&
+                !event.metaKey &&
+                !event.ctrlKey &&
+                !event.altKey &&
+                (event.key === 'Delete' || event.key === 'Backspace')
+            ) {
+                const action = getGardenStructureSelectedKeyboardAction({
+                    category: session.category,
+                    document: session.editor.snapshot.document,
+                    propTargetAction,
+                    selectedCellKey,
+                });
+                if (action) {
+                    event.preventDefault();
+                    switch (action.kind) {
+                        case 'delete-prop':
+                            keyboardActionsRef.current.deleteProp(
+                                action.propId,
+                            );
+                            break;
+                        case 'remove-footprint-cell':
+                            keyboardActionsRef.current.removeFootprintCell(
+                                action.cell,
+                            );
+                            break;
+                        case 'remove-roof-coverage':
+                            keyboardActionsRef.current.removeRoofCoverage(
+                                action.cell,
+                            );
+                            break;
+                    }
+                }
+                return;
+            }
+            if (
+                !editingLocked &&
                 (event.metaKey || event.ctrlKey) &&
                 event.key.toLowerCase() === 'z'
             ) {
@@ -1446,16 +2350,22 @@ export function GardenStructureVerticalSliceHud({
                 }
                 return;
             }
-            const delta =
-                event.key === 'ArrowLeft'
-                    ? [-1, 0]
-                    : event.key === 'ArrowRight'
-                      ? [1, 0]
-                      : event.key === 'ArrowUp'
-                        ? [0, -1]
-                        : event.key === 'ArrowDown'
-                          ? [0, 1]
-                          : null;
+            const placementLocked =
+                session.editor.save.status === 'saving' ||
+                session.editor.save.status === 'conflict' ||
+                session.editor.demolition.status !== 'idle' ||
+                session.editor.workflow.kind === 'confirming-footprint';
+            const delta = placementLocked
+                ? null
+                : event.key === 'ArrowLeft'
+                  ? [-1, 0]
+                  : event.key === 'ArrowRight'
+                    ? [1, 0]
+                    : event.key === 'ArrowUp'
+                      ? [0, -1]
+                      : event.key === 'ArrowDown'
+                        ? [0, 1]
+                        : null;
             if (delta) {
                 event.preventDefault();
                 const placement = {
@@ -1495,10 +2405,12 @@ export function GardenStructureVerticalSliceHud({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [
         demolishConfirmation,
+        edgeChainDraft,
         editor,
         exitConfirmation,
         mutations.demolish.isPending,
-        recoveryAvailability,
+        propTargetAction,
+        selectedCellKey,
         session,
         setSession,
     ]);
@@ -1533,10 +2445,13 @@ export function GardenStructureVerticalSliceHud({
     const interactionLocked =
         saving ||
         editor.save.status === 'conflict' ||
-        editor.demolition.status === 'unknown';
+        editor.demolition.status === 'unknown' ||
+        editor.workflow.kind === 'confirming-footprint';
     const showTemplateChooser =
         editor.workflow.kind === 'placing-template' ||
         session.persistence === 'fixture';
+    const activeEditorTool =
+        editor.workflow.kind === 'editing' ? editor.workflow.tool : null;
 
     return (
         <section
@@ -1549,6 +2464,34 @@ export function GardenStructureVerticalSliceHud({
             }
             data-testid="garden-structure-build-hud"
         >
+            {plan && activeEditorTool && authoringSessionScope ? (
+                <GardenStructureCanvasAuthoring
+                    addSpaceKind={addSpaceKind}
+                    disabled={interactionLocked}
+                    document={editor.snapshot.document}
+                    edgePreview={
+                        edgeChainDraft
+                            ? {
+                                  edges: edgeChainDraft.edges,
+                                  valid: edgeChainDraft.valid,
+                              }
+                            : null
+                    }
+                    onEdgeTap={selectEdgeChainPoint}
+                    onFootprintStroke={(operations, nextSelectionKey) =>
+                        stageFootprintOperations(
+                            operations,
+                            nextSelectionKey,
+                            `Potez tlocrta s ${operations.length.toLocaleString('hr-HR')} polja je pripremljen kao jedna promjena.`,
+                        )
+                    }
+                    onSelectCell={selectAuthoringCell}
+                    placement={editor.snapshot.placement}
+                    planeHeight={plan.baseHeight}
+                    key={`${authoringSessionScope}:${activeEditorTool}:${canvasPreviewResetKey.toString()}`}
+                    tool={activeEditorTool}
+                />
+            ) : null}
             <header
                 aria-hidden={confirmationOpen || undefined}
                 className="absolute top-[calc(var(--game-safe-area-top,0px)+0.5rem)] right-[calc(var(--game-safe-area-right,0px)+0.5rem)] left-[calc(var(--game-safe-area-left,0px)+0.5rem)] flex items-start justify-between gap-2"
@@ -1655,27 +2598,22 @@ export function GardenStructureVerticalSliceHud({
                         <legend className="mb-1 text-xs font-semibold text-muted-foreground">
                             Predložak
                         </legend>
-                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                            {templateOptions.map((option) => (
-                                <button
-                                    type="button"
-                                    className={cx(
-                                        controlClassName,
-                                        'px-2 text-xs',
-                                        option.key ===
-                                            editor.origin.templateKey &&
-                                            'border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-50',
-                                    )}
-                                    aria-pressed={
-                                        option.key === editor.origin.templateKey
-                                    }
-                                    key={option.key}
-                                    onClick={() => startTemplate(option.key)}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
+                        <GardenStructureCatalogPicker
+                            ariaLabel="Predložak"
+                            entries={templateCatalogEntries}
+                            onSelectionChange={(entry) => {
+                                if (entry?.kind === 'template') {
+                                    startTemplate(entry.id);
+                                }
+                            }}
+                            selectedKey={
+                                templateCatalogEntries.find(
+                                    (entry) =>
+                                        entry.id === editor.origin.templateKey,
+                                )?.key ?? null
+                            }
+                            testId="garden-structure-template-catalog"
+                        />
                         {!fixture ? (
                             <div className="mt-3 border-border/60 border-t pt-3">
                                 <p className="mb-1 text-xs font-semibold text-muted-foreground">
@@ -1831,7 +2769,207 @@ export function GardenStructureVerticalSliceHud({
                                     </button>
                                 ))}
                             </div>
+                            <div className="mt-2 grid grid-cols-2 gap-1.5">
+                                <button
+                                    type="button"
+                                    aria-pressed={
+                                        editor.workflow.kind === 'editing' &&
+                                        editor.workflow.tool === 'select'
+                                    }
+                                    className={cx(
+                                        controlClassName,
+                                        'px-2 text-xs',
+                                        editor.workflow.kind === 'editing' &&
+                                            editor.workflow.tool === 'select' &&
+                                            'border-sky-600 bg-sky-100 text-sky-950 dark:bg-sky-950 dark:text-sky-50',
+                                    )}
+                                    disabled={interactionLocked}
+                                    onClick={() => selectCanvasTool('select')}
+                                >
+                                    Odabir
+                                </button>
+                                <button
+                                    type="button"
+                                    aria-pressed={
+                                        editor.workflow.kind === 'editing' &&
+                                        editor.workflow.tool === 'hand'
+                                    }
+                                    className={cx(
+                                        controlClassName,
+                                        'px-2 text-xs',
+                                        editor.workflow.kind === 'editing' &&
+                                            editor.workflow.tool === 'hand' &&
+                                            'border-sky-600 bg-sky-100 text-sky-950 dark:bg-sky-950 dark:text-sky-50',
+                                    )}
+                                    disabled={interactionLocked}
+                                    onClick={() => selectCanvasTool('hand')}
+                                >
+                                    Ruka / pomicanje
+                                </button>
+                            </div>
                         </fieldset>
+
+                        <div className="mt-3">
+                            <GardenStructureAuthoringInspectors
+                                addSpaceKind={addSpaceKind}
+                                category={session.category}
+                                disabled={interactionLocked}
+                                document={editor.snapshot.document}
+                                error={authoringError}
+                                kit={authoringKit}
+                                onAddCell={addFootprintCell}
+                                onAddProp={addProp}
+                                onAddSpaceKindChange={setAddSpaceKind}
+                                onCancelPropTarget={() => {
+                                    setPropTargetAction(null);
+                                    setAnnouncement('Odabir cilja je otkazan.');
+                                }}
+                                onDeleteProp={deleteProp}
+                                onDuplicateProp={(propId) =>
+                                    beginPropTarget('duplicate', propId)
+                                }
+                                onMoveProp={(propId) =>
+                                    beginPropTarget('move', propId)
+                                }
+                                onRemoveCell={removeFootprintCell}
+                                onRemoveEdgePart={removeEdgePart}
+                                onRemoveFloorMaterial={removeFloorMaterial}
+                                onRemoveRoofCoverage={removeRoofCoverage}
+                                onReplaceProp={replaceProp}
+                                onRotateProp={rotateProp}
+                                onSelectedCellKeyChange={selectAuthoringCell}
+                                onSetEdgePart={setEdgePart}
+                                onSetFloorMaterial={setFloorMaterial}
+                                onSetRoofCoverage={setRoofCoverage}
+                                onSetSpaceKind={setFootprintSpaceKind}
+                                propTargetAction={propTargetAction}
+                                selectedCellKey={selectedCellKey}
+                            />
+                        </div>
+
+                        {session.category === 'structure' && authoringKit ? (
+                            <fieldset className="mt-3 space-y-2 rounded-xl border border-border/60 p-3">
+                                <legend className="px-1 text-xs font-semibold text-muted-foreground">
+                                    Lanac rubova na platnu
+                                </legend>
+                                <p className="text-xs font-medium text-foreground">
+                                    Dio lanca
+                                </p>
+                                <GardenStructureCatalogPicker
+                                    ariaLabel="Dio lanca"
+                                    disabled={interactionLocked}
+                                    entries={edgePartCatalogEntries}
+                                    onSelectionChange={(entry) => {
+                                        if (entry) {
+                                            selectEdgePart(entry.id);
+                                        }
+                                    }}
+                                    selectedKey={
+                                        edgePartCatalogEntries.find(
+                                            (entry) => entry.id === edgePartId,
+                                        )?.key ?? null
+                                    }
+                                    testId="garden-structure-edge-catalog"
+                                />
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                                    <label className="text-xs font-medium text-foreground">
+                                        Strana odabranog polja
+                                        <select
+                                            aria-label="Strana ruba za lanac"
+                                            className="mt-1 min-h-11 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                                            disabled={interactionLocked}
+                                            onChange={(event) => {
+                                                const side =
+                                                    event.currentTarget.value;
+                                                if (
+                                                    side === 'N' ||
+                                                    side === 'E' ||
+                                                    side === 'S' ||
+                                                    side === 'W'
+                                                ) {
+                                                    setEdgeChainSide(side);
+                                                }
+                                            }}
+                                            value={edgeChainSide}
+                                        >
+                                            <option value="N">Sjever</option>
+                                            <option value="E">Istok</option>
+                                            <option value="S">Jug</option>
+                                            <option value="W">Zapad</option>
+                                        </select>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className={cx(
+                                            controlClassName,
+                                            'self-end px-3 text-xs',
+                                        )}
+                                        disabled={
+                                            interactionLocked ||
+                                            !selectedCellKey ||
+                                            !edgePartId
+                                        }
+                                        onClick={
+                                            selectEdgeChainPointFromInspector
+                                        }
+                                    >
+                                        {edgeChainDraft && !edgeChainDraft.end
+                                            ? 'Postavi kraj'
+                                            : 'Postavi početak'}
+                                    </button>
+                                </div>
+                                <p
+                                    className={cx(
+                                        'text-xs',
+                                        edgeChainDraft?.valid === false
+                                            ? 'font-semibold text-destructive'
+                                            : 'text-muted-foreground',
+                                    )}
+                                    role={
+                                        edgeChainDraft?.valid === false
+                                            ? 'alert'
+                                            : 'status'
+                                    }
+                                >
+                                    {edgeChainDraft?.error ??
+                                        (edgeChainDraft?.end
+                                            ? `${edgeChainDraft.edges.length.toLocaleString('hr-HR')} rubova čeka potvrdu.`
+                                            : edgeChainDraft
+                                              ? 'Početak je postavljen. Dodirnite završni rub ili ga postavite iz odabranog polja.'
+                                              : 'Dodirnite početni i završni rub na platnu. Dva prsta i dalje pomiču i povećavaju pogled.')}
+                                </p>
+                                {edgeChainDraft ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            className={controlClassName}
+                                            onClick={() =>
+                                                clearCanvasDraft(
+                                                    'Lanac rubova je otkazan.',
+                                                )
+                                            }
+                                        >
+                                            Otkaži lanac
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={cx(
+                                                controlClassName,
+                                                'border-green-600 bg-green-600 text-white hover:bg-green-700',
+                                            )}
+                                            disabled={
+                                                !edgeChainDraft.end ||
+                                                !edgeChainDraft.valid ||
+                                                interactionLocked
+                                            }
+                                            onClick={confirmEdgeChain}
+                                        >
+                                            Potvrdi lanac
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </fieldset>
+                        ) : null}
 
                         <div className="mt-3 grid grid-cols-2 gap-2">
                             {fixture ? (
@@ -1939,6 +3077,18 @@ export function GardenStructureVerticalSliceHud({
                     </button>
                 ) : null}
             </div>
+
+            {footprintConfirmation ? (
+                <GardenStructureFootprintConfirmationDialog
+                    depth={footprintConfirmation.depth}
+                    error={authoringError}
+                    isSandbox={garden.isSandbox}
+                    onCancel={cancelFootprintChange}
+                    onConfirm={confirmFootprintChange}
+                    pricing={footprintConfirmation.pricing}
+                    width={footprintConfirmation.width}
+                />
+            ) : null}
 
             {exitConfirmation ? (
                 <GardenStructureConfirmationDialog

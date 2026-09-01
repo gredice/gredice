@@ -2,10 +2,49 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { OrthographicCamera, Vector3 } from 'three';
 import {
+    getGameCameraKeyboardPan,
     getPreservedAngleCameraPosition,
     getScreenPositionAdjustedCameraTarget,
     resolvePreservedAngleCloseupZoom,
+    shouldGameCameraOwnPointerGesture,
+    shouldReleaseGameCameraPointerCapture,
+    shouldUseImmediateGameCameraTransition,
 } from './GameCameraRig';
+
+describe('camera pointer arbitration', () => {
+    it('reserves one pointer for paint tools while preserving two-finger navigation', () => {
+        assert.equal(shouldGameCameraOwnPointerGesture(0, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, false), false);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, false), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(1, true), true);
+        assert.equal(shouldGameCameraOwnPointerGesture(2, true), true);
+    });
+
+    it('releases camera capture when a pinch leaves a non-camera-owned pointer', () => {
+        assert.equal(shouldReleaseGameCameraPointerCapture(1, false), true);
+        assert.equal(shouldReleaseGameCameraPointerCapture(1, true), false);
+        assert.equal(shouldReleaseGameCameraPointerCapture(2, false), false);
+    });
+});
+
+describe('camera keyboard arbitration', () => {
+    it('reserves Arrow keys for placement while structure authoring is active', () => {
+        assert.deepEqual(getGameCameraKeyboardPan('ArrowLeft', true), [1, 0]);
+        assert.equal(getGameCameraKeyboardPan('ArrowLeft', false), null);
+        assert.equal(getGameCameraKeyboardPan('KeyQ', true), null);
+    });
+});
+
+describe('camera motion preference', () => {
+    it('makes structure focus and restore immediate for reduced motion', () => {
+        assert.equal(shouldUseImmediateGameCameraTransition(0.65, true), true);
+        assert.equal(shouldUseImmediateGameCameraTransition(0, false), true);
+        assert.equal(
+            shouldUseImmediateGameCameraTransition(0.65, false),
+            false,
+        );
+    });
+});
 
 describe('preserved-angle camera focus', () => {
     it('pans to a new target without changing the camera viewing offset', () => {

@@ -21,6 +21,7 @@ import {
     GardenStructureServiceError,
     type GardenStructureServiceIssue,
     type ReplaceGardenStructureCommand,
+    type ResizeGardenStructureCommand,
     type UpdateGardenStructurePlacementCommand,
 } from './gardenStructuresService';
 
@@ -108,6 +109,18 @@ const documentBody = {
     'accountId' | 'gardenId' | 'structureId'
 >;
 
+const resizeBody = {
+    operationId: 'operation-resize',
+    expectedRevision: 4,
+    anchorX: -5,
+    anchorY: 9,
+    rotation: 2,
+    document: template.document,
+} satisfies Omit<
+    ResizeGardenStructureCommand,
+    'accountId' | 'gardenId' | 'structureId'
+>;
+
 const placementBody = {
     operationId: 'operation-placement',
     expectedRevision: 5,
@@ -141,7 +154,7 @@ function typecheckInferredGardenStructureClient() {
     });
     void client[':gardenId'].structures[':structureId'].resize.$post({
         param: { gardenId: '7', structureId: 'structure-1' },
-        json: documentBody,
+        json: resizeBody,
     });
     void client[':gardenId'].structures[':structureId'].placement.$patch({
         param: { gardenId: '7', structureId: 'structure-1' },
@@ -190,10 +203,7 @@ test('garden structure routes map every HTTP command to the authenticated-accoun
         ),
         app.request(
             '/7/structures/structure-1/resize',
-            jsonRequest('POST', {
-                ...documentBody,
-                operationId: 'operation-resize',
-            }),
+            jsonRequest('POST', resizeBody),
         ),
         app.request(
             '/7/structures/structure-1/placement',
@@ -240,8 +250,7 @@ test('garden structure routes map every HTTP command to the authenticated-accoun
                 accountId: 'authenticated-account',
                 gardenId: 7,
                 structureId: 'structure-1',
-                ...documentBody,
-                operationId: 'operation-resize',
+                ...resizeBody,
             },
         },
         {
@@ -321,6 +330,12 @@ test('garden docs expose every mounted structure mutation route', async () => {
         100,
     );
     assert.equal(createSchema.properties.document.additionalProperties, false);
+    const resizeSchema =
+        document.paths['/{gardenId}/structures/{structureId}/resize'].post
+            .requestBody.content['application/json'].schema;
+    for (const field of ['anchorX', 'anchorY', 'rotation']) {
+        assert.equal(resizeSchema.required.includes(field), true);
+    }
 });
 
 function unauthorizedAuth(): MiddlewareHandler<{
@@ -358,7 +373,7 @@ test('garden structure routes require user or admin authorization before service
         ),
         app.request(
             '/7/structures/structure-1/resize',
-            jsonRequest('POST', documentBody),
+            jsonRequest('POST', resizeBody),
         ),
         app.request(
             '/7/structures/structure-1/placement',
@@ -423,6 +438,10 @@ test('garden structure routes reject strict and oversized envelopes before servi
         app.request(
             '/7/structures/structure-1',
             jsonRequest('PUT', { ...documentBody, expectedRevision: 0 }),
+        ),
+        app.request(
+            '/7/structures/structure-1/resize',
+            jsonRequest('POST', documentBody),
         ),
         app.request(
             '/7/structures/structure-1',

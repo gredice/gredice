@@ -242,6 +242,9 @@ async function executeGardenStructureSave(
                     json: {
                         operationId: save.operationId,
                         expectedRevision: save.expectedRevision,
+                        anchorX: save.submittedSnapshot.placement.anchorX,
+                        anchorY: save.submittedSnapshot.placement.anchorY,
+                        rotation: save.submittedSnapshot.placement.rotation,
                         document: save.submittedSnapshot.document,
                     },
                 });

@@ -1,3 +1,4 @@
+export * from './gardenStructureDocumentEdits';
 export * from './gardenStructureEditorRecovery';
 export * from './gardenStructureEditorRecoveryStorage';
 export * from './gardenStructureEditorState';

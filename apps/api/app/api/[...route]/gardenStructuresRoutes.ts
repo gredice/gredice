@@ -217,6 +217,18 @@ const documentMutationBodySchema = z
     .strict()
     .superRefine(enforcePayloadByteLimit);
 
+const resizeBodySchema = z
+    .object({
+        operationId: identifierSchema,
+        expectedRevision: positiveRevisionSchema,
+        anchorX: coordinateSchema,
+        anchorY: coordinateSchema,
+        rotation: rotationSchema,
+        document: documentSchema,
+    })
+    .strict()
+    .superRefine(enforcePayloadByteLimit);
+
 const placementBodySchema = z
     .object({
         operationId: identifierSchema,
@@ -501,7 +513,7 @@ export function createGardenStructuresRoutes(
             '/:structureId/resize',
             describeRoute({
                 description:
-                    'Resize a garden structure using a complete candidate document.',
+                    'Resize a garden structure by persisting its complete candidate document and placement atomically.',
                 security: authSecurity,
                 tags: ['Gardens'],
                 responses: {
@@ -512,7 +524,7 @@ export function createGardenStructuresRoutes(
             deps.authValidator(['user', 'admin']),
             zValidator('param', gardenStructureParamSchema),
             enforceRawPayloadByteLimit,
-            zValidator('json', documentMutationBodySchema),
+            zValidator('json', resizeBodySchema),
             async (context) => {
                 const { gardenId, structureId } = context.req.valid('param');
                 const body = context.req.valid('json');

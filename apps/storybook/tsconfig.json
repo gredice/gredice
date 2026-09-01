@@ -41,6 +41,8 @@
         "../../packages/game/src/hud/**/*.ts",
         "../../packages/game/src/hud/**/*.tsx",
         "../../packages/game/src/shared-ui/delivery/DeliverySlotPicker.tsx",
+        "../../packages/game/src/structures/catalog/**/*.ts",
+        "../../packages/game/src/structures/catalog/**/*.tsx",
         "../../packages/game/src/utils/raisedBedFields.ts",
         "../app/components/admin/cards/FactCard.tsx",
         "../app/components/operations/FarmerPaperNote.tsx",

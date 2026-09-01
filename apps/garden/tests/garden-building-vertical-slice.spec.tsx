@@ -69,16 +69,49 @@ async function waitForStructureInsideVisibleViewport(
     }, viewport);
 }
 
-async function tapCenter(page: Page, locator: Locator) {
-    const bounds = await locator.boundingBox();
-    expect(bounds).not.toBeNull();
-    if (!bounds) {
-        return;
-    }
-    await page.touchscreen.tap(
-        bounds.x + bounds.width / 2,
-        bounds.y + bounds.height / 2,
-    );
+async function tapTarget(locator: Locator) {
+    await locator.tap();
+}
+
+async function readStructureCameraTarget(page: Page) {
+    return page.evaluate(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        if (typeof profile !== 'object' || profile === null) {
+            throw new Error('Game profile metadata is unavailable');
+        }
+        return {
+            x: Number(Reflect.get(profile, 'gardenStructureCameraTargetX')),
+            y: Number(Reflect.get(profile, 'gardenStructureCameraTargetY')),
+            z: Number(Reflect.get(profile, 'gardenStructureCameraTargetZ')),
+        };
+    });
+}
+
+async function waitForStructureCameraReady(page: Page) {
+    await page.waitForFunction(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Reflect.get(profile, 'gardenStructureCameraMode') === 'building' &&
+            [
+                'gardenStructureCameraTargetX',
+                'gardenStructureCameraTargetY',
+                'gardenStructureCameraTargetZ',
+                'gardenStructureProjectedLeft',
+            ].every((key) => Number.isFinite(Number(Reflect.get(profile, key))))
+        );
+    });
+}
+
+async function waitForBrowserAnimationFrames(page: Page, frameCount: number) {
+    await page.evaluate(async (count) => {
+        for (let frame = 0; frame < count; frame += 1) {
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => resolve());
+            });
+        }
+    }, frameCount);
 }
 
 async function dispatchCanvasTouchGesture({
@@ -146,6 +179,39 @@ async function dispatchCanvasTouchGesture({
         await session.detach();
     }
     return session;
+}
+
+async function dispatchTouchDrag({
+    context,
+    from,
+    page,
+    to,
+}: {
+    context: BrowserContext;
+    from: Readonly<{ x: number; y: number }>;
+    page: Page;
+    to: Readonly<{ x: number; y: number }>;
+}) {
+    const session = await context.newCDPSession(page);
+    const point = {
+        id: 201,
+        radiusX: 8,
+        radiusY: 8,
+        force: 1,
+    };
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [{ ...point, ...from }],
+    });
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ ...point, ...to }],
+    });
+    await session.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+    });
+    await session.detach();
 }
 
 test('keeps one canvas through the touch-first building slice in portrait and landscape', async ({
@@ -306,29 +372,25 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         };
     });
 
-    const controlsDialog = page.getByRole('dialog');
-    if (await controlsDialog.isVisible()) {
-        await tapCenter(
-            page,
-            controlsDialog.getByRole('button', { name: 'Zatvori' }),
-        );
-        await expect(controlsDialog).toHaveCount(0);
-    }
+    const controlsTooltip = page.locator('[data-controls-tooltip-hud="open"]');
+    await expect(controlsTooltip).toBeVisible();
+    await tapTarget(controlsTooltip.getByRole('button', { name: 'Zatvori' }));
+    await expect(controlsTooltip).toHaveCount(0);
 
     const avatarEntry = page.getByRole('button', {
         name: 'Prošetaj vrtom',
     });
     await expect(avatarEntry).toBeVisible({ timeout: 15_000 });
-    await tapCenter(page, avatarEntry);
+    await tapTarget(avatarEntry);
     const avatarExit = page.getByRole('button', {
         name: 'Izađi iz šetnje',
     });
     await expect(avatarExit).toBeVisible();
-    await tapCenter(page, avatarExit);
+    await tapTarget(avatarExit);
 
     const entry = page.getByTestId('garden-structure-build-entry');
     await expect(entry).toBeVisible();
-    await tapCenter(page, entry);
+    await tapTarget(entry);
 
     const hud = page.getByTestId('garden-structure-build-hud');
     const sheet = page.getByTestId('garden-structure-build-sheet');
@@ -350,10 +412,22 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         ).toBe(true);
     }
 
-    await tapCenter(page, page.getByRole('button', { name: 'Prazno' }));
+    const templateCatalog = page.getByTestId(
+        'garden-structure-template-catalog',
+    );
+    await expect(templateCatalog.locator('img')).toHaveCount(4);
+    await expect(templateCatalog.locator('img').first()).toHaveAttribute(
+        'src',
+        /\/assets\/structures\/gredice-buildings\/v1\/catalog\/templates\//,
+    );
+    await tapTarget(
+        templateCatalog.locator('label:has(input[value$=":template:blank"])'),
+    );
     await expect(hud).toContainText('4 / 100 polja');
     await expect(hud).toContainText('200 🌻');
-    await tapCenter(page, page.getByRole('button', { name: 'Kuća' }));
+    await tapTarget(
+        templateCatalog.locator('label:has(input[value$=":template:house"])'),
+    );
     await page.waitForFunction(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
         return (
@@ -370,24 +444,183 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     ).toHaveCount(1);
     await partSelect.selectOption(openDoorId);
     await expect(hud).toContainText(`Odabrano: ${openDoorId}`);
-    await tapCenter(page, page.getByRole('button', { name: 'Sakrij krov' }));
+    await tapTarget(page.getByRole('button', { name: 'Sakrij krov' }));
     await expect(
         page.getByRole('button', { name: 'Prikaži krov' }),
     ).toBeVisible();
-    await tapCenter(
-        page,
-        page.getByRole('button', { name: 'Krov', exact: true }),
-    );
+    await tapTarget(page.getByRole('button', { name: 'Krov', exact: true }));
     await expect(
         partSelect.locator('option[value^="roof:debug-garden-structure:"]'),
     ).not.toHaveCount(0);
-    await tapCenter(page, page.getByRole('button', { name: 'Tlocrt' }));
+    await tapTarget(page.getByRole('button', { name: 'Tlocrt' }));
+    const footprintTargets = await page
+        .locator('[data-structure-canvas-target-kind="add-cell"]')
+        .evaluateAll((elements) =>
+            elements.flatMap((element) => {
+                const id = element.getAttribute('data-structure-canvas-target');
+                const bounds = element.getBoundingClientRect();
+                if (!id) {
+                    return [];
+                }
+                const [worldX, worldY] = id.split('|').map(Number);
+                return Number.isFinite(worldX) && Number.isFinite(worldY)
+                    ? [
+                          {
+                              screenX: bounds.x + bounds.width / 2,
+                              screenY: bounds.y + bounds.height / 2,
+                              worldX,
+                              worldY,
+                          },
+                      ]
+                    : [];
+            }),
+        );
+    const addRow = footprintTargets
+        .filter(
+            (target, _index, targets) =>
+                targets.filter(
+                    (candidate) => candidate.worldY === target.worldY,
+                ).length >= 2,
+        )
+        .toSorted((left, right) =>
+            left.worldY === right.worldY
+                ? left.worldX - right.worldX
+                : left.worldY - right.worldY,
+        );
+    const firstAddTarget = addRow[0];
+    const lastAddTarget = addRow.findLast(
+        (target) => target.worldY === firstAddTarget?.worldY,
+    );
+    expect(firstAddTarget).toBeDefined();
+    expect(lastAddTarget).toBeDefined();
+    if (!firstAddTarget || !lastAddTarget) {
+        throw new Error('A coalesced footprint target row is unavailable');
+    }
+    await dispatchTouchDrag({
+        context,
+        from: { x: firstAddTarget.screenX, y: firstAddTarget.screenY },
+        page,
+        to: { x: lastAddTarget.screenX, y: lastAddTarget.screenY },
+    });
+    const footprintDialog = page.getByRole('alertdialog', {
+        name: 'Potvrditi promjenu tlocrta?',
+    });
+    await expect(footprintDialog).toBeVisible();
+    await expect(footprintDialog).toContainText('15 / 100');
+    await footprintDialog.getByRole('button', { name: 'Vrati tlocrt' }).click();
+    await expect(footprintDialog).toHaveCount(0);
     await expect(
         partSelect.locator(
             'option[value="footprint:debug-garden-structure:-1|2"]',
         ),
     ).toHaveCount(1);
-    await tapCenter(page, page.getByRole('button', { name: 'Zakreni 90°' }));
+
+    await tapTarget(page.getByRole('button', { name: 'Ruka / pomicanje' }));
+    await expect(
+        page.getByRole('button', { name: 'Ruka / pomicanje' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    const targetBeforeHandPan = await page.evaluate(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return Number(
+            typeof profile === 'object' && profile !== null
+                ? Reflect.get(profile, 'gardenStructureCameraTargetX')
+                : Number.NaN,
+        );
+    });
+    const canvasBounds = await canvas.boundingBox();
+    expect(canvasBounds).not.toBeNull();
+    if (!canvasBounds) {
+        throw new Error('Canvas bounds are unavailable for Hand pan');
+    }
+    await dispatchTouchDrag({
+        context,
+        from: {
+            x: canvasBounds.x + canvasBounds.width * 0.65,
+            y: canvasBounds.y + canvasBounds.height * 0.38,
+        },
+        page,
+        to: {
+            x: canvasBounds.x + canvasBounds.width * 0.72,
+            y: canvasBounds.y + canvasBounds.height * 0.38,
+        },
+    });
+    await page.waitForFunction((before) => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Math.abs(
+                Number(Reflect.get(profile, 'gardenStructureCameraTargetX')) -
+                    before,
+            ) > 0.01
+        );
+    }, targetBeforeHandPan);
+
+    await tapTarget(page.getByRole('button', { name: 'Konstrukcija' }));
+    const edgeCatalog = page.getByTestId('garden-structure-edge-catalog');
+    await expect(edgeCatalog.locator('canvas')).toHaveCount(0);
+    await expect(edgeCatalog.locator('img').first()).toHaveAttribute(
+        'src',
+        /\/assets\/structures\/gredice-buildings\/v1\/catalog\/parts\//,
+    );
+    await tapTarget(
+        edgeCatalog.locator('label:has(input[value$=":part:window.house"])'),
+    );
+    const northEdgeTargets = page.locator(
+        '[data-structure-canvas-target-kind="edge"][data-structure-canvas-target$=":N"]',
+    );
+    await expect(northEdgeTargets).not.toHaveCount(0);
+    const edgeTargets = await northEdgeTargets.evaluateAll((elements) =>
+        elements.flatMap((element) => {
+            const id = element.getAttribute('data-structure-canvas-target');
+            const bounds = element.getBoundingClientRect();
+            if (!id) {
+                return [];
+            }
+            const [cellKey] = id.split(':');
+            const [cellX, cellY] = cellKey.split('|').map(Number);
+            return Number.isFinite(cellX) && Number.isFinite(cellY)
+                ? [
+                      {
+                          cellX,
+                          cellY,
+                          screenX: bounds.x + bounds.width / 2,
+                          screenY: bounds.y + bounds.height / 2,
+                      },
+                  ]
+                : [];
+        }),
+    );
+    const edgeRow = edgeTargets
+        .filter(
+            (target, _index, targets) =>
+                targets.filter((candidate) => candidate.cellY === target.cellY)
+                    .length >= 2,
+        )
+        .toSorted((left, right) =>
+            left.cellY === right.cellY
+                ? left.cellX - right.cellX
+                : left.cellY - right.cellY,
+        );
+    const firstEdge = edgeRow[0];
+    const secondEdge = edgeRow.find(
+        (target) =>
+            target.cellY === firstEdge?.cellY &&
+            target.cellX !== firstEdge.cellX,
+    );
+    expect(firstEdge).toBeDefined();
+    expect(secondEdge).toBeDefined();
+    if (!firstEdge || !secondEdge) {
+        throw new Error('A collinear edge pair is unavailable');
+    }
+    await page.touchscreen.tap(firstEdge.screenX, firstEdge.screenY);
+    await page.touchscreen.tap(secondEdge.screenX, secondEdge.screenY);
+    await expect(hud).toContainText('rubova čeka potvrdu');
+    await tapTarget(page.getByRole('button', { name: 'Potvrdi lanac' }));
+    await expect(hud).toContainText(/Lanac s \d+ rubova je primijenjen/);
+
+    await tapTarget(page.getByRole('button', { name: 'Tlocrt' }));
+    await tapTarget(page.getByRole('button', { name: 'Zakreni 90°' }));
 
     await page.waitForFunction(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
@@ -584,17 +817,128 @@ test('keeps the public debug sandbox on the managed default-off path', async ({
     );
 });
 
-test('supports keyboard entry, initial focus, Escape, and focus return', async ({
+test('supports keyboard authoring, reduced motion, Escape unwinding, and focus return', async ({
     page,
 }) => {
     test.setTimeout(30_000);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(buildingKeyboardProfileUrl, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Number.isFinite(
+                Number(Reflect.get(profile, 'gardenStructureCameraTargetX')),
+            )
+        );
+    });
+    const cameraTargetBeforeBuildMode = await readStructureCameraTarget(page);
 
     const entry = page.getByTestId('garden-structure-build-entry');
     await entry.focus();
     await page.keyboard.press('Enter');
     const done = page.getByTestId('garden-structure-build-done');
     await expect(done).toBeFocused();
+    await waitForStructureCameraReady(page);
+    await expect
+        .poll(async () =>
+            Math.abs(
+                (await readStructureCameraTarget(page)).x -
+                    cameraTargetBeforeBuildMode.x,
+            ),
+        )
+        .toBeGreaterThan(0.01);
+    await page.evaluate(() => {
+        const activeElement = document.activeElement;
+        if (activeElement instanceof HTMLElement) {
+            activeElement.blur();
+        }
+    });
+    const cameraTargetBeforeNudge = await readStructureCameraTarget(page);
+    await page.keyboard.down('ArrowRight');
+    try {
+        await expect(page.getByText('Položaj 0, -1.')).toBeVisible();
+        await expect
+            .poll(async () => (await readStructureCameraTarget(page)).x)
+            .toBeCloseTo(cameraTargetBeforeNudge.x + 1, 4);
+        await waitForBrowserAnimationFrames(page, 5);
+        const cameraTargetAfterNudge = await readStructureCameraTarget(page);
+        expect(cameraTargetAfterNudge.x).toBeCloseTo(
+            cameraTargetBeforeNudge.x + 1,
+            4,
+        );
+        expect(cameraTargetAfterNudge.y).toBeCloseTo(
+            cameraTargetBeforeNudge.y,
+            4,
+        );
+        expect(cameraTargetAfterNudge.z).toBeCloseTo(
+            cameraTargetBeforeNudge.z,
+            4,
+        );
+    } finally {
+        await page.keyboard.up('ArrowRight');
+    }
+
+    const structureTool = page.getByRole('button', {
+        name: 'Konstrukcija',
+    });
+    await structureTool.focus();
+    await page.keyboard.press('Enter');
+    const windowPart = page
+        .getByRole('group', { name: 'Dio lanca' })
+        .getByRole('radio', { name: 'Prozor kuće' });
+    await windowPart.focus();
+    await page.keyboard.press('Space');
+    await expect(windowPart).toBeChecked();
+    const selectedCell = page.getByLabel('Odabrano polje');
+    await selectedCell.selectOption('0|0');
+    await page.getByLabel('Strana ruba za lanac').selectOption('N');
+    const startEdge = page.getByRole('button', { name: 'Postavi početak' });
+    await startEdge.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+        page.getByRole('button', { name: 'Postavi kraj' }),
+    ).toBeVisible();
+    await selectedCell.selectOption('1|0');
+    const finishEdge = page.getByRole('button', { name: 'Postavi kraj' });
+    await finishEdge.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+        page.getByRole('button', { name: 'Potvrdi lanac' }),
+    ).toBeEnabled();
+    await page.keyboard.press('Escape');
+    await expect(
+        page.getByRole('button', { name: 'Potvrdi lanac' }),
+    ).toHaveCount(0);
+
+    const footprintTool = page.getByRole('button', { name: 'Tlocrt' });
+    await footprintTool.focus();
+    await page.keyboard.press('Enter');
+    const reducedMotionCanvasTarget = page
+        .locator('[data-structure-canvas-target]')
+        .first();
+    await expect(reducedMotionCanvasTarget).toBeVisible();
+    await expect
+        .poll(() =>
+            reducedMotionCanvasTarget.evaluate(
+                (element) => getComputedStyle(element).transitionDuration,
+            ),
+        )
+        .toBe('0s');
+
+    const handTool = page.getByRole('button', {
+        name: 'Ruka / pomicanje',
+    });
+    await handTool.focus();
+    await page.keyboard.press('Enter');
+    await expect(handTool).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Odabir' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+    );
+    await expect(done).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(entry).toBeFocused();
 });

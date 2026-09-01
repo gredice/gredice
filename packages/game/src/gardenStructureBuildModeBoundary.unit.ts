@@ -6,12 +6,17 @@ import { fileURLToPath } from 'node:url';
 
 const sourceRoot = dirname(fileURLToPath(import.meta.url));
 const gameSceneSource = readFileSync(join(sourceRoot, 'GameScene.tsx'), 'utf8');
+const gameHudSource = readFileSync(join(sourceRoot, 'GameHud.tsx'), 'utf8');
 const buildHudSource = readFileSync(
     join(sourceRoot, 'structures/GardenStructureVerticalSliceHud.tsx'),
     'utf8',
 );
 const historyGuardSource = readFileSync(
     join(sourceRoot, 'structures/useGardenStructureBuildModeHistoryGuard.ts'),
+    'utf8',
+);
+const mutationSource = readFileSync(
+    join(sourceRoot, 'hooks/useGardenStructureMutations.ts'),
     'utf8',
 );
 function sourceBetween(source: string, start: string, end: string) {
@@ -48,6 +53,21 @@ test('uses only the managed building flag for build-mode discovery while saved s
     );
 });
 
+test('loads the complete authoring HUD only behind the managed feature boundary', () => {
+    assert.doesNotMatch(
+        gameHudSource,
+        /import \{ GardenStructureVerticalSliceHud \} from/,
+    );
+    assert.match(
+        gameHudSource,
+        /import \{ GardenStructureVerticalSliceHudDynamic \} from '\.\/structures\/GardenStructureVerticalSliceHudDynamic';/,
+    );
+    assert.match(
+        gameHudSource,
+        /gardenStructureBuildEnabled \? \([\s\S]*?<GardenStructureVerticalSliceHudDynamic/,
+    );
+});
+
 test('suspends world interactions while retaining build-mode camera gestures', () => {
     assert.match(
         gameSceneSource,
@@ -71,6 +91,10 @@ test('suspends world interactions while retaining build-mode camera gestures', (
         /controlsEnabled=\{[^}]*structureBuildActive/,
     );
     assert.match(
+        overviewCamera,
+        /keyboardPanEnabled=\{!structureBuildActive\}/,
+    );
+    assert.match(
         gameSceneSource,
         /interactionDisabled=\{\s*structureBuildActive\s*\}/,
     );
@@ -88,41 +112,43 @@ test('suspends world interactions while retaining build-mode camera gestures', (
     );
 });
 
-test('keeps new drafts local until Done and acknowledges the response before closing', () => {
+test('keeps new drafts local until the explicit Done action', () => {
     const startFlow = sourceBetween(
         buildHudSource,
         'function startTemplate',
-        'async function saveAndExit',
-    );
-    const saveFlow = sourceBetween(
-        buildHudSource,
-        'async function saveAndExit',
-        'async function demolishStructure',
+        'function enterBuildMode',
     );
 
     assert.doesNotMatch(startFlow, /mutations\.save\.(?:mutate|mutateAsync)/);
     assert.match(buildHudSource, /onClick=\{saveAndExit\}/);
-    assert.equal(
-        buildHudSource.match(/mutations\.save\.mutateAsync/g)?.length,
-        1,
+});
+
+test('applies asynchronous save conflicts to the current matching editor', () => {
+    assert.match(
+        buildHudSource,
+        /markGardenStructureEditorConflict\(\s*active\.editor,/,
+    );
+});
+
+test('submits the complete adjusted placement with footprint resizes', () => {
+    const resizeSubmission = sourceBetween(
+        mutationSource,
+        "case 'resize':",
+        "case 'placement':",
     );
 
-    const mutationIndex = saveFlow.indexOf('mutations.save.mutateAsync');
-    const acknowledgeIndex = saveFlow.indexOf(
-        'acknowledgeGardenStructureEditorSave',
+    assert.match(
+        resizeSubmission,
+        /anchorX: save\.submittedSnapshot\.placement\.anchorX/,
     );
-    const installIndex = saveFlow.indexOf(
-        'setSession({ ...session, editor: acknowledged.value })',
+    assert.match(
+        resizeSubmission,
+        /anchorY: save\.submittedSnapshot\.placement\.anchorY/,
     );
-    const dirtyAcknowledgementIndex = saveFlow.indexOf(
-        "acknowledged.value.save.status === 'dirty'",
+    assert.match(
+        resizeSubmission,
+        /rotation: save\.submittedSnapshot\.placement\.rotation/,
     );
-    const closeIndex = saveFlow.indexOf('setSession(null)');
-    assert.notEqual(mutationIndex, -1);
-    assert.ok(acknowledgeIndex > mutationIndex);
-    assert.ok(installIndex > acknowledgeIndex);
-    assert.ok(dirtyAcknowledgementIndex > installIndex);
-    assert.ok(closeIndex > dirtyAcknowledgementIndex);
 });
 
 test('keeps the editor background inert while a confirmation is open', () => {

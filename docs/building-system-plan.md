@@ -596,10 +596,11 @@ Add authenticated routes beneath the existing garden route family:
   document using `expectedRevision` and operation ID, but rejects a changed
   footprint so ordinary autosave cannot trigger currency effects.
 - `POST /gardens/:gardenId/structures/:structureId/resize` applies a complete
-  candidate document through an explicit size confirmation, using
-  `expectedRevision` and operation ID. It validates dependent floors, edges,
-  roofs, and props, then atomically debits or refunds the server-calculated cell
-  delta.
+  candidate document and its adjusted placement through an explicit size
+  confirmation, using `expectedRevision` and operation ID. It validates the
+  combined placement, dependent floors, edges, roofs, and props, then atomically
+  writes the document and placement while debiting or refunding the
+  server-calculated cell delta.
 - `PATCH /gardens/:gardenId/structures/:structureId/placement` atomically moves
   or rotates it using `expectedRevision` and operation ID.
 - `DELETE /gardens/:gardenId/structures/:structureId` soft-deletes it and
@@ -791,7 +792,13 @@ Run the established generation pipeline when source assets change:
 
 ```bash
 pnpm generate:game-assets
+pnpm --filter garden generate-playwright:garden-structure-kit-v1-catalog
 ```
+
+The catalogue generator renders the tracked runtime kit with a fixed camera and
+lighting setup, then writes versioned WebP template thumbnails and part/material
+swatches under `apps/garden/public/assets/structures`. Picker cards consume
+those static files and must not mount a WebGL canvas per item.
 
 ### Initial content slice
 

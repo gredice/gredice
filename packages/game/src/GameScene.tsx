@@ -429,6 +429,15 @@ export function GameScene({
     const structureBuildActive = Boolean(
         gardenStructureVerticalSliceEnabled && structureBuildSession,
     );
+    const structureBuildTool =
+        structureBuildSession?.editor.workflow.kind === 'editing'
+            ? structureBuildSession.editor.workflow.tool
+            : null;
+    const structureBuildSinglePointerPanEnabled =
+        !structureBuildActive ||
+        structureBuildTool === 'hand' ||
+        structureBuildTool === 'select' ||
+        structureBuildSession?.editor.workflow.kind === 'placing-template';
     const { data: blockData } = useBlockData();
     const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
     const { displayedGarden: transitionedGardenData, sceneVisible } =
@@ -1468,13 +1477,21 @@ export function GameScene({
                                 controlsEnabled={
                                     !noControls && !gardenAvatarActive
                                 }
-                                gestureResetKey={structureBuildActive}
+                                gestureResetKey={
+                                    structureBuildActive
+                                        ? (structureBuildTool ?? 'locked')
+                                        : false
+                                }
                                 initialPosition={sceneCameraPosition}
                                 initialSnapshot={gardenHomeCamera}
                                 initialTarget={sceneCameraTarget}
                                 initialViewKey={gardenInitialViewKey}
                                 initialZoom={sceneCameraZoom}
+                                keyboardPanEnabled={!structureBuildActive}
                                 minZoom={structureBuildActive ? 8 : undefined}
+                                singlePointerPanEnabled={
+                                    structureBuildSinglePointerPanEnabled
+                                }
                             />
                         </BlockInteractionRegistryProvider>
                     </ParticleSystemProvider>

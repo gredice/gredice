@@ -275,6 +275,12 @@ function makeHarness({
         structures: new Map(),
     };
     const calls: string[] = [];
+    const validatedCandidates: Array<{
+        anchorX: unknown;
+        anchorY: unknown;
+        document: GardenStructureDocument;
+        rotation: unknown;
+    }> = [];
     const controls: {
         accountDeleting: boolean;
         accountExists: boolean;
@@ -530,9 +536,12 @@ function makeHarness({
                 );
                 const structure = {
                     ...current,
+                    anchorX: input.anchorX,
+                    anchorY: input.anchorY,
                     document,
                     refundableSunflowerPrincipal: delta.nextRefundablePrincipal,
                     revision: current.revision + 1,
+                    rotation: input.rotation,
                 };
                 options.transaction.state.structures.set(key, structure);
                 return { priceDelta: delta, structure };
@@ -559,8 +568,14 @@ function makeHarness({
                 transaction.state.structures.set(key, structure);
                 return structure;
             },
-            validateStructureCandidate: () =>
-                controls.occupancyConflict
+            validateStructureCandidate: (input) => {
+                validatedCandidates.push({
+                    anchorX: input.candidate.anchorX,
+                    anchorY: input.candidate.anchorY,
+                    document: decodeDocument(input.candidate.document),
+                    rotation: input.candidate.rotation,
+                });
+                return controls.occupancyConflict
                     ? {
                           error: {
                               code: 'GARDEN_OCCUPANCY_CONFLICT',
@@ -577,7 +592,8 @@ function makeHarness({
                           },
                           valid: false,
                       }
-                    : { supportHeight: 1, valid: true, worldFootprint: [] },
+                    : { supportHeight: 1, valid: true, worldFootprint: [] };
+            },
             withGardenPlacementTransaction: async (
                 _gardenId,
                 callback,
@@ -638,6 +654,7 @@ function makeHarness({
         controls,
         service: createGardenStructureApplicationService(dependencies),
         state,
+        validatedCandidates,
     };
 }
 
@@ -710,7 +727,10 @@ describe('garden structure application service', () => {
         };
         const resize: ResizeGardenStructureCommand = {
             ...replace,
+            anchorX: 0,
+            anchorY: 0,
             operationId: 'resize-1',
+            rotation: 0,
         };
         const placement: UpdateGardenStructurePlacementCommand = {
             accountId: create.accountId,
@@ -821,10 +841,13 @@ describe('garden structure application service', () => {
         await expectServiceError(
             harness.service.resize({
                 accountId: create.accountId,
+                anchorX: 1,
+                anchorY: 1,
                 document: structureDocument([0, 0], [1, 0], [2, 0]),
                 expectedRevision: 3,
                 gardenId: create.gardenId,
                 operationId: 'commercial-resize',
+                rotation: 1,
                 structureId: create.structureId,
             }),
             'BUILDING_COMMERCIAL_DISABLED',
@@ -856,10 +879,13 @@ describe('garden structure application service', () => {
         const created = await harness.service.create(create);
         const resized = await harness.service.resize({
             accountId: create.accountId,
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0], [1, 0], [2, 0]),
             expectedRevision: created.structure.revision,
             gardenId: create.gardenId,
             operationId: 'sandbox-resize-gated',
+            rotation: 0,
             structureId: create.structureId,
         });
         const removed = await harness.service.remove({
@@ -924,10 +950,13 @@ describe('garden structure application service', () => {
 
         const grown = await harness.service.resize({
             accountId: create.accountId,
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0], [1, 0], [2, 0]),
             expectedRevision: 2,
             gardenId: create.gardenId,
             operationId: 'resize-grow',
+            rotation: 0,
             structureId: create.structureId,
         });
         assert.deepEqual(grown.economy, {
@@ -938,10 +967,13 @@ describe('garden structure application service', () => {
 
         const equalArea = await harness.service.resize({
             accountId: create.accountId,
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0], [0, 1], [1, 1]),
             expectedRevision: 3,
             gardenId: create.gardenId,
             operationId: 'resize-equal',
+            rotation: 0,
             structureId: create.structureId,
         });
         assert.deepEqual(equalArea.economy, {
@@ -952,10 +984,13 @@ describe('garden structure application service', () => {
 
         const shrunk = await harness.service.resize({
             accountId: create.accountId,
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0]),
             expectedRevision: 4,
             gardenId: create.gardenId,
             operationId: 'resize-shrink',
+            rotation: 0,
             structureId: create.structureId,
         });
         assert.deepEqual(shrunk.economy, {
@@ -1000,6 +1035,89 @@ describe('garden structure application service', () => {
         assert.equal(harness.state.ledgerEvents.size, 4);
     });
 
+    test('persists a rotated min-edge resize placement atomically and binds it to replay', async () => {
+        const harness = makeHarness();
+        const create = createCommand({
+            anchorX: 8,
+            anchorY: -4,
+            operationId: 'create-rotated-resize',
+            rotation: 1,
+        });
+        await harness.service.create(create);
+        const command: ResizeGardenStructureCommand = {
+            accountId: create.accountId,
+            anchorX: 8,
+            anchorY: -3,
+            document: structureDocument([0, 0]),
+            expectedRevision: 1,
+            gardenId: create.gardenId,
+            operationId: 'resize-rotated-min-edge',
+            rotation: 1,
+            structureId: create.structureId,
+        };
+
+        const resized = await harness.service.resize(command);
+        assert.deepEqual(
+            {
+                anchorX: resized.structure.anchorX,
+                anchorY: resized.structure.anchorY,
+                rotation: resized.structure.rotation,
+            },
+            { anchorX: 8, anchorY: -3, rotation: 1 },
+        );
+        assert.equal(resized.structure.revision, 2);
+        assert.equal(resized.economy.refundedSunflowers, 50);
+        const validated = harness.validatedCandidates.at(-1);
+        assert.ok(validated);
+        assert.deepEqual(
+            validated && {
+                anchorX: validated.anchorX,
+                anchorY: validated.anchorY,
+                rotation: validated.rotation,
+            },
+            { anchorX: 8, anchorY: -3, rotation: 1 },
+        );
+        assert.deepEqual(validated?.document, resized.structure.document);
+        const persistedAfterResize = harness.state.structures.get(
+            structureKey(create.gardenId, create.structureId),
+        );
+        assert.deepEqual(
+            persistedAfterResize && {
+                anchorX: persistedAfterResize.anchorX,
+                anchorY: persistedAfterResize.anchorY,
+                document: persistedAfterResize.document,
+                refundableSunflowerPrincipal:
+                    persistedAfterResize.refundableSunflowerPrincipal,
+                revision: persistedAfterResize.revision,
+                rotation: persistedAfterResize.rotation,
+            },
+            {
+                anchorX: resized.structure.anchorX,
+                anchorY: resized.structure.anchorY,
+                document: resized.structure.document,
+                refundableSunflowerPrincipal:
+                    resized.structure.refundableSunflowerPrincipal,
+                revision: resized.structure.revision,
+                rotation: resized.structure.rotation,
+            },
+        );
+
+        const validationCount = harness.validatedCandidates.length;
+        assert.deepEqual(await harness.service.resize(command), resized);
+        assert.equal(harness.validatedCandidates.length, validationCount);
+        await expectServiceError(
+            harness.service.resize({ ...command, anchorY: -2 }),
+            'OPERATION_CONFLICT',
+            409,
+        );
+        assert.deepEqual(
+            harness.state.structures.get(
+                structureKey(create.gardenId, create.structureId),
+            ),
+            persistedAfterResize,
+        );
+    });
+
     test('bounds shrink refunds by persisted principal and keeps sandbox pricing effect-free', async () => {
         const bounded = makeHarness();
         const boundedStructure = testStructure({
@@ -1012,10 +1130,13 @@ describe('garden structure application service', () => {
         );
         const shrunk = await bounded.service.resize({
             accountId: 'account-1',
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0]),
             expectedRevision: 1,
             gardenId: 1,
             operationId: 'bounded-shrink',
+            rotation: 0,
             structureId: boundedStructure.id,
         });
         assert.equal(shrunk.economy.refundedSunflowers, 50);
@@ -1026,10 +1147,13 @@ describe('garden structure application service', () => {
         const created = await sandbox.service.create(createCommand());
         const resized = await sandbox.service.resize({
             accountId: 'account-1',
+            anchorX: 0,
+            anchorY: 0,
             document: structureDocument([0, 0], [1, 0], [2, 0]),
             expectedRevision: 1,
             gardenId: 1,
             operationId: 'sandbox-resize',
+            rotation: 0,
             structureId: 'structure-1',
         });
         const deleted = await sandbox.service.remove({
