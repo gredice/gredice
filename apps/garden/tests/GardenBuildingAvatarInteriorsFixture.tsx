@@ -73,8 +73,10 @@ function createFixtureQueryClient() {
 }
 
 export function GardenBuildingAvatarInteriorsFixture({
+    buildingSystemEnabled = true,
     initialSpawnZ = gardenBuildingAvatarDoorwayFixture.roomSpawnZ,
 }: {
+    buildingSystemEnabled?: boolean;
     initialSpawnZ?: number;
 }) {
     const [queryClient] = useState(createFixtureQueryClient);
@@ -91,7 +93,11 @@ export function GardenBuildingAvatarInteriorsFixture({
                         appBaseUrl=""
                         dayNightCycleDisabled
                         deferDetails={false}
-                        flags={{ enableGardenAvatarFlag: true }}
+                        flags={{
+                            enableGardenAvatarFlag: true,
+                            enableGardenBuildingSystemFlag:
+                                buildingSystemEnabled,
+                        }}
                         gardenAvatarActivationRequest={1}
                         gardenAvatarInitialSpawnPoint={{
                             x: 1,
