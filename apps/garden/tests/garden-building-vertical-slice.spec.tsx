@@ -73,6 +73,20 @@ async function tapTarget(locator: Locator) {
     await locator.tap();
 }
 
+async function readStructureCameraTarget(page: Page) {
+    return page.evaluate(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        if (typeof profile !== 'object' || profile === null) {
+            throw new Error('Game profile metadata is unavailable');
+        }
+        return {
+            x: Number(Reflect.get(profile, 'gardenStructureCameraTargetX')),
+            y: Number(Reflect.get(profile, 'gardenStructureCameraTargetY')),
+            z: Number(Reflect.get(profile, 'gardenStructureCameraTargetZ')),
+        };
+    });
+}
+
 async function dispatchCanvasTouchGesture({
     cancel = true,
     context,
@@ -797,8 +811,18 @@ test('supports keyboard authoring, reduced motion, Escape unwinding, and focus r
             activeElement.blur();
         }
     });
-    await page.keyboard.press('ArrowRight');
+    const cameraTargetBeforeNudge = await readStructureCameraTarget(page);
+    await page.keyboard.down('ArrowRight');
+    await page.waitForTimeout(250);
+    await page.keyboard.up('ArrowRight');
     await expect(page.getByText('Položaj 0, -1.')).toBeVisible();
+    const cameraTargetAfterNudge = await readStructureCameraTarget(page);
+    expect(cameraTargetAfterNudge.x).toBeCloseTo(
+        cameraTargetBeforeNudge.x + 1,
+        4,
+    );
+    expect(cameraTargetAfterNudge.y).toBeCloseTo(cameraTargetBeforeNudge.y, 4);
+    expect(cameraTargetAfterNudge.z).toBeCloseTo(cameraTargetBeforeNudge.z, 4);
 
     const structureTool = page.getByRole('button', {
         name: 'Konstrukcija',

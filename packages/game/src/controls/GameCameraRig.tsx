@@ -125,6 +125,13 @@ export function shouldReleaseGameCameraPointerCapture(
     );
 }
 
+export function getGameCameraKeyboardPan(
+    code: string,
+    keyboardPanEnabled: boolean,
+) {
+    return keyboardPanEnabled ? (panKeys[code] ?? null) : null;
+}
+
 export function shouldUseImmediateGameCameraTransition(
     duration: number,
     reducedMotion: boolean,
@@ -291,6 +298,7 @@ export function GameCameraRig({
     initialTarget,
     initialViewKey,
     initialZoom,
+    keyboardPanEnabled = true,
     minZoom = defaultMinZoom,
     singlePointerPanEnabled = true,
 }: {
@@ -302,6 +310,8 @@ export function GameCameraRig({
     initialTarget?: Vector3;
     initialViewKey?: string | number | null;
     initialZoom?: number;
+    /** Lets an active authoring mode reserve Arrow keys for placement. */
+    keyboardPanEnabled?: boolean;
     minZoom?: number;
     /** Keeps pinch/pan available while another build tool owns one pointer. */
     singlePointerPanEnabled?: boolean;
@@ -1106,7 +1116,10 @@ export function GameCameraRig({
                 return;
             }
 
-            const panValue = panKeys[event.code];
+            const panValue = getGameCameraKeyboardPan(
+                event.code,
+                keyboardPanEnabled,
+            );
             if (panValue) {
                 activePanDirectionRef.current = panValue;
                 setIsKeyboardPanning(true);
@@ -1145,7 +1158,7 @@ export function GameCameraRig({
             window.removeEventListener('blur', clearKeyboardPan);
             clearKeyboardPan();
         };
-    }, [controlsDisabled, worldRotate]);
+    }, [controlsDisabled, keyboardPanEnabled, worldRotate]);
 
     useEffect(() => {
         if (!initializedRef.current || !isOrthographicCamera) {

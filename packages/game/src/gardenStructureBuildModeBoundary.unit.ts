@@ -91,6 +91,10 @@ test('suspends world interactions while retaining build-mode camera gestures', (
         /controlsEnabled=\{[^}]*structureBuildActive/,
     );
     assert.match(
+        overviewCamera,
+        /keyboardPanEnabled=\{!structureBuildActive\}/,
+    );
+    assert.match(
         gameSceneSource,
         /interactionDisabled=\{\s*structureBuildActive\s*\}/,
     );

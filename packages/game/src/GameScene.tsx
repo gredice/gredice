@@ -1487,6 +1487,7 @@ export function GameScene({
                                 initialTarget={sceneCameraTarget}
                                 initialViewKey={gardenInitialViewKey}
                                 initialZoom={sceneCameraZoom}
+                                keyboardPanEnabled={!structureBuildActive}
                                 minZoom={structureBuildActive ? 8 : undefined}
                                 singlePointerPanEnabled={
                                     structureBuildSinglePointerPanEnabled

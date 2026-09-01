@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { OrthographicCamera, Vector3 } from 'three';
 import {
+    getGameCameraKeyboardPan,
     getPreservedAngleCameraPosition,
     getScreenPositionAdjustedCameraTarget,
     resolvePreservedAngleCloseupZoom,
@@ -23,6 +24,14 @@ describe('camera pointer arbitration', () => {
         assert.equal(shouldReleaseGameCameraPointerCapture(1, false), true);
         assert.equal(shouldReleaseGameCameraPointerCapture(1, true), false);
         assert.equal(shouldReleaseGameCameraPointerCapture(2, false), false);
+    });
+});
+
+describe('camera keyboard arbitration', () => {
+    it('reserves Arrow keys for placement while structure authoring is active', () => {
+        assert.deepEqual(getGameCameraKeyboardPan('ArrowLeft', true), [1, 0]);
+        assert.equal(getGameCameraKeyboardPan('ArrowLeft', false), null);
+        assert.equal(getGameCameraKeyboardPan('KeyQ', true), null);
     });
 });
 
