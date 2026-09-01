@@ -190,7 +190,7 @@ function lifecycleScenario(profileRun) {
 
 function gardenSwitchScenario(profileRun) {
     const scenario = normalScenario(profileRun);
-    scenario.baseName = 'game-high-fauna-single-context-switch-desktop';
+    scenario.baseName = 'game-garden-switch-high-fauna-single-context-desktop';
     scenario.name = `${scenario.baseName}-run-${profileRun}`;
     scenario.requested = {
         ...scenario.requested,
@@ -235,7 +235,16 @@ function gardenSwitchScenario(profileRun) {
             rendererShaders: 24,
             rendererTextures: 11,
         },
-        sample: sample(),
+        sample: sample({
+            runtimeFrameLoopAtEnd: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopAtStart: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+        }),
         timing,
     });
     const switchTiming = {
@@ -1523,6 +1532,121 @@ test('garden-switch arrivals pair by phase and compare transition timings', () =
         false,
     );
     assert.equal(comparison.exitCode, 1);
+});
+
+test('garden-switch rendered FPS uses exact semantic target evidence instead of baseline oversubmission', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.renderedFps = 45;
+            delete arrival.sample.runtimeFrameLoopAtStart;
+            delete arrival.sample.runtimeFrameLoopAtEnd;
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.renderedFps = 35;
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const renderedFps = comparison.comparisons.filter(
+        (result) => result.id === 'frame.rendered_fps',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(renderedFps.length, 7);
+    for (const result of renderedFps) {
+        assert.equal(result.targetAwareRenderedFps, true);
+        assert.equal(result.targetFramesPerSecond, 30);
+        assert.equal(result.minimumRenderedFps, 28);
+        assert.equal(result.medianRatio, 0.7778);
+        assert.equal(result.baselineRelativeDiagnosticOnly, true);
+        assert.equal(result.baselineRelativeScreeningBreach, true);
+        assert.equal(result.screeningBreach, false);
+        assert.equal(result.regressionBreach, false);
+        assert.equal(result.pass, true);
+        assert.equal(
+            result.individual.every(
+                (run) =>
+                    run.pass === true &&
+                    run.candidateFloorPass === true &&
+                    run.baselineRelativePass === false,
+            ),
+            true,
+        );
+    }
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate >= 28 fps \(target 30 fps, 2 fps tolerance\); baseline-relative ratio diagnostic only/,
+    );
+});
+
+test('garden-switch semantic rendered-FPS gate fails closed without exact visible target evidence', async (t) => {
+    const cases = {
+        'invisible end snapshot': {
+            expected: /runtimeFrameLoopAtEnd\.effectiveVisible must be true/,
+            mutate: (sample) => {
+                sample.runtimeFrameLoopAtEnd.effectiveVisible = false;
+            },
+        },
+        'mismatched end target': {
+            expected:
+                /runtimeFrameLoopAtEnd\.targetFramesPerSecond must be 30; received 29/,
+            mutate: (sample) => {
+                sample.runtimeFrameLoopAtEnd.targetFramesPerSecond = 29;
+            },
+        },
+        'missing start snapshot': {
+            expected: /runtimeFrameLoopAtStart is missing/,
+            mutate: (sample) => {
+                delete sample.runtimeFrameLoopAtStart;
+            },
+        },
+    };
+
+    for (const [name, { expected, mutate }] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const { baseline, candidate } = reportPair(gardenSwitchScenario);
+            mutate(candidate.scenarios[0].gardenSwitch.arrivals[0].sample);
+
+            const comparison = comparePartialReports(baseline, candidate);
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+});
+
+test('garden-switch semantic rendered-FPS gate rejects a true under-target cadence', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.renderedFps = 45;
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.renderedFps = 27.9;
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const renderedFps = comparison.comparisons.find(
+        (result) => result.id === 'frame.rendered_fps',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    assert.equal(renderedFps.minimumRenderedFps, 28);
+    assert.equal(renderedFps.pass, false);
+    assert.equal(renderedFps.regressionBreach, true);
+    assert.equal(
+        renderedFps.individual.every(
+            (run) => run.candidateFloorPass === false && run.pass === false,
+        ),
+        true,
+    );
 });
 
 test('comparison fails closed for scenario and environment incompatibilities', async (t) => {

@@ -37,6 +37,12 @@ const regressionScenarioBaseNames = [
 const regressionScenarioRunKeys = regressionScenarioBaseNames.flatMap(
     (baseName) => [1, 2, 3].map((profileRun) => `${baseName}::${profileRun}`),
 );
+const gardenSwitchScenarioBaseName =
+    'game-garden-switch-high-fauna-single-context-desktop';
+const gardenSwitchTargetFramesPerSecond = 30;
+const gardenSwitchRenderedFpsTolerance = 2;
+const gardenSwitchMinimumRenderedFps =
+    gardenSwitchTargetFramesPerSecond - gardenSwitchRenderedFpsTolerance;
 const crossTierBaseNamePattern =
     /^game-cross-tier-(low|medium|high|auto-standard|auto-constrained)-(steady|camera-motion)-desktop$/;
 const canonicalCrossTierPolicies = {
@@ -1567,6 +1573,64 @@ function buildRatioComparison({
     };
 }
 
+function buildGardenSwitchRenderedFpsComparison({ rows, ...metric }) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    const individual = baselineRelative.individual.map((run) => {
+        const candidateFloorPass =
+            run.candidate >= gardenSwitchMinimumRenderedFps;
+        return {
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            candidateFloorPass,
+            minimumRenderedFps: gardenSwitchMinimumRenderedFps,
+            pass: candidateFloorPass,
+            targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
+        };
+    });
+    const pass = individual.every((run) => run.candidateFloorPass);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        individual,
+        medianPass: pass,
+        minimumRenderedFps: gardenSwitchMinimumRenderedFps,
+        pass,
+        regressionBreach: !pass,
+        screeningBreach: !pass,
+        targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: gardenSwitchRenderedFpsTolerance,
+        targetAwareRenderedFps: true,
+    };
+}
+
+function validateGardenSwitchCandidateFrameContract(row, errors) {
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = row.candidate?.sample?.[boundary];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${path} is missing`);
+            continue;
+        }
+        if (
+            snapshot.targetFramesPerSecond !== gardenSwitchTargetFramesPerSecond
+        ) {
+            errors.push(
+                `${path}.targetFramesPerSecond must be ${gardenSwitchTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${path}.effectiveVisible must be true`);
+        }
+    }
+}
+
 function buildAbsoluteComparison({
     id,
     label,
@@ -1670,7 +1734,10 @@ function addMetricRows({
     });
 }
 
-function comparePairedScenarios(pairs) {
+function comparePairedScenarios(
+    pairs,
+    { requireGardenSwitchCandidateFrameContract = true } = {},
+) {
     const comparisons = [];
     const errors = [];
     const invariants = [];
@@ -1826,6 +1893,13 @@ function comparePairedScenarios(pairs) {
         for (const metric of ratioMetricRegistry) {
             const rows = [];
             for (const row of group.rows) {
+                if (
+                    requireGardenSwitchCandidateFrameContract &&
+                    group.scenario === gardenSwitchScenarioBaseName &&
+                    metric.id === 'frame.rendered_fps'
+                ) {
+                    validateGardenSwitchCandidateFrameContract(row, errors);
+                }
                 addMetricRows({
                     baselineValue: metric.read(row.baseline),
                     candidateValue: metric.read(row.candidate),
@@ -1848,7 +1922,14 @@ function comparePairedScenarios(pairs) {
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...buildRatioComparison({ ...metric, rows }),
+                    ...(requireGardenSwitchCandidateFrameContract &&
+                    group.scenario === gardenSwitchScenarioBaseName &&
+                    metric.id === 'frame.rendered_fps'
+                        ? buildGardenSwitchRenderedFpsComparison({
+                              ...metric,
+                              rows,
+                          })
+                        : buildRatioComparison({ ...metric, rows })),
                 });
             }
         }
@@ -2008,6 +2089,7 @@ function compareReportPair(
         baselinePath = null,
         candidatePath = null,
         confirmedMatrixMember = false,
+        requireGardenSwitchCandidateFrameContract = true,
     } = {},
 ) {
     const validationErrors = [
@@ -2101,7 +2183,9 @@ function compareReportPair(
         skipped: [],
     };
     if (validationErrors.length === 0) {
-        comparisonData = comparePairedScenarios(pairs);
+        comparisonData = comparePairedScenarios(pairs, {
+            requireGardenSwitchCandidateFrameContract,
+        });
         validationErrors.push(...comparisonData.errors);
     }
 
@@ -2302,6 +2386,7 @@ function compareConfirmedReports(
               baselinePath,
               candidatePath: baselineConfirmationPath,
               confirmedMatrixMember: true,
+              requireGardenSwitchCandidateFrameContract: false,
           })
         : null;
     const baselineRepeatedPrimary = baselineConfirmation
@@ -2710,10 +2795,11 @@ function buildMarkdown(comparison) {
                     ? `${display(result.confirmation.medianRatio)}x`
                     : `${display(result.confirmation.medianDelta)} ${result.unit}`
                 : null;
-            const gate =
-                result.kind === 'ratio'
-                    ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                    : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
+            const gate = result.targetAwareRenderedFps
+                ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                : result.kind === 'ratio'
+                  ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
+                  : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
             const resultLabel = result.regressionBreach
                 ? 'fail'
                 : result.replicationIncomplete
