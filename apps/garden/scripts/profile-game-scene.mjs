@@ -107,7 +107,8 @@ const lifecycleExpectedGardenStackCount = 270;
 const lifecycleExpectedGardenBlockCount = 297;
 const lifecycleExpectedGardenRaisedBedCount = 3;
 const lifecycleContextEventTimeoutMs = 20_000;
-const lifecycleResumeWindowMs = 900;
+const lifecycleResumeTransitionWindowMs = 900;
+const lifecycleResumeSteadyWindowMs = 2_000;
 // Resume may drain already-requested R3F frames, but that semantic surplus
 // must collapse within one bounded transition quarter-second.
 const lifecycleResumeSemanticSurplusWindowMs = 250;
@@ -5134,11 +5135,15 @@ function evaluateLifecycleAcceptance({
                 ? transition.sample.elapsedMs / 1_000
                 : null;
         return [
-            minimum(`${prefix}ElapsedMs`, transition?.sample?.elapsedMs, 750),
+            minimum(
+                `${prefix}ElapsedMs`,
+                transition?.sample?.elapsedMs,
+                lifecycleResumeTransitionWindowMs - 150,
+            ),
             maximum(
                 `${prefix}ElapsedMsMaximum`,
                 transition?.sample?.elapsedMs,
-                1_000,
+                lifecycleResumeTransitionWindowMs + 100,
             ),
             minimum(
                 `${prefix}SceneTimeDeltaSeconds`,
@@ -5238,11 +5243,15 @@ function evaluateLifecycleAcceptance({
                 ? resumeWindow.sample.elapsedMs / 1_000
                 : null;
         return [
-            minimum(`${prefix}ElapsedMs`, resumeWindow?.sample?.elapsedMs, 750),
+            minimum(
+                `${prefix}ElapsedMs`,
+                resumeWindow?.sample?.elapsedMs,
+                lifecycleResumeSteadyWindowMs - 150,
+            ),
             maximum(
                 `${prefix}ElapsedMsMaximum`,
                 resumeWindow?.sample?.elapsedMs,
-                1_000,
+                lifecycleResumeSteadyWindowMs + 100,
             ),
             minimum(
                 `${prefix}SceneTimeDeltaSeconds`,
@@ -6315,7 +6324,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             offscreenResumeTransition = buildLifecycleResumeTransitionEvidence(
                 await measureLifecycleWindow({
                     cdp,
-                    durationMs: lifecycleResumeWindowMs,
+                    durationMs: lifecycleResumeTransitionWindowMs,
                     page,
                     transition: resumeOffscreen,
                 }),
@@ -6328,7 +6337,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 ? buildLifecycleResumeWindowEvidence(
                       await measureLifecycleWindow({
                           cdp,
-                          durationMs: lifecycleResumeWindowMs,
+                          durationMs: lifecycleResumeSteadyWindowMs,
                           page,
                       }),
                   )
@@ -6449,7 +6458,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             hiddenResumeTransition = buildLifecycleResumeTransitionEvidence(
                 await measureLifecycleWindow({
                     cdp,
-                    durationMs: lifecycleResumeWindowMs,
+                    durationMs: lifecycleResumeTransitionWindowMs,
                     page,
                     transition: resumeHidden,
                 }),
@@ -6462,7 +6471,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 ? buildLifecycleResumeWindowEvidence(
                       await measureLifecycleWindow({
                           cdp,
-                          durationMs: lifecycleResumeWindowMs,
+                          durationMs: lifecycleResumeSteadyWindowMs,
                           page,
                       }),
                   )

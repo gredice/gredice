@@ -4005,9 +4005,9 @@ function createPassingLifecycleLiveAcceptanceInput() {
         const startCounters = fullRuntimeCounterValues(10);
         const endCounters = {
             ...startCounters,
-            ownedInvalidationCount: startCounters.ownedInvalidationCount + 27,
-            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 27,
-            wakeupCount: startCounters.wakeupCount + 27,
+            ownedInvalidationCount: startCounters.ownedInvalidationCount + 60,
+            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 60,
+            wakeupCount: startCounters.wakeupCount + 60,
         };
         for (const field of [
             'fixedStepFailureCount',
@@ -4028,13 +4028,13 @@ function createPassingLifecycleLiveAcceptanceInput() {
                 taskDuration: 0.02,
             },
             sample: {
-                drawCalls: 270,
-                elapsedMs: 900,
+                drawCalls: 600,
+                elapsedMs: 2_000,
                 renderedFps: 30,
-                renderedFrames: 27,
+                renderedFrames: 60,
                 runtimeFrameLoopAtEnd: {
                     ...endCounters,
-                    sceneTimeSeconds: sceneTimeSeconds + 0.9,
+                    sceneTimeSeconds: sceneTimeSeconds + 2,
                     targetFramesPerSecond: 30,
                 },
                 runtimeFrameLoopAtStart: {
@@ -4042,7 +4042,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
                     sceneTimeSeconds,
                     targetFramesPerSecond: 30,
                 },
-                submittedTriangles: 2_700,
+                submittedTriangles: 6_000,
             },
         });
     };
@@ -4795,10 +4795,10 @@ test('live lifecycle acceptance gates exhaustive zero work, bounded resume healt
         );
 
         for (const [path, value, checkSuffix] of [
-            ['sample.elapsedMs', 749, 'ElapsedMs'],
-            ['sample.elapsedMs', 1_001, 'ElapsedMsMaximum'],
+            ['sample.elapsedMs', 1_849, 'ElapsedMs'],
+            ['sample.elapsedMs', 2_101, 'ElapsedMsMaximum'],
             ['sceneTimeDeltaSeconds', 0, 'SceneTimeDeltaSeconds'],
-            ['sceneTimeDeltaSeconds', 1.06, 'SceneTimeDeltaBounded'],
+            ['sceneTimeDeltaSeconds', 2.151, 'SceneTimeDeltaBounded'],
             ['targetFramesPerSecond', 0, 'TargetFramesPerSecond'],
             ['sample.renderedFrames', 0, 'RenderedFrames'],
             ['sample.drawCalls', 0, 'DrawCalls'],
@@ -5671,7 +5671,7 @@ test('live lifecycle markdown exposes suspension, resume transition, and steady 
         /hidden \| 250 ms; 1\/1\/1; 1\/1\/1; 0\.03 s; yes \| 0\/0\/0 s; yes/,
     );
     assert.match(markdown, /900 ms; 33\/33\/27\/6; 0\.9 s; 0/);
-    assert.match(markdown, /900 ms; 27\/27\/27; 0\.9 s; 0\/0/);
+    assert.match(markdown, /2000 ms; 60\/60\/60; 2 s; 0\/0/);
 });
 
 function residualLifecycleFixture(value) {
