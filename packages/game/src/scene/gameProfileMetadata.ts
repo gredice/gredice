@@ -588,6 +588,7 @@ const gardenStructureAvatarCollisionStepFenwickTree = new Uint32Array(
     gardenStructureAvatarCollisionStepBucketCount + 1,
 );
 let gardenStructureAvatarCollisionStepSampleCount = 0;
+let gardenStructureEditorActionLifetimeMaxMs = 0;
 let gardenStructureProfileTelemetryEnabled = false;
 let gardenStructurePointerStartedAt: number | null = null;
 
@@ -603,6 +604,7 @@ export function setGardenStructureProfileTelemetryEnabled(enabled: boolean) {
     gardenStructureProfileTelemetryEnabled = enabled;
     gardenStructurePointerStartedAt = null;
     gardenStructureEditorActionSamples.length = 0;
+    gardenStructureEditorActionLifetimeMaxMs = 0;
     gardenStructureAvatarCollisionStepFenwickTree.fill(0);
     gardenStructureAvatarCollisionStepSampleCount = 0;
     updateGameProfileMetadata({
@@ -783,6 +785,10 @@ export function recordGardenStructureEditorAction(
     ) {
         return;
     }
+    gardenStructureEditorActionLifetimeMaxMs = Math.max(
+        gardenStructureEditorActionLifetimeMaxMs,
+        durationMs,
+    );
     gardenStructureEditorActionSamples.push(durationMs);
     if (
         gardenStructureEditorActionSamples.length >
@@ -796,7 +802,8 @@ export function recordGardenStructureEditorAction(
     updateGameProfileMetadata({
         gardenStructureEditorActionCount:
             gardenStructureEditorActionSamples.length,
-        gardenStructureEditorActionDurationMaxMs: sorted.at(-1) ?? 0,
+        gardenStructureEditorActionDurationMaxMs:
+            gardenStructureEditorActionLifetimeMaxMs,
         gardenStructureEditorActionDurationP95Ms:
             getGardenStructureProfileP95(sorted),
         gardenStructureEditorActionDurationTotalMs: sorted.reduce(

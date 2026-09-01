@@ -7,6 +7,7 @@ import {
     readGameProfileMetadata,
     recordGardenStructureAvatarCollisionStep,
     recordGardenStructureCompileDurations,
+    recordGardenStructureEditorAction,
     recordGardenStructurePointerResolution,
     setGardenStructureProfileTelemetryEnabled,
 } from './gameProfileMetadata';
@@ -27,6 +28,55 @@ describe('getGardenStructureProfileP95', () => {
             ),
             20,
         );
+    });
+});
+
+describe('garden structure editor-action profile', () => {
+    it('retains the lifetime maximum after the bounded percentile window advances', () => {
+        const previousWindow = Object.getOwnPropertyDescriptor(
+            globalThis,
+            'window',
+        );
+        Object.defineProperty(globalThis, 'window', {
+            configurable: true,
+            value: {},
+        });
+        try {
+            setGardenStructureProfileTelemetryEnabled(true);
+            recordGardenStructureEditorAction('early-stall', 600);
+            for (let sample = 0; sample < 64; sample += 1) {
+                recordGardenStructureEditorAction('steady', 10);
+            }
+
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureEditorActionDurationMaxMs,
+                600,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureEditorActionDurationP95Ms,
+                10,
+            );
+            assert.equal(
+                readGameProfileMetadata()?.gardenStructureEditorActionCount,
+                64,
+            );
+
+            setGardenStructureProfileTelemetryEnabled(true);
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureEditorActionDurationMaxMs,
+                0,
+            );
+            setGardenStructureProfileTelemetryEnabled(false);
+        } finally {
+            if (previousWindow) {
+                Object.defineProperty(globalThis, 'window', previousWindow);
+            } else {
+                Reflect.deleteProperty(globalThis, 'window');
+            }
+        }
     });
 });
 
