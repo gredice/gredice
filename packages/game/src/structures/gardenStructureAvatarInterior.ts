@@ -11,6 +11,8 @@ import {
 import {
     containsGardenStructureWorldCell,
     containsGardenStructureWorldPoint,
+    getGardenStructureCollisionBoxBounds,
+    getGardenStructureNearbySpatialBuckets,
 } from './compileGardenStructurePlan';
 import {
     type GardenStructureCollectionPlan,
@@ -46,10 +48,56 @@ function hasFootprintCell(
     return containsGardenStructureWorldCell(structure, x, z);
 }
 
+function getGardenStructureInteriorMaximumY(
+    structure: GardenStructureSemanticPlan,
+    point: Pick<GardenAvatarPoint, 'x' | 'z'>,
+) {
+    let maximumY = structure.worldBounds.maxHeight;
+    for (const bucket of getGardenStructureNearbySpatialBuckets(
+        structure,
+        point.x,
+        point.z,
+        0,
+    )) {
+        for (const ceilingProxyIndex of bucket.ceilingProxyIndices) {
+            const bounds = getGardenStructureCollisionBoxBounds(
+                structure.ceilingProxies,
+                ceilingProxyIndex,
+            );
+            if (
+                bounds &&
+                point.x >= bounds.minX &&
+                point.x < bounds.maxX &&
+                point.z >= bounds.minY &&
+                point.z < bounds.maxY
+            ) {
+                maximumY = Math.min(maximumY, bounds.minHeight);
+            }
+        }
+    }
+    return maximumY;
+}
+
+function containsGardenStructureInteriorPoint(
+    structure: GardenStructureSemanticPlan,
+    point: Pick<GardenAvatarPoint, 'x' | 'y' | 'z'>,
+) {
+    if (
+        !Number.isFinite(point.y) ||
+        point.y < structure.baseHeight - containmentEpsilon ||
+        point.y >=
+            getGardenStructureInteriorMaximumY(structure, point) -
+                containmentEpsilon
+    ) {
+        return false;
+    }
+    return containsGardenStructureWorldPoint(structure, point.x, point.z);
+}
+
 /** Exact containment lookup backed by the collection's shared spatial index. */
 export function findContainingGardenStructure(
     collection: GardenStructureCollectionPlan | null | undefined,
-    point: Pick<GardenAvatarPoint, 'x' | 'z'>,
+    point: Pick<GardenAvatarPoint, 'x' | 'y' | 'z'>,
 ) {
     if (!collection || collection.structures.length === 0) {
         return null;
@@ -72,11 +120,7 @@ export function findContainingGardenStructure(
             );
             if (
                 resolved &&
-                containsGardenStructureWorldPoint(
-                    resolved.structure,
-                    point.x,
-                    point.z,
-                )
+                containsGardenStructureInteriorPoint(resolved.structure, point)
             ) {
                 return resolved.structure;
             }
@@ -146,7 +190,7 @@ export function getGardenStructureAvatarInteriorPresentation({
     cameraPosition,
     collection,
 }: {
-    avatarPosition: Pick<GardenAvatarPoint, 'x' | 'z'>;
+    avatarPosition: Pick<GardenAvatarPoint, 'x' | 'y' | 'z'>;
     cameraPosition: Pick<GardenAvatarPoint, 'x' | 'z'>;
     collection: GardenStructureCollectionPlan | null | undefined;
 }): GardenStructureAvatarInteriorPresentation {
@@ -292,7 +336,7 @@ export function resolveGardenStructureAvatarWorldChangePose({
     });
     const escapeRoutePosition = {
         x: position.x,
-        y: grounded ? (resolvedGroundY ?? groundY) : groundY,
+        y: grounded ? (resolvedGroundY ?? groundY) : position.y,
         z: position.z,
     };
     const containingStructure = findContainingGardenStructure(
@@ -500,7 +544,11 @@ export function findGardenStructureAvatarSafeRelocation({
     for (const candidate of ordered) {
         if (
             candidate.kind === 'footprint-adjacent' &&
-            findContainingGardenStructure(collection, candidate)
+            findContainingGardenStructure(collection, {
+                x: candidate.x,
+                y: candidate.baseHeight,
+                z: candidate.z,
+            })
         ) {
             continue;
         }

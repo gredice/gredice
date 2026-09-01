@@ -12,7 +12,10 @@ import {
     getGardenAvatarGroundY,
     mergeGardenAvatarCollisionWorlds,
 } from '../entities/avatar/gardenAvatarMovement';
-import { compileGardenStructurePlan } from './compileGardenStructurePlan';
+import {
+    compileGardenStructurePlan,
+    getGardenStructureCollisionBoxBounds,
+} from './compileGardenStructurePlan';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import { createGardenStructureAvatarCollisionWorld } from './gardenStructureAvatarCollision';
 import {
@@ -144,7 +147,10 @@ describe('garden structure avatar containment and cutaway', () => {
                 `rotation ${rotation.toString()} porch stays floorless`,
             );
             assert.equal(
-                findContainingGardenStructure(plan, porch)?.structureId,
+                findContainingGardenStructure(plan, {
+                    ...porch,
+                    y: primary.baseHeight,
+                })?.structureId,
                 primary.structureId,
             );
 
@@ -162,7 +168,7 @@ describe('garden structure avatar containment and cutaway', () => {
                 ? windowCells.to
                 : windowCells.from;
             const presentation = getGardenStructureAvatarInteriorPresentation({
-                avatarPosition: porch,
+                avatarPosition: { ...porch, y: primary.baseHeight },
                 cameraPosition,
                 collection: plan,
             });
@@ -209,6 +215,7 @@ describe('garden structure avatar containment and cutaway', () => {
         const plan = collection([primary]);
         const outside = {
             x: primary.worldBounds.maxX + 1,
+            y: primary.baseHeight,
             z: primary.worldBounds.maxY + 1,
         };
         const presentation = getGardenStructureAvatarInteriorPresentation({
@@ -221,10 +228,52 @@ describe('garden structure avatar containment and cutaway', () => {
         assert.deepEqual(presentation.hiddenInstanceIds, []);
     });
 
+    test('keeps rooftop, elevated, and below-floor poses outside the interior cutaway', () => {
+        const primary = house(0);
+        const plan = collection([primary]);
+        const ceiling = getGardenStructureCollisionBoxBounds(
+            primary.ceilingProxies,
+            0,
+        );
+        assert.ok(ceiling);
+        const roofPoint = {
+            x: (ceiling.minX + ceiling.maxX) / 2,
+            y: ceiling.maxHeight,
+            z: (ceiling.minY + ceiling.maxY) / 2,
+        };
+
+        assert.equal(
+            findContainingGardenStructure(plan, {
+                ...roofPoint,
+                y: primary.baseHeight,
+            }),
+            primary,
+            'the same horizontal point is inside at floor height',
+        );
+        for (const avatarPosition of [
+            roofPoint,
+            { ...roofPoint, y: primary.worldBounds.maxHeight + 1 },
+            { ...roofPoint, y: primary.baseHeight - 1 },
+        ]) {
+            assert.equal(
+                findContainingGardenStructure(plan, avatarPosition),
+                null,
+            );
+            assert.equal(
+                getGardenStructureAvatarInteriorPresentation({
+                    avatarPosition,
+                    cameraPosition: roofPoint,
+                    collection: plan,
+                }),
+                emptyGardenStructureAvatarInteriorPresentation,
+            );
+        }
+    });
+
     test('keeps the no-structure path allocation-free', () => {
         assert.equal(
             getGardenStructureAvatarInteriorPresentation({
-                avatarPosition: { x: 0, z: 0 },
+                avatarPosition: { x: 0, y: 0, z: 0 },
                 cameraPosition: { x: 0, z: 0 },
                 collection: null,
             }),
@@ -449,6 +498,22 @@ describe('garden structure avatar mutation recovery', () => {
                 `${label} detects the missing exit route`,
             );
         }
+
+        assert.equal(
+            resolveGardenStructureAvatarWorldChangePose({
+                collection: plan,
+                grounded: false,
+                groundY: baseHeight,
+                position: {
+                    x: 0,
+                    y: sealedRoom.worldBounds.maxHeight,
+                    z: 0,
+                },
+                world,
+            }).requiresRelocation,
+            false,
+            'an airborne pose above the structure does not inherit the interior ground height',
+        );
     });
 
     test('relocates an invalid actor to the nearest deterministic cardinal portal or perimeter point', () => {
@@ -683,7 +748,7 @@ describe('garden structure avatar camera wall policy', () => {
                 ? exterior.to
                 : exterior.from;
             const presentation = getGardenStructureAvatarInteriorPresentation({
-                avatarPosition: exteriorInside,
+                avatarPosition: { ...exteriorInside, y: structure.baseHeight },
                 cameraPosition: exteriorOutside,
                 collection: collection([structure]),
             });
