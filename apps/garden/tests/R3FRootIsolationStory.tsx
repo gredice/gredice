@@ -1,77 +1,23 @@
 'use client';
 
-import { animated, useSpring } from '@react-spring/three';
-import { addAfterEffect, Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     createRuntimeFrameLoopProfileTelemetry,
     type RuntimeFrameLoopProfileTelemetry,
 } from '../../../packages/game/src/scene/gameProfileMetadata';
+import { SceneTimeProvider } from '../../../packages/game/src/scene/SceneTime';
 import {
-    SceneTimeProvider,
-    useSceneTimeInvalidation,
-} from '../../../packages/game/src/scene/SceneTime';
+    type R3FRootIsolationCounters,
+    R3FRootIsolationSpring,
+} from '../../../packages/game/tests/R3FRootIsolationSpring';
 
-type RootCounters = {
-    frameloop: string;
-    springChangeCount: number;
-    submittedFrameCount: number;
-};
+type RootCounters = R3FRootIsolationCounters;
 
 type IsolationSnapshot = {
     active: RootCounters & RuntimeFrameLoopProfileTelemetry;
     secondary: RootCounters & RuntimeFrameLoopProfileTelemetry;
 };
-
-function IsolationRootContent({
-    counters,
-    ownsCadence,
-}: {
-    counters: RootCounters;
-    ownsCadence: boolean;
-}) {
-    const renderedThisLoopRef = useRef(false);
-    const frameloop = useThree((state) => state.frameloop);
-    const { offset } = useSpring({
-        config: { duration: 200 },
-        from: { offset: -0.35 },
-        loop: { reverse: true },
-        onChange: () => {
-            counters.springChangeCount += 1;
-        },
-        to: { offset: 0.35 },
-    });
-
-    counters.frameloop = frameloop;
-    useSceneTimeInvalidation(
-        'r3f-root-isolation-browser-driver',
-        ownsCadence,
-        60,
-    );
-
-    useFrame(() => {
-        renderedThisLoopRef.current = true;
-    }, -900);
-
-    useEffect(
-        () =>
-            addAfterEffect(() => {
-                if (!renderedThisLoopRef.current) {
-                    return;
-                }
-                renderedThisLoopRef.current = false;
-                counters.submittedFrameCount += 1;
-            }),
-        [counters],
-    );
-
-    return (
-        <animated.mesh position-x={offset}>
-            <boxGeometry args={[0.5, 0.5, 0.5]} />
-            <meshBasicMaterial color={ownsCadence ? '#44aa66' : '#aa6644'} />
-        </animated.mesh>
-    );
-}
 
 function IsolationRoot({
     counters,
@@ -91,7 +37,7 @@ function IsolationRoot({
                 runtimeFrameLoop={telemetry}
                 suspendWhenOffscreen
             >
-                <IsolationRootContent
+                <R3FRootIsolationSpring
                     counters={counters}
                     ownsCadence={ownsCadence}
                 />
