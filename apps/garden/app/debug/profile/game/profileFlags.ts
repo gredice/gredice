@@ -40,7 +40,7 @@ export function resolveGameProfileGardenBuildingFixture(
     value: string | undefined,
     fixtureEnabled = false,
 ): GameProfileGardenBuildingFixture | null {
-    if (!fixtureEnabled) {
+    if (!fixtureEnabled || value === undefined) {
         return null;
     }
     if (

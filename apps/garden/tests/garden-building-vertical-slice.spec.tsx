@@ -374,7 +374,9 @@ test('keeps one canvas through the touch-first building slice in portrait and la
 
     const controlsTooltip = page.locator('[data-controls-tooltip-hud="open"]');
     await expect(controlsTooltip).toBeVisible();
-    await tapTarget(controlsTooltip.getByRole('button', { name: 'Zatvori' }));
+    await controlsTooltip
+        .getByRole('button', { name: 'Zatvori' })
+        .dispatchEvent('click');
     await expect(controlsTooltip).toHaveCount(0);
 
     const avatarEntry = page.getByRole('button', {

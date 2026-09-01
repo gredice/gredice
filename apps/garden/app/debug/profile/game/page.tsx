@@ -459,6 +459,10 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
+                gardenStructureDebugFixture={
+                    gardenBuilding &&
+                    gardenStructureProfileFixture === undefined
+                }
                 gardenStructureProfileFixture={gardenStructureProfileFixture}
                 gardenAvatarInitialSpawnPoint={
                     gardenAvatar

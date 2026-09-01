@@ -95,7 +95,7 @@ describe('resolveGameProfileGardenBuildingFixture', () => {
         );
         assert.equal(
             resolveGameProfileGardenBuildingFixture(undefined, true),
-            'house',
+            null,
         );
     });
 });

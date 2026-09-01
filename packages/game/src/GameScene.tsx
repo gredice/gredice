@@ -574,6 +574,23 @@ export function GameScene({
         return () => setGardenStructureProfileTelemetryEnabled(false);
     }, [gardenStructureProfileTelemetryEnabled]);
     useEffect(() => {
+        if (!gardenStructureDiagnosticsEnabled) {
+            return;
+        }
+        updateGameProfileMetadata({
+            gardenStructurePlanCacheEstimatedBytes:
+                structureFixtureBundle?.cacheSnapshot.estimatedBytes ?? 0,
+            gardenStructurePlanCacheEvictionCount:
+                structureFixtureBundle?.cacheSnapshot.evictionCount ?? 0,
+            gardenStructurePlanCacheHitCount:
+                structureFixtureBundle?.cacheSnapshot.hitCount ?? 0,
+            gardenStructurePlanCacheMissCount:
+                structureFixtureBundle?.cacheSnapshot.missCount ?? 0,
+            gardenStructurePlanCacheOutcome:
+                structureFixtureBundle?.cacheOutcome ?? 'none',
+        });
+    }, [gardenStructureDiagnosticsEnabled, structureFixtureBundle]);
+    useEffect(() => {
         if (!gardenStructureProfileTelemetryEnabled) {
             return;
         }
@@ -1376,7 +1393,7 @@ export function GameScene({
                                     <GardenStructureVerticalSliceDynamic
                                         plan={structureFixtureBundle.plan}
                                         profileMetricsEnabled={
-                                            gardenStructureProfileTelemetryEnabled
+                                            gardenStructureDiagnosticsEnabled
                                         }
                                     />
                                 ) : null}
