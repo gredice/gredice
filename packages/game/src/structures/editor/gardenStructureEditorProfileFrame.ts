@@ -1,15 +1,19 @@
 export function scheduleGardenStructureEditorProfileFrame({
     enabled,
-    onFrame,
+    now,
+    onDuration,
     requestFrame,
+    startedAt,
 }: Readonly<{
     enabled: boolean;
-    onFrame: FrameRequestCallback;
+    now: () => number;
+    onDuration: (durationMs: number) => void;
     requestFrame: (callback: FrameRequestCallback) => number;
+    startedAt: number;
 }>) {
     if (!enabled) {
         return false;
     }
-    requestFrame(onFrame);
+    requestFrame(() => onDuration(now() - startedAt));
     return true;
 }

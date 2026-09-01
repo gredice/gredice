@@ -427,22 +427,22 @@ export function GardenStructureVerticalSliceHud({
         (
             nextSession: GardenStructureBuildSession | null,
             action = 'editor-update',
+            profileStartedAt?: number,
         ) => {
             if (!profileMetricsEnabled) {
                 setStoredSession(nextSession);
                 return;
             }
-            const startedAt = performance.now();
+            const startedAt = profileStartedAt ?? performance.now();
             setStoredSession(nextSession);
             scheduleGardenStructureEditorProfileFrame({
                 enabled: true,
-                onFrame: () =>
-                    recordGardenStructureEditorAction(
-                        action,
-                        performance.now() - startedAt,
-                    ),
+                now: () => performance.now(),
+                onDuration: (durationMs) =>
+                    recordGardenStructureEditorAction(action, durationMs),
                 requestFrame: (callback) =>
                     window.requestAnimationFrame(callback),
+                startedAt,
             });
         },
         [profileMetricsEnabled, setStoredSession],
@@ -668,21 +668,27 @@ export function GardenStructureVerticalSliceHud({
                 'category' | 'editor' | 'roofCutaway' | 'selectedPartId'
             >
         >,
+        profileStartedAt?: number,
     ) {
         if (session) {
-            setSession({ ...session, ...updates });
+            setSession(
+                { ...session, ...updates },
+                'editor-update',
+                profileStartedAt,
+            );
         }
     }
 
     function applyEditorResult(
         result: GardenStructureEditorResult<GardenStructureEditorState>,
         message?: string,
+        profileStartedAt?: number,
     ) {
         if (!result.ok) {
             setAnnouncement(result.error.message);
             return false;
         }
-        updateSession({ editor: result.value });
+        updateSession({ editor: result.value }, profileStartedAt);
         if (message) {
             setAnnouncement(message);
         }
@@ -1175,7 +1181,10 @@ export function GardenStructureVerticalSliceHud({
         );
     }
 
-    function updatePlacement(placement: GardenStructurePlacement) {
+    function updatePlacement(
+        placement: GardenStructurePlacement,
+        profileStartedAt?: number,
+    ) {
         if (!editor) {
             return;
         }
@@ -1190,25 +1199,38 @@ export function GardenStructureVerticalSliceHud({
         applyEditorResult(
             result,
             `Položaj ${placement.anchorX.toString()}, ${placement.anchorY.toString()}, rotacija ${(placement.rotation * 90).toString()} stupnjeva.`,
+            profileStartedAt,
         );
     }
 
     function nudgePlacement(deltaX: number, deltaY: number) {
+        const profileStartedAt = profileMetricsEnabled
+            ? performance.now()
+            : undefined;
         if (editor) {
-            updatePlacement({
-                ...editor.snapshot.placement,
-                anchorX: editor.snapshot.placement.anchorX + deltaX,
-                anchorY: editor.snapshot.placement.anchorY + deltaY,
-            });
+            updatePlacement(
+                {
+                    ...editor.snapshot.placement,
+                    anchorX: editor.snapshot.placement.anchorX + deltaX,
+                    anchorY: editor.snapshot.placement.anchorY + deltaY,
+                },
+                profileStartedAt,
+            );
         }
     }
 
     function rotatePlacement() {
+        const profileStartedAt = profileMetricsEnabled
+            ? performance.now()
+            : undefined;
         if (editor) {
-            updatePlacement({
-                ...editor.snapshot.placement,
-                rotation: nextRotation(editor.snapshot.placement.rotation),
-            });
+            updatePlacement(
+                {
+                    ...editor.snapshot.placement,
+                    rotation: nextRotation(editor.snapshot.placement.rotation),
+                },
+                profileStartedAt,
+            );
         }
     }
 

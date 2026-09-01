@@ -59,6 +59,10 @@ describe('garden structure profile fixture boundary', () => {
             resolve(structuresRoot, 'GardenStructureVerticalSlice.tsx'),
             'utf8',
         );
+        const verticalSliceHud = readFileSync(
+            resolve(structuresRoot, 'GardenStructureVerticalSliceHud.tsx'),
+            'utf8',
+        );
         const profilePage = readFileSync(
             resolve(
                 structuresRoot,
@@ -138,6 +142,54 @@ describe('garden structure profile fixture boundary', () => {
             /recordGardenStructurePointerResolution/u,
         );
         assert.match(verticalSlice, /if \(!profileMetricsEnabled\) \{/u);
+
+        const setSessionSource = verticalSliceHud.slice(
+            verticalSliceHud.indexOf('const setSession = useCallback'),
+            verticalSliceHud.indexOf('const gameStateStore'),
+        );
+        assert.ok(
+            setSessionSource.indexOf('if (!profileMetricsEnabled)') <
+                setSessionSource.indexOf(
+                    'profileStartedAt ?? performance.now()',
+                ),
+        );
+        assert.match(
+            setSessionSource,
+            /profileStartedAt\?: number[\s\S]*const startedAt = profileStartedAt \?\? performance\.now\(\)[\s\S]*scheduleGardenStructureEditorProfileFrame\([\s\S]*startedAt/u,
+        );
+
+        const updatePlacementSource = verticalSliceHud.slice(
+            verticalSliceHud.indexOf('function updatePlacement'),
+            verticalSliceHud.indexOf('function confirmPlacement'),
+        );
+        assert.match(
+            updatePlacementSource,
+            /function updatePlacement\([\s\S]*profileStartedAt\?: number[\s\S]*applyEditorResult\([\s\S]*profileStartedAt/u,
+        );
+        for (const actionName of ['nudgePlacement', 'rotatePlacement']) {
+            const actionStart = updatePlacementSource.indexOf(
+                `function ${actionName}`,
+            );
+            assert.notEqual(actionStart, -1);
+            const nextActionStart = updatePlacementSource.indexOf(
+                'function ',
+                actionStart + 1,
+            );
+            const actionSource = updatePlacementSource.slice(
+                actionStart,
+                nextActionStart === -1
+                    ? updatePlacementSource.length
+                    : nextActionStart,
+            );
+            assert.ok(
+                actionSource.indexOf('const profileStartedAt') <
+                    actionSource.indexOf('if (editor)'),
+            );
+            assert.match(
+                actionSource,
+                /updatePlacement\([\s\S]*profileStartedAt/u,
+            );
+        }
     });
 
     test('grounds named fixtures and avatar spawn through their guarded profile paths', () => {
