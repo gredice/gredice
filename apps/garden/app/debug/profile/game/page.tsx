@@ -400,6 +400,7 @@ export default async function GameProfilePage({
         >
             <ProfileGameScene
                 adaptiveHighQuality={adaptiveHigh}
+                authenticatedGardenQueriesEnabled={!staticIdleProfile}
                 key={mode}
                 className="h-full w-full"
                 dayNightCycleDisabled={false}

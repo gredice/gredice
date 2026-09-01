@@ -172,6 +172,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Development purposes
     adaptiveHighQuality?: boolean;
+    authenticatedGardenQueriesEnabled?: boolean;
     continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
