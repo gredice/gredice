@@ -879,9 +879,62 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         release();
     });
 
+    it('counts a render follow-up as the next semantic cadence slot', () => {
+        const queue = new FakeRuntimeQueue(100);
+        const { invalidations, requestExternalFrame, scheduler } =
+            createScheduler({
+                queue,
+                simulateFrameCallbacks: true,
+            });
+        const release = scheduler.acquireRenderLease(
+            'self-invalidation-follow-up',
+            30,
+        );
+        queue.runUntil(500);
+        const sampleStartedAt = queue.currentTime;
+        const sampleEndedAt = sampleStartedAt + 2_000;
+        const snapshotAtStart = scheduler.getSnapshot();
+        let observedInvalidationCount = invalidations.length;
+        let followUpDueAfterNextRender = false;
+
+        while ((queue.peekNextTask()?.dueAt ?? Infinity) <= sampleEndedAt) {
+            const task = queue.runNext();
+            if (invalidations.length > observedInvalidationCount) {
+                observedInvalidationCount = invalidations.length;
+                followUpDueAfterNextRender = true;
+            }
+            if (
+                task.source === 'renderer-frame' &&
+                followUpDueAfterNextRender
+            ) {
+                followUpDueAfterNextRender = false;
+                requestExternalFrame();
+            }
+        }
+        queue.runUntil(sampleEndedAt);
+
+        const snapshotAtEnd = scheduler.getSnapshot();
+        const renderedFrames =
+            snapshotAtEnd.r3fFrameCallbackCount -
+            snapshotAtStart.r3fFrameCallbackCount;
+        assert.ok(
+            renderedFrames >= 58 && renderedFrames <= 62,
+            `Expected follow-up rendering to stay within the 30 FPS cap, received ${renderedFrames / 2} FPS`,
+        );
+        assert.ok(
+            snapshotAtEnd.ownedInvalidationCount -
+                snapshotAtStart.ownedInvalidationCount <=
+                32,
+            'Follow-up frames must consume pending owned cadence slots',
+        );
+        assert.equal(snapshotAtEnd.pendingCallbackKind, 'timeout');
+        assert.ok(queue.maximumPendingTaskCount <= 2);
+        release();
+    });
+
     it('moves the next target without rearming for same-task external receipts', () => {
         const queue = new FakeRuntimeQueue(60);
-        const { scheduler } = createScheduler({
+        const { recordExternalFrame, scheduler } = createScheduler({
             queue,
             simulateFrameCallbacks: true,
         });
@@ -890,9 +943,9 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         const invalidationCount = scheduler.getSnapshot().invalidationCount;
 
         queue.currentTime = 501;
-        scheduler.recordFrameCallback(501);
+        recordExternalFrame(501);
         queue.currentTime = 502;
-        scheduler.recordFrameCallback(502);
+        recordExternalFrame(502);
 
         const snapshot = scheduler.getSnapshot();
         assert.equal(snapshot.pendingCallbackKind, 'timeout');

@@ -247,7 +247,9 @@ export class GameRuntimeScheduler {
     private awaitingFrameReceipt = false;
     private invalidationRetryNotBeforeAt: number | null = null;
     private lastInvalidatedAt: number | null = null;
+    private lastFrameReceiptAt: number | null = null;
     private nextRenderFrameTargetAt: number | null = null;
+    private previousFrameReceiptWasOwned = false;
     private readonly maxDeliveredDeltaMs: number;
     private readonly nowEffect: () => number;
     private onSnapshotEffect:
@@ -571,8 +573,14 @@ export class GameRuntimeScheduler {
         this.invalidationRetryNotBeforeAt = null;
         if (!ownedFrameReceipt) {
             const receiptAt = Math.max(now, displayNow);
-            this.deferRenderFrameTargetAfterExternalReceipt(receiptAt);
+            if (this.isImmediateFollowUpToOwnedFrame(displayNow)) {
+                this.consumeRenderFrameTargetAfterExternalReceipt(receiptAt);
+            } else {
+                this.deferRenderFrameTargetAfterExternalReceipt(receiptAt);
+            }
         }
+        this.lastFrameReceiptAt = displayNow;
+        this.previousFrameReceiptWasOwned = ownedFrameReceipt;
         // Keep an earlier timer in place when an external receipt moves the
         // semantic target later. It can reconcile the new target without a
         // cancellation/rearm pair for every external frame.
@@ -698,8 +706,10 @@ export class GameRuntimeScheduler {
 
         const now = this.readNow();
         this.lastInvalidatedAt = null;
+        this.lastFrameReceiptAt = null;
         this.awaitingFrameReceipt = false;
         this.invalidationRetryNotBeforeAt = null;
+        this.previousFrameReceiptWasOwned = false;
         this.resetRenderFrameTarget();
         this.displayFrameCalibrationAttemptCount = 0;
         this.displayFrameCalibrationBeganAt = null;
@@ -802,6 +812,8 @@ export class GameRuntimeScheduler {
         this.renderLeases.clear();
         this.renderRequests.clear();
         this.sharedRenderLeases.clear();
+        this.lastFrameReceiptAt = null;
+        this.previousFrameReceiptWasOwned = false;
         this.activationListeners.clear();
         this.resumeListeners.clear();
         for (const listener of [...this.visibilityListeners]) {
@@ -979,6 +991,32 @@ export class GameRuntimeScheduler {
         this.nextRenderFrameTargetAt += (elapsedIntervals + 1) * intervalMs;
     }
 
+    private consumeRenderFrameTargetAfterExternalReceipt(now: number) {
+        const framesPerSecond = this.getRenderFramesPerSecond();
+        if (framesPerSecond === 0) {
+            this.resetRenderFrameTarget();
+            return;
+        }
+
+        const intervalMs = 1000 / framesPerSecond;
+        const nextTargetAt = this.nextRenderFrameTargetAt;
+        if (nextTargetAt === null) {
+            this.nextRenderFrameTargetAt = now + intervalMs;
+            return;
+        }
+
+        const elapsedIntervals = Math.max(
+            0,
+            Math.floor(
+                (now + schedulerToleranceMs - nextTargetAt) / intervalMs,
+            ),
+        );
+        this.nextRenderFrameTargetAt = Math.max(
+            nextTargetAt + (elapsedIntervals + 1) * intervalMs,
+            now + intervalMs,
+        );
+    }
+
     private deferRenderFrameTargetAfterExternalReceipt(now: number) {
         const framesPerSecond = this.getRenderFramesPerSecond();
         if (framesPerSecond === 0) {
@@ -990,6 +1028,24 @@ export class GameRuntimeScheduler {
         this.nextRenderFrameTargetAt = Math.max(
             this.nextRenderFrameTargetAt ?? nextTargetAt,
             nextTargetAt,
+        );
+    }
+
+    private isImmediateFollowUpToOwnedFrame(receiptAt: number) {
+        if (
+            !this.previousFrameReceiptWasOwned ||
+            this.lastFrameReceiptAt === null
+        ) {
+            return false;
+        }
+
+        const elapsedMs = receiptAt - this.lastFrameReceiptAt;
+        const displayIntervalMs = this.frameIntervalCalibrated
+            ? this.displayFrameIntervalMs
+            : defaultDisplayFrameIntervalMs;
+        return (
+            elapsedMs >= 0 &&
+            elapsedMs <= displayIntervalMs + schedulerToleranceMs
         );
     }
 

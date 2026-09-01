@@ -1144,12 +1144,13 @@ scheduler callback. R3F acknowledges each rendered frame through a root-scoped
 `addAfterEffect` receipt after WebGL submission, keeping scheduler bookkeeping
 out of the pre-render `useFrame` path.
 
-The bounded calibration RAF timestamps are observational telemetry only and
-never control cadence phase or lead. A scheduler-requested R3F receipt
-acknowledges the slot already consumed by the timeout. An external R3F receipt
-satisfies current visual work and defers the next owned target by at least one
-semantic interval, preventing duplicate renders during interaction-driven
-frames. Late work skips elapsed targets without catch-up. Existing camera,
+The bounded calibration RAF timestamps never choose target FPS, cadence phase,
+or invalidation lead. The calibrated interval only bounds whether the first
+non-owned receipt after a scheduler-owned receipt is its immediate one-display
+follow-up. That follow-up consumes the pending semantic slot; subsequent
+external receipts only defer the next owned target by at least one interval,
+preventing duplicate renders without banking post-interaction cadence debt.
+Late work skips elapsed targets without catch-up. Existing camera,
 avatar, weather, cloud, precipitation, sky, and meteor owners retain their
 intended 20/30/60 FPS policy.
 
