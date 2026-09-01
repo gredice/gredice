@@ -885,6 +885,74 @@ Progress:
   shortened sample; the report recorded `profile=dense`, `mode=details`,
   `controls=0`, medium quality, and dense decoration counts.
 
+## Milestone 9: Semantic runtime scheduling
+
+### [~] 12. Replace the ambient heartbeat with explicit runtime work
+
+Priority: High
+
+Problem:
+
+Demand rendering still has a permanent 20/30 FPS compatibility cadence, and
+the original scheduler wakes at display refresh merely to throttle render
+requests. Time-dependent visuals, simulations, spawning, retries, and direct
+invalidations do not yet share one ownership model, so a static scene cannot
+prove that it is genuinely idle.
+
+Scope:
+
+- Use one renderer-independent `GameRuntimeScheduler` for named render leases,
+  fixed-step work, semantic invalidation, absolute deadlines, and combined
+  document/Canvas/context visibility.
+- Preserve existing ambient and interactive cadence while ownership is migrated;
+  do not reduce visual density, effects, or quality-tier fidelity.
+- Expose stable owner/rate summaries, R3F frame-callback receipts, bounded resume
+  deltas, lease balance, hidden deferred render requests, actual invalidation
+  failures, quarantined fixed-step failures, missed frame receipts, calibrated
+  display interval and calibration counts, and nonessential-hidden-work
+  counters.
+- Remove the compatibility base only after shader time, weather, plants, fauna,
+  particles, timers, workers, audio, and polling have explicit ownership.
+
+Acceptance criteria:
+
+- A clear fixed-time scene reaches zero R3F frame callbacks and zero WebGL
+  submissions after stabilization.
+- Hidden, offscreen, and context-lost scenes execute zero nonessential work.
+- Camera, weather, plant, and fauna animation retains its intended cadence in
+  every quality profile.
+- Resume coalesces deferred work, preserves absolute time, and never replays a
+  hidden catch-up burst.
+- Cross-tier, fauna, lifecycle, and static profile evidence passes without a
+  quality reduction.
+
+Progress:
+
+- Added the pure scheduler core with injected time/effects and deterministic
+  coverage for 20/30/60 FPS cadence, one-pending-callback ownership, named lease
+  rates, deadlines, fixed-step clamping, visibility interlocks, StrictMode-style
+  lease lifecycles, hidden request coalescing, and disposal.
+- Replaced the SceneTime display-rate RAF poll with one phase-aligned exact-due
+  timer per invalidation; R3F alone schedules the render RAF. The scheduler
+  uses R3F's actual RAF timestamp rather than callback receipt time. Its initial
+  display-lead calibration is bounded by samples, attempts, and elapsed time,
+  with a safe fallback when all observed intervals are invalid. The calibrated
+  interval is never treated as a synthetic display lattice, so moving between
+  monitors cannot preserve averages by alternating short and long frame gaps.
+  After calibration, one
+  awaited RAF consumes one absolute cadence
+  target; external early frames leave future targets intact, and late frames
+  skip elapsed targets without catch-up. That invariant preserves cadence
+  across fixed, changing, and variable refresh schedules without live refresh
+  polling.
+- Named all existing explicit render leases and separated ambient policy from
+  the temporary nonzero compatibility base.
+- Extended production profiling with deep-cloned start/end scheduler state and
+  additive counter deltas while preserving the existing lifecycle/comparator
+  contract for clean before/after reports.
+- The compatibility base remains intentionally active until the remaining
+  implicit visual and runtime owners migrate in the next slice.
+
 ## Suggested implementation order
 
 Task 10 spans multiple phases: start the shared-clock work when converting

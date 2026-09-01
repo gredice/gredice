@@ -34,6 +34,8 @@ import {
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
+    lifecycleOwnedSchedulingZeroObserved,
+    lifecycleZeroWorkObserved,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
     normalizeRenderWork,
@@ -1572,6 +1574,213 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
     }
 });
 
+test('interactive sampling deep-clones scheduler owners and reports exact counter deltas', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const runtimeFrameLoop = {
+        cancelledCallbackCount: 1,
+        deadlineOwners: ['spawn'],
+        displayFrameCalibrationCount: 1,
+        displayFrameIntervalMs: 1000 / 60,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: ['game-time'],
+        hiddenDeferredRenderRequestCount: 1,
+        invalidationFailureCount: 0,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
+        ownedInvalidationCount: 30,
+        r3fFrameCallbackCount: 40,
+        renderLeaseOwners: ['camera'],
+        renderLeaseSummaries: [
+            { framesPerSecond: 30, leaseCount: 1, owner: 'camera' },
+        ],
+        resumeCount: 0,
+        scheduledCallbackCount: 10,
+        suspendCount: 0,
+        wakeupCount: 20,
+    };
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('__grediceGameProfile', { runtimeFrameLoop });
+
+        beginInteractiveProfileSample();
+
+        runtimeFrameLoop.cancelledCallbackCount = 2;
+        runtimeFrameLoop.deadlineOwners.push('weather-transition');
+        runtimeFrameLoop.displayFrameCalibrationCount = 2;
+        runtimeFrameLoop.displayFrameIntervalMs = 1000 / 120;
+        runtimeFrameLoop.fixedStepOwners.push('weather');
+        runtimeFrameLoop.fixedStepFailureCount = 1;
+        runtimeFrameLoop.hiddenDeferredRenderRequestCount = 3;
+        runtimeFrameLoop.invalidationFailureCount = 2;
+        runtimeFrameLoop.missedFrameReceiptCount = 1;
+        runtimeFrameLoop.ownedInvalidationCount = 34;
+        runtimeFrameLoop.r3fFrameCallbackCount = 46;
+        runtimeFrameLoop.renderLeaseOwners.push('weather');
+        runtimeFrameLoop.renderLeaseSummaries[0].leaseCount = 2;
+        runtimeFrameLoop.resumeCount = 1;
+        runtimeFrameLoop.scheduledCallbackCount = 15;
+        runtimeFrameLoop.suspendCount = 1;
+        runtimeFrameLoop.wakeupCount = 23;
+
+        const sampleAtEndpoint = await finishInteractiveProfileSample();
+        const sample = mergeProfileSampleDrain(sampleAtEndpoint, {
+            gpu: null,
+            longTasks: [],
+        });
+
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.renderLeaseOwners, [
+            'camera',
+        ]);
+        assert.deepEqual(sample.runtimeFrameLoopAtEnd.renderLeaseOwners, [
+            'camera',
+            'weather',
+        ]);
+        assert.notEqual(
+            sample.runtimeFrameLoopAtStart.renderLeaseOwners,
+            sample.runtimeFrameLoopAtEnd.renderLeaseOwners,
+        );
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.fixedStepOwners, [
+            'game-time',
+        ]);
+        assert.deepEqual(sample.runtimeFrameLoopAtStart.deadlineOwners, [
+            'spawn',
+        ]);
+        assert.equal(
+            sample.runtimeFrameLoopAtStart.renderLeaseSummaries[0].leaseCount,
+            1,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtEnd.renderLeaseSummaries[0].leaseCount,
+            2,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtStart.displayFrameIntervalMs,
+            1000 / 60,
+        );
+        assert.equal(
+            sample.runtimeFrameLoopAtEnd.displayFrameIntervalMs,
+            1000 / 120,
+        );
+        assert.deepEqual(sample.runtimeFrameLoopCounterDeltas, {
+            cancelledCallbackCount: 1,
+            displayFrameCalibrationCount: 1,
+            fixedStepFailureCount: 1,
+            hiddenDeferredRenderRequestCount: 2,
+            invalidationFailureCount: 2,
+            missedFrameReceiptCount: 1,
+            nonessentialHiddenWorkCount: 0,
+            ownedInvalidationCount: 4,
+            r3fFrameCallbackCount: 6,
+            resumeCount: 1,
+            scheduledCallbackCount: 5,
+            suspendCount: 1,
+            wakeupCount: 3,
+        });
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('interactive sampling preserves absent scheduler telemetry without changing legacy samples', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => 1);
+        setGlobal('__grediceGameProfile', {});
+
+        beginInteractiveProfileSample();
+        const sampleAtEndpoint = await finishInteractiveProfileSample();
+        const sample = mergeProfileSampleDrain(sampleAtEndpoint, {
+            gpu: null,
+            longTasks: [],
+        });
+
+        assert.equal(sample.runtimeFrameLoopAtStart, null);
+        assert.equal(sample.runtimeFrameLoopAtEnd, null);
+        assert.deepEqual(sample.runtimeFrameLoopCounterDeltas, {
+            cancelledCallbackCount: null,
+            displayFrameCalibrationCount: null,
+            fixedStepFailureCount: null,
+            hiddenDeferredRenderRequestCount: null,
+            invalidationFailureCount: null,
+            missedFrameReceiptCount: null,
+            nonessentialHiddenWorkCount: null,
+            ownedInvalidationCount: null,
+            r3fFrameCallbackCount: null,
+            resumeCount: null,
+            scheduledCallbackCount: null,
+            suspendCount: null,
+            wakeupCount: null,
+        });
+
+        const legacySample = mergeProfileSampleDrain(
+            {
+                drawCalls: 0,
+                sampleWindow: { endedAt: 2, startedAt: 1 },
+            },
+            { gpu: null, longTasks: [] },
+        );
+        assert.equal('runtimeFrameLoopCounterDeltas' in legacySample, false);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
 test('garden-switch sampling primes the discarded RAF before switch work', async () => {
     const keys = [
         'document',
@@ -2910,7 +3119,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
     assert.match(markdown, /dynamic bee:1 butterfly:3 ladybug:5 squirrel:1/);
 });
 
-test('lifecycle acceptance gates scheduler suspension while keeping residual GL and CDP informational', () => {
+test('lifecycle acceptance gates owned scheduling while keeping full residual and CDP evidence diagnostic', () => {
     const residual = (renderedFrames, drawCalls, submittedTriangles) => ({
         cdp: {
             layoutDuration: 0,
@@ -2962,10 +3171,67 @@ test('lifecycle acceptance gates scheduler suspension while keeping residual GL 
     );
     assert.equal(byName.lifecycleHiddenResidualDrawCallsFinite.pass, true);
     assert.deepEqual(result.residualWorkPolicy, {
+        fullResidualZeroWorkGated: false,
+        ownedSchedulingGated: true,
         rendererAndCdpGated: false,
         runtimeSchedulerGated: true,
-        reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+        reason: 'Offscreen and synthetic-hidden owned scheduling counters are gated. R3F frame callbacks, renderer submissions, hidden deferred render requests, invalidation failures, nonessential hidden work, and CDP script time remain explicit compatibility-baseline diagnostics.',
     });
+});
+
+test('lifecycle zero-work separates owned scheduling from full render and runtime residuals', () => {
+    const ownedDeltas = {
+        cancelledCallbackCount: 0,
+        ownedInvalidationCount: 0,
+        resumeCount: 0,
+        scheduledCallbackCount: 0,
+        suspendCount: 0,
+        wakeupCount: 0,
+    };
+    const fullDeltas = {
+        ...ownedDeltas,
+        displayFrameCalibrationCount: 0,
+        fixedStepFailureCount: 0,
+        hiddenDeferredRenderRequestCount: 0,
+        invalidationFailureCount: 0,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
+        r3fFrameCallbackCount: 0,
+    };
+    const residual = {
+        sample: {
+            drawCalls: 0,
+            renderedFrames: 0,
+            runtimeFrameLoopCounterDeltas: fullDeltas,
+            submittedTriangles: 0,
+        },
+    };
+
+    assert.equal(lifecycleOwnedSchedulingZeroObserved(ownedDeltas), true);
+    assert.equal(lifecycleZeroWorkObserved(residual, ownedDeltas), true);
+
+    for (const field of [
+        'displayFrameCalibrationCount',
+        'fixedStepFailureCount',
+        'hiddenDeferredRenderRequestCount',
+        'invalidationFailureCount',
+        'missedFrameReceiptCount',
+        'nonessentialHiddenWorkCount',
+        'r3fFrameCallbackCount',
+    ]) {
+        const withResidualWork = structuredClone(residual);
+        withResidualWork.sample.runtimeFrameLoopCounterDeltas[field] = 1;
+        assert.equal(
+            lifecycleZeroWorkObserved(withResidualWork, ownedDeltas),
+            false,
+            field,
+        );
+        assert.equal(
+            lifecycleOwnedSchedulingZeroObserved(ownedDeltas),
+            true,
+            field,
+        );
+    }
 });
 
 test('lifecycle acceptance passes one complete contract and rejects focused evidence mutations', () => {
@@ -3310,11 +3576,13 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
                 },
             },
             hidden: {
+                ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
                 zeroWorkObserved: true,
             },
             offscreen: {
+                ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
                 zeroWorkObserved: true,
@@ -3332,8 +3600,19 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
     assert.equal(summary.runCount, 3);
     assert.equal(summary.passedRunCount, 3);
     assert.equal(summary.contextPersistentRunCount, 3);
+    assert.equal(summary.offscreen.ownedSchedulingZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.runtimeSchedulerZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.zeroWorkObservedRunCount, 3);
+    const legacyCompatibleRuns = structuredClone(runs);
+    for (const run of legacyCompatibleRuns) {
+        delete run.lifecycle.hidden.ownedSchedulingZeroObserved;
+        delete run.lifecycle.offscreen.ownedSchedulingZeroObserved;
+    }
+    assert.equal(
+        buildLifecycleSummary(legacyCompatibleRuns).offscreen
+            .ownedSchedulingZeroObservedRunCount,
+        3,
+    );
     assert.deepEqual(buildHighTargetMedians(runs), {});
     assert.deepEqual(buildProfileSummary(runs, {}), {
         failedScenarioNames: [],
@@ -3370,6 +3649,95 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
             totalScenarios: 3,
         },
     );
+});
+
+test('lifecycle markdown separates owned scheduling from full zero-work witnesses', () => {
+    const lifecyclePhase = (zeroWorkObserved) => ({
+        ownedSchedulingZeroObserved: true,
+        residual: {
+            cdp: { scriptDuration: 0.01 },
+            sample: {
+                drawCalls: zeroWorkObserved ? 0 : 1,
+                renderedFrames: zeroWorkObserved ? 0 : 1,
+                submittedTriangles: zeroWorkObserved ? 0 : 1,
+            },
+        },
+        runtimeSchedulerZeroObserved: true,
+        zeroWorkObserved,
+    });
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-08-30T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-lifecycle',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                baseName: 'game-high-target-runtime-lifecycle-desktop',
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                lifecycle: {
+                    active: { sample: { drawCalls: 10, renderedFrames: 2 } },
+                    cold: {},
+                    context: { restored: {} },
+                    hidden: lifecyclePhase(false),
+                    offscreen: lifecyclePhase(true),
+                },
+                name: 'game-high-target-runtime-lifecycle-desktop-run-1',
+                profileRun: 1,
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '1',
+                    gardenProfile: 'high-target',
+                    hud: '0',
+                    lifecycleProfile: true,
+                    mode: 'details',
+                    motion: 'none',
+                },
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCallsPerFrame: 1,
+                    drawCallsPerRenderedFrame: 5,
+                    fps: 60,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 2,
+                    trianglesPerFrame: 1,
+                    trianglesPerRenderedFrame: 5,
+                },
+                pageErrors: [],
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(
+        markdown,
+        /Owned-scheduling zero witnesses — offscreen 1\/1, synthetic hidden 1\/1\./,
+    );
+    assert.match(
+        markdown,
+        /Full render\/runtime zero-work witnesses — offscreen 1\/1, synthetic hidden 0\/1\./,
+    );
+    assert.match(markdown, /owned scheduling zero\/full zero/);
+    assert.match(markdown, /0\/0\/0\/0\.01 s; yes\/yes/);
+    assert.match(markdown, /1\/1\/1\/0\.01 s; yes\/no/);
 });
 
 function residualLifecycleFixture(value) {

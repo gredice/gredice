@@ -336,6 +336,9 @@ export function Scene({
             ref={handleCanvasRef}
         >
             <SceneTimeProvider
+                ambientFramesPerSecond={ambientFramesPerSecond}
+                // Keep the compatibility heartbeat until every visual owner
+                // has migrated to an explicit scheduler lease.
                 baseFramesPerSecond={ambientFramesPerSecond}
                 fixedTimeSeconds={fixedTimeSeconds}
                 runtimeFrameLoop={runtimeFrameLoop}

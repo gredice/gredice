@@ -2,6 +2,7 @@
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
+import type { GameRuntimeSchedulerSnapshot } from './GameRuntimeScheduler';
 import type { GameQualityProfileTier } from './gameQuality';
 
 export type GeneratedPlantProfilePartCounts = {
@@ -190,31 +191,47 @@ export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'passed'
     | 'verifying';
 
-export type RuntimeFrameLoopProfileTelemetry = {
-    activeLeaseCount: number;
-    cancelledCallbackCount: number;
-    canvasVisible: boolean;
-    documentVisible: boolean;
-    effectiveVisible: boolean;
-    loopActive: boolean;
-    ownedInvalidationCount: number;
-    resumeCount: number;
-    scheduledCallbackCount: number;
-    suspendCount: number;
-    targetFramesPerSecond: number;
-    wakeupCount: number;
-};
+export type RuntimeFrameLoopProfileTelemetry = GameRuntimeSchedulerSnapshot;
 
 export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfileTelemetry {
     return {
+        activeDeadlineCount: 0,
+        activeFixedStepLeaseCount: 0,
         activeLeaseCount: 0,
+        activeRenderLeaseCount: 0,
+        callbackPending: false,
         cancelledCallbackCount: 0,
         canvasVisible: false,
+        contextAvailable: false,
+        deadlineCount: 0,
+        deadlineOwners: [],
+        deferredWorkCount: 0,
+        displayFrameCalibrationCount: 0,
+        displayFrameIntervalMs: null,
+        disposed: false,
         documentVisible: false,
         effectiveVisible: false,
+        fixedStepCount: 0,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: [],
+        hiddenDeferredRenderRequestCount: 0,
+        invalidationCount: 0,
+        invalidationFailureCount: 0,
+        leaseAcquiredCount: 0,
+        leaseReleasedCount: 0,
         loopActive: false,
+        maxDeliveredDeltaMs: 0,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
         ownedInvalidationCount: 0,
+        pendingCallbackDueAt: null,
+        pendingCallbackKind: 'none',
+        renderLeaseOwners: [],
+        renderLeaseSummaries: [],
+        renderRequestReasons: [],
+        requireCanvasVisible: true,
         resumeCount: 0,
+        r3fFrameCallbackCount: 0,
         scheduledCallbackCount: 0,
         suspendCount: 0,
         targetFramesPerSecond: 0,

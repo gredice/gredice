@@ -288,20 +288,35 @@ raised-bed outline interaction remain separate later milestones. Cold and
 restored screenshots must be nonblank `2560x1440` Canvas captures.
 
 The active phase records the normal render sample and all runtime frame-loop
-telemetry: active lease count, Canvas/document/effective visibility, loop state,
-target FPS, scheduled callbacks, wakeups, owned invalidations, cancellations,
-and suspend/resume counts. The offscreen phase inserts a real viewport spacer
-and requires both the runtime's IntersectionObserver state and an independent
-observer witness to report a zero-area, nonintersecting Canvas. The document
-hidden phase is explicitly synthetic: the profiler overrides
+telemetry: active named render/fixed-step leases, pending deadline owners,
+Canvas/document/context/effective visibility, target FPS, pending callback,
+scheduled callbacks, wakeups, owned invalidations, R3F frame callbacks, hidden
+deferred render requests, actual invalidation failures, fixed-step failures,
+missed frame receipts, calibrated display interval and calibration count,
+bounded work deltas, and suspend/resume counts. Generic samples
+deep-clone the complete scheduler state at both endpoints and report deltas for
+the legacy lifecycle counters plus R3F frame callbacks, hidden deferred render
+requests, invalidation failures, fixed-step failures, missed frame receipts,
+display calibration counts, and nonessential hidden work. The offscreen
+phase inserts a real viewport spacer and requires both the runtime's
+IntersectionObserver state and an independent observer witness to report a
+zero-area, nonintersecting Canvas. The document hidden phase is explicitly
+synthetic: the profiler overrides
 `document.hidden`/`visibilityState`, dispatches `visibilitychange`, and records
 those getters in the report. It must not be presented as browser lifecycle or
 background-tab proof.
 
-Both suspended phases require the owned SceneTime scheduler to add zero
-callbacks, wakeups, and invalidations. Browser RAF instrumentation itself is
-active, so submitted WebGL frames/draws/triangles and CDP script time are kept
-as honest residual observations rather than release failures in this baseline.
+Both suspended phases require the owned runtime scheduler to add zero callbacks,
+wakeups, and owned invalidations. Reports expose this as
+`ownedSchedulingZeroObserved` while retaining the legacy
+`runtimeSchedulerZeroObserved` property for comparator compatibility. A separate
+`zeroWorkObserved` diagnostic also requires zero R3F frame callbacks, hidden
+deferred render requests, invalidation failures, fixed-step failures, missed
+frame receipts, nonessential hidden work, and submitted WebGL
+frames/draws/triangles. That full witness and CDP script time remain observations
+rather than release failures in the compatibility baseline. The explicit-owner
+migration must promote them to release gates before removing the ambient
+compatibility cadence.
 Each resume must return to the same healthy Canvas and WebGL context, re-prove
 the exact fixture, accept a fresh outline command from an exact zero-target
 state, submit new draw work, and produce a nonblank screenshot.
@@ -381,12 +396,13 @@ pairing, the confirmed result returns `needs-rerun` rather than passing open.
 
 The floors cover observed same-commit variation in browser startup clocks, GPU
 queries, uncollected heap snapshots, script counters, and isolated long tasks;
-deterministic fixture, quality, interaction, provenance, and lifecycle zero-work
-witnesses remain hard checks in every raw run. Long-task counts compare batch
-medians, and duration medians use bounded millisecond floors, so one isolated
-browser task is visible in the raw ranks without being mislabeled as an
-application regression. Renderer resource medians have a one-count tolerance;
-larger growth must reproduce across the symmetric confirmation matrix.
+deterministic fixture, quality, interaction, provenance, and lifecycle
+owned-scheduling witnesses remain hard checks in every raw run. Long-task counts
+compare batch medians, and duration medians use bounded millisecond floors, so
+one isolated browser task is visible in the raw ranks without being mislabeled
+as an application regression. Renderer resource medians have a one-count
+tolerance; larger growth must reproduce across the symmetric confirmation
+matrix.
 
 | Median metric | Relative allowance | Practical floor |
 | --- | ---: | ---: |
@@ -908,24 +924,41 @@ Recommended work:
 
 Expected impact: high on high-DPR devices.
 
-### 3. Continuous frame work remains spread across the scene
+### 3. Runtime work is moving to explicit semantic ownership
 
-The old time manager optimization removed one recurring React update, but the
-scene still has about a dozen `useFrame` systems: controls, camera animation,
-clouds, sun/moon, stars, rain, snow, action particles, sprite billboards, plant
-sway, plant LOD, and snow overlay material damping.
+The Canvas already uses demand rendering and shared shader time, but the first
+implementation retained an always-active 20/30 FPS ambient heartbeat. It also
+polled with browser RAF at display cadence merely to decide whether to request a
+render. `GameRuntimeScheduler` now owns one exact-due timer, named render and
+fixed-step leases, semantic multi-frame requests, deadlines, visibility/context
+gates, bounded resume deltas, and profile-only ownership telemetry. R3F remains
+the sole owner of the render RAF. Existing explicit camera, avatar, weather,
+cloud, precipitation, sky, and meteor leases are named without changing their
+20/30/60 FPS policy. Attempt- and time-bounded display-lead calibration keeps
+those rates bounded on divisor and non-divisor displays, falls back safely when
+every observed interval is out of range, and uses the R3F RAF timestamp so
+callback work cannot bias the display interval. After calibration, one
+scheduler-awaited RAF consumes exactly one absolute cadence target; early
+unrelated frames cannot move that target, while late frames skip elapsed targets
+without catch-up. This keeps cadence stable across fixed, changing, and variable
+refresh schedules without a periodic live monitor probe. Reported display
+interval telemetry is the last compatible bounded calibration and can retain an
+older interval while the absolute render cadence remains exact.
 
-Recommended work:
+Remaining work:
 
-- Classify frame systems as always-needed, interaction-only, weather-only, or
-  close-up-only.
-- Avoid registering `useFrame` callbacks when the feature is disabled or static.
-- Move shared animation time into grouped uniforms rather than many small React
-  component callbacks.
-- Evaluate `frameloop="demand"` only after optional continuous effects are gated;
-  otherwise weather/cloud systems will keep invalidating every frame anyway.
+- Give shader-time, fauna, finite particles/springs, and capture stabilization
+  explicit domain leases instead of relying on the compatibility base.
+- Move spawning, ecology reconciliation, retries, lightning, and game-time
+  polling to fixed-step work or absolute scheduler deadlines.
+- Route direct invalidations through named semantic requests and hard-gate
+  externally queued frames while document, Canvas, or WebGL context is inactive.
+- Add a clear fixed-time static profile that proves zero R3F frame callbacks,
+  zero WebGL submissions, and zero nonessential work after stabilization, then
+  set the base cadence to zero.
 
-Expected impact: medium to high, especially for idle gardens.
+Expected impact: high across every quality tier, especially for static,
+backgrounded, and partially visible gardens, without reducing visual fidelity.
 
 ### 4. Snow overlays are still mounted and animated per instance
 

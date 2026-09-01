@@ -345,6 +345,7 @@ export function GameCameraRig({
     const garden = useSceneCurrentGarden(gardenData);
     const resolvedMinZoom = MathUtils.clamp(minZoom, 1, maxZoom);
     useSceneTimeInvalidation(
+        'camera-interaction',
         isAnimating || isDragging || isKeyboardPanning,
         sceneFrameRates.interactive,
     );

@@ -2387,9 +2387,16 @@ function beginInteractiveProfileSample() {
     globalThis.__gameProfileGpuTimer?.reset();
 
     const startedAt = performance.now();
+    const runtimeFrameLoopTelemetry =
+        globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
     const sample = {
         intervals: [],
         lastFrameAt: startedAt,
+        runtimeFrameLoopAtStart:
+            runtimeFrameLoopTelemetry &&
+            typeof runtimeFrameLoopTelemetry === 'object'
+                ? structuredClone(runtimeFrameLoopTelemetry)
+                : null,
         running: true,
         startedAt,
     };
@@ -2424,6 +2431,13 @@ async function finishInteractiveProfileSample() {
     }
     sample.running = false;
     const sampleEndedAt = performance.now();
+    const runtimeFrameLoopTelemetry =
+        globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+    const runtimeFrameLoopAtEnd =
+        runtimeFrameLoopTelemetry &&
+        typeof runtimeFrameLoopTelemetry === 'object'
+            ? structuredClone(runtimeFrameLoopTelemetry)
+            : null;
 
     const canvas = document.querySelector('canvas');
     const metrics = globalThis.__gameProfileMetrics;
@@ -2491,6 +2505,8 @@ async function finishInteractiveProfileSample() {
 
     return {
         ...nonGpuSample,
+        runtimeFrameLoopAtEnd,
+        runtimeFrameLoopAtStart: sample.runtimeFrameLoopAtStart ?? null,
         sampleWindow: {
             endedAt: sampleEndedAt,
             startedAt: sample.startedAt,
@@ -2527,6 +2543,9 @@ async function drainProfileSample(sampleWindow) {
 function mergeProfileSampleDrain(sampleAtEndpoint, drainedSample) {
     const { sampleWindow: _sampleWindow, ...sample } = sampleAtEndpoint;
     const longTasks = drainedSample.longTasks ?? [];
+    const hasRuntimeFrameLoopSnapshots =
+        'runtimeFrameLoopAtStart' in sample ||
+        'runtimeFrameLoopAtEnd' in sample;
 
     return {
         ...sample,
@@ -2534,6 +2553,15 @@ function mergeProfileSampleDrain(sampleAtEndpoint, drainedSample) {
         longTaskCount: longTasks.length,
         longTaskMaxMs: Math.max(0, ...longTasks),
         longTaskTotalMs: longTasks.reduce((sum, value) => sum + value, 0),
+        ...(hasRuntimeFrameLoopSnapshots
+            ? {
+                  runtimeFrameLoopCounterDeltas: runtimeFrameLoopCounterDeltas(
+                      sample.runtimeFrameLoopAtStart,
+                      sample.runtimeFrameLoopAtEnd,
+                      genericRuntimeFrameLoopCounterFields,
+                  ),
+              }
+            : {}),
     };
 }
 
@@ -3842,13 +3870,23 @@ const runtimeFrameLoopCounterFields = [
     'suspendCount',
     'resumeCount',
 ];
+const genericRuntimeFrameLoopCounterFields = [
+    ...runtimeFrameLoopCounterFields,
+    'displayFrameCalibrationCount',
+    'fixedStepFailureCount',
+    'r3fFrameCallbackCount',
+    'hiddenDeferredRenderRequestCount',
+    'invalidationFailureCount',
+    'missedFrameReceiptCount',
+    'nonessentialHiddenWorkCount',
+];
 
 async function readRuntimeFrameLoopSnapshot(page) {
     return page.evaluate(() => {
         const telemetry =
             globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
         return telemetry && typeof telemetry === 'object'
-            ? { ...telemetry }
+            ? structuredClone(telemetry)
             : null;
     });
 }
@@ -3869,9 +3907,13 @@ async function waitForRuntimeFrameLoopState(page, expected) {
     );
 }
 
-function runtimeFrameLoopCounterDeltas(before, after) {
+function runtimeFrameLoopCounterDeltas(
+    before,
+    after,
+    counterFields = runtimeFrameLoopCounterFields,
+) {
     return Object.fromEntries(
-        runtimeFrameLoopCounterFields.map((field) => [
+        counterFields.map((field) => [
             field,
             typeof before?.[field] === 'number' &&
             typeof after?.[field] === 'number'
@@ -3881,15 +3923,23 @@ function runtimeFrameLoopCounterDeltas(before, after) {
     );
 }
 
-function lifecycleRuntimeSchedulerZeroObserved(deltas) {
+function lifecycleOwnedSchedulingZeroObserved(deltas) {
     return runtimeFrameLoopCounterFields.every(
         (field) => deltas?.[field] === 0,
     );
 }
 
+function lifecycleRuntimeSchedulerZeroObserved(deltas) {
+    return lifecycleOwnedSchedulingZeroObserved(deltas);
+}
+
 function lifecycleZeroWorkObserved(residual, deltas) {
     return (
-        lifecycleRuntimeSchedulerZeroObserved(deltas) &&
+        lifecycleOwnedSchedulingZeroObserved(deltas) &&
+        genericRuntimeFrameLoopCounterFields.every(
+            (field) =>
+                residual?.sample?.runtimeFrameLoopCounterDeltas?.[field] === 0,
+        ) &&
         residual?.sample?.renderedFrames === 0 &&
         residual.sample.drawCalls === 0 &&
         residual.sample.submittedTriangles === 0
@@ -5074,9 +5124,11 @@ function evaluateLifecycleAcceptance({
         checks,
         pass: checks.every((check) => check.pass),
         residualWorkPolicy: {
+            fullResidualZeroWorkGated: false,
+            ownedSchedulingGated: true,
             rendererAndCdpGated: false,
             runtimeSchedulerGated: true,
-            reason: 'Offscreen and synthetic-hidden draw, frame, and script work are baseline observations until the runtime scheduler optimization lands.',
+            reason: 'Offscreen and synthetic-hidden owned scheduling counters are gated. R3F frame callbacks, renderer submissions, hidden deferred render requests, invalidation failures, nonessential hidden work, and CDP script time remain explicit compatibility-baseline diagnostics.',
         },
     };
 }
@@ -5321,6 +5373,9 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 offscreenBefore,
                 offscreenSuspended,
             ),
+            ownedSchedulingZeroObserved: lifecycleOwnedSchedulingZeroObserved(
+                offscreenResidualDeltas,
+            ),
             runtimeSchedulerZeroObserved: lifecycleRuntimeSchedulerZeroObserved(
                 offscreenResidualDeltas,
             ),
@@ -5394,6 +5449,8 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 hiddenBefore,
                 hiddenSuspended,
             ),
+            ownedSchedulingZeroObserved:
+                lifecycleOwnedSchedulingZeroObserved(hiddenResidualDeltas),
             runtimeSchedulerZeroObserved:
                 lifecycleRuntimeSchedulerZeroObserved(hiddenResidualDeltas),
             zeroWorkObserved: lifecycleZeroWorkObserved(
@@ -6194,6 +6251,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'string' ? value : null;
             };
+            const readRuntimeFrameLoopSnapshot = () => {
+                const telemetry =
+                    globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+                return telemetry && typeof telemetry === 'object'
+                    ? structuredClone(telemetry)
+                    : null;
+            };
             const readActorGroundingShadowSpeciesCounts = () => {
                 if (!faunaExpectedSpecies.length) {
                     return null;
@@ -6377,6 +6441,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordEffectiveDpr();
             recordGeneratedPlantVisibility();
             recordAdaptiveHighState();
+            const runtimeFrameLoopAtStart = readRuntimeFrameLoopSnapshot();
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
             );
@@ -6766,6 +6831,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ]);
 
             const sampleEndedAt = performance.now();
+            const runtimeFrameLoopAtEnd = readRuntimeFrameLoopSnapshot();
             recordGameCameraMotion();
             const actorGroundingShadowSpeciesCountsAtEnd =
                 recordActorGroundingShadowSpeciesCounts();
@@ -7044,6 +7110,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 renderedFrames,
                 rendererShaders: metrics?.rendererShaders ?? null,
                 rendererTextures: metrics?.rendererTextures ?? null,
+                runtimeFrameLoopAtEnd,
+                runtimeFrameLoopAtStart,
                 staticOpaqueSceneCacheBypassFrameCountDelta,
                 staticOpaqueSceneCacheCaptureCountAtStart,
                 staticOpaqueSceneCacheCaptureCountDelta,
@@ -8712,6 +8780,13 @@ function buildLifecycleSummary(scenarios) {
             (run) =>
                 run.lifecycle?.[phase]?.residual?.sample?.submittedTriangles,
         ),
+        ownedSchedulingZeroObservedRunCount: lifecycleRuns.filter((run) => {
+            const lifecyclePhase = run.lifecycle?.[phase];
+            return (
+                (lifecyclePhase?.ownedSchedulingZeroObserved ??
+                    lifecyclePhase?.runtimeSchedulerZeroObserved) === true
+            );
+        }).length,
         runtimeSchedulerZeroObservedRunCount: lifecycleRuns.filter(
             (run) =>
                 run.lifecycle?.[phase]?.runtimeSchedulerZeroObserved === true,
@@ -13214,9 +13289,11 @@ function buildMarkdown(report) {
             '',
             `Cold milestone medians [min, max] in ms — DOMContentLoaded ${formatMetric(summary.cold.domContentLoadedMs)}, Canvas attached ${formatMetric(summary.cold.canvasAttachedMs)}, Canvas sized ${formatMetric(summary.cold.canvasSizedMs)}, first submitted frame ${formatMetric(summary.cold.firstSubmittedFrameMs)}, exact fixture ${formatMetric(summary.cold.fixtureReadyMs)}, outline interaction ${formatMetric(summary.cold.interactionReadyMs)}.`,
             '',
-            'Offscreen and synthetic document-hidden renderer/CDP residuals are recorded honestly. The structural gate covers SceneTime scheduling counters; residual submitted GL work and CDP script time remain observations for the scheduler optimization.',
+            `Owned-scheduling zero witnesses — offscreen ${summary.offscreen.ownedSchedulingZeroObservedRunCount}/${summary.runCount}, synthetic hidden ${summary.hidden.ownedSchedulingZeroObservedRunCount}/${summary.runCount}. Full render/runtime zero-work witnesses — offscreen ${summary.offscreen.zeroWorkObservedRunCount}/${summary.runCount}, synthetic hidden ${summary.hidden.zeroWorkObservedRunCount}/${summary.runCount}.`,
             '',
-            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; scheduler zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; scheduler zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
+            'The release gate covers owned scheduling counters. The separate full zero-work witness also requires zero R3F frame callbacks, hidden deferred render requests, invalidation failures, nonessential hidden work, and renderer submissions. That full witness and CDP script time remain explicit compatibility-baseline diagnostics.',
+            '',
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture/interaction | Active rendered/draws | Offscreen residual rendered/draws/triangles/script; owned scheduling zero/full zero | Offscreen resume draw/context | Synthetic hidden residual rendered/draws/triangles/script; owned scheduling zero/full zero | Hidden resume draw/context | Context loss events/default/lost GL | Restored window/context | Screenshots cold/offscreen/hidden/restored | Result |',
             '| --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- |',
         );
         for (const scenario of lifecycleProfiles) {
@@ -13226,8 +13303,14 @@ function buildMarkdown(report) {
             const restoredControl = lifecycle?.context?.restoredControl;
             const screenshot = (control) =>
                 `${control?.screenshotWitness?.width ?? 'n/a'}x${control?.screenshotWitness?.height ?? 'n/a'}`;
+            const zeroWitnesses = (phase) => {
+                const ownedSchedulingZeroObserved =
+                    phase?.ownedSchedulingZeroObserved ??
+                    phase?.runtimeSchedulerZeroObserved;
+                return `${ownedSchedulingZeroObserved ? 'yes' : 'no'}/${phase?.zeroWorkObserved ? 'yes' : 'no'}`;
+            };
             lines.push(
-                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.offscreen?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${lifecycle?.hidden?.runtimeSchedulerZeroObserved ? 'yes' : 'no'} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.offscreen)} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.hidden)} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
         }
     }
@@ -14049,6 +14132,8 @@ export {
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
+    lifecycleOwnedSchedulingZeroObserved,
+    lifecycleZeroWorkObserved,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,

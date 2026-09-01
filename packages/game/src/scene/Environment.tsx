@@ -209,7 +209,7 @@ function useBlendedWeather(
         );
     }, [enabled, weather]);
 
-    useSceneTimeInvalidation(blendState.isBlending);
+    useSceneTimeInvalidation('weather-blend', blendState.isBlending);
 
     useFrame((_, delta) => {
         if (!blendState.isBlending) {
@@ -711,7 +711,7 @@ export function Environment({
             (actualWeather?.foggy ?? 0) > 0.01 ||
             (actualWeather?.rainy ?? 0) > 0 ||
             (actualWeather?.snowy ?? 0) > 0);
-    useSceneTimeInvalidation(activeWeatherAnimation);
+    useSceneTimeInvalidation('weather-animation', activeWeatherAnimation);
 
     // Sound management
     const morningAmbient = ambientAudioMixer.useMusic(

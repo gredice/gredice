@@ -477,7 +477,7 @@ export function SkyGradientBackground({
         return gameCamera.subscribe(() => updateSkyProjection());
     }, [gameCamera, updateSkyProjection]);
 
-    useSceneTimeInvalidation(transitionActive);
+    useSceneTimeInvalidation('sky-gradient-transition', transitionActive);
 
     useFrame((_, delta) => {
         updateSkyProjection(false, false);

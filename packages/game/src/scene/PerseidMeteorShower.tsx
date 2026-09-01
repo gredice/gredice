@@ -180,7 +180,7 @@ export function Perseids({
         [],
     );
 
-    useSceneTimeInvalidation(true);
+    useSceneTimeInvalidation('perseid-meteors', true);
 
     useEffect(
         () => () => {

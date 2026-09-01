@@ -1132,7 +1132,11 @@ export function GardenAvatar({
         primaryCasterCount: view !== 'overview' ? model.primaryCasterCount : 0,
         species: 'avatar',
     });
-    useSceneTimeInvalidation(true, sceneFrameRates.interactive);
+    useSceneTimeInvalidation(
+        'garden-avatar',
+        true,
+        sceneFrameRates.interactive,
+    );
 
     useEffect(() => {
         if (!boatId && mountedBoatRef.current) {
