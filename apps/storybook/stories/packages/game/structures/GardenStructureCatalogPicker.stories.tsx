@@ -3,12 +3,16 @@ import {
     gardenStructureKitV1Catalog,
 } from '@gredice/game/garden-structure-catalog';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, useEffect, useState } from 'react';
 
 function InteractiveCatalogPicker(
     args: ComponentProps<typeof GardenStructureCatalogPicker>,
 ) {
     const [selectedKey, setSelectedKey] = useState(args.selectedKey);
+
+    useEffect(() => {
+        setSelectedKey(args.selectedKey);
+    }, [args.selectedKey]);
 
     return (
         <GardenStructureCatalogPicker
