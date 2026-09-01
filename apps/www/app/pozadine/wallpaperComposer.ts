@@ -1,10 +1,33 @@
 export type WallpaperBranding = 'clean' | 'gredice';
 export type WallpaperPhase = 'morning' | 'day' | 'evening' | 'night';
-export type WallpaperSizeKey = 'uhd' | 'ultrawide';
+export type WallpaperSizeKey =
+    | 'fullHd'
+    | 'mobile'
+    | 'tablet'
+    | 'uhd'
+    | 'ultrawide';
 export type WallpaperTemplate = 'minimal' | 'standard';
 export type WallpaperTheme = 'water' | 'grass' | 'sand' | 'dirt';
 
 export const wallpaperSizes = {
+    fullHd: {
+        height: 1080,
+        label: '1080p · 1920 × 1080',
+        shortLabel: '1080p',
+        width: 1920,
+    },
+    mobile: {
+        height: 2796,
+        label: 'Mobitel · 1290 × 2796',
+        shortLabel: 'Mobitel',
+        width: 1290,
+    },
+    tablet: {
+        height: 2732,
+        label: 'Tablet · 2048 × 2732',
+        shortLabel: 'Tablet',
+        width: 2048,
+    },
     uhd: {
         height: 2160,
         label: '4K · 3840 × 2160',
@@ -162,10 +185,10 @@ export function resolveWallpaperPalette(
 
 export function getWallpaperPreviewSize(sizeKey: WallpaperSizeKey) {
     const size = wallpaperSizes[sizeKey];
-    const width = 1200;
+    const scale = Math.min(1200 / size.width, 800 / size.height);
     return {
-        height: Math.round((width * size.height) / size.width),
-        width,
+        height: Math.round(size.height * scale),
+        width: Math.round(size.width * scale),
     };
 }
 

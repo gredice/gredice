@@ -11,6 +11,24 @@ import {
 
 describe('wallpaper sizes', () => {
     it('keeps the required native launch dimensions', () => {
+        assert.deepEqual(wallpaperSizes.fullHd, {
+            height: 1080,
+            label: '1080p · 1920 × 1080',
+            shortLabel: '1080p',
+            width: 1920,
+        });
+        assert.deepEqual(wallpaperSizes.mobile, {
+            height: 2796,
+            label: 'Mobitel · 1290 × 2796',
+            shortLabel: 'Mobitel',
+            width: 1290,
+        });
+        assert.deepEqual(wallpaperSizes.tablet, {
+            height: 2732,
+            label: 'Tablet · 2048 × 2732',
+            shortLabel: 'Tablet',
+            width: 2048,
+        });
         assert.deepEqual(wallpaperSizes.uhd, {
             height: 2160,
             label: '4K · 3840 × 2160',
@@ -26,6 +44,10 @@ describe('wallpaper sizes', () => {
     });
 
     it('creates preview dimensions with the selected aspect ratio', () => {
+        assert.deepEqual(getWallpaperPreviewSize('fullHd'), {
+            height: 675,
+            width: 1200,
+        });
         assert.deepEqual(getWallpaperPreviewSize('uhd'), {
             height: 675,
             width: 1200,
@@ -33,6 +55,14 @@ describe('wallpaper sizes', () => {
         assert.deepEqual(getWallpaperPreviewSize('ultrawide'), {
             height: 502,
             width: 1200,
+        });
+        assert.deepEqual(getWallpaperPreviewSize('tablet'), {
+            height: 800,
+            width: 600,
+        });
+        assert.deepEqual(getWallpaperPreviewSize('mobile'), {
+            height: 800,
+            width: 369,
         });
     });
 
@@ -74,9 +104,9 @@ describe('wallpaper file name', () => {
                 branding: 'gredice',
                 phase: 'morning',
                 size: 'ultrawide',
-                template: 'minimal',
+                template: 'standard',
             }),
-            'gredice-vrt-minimal-morning-ultrawide-potpis.png',
+            'gredice-vrt-standard-morning-ultrawide-potpis.png',
         );
     });
 });
