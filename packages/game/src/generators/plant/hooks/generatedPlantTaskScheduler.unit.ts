@@ -276,3 +276,79 @@ test('suppresses stale in-flight results and continues with fresh work', async (
     assert.equal(snapshot.deliveredSubscriberCount, 1);
     assert.equal(snapshot.inFlightTaskKey, null);
 });
+
+test('aborts in-flight execution after its final subscriber cancels', async () => {
+    const subscriptionController = new AbortController();
+    const executionSignals: AbortSignal[] = [];
+    const scheduler = new GeneratedPlantTaskScheduler(
+        (_task: string, context) =>
+            new Promise<string>((_resolve, reject) => {
+                executionSignals.push(context.signal);
+                context.signal.addEventListener(
+                    'abort',
+                    () => reject(context.signal.reason),
+                    { once: true },
+                );
+            }),
+    );
+
+    const cancelled = scheduler.schedule({
+        key: 'cancel-in-flight',
+        signal: subscriptionController.signal,
+        task: 'cancel-in-flight',
+    });
+    await flushSchedulerMicrotasks();
+    const [executionSignal] = executionSignals;
+    assert.ok(executionSignal);
+
+    const cancellation = assert.rejects(cancelled, { name: 'AbortError' });
+    subscriptionController.abort();
+    await cancellation;
+    await flushSchedulerMicrotasks();
+
+    assert.equal(executionSignal.aborted, true);
+    const snapshot = scheduler.snapshot();
+    assert.equal(snapshot.inFlightTaskKey, null);
+    assert.equal(snapshot.failedTaskCount, 0);
+    assert.equal(snapshot.staleResultCount, 1);
+});
+
+test('queues a fresh same-key request while an abandoned execution aborts', async () => {
+    const subscriptionController = new AbortController();
+    let executionCount = 0;
+    const scheduler = new GeneratedPlantTaskScheduler(
+        (_task: string, context) => {
+            executionCount += 1;
+            if (executionCount > 1) {
+                return Promise.resolve('fresh-result');
+            }
+            return new Promise<string>((_resolve, reject) => {
+                context.signal.addEventListener(
+                    'abort',
+                    () => reject(context.signal.reason),
+                    { once: true },
+                );
+            });
+        },
+    );
+
+    const abandoned = scheduler.schedule({
+        key: 'shared-key',
+        signal: subscriptionController.signal,
+        task: 'abandoned',
+    });
+    await flushSchedulerMicrotasks();
+    const cancellation = assert.rejects(abandoned, { name: 'AbortError' });
+    subscriptionController.abort();
+    const fresh = scheduler.schedule({
+        key: 'shared-key',
+        task: 'fresh',
+    });
+
+    assert.equal(scheduler.snapshot().queuedTaskCount, 1);
+    await cancellation;
+    await flushSchedulerMicrotasks();
+    assert.equal(await fresh, 'fresh-result');
+    assert.equal(executionCount, 2);
+    assert.equal(scheduler.snapshot().failedTaskCount, 0);
+});

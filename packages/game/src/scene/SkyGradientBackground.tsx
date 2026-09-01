@@ -12,7 +12,7 @@ import {
     Vector3,
 } from 'three';
 import { useGameState } from '../useGameState';
-import { useSceneTimeInvalidation } from './SceneTime';
+import { useSceneRenderRequest, useSceneTimeInvalidation } from './SceneTime';
 import {
     cloneSkyGradientColors,
     isSkyGradientWithinEpsilon,
@@ -211,7 +211,7 @@ export function SkyGradientBackground({
     weather,
 }: SkyGradientBackgroundProps) {
     const camera = useThree((state) => state.camera);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const { width: viewportWidth, height: viewportHeight } = useThree(
         (state) => state.size,
     );
@@ -343,7 +343,7 @@ export function SkyGradientBackground({
                 hideCelestialGlow,
             );
             setTransitionActive(false);
-            invalidate();
+            requestRender('sky-gradient-target');
             return;
         }
 
@@ -353,11 +353,11 @@ export function SkyGradientBackground({
             SKY_GRADIENT_TRANSITION_EPSILON,
         );
         setTransitionActive(!alreadySettled);
-        invalidate();
-    }, [animate, hideCelestialGlow, invalidate, material, targetGradient]);
+        requestRender('sky-gradient-transition');
+    }, [animate, hideCelestialGlow, material, requestRender, targetGradient]);
 
     const updateSkyProjection = useCallback(
-        (force = false, requestRender = true) => {
+        (force = false, shouldRequestRender = true) => {
             const mesh = meshRef.current;
             const cameraChanged = updateSkyCameraProjectionSnapshot(
                 camera,
@@ -401,8 +401,8 @@ export function SkyGradientBackground({
                         hideCelestialGlow,
                     );
                 }
-                if (requestRender) {
-                    invalidate();
+                if (shouldRequestRender) {
+                    requestRender('sky-projection');
                 }
                 return;
             }
@@ -451,8 +451,8 @@ export function SkyGradientBackground({
                 );
             }
 
-            if (requestRender) {
-                invalidate();
+            if (shouldRequestRender) {
+                requestRender('sky-projection');
             }
         },
         [
@@ -460,8 +460,8 @@ export function SkyGradientBackground({
             celestialState,
             gardenAvatarView,
             hideCelestialGlow,
-            invalidate,
             material,
+            requestRender,
             screenOffsetMultiplier,
             sunTuning,
         ],

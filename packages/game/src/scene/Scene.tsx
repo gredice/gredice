@@ -42,7 +42,12 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
-import { SceneTimeProvider, sceneFrameRates } from './SceneTime';
+import {
+    SceneTimeProvider,
+    sceneFrameRates,
+    useSceneRenderRequest,
+    useSceneTimeInvalidation,
+} from './SceneTime';
 import { StaticOpaqueSceneCacheProvider } from './StaticOpaqueSceneCache';
 import { WeatherSurfaceUniformProvider } from './WeatherSurfaceUniformProvider';
 
@@ -53,6 +58,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         adaptiveHighProfile?: AdaptiveHighQualityLevelProfile;
         adaptiveHighProfileControlEnabled?: boolean;
         baseFramesPerSecond?: number;
+        continuousRenderLeasesEnabled?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
         onAdaptiveHighProfileChange?: (
@@ -167,6 +173,12 @@ function SceneWireframeMode({ enabled }: { enabled: boolean }) {
     const scene = useThree((state) => state.scene);
     const previousStatesRef = useRef(new Map<string, WireframeMaterialState>());
     const lastApplyRef = useRef(0);
+    const requestRender = useSceneRenderRequest();
+    useSceneTimeInvalidation(
+        'wireframe-debug',
+        enabled,
+        1_000 / wireframeOverrideRefreshMs,
+    );
 
     const applyOverride = useCallback(() => {
         applyWireframeOverride(scene, previousStatesRef.current);
@@ -176,13 +188,21 @@ function SceneWireframeMode({ enabled }: { enabled: boolean }) {
         const previousStates = previousStatesRef.current;
 
         if (!enabled) {
+            const hadOverrides = previousStates.size > 0;
             restoreWireframeOverride(previousStates);
+            if (hadOverrides) {
+                requestRender('wireframe-debug-disabled');
+            }
             return;
         }
 
         applyOverride();
-        return () => restoreWireframeOverride(previousStates);
-    }, [applyOverride, enabled]);
+        requestRender('wireframe-debug-enabled');
+        return () => {
+            restoreWireframeOverride(previousStates);
+            requestRender('wireframe-debug-disabled');
+        };
+    }, [applyOverride, enabled, requestRender]);
 
     useFrame(() => {
         if (enabled) {
@@ -216,6 +236,7 @@ export function Scene({
     adaptiveHighProfileControlEnabled = false,
     baseFramesPerSecond,
     children,
+    continuousRenderLeasesEnabled,
     debugStats,
     fixedTimeSeconds,
     onAdaptiveHighProfileChange,
@@ -337,9 +358,10 @@ export function Scene({
         >
             <SceneTimeProvider
                 ambientFramesPerSecond={ambientFramesPerSecond}
-                // Keep the compatibility heartbeat until every visual owner
-                // has migrated to an explicit scheduler lease.
-                baseFramesPerSecond={ambientFramesPerSecond}
+                // An explicit override retains the compatibility heartbeat for
+                // isolated consumers. Normal scenes are semantic-owner only.
+                baseFramesPerSecond={baseFramesPerSecond ?? 0}
+                continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 fixedTimeSeconds={fixedTimeSeconds}
                 runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}

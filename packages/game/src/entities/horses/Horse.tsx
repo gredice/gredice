@@ -15,6 +15,10 @@ import {
     Vector3,
 } from 'three';
 import { useBlockData } from '../../hooks/useBlockData';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../scene/SceneTime';
 import type { EntityInstanceProps } from '../../types/runtime/EntityInstanceProps';
 import { useGameState, useGameStateStore } from '../../useGameState';
 import { useStackHeight } from '../../utils/getStackHeight';
@@ -416,6 +420,7 @@ export function Horse({
         primaryCasterCount: model.primaryCasterCount,
         species: 'horse',
     });
+    useSceneTimeInvalidation('fauna:horses', true, sceneFrameRates.ambient);
     const homeX = navigation.home.x;
     const homeY = navigation.home.y;
     const homeZ = navigation.home.z;

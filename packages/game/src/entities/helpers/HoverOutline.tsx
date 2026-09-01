@@ -33,6 +33,7 @@ import {
     WebGLRenderTarget,
 } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
+import { useSceneRenderRequest } from '../../scene/SceneTime';
 import {
     type HoverOutlineNormalizedBounds,
     type HoverOutlineRegion,
@@ -644,7 +645,7 @@ export function HoverOutlineEffect() {
     const camera = useThree((state) => state.camera);
     const drawingBufferSize = useMemo(() => new Vector2(), []);
     const gl = useThree((state) => state.gl);
-    const invalidate = useThree((state) => state.invalidate);
+    const requestRender = useSceneRenderRequest();
     const maskMaterial = useMemo(createMaskMaterial, []);
     const renderTargets = useOutlineRenderTargets();
     const {
@@ -931,7 +932,7 @@ export function HoverOutlineEffect() {
     useEffect(() => {
         void registryVersion;
         if (wasActiveRef.current || hasActiveTargets) {
-            invalidate();
+            requestRender('hover-outline-targets');
         }
         if (!hasActiveTargets && publishProfileMetadata) {
             updateGameProfileMetadata({
@@ -944,7 +945,12 @@ export function HoverOutlineEffect() {
             });
         }
         wasActiveRef.current = hasActiveTargets;
-    }, [hasActiveTargets, invalidate, publishProfileMetadata, registryVersion]);
+    }, [
+        hasActiveTargets,
+        publishProfileMetadata,
+        registryVersion,
+        requestRender,
+    ]);
 
     return null;
 }

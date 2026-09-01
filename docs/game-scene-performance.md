@@ -313,10 +313,13 @@ wakeups, and owned invalidations. Reports expose this as
 `zeroWorkObserved` diagnostic also requires zero R3F frame callbacks, hidden
 deferred render requests, invalidation failures, fixed-step failures, missed
 frame receipts, nonessential hidden work, and submitted WebGL
-frames/draws/triangles. That full witness and CDP script time remain observations
-rather than release failures in the compatibility baseline. The explicit-owner
-migration must promote them to release gates before removing the ambient
-compatibility cadence.
+frames/draws/triangles. The runtime now defaults the base cadence to zero; any
+nonzero base used by a profile must be an explicit, reported compatibility
+override. The full zero-work witness and CDP script time remain separate from
+the owned-scheduling gate while canonical zero-base release evidence is being
+captured. The implementation now gates the shared minute clock, generated-plant
+work, per-scene ambient audio, and aggregate refetch intervals on runtime
+activity; canonical browser evidence for those gates remains pending.
 Each resume must return to the same healthy Canvas and WebGL context, re-prove
 the exact fixture, accept a fresh outline command from an exact zero-target
 state, submit new draw work, and produce a nonblank screenshot.
@@ -924,32 +927,83 @@ Recommended work:
 
 Expected impact: high on high-DPR devices.
 
-### 3. Runtime work is moving to explicit semantic ownership
+### 3. Runtime rendering uses explicit semantic ownership
 
-The Canvas already uses demand rendering and shared shader time, but the first
-implementation retained an always-active 20/30 FPS ambient heartbeat.
-`GameRuntimeScheduler` now owns named render and fixed-step leases, semantic
+The Canvas uses demand rendering and now defaults its base cadence to zero.
+`GameRuntimeScheduler` owns named render and fixed-step leases, semantic
 multi-frame requests, deadlines, visibility/context gates, bounded resume
-deltas, and profile-only ownership telemetry. It retains at most one scheduler
-callback. Visible render work uses a display-aligned RAF driver; it invalidates
-only when an absolute cadence target is due and rearms after invalidation so R3F
-can register the requested render first. When only fixed-step or deadline work
-remains, one timeout owns the earliest due item. Hidden, offscreen,
-context-lost, and idle scenes retain no callback. Deadlines and fixed steps that
-coexist with rendering run on the next driver tick and expose any lateness.
-R3F acknowledges each rendered frame through a root-scoped `addAfterEffect`
-receipt after WebGL submission, keeping scheduler bookkeeping out of the
-pre-render `useFrame` path.
+deltas, and profile-only ownership telemetry. An explicit nonzero
+`baseFramesPerSecond` remains available only as a compatibility override.
+Leases without their own rate still resolve through the active quality tier's
+ambient policy.
+
+Render leases are shared and reference-counted by normalized owner and rate, so
+many instances of one effect retain one scheduler lease until the final consumer
+releases it. The scheduler itself retains at most one callback. Visible render
+work uses a display-aligned RAF driver; it invalidates only when an absolute
+cadence target is due and rearms after invalidation so R3F can register the
+requested render first. When only fixed-step or deadline work remains, one
+timeout owns the earliest due item. Hidden, offscreen, context-lost, and idle
+scenes retain no scheduler callback. Deadlines and fixed steps that coexist with
+rendering run on the next driver tick and expose any lateness. R3F acknowledges
+each rendered frame through a root-scoped `addAfterEffect` receipt after WebGL
+submission, keeping scheduler bookkeeping out of the pre-render `useFrame`
+path.
 
 Scheduler RAF timestamps drive cadence immediately. Attempt- and time-bounded
 display-interval calibration is observational telemetry only and never controls
 cadence phase or lead. A scheduler-requested R3F receipt acknowledges the slot
-already consumed by the driver. During the compatibility slice, external R3F
-receipts are observed but do not move the ambient target because the previous
-runtime kept those invalidations independent. Semantic owner migration and a
-zero compatibility base remove that additive stream in the next slice. Late
-work skips elapsed targets without catch-up. Existing camera, avatar, weather,
-cloud, precipitation, sky, and meteor leases retain their 20/30/60 FPS policy.
+already consumed by the driver. External R3F receipts are observational and do
+not move the scheduler's absolute target. Late work skips elapsed targets
+without catch-up. Existing camera, avatar, weather, cloud, precipitation, sky,
+and meteor owners retain their intended 20/30/60 FPS policy.
+
+Camera and interaction invalidations, environment and cache state, particles,
+plant and prop animation, weather transitions, and fauna activity now use named
+leases or semantic render requests. Finite lightning, meteor, slug, and squirrel
+waits use scheduler deadlines; frog and slug reconciliation uses fixed-step
+work. Shader-only animation has shared owners for plant sway, star twinkle,
+water surfaces, ground-decoration wobble, and sprite wobble. These owners are
+suppressed when fixed-time rendering freezes their visual time, and applicable
+inactive-state or reduced-motion gates remain in effect.
+
+Every mounted `SceneTimeProvider` registers its own effective
+document/Canvas/context visibility with an aggregate activity store. Global
+game-adjacent work remains active if any registered scene is active and pauses
+only when all registered scenes are inactive. With no registered scene it stays
+active, preserving standalone HUD and data consumers.
+
+`useLiveTime` now subscribes to one shared, minute-boundary-aligned clock instead
+of creating one interval per consumer. The clock owns no timeout without
+subscribers, while the document is hidden, or while all mounted scenes are
+inactive; resume publishes the current wall time before scheduling the next
+minute boundary. Outlet offers, detailed raised-bed inspection reports, and
+raised-bed notifications use the same aggregate activity gate for both query
+enablement and refetch intervals. When every scene becomes inactive they also
+cancel their exact query keys, and the underlying requests consume the query
+abort signal instead of finishing unnecessary offscreen fetches.
+
+Generated-plant batches do not enqueue missing render-data work until their own
+scene is active. When suspension removes the last subscriber, queued tasks are
+removed and the single in-flight execution receives an abort signal; worker
+execution responds by terminating the active worker and rejecting the pending
+request. Shader prewarm is start-gated by the same per-scene visibility, and
+focused generated-plant retry now uses a scheduler deadline. A prewarm
+`AbortSignal` cannot preempt a Three.js/WebGL `compileAsync` call that has
+already reached the browser/GPU; it cancels that scene's subscription and
+prevents new hidden starts, but that shared compile may still finish and remain
+available in the renderer cache.
+
+Ambient sound is also per-scene: each inactive scene stops its own time/weather
+loops, then reselects the correct mix when it resumes. This avoids using the
+aggregate gate for audio, which would otherwise let one visible Canvas keep an
+offscreen Canvas's loops alive.
+
+Public preview capture disables continuous lease acquisition explicitly through
+`continuousRenderLeasesEnabled={false}`. It does not overload
+`fixedTimeSeconds` as a capture signal: fixed time remains the deterministic
+visual clock, while the separate lease switch leaves the capture probe in
+control of its bounded demand-render/readback sequence.
 
 `pendingCallbackKind=frame` has no due timestamp and means the render loop is
 active. `timeout` exposes its absolute due timestamp without marking the render
@@ -962,17 +1016,15 @@ Profiler telemetry is pull-based: a synchronous property-read or
 reset runs. Normal frames and scheduler wakeups therefore do not push, allocate,
 or deep-copy telemetry merely because the profiling fixture is enabled.
 
-Remaining work:
+Remaining work and verification:
 
-- Give shader-time, fauna, finite particles/springs, and capture stabilization
-  explicit domain leases instead of relying on the compatibility base.
-- Move spawning, ecology reconciliation, retries, lightning, and game-time
-  polling to fixed-step work or absolute scheduler deadlines.
-- Route direct invalidations through named semantic requests and hard-gate
-  externally queued frames while document, Canvas, or WebGL context is inactive.
-- Add a clear fixed-time static profile that proves zero R3F frame callbacks,
+- Narrow always-on avatar leases where state-specific ownership can preserve the
+  same interaction cadence with less idle work.
+- Capture canonical browser evidence that a clear deterministic static scene
+  with continuous leases explicitly disabled reaches zero R3F frame callbacks,
   zero WebGL submissions, and zero nonessential work after stabilization, then
-  set the base cadence to zero.
+  validate the zero-base rollout across cross-tier, fauna, capture, and
+  lifecycle scenarios.
 
 Expected impact: high across every quality tier, especially for static,
 backgrounded, and partially visible gardens, without reducing visual fidelity.

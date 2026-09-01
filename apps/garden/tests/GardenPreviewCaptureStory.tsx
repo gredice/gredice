@@ -117,16 +117,25 @@ const captureGarden = {
                 { id: 'grass-0-0', name: 'Block_Grass', rotation: 0 },
                 { id: 'water-0-0', name: 'Block_Water', rotation: 0 },
             ],
-            '1': [{ id: 'grass-0-1', name: 'Block_Grass', rotation: 0 }],
+            '1': [
+                { id: 'grass-0-1', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-cow', name: 'Cow', rotation: 0 },
+            ],
             '2': [{ id: 'grass-0-2', name: 'Block_Grass', rotation: 0 }],
         },
         '1': {
-            '0': [{ id: 'grass-1-0', name: 'Block_Grass', rotation: 0 }],
+            '0': [
+                { id: 'grass-1-0', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-rabbit', name: 'Rabbit', rotation: 0 },
+            ],
             '1': [{ id: 'grass-1-1', name: 'Block_Grass', rotation: 0 }],
             '2': [{ id: 'grass-1-2', name: 'Block_Grass', rotation: 0 }],
         },
         '2': {
-            '0': [{ id: 'grass-2-0', name: 'Block_Grass', rotation: 0 }],
+            '0': [
+                { id: 'grass-2-0', name: 'Block_Grass', rotation: 0 },
+                { id: 'capture-horse', name: 'Horse', rotation: 0 },
+            ],
             '1': [
                 { id: 'grass-2-1', name: 'Block_Grass', rotation: 0 },
                 {

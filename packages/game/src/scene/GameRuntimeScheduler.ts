@@ -113,6 +113,11 @@ type RenderLease = {
     owner: string;
 };
 
+type SharedRenderLease = {
+    leaseCount: number;
+    release: () => void;
+};
+
 type FixedStepLease = {
     callback: (step: GameRuntimeFixedStep) => void;
     intervalMs: number;
@@ -255,12 +260,16 @@ export class GameRuntimeScheduler {
         callback: (displayTimestampMs?: number) => void,
     ) => SchedulerHandle;
     private readonly resumeListeners = new Set<() => void>();
+    private readonly sharedRenderLeases = new Map<string, SharedRenderLease>();
     private readonly setTimeoutEffect: (
         callback: () => void,
         delayMs: number,
     ) => SchedulerHandle;
     private targetFramesPerSecond = 0;
     private visibility: GameRuntimeSchedulerVisibility;
+    private readonly visibilityListeners = new Set<
+        (visible: boolean) => void
+    >();
 
     constructor(options: GameRuntimeSchedulerOptions) {
         this.ambientFramesPerSecond = normalizeSceneFramesPerSecond(
@@ -341,6 +350,56 @@ export class GameRuntimeScheduler {
                 this.resetRenderFrameTarget(previousReleaseTarget);
             }
             this.reconcileSchedule();
+        };
+    }
+
+    acquireSharedRenderLease(owner: string, framesPerSecond?: number) {
+        if (this.disposed) {
+            return () => undefined;
+        }
+        const normalizedOwner = normalizeOwner(owner);
+        const normalizedFramesPerSecond =
+            framesPerSecond === undefined
+                ? undefined
+                : normalizeSceneFramesPerSecond(framesPerSecond);
+        if (normalizedFramesPerSecond === 0) {
+            return () => undefined;
+        }
+
+        const key = JSON.stringify([
+            normalizedOwner,
+            normalizedFramesPerSecond ?? null,
+        ]);
+        let sharedLease = this.sharedRenderLeases.get(key);
+        if (sharedLease) {
+            sharedLease.leaseCount += 1;
+        } else {
+            sharedLease = {
+                leaseCount: 1,
+                release: this.acquireRenderLease(
+                    normalizedOwner,
+                    normalizedFramesPerSecond,
+                ),
+            };
+            this.sharedRenderLeases.set(key, sharedLease);
+        }
+
+        let released = false;
+        return () => {
+            if (released) {
+                return;
+            }
+            released = true;
+            const activeLease = this.sharedRenderLeases.get(key);
+            if (activeLease !== sharedLease) {
+                return;
+            }
+            activeLease.leaseCount -= 1;
+            if (activeLease.leaseCount > 0) {
+                return;
+            }
+            this.sharedRenderLeases.delete(key);
+            activeLease.release();
         };
     }
 
@@ -542,6 +601,27 @@ export class GameRuntimeScheduler {
         };
     }
 
+    subscribeVisibility(listener: (visible: boolean) => void) {
+        if (this.disposed) {
+            listener(false);
+            return () => undefined;
+        }
+        this.visibilityListeners.add(listener);
+        listener(this.isEffectivelyVisible());
+        let released = false;
+        return () => {
+            if (released) {
+                return;
+            }
+            released = true;
+            this.visibilityListeners.delete(listener);
+        };
+    }
+
+    getEffectiveVisibility() {
+        return !this.disposed && this.isEffectivelyVisible();
+    }
+
     setSnapshotListener(
         listener:
             | ((snapshot: GameRuntimeSchedulerSnapshot) => void)
@@ -602,6 +682,10 @@ export class GameRuntimeScheduler {
         if (wasVisible === isVisible) {
             this.reconcileSchedule();
             return;
+        }
+
+        for (const listener of [...this.visibilityListeners]) {
+            listener(isVisible);
         }
 
         const now = this.readNow();
@@ -709,8 +793,13 @@ export class GameRuntimeScheduler {
         this.fixedStepLeases.clear();
         this.renderLeases.clear();
         this.renderRequests.clear();
+        this.sharedRenderLeases.clear();
         this.activationListeners.clear();
         this.resumeListeners.clear();
+        for (const listener of [...this.visibilityListeners]) {
+            listener(false);
+        }
+        this.visibilityListeners.clear();
         this.emitSnapshot();
     }
 

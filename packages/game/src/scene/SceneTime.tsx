@@ -9,6 +9,7 @@ import {
     useMemo,
     useRef,
     useState,
+    useSyncExternalStore,
 } from 'react';
 import type { IUniform, WebGLRenderer } from 'three';
 import {
@@ -19,6 +20,7 @@ import {
 } from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
 
 export const sceneFrameRates = {
     ambient: 30,
@@ -34,6 +36,7 @@ type SceneTimeContextValue = {
         owner: string,
         options: GameRuntimeFixedStepLeaseOptions,
     ) => () => void;
+    continuousRenderLeasesEnabled: boolean;
     fixedTimeSeconds: number | undefined;
     requestRender: (reason: string, frames?: number) => boolean;
     scheduleDeadline: (
@@ -45,6 +48,10 @@ type SceneTimeContextValue = {
         owner: string,
         delayMs: number,
         callback: (deadline: GameRuntimeDeadline) => void,
+    ) => () => void;
+    getRuntimeVisible: () => boolean;
+    subscribeRuntimeVisibility: (
+        listener: (visible: boolean) => void,
     ) => () => void;
     subscribeSceneResume: (listener: () => void) => () => void;
     timeUniform: IUniform<number>;
@@ -70,14 +77,16 @@ function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
 
 export function SceneTimeProvider({
     ambientFramesPerSecond,
-    baseFramesPerSecond = sceneFrameRates.ambient,
+    baseFramesPerSecond = 0,
     children,
+    continuousRenderLeasesEnabled = true,
     fixedTimeSeconds,
     runtimeFrameLoop,
     suspendWhenOffscreen = true,
 }: PropsWithChildren<{
     ambientFramesPerSecond?: number;
     baseFramesPerSecond?: number;
+    continuousRenderLeasesEnabled?: boolean;
     fixedTimeSeconds?: number;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     suspendWhenOffscreen?: boolean;
@@ -182,6 +191,19 @@ export function SceneTimeProvider({
     );
 
     useEffect(() => {
+        const registration = registerGameSceneRuntimeActivity(
+            scheduler.getEffectiveVisibility(),
+        );
+        const unsubscribe = scheduler.subscribeVisibility(
+            registration.setActive,
+        );
+        return () => {
+            unsubscribe();
+            registration.unregister();
+        };
+    }, [scheduler]);
+
+    useEffect(() => {
         let active = true;
         visibilityReadyRef.current = false;
         const canvas = gl.domElement;
@@ -264,10 +286,12 @@ export function SceneTimeProvider({
     const contextValue = useMemo<SceneTimeContextValue>(
         () => ({
             acquireContinuousRender: (owner, framesPerSecond) =>
-                scheduler.acquireRenderLease(owner, framesPerSecond),
+                scheduler.acquireSharedRenderLease(owner, framesPerSecond),
             acquireFixedStepWork: (owner, options) =>
                 scheduler.acquireFixedStepLease(owner, options),
+            continuousRenderLeasesEnabled,
             fixedTimeSeconds: fixedTime,
+            getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
             requestRender: (reason, frames) =>
                 scheduler.requestRender(reason, frames),
             scheduleDeadline: (owner, absoluteTimeMs, callback) =>
@@ -276,9 +300,11 @@ export function SceneTimeProvider({
                 scheduler.scheduleDeadlineAfter(owner, delayMs, callback),
             subscribeSceneResume: (listener) =>
                 scheduler.subscribeResume(listener),
+            subscribeRuntimeVisibility: (listener) =>
+                scheduler.subscribeVisibility(listener),
             timeUniform,
         }),
-        [fixedTime, scheduler, timeUniform],
+        [continuousRenderLeasesEnabled, fixedTime, scheduler, timeUniform],
     );
 
     return (
@@ -304,6 +330,15 @@ export function useSceneFixedTimeSeconds() {
     return useSceneTimeContext().fixedTimeSeconds;
 }
 
+export function useSceneRuntimeVisible() {
+    const sceneTime = useSceneTimeContext();
+    return useSyncExternalStore(
+        sceneTime.subscribeRuntimeVisibility,
+        sceneTime.getRuntimeVisible,
+        () => false,
+    );
+}
+
 export function useSceneTimeInvalidation(
     owner: string,
     enabled = true,
@@ -312,7 +347,7 @@ export function useSceneTimeInvalidation(
     const sceneTime = useSceneTimeContext();
 
     useEffect(() => {
-        if (!enabled) {
+        if (!enabled || !sceneTime.continuousRenderLeasesEnabled) {
             return;
         }
 

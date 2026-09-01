@@ -374,7 +374,10 @@ export function CloudLayer({
     const windStrength = Math.min(1.4, Math.max(0, windSpeed / 12));
     const shouldAnimateCloudSlots =
         visibleCloudCount > 0 || hasActiveCloudSlots;
-    useSceneTimeInvalidation('cloud-layer', shouldAnimateCloudSlots);
+    useSceneTimeInvalidation(
+        'cloud-layer',
+        fixedTimeSeconds === undefined && shouldAnimateCloudSlots,
+    );
 
     useEffect(() => {
         updateGameProfileMetadata({

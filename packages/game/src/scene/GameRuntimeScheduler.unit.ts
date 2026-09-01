@@ -425,6 +425,36 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         assert.equal(queue.maximumPendingTaskCount, 1);
     });
 
+    it('shares identical owner/rate leases until the final release', () => {
+        const { queue, scheduler } = createScheduler();
+        const releaseFirst = scheduler.acquireSharedRenderLease('plant-sway');
+        const releaseSecond = scheduler.acquireSharedRenderLease('plant-sway');
+        const releaseInteractive = scheduler.acquireSharedRenderLease(
+            'plant-sway',
+            60,
+        );
+
+        let snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.activeRenderLeaseCount, 2);
+        assert.deepEqual(snapshot.renderLeaseSummaries, [
+            { framesPerSecond: 60, leaseCount: 2, owner: 'plant-sway' },
+        ]);
+        assert.equal(snapshot.leaseAcquiredCount, 2);
+
+        releaseFirst();
+        releaseFirst();
+        assert.equal(scheduler.getSnapshot().activeRenderLeaseCount, 2);
+        releaseSecond();
+        snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.activeRenderLeaseCount, 1);
+        assert.equal(snapshot.targetFramesPerSecond, 60);
+
+        releaseInteractive();
+        assert.equal(scheduler.getSnapshot().activeRenderLeaseCount, 0);
+        assert.equal(scheduler.getSnapshot().leaseReleasedCount, 2);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
     it('does not burst when the render rate drops while a frame is awaiting receipt', () => {
         const { frameCallbackTimes, invalidations, queue, scheduler } =
             createScheduler({ simulateFrameCallbacks: true });
@@ -1137,6 +1167,24 @@ describe('GameRuntimeScheduler semantic work', () => {
 });
 
 describe('GameRuntimeScheduler visibility and bounded work', () => {
+    it('publishes effective visibility changes and disposal', () => {
+        const { scheduler } = createScheduler();
+        const visibility: boolean[] = [];
+        const unsubscribe = scheduler.subscribeVisibility((visible) => {
+            visibility.push(visible);
+        });
+
+        scheduler.setCanvasVisible(false);
+        scheduler.setDocumentVisible(false);
+        scheduler.setCanvasVisible(true);
+        scheduler.setDocumentVisible(true);
+        scheduler.dispose();
+        unsubscribe();
+
+        assert.deepEqual(visibility, [true, false, true, false]);
+        assert.equal(scheduler.getEffectiveVisibility(), false);
+    });
+
     it('combines document, canvas, context, and offscreen-capture policy gates', () => {
         const { invalidations, queue, scheduler } = createScheduler();
         const release = scheduler.acquireRenderLease('weather', 30);

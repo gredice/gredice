@@ -3,6 +3,10 @@ import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { type ReactNode, useMemo, useRef } from 'react';
 import { DoubleSide, type Group } from 'three';
 import type { GLTFResult } from '../models/GameAssets';
+import {
+    useSceneFixedTimeSeconds,
+    useSceneTimeInvalidation,
+} from '../scene/SceneTime';
 import type { EntityInstanceProps } from '../types/runtime/EntityInstanceProps';
 import { useGameState } from '../useGameState';
 import { useStackHeight } from '../utils/getStackHeight';
@@ -265,6 +269,7 @@ export function Sunflower({ stack, block, rotation }: EntityInstanceProps) {
     const currentStackHeight = useStackHeight(stack, block);
     const timeOfDay = useGameState((state) => state.timeOfDay);
     const headRef = useRef<Group>(null);
+    const fixedTimeSeconds = useSceneFixedTimeSeconds();
     const phase = useMemo(() => {
         let hash = 0;
         const key = `${block.id}:${stack.position.x}:${stack.position.z}`;
@@ -273,6 +278,10 @@ export function Sunflower({ stack, block, rotation }: EntityInstanceProps) {
         }
         return (hash / 100_000) * Math.PI * 2;
     }, [block.id, stack.position.x, stack.position.z]);
+    useSceneTimeInvalidation(
+        'sunflower-head-animation',
+        fixedTimeSeconds === undefined,
+    );
 
     useFrame(({ clock }) => {
         const head = headRef.current;
@@ -281,7 +290,12 @@ export function Sunflower({ stack, block, rotation }: EntityInstanceProps) {
         }
 
         const target = getHeadRotation(timeOfDay);
-        const breeze = Math.sin(clock.elapsedTime * 0.7 + phase) * 0.025;
+        const elapsedTime = fixedTimeSeconds ?? clock.elapsedTime;
+        const breeze = Math.sin(elapsedTime * 0.7 + phase) * 0.025;
+        if (fixedTimeSeconds !== undefined) {
+            head.rotation.set(target.pitch + breeze, target.yaw, target.roll);
+            return;
+        }
         head.rotation.x += (target.pitch + breeze - head.rotation.x) * 0.06;
         head.rotation.y += (target.yaw - head.rotation.y) * 0.06;
         head.rotation.z += (target.roll - head.rotation.z) * 0.06;

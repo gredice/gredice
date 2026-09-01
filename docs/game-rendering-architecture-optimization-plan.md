@@ -893,30 +893,34 @@ Priority: High
 
 Problem:
 
-Demand rendering still has a permanent 20/30 FPS compatibility cadence.
-Time-dependent visuals, simulations, spawning, retries, and direct invalidations
-do not yet share one ownership model, so a static scene cannot prove that it is
-genuinely idle and hidden work cannot be audited from one runtime boundary.
+Demand rendering previously retained a permanent 20/30 FPS compatibility
+cadence. Time-dependent visuals, simulations, spawning, retries, and direct
+invalidations did not share one ownership model, so a static scene could not
+prove that it was genuinely idle and hidden work could not be audited from one
+runtime boundary.
 
 Scope:
 
 - Use one renderer-independent `GameRuntimeScheduler` for named render leases,
   fixed-step work, semantic invalidation, absolute deadlines, and combined
   document/Canvas/context visibility.
-- Preserve existing ambient and interactive cadence while ownership is migrated;
-  do not reduce visual density, effects, or quality-tier fidelity.
+- Preserve existing ambient and interactive cadence through explicit owners; do
+  not reduce visual density, effects, or quality-tier fidelity.
 - Expose stable owner/rate summaries, R3F frame-callback receipts, bounded resume
   deltas, lease balance, hidden deferred render requests, actual invalidation
   failures, quarantined fixed-step failures, missed frame receipts, calibrated
   display interval and calibration counts, and nonessential-hidden-work
   counters.
-- Remove the compatibility base only after shader time, weather, plants, fauna,
-  particles, timers, workers, audio, and polling have explicit ownership.
+- Default the base cadence to zero once visual work has semantic owners. Retain
+  a nonzero base only as an explicit compatibility override, and use the same
+  effective-visibility boundary for game-adjacent clocks, workers, audio, and
+  polling.
 
 Acceptance criteria:
 
-- A clear fixed-time scene reaches zero R3F frame callbacks and zero WebGL
-  submissions after stabilization.
+- A clear deterministic static scene with continuous leases explicitly disabled
+  reaches zero R3F frame callbacks and zero WebGL submissions after
+  stabilization.
 - Hidden, offscreen, and context-lost scenes execute zero nonessential work.
 - Camera, weather, plant, and fauna animation retains its intended cadence in
   every quality profile.
@@ -931,6 +935,10 @@ Progress:
   coverage for 20/30/60 FPS cadence, one-pending-callback ownership, named lease
   rates, deadlines, fixed-step clamping, visibility interlocks, StrictMode-style
   lease lifecycles, hidden request coalescing, and disposal.
+- Render leases are shared and reference-counted by normalized owner and rate.
+  Repeated plant, sprite, water, decoration, or fauna instances therefore keep
+  one scheduler owner alive until the final consumer releases it instead of
+  multiplying identical lease records.
 - The scheduler owns at most one callback. Visible render work keeps one
   display-aligned RAF driver that invalidates only when an absolute cadence
   target is due and rearms after invalidation so R3F can register the requested
@@ -944,20 +952,58 @@ Progress:
 - Scheduler RAF timestamps drive cadence immediately. Bounded display-interval
   calibration is observational telemetry only and never controls phase or lead.
   A scheduler-requested R3F receipt acknowledges the cadence slot already
-  consumed by the driver. During the compatibility slice, external R3F
-  receipts are observed but do not move the ambient target because the previous
-  runtime kept those invalidations independent. Semantic owner migration and a
-  zero compatibility base remove the additive stream in the next slice. Late
-  work skips elapsed targets without catch-up.
-- Named all existing explicit render leases and separated ambient policy from
-  the temporary nonzero compatibility base.
+  consumed by the driver. External R3F receipts remain observational and do not
+  move the scheduler's absolute target. Late work skips elapsed targets without
+  catch-up.
+- Normal scenes now pass a zero base cadence. `baseFramesPerSecond` remains an
+  explicit compatibility override for isolated consumers, while leases without
+  an explicit rate still resolve through the active quality tier's ambient
+  policy.
+- Migrated camera and interaction invalidations, environment and cache state,
+  particles, plant and prop animation, weather transitions, and fauna activity
+  to named leases or semantic render requests. Finite lightning, meteor, slug,
+  and squirrel waits use scheduler deadlines; frog and slug reconciliation uses
+  fixed-step work instead of independent intervals.
+- Shader-only animation has explicit shared owners for plant sway, star
+  twinkle, water surfaces, ground-decoration wobble, and sprite wobble. Owners
+  whose visual time is frozen do not acquire a lease in fixed-time scenes;
+  reduced-motion and inactive-state gates remain part of their ownership.
+- Each scene publishes its effective document/Canvas/context visibility to an
+  aggregate activity registry. Multiple mounted scenes are handled together:
+  game-adjacent work remains active while any scene is active, pauses when every
+  registered scene is inactive, and remains enabled when no scene is mounted so
+  standalone UI consumers keep working.
+- Replaced per-consumer live-time intervals with one subscriber-aware minute
+  clock. It aligns its single timeout to minute boundaries, stops while the
+  document is hidden or every registered scene is inactive, and publishes the
+  current time before rescheduling on resume.
+- Generated-plant batches defer new queue work until their own scene is active.
+  Suspension removes unsubscribed queued tasks and propagates cancellation into
+  the single in-flight executor; worker cancellation terminates the active
+  worker and rejects its pending request. Shader prewarm also waits for scene
+  visibility before starting, and focused batch retry uses a scheduler deadline
+  instead of a browser timeout.
+- Ambient loops are controlled by each scene's own runtime visibility, so an
+  offscreen scene stops its loops and resumes the correct time/weather mix when
+  it becomes active. Outlet offers, detailed inspection reports, and raised-bed
+  notifications gate query enablement and refetch intervals on aggregate scene
+  activity; an all-inactive transition also cancels each exact query key, whose
+  request consumes the query abort signal.
+- Public capture scenes explicitly disable continuous-render lease acquisition
+  with `continuousRenderLeasesEnabled={false}`. This is separate from
+  `fixedTimeSeconds`: fixed time provides deterministic visual time, while the
+  capture flag prevents ordinary continuous owners from competing with the
+  capture probe's bounded demand-render sequence.
 - Extended production profiling with deep-cloned start/end scheduler state and
   a pull-based telemetry view. A synchronous property-read or structured-clone
   burst shares one exact snapshot until its queued reset; runtime frames and
   wakeups do not push or clone telemetry. Additive counter deltas preserve the
   existing lifecycle/comparator contract for clean before/after reports.
-- The compatibility base remains intentionally active until the remaining
-  implicit visual and runtime owners migrate in the next slice.
+- An already-started Three.js/WebGL `compileAsync` call cannot be preempted by an
+  `AbortSignal`; suspension cancels that scene's subscription and prevents a new
+  hidden prewarm from starting, but the browser/GPU may finish and retain the
+  submitted shared compilation. Canonical cross-tier, fauna, capture, and
+  lifecycle browser evidence for the complete zero-base slice is still pending.
 
 ## Suggested implementation order
 
