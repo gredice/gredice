@@ -671,7 +671,7 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         release();
     });
 
-    it('keeps ambient invalidations running through an external frame burst', () => {
+    it('coalesces owned invalidations through an external frame burst', () => {
         const queue = new FakeRuntimeQueue(60);
         const { invalidations, scheduler } = createScheduler({
             queue,
@@ -689,8 +689,8 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         }
         const invalidationsAfterBurst = invalidations.length;
         assert.ok(
-            invalidationsAfterBurst >= invalidationsBeforeBurst + 4,
-            'External frames must not postpone the compatibility cadence',
+            invalidationsAfterBurst <= invalidationsBeforeBurst + 1,
+            'External frames must satisfy rather than duplicate semantic cadence slots',
         );
         const snapshotAfterBurst = scheduler.getSnapshot();
         const scheduledCallbackDelta =
@@ -712,18 +712,17 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         const burstEndedAt = queue.currentTime;
         queue.runUntil(burstEndedAt + 700);
 
-        assert.ok(invalidations.length >= invalidationsAfterBurst + 10);
+        assert.ok(
+            invalidations.length >= invalidationsAfterBurst + 18 &&
+                invalidations.length <= invalidationsAfterBurst + 22,
+            'Owned cadence must resume after external rendering stops',
+        );
         release();
     });
 
-    it('keeps a 30 FPS ambient cadence independent of a 15 FPS external source', () => {
+    it('combines a 15 FPS external source with owned work under a 30 FPS cap', () => {
         const queue = new FakeRuntimeQueue(60);
-        const {
-            frameCallbackTimes,
-            invalidations,
-            requestExternalFrame,
-            scheduler,
-        } = createScheduler({
+        const { invalidations, scheduler } = createScheduler({
             queue,
             simulateFrameCallbacks: true,
         });
@@ -732,38 +731,32 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         const sampleStartedAt = queue.currentTime;
         const sampleEndedAt = sampleStartedAt + 2_000;
         const invalidationsAtStart = invalidations.length;
+        const callbacksAtStart = scheduler.getSnapshot().r3fFrameCallbackCount;
 
         for (let frame = 0; frame < 30; frame += 1) {
-            queue.runUntil(sampleStartedAt + frame * (1000 / 15));
-            requestExternalFrame();
+            const externalFrameAt = sampleStartedAt + 8 + frame * (1000 / 15);
+            queue.runUntil(externalFrameAt);
+            scheduler.recordFrameCallback(externalFrameAt);
         }
         queue.runUntil(sampleEndedAt);
 
         const ownedInvalidations = invalidations.length - invalidationsAtStart;
         assert.ok(
-            ownedInvalidations >= 57 && ownedInvalidations <= 62,
-            `Expected an independent 30 FPS cadence, received ${ownedInvalidations / 2} FPS`,
+            ownedInvalidations >= 28 && ownedInvalidations <= 32,
+            `Expected external receipts to replace half the 30 FPS cadence, received ${ownedInvalidations / 2} owned FPS`,
         );
-        const renderedFrames = frameCallbackTimes.filter(
-            (timestamp) =>
-                timestamp > sampleStartedAt && timestamp <= sampleEndedAt,
-        ).length;
-        assert.ok(renderedFrames >= ownedInvalidations);
-        const sampledFrameCallbackTimes = frameCallbackTimes.filter(
-            (timestamp) =>
-                timestamp > sampleStartedAt && timestamp <= sampleEndedAt,
-        );
-        assert.equal(
-            new Set(sampledFrameCallbackTimes).size,
-            renderedFrames,
-            'External and scheduler requests must coalesce to one callback per display frame',
+        const renderedFrames =
+            scheduler.getSnapshot().r3fFrameCallbackCount - callbacksAtStart;
+        assert.ok(
+            renderedFrames >= 58 && renderedFrames <= 62,
+            `Expected a combined 30 FPS cap, received ${renderedFrames / 2} FPS`,
         );
         assert.ok(queue.maximumPendingTaskCount <= 2);
         assert.equal(scheduler.getSnapshot().displayFrameCalibrationCount, 1);
         release();
     });
 
-    it('does not move the next ambient target for same-task external receipts', () => {
+    it('moves the next target without rearming for same-task external receipts', () => {
         const queue = new FakeRuntimeQueue(60);
         const { scheduler } = createScheduler({
             queue,
@@ -781,6 +774,12 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         const snapshot = scheduler.getSnapshot();
         assert.equal(snapshot.pendingCallbackKind, 'frame');
         assert.equal(snapshot.pendingCallbackDueAt, null);
+        queue.runUntil(534);
+        assert.equal(
+            scheduler.getSnapshot().invalidationCount,
+            invalidationCount,
+            'External receipts did not defer the next owned cadence slot',
+        );
         queue.runUntil(550);
         assert.ok(
             scheduler.getSnapshot().invalidationCount > invalidationCount,
@@ -984,6 +983,39 @@ describe('GameRuntimeScheduler idle and cadence', () => {
 });
 
 describe('GameRuntimeScheduler semantic work', () => {
+    it('lets an external frame satisfy a one-frame request without owned work', () => {
+        const { invalidations, queue, scheduler } = createScheduler();
+        scheduler.requestRender('external-one-frame');
+        assert.equal(queue.pendingTaskCount, 1);
+
+        scheduler.recordFrameCallback(queue.currentTime);
+
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'none');
+        assert.equal(scheduler.getSnapshot().cancelledCallbackCount, 1);
+        assert.equal(invalidations.length, 0);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
+    it('uses one external receipt before finishing a two-frame request at 60 FPS', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        scheduler.requestRender('external-two-frames', 2);
+
+        scheduler.recordFrameCallback(queue.currentTime);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
+            'external-two-frames',
+        ]);
+        assert.equal(invalidations.length, 0);
+        assert.equal(queue.pendingTaskCount, 1);
+
+        queue.runUntil(40);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.equal(queue.pendingTaskCount, 0);
+    });
+
     it('coalesces reasons while preserving a two-frame request', () => {
         const { invalidations, queue, scheduler } = createScheduler({
             simulateFrameCallbacks: true,
@@ -1167,6 +1199,33 @@ describe('GameRuntimeScheduler semantic work', () => {
 });
 
 describe('GameRuntimeScheduler visibility and bounded work', () => {
+    it('does not let a hidden late receipt consume deferred render work', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        scheduler.requestRender('deferred-external', 2);
+        scheduler.setDocumentVisible(false);
+        const hiddenWorkBefore =
+            scheduler.getSnapshot().nonessentialHiddenWorkCount;
+
+        scheduler.recordFrameCallback(queue.currentTime);
+
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
+            'deferred-external',
+        ]);
+        assert.equal(
+            scheduler.getSnapshot().nonessentialHiddenWorkCount,
+            hiddenWorkBefore + 1,
+        );
+        assert.equal(invalidations.length, 0);
+        assert.equal(queue.pendingTaskCount, 0);
+
+        scheduler.setDocumentVisible(true);
+        queue.runUntil(40);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+    });
+
     it('publishes effective visibility changes and disposal', () => {
         const { scheduler } = createScheduler();
         const visibility: boolean[] = [];

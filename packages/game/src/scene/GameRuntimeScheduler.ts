@@ -538,7 +538,7 @@ export class GameRuntimeScheduler {
     }
 
     /** Records one root-scoped R3F render after WebGL submission. */
-    recordFrameCallback(_displayTimestampMs?: number) {
+    recordFrameCallback(displayTimestampMs?: number) {
         if (this.disposed) {
             return;
         }
@@ -549,6 +549,7 @@ export class GameRuntimeScheduler {
             return;
         }
 
+        const ownedFrameReceipt = this.awaitingFrameReceipt;
         if (this.renderRequests.size > 0) {
             const previousTarget = this.getRenderFramesPerSecond();
             for (const [reason, remainingFrames] of this.renderRequests) {
@@ -564,11 +565,19 @@ export class GameRuntimeScheduler {
         }
         this.awaitingFrameReceipt = false;
         this.invalidationRetryNotBeforeAt = null;
+        if (!ownedFrameReceipt) {
+            const receiptAt = Math.max(
+                this.readNow(),
+                Number.isFinite(displayTimestampMs)
+                    ? Math.max(0, displayTimestampMs ?? 0)
+                    : 0,
+            );
+            this.deferRenderFrameTargetAfterExternalReceipt(receiptAt);
+        }
         // An active render owner already has one scheduler RAF pending. Keep
-        // this receipt state-only; that RAF already consumed its cadence slot.
-        // External receipts must not move the compatibility cadence because
-        // the previous runtime kept ambient invalidations independent.
-        this.emitSnapshot();
+        // the callback in place: it will observe the deferred target without
+        // cancelling and rearming once per external receipt.
+        this.reconcileSchedule();
     }
 
     subscribeResume(listener: () => void) {
@@ -969,6 +978,20 @@ export class GameRuntimeScheduler {
             ),
         );
         this.nextRenderFrameTargetAt += (elapsedIntervals + 1) * intervalMs;
+    }
+
+    private deferRenderFrameTargetAfterExternalReceipt(now: number) {
+        const framesPerSecond = this.getRenderFramesPerSecond();
+        if (framesPerSecond === 0) {
+            this.resetRenderFrameTarget();
+            return;
+        }
+
+        const nextTargetAt = now + 1000 / framesPerSecond;
+        this.nextRenderFrameTargetAt = Math.max(
+            this.nextRenderFrameTargetAt ?? nextTargetAt,
+            nextTargetAt,
+        );
     }
 
     private getNextRenderDueAt(now: number) {
