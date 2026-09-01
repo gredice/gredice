@@ -9163,8 +9163,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         screenshotWitness,
     });
     const buildingAcceptance = evaluateGardenBuildingAcceptance({
+        apiErrors,
         apiRequests,
         budget: budgets[scenario.budget],
+        consoleMessages,
+        pageErrors,
         requested,
         runtime,
         sample: roundedSample,
@@ -9358,6 +9361,47 @@ function isIgnoredLocalProfilerConsoleError(message) {
     }
 }
 
+const expectedGardenBuildingProfileApiPaths = new Set([
+    '/api/gredice/api/accounts/current',
+    '/api/gredice/api/accounts/current/sunflowers',
+    '/api/gredice/api/accounts/current/tutorial-checklist',
+    '/api/gredice/api/gardens/99999/operations',
+    '/api/gredice/api/users/current',
+]);
+
+function isExpectedGardenBuildingProfileApiError(error) {
+    if (error?.status !== 401 || typeof error.url !== 'string') {
+        return false;
+    }
+
+    try {
+        const { hostname, pathname } = new URL(error.url);
+        const normalizedHostname =
+            hostname.startsWith('[') && hostname.endsWith(']')
+                ? hostname.slice(1, -1)
+                : hostname;
+        if (!['localhost', '127.0.0.1', '::1'].includes(normalizedHostname)) {
+            return false;
+        }
+        return expectedGardenBuildingProfileApiPaths.has(pathname);
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedGardenBuildingProfileConsoleError(message) {
+    return Boolean(
+        message?.type === 'error' &&
+            typeof message.text === 'string' &&
+            message.text.startsWith('Failed to load resource:') &&
+            message.text.includes('status of 401 (Unauthorized)') &&
+            isExpectedGardenBuildingProfileApiError({
+                status: 401,
+                url: message.url,
+            }),
+    );
+}
+
 function isProfileScreenshotWitnessValid(witness) {
     return Boolean(
         Number.isFinite(witness?.width) &&
@@ -9377,8 +9421,11 @@ function isProfileScreenshotWitnessValid(witness) {
 }
 
 function evaluateGardenBuildingAcceptance({
-    apiRequests,
+    apiErrors = [],
+    apiRequests = [],
     budget,
+    consoleMessages = [],
+    pageErrors = [],
     requested,
     runtime,
     sample,
@@ -9411,6 +9458,31 @@ function evaluateGardenBuildingAcceptance({
             Number.isFinite(actual) &&
             actual >= limit,
     });
+    const runtimeErrorChecks = [
+        exact(
+            'buildingUnexpectedApiErrors',
+            apiErrors.filter(
+                (error) => !isExpectedGardenBuildingProfileApiError(error),
+            ).length,
+            0,
+        ),
+        exact(
+            'buildingUnexpectedConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message) &&
+                    !isExpectedGardenBuildingProfileConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('buildingPageErrors', pageErrors.length, 0),
+        exact(
+            'buildingNoMutationRequests',
+            apiRequests.some((request) => request.method !== 'GET'),
+            false,
+        ),
+    ];
     const frameRateChecks =
         profile.frameRateClass === 'ambient'
             ? [
@@ -9463,6 +9535,7 @@ function evaluateGardenBuildingAcceptance({
             : [];
     if (profile.fixture === 'none') {
         const checks = [
+            ...runtimeErrorChecks,
             ...frameRateChecks,
             exact('buildingFixtureOptOut', requested.building, '0'),
             exact(
@@ -9508,6 +9581,7 @@ function evaluateGardenBuildingAcceptance({
             ? exact(name, actual, 0)
             : minimum(name, actual, 1);
     const checks = [
+        ...runtimeErrorChecks,
         ...frameRateChecks,
         exact('buildingFixtureOptIn', requested.building, '1'),
         exact(
@@ -9687,11 +9761,6 @@ function evaluateGardenBuildingAcceptance({
             'buildingStaticSceneCacheBypassed',
             requested.staticSceneCache,
             'legacy',
-        ),
-        exact(
-            'buildingNoMutationRequests',
-            apiRequests.some((request) => request.method !== 'GET'),
-            false,
         ),
         exact(
             'buildingProfileOmitsDocument',
@@ -16044,6 +16113,8 @@ export {
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
     installProfileContextTracker,
+    isExpectedGardenBuildingProfileApiError,
+    isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,

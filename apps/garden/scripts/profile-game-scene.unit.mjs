@@ -34,6 +34,8 @@ import {
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
     installProfileContextTracker,
+    isExpectedGardenBuildingProfileApiError,
+    isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
@@ -823,6 +825,140 @@ test('building acceptance proves the no-structure baseline made no GLB request',
     });
     assert.equal(result.pass, true);
     assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building acceptance rejects unexpected runtime failures while allowing exact signed-out fixture reads', () => {
+    const input = {
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    };
+    const expectedSignedOutErrors = [
+        '/api/gredice/api/users/current',
+        '/api/gredice/api/accounts/current',
+        '/api/gredice/api/accounts/current/sunflowers',
+        '/api/gredice/api/accounts/current/tutorial-checklist',
+        '/api/gredice/api/gardens/99999/operations?cursor=0',
+    ].map((path) => ({
+        status: 401,
+        url: `http://localhost:3101${path}`,
+    }));
+    const expectedSignedOutConsoleErrors = expectedSignedOutErrors.map(
+        (error) => ({
+            type: 'error',
+            text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+            url: error.url,
+        }),
+    );
+    const expectedNoise = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiErrors: expectedSignedOutErrors,
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+                url: 'http://127.0.0.1:3101/_vercel/insights/script.js',
+            },
+            {
+                type: 'warning',
+                text: 'THREE.Clock is deprecated',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: [],
+    });
+    assert.equal(expectedNoise.pass, true);
+    assert.deepEqual(
+        expectedNoise.checks
+            .filter((check) => check.name.startsWith('buildingUnexpected'))
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 0,
+                name: 'buildingUnexpectedApiErrors',
+                pass: true,
+            },
+            {
+                actual: 0,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: true,
+            },
+        ],
+    );
+
+    const unexpectedFailures = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiRequests: [
+            {
+                method: 'POST',
+                url: expectedSignedOutErrors[0].url,
+            },
+        ],
+        apiErrors: [
+            ...expectedSignedOutErrors,
+            {
+                status: 500,
+                url: 'http://localhost:3101/api/gredice/api/directories/entities/plantSort',
+            },
+        ],
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'THREE.WebGLProgram: Shader Error',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: ['render failed'],
+    });
+    assert.equal(unexpectedFailures.pass, false);
+    assert.ok(
+        unexpectedFailures.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+    assert.deepEqual(
+        unexpectedFailures.checks
+            .filter((check) =>
+                [
+                    'buildingUnexpectedApiErrors',
+                    'buildingUnexpectedConsoleErrors',
+                    'buildingPageErrors',
+                ].includes(check.name),
+            )
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 1,
+                name: 'buildingUnexpectedApiErrors',
+                pass: false,
+            },
+            {
+                actual: 1,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: false,
+            },
+            { actual: 1, name: 'buildingPageErrors', pass: false },
+        ],
+    );
 });
 
 test('building ambient acceptance proves a 30 FPS target with no interaction lease', () => {
@@ -4403,6 +4539,58 @@ test('local profiler console filtering only ignores the known missing analytics 
         },
     ]) {
         assert.equal(isIgnoredLocalProfilerConsoleError(message), false);
+    }
+});
+
+test('building profile signed-out filtering is local, status-bound, and path-exact', () => {
+    const expectedError = {
+        status: 401,
+        url: 'http://localhost:3101/api/gredice/api/gardens/99999/operations?cursor=0',
+    };
+    assert.equal(isExpectedGardenBuildingProfileApiError(expectedError), true);
+    assert.equal(
+        isExpectedGardenBuildingProfileApiError({
+            ...expectedError,
+            url: 'http://[::1]:3101/api/gredice/api/accounts/current',
+        }),
+        true,
+    );
+
+    for (const error of [
+        { ...expectedError, status: 500 },
+        {
+            ...expectedError,
+            url: 'http://localhost:3101/api/gredice/api/gardens/99998/operations',
+        },
+        {
+            ...expectedError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(isExpectedGardenBuildingProfileApiError(error), false);
+    }
+
+    const expectedConsoleError = {
+        type: 'error',
+        text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+        url: expectedError.url,
+    };
+    assert.equal(
+        isExpectedGardenBuildingProfileConsoleError(expectedConsoleError),
+        true,
+    );
+    for (const message of [
+        { ...expectedConsoleError, type: 'warning' },
+        { ...expectedConsoleError, text: 'THREE.WebGLProgram: Shader Error' },
+        {
+            ...expectedConsoleError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(
+            isExpectedGardenBuildingProfileConsoleError(message),
+            false,
+        );
     }
 });
 
