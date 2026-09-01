@@ -424,6 +424,8 @@ export function GameScene({
     const gardenStructureVerticalSliceEnabled = Boolean(
         flags?.enableGardenBuildingSystemFlag,
     );
+    const gardenStructureAvatarInteriorsEnabled =
+        gardenAvatarEnabled && gardenStructureVerticalSliceEnabled;
     const structureBuildActive = Boolean(
         gardenStructureVerticalSliceEnabled && structureBuildSession,
     );
@@ -834,7 +836,7 @@ export function GameScene({
     );
     const savedStructureScene = useGardenStructureSceneSnapshot({
         gardenId: garden?.id,
-        includeCollision: gardenAvatarEnabled,
+        includeCollision: gardenStructureAvatarInteriorsEnabled,
         records: blockData ? browseStructureRecords : undefined,
         resolveBaseHeight: structureBaseHeightResolver,
     });
@@ -1360,7 +1362,9 @@ export function GameScene({
                                                     gardenAvatarActivationRequest
                                                 }
                                                 additionalCollisionWorld={
-                                                    structureAvatarCollisionWorld
+                                                    gardenStructureAvatarInteriorsEnabled
+                                                        ? structureAvatarCollisionWorld
+                                                        : undefined
                                                 }
                                                 interactionDisabled={
                                                     structureBuildActive
@@ -1384,6 +1388,7 @@ export function GameScene({
                                                 }
                                                 stacks={garden?.stacks}
                                                 structureCollectionPlan={
+                                                    !gardenStructureAvatarInteriorsEnabled ||
                                                     structureBuildActive
                                                         ? null
                                                         : savedStructureScene.plan

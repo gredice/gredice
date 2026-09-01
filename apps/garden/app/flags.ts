@@ -41,7 +41,10 @@ export const enableGardenAvatarFlag = flag<boolean>({
     key: 'enableGardenAvatar',
     description:
         'Enable the experimental walkable gardener with POV and third-person cameras.',
-    decide: () => false,
+    ...(process.env.FLAGS
+        ? { adapter: vercelAdapter }
+        : { decide: () => false }),
+    defaultValue: false,
     options: booleanFlagOptions,
 });
 

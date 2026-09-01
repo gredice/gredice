@@ -212,6 +212,36 @@ test('owned avatar crosses the open room doorway into the covered porch without 
     await expectPersistentCanvas(canvas, canvasKey);
 });
 
+test('requires both rollout flags for avatar interior semantics while preserving the saved shell', async ({
+    mount,
+    page,
+}) => {
+    await installBlockDataRoute(page);
+    const fixture = await mount(
+        <GardenBuildingAvatarInteriorsFixture buildingSystemEnabled={false} />,
+    );
+    const structureScene = fixture.locator(
+        '[data-garden-structure-interior-id]',
+    );
+
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-rendered-count',
+        '1',
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-collision-status',
+        'missing',
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-interior-id',
+        'outside',
+    );
+    await expect(structureScene).toHaveAttribute(
+        'data-garden-structure-hidden-instance-count',
+        '0',
+    );
+});
+
 test('owned avatar exits the covered porch footprint without replacing the canvas', async ({
     mount,
     page,
