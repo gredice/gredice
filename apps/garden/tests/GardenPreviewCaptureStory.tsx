@@ -1,12 +1,16 @@
 'use client';
 
 import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures';
+import { Canvas } from '@react-three/fiber';
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { createRuntimeFrameLoopProfileTelemetry } from '../../../packages/game/src/scene/gameProfileMetadata';
+import { SceneTimeProvider } from '../../../packages/game/src/scene/SceneTime';
 import {
     type PublicGardenDetail,
     PublicGardenViewer,
 } from '../../../packages/game/src/viewers/PublicGardenViewer';
+import { R3FRootIsolationSpring } from '../../../packages/game/tests/R3FRootIsolationSpring';
 
 const capturedAt = '2026-07-11T10:00:00.000Z';
 const raisedBedId = 8_101;
@@ -287,12 +291,44 @@ export function GardenPreviewCaptureStory() {
     }, []);
     const assetBaseUrl =
         typeof window === 'undefined' ? '' : window.location.origin;
+    const activeRootCounters = useMemo(
+        () => ({
+            frameloop: 'demand',
+            springChangeCount: 0,
+            submittedFrameCount: 0,
+        }),
+        [],
+    );
+    const activeRootTelemetry = useMemo(
+        createRuntimeFrameLoopProfileTelemetry,
+        [],
+    );
 
     return (
         <NuqsTestingAdapter searchParams="vrt=8001">
             <output data-testid="garden-preview-capture-result">
                 {JSON.stringify(result)}
             </output>
+            <div
+                aria-hidden
+                data-testid="garden-preview-active-spring-root"
+                style={{ height: 96, width: 96 }}
+            >
+                <Canvas camera={{ position: [0, 0, 4] }} frameloop="demand">
+                    <SceneTimeProvider
+                        ambientFramesPerSecond={30}
+                        baseFramesPerSecond={0}
+                        continuousRenderLeasesEnabled
+                        runtimeFrameLoop={activeRootTelemetry}
+                        suspendWhenOffscreen
+                    >
+                        <R3FRootIsolationSpring
+                            counters={activeRootCounters}
+                            ownsCadence
+                        />
+                    </SceneTimeProvider>
+                </Canvas>
+            </div>
             <div
                 aria-hidden
                 style={{

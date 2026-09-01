@@ -268,6 +268,7 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
     expect(buildingAssetRequests).toHaveLength(1);
+    expect(await page.locator('canvas').count()).toBe(2);
     await expect(captureScene).toHaveAttribute(
         'data-public-garden-capture-structures-ready',
         'true',
