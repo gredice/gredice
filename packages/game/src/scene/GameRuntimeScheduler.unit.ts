@@ -932,6 +932,62 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         release();
     });
 
+    it('consumes a first follow-up delayed beyond one display interval', () => {
+        const queue = new FakeRuntimeQueue(100);
+        const { invalidations, recordExternalFrame, scheduler } =
+            createScheduler({
+                queue,
+                simulateFrameCallbacks: true,
+            });
+        const release = scheduler.acquireRenderLease(
+            'delayed-self-invalidation-follow-up',
+            30,
+        );
+        queue.runUntil(500);
+
+        let invalidationCount = invalidations.length;
+        let callbackCount = 0;
+        while (invalidations.length === invalidationCount) {
+            assert.ok(
+                callbackCount++ < 10,
+                'Expected the next semantic invalidation',
+            );
+            queue.runNext();
+        }
+        invalidationCount = invalidations.length;
+        let ownedReceipt: FakeTask | undefined;
+        while (!ownedReceipt) {
+            assert.ok(
+                callbackCount++ < 20,
+                'Expected the owned renderer receipt',
+            );
+            const task = queue.runNext();
+            if (task.source === 'renderer-frame') {
+                ownedReceipt = task;
+            }
+        }
+
+        const ownedReceiptAt = ownedReceipt.frameTimestamp;
+        assert.ok(ownedReceiptAt !== undefined);
+        const pendingSlotDueAt = scheduler.getSnapshot().pendingCallbackDueAt;
+        assert.ok(pendingSlotDueAt !== null);
+        const displayIntervalMs = 1000 / queue.displayFramesPerSecond;
+        const semanticIntervalMs = 1000 / 30;
+        const followUpAt = ownedReceiptAt + displayIntervalMs + 1;
+        assert.ok(followUpAt < pendingSlotDueAt);
+        recordExternalFrame(followUpAt);
+
+        queue.runUntil(pendingSlotDueAt);
+        const nextDueAt = scheduler.getSnapshot().pendingCallbackDueAt;
+        assert.ok(nextDueAt !== null);
+        assertNear(nextDueAt, pendingSlotDueAt + semanticIntervalMs);
+        queue.runUntil(nextDueAt - 1);
+        assert.equal(invalidations.length, invalidationCount);
+        queue.runUntil(nextDueAt);
+        assert.equal(invalidations.length, invalidationCount + 1);
+        release();
+    });
+
     it('moves the next target without rearming for same-task external receipts', () => {
         const queue = new FakeRuntimeQueue(60);
         const { recordExternalFrame, scheduler } = createScheduler({

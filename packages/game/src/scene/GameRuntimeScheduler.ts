@@ -1039,13 +1039,15 @@ export class GameRuntimeScheduler {
             return false;
         }
 
+        const framesPerSecond = this.getRenderFramesPerSecond();
+        if (framesPerSecond === 0) {
+            return false;
+        }
+
         const elapsedMs = receiptAt - this.lastFrameReceiptAt;
-        const displayIntervalMs = this.frameIntervalCalibrated
-            ? this.displayFrameIntervalMs
-            : defaultDisplayFrameIntervalMs;
         return (
             elapsedMs >= 0 &&
-            elapsedMs <= displayIntervalMs + schedulerToleranceMs
+            elapsedMs <= 1000 / framesPerSecond + schedulerToleranceMs
         );
     }
 
