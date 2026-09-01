@@ -35,7 +35,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     deadlineOwners: readonly string[];
     deferredWorkCount: number;
     displayFrameCalibrationCount: number;
-    /** Bounded calibration; scheduling uses it only to identify one immediate follow-up. */
+    /** Observational bounded calibration; this value never steers scheduling. */
     displayFrameIntervalMs: number | null;
     disposed: boolean;
     effectiveVisible: boolean;

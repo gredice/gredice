@@ -1144,13 +1144,13 @@ scheduler callback. R3F acknowledges each rendered frame through a root-scoped
 `addAfterEffect` receipt after WebGL submission, keeping scheduler bookkeeping
 out of the pre-render `useFrame` path.
 
-The bounded calibration RAF timestamps never choose target FPS, cadence phase,
-or invalidation lead. The calibrated interval only bounds whether the first
-non-owned receipt after a scheduler-owned receipt is its immediate one-display
-follow-up. That follow-up consumes the pending semantic slot; subsequent
-external receipts only defer the next owned target by at least one interval,
-preventing duplicate renders without banking post-interaction cadence debt.
-Late work skips elapsed targets without catch-up. Existing camera,
+The bounded calibration RAF timestamps are observational telemetry only and
+never control target FPS, cadence phase, invalidation lead, or follow-up
+classification. The first non-owned receipt after a scheduler-owned receipt
+within one active semantic interval consumes the pending cadence slot;
+subsequent external receipts only defer the next owned target by at least one
+interval, preventing duplicate renders without banking post-interaction cadence
+debt. Late work skips elapsed targets without catch-up. Existing camera,
 avatar, weather, cloud, precipitation, sky, and meteor owners retain their
 intended 20/30/60 FPS policy.
 
@@ -1226,9 +1226,7 @@ that calibration, steady render ownership reports `pendingCallbackKind=timeout`
 with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
 and wakeup counters cover both bounded calibration frames and scheduler
 timeouts, while R3F frame callbacks remain a separate receipt count.
-Display-interval calibration never selects semantic target FPS, cadence phase,
-or invalidation lead. Its only scheduling use is the bounded immediate-follow-up
-classification described above.
+Display-interval telemetry remains observational and never steers scheduling.
 
 Profiler telemetry is pull-based: a synchronous property-read or
 `structuredClone` burst shares one exact scheduler snapshot until its queued
