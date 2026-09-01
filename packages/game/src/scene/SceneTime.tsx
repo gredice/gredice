@@ -1,11 +1,19 @@
 'use client';
 
-import { addAfterEffect, useFrame, useThree } from '@react-three/fiber';
+import {
+    addAfterEffect,
+    type RootState,
+    type RootStore,
+    useFrame,
+    useStore,
+    useThree,
+} from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -20,6 +28,10 @@ import {
 } from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import {
+    installR3FRootInvalidationBroker,
+    readRawR3FRootInvalidate,
+} from './r3fRootInvalidationBroker';
 import { consumeSceneClockActivationGap } from './sceneClockActivation';
 import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
 
@@ -76,6 +88,44 @@ function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
     );
 }
 
+function R3FRootInvalidationBroker({
+    enabled,
+    rawInvalidate,
+    rootStore,
+    scheduler,
+}: {
+    enabled: boolean;
+    rawInvalidate: RootState['invalidate'];
+    rootStore: RootStore;
+    scheduler: GameRuntimeScheduler;
+}) {
+    const enabledRef = useRef(enabled);
+    const ownerRef = useRef(Symbol('game-runtime-invalidation-broker'));
+    const requestCoalescedRenderRef = useRef<
+        (reason: string, frames?: number) => boolean
+    >(() => false);
+    enabledRef.current = enabled;
+    requestCoalescedRenderRef.current = (reason, frames) =>
+        scheduler.requestCoalescedRender(reason, frames);
+
+    useLayoutEffect(() => {
+        if (!enabled) {
+            return;
+        }
+
+        return installR3FRootInvalidationBroker({
+            isEnabled: () => enabledRef.current,
+            owner: ownerRef.current,
+            rawInvalidate,
+            requestCoalescedRender: (reason, frames) =>
+                requestCoalescedRenderRef.current(reason, frames),
+            store: rootStore,
+        });
+    }, [enabled, rawInvalidate, rootStore]);
+
+    return null;
+}
+
 export function SceneTimeProvider({
     ambientFramesPerSecond,
     baseFramesPerSecond = 0,
@@ -101,11 +151,10 @@ export function SceneTimeProvider({
         () => ({ value: fixedTime ?? 0 }),
         [fixedTime],
     );
-    const invalidate = useThree((state) => state.invalidate);
+    const rootStore = useStore();
+    const [rawInvalidate] = useState(() => readRawR3FRootInvalidate(rootStore));
     const clock = useThree((state) => state.clock);
     const gl = useThree((state) => state.gl);
-    const invalidateRef = useRef(invalidate);
-    invalidateRef.current = invalidate;
     const [scheduler] = useState(
         () =>
             new GameRuntimeScheduler({
@@ -127,7 +176,7 @@ export function SceneTimeProvider({
                     documentVisible: false,
                     requireCanvasVisible: suspendWhenOffscreen,
                 },
-                invalidate: () => invalidateRef.current(),
+                invalidate: () => rawInvalidate(),
                 now: () => globalThis.performance.now(),
                 requestFrame: (callback) =>
                     window.requestAnimationFrame(callback),
@@ -314,6 +363,12 @@ export function SceneTimeProvider({
 
     return (
         <SceneTimeContext.Provider value={contextValue}>
+            <R3FRootInvalidationBroker
+                enabled={continuousRenderLeasesEnabled}
+                rawInvalidate={rawInvalidate}
+                rootStore={rootStore}
+                scheduler={scheduler}
+            />
             {children}
         </SceneTimeContext.Provider>
     );
