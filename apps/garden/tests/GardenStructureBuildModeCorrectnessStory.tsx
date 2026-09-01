@@ -18,6 +18,14 @@ import { useGardenStructureExistingStructureAutosave } from '../../../packages/g
 import { GardenStructureConfirmationDialog } from '../../../packages/game/src/structures/GardenStructureConfirmationDialog';
 import { GardenStructureConflictResolutionPanel } from '../../../packages/game/src/structures/GardenStructureConflictResolutionPanel';
 import { useGardenStructureBuildModeHistoryGuard } from '../../../packages/game/src/structures/useGardenStructureBuildModeHistoryGuard';
+import type { GardenStructureBuildCategory } from '../../../packages/game/src/useGameState';
+
+const gardenStructureAuthoringCategories = [
+    'footprint',
+    'structure',
+    'roof',
+    'interior',
+] satisfies readonly GardenStructureBuildCategory[];
 
 export function GardenStructureConflictResolutionStory() {
     const [action, setAction] = useState('none');
@@ -207,9 +215,8 @@ export function GardenStructureAuthoringInspectorsStory() {
         '1',
     );
     const [action, setAction] = useState('none');
-    const [category, setCategory] = useState<
-        'footprint' | 'structure' | 'roof' | 'interior'
-    >('structure');
+    const [category, setCategory] =
+        useState<GardenStructureBuildCategory>('structure');
     const [propTargetAction, setPropTargetAction] =
         useState<GardenStructurePropTargetAction | null>(null);
     const [selectedCellKey, setSelectedCellKey] = useState(
@@ -219,17 +226,15 @@ export function GardenStructureAuthoringInspectorsStory() {
     return (
         <div className="max-w-lg space-y-3 p-4">
             <div className="flex flex-wrap gap-2">
-                {(['footprint', 'structure', 'roof', 'interior'] as const).map(
-                    (value) => (
-                        <button
-                            key={value}
-                            onClick={() => setCategory(value)}
-                            type="button"
-                        >
-                            {value}
-                        </button>
-                    ),
-                )}
+                {gardenStructureAuthoringCategories.map((value) => (
+                    <button
+                        key={value}
+                        onClick={() => setCategory(value)}
+                        type="button"
+                    >
+                        {value}
+                    </button>
+                ))}
             </div>
             <GardenStructureAuthoringInspectors
                 addSpaceKind="interior"
@@ -336,15 +341,21 @@ export function GardenStructureExistingAutosaveStory() {
     const editors = useMemo(createAutosaveEditors, []);
     const [editor, setEditor] = useState(editors.saved);
     const [attempts, setAttempts] = useState<readonly number[]>([]);
+    const [callbackRevision, setCallbackRevision] = useState(0);
+    const [savedCallbackRevision, setSavedCallbackRevision] = useState<
+        number | null
+    >(null);
 
     useGardenStructureExistingStructureAutosave({
         delayMs: 1_000,
         editor,
-        onAutosave: (current) =>
+        onAutosave: (current) => {
             setAttempts((values) => [
                 ...values,
                 current.snapshot.placement.anchorX,
-            ]),
+            ]);
+            setSavedCallbackRevision(callbackRevision);
+        },
         persistence: 'remote',
     });
 
@@ -373,8 +384,17 @@ export function GardenStructureExistingAutosaveStory() {
             <button onClick={() => setEditor(editors.draft)} type="button">
                 Otvori novi nacrt
             </button>
+            <button
+                onClick={() => setCallbackRevision((value) => value + 1)}
+                type="button"
+            >
+                Promijeni autosave obradu
+            </button>
             <output data-testid="autosave-attempts">
                 {attempts.join(',') || 'none'}
+            </output>
+            <output data-testid="autosave-callback-revision">
+                {savedCallbackRevision ?? 'none'}
             </output>
         </div>
     );

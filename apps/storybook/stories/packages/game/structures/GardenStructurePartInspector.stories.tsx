@@ -4,6 +4,7 @@ import {
 } from '@gredice/game';
 import {
     createGardenStructureTemplateSeed,
+    gardenStructureCellKey,
     getGardenStructureKitReferenceDefinition,
 } from '@gredice/js/gardenStructures';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -52,7 +53,7 @@ const meta = {
         ...callbacks,
         document: houseDocument,
         kit,
-        selectedCellKey: '1|1',
+        selectedCellKey: gardenStructureCellKey({ x: 1, y: 1 }),
     },
     parameters: {
         docs: {

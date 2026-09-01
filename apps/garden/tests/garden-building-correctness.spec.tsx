@@ -364,6 +364,22 @@ test('debounces existing-structure autosave to the latest exact snapshot', async
     await expect(page.getByTestId('autosave-attempts')).toHaveText('2');
 });
 
+test('uses the latest committed autosave callback while a save is pending', async ({
+    mount,
+    page,
+}) => {
+    await mount(<GardenStructureExistingAutosaveStory />);
+
+    await page.getByRole('button', { name: 'Promijeni položaj' }).click();
+    await page
+        .getByRole('button', { name: 'Promijeni autosave obradu' })
+        .click();
+    await expect(page.getByTestId('autosave-attempts')).toHaveText('1');
+    await expect(page.getByTestId('autosave-callback-revision')).toHaveText(
+        '1',
+    );
+});
+
 test('cancels a pending autosave when the editor session changes to a new draft', async ({
     mount,
     page,

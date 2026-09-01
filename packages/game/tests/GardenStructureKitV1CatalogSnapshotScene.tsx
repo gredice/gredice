@@ -1,7 +1,7 @@
 'use client';
 
 import { useThree } from '@react-three/fiber';
-import { type ReactNode, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { type Material, Mesh } from 'three';
 import type { GardenStructureCatalogEntry } from '../src/structures/catalog/gardenStructureKitV1Catalog';
 import {
@@ -11,7 +11,7 @@ import {
 import { useGameGLTF } from '../src/utils/useGameGLTF';
 import { createGardenStructureKitV1CatalogSnapshot } from './gardenStructureKitV1CatalogSnapshot';
 
-function renderNoFallback(): ReactNode {
+function renderNoFallback() {
     return null;
 }
 

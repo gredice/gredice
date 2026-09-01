@@ -7,6 +7,7 @@ import type {
 import {
     gardenStructureCellKey,
     gardenStructureEdgeKey,
+    gardenStructureMaxCoordinateMagnitude,
     getGardenStructureAdjacentCells,
     getGardenStructureFootprintBounds,
     rotateGardenStructureCoordinate,
@@ -17,7 +18,7 @@ import {
     getCanonicalGardenStructureEdge,
 } from './gardenStructureDocumentEdits';
 
-const sides = ['N', 'E', 'S', 'W'] as const;
+const sides = ['N', 'E', 'S', 'W'] satisfies readonly GardenStructureCellSide[];
 
 export type GardenStructureCanvasEdge = Readonly<{
     cell: GardenStructureCoordinate;
@@ -227,6 +228,18 @@ export function getCoalescedGardenStructureGridStroke(
     from: GardenStructureCoordinate,
     to: GardenStructureCoordinate,
 ) {
+    if (
+        !Number.isSafeInteger(from.x) ||
+        !Number.isSafeInteger(from.y) ||
+        !Number.isSafeInteger(to.x) ||
+        !Number.isSafeInteger(to.y) ||
+        Math.abs(from.x) > gardenStructureMaxCoordinateMagnitude ||
+        Math.abs(from.y) > gardenStructureMaxCoordinateMagnitude ||
+        Math.abs(to.x) > gardenStructureMaxCoordinateMagnitude ||
+        Math.abs(to.y) > gardenStructureMaxCoordinateMagnitude
+    ) {
+        return [];
+    }
     const cells: GardenStructureCoordinate[] = [];
     let x = from.x;
     let y = from.y;
@@ -235,8 +248,9 @@ export function getCoalescedGardenStructureGridStroke(
     const stepX = from.x < to.x ? 1 : -1;
     const stepY = from.y < to.y ? 1 : -1;
     let error = deltaX - deltaY;
+    const maximumCellCount = Math.max(deltaX, deltaY) + 1;
 
-    for (;;) {
+    for (let cellIndex = 0; cellIndex < maximumCellCount; cellIndex += 1) {
         cells.push({ x, y });
         if (x === to.x && y === to.y) {
             return cells;
@@ -251,6 +265,7 @@ export function getCoalescedGardenStructureGridStroke(
             y += stepY;
         }
     }
+    return [];
 }
 
 function canvasEdgeFromCanonical(

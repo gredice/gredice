@@ -394,13 +394,13 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     );
     await tapCenter(
         page,
-        templateCatalog.locator('label:has(input[value="blank"])'),
+        templateCatalog.locator('label:has(input[value$=":template:blank"])'),
     );
     await expect(hud).toContainText('4 / 100 polja');
     await expect(hud).toContainText('200 🌻');
     await tapCenter(
         page,
-        templateCatalog.locator('label:has(input[value="house"])'),
+        templateCatalog.locator('label:has(input[value$=":template:house"])'),
     );
     await page.waitForFunction(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
@@ -545,7 +545,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     );
     await tapCenter(
         page,
-        edgeCatalog.locator('label:has(input[value="window.house"])'),
+        edgeCatalog.locator('label:has(input[value$=":part:window.house"])'),
     );
     const northEdgeTargets = page.locator(
         '[data-structure-canvas-target-kind="edge"][data-structure-canvas-target$=":N"]',

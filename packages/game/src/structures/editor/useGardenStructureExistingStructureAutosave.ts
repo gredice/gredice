@@ -28,9 +28,12 @@ export function useGardenStructureExistingStructureAutosave({
         persistence,
     );
     const latestRef = useRef({ editor, onAutosave, persistence });
-    latestRef.current = { editor, onAutosave, persistence };
     const lastAttemptedKeyRef = useRef<string | null>(null);
     const autosaveScopeRef = useRef(autosaveScope);
+
+    useEffect(() => {
+        latestRef.current = { editor, onAutosave, persistence };
+    }, [editor, onAutosave, persistence]);
 
     useEffect(() => {
         if (autosaveScopeRef.current !== autosaveScope) {

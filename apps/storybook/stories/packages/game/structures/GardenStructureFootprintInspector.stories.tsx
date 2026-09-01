@@ -2,6 +2,7 @@ import { GardenStructureFootprintInspector } from '@gredice/game';
 import {
     createGardenStructureTemplateSeed,
     type GardenStructureDocumentV1,
+    gardenStructureCellKey,
     gardenStructureSchemaVersion,
 } from '@gredice/js/gardenStructures';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
@@ -42,7 +43,7 @@ const meta = {
         onRemoveCell: () => undefined,
         onSelectedCellKeyChange: () => undefined,
         onSetSpaceKind: () => undefined,
-        selectedCellKey: '0|0',
+        selectedCellKey: gardenStructureCellKey({ x: 0, y: 0 }),
     },
     parameters: {
         docs: {
@@ -87,7 +88,7 @@ export const BlankSeed: Story = {
 export const MaximumFootprint: Story = {
     args: {
         document: footprintDocument(20, 5),
-        selectedCellKey: '19|4',
+        selectedCellKey: gardenStructureCellKey({ x: 19, y: 4 }),
     },
 };
 

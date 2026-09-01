@@ -107,7 +107,7 @@ export function GardenStructureCanvasAuthoring({
     tool,
 }: GardenStructureCanvasAuthoringProps) {
     const gameCamera = useGameState((state) => state.gameCamera);
-    const [, setCameraVersion] = useState(0);
+    const [cameraVersion, setCameraVersion] = useState(0);
     const [footprintPreview, setFootprintPreview] =
         useState<FootprintPreview | null>(null);
     const raycaster = useMemo(() => new Raycaster(), []);
@@ -411,8 +411,11 @@ export function GardenStructureCanvasAuthoring({
         };
     }, [disabled, gameCamera, intersection, plane, pointer, raycaster, tool]);
 
-    const projectedTargets = (() => {
-        if (!gameCamera) {
+    const projectedTargets = useMemo(() => {
+        // The camera API is stable while its mutable projection changes. The
+        // subscribed revision intentionally invalidates this memo.
+        void cameraVersion;
+        if (disabled || !gameCamera || tool === 'hand') {
             return [];
         }
         const element = gameCamera.getDomElement();
@@ -487,7 +490,7 @@ export function GardenStructureCanvasAuthoring({
                     });
                 }
             }
-        } else if (tool !== 'hand') {
+        } else {
             for (const world of worldFootprint) {
                 const projected = gameCamera.projectToScreen(
                     new Vector3(world.x, planeHeight + 0.05, world.y),
@@ -504,10 +507,20 @@ export function GardenStructureCanvasAuthoring({
             }
         }
         return targets;
-    })();
+    }, [
+        cameraVersion,
+        disabled,
+        document,
+        gameCamera,
+        placement,
+        planeHeight,
+        tool,
+    ]);
 
-    const projectedPreview = (() => {
-        if (!gameCamera) {
+    const projectedPreview = useMemo(() => {
+        // Keep previews aligned with the same mutable camera projection.
+        void cameraVersion;
+        if (disabled || !gameCamera || (!footprintPreview && !edgePreview)) {
             return [];
         }
         const element = gameCamera.getDomElement();
@@ -562,7 +575,16 @@ export function GardenStructureCanvasAuthoring({
                   ]
                 : [];
         });
-    })();
+    }, [
+        cameraVersion,
+        disabled,
+        document,
+        edgePreview,
+        footprintPreview,
+        gameCamera,
+        placement,
+        planeHeight,
+    ]);
 
     if (disabled || !gameCamera) {
         return null;
