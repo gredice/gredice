@@ -2,7 +2,10 @@
 
 import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import type { PlantInstanceBufferMetricsSnapshot } from '../generators/plant/lib/plantInstanceBufferMetrics';
-import type { GameRuntimeSchedulerSnapshot } from './GameRuntimeScheduler';
+import type {
+    GameRuntimeSchedulerFrequentProfileSnapshot,
+    GameRuntimeSchedulerSnapshot,
+} from './GameRuntimeScheduler';
 import type { GameQualityProfileTier } from './gameQuality';
 
 export type GeneratedPlantProfilePartCounts = {
@@ -256,32 +259,63 @@ export function bindRuntimeFrameLoopProfileTelemetry(
     readSnapshot: () => RuntimeFrameLoopProfileTelemetry,
     scheduleCacheReset: (callback: () => void) => void = (callback) =>
         globalThis.queueMicrotask(callback),
+    readFrequentSnapshot?: () => GameRuntimeSchedulerFrequentProfileSnapshot,
 ) {
     const fields = Object.keys(
         telemetry,
     ) as (keyof RuntimeFrameLoopProfileTelemetry)[];
     let bound = true;
     let cachedSnapshot: RuntimeFrameLoopProfileTelemetry | null = null;
+    let cachedFrequentSnapshot: GameRuntimeSchedulerFrequentProfileSnapshot | null =
+        null;
     let cacheResetScheduled = false;
+    const scheduleReset = () => {
+        if (cacheResetScheduled) {
+            return;
+        }
+        cacheResetScheduled = true;
+        scheduleCacheReset(() => {
+            cachedFrequentSnapshot = null;
+            cachedSnapshot = null;
+            cacheResetScheduled = false;
+        });
+    };
     const readCachedSnapshot = () => {
         if (cachedSnapshot === null) {
             cachedSnapshot = readSnapshot();
         }
-        if (!cacheResetScheduled) {
-            cacheResetScheduled = true;
-            scheduleCacheReset(() => {
-                cachedSnapshot = null;
-                cacheResetScheduled = false;
-            });
-        }
+        scheduleReset();
         return cachedSnapshot;
+    };
+    const readCachedFrequentSnapshot = () => {
+        if (cachedSnapshot !== null) {
+            return cachedSnapshot;
+        }
+        if (cachedFrequentSnapshot === null) {
+            cachedFrequentSnapshot =
+                readFrequentSnapshot?.() ?? readCachedSnapshot();
+        }
+        scheduleReset();
+        return cachedFrequentSnapshot;
+    };
+    const readTelemetryField = (
+        field: keyof RuntimeFrameLoopProfileTelemetry,
+    ) => {
+        switch (field) {
+            case 'activeLeaseCount':
+            case 'activeRenderLeaseCount':
+            case 'targetFramesPerSecond':
+                return readCachedFrequentSnapshot()[field];
+            default:
+                return readCachedSnapshot()[field];
+        }
     };
 
     for (const field of fields) {
         Object.defineProperty(telemetry, field, {
             configurable: true,
             enumerable: true,
-            get: () => readCachedSnapshot()[field],
+            get: () => readTelemetryField(field),
         });
     }
 
@@ -291,6 +325,7 @@ export function bindRuntimeFrameLoopProfileTelemetry(
         }
         bound = false;
         const finalSnapshot = readSnapshot();
+        cachedFrequentSnapshot = null;
         cachedSnapshot = null;
         for (const field of fields) {
             Object.defineProperty(telemetry, field, {

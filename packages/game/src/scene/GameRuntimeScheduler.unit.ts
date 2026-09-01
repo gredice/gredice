@@ -1300,6 +1300,137 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(queue.pendingTaskCount, 0);
     });
 
+    it('does not resolve the schedule again for a saturated active-lease burst', () => {
+        const queue = new FakeRuntimeQueue();
+        let nowReadCount = 0;
+        const { scheduler } = createScheduler({
+            options: {
+                now: () => {
+                    nowReadCount += 1;
+                    return queue.currentTime;
+                },
+            },
+            queue,
+        });
+        const release = scheduler.acquireRenderLease('ambient', 30);
+        const historyCount = queue.taskHistory.length;
+        const nowReadsBeforeBurst = nowReadCount;
+        const before = scheduler.getSnapshot();
+
+        for (let request = 0; request < 10_000; request += 1) {
+            scheduler.requestCoalescedRender('r3f-host');
+        }
+
+        const after = scheduler.getSnapshot();
+        assert.equal(nowReadCount, nowReadsBeforeBurst);
+        assert.equal(queue.taskHistory.length, historyCount);
+        assert.equal(
+            after.scheduledCallbackCount,
+            before.scheduledCallbackCount,
+        );
+        assert.equal(
+            after.cancelledCallbackCount,
+            before.cancelledCallbackCount,
+        );
+        assert.deepEqual(after.coalescedRenderRequestReasons, ['r3f-host']);
+        assert.equal(queue.pendingTaskCount, 1);
+        release();
+    });
+
+    it('raises an idle coalesced request without rearming its 60 FPS callback', () => {
+        const { queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+
+        scheduler.requestCoalescedRender('r3f-host');
+        const firstTask = queue.peekNextTask();
+        const first = scheduler.getSnapshot();
+        scheduler.requestCoalescedRender('r3f-host', 3);
+        const raised = scheduler.getSnapshot();
+
+        assert.equal(queue.peekNextTask(), firstTask);
+        assert.equal(queue.taskHistory.length, 1);
+        assert.equal(
+            raised.scheduledCallbackCount,
+            first.scheduledCallbackCount,
+        );
+        assert.equal(
+            raised.cancelledCallbackCount,
+            first.cancelledCallbackCount,
+        );
+        queue.runUntil(100);
+        assert.equal(raised.targetFramesPerSecond, 0);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
+    });
+
+    it('counts a hidden duplicate burst without scheduling duplicate work', () => {
+        const snapshots: GameRuntimeSchedulerSnapshot[] = [];
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+            snapshots,
+        });
+        scheduler.setDocumentVisible(false);
+
+        for (let request = 0; request < 10_000; request += 1) {
+            scheduler.requestCoalescedRender('r3f-host', 3);
+        }
+
+        const hidden = scheduler.getSnapshot();
+        assert.equal(hidden.hiddenCoalescedRenderRequestCount, 10_000);
+        assert.equal(hidden.hiddenDeferredCoalescedRenderRequestCount, 1);
+        assert.deepEqual(hidden.coalescedRenderRequestReasons, ['r3f-host']);
+        assert.equal(queue.taskHistory.length, 0);
+        assert.equal(queue.pendingTaskCount, 0);
+        assert.deepEqual(snapshots.at(-1)?.coalescedRenderRequestReasons, [
+            'r3f-host',
+        ]);
+
+        scheduler.setDocumentVisible(true);
+        queue.runUntil(100);
+        assert.equal(invalidations.length, 1);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
+    });
+
+    it('reconciles a coalesced request made inside the invalidation effect', () => {
+        let requested = false;
+        let schedulerRef: GameRuntimeScheduler | null = null;
+        const { queue, scheduler } = createScheduler({
+            options: {
+                invalidate: () => {
+                    if (requested) {
+                        return;
+                    }
+                    requested = true;
+                    schedulerRef?.requestCoalescedRender('r3f-host', 2);
+                },
+            },
+            simulateFrameCallbacks: true,
+        });
+        schedulerRef = scheduler;
+        const release = scheduler.acquireRenderLease('ambient', 30);
+
+        queue.runNext();
+
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            ['r3f-host'],
+        );
+        assert.equal(queue.pendingTaskCount, 2);
+        queue.runUntil(100);
+        assert.ok(scheduler.getSnapshot().r3fFrameCallbackCount > 0);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
+        release();
+    });
+
     it('retains one coalesced follow-up after the current external frame receipt', () => {
         const { invalidations, queue, scheduler } = createScheduler({
             simulateFrameCallbacks: true,

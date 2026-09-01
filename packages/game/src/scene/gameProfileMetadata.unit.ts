@@ -381,4 +381,55 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
         telemetry.ownedInvalidationCount = 10;
         assert.equal(telemetry.ownedInvalidationCount, 10);
     });
+
+    it('samples hot RAF scalars without constructing a full scheduler snapshot', () => {
+        const telemetry = createRuntimeFrameLoopProfileTelemetry();
+        const cacheResets: (() => void)[] = [];
+        let activeLeaseCount = 3;
+        let fullSnapshotReadCount = 0;
+        let frequentSnapshotReadCount = 0;
+        const unbind = bindRuntimeFrameLoopProfileTelemetry(
+            telemetry,
+            () => {
+                fullSnapshotReadCount += 1;
+                return {
+                    ...createRuntimeFrameLoopProfileTelemetry(),
+                    activeLeaseCount,
+                    activeRenderLeaseCount: activeLeaseCount,
+                    targetFramesPerSecond: 30,
+                };
+            },
+            (callback) => cacheResets.push(callback),
+            () => {
+                frequentSnapshotReadCount += 1;
+                return {
+                    activeLeaseCount,
+                    activeRenderLeaseCount: activeLeaseCount,
+                    targetFramesPerSecond: 30,
+                };
+            },
+        );
+
+        assert.equal(telemetry.activeLeaseCount, 3);
+        assert.equal(telemetry.targetFramesPerSecond, 30);
+        assert.equal(frequentSnapshotReadCount, 1);
+        assert.equal(fullSnapshotReadCount, 0);
+
+        activeLeaseCount = 4;
+        assert.equal(telemetry.activeLeaseCount, 3);
+        cacheResets.shift()?.();
+        assert.equal(telemetry.activeLeaseCount, 4);
+        assert.equal(frequentSnapshotReadCount, 2);
+        assert.equal(fullSnapshotReadCount, 0);
+
+        cacheResets.shift()?.();
+        const full = structuredClone(telemetry);
+        assert.equal(full.activeLeaseCount, 4);
+        assert.equal(full.targetFramesPerSecond, 30);
+        assert.equal(fullSnapshotReadCount, 1);
+        assert.equal(frequentSnapshotReadCount, 2);
+
+        unbind();
+        assert.equal(fullSnapshotReadCount, 2);
+    });
 });

@@ -92,6 +92,11 @@ export type GameRuntimeRenderLeaseSummary = {
     owner: string;
 };
 
+export type GameRuntimeSchedulerFrequentProfileSnapshot = Pick<
+    GameRuntimeSchedulerSnapshot,
+    'activeLeaseCount' | 'activeRenderLeaseCount' | 'targetFramesPerSecond'
+>;
+
 export type GameRuntimeFixedStep = {
     deltaMs: number;
     nowMs: number;
@@ -553,6 +558,7 @@ export class GameRuntimeScheduler {
             return false;
         }
 
+        const effectivelyVisible = this.isEffectivelyVisible();
         const previousTarget = this.getRenderFramesPerSecond();
         const normalizedReason = normalizeOwner(reason);
         const requestedFrames = Math.min(
@@ -561,22 +567,28 @@ export class GameRuntimeScheduler {
         );
         const previousFrames =
             this.coalescedRenderRequests.get(normalizedReason) ?? 0;
-        this.coalescedRenderRequests.set(
-            normalizedReason,
-            this.isEffectivelyVisible()
-                ? Math.max(previousFrames, requestedFrames)
-                : 1,
-        );
-        if (!this.isEffectivelyVisible()) {
+        const nextFrames = effectivelyVisible
+            ? Math.max(previousFrames, requestedFrames)
+            : 1;
+        if (nextFrames !== previousFrames) {
+            this.coalescedRenderRequests.set(normalizedReason, nextFrames);
+        }
+        if (!effectivelyVisible) {
             this.counters.hiddenCoalescedRenderRequestCount += 1;
             if (previousFrames === 0) {
                 this.counters.hiddenDeferredCoalescedRenderRequestCount += 1;
             }
         }
-        if (this.getRenderFramesPerSecond() !== previousTarget) {
+        const nextTarget = this.getRenderFramesPerSecond();
+        if (effectivelyVisible && nextTarget !== previousTarget) {
             this.resetRenderFrameTarget(previousTarget);
+            this.reconcileSchedule();
+        } else {
+            // A pending callback already owns the unchanged cadence. Avoid a
+            // full schedule resolution for every duplicate R3F host update,
+            // while still publishing counter and reason changes to observers.
+            this.emitSnapshot();
         }
-        this.reconcileSchedule();
         return true;
     }
 
@@ -691,6 +703,21 @@ export class GameRuntimeScheduler {
 
     getEffectiveVisibility() {
         return !this.disposed && this.isEffectivelyVisible();
+    }
+
+    /**
+     * Returns the scalar scheduler state sampled on every profiling RAF.
+     * Keep this allocation-free beyond the result object: the full snapshot
+     * sorts owners and builds lease summaries, which would make the observer
+     * materially alter the CPU profile it is trying to measure.
+     */
+    getFrequentProfileSnapshot(): GameRuntimeSchedulerFrequentProfileSnapshot {
+        const activeRenderLeaseCount = this.renderLeases.size;
+        return {
+            activeLeaseCount: activeRenderLeaseCount,
+            activeRenderLeaseCount,
+            targetFramesPerSecond: this.getTargetFramesPerSecond(),
+        };
     }
 
     setSnapshotListener(
@@ -1174,14 +1201,12 @@ export class GameRuntimeScheduler {
         const renderDueAt = this.getNextRenderDueAt(now);
         const fixedStepDueAt = this.getNextFixedStepDueAt();
         const deadlineDueAt = this.getNextDeadlineDueAt();
-        const nonRenderDueAt = [fixedStepDueAt, deadlineDueAt].reduce<
-            number | null
-        >((earliest, dueAt) => {
-            if (dueAt === null) {
-                return earliest;
-            }
-            return earliest === null ? dueAt : Math.min(earliest, dueAt);
-        }, null);
+        const nonRenderDueAt =
+            fixedStepDueAt === null
+                ? deadlineDueAt
+                : deadlineDueAt === null
+                  ? fixedStepDueAt
+                  : Math.min(fixedStepDueAt, deadlineDueAt);
 
         if (
             nonRenderDueAt !== null &&
@@ -1197,17 +1222,12 @@ export class GameRuntimeScheduler {
             return { dueAt: null, kind: 'frame' };
         }
 
-        const dueAt = [renderDueAt, nonRenderDueAt].reduce<number | null>(
-            (earliest, candidate) => {
-                if (candidate === null) {
-                    return earliest;
-                }
-                return earliest === null
-                    ? candidate
-                    : Math.min(earliest, candidate);
-            },
-            null,
-        );
+        const dueAt =
+            renderDueAt === null
+                ? nonRenderDueAt
+                : nonRenderDueAt === null
+                  ? renderDueAt
+                  : Math.min(renderDueAt, nonRenderDueAt);
         return dueAt === null
             ? null
             : {

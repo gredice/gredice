@@ -219,10 +219,15 @@ export function SceneTimeProvider({
             return;
         }
 
-        return bindRuntimeFrameLoopProfileTelemetry(runtimeFrameLoop, () => ({
-            ...scheduler.getSnapshot(),
-            sceneTimeSeconds: timeUniform.value,
-        }));
+        return bindRuntimeFrameLoopProfileTelemetry(
+            runtimeFrameLoop,
+            () => ({
+                ...scheduler.getSnapshot(),
+                sceneTimeSeconds: timeUniform.value,
+            }),
+            undefined,
+            () => scheduler.getFrequentProfileSnapshot(),
+        );
     }, [runtimeFrameLoop, scheduler, timeUniform]);
 
     useEffect(() => {
