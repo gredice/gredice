@@ -619,7 +619,7 @@ physical desktop target remains 16.7 ms.
 
 ### 2026-09-01 miss-resolution and avatar collision-step refresh
 
-A clean, comparable production-build run at `99609d91e` refreshed the two
+A clean, comparable production-build run at `ee78c6524` refreshed the two
 constrained-mobile avatar rows with headless Chromium 149, Node 24.15.0, a fresh
 managed build, and 5 s warmup/sample windows. Both rows passed the 33.3 ms frame
 p95, 100 ms miss-resolution, navigation-compile, and prepare-plus-lookup gates,
@@ -627,8 +627,8 @@ plus the initial 2 ms collision-step p95 gate.
 
 | Workload | Frame p95 / max | Long tasks | Miss resolution max | Navigation compile max | Prepare + lookup max / current | Cache | Result |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Furnished 100-cell solid wall | 26.9 / 98.1 ms | 1 | 10.3 ms | 0.4 ms | 5.0 / 2.6 ms | hit | pass |
-| House two-view movement | 27.1 / 27.3 ms | 0 | 0.7 ms | 0.1 ms | 0.4 / 0.2 ms | hit | pass |
+| Furnished 100-cell solid wall | 18.3 / 83.2 ms | 1 | 9.1 ms | 0.4 ms | 4.2 / 2.6 ms | hit | pass |
+| House two-view movement | 26.6 / 27.4 ms | 0 | 0.6 ms | 0 ms | 0.3 / 0.3 ms | hit | pass |
 
 The miss maximum begins before preparation and therefore supersedes the older
 core-compile-only figures. Current compile duration is zero after a hit, while
@@ -639,8 +639,8 @@ ceiling.
 
 | Workload | Total / held-key collision steps | Collision p95 / max | Collision primitives / buckets | Movement witness | Result |
 | --- | ---: | ---: | ---: | --- | --- |
-| Furnished 100-cell solid wall | 445 / 31 | 0.15 / 0.2 ms | 304 / 220 | Third-person push stopped after 0.13 m | pass |
-| House two-view movement | 452 / 66 | 0.10 / 0.2 ms | 11 / 21 | 1.39 m third-person, then 1.24 m first-person | pass |
+| Furnished 100-cell solid wall | 490 / 37 | 0.15 / 0.2 ms | 304 / 220 | Third-person push stopped after 0.14 m | pass |
+| House two-view movement | 512 / 71 | 0.15 / 0.2 ms | 11 / 21 | 1.23 m third-person, then 1.34 m first-person | pass |
 
 The timed house row is one representative owned-garden orientation. Existing
 four-rotation semantic movement checks and the owned/public production-WebGL
