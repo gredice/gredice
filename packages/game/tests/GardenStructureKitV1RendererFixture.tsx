@@ -33,6 +33,7 @@ export type GardenStructureKitV1RendererFixtureMode =
     | 'missing'
     | 'portal-asset-error'
     | 'portal-missing-mixed'
+    | 'prop-fallback-asset-error'
     | 'prop-only-hidden-mixed'
     | 'production';
 
@@ -217,6 +218,26 @@ const propOnlyHiddenMixedSourcePlan = createGardenStructureCollectionPlan([
     },
 ]);
 
+const propFallbackErrorSourcePlan = createGardenStructureCollectionPlan([
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compileGardenStructurePlan({
+            structureId: 'fixture-error-a-prop-only',
+            revision: 1,
+            document: createPropOnlyDocument(),
+            placement: { anchorX: -1, anchorY: 0, rotation: 0 },
+        }),
+    },
+    {
+        kit: debugGardenStructureKitMetadata,
+        plan: compilePortalFixtureStructure({
+            anchorX: 1,
+            includeTable: true,
+            structureId: 'fixture-error-b-portal-prop',
+        }),
+    },
+]);
+
 function requireBatch(
     batches: readonly GardenStructureCollectionBatchDescription[],
     geometryId: string,
@@ -382,6 +403,13 @@ function fixturePlan(
             roof: Object.freeze([]),
             transparent: Object.freeze([portalErrorFootprintBatch]),
         });
+    }
+    if (mode === 'prop-fallback-asset-error') {
+        return withFixtureBatches(
+            propFallbackErrorSourcePlan,
+            mode,
+            propFallbackErrorSourcePlan.batches,
+        );
     }
     if (mode === 'prop-only-hidden-mixed') {
         return withFixtureBatches(

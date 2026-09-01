@@ -5,6 +5,7 @@ import type { GardenStructureSceneSnapshot } from './gardenStructureScene';
 
 export type GardenStructureSceneLayerProps = Readonly<{
     castShadows?: boolean;
+    hiddenInstanceIds?: ReadonlySet<string>;
     onRendererReady?: () => void;
     renderProps?: boolean;
     snapshot: GardenStructureSceneSnapshot;
@@ -13,6 +14,7 @@ export type GardenStructureSceneLayerProps = Readonly<{
 /** Renders a validated saved-scene snapshot inside the existing R3F scene. */
 export function GardenStructureSceneLayer({
     castShadows = true,
+    hiddenInstanceIds,
     onRendererReady,
     renderProps = true,
     snapshot,
@@ -37,6 +39,7 @@ export function GardenStructureSceneLayer({
         >
             <GardenStructureCollectionRenderer
                 castShadows={castShadows}
+                hiddenInstanceIds={hiddenInstanceIds}
                 onRendererReady={onRendererReady}
                 plan={plan}
                 renderProps={renderProps}

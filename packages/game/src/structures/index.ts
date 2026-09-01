@@ -30,6 +30,19 @@ export {
     getGardenStructureAvatarCollisionSurfaces,
 } from './gardenStructureAvatarCollision';
 export type {
+    GardenStructureAvatarInteriorPresentation,
+    GardenStructureAvatarWorldChangePose,
+} from './gardenStructureAvatarInterior';
+export {
+    areGardenStructureAvatarInteriorPresentationsEqual,
+    emptyGardenStructureAvatarInteriorPresentation,
+    findContainingGardenStructure,
+    findGardenStructureAvatarSafeRelocation,
+    getGardenStructureAvatarInteriorPresentation,
+    resolveGardenStructureAvatarWorldChangePose,
+    resolveGardenStructureThirdPersonCameraPosition,
+} from './gardenStructureAvatarInterior';
+export type {
     GardenStructureCollectionBatchDescription,
     GardenStructureCollectionBatches,
     GardenStructureCollectionBuildOptions,

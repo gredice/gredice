@@ -56,6 +56,17 @@ function switchGarden(
         ];
         stacks[x] = rows;
     }
+    for (const z of [4, 5]) {
+        const rows = stacks['1'] ?? {};
+        rows[z.toString()] = [
+            {
+                id: `grass-${id.toString()}-1-${z.toString()}`,
+                name: 'Block_Grass',
+                rotation: 0,
+            },
+        ];
+        stacks['1'] = rows;
+    }
     const detailX =
         Math.max(...footprint.map((cell) => cell.x)) + (id === 1 ? 2 : 3);
     stacks[detailX.toString()] = {
@@ -121,6 +132,7 @@ export function PublicGardenSwitchFixture() {
                     className="size-full"
                     deferDetails={false}
                     garden={selectedGarden}
+                    localVisitorSpawnPoint={{ x: 1, z: 3.25 }}
                     noControls
                     noSound
                     noWeather

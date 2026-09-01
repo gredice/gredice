@@ -21,7 +21,11 @@ import { DetailedInspectionFarmer } from './entities/avatar/DetailedInspectionFa
 import { findDetailedInspectionFarmerTransform } from './entities/avatar/detailedInspectionFarmerPosition';
 import { GardenAvatar } from './entities/avatar/GardenAvatar';
 import type { GardenAvatarInteractionResult } from './entities/avatar/gardenAvatarInteractions';
-import { mergeGardenAvatarCollisionWorlds } from './entities/avatar/gardenAvatarMovement';
+import {
+    type GardenAvatarPoint,
+    mergeGardenAvatarCollisionWorlds,
+} from './entities/avatar/gardenAvatarMovement';
+import type { GardenAvatarPresenceState } from './entities/avatar/gardenVisitorPresence';
 import { Bats } from './entities/bats/Bats';
 import { Bees } from './entities/bees/Bees';
 import { Birds } from './entities/birds/Birds';
@@ -109,6 +113,11 @@ import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueScen
 import { GardenStructureSceneLayerDynamic } from './structures/GardenStructureSceneLayerDynamic';
 import { GardenStructureVerticalSliceDynamic } from './structures/GardenStructureVerticalSliceDynamic';
 import { createGardenStructureAvatarCollisionWorld } from './structures/gardenStructureAvatarCollision';
+import {
+    areGardenStructureAvatarInteriorPresentationsEqual,
+    emptyGardenStructureAvatarInteriorPresentation,
+    type GardenStructureAvatarInteriorPresentation,
+} from './structures/gardenStructureAvatarInterior';
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
 import {
     createGardenStructureSceneBaseHeightResolver,
@@ -166,6 +175,8 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     gardenStructureDebugFixture?: boolean;
+    gardenAvatarActivationRequest?: number;
+    gardenAvatarInitialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     flags?: GameFeatureFlags;
     staticOpaqueSceneCache?: boolean;
 };
@@ -368,6 +379,8 @@ export function GameScene({
     enableGameProfileController,
     enableStaticOpaqueSceneCacheOcclusionFixture,
     gardenStructureDebugFixture,
+    gardenAvatarActivationRequest,
+    gardenAvatarInitialSpawnPoint,
     fixedTimeSeconds,
     staticOpaqueSceneCache = true,
     ...rest
@@ -825,6 +838,49 @@ export function GameScene({
         records: blockData ? browseStructureRecords : undefined,
         resolveBaseHeight: structureBaseHeightResolver,
     });
+    const [structureInteriorPresentation, setStructureInteriorPresentation] =
+        useState<GardenStructureAvatarInteriorPresentation>(
+            emptyGardenStructureAvatarInteriorPresentation,
+        );
+    const publishStructureInteriorPresentation = useCallback(
+        (next: GardenStructureAvatarInteriorPresentation) => {
+            setStructureInteriorPresentation((current) =>
+                areGardenStructureAvatarInteriorPresentationsEqual(
+                    current,
+                    next,
+                )
+                    ? current
+                    : next,
+            );
+        },
+        [],
+    );
+    const hiddenStructureInstanceIds = useMemo(
+        () => new Set(structureInteriorPresentation.hiddenInstanceIds),
+        [structureInteriorPresentation.hiddenInstanceIds],
+    );
+    const hiddenStructureEdgeCount = useMemo(
+        () =>
+            gardenStructureDebugFixture
+                ? structureInteriorPresentation.hiddenInstanceIds.filter((id) =>
+                      id.startsWith('edge:'),
+                  ).length
+                : undefined,
+        [
+            gardenStructureDebugFixture,
+            structureInteriorPresentation.hiddenInstanceIds,
+        ],
+    );
+    const [gardenAvatarDebugPresence, setGardenAvatarDebugPresence] =
+        useState<GardenAvatarPresenceState | null>(null);
+    const publishGardenAvatarDebugPresence = useCallback(
+        (presence: GardenAvatarPresenceState) => {
+            if (gardenStructureDebugFixture) {
+                setGardenAvatarDebugPresence(presence);
+            }
+        },
+        [gardenStructureDebugFixture],
+    );
     const structureAvatarCollisionWorld = useMemo(() => {
         if (
             savedStructureScene.collisionWorld &&
@@ -920,6 +976,17 @@ export function GameScene({
         }
     }, [gardenAvatarEnabled, gardenAvatarView, setGardenAvatarView]);
     useEffect(() => {
+        if (!gardenAvatarEnabled || structureBuildActive) {
+            publishStructureInteriorPresentation(
+                emptyGardenStructureAvatarInteriorPresentation,
+            );
+        }
+    }, [
+        gardenAvatarEnabled,
+        publishStructureInteriorPresentation,
+        structureBuildActive,
+    ]);
+    useEffect(() => {
         if (!gardenStructureVerticalSliceEnabled && structureBuildSession) {
             setStructureBuildSession(null);
         }
@@ -1013,6 +1080,28 @@ export function GameScene({
             }
             data-garden-structure-first-id={
                 savedStructureScene.plan?.structures[0]?.structureId
+            }
+            data-garden-structure-hidden-instance-count={
+                structureInteriorPresentation.hiddenInstanceIds.length
+            }
+            data-garden-structure-hidden-edge-count={hiddenStructureEdgeCount}
+            data-garden-structure-interior-id={
+                structureInteriorPresentation.structureId ?? 'outside'
+            }
+            data-garden-avatar-debug-x={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.position[0]
+                    : undefined
+            }
+            data-garden-avatar-debug-z={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.position[2]
+                    : undefined
+            }
+            data-garden-avatar-debug-yaw={
+                gardenStructureDebugFixture
+                    ? gardenAvatarDebugPresence?.yaw
+                    : undefined
             }
             data-garden-structure-collision-status={
                 savedStructureScene.collisionWorld
@@ -1137,6 +1226,9 @@ export function GameScene({
                                         }
                                         renderProps={
                                             renderDetails && zoom !== 'far'
+                                        }
+                                        hiddenInstanceIds={
+                                            hiddenStructureInstanceIds
                                         }
                                         snapshot={savedStructureScene}
                                     />
@@ -1264,11 +1356,17 @@ export function GameScene({
                                     zoom !== 'far' && (
                                         <Suspense fallback={null}>
                                             <GardenAvatar
+                                                activationRequest={
+                                                    gardenAvatarActivationRequest
+                                                }
                                                 additionalCollisionWorld={
                                                     structureAvatarCollisionWorld
                                                 }
                                                 interactionDisabled={
                                                     structureBuildActive
+                                                }
+                                                initialSpawnPoint={
+                                                    gardenAvatarInitialSpawnPoint
                                                 }
                                                 interactiveBlockIds={
                                                     fenceGateBlockIds
@@ -1276,7 +1374,20 @@ export function GameScene({
                                                 onInteractBlock={
                                                     interactWithAvatarBlock
                                                 }
+                                                onPresenceChange={
+                                                    gardenStructureDebugFixture
+                                                        ? publishGardenAvatarDebugPresence
+                                                        : undefined
+                                                }
+                                                onStructureInteriorChange={
+                                                    publishStructureInteriorPresentation
+                                                }
                                                 stacks={garden?.stacks}
+                                                structureCollectionPlan={
+                                                    structureBuildActive
+                                                        ? null
+                                                        : savedStructureScene.plan
+                                                }
                                             />
                                         </Suspense>
                                     )}
