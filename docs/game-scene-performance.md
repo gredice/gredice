@@ -291,16 +291,17 @@ The active phase records the normal render sample and all runtime frame-loop
 telemetry: active named render/fixed-step leases, pending deadline owners,
 Canvas/document/context/effective visibility, target FPS, pending callback,
 scheduled callbacks, wakeups, owned invalidations, R3F frame callbacks, hidden
-deferred explicit render requests, hidden deferred coalesced root updates,
-actual invalidation failures, fixed-step failures, missed frame receipts,
+deferred explicit render requests, total hidden coalesced root updates, unique
+hidden coalesced dirty transitions, actual invalidation failures, fixed-step
+failures, missed frame receipts,
 calibrated display interval and calibration count, bounded work deltas, and
 suspend/resume counts. Explicit semantic requests and root-update dirty state
 have separate pending-reason lists and counters so a harmless reconciler update
 cannot masquerade as application-owned deferred work. Generic samples
 deep-clone the complete scheduler state at both endpoints and report deltas for
-the legacy lifecycle counters plus R3F frame callbacks, both hidden-deferred
-request classes, invalidation failures, fixed-step failures, missed frame
-receipts, display calibration counts, and nonessential hidden work. The offscreen
+the legacy lifecycle counters plus R3F frame callbacks, all hidden request
+classes, invalidation failures, fixed-step failures, missed frame receipts,
+display calibration counts, and nonessential hidden work. The offscreen
 phase inserts a real viewport spacer and requires both the runtime's
 IntersectionObserver state and an independent observer witness to report a
 zero-area, nonintersecting Canvas. The document hidden phase is explicitly
@@ -314,8 +315,8 @@ wakeups, and owned invalidations. Reports expose this as
 `ownedSchedulingZeroObserved` while retaining the legacy
 `runtimeSchedulerZeroObserved` property for comparator compatibility. A separate
 `zeroWorkObserved` diagnostic also requires zero R3F frame callbacks, hidden
-deferred render requests, invalidation failures, fixed-step failures, missed
-frame receipts, nonessential hidden work, and submitted WebGL
+explicit or coalesced render requests, invalidation failures, fixed-step
+failures, missed frame receipts, nonessential hidden work, and submitted WebGL
 frames/draws/triangles. The runtime now defaults the base cadence to zero; any
 nonzero base used by a profile must be an explicit, reported compatibility
 override. The full zero-work witness and CDP script time remain separate from
@@ -325,10 +326,12 @@ weakening the canonical lifecycle comparison contract.
 
 A separate `static-idle` scenario now hard-gates a full visible zero-work window.
 It loads a clear, fixed-midday High-quality default mock garden with details,
-controls, HUD, debug HUD, and continuous render leases disabled, with the static
-opaque cache kept on its legacy disabled path. The explicit `staticIdle=1` route
-gate also passes `authenticatedGardenQueriesEnabled={false}` into the game
-runtime, so the fixture does not enable the runtime's authenticated garden
+controls, HUD, and debug HUD disabled, but keeps normal continuous-render lease
+and root-broker policy enabled; the static opaque cache remains on its legacy
+disabled path. The route reports and acceptance-gates that normal policy so the
+witness cannot silently switch to manual capture mode. The explicit
+`staticIdle=1` route also passes `authenticatedGardenQueriesEnabled={false}`
+into the game runtime, so the fixture does not enable authenticated garden
 queries. After the fixture, generated-plant pipeline, and scheduler all settle,
 each run requires zero scheduler and R3F counter deltas, zero rendered frames,
 zero WebGL draws, zero submitted triangles, no API, console, or page errors, and
@@ -1159,12 +1162,13 @@ invalidator directly so the broker cannot recurse. Static capture explicitly
 disables continuous leases and retains raw invalidation control.
 
 The scheduler exposes broker-dirty reasons separately from explicit semantic
-render requests. While inactive, repeated updates for the same broker reason
-increment one dedicated hidden-deferred coalesced counter only when that reason
-first becomes pending; they do not increment explicit deferred-work or
-nonessential-hidden-work counters. Lifecycle acceptance permits only the single
-root broker reason and at most one newly pending dirty transition, while every
-suspended tail still requires zero new work and zero submitted frames.
+render requests. While inactive, one cumulative counter records every broker
+call, while a second hidden-deferred counter advances only when a normalized
+reason first becomes pending. Repeats do not increment explicit deferred-work
+or nonessential-hidden-work counters. Lifecycle acceptance permits only the
+single root broker reason, bounds the transition drain to one newly pending
+reason and one queued host commit per persistent fauna owner, and requires zero
+additional broker calls throughout every suspended tail.
 
 The broker covers R3F reconciler and direct root-state invalidations. R3F
 module-level invalidators, including a global animation driver, bypass the root
@@ -1254,6 +1258,12 @@ with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
 and wakeup counters cover both bounded calibration frames and scheduler
 timeouts, while R3F frame callbacks remain a separate receipt count.
 Display-interval telemetry remains observational and never steers scheduling.
+
+Cross-tier owner profiles integrate how long the scheduler actually advertises
+30 FPS ambient and 60 FPS interaction targets. Profiler RAFs sample only that
+target state and elapsed time; actual WebGL-rendered frames and R3F receipts are
+counted independently. Each target-rate window must deliver within its bounded
+frame budget, so declared lease rates alone cannot satisfy the cadence gate.
 
 Profiler telemetry is pull-based: a synchronous property-read or
 `structuredClone` burst shares one exact scheduler snapshot until its queued

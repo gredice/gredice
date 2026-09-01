@@ -313,6 +313,7 @@ export default async function GameProfilePage({
     const staticIdleProfile = resolveGameProfileStaticIdle(
         firstValue(params.staticIdle),
     );
+    const continuousRenderLeasesEnabled = true;
     const mockGardenProfile = resolveMockGardenProfile(
         firstValue(params.profile),
     );
@@ -411,6 +412,9 @@ export default async function GameProfilePage({
             data-game-profile-operation-visuals={operationVisuals ? '1' : '0'}
             data-game-profile-static-scene-cache={staticSceneCacheMode}
             data-game-profile-static-idle={staticIdleProfile ? '1' : '0'}
+            data-game-profile-continuous-render-leases={
+                continuousRenderLeasesEnabled ? '1' : '0'
+            }
             data-game-profile-static-scene-cache-occlusion-fixture={
                 staticSceneCacheOcclusionFixture ? '1' : '0'
             }
@@ -466,7 +470,7 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
-                continuousRenderLeasesEnabled={!staticIdleProfile}
+                continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 gardenStructureDebugFixture={
                     gardenBuilding &&
                     gardenStructureProfileFixture === undefined

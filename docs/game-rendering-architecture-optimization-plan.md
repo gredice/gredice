@@ -907,8 +907,8 @@ Scope:
 - Preserve existing ambient and interactive cadence through explicit owners; do
   not reduce visual density, effects, or quality-tier fidelity.
 - Expose stable owner/rate summaries, R3F frame-callback receipts, bounded resume
-  deltas, lease balance, separate hidden-deferred counters and pending reasons
-  for explicit render requests versus coalesced root updates, actual
+  deltas, lease balance, separate pending reasons and total/unique hidden
+  counters for explicit render requests versus coalesced root updates, actual
   invalidation failures, quarantined fixed-step failures, missed frame receipts,
   calibrated display interval and calibration counts, and
   nonessential-hidden-work counters.
@@ -919,9 +919,9 @@ Scope:
 
 Acceptance criteria:
 
-- A clear deterministic static scene with continuous leases explicitly disabled
-  reaches zero R3F frame callbacks and zero WebGL submissions after
-  stabilization.
+- A clear deterministic static scene running normal continuous-lease and root
+  broker policy reaches zero R3F frame callbacks and zero WebGL submissions
+  after stabilization.
 - Hidden, offscreen, and context-lost scenes execute zero nonessential work.
 - Camera, weather, plant, and fauna animation retains its intended cadence in
   every quality profile.
@@ -957,12 +957,13 @@ Progress:
   Scheduler-owned draws call the raw invalidator directly, while static capture
   keeps the broker disabled. R3F module-level invalidators remain outside this
   root-state boundary, so total receipt surplus stays acceptance-gated.
-- Broker dirty state has its own pending-reason list and hidden-deferred counter.
-  A repeated inactive update increments that counter only when its normalized
-  reason first becomes pending; it cannot inflate explicit deferred-work or
-  nonessential-hidden-work telemetry. Lifecycle profiles permit only the
-  root-update broker reason, bound its suspension transition to one new dirty
-  reason, and continue to require exact-zero residual suspension work.
+- Broker dirty state has its own pending-reason list, total hidden-call counter,
+  and unique hidden-deferred transition counter. Repeated inactive updates stay
+  visible through the total counter even after the reason is pending, but cannot
+  inflate explicit deferred-work or nonessential-hidden-work telemetry.
+  Lifecycle profiles permit only the root-update broker reason, bound the
+  transition drain to one dirty reason and the three persistent fauna owners,
+  and require exact-zero broker calls during residual suspension.
 - Bounded calibration RAF timestamps are observational telemetry only and never
   steer scheduling. The first non-owned receipt after a scheduler-owned receipt
   within one active semantic interval consumes the pending cadence slot;
@@ -1028,10 +1029,11 @@ Progress:
   wakeups do not push or clone telemetry. Additive counter deltas preserve the
   existing lifecycle/comparator contract for clean before/after reports.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
-  clear High-quality mock scene. The `staticIdle=1` query explicitly disables
-  continuous render leases and passes
-  `authenticatedGardenQueriesEnabled={false}`, isolating the mock fixture from
-  signed-in garden queries instead of relying on incidental mock-query behavior.
+  clear High-quality mock scene. It keeps normal continuous-render leases and
+  the root invalidation broker enabled, reports that policy as acceptance
+  provenance, and passes `authenticatedGardenQueriesEnabled={false}`, isolating
+  the mock fixture from signed-in garden queries instead of relying on
+  incidental mock-query behavior.
   After fixture, plant-pipeline, and scheduler stabilization, the scenario gates
   zero scheduler/R3F counter deltas and zero rendered frames, WebGL draws, and
   submitted triangles across three fresh runs.
@@ -1039,8 +1041,9 @@ Progress:
   static-idle windows, three unfixed-time lifecycle runs, and three owner/rate
   runs for each Low, Medium, High, Automatic-standard, and
   Automatic-constrained policy. Static windows gate exact zero work; lifecycle
-  runs gate zero suspension and bounded resume; owner runs gate 60 FPS camera
-  ownership and persistent 30 FPS weather, plant, and fauna ownership.
+  runs gate zero suspension and bounded resume; owner runs integrate actual
+  rendered delivery against 60 FPS camera and persistent 30 FPS weather, plant,
+  and fauna target durations in every quality policy.
 - An already-started Three.js/WebGL `compileAsync` call cannot be preempted by an
   `AbortSignal`; suspension cancels that scene's subscription and prevents a new
   hidden prewarm from starting, but the browser/GPU may finish and retain the
