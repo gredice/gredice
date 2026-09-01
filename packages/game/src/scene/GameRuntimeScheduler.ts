@@ -43,6 +43,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     fixedStepCount: number;
     fixedStepFailureCount: number;
     fixedStepOwners: readonly string[];
+    hiddenCoalescedRenderRequestCount: number;
     hiddenDeferredCoalescedRenderRequestCount: number;
     hiddenDeferredRenderRequestCount: number;
     invalidationCount: number;
@@ -156,6 +157,7 @@ type MutableSchedulerCounters = {
     displayFrameCalibrationCount: number;
     fixedStepCount: number;
     fixedStepFailureCount: number;
+    hiddenCoalescedRenderRequestCount: number;
     hiddenDeferredCoalescedRenderRequestCount: number;
     hiddenDeferredRenderRequestCount: number;
     invalidationCount: number;
@@ -221,6 +223,7 @@ export class GameRuntimeScheduler {
         displayFrameCalibrationCount: 0,
         fixedStepCount: 0,
         fixedStepFailureCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
         hiddenDeferredCoalescedRenderRequestCount: 0,
         hiddenDeferredRenderRequestCount: 0,
         invalidationCount: 0,
@@ -564,8 +567,11 @@ export class GameRuntimeScheduler {
                 ? Math.max(previousFrames, requestedFrames)
                 : 1,
         );
-        if (!this.isEffectivelyVisible() && previousFrames === 0) {
-            this.counters.hiddenDeferredCoalescedRenderRequestCount += 1;
+        if (!this.isEffectivelyVisible()) {
+            this.counters.hiddenCoalescedRenderRequestCount += 1;
+            if (previousFrames === 0) {
+                this.counters.hiddenDeferredCoalescedRenderRequestCount += 1;
+            }
         }
         if (this.getRenderFramesPerSecond() !== previousTarget) {
             this.resetRenderFrameTarget(previousTarget);

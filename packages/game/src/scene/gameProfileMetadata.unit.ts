@@ -287,6 +287,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             fixedStepCount: 0,
             fixedStepFailureCount: 0,
             fixedStepOwners: [],
+            hiddenCoalescedRenderRequestCount: 0,
             hiddenDeferredCoalescedRenderRequestCount: 0,
             hiddenDeferredRenderRequestCount: 0,
             invalidationCount: 0,

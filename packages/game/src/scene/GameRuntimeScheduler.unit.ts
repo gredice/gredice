@@ -1236,6 +1236,14 @@ describe('GameRuntimeScheduler semantic work', () => {
             pending.cancelledCallbackCount,
             before.cancelledCallbackCount,
         );
+        assert.equal(
+            pending.hiddenCoalescedRenderRequestCount,
+            before.hiddenCoalescedRenderRequestCount,
+        );
+        assert.equal(
+            pending.hiddenDeferredCoalescedRenderRequestCount,
+            before.hiddenDeferredCoalescedRenderRequestCount,
+        );
         assert.deepEqual(pending.renderRequestReasons, []);
         assert.deepEqual(pending.coalescedRenderRequestReasons, [
             'r3f-host',
@@ -1298,12 +1306,12 @@ describe('GameRuntimeScheduler semantic work', () => {
         });
 
         assert.equal(scheduler.requestCoalescedRender('r3f-host'), true);
-        assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 0);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
-        assert.deepEqual(
-            scheduler.getSnapshot().coalescedRenderRequestReasons,
-            ['r3f-host'],
-        );
+        const pending = scheduler.getSnapshot();
+        assert.equal(pending.targetFramesPerSecond, 0);
+        assert.equal(pending.hiddenCoalescedRenderRequestCount, 0);
+        assert.equal(pending.hiddenDeferredCoalescedRenderRequestCount, 0);
+        assert.deepEqual(pending.renderRequestReasons, []);
+        assert.deepEqual(pending.coalescedRenderRequestReasons, ['r3f-host']);
 
         queue.runUntil(100);
         assert.equal(invalidations.length, 1);
@@ -1332,6 +1340,7 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(queue.pendingTaskCount, 0);
         assert.deepEqual(hidden.renderRequestReasons, []);
         assert.deepEqual(hidden.coalescedRenderRequestReasons, ['r3f-host']);
+        assert.equal(hidden.hiddenCoalescedRenderRequestCount, 3);
         assert.equal(hidden.hiddenDeferredCoalescedRenderRequestCount, 1);
         assert.equal(
             hidden.hiddenDeferredRenderRequestCount,
@@ -1354,6 +1363,32 @@ describe('GameRuntimeScheduler semantic work', () => {
             [],
         );
         assert.equal(queue.pendingTaskCount, 0);
+
+        scheduler.setDocumentVisible(false);
+        scheduler.requestCoalescedRender('r3f-host');
+        const repending = scheduler.getSnapshot();
+        assert.equal(repending.hiddenCoalescedRenderRequestCount, 4);
+        assert.equal(repending.hiddenDeferredCoalescedRenderRequestCount, 2);
+        assert.deepEqual(repending.coalescedRenderRequestReasons, ['r3f-host']);
+        assert.equal(
+            repending.hiddenDeferredRenderRequestCount,
+            ordinaryCountersBefore.hiddenDeferredRenderRequestCount,
+        );
+        assert.equal(
+            repending.deferredWorkCount,
+            ordinaryCountersBefore.deferredWorkCount,
+        );
+        assert.equal(
+            repending.nonessentialHiddenWorkCount,
+            ordinaryCountersBefore.nonessentialHiddenWorkCount,
+        );
+
+        scheduler.setDocumentVisible(true);
+        queue.runUntil(300);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
     });
 
     it('finishes a coalesced request when the last lease is released before receipt', () => {
