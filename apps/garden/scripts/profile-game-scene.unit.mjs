@@ -97,10 +97,11 @@ test('full scheduler snapshots are sampled per RAF only for runtime-owner accept
     );
 });
 
-test('scheduler scalar telemetry is observed per RAF only when acceptance needs maxima', () => {
+test('scheduler scalar telemetry is observed per RAF when acceptance needs extrema', () => {
     assert.equal(
         shouldObserveRuntimeFrameLoopDuringRaf({
             buildingProfile: undefined,
+            crossTierProfile: false,
             runtimeOwnersProfile: false,
         }),
         false,
@@ -108,6 +109,7 @@ test('scheduler scalar telemetry is observed per RAF only when acceptance needs 
     assert.equal(
         shouldObserveRuntimeFrameLoopDuringRaf({
             buildingProfile: { frameRateClass: 'ambient' },
+            crossTierProfile: false,
             runtimeOwnersProfile: false,
         }),
         true,
@@ -115,6 +117,7 @@ test('scheduler scalar telemetry is observed per RAF only when acceptance needs 
     assert.equal(
         shouldObserveRuntimeFrameLoopDuringRaf({
             buildingProfile: { frameRateClass: 'interactive' },
+            crossTierProfile: false,
             runtimeOwnersProfile: false,
         }),
         false,
@@ -122,7 +125,16 @@ test('scheduler scalar telemetry is observed per RAF only when acceptance needs 
     assert.equal(
         shouldObserveRuntimeFrameLoopDuringRaf({
             buildingProfile: undefined,
+            crossTierProfile: false,
             runtimeOwnersProfile: true,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            crossTierProfile: true,
+            runtimeOwnersProfile: false,
         }),
         true,
     );
@@ -3785,6 +3797,10 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'low',
+            runtimeFrameLoop: {
+                activeLeaseCount: 10,
+                targetFramesPerSecond: 30,
+            },
             shadowMapSize: 0,
             shadowsEnabled: false,
             staticOpaqueSceneCacheEnabled: false,
@@ -3799,13 +3815,34 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             },
             drawCalls: 100,
             elapsedMs: 5_000,
+            frames: 300,
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
-            renderedFps: 12,
-            renderedFrames: 60,
+            renderedFps: 30,
+            renderedFrames: 150,
             reportedDpr: 2,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 10,
+            runtimeFrameLoopActiveLeaseCountAtStart: 10,
+            runtimeFrameLoopActiveLeaseCountMax: 10,
+            runtimeFrameLoopActiveLeaseCountMin: 10,
+            runtimeFrameLoopAtEnd: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopAtStart: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            runtimeFrameLoopTargetFramesPerSecondMin: 30,
             submittedTriangles: 1_000_000,
         },
         screenshotWitness: {
@@ -3825,6 +3862,119 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         result.checks.every((check) => check.pass),
         true,
     );
+
+    const expectFailedChecks = (mutate, expectedNames) => {
+        const candidate = structuredClone(input);
+        mutate(candidate);
+        const failedNames = new Set(
+            evaluateCrossTierAcceptance(candidate)
+                .checks.filter((check) => !check.pass)
+                .map((check) => check.name),
+        );
+        for (const name of expectedNames) {
+            assert.equal(failedNames.has(name), true, `${name} must fail`);
+        }
+    };
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.runtime.runtimeFrameLoop.targetFramesPerSecond;
+        },
+        ['crossTierRuntimeTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopTargetFramesPerSecondMax;
+        },
+        ['crossTierSampleMaximumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopTargetFramesPerSecondMin;
+        },
+        ['crossTierSampleMinimumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopTargetFramesPerSecondMin = 15;
+        },
+        ['crossTierSampleMinimumTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopTargetFramesPerSecondAtEnd = 60;
+        },
+        ['crossTierSampleEndTargetFramesPerSecond'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtStart = null;
+        },
+        [
+            'crossTierSampleStartSnapshotTargetFramesPerSecond',
+            'crossTierSampleStartVisible',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopAtEnd.targetFramesPerSecond = 60;
+            candidate.sample.runtimeFrameLoopAtEnd.effectiveVisible = false;
+        },
+        [
+            'crossTierSampleEndSnapshotTargetFramesPerSecond',
+            'crossTierSampleEndVisible',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopActiveLeaseCountMax = 11;
+        },
+        ['crossTierSampleMaximumActiveLeaseCount'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            delete candidate.sample.runtimeFrameLoopActiveLeaseCountMin;
+        },
+        ['crossTierSampleMinimumActiveLeaseCount'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopActiveLeaseCountMin = 9;
+        },
+        ['crossTierSampleMinimumActiveLeaseCount'],
+    );
+    for (const observationCountDelta of [2, 4]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.runtimeFrameLoopObservationCount =
+                    candidate.sample.frames + observationCountDelta;
+            },
+            ['crossTierRuntimeFrameLoopObservationCount'],
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount =
+                candidate.sample.renderedFrames - 1;
+        },
+        ['crossTierRenderedFramesMatchR3fFrameCallbackDelta'],
+    );
+    for (const renderedFps of [27.99, 32.01]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.renderedFps = renderedFps;
+            },
+            ['crossTierRenderedFps'],
+        );
+    }
+    for (const renderedFps of [28, 32]) {
+        assert.equal(
+            evaluateCrossTierAcceptance({
+                ...input,
+                sample: { ...input.sample, renderedFps },
+            }).pass,
+            true,
+        );
+    }
 
     assert.equal(
         evaluateCrossTierAcceptance({
@@ -3965,6 +4115,10 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'medium',
+            runtimeFrameLoop: {
+                activeLeaseCount: 10,
+                targetFramesPerSecond: 30,
+            },
             shadowMapSize: 2_048,
             shadowsEnabled: true,
             staticOpaqueSceneCacheEnabled: false,
@@ -3978,13 +4132,34 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             },
             drawCalls: 100,
             elapsedMs: 5_000,
+            frames: 300,
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
-            renderedFps: 12,
-            renderedFrames: 60,
+            renderedFps: 30,
+            renderedFrames: 150,
             reportedDpr: 2,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 10,
+            runtimeFrameLoopActiveLeaseCountAtStart: 10,
+            runtimeFrameLoopActiveLeaseCountMax: 10,
+            runtimeFrameLoopActiveLeaseCountMin: 10,
+            runtimeFrameLoopAtEnd: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopAtStart: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            runtimeFrameLoopTargetFramesPerSecondMin: 30,
             submittedTriangles: 1_000_000,
         },
         screenshotWitness: {

@@ -43,6 +43,12 @@ const gardenSwitchTargetFramesPerSecond = 30;
 const gardenSwitchRenderedFpsTolerance = 2;
 const gardenSwitchMinimumRenderedFps =
     gardenSwitchTargetFramesPerSecond - gardenSwitchRenderedFpsTolerance;
+const crossTierTargetFramesPerSecond = 30;
+const crossTierRenderedFpsTolerance = 2;
+const crossTierMinimumRenderedFps =
+    crossTierTargetFramesPerSecond - crossTierRenderedFpsTolerance;
+const crossTierMaximumRenderedFps =
+    crossTierTargetFramesPerSecond + crossTierRenderedFpsTolerance;
 const crossTierBaseNamePattern =
     /^game-cross-tier-(low|medium|high|auto-standard|auto-constrained)-(steady|camera-motion)-desktop$/;
 const canonicalCrossTierPolicies = {
@@ -1332,6 +1338,42 @@ function gpuElapsedWindowOccupancyState(sample) {
     };
 }
 
+function gpuElapsedWorkflowOccupancyState(scenario) {
+    const arrivals = scenario?.gardenSwitch?.arrivals;
+    if (!Array.isArray(arrivals) || arrivals.length === 0) {
+        return { available: false, invalid: true, value: null };
+    }
+
+    const gpuStates = arrivals.map((arrival) => gpuState(arrival?.sample));
+    const availableCount = gpuStates.filter((state) => state.available).length;
+    if (availableCount === 0) {
+        return {
+            available: false,
+            invalid: gpuStates.some((state) => state.invalidAvailableValue),
+            value: null,
+        };
+    }
+    if (availableCount !== arrivals.length) {
+        return { available: true, invalid: true, value: null };
+    }
+
+    let elapsedMs = 0;
+    let elapsedTotalMs = 0;
+    for (const arrival of arrivals) {
+        const occupancy = gpuElapsedWindowOccupancyState(arrival?.sample);
+        if (!occupancy.valid) {
+            return { available: true, invalid: true, value: null };
+        }
+        elapsedMs += arrival.sample.elapsedMs;
+        elapsedTotalMs += arrival.sample.gpu.elapsedTotalMs;
+    }
+    return {
+        available: true,
+        invalid: false,
+        value: (elapsedTotalMs / elapsedMs) * 100,
+    };
+}
+
 function samplePhases(scenario) {
     if (scenario.requested?.lifecycleProfile === true) {
         return [
@@ -1593,38 +1635,71 @@ function buildRatioComparison({
     };
 }
 
-function buildGardenSwitchRenderedFpsComparison({ rows, ...metric }) {
+function buildTargetAwareRenderedFpsComparison({
+    maximumRenderedFps = null,
+    minimumRenderedFps,
+    rows,
+    targetFramesPerSecond,
+    targetToleranceFramesPerSecond,
+    ...metric
+}) {
     const baselineRelative = buildRatioComparison({ ...metric, rows });
     const individual = baselineRelative.individual.map((run) => {
-        const candidateFloorPass =
-            run.candidate >= gardenSwitchMinimumRenderedFps;
+        const candidateFloorPass = run.candidate >= minimumRenderedFps;
+        const candidateCeilingPass =
+            maximumRenderedFps === null || run.candidate <= maximumRenderedFps;
         return {
             ...run,
             baselineRelativePass: run.pass,
             baselineRelativeRatio: run.ratio,
             baselineRelativeWorsening: run.worsening,
+            candidateCeilingPass,
             candidateFloorPass,
-            minimumRenderedFps: gardenSwitchMinimumRenderedFps,
-            pass: candidateFloorPass,
-            targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
+            maximumRenderedFps,
+            minimumRenderedFps,
+            pass: candidateFloorPass && candidateCeilingPass,
+            targetFramesPerSecond,
         };
     });
-    const pass = individual.every((run) => run.candidateFloorPass);
+    const pass = individual.every((run) => run.pass);
     return {
         ...baselineRelative,
         baselineRelativeDiagnosticOnly: true,
         baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
         baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        everyRawRunGate: true,
         individual,
         medianPass: pass,
-        minimumRenderedFps: gardenSwitchMinimumRenderedFps,
+        maximumRenderedFps,
+        minimumRenderedFps,
         pass,
         regressionBreach: !pass,
         screeningBreach: !pass,
-        targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
-        targetToleranceFramesPerSecond: gardenSwitchRenderedFpsTolerance,
+        targetFramesPerSecond,
+        targetToleranceFramesPerSecond,
         targetAwareRenderedFps: true,
     };
+}
+
+function buildGardenSwitchRenderedFpsComparison({ rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        minimumRenderedFps: gardenSwitchMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: gardenSwitchRenderedFpsTolerance,
+    });
+}
+
+function buildCrossTierRenderedFpsComparison({ rows, ...metric }) {
+    return buildTargetAwareRenderedFpsComparison({
+        ...metric,
+        maximumRenderedFps: crossTierMaximumRenderedFps,
+        minimumRenderedFps: crossTierMinimumRenderedFps,
+        rows,
+        targetFramesPerSecond: crossTierTargetFramesPerSecond,
+        targetToleranceFramesPerSecond: crossTierRenderedFpsTolerance,
+    });
 }
 
 function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
@@ -1636,6 +1711,29 @@ function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
         baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
         diagnosticOnly: true,
         gatedBy: 'gpu.elapsed_window_occupancy_percent',
+        individual: baselineRelative.individual.map((run) => ({
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            pass: true,
+        })),
+        medianPass: true,
+        pass: true,
+        regressionBreach: false,
+        screeningBreach: false,
+    };
+}
+
+function buildDiagnosticRatioComparison({ gatedBy, rows, ...metric }) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        diagnosticOnly: true,
+        gatedBy,
         individual: baselineRelative.individual.map((run) => ({
             ...run,
             baselineRelativePass: run.pass,
@@ -1671,6 +1769,114 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         if (snapshot.effectiveVisible !== true) {
             errors.push(`${path}.effectiveVisible must be true`);
         }
+    }
+}
+
+function validateCrossTierCandidateFrameContract(row, errors) {
+    const targetFields = [
+        'runtimeFrameLoopTargetFramesPerSecondAtStart',
+        'runtimeFrameLoopTargetFramesPerSecondMax',
+        'runtimeFrameLoopTargetFramesPerSecondAtEnd',
+    ];
+    for (const reportKind of ['baseline', 'candidate']) {
+        const phase = row[reportKind];
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}`;
+        const runtimeTarget =
+            phase?.resources?.runtimeFrameLoop?.targetFramesPerSecond;
+        if (runtimeTarget !== crossTierTargetFramesPerSecond) {
+            errors.push(
+                `${path}.runtime.runtimeFrameLoop.targetFramesPerSecond must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(runtimeTarget)}`,
+            );
+        }
+        for (const field of targetFields) {
+            const value = phase?.sample?.[field];
+            if (value !== crossTierTargetFramesPerSecond) {
+                errors.push(
+                    `${path}.sample.${field} must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(value)}`,
+                );
+            }
+        }
+    }
+
+    const sample = row.candidate?.sample;
+    const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample`;
+    if (
+        sample?.runtimeFrameLoopTargetFramesPerSecondMin !==
+        crossTierTargetFramesPerSecond
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopTargetFramesPerSecondMin must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(sample?.runtimeFrameLoopTargetFramesPerSecondMin)}`,
+        );
+    }
+    for (const boundary of [
+        'runtimeFrameLoopAtStart',
+        'runtimeFrameLoopAtEnd',
+    ]) {
+        const snapshot = sample?.[boundary];
+        const snapshotPath = `${path}.${boundary}`;
+        if (!isRecord(snapshot)) {
+            errors.push(`${snapshotPath} is missing`);
+            continue;
+        }
+        if (snapshot.targetFramesPerSecond !== crossTierTargetFramesPerSecond) {
+            errors.push(
+                `${snapshotPath}.targetFramesPerSecond must be ${crossTierTargetFramesPerSecond}; received ${canonicalJson(snapshot.targetFramesPerSecond)}`,
+            );
+        }
+        if (snapshot.effectiveVisible !== true) {
+            errors.push(`${snapshotPath}.effectiveVisible must be true`);
+        }
+    }
+
+    const leaseFields = [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ];
+    const leaseCounts = leaseFields.map((field) => sample?.[field]);
+    for (const [index, leaseCount] of leaseCounts.entries()) {
+        if (!Number.isInteger(leaseCount) || leaseCount <= 0) {
+            errors.push(
+                `${path}.${leaseFields[index]} must be a positive integer`,
+            );
+        }
+    }
+    if (
+        leaseCounts.every(
+            (leaseCount) => Number.isInteger(leaseCount) && leaseCount > 0,
+        ) &&
+        new Set(leaseCounts).size !== 1
+    ) {
+        errors.push(
+            `${path} runtime frame-loop active lease counts must remain stable`,
+        );
+    }
+
+    const frames = sample?.frames;
+    const observationCount = sample?.runtimeFrameLoopObservationCount;
+    if (!Number.isInteger(frames) || frames <= 0) {
+        errors.push(`${path}.frames must be a positive integer`);
+    } else if (
+        !Number.isInteger(observationCount) ||
+        observationCount !== frames + 3
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopObservationCount must equal sample.frames + 3`,
+        );
+    }
+
+    const renderedFrames = sample?.renderedFrames;
+    const r3fFrameCallbackCount =
+        sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount;
+    if (
+        !Number.isInteger(renderedFrames) ||
+        renderedFrames <= 0 ||
+        renderedFrames !== r3fFrameCallbackCount
+    ) {
+        errors.push(
+            `${path}.renderedFrames must equal the positive runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount`,
+        );
     }
 }
 
@@ -1779,18 +1985,58 @@ function addMetricRows({
 
 function comparePairedScenarios(
     pairs,
-    { requireGardenSwitchCandidateFrameContract = true } = {},
+    {
+        requireCandidateFrameContract = true,
+        requireGardenSwitchWorkflowGpuTiming = false,
+    } = {},
 ) {
     const comparisons = [];
     const errors = [];
     const invariants = [];
     const skipped = [];
+    const gardenSwitchWorkflowRows = [];
     const sampleRows = [];
     const timingRows = [];
 
     for (const { baseline, candidate } of pairs) {
         const baseName = scenarioBaseName(baseline);
         const profileRun = scenarioRun(baseline);
+        if (baseName === gardenSwitchScenarioBaseName) {
+            const baselineWorkflow = gpuElapsedWorkflowOccupancyState(baseline);
+            const candidateWorkflow =
+                gpuElapsedWorkflowOccupancyState(candidate);
+            const workflowPath = `${baseName} run ${profileRun} workflow`;
+            if (baselineWorkflow.invalid || candidateWorkflow.invalid) {
+                errors.push(
+                    `${workflowPath} GPU elapsed-workflow occupancy requires complete GPU timing and valid elapsed-window totals for every arrival in both reports`,
+                );
+            } else if (
+                baselineWorkflow.available !== candidateWorkflow.available
+            ) {
+                errors.push(
+                    `${workflowPath} GPU timing availability differs between reports`,
+                );
+            } else if (baselineWorkflow.available) {
+                gardenSwitchWorkflowRows.push({
+                    baseline: baselineWorkflow.value,
+                    candidate: candidateWorkflow.value,
+                    phase: 'workflow',
+                    profileRun,
+                    scenario: baseName,
+                });
+            } else if (requireGardenSwitchWorkflowGpuTiming) {
+                errors.push(
+                    `${workflowPath} GPU elapsed-workflow occupancy timing is required for confirmed release evidence`,
+                );
+            } else {
+                skipped.push({
+                    metric: 'gpu.elapsed_workflow_occupancy_percent',
+                    phase: 'workflow',
+                    reason: 'GPU timing unavailable for every arrival in both reports',
+                    scenario: baseName,
+                });
+            }
+        }
         const baselineSamplePhases = samplePhases(baseline);
         const candidateSamplePhases = samplePhases(candidate);
         for (const [index, baselinePhase] of baselineSamplePhases.entries()) {
@@ -1937,11 +2183,14 @@ function comparePairedScenarios(
             const rows = [];
             for (const row of group.rows) {
                 if (
-                    requireGardenSwitchCandidateFrameContract &&
-                    group.scenario === gardenSwitchScenarioBaseName &&
+                    requireCandidateFrameContract &&
                     metric.id === 'frame.rendered_fps'
                 ) {
-                    validateGardenSwitchCandidateFrameContract(row, errors);
+                    if (group.scenario === gardenSwitchScenarioBaseName) {
+                        validateGardenSwitchCandidateFrameContract(row, errors);
+                    } else if (crossTierBaseNamePattern.test(group.scenario)) {
+                        validateCrossTierCandidateFrameContract(row, errors);
+                    }
                 }
                 addMetricRows({
                     baselineValue: metric.read(row.baseline),
@@ -1965,14 +2214,21 @@ function comparePairedScenarios(
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...(requireGardenSwitchCandidateFrameContract &&
-                    group.scenario === gardenSwitchScenarioBaseName &&
-                    metric.id === 'frame.rendered_fps'
+                    ...(requireCandidateFrameContract &&
+                    metric.id === 'frame.rendered_fps' &&
+                    group.scenario === gardenSwitchScenarioBaseName
                         ? buildGardenSwitchRenderedFpsComparison({
                               ...metric,
                               rows,
                           })
-                        : buildRatioComparison({ ...metric, rows })),
+                        : requireCandidateFrameContract &&
+                            metric.id === 'frame.rendered_fps' &&
+                            crossTierBaseNamePattern.test(group.scenario)
+                          ? buildCrossTierRenderedFpsComparison({
+                                ...metric,
+                                rows,
+                            })
+                          : buildRatioComparison({ ...metric, rows })),
                 });
             }
         }
@@ -2019,7 +2275,7 @@ function comparePairedScenarios(
                     scenario: row.scenario,
                 });
                 if (
-                    requireGardenSwitchCandidateFrameContract &&
+                    requireCandidateFrameContract &&
                     group.scenario === gardenSwitchScenarioBaseName
                 ) {
                     const baselineOccupancy = gpuElapsedWindowOccupancyState(
@@ -2048,7 +2304,7 @@ function comparePairedScenarios(
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...(requireGardenSwitchCandidateFrameContract &&
+                ...(requireCandidateFrameContract &&
                 group.scenario === gardenSwitchScenarioBaseName
                     ? buildGardenSwitchGpuP95Diagnostic({
                           direction: 'maximum',
@@ -2078,17 +2334,31 @@ function comparePairedScenarios(
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...buildRatioComparison({
-                    direction: 'maximum',
-                    id: 'gpu.elapsed_window_occupancy_percent',
-                    label: 'GPU elapsed-window occupancy',
-                    medianAbsoluteTolerance: 5,
-                    medianLimit: 1.15,
-                    rows: gpuOccupancyRows,
-                    runAbsoluteTolerance: 10,
-                    runLimit: 1.3,
-                    unit: '%',
-                }),
+                ...(group.scenario === gardenSwitchScenarioBaseName &&
+                group.phase.startsWith('arrival-1-')
+                    ? buildDiagnosticRatioComparison({
+                          direction: 'maximum',
+                          gatedBy: 'gpu.elapsed_workflow_occupancy_percent',
+                          id: 'gpu.elapsed_window_occupancy_percent',
+                          label: 'GPU elapsed-window occupancy',
+                          medianAbsoluteTolerance: 5,
+                          medianLimit: 1.15,
+                          rows: gpuOccupancyRows,
+                          runAbsoluteTolerance: 10,
+                          runLimit: 1.3,
+                          unit: '%',
+                      })
+                    : buildRatioComparison({
+                          direction: 'maximum',
+                          id: 'gpu.elapsed_window_occupancy_percent',
+                          label: 'GPU elapsed-window occupancy',
+                          medianAbsoluteTolerance: 5,
+                          medianLimit: 1.15,
+                          rows: gpuOccupancyRows,
+                          runAbsoluteTolerance: 10,
+                          runLimit: 1.3,
+                          unit: '%',
+                      })),
             });
         }
 
@@ -2114,6 +2384,24 @@ function comparePairedScenarios(
                 });
             }
         }
+    }
+
+    if (gardenSwitchWorkflowRows.length > 0) {
+        comparisons.push({
+            phase: 'workflow',
+            scenario: gardenSwitchScenarioBaseName,
+            ...buildRatioComparison({
+                direction: 'maximum',
+                id: 'gpu.elapsed_workflow_occupancy_percent',
+                label: 'GPU elapsed-workflow occupancy',
+                medianAbsoluteTolerance: 5,
+                medianLimit: 1.15,
+                rows: gardenSwitchWorkflowRows,
+                runAbsoluteTolerance: 10,
+                runLimit: 1.3,
+                unit: '%',
+            }),
+        });
     }
 
     const timingMetricIds = [
@@ -2187,7 +2475,7 @@ function compareReportPair(
         baselinePath = null,
         candidatePath = null,
         confirmedMatrixMember = false,
-        requireGardenSwitchCandidateFrameContract = true,
+        requireCandidateFrameContract = true,
     } = {},
 ) {
     const validationErrors = [
@@ -2282,7 +2570,8 @@ function compareReportPair(
     };
     if (validationErrors.length === 0) {
         comparisonData = comparePairedScenarios(pairs, {
-            requireGardenSwitchCandidateFrameContract,
+            requireCandidateFrameContract,
+            requireGardenSwitchWorkflowGpuTiming: confirmedMatrixMember,
         });
         validationErrors.push(...comparisonData.errors);
     }
@@ -2484,7 +2773,7 @@ function compareConfirmedReports(
               baselinePath,
               candidatePath: baselineConfirmationPath,
               confirmedMatrixMember: true,
-              requireGardenSwitchCandidateFrameContract: false,
+              requireCandidateFrameContract: false,
           })
         : null;
     const baselineRepeatedPrimary = baselineConfirmation
@@ -2675,14 +2964,19 @@ function compareConfirmedReports(
         const screeningBreach = availableReplications.some(
             (replication) => replication.screeningBreach,
         );
-        const replicationIncomplete =
-            screeningBreach &&
-            availableReplications.length !== comparisonPairs.length;
-        const reproducedRegression =
-            availableReplications.length === comparisonPairs.length &&
-            availableReplications.every(
-                (replication) => replication.screeningBreach,
-            );
+        const everyRawRunGate = template.everyRawRunGate === true;
+        const replicationIncomplete = everyRawRunGate
+            ? availableReplications.length !== comparisonPairs.length
+            : screeningBreach &&
+              availableReplications.length !== comparisonPairs.length;
+        const reproducedRegression = everyRawRunGate
+            ? availableReplications.some(
+                  (replication) => replication.regressionBreach,
+              )
+            : availableReplications.length === comparisonPairs.length &&
+              availableReplications.every(
+                  (replication) => replication.screeningBreach,
+              );
         return {
             ...template,
             baselineConfirmationMedian:
@@ -2894,7 +3188,9 @@ function buildMarkdown(comparison) {
                     : `${display(result.confirmation.medianDelta)} ${result.unit}`
                 : null;
             const gate = result.targetAwareRenderedFps
-                ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                ? result.maximumRenderedFps === null
+                    ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                    : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
                 : result.diagnosticOnly
                   ? `diagnostic only; gated by ${result.gatedBy}`
                   : result.kind === 'ratio'

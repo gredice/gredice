@@ -1031,6 +1031,13 @@ Progress:
   burst shares one exact snapshot until its queued reset; runtime frames and
   wakeups do not push or clone telemetry. Additive counter deltas preserve the
   existing lifecycle/comparator contract for clean before/after reports.
+- Hardened the closure gates around semantic work rather than baseline
+  oversubmission. Canonical cross-tier RAFs must observe an exact 30 FPS target,
+  stable visible leases, reconciled R3F receipts, and 28–32 rendered FPS in
+  every raw run; held camera input retains its separate 60 FPS owner gate.
+  Garden-switch GPU work hard-gates elapsed occupancy across the complete
+  seven-arrival workflow while retaining the first short new-context window as
+  an explicit diagnostic and preserving later per-arrival gates.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
   clear High-quality mock scene. It keeps normal continuous-render leases and
   the root invalidation broker enabled, reports that policy as acceptance

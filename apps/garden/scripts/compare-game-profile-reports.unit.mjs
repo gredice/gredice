@@ -217,44 +217,8 @@ function gardenSwitchScenario(profileRun) {
         gardenSwitchProfile: true,
         motion: 'high-fauna-single-context-switch',
     };
-    const arrival = (arrivalIndex, profile, timing) => ({
-        arrivalIndex,
-        fixture: {
-            actorGroundingShadowDroppedCount: 0,
-            blockCount: profile === 'high-target' ? 297 : 147,
-            generatedPlantExpectedInstanceCount:
-                profile === 'high-target' ? 537 : null,
-            generatedPlantFieldCount: profile === 'high-target' ? 54 : 0,
-            generatedPlantInstanceCount: profile === 'high-target' ? 537 : 0,
-            generatedPlantVisibleFieldCount: profile === 'high-target' ? 54 : 0,
-            generatedPlantVisibleInstanceCount:
-                profile === 'high-target' ? 537 : 0,
-            raisedBedCount: profile === 'high-target' ? 3 : 0,
-            speciesCounts:
-                profile === 'high-target'
-                    ? { bird: 2, cat: 1, dog: 1 }
-                    : {
-                          bird: 1,
-                          cat: 1,
-                          chicken: 1,
-                          cow: 2,
-                          dog: 1,
-                          goat: 1,
-                          horse: 1,
-                          piglet: 1,
-                          rabbit: 1,
-                          sheep: 2,
-                      },
-            stackCount: profile === 'high-target' ? 270 : 117,
-        },
-        gardenId: profile === 'high-target' ? 99_996 : 99_995,
-        profile,
-        resources: {
-            rendererGeometries: 200,
-            rendererShaders: 24,
-            rendererTextures: 11,
-        },
-        sample: sample({
+    const arrival = (arrivalIndex, profile, timing) => {
+        const arrivalSample = sample({
             runtimeFrameLoopAtEnd: {
                 effectiveVisible: true,
                 targetFramesPerSecond: 30,
@@ -263,9 +227,56 @@ function gardenSwitchScenario(profileRun) {
                 effectiveVisible: true,
                 targetFramesPerSecond: 30,
             },
-        }),
-        timing,
-    });
+        });
+        setAvailableGpuSample(arrivalSample, {
+            elapsedMs: 1_000,
+            elapsedP95Ms: 15,
+            elapsedTotalMs: 400,
+            renderedFrames: 30,
+        });
+        return {
+            arrivalIndex,
+            fixture: {
+                actorGroundingShadowDroppedCount: 0,
+                blockCount: profile === 'high-target' ? 297 : 147,
+                generatedPlantExpectedInstanceCount:
+                    profile === 'high-target' ? 537 : null,
+                generatedPlantFieldCount: profile === 'high-target' ? 54 : 0,
+                generatedPlantInstanceCount:
+                    profile === 'high-target' ? 537 : 0,
+                generatedPlantVisibleFieldCount:
+                    profile === 'high-target' ? 54 : 0,
+                generatedPlantVisibleInstanceCount:
+                    profile === 'high-target' ? 537 : 0,
+                raisedBedCount: profile === 'high-target' ? 3 : 0,
+                speciesCounts:
+                    profile === 'high-target'
+                        ? { bird: 2, cat: 1, dog: 1 }
+                        : {
+                              bird: 1,
+                              cat: 1,
+                              chicken: 1,
+                              cow: 2,
+                              dog: 1,
+                              goat: 1,
+                              horse: 1,
+                              piglet: 1,
+                              rabbit: 1,
+                              sheep: 2,
+                          },
+                stackCount: profile === 'high-target' ? 270 : 117,
+            },
+            gardenId: profile === 'high-target' ? 99_996 : 99_995,
+            profile,
+            resources: {
+                rendererGeometries: 200,
+                rendererShaders: 24,
+                rendererTextures: 11,
+            },
+            sample: arrivalSample,
+            timing,
+        };
+    };
     const switchTiming = {
         dispatched: true,
         displayedMs: 350,
@@ -519,6 +530,35 @@ function regressionScenario(baseName, profileRun) {
         scenario.runtime.qualityTier = policy.tier;
         scenario.runtime.shadowMapSize = policy.shadowMapSize;
         scenario.runtime.shadowsEnabled = policy.shadows;
+        scenario.runtime.runtimeFrameLoop = {
+            activeLeaseCount: 10,
+            targetFramesPerSecond: 30,
+        };
+        scenario.sample = {
+            ...scenario.sample,
+            frames: 300,
+            renderedFrames: 150,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 10,
+            runtimeFrameLoopActiveLeaseCountMin: 10,
+            runtimeFrameLoopActiveLeaseCountAtStart: 10,
+            runtimeFrameLoopActiveLeaseCountMax: 10,
+            runtimeFrameLoopAtEnd: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopAtStart: {
+                effectiveVisible: true,
+                targetFramesPerSecond: 30,
+            },
+            runtimeFrameLoopCounterDeltas: {
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeFrameLoopObservationCount: 303,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondMin: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+        };
     }
     if (baseName === 'game-fauna-heavy-day-interaction-desktop') {
         scenario.requested.faunaProfile = true;
@@ -660,6 +700,43 @@ test('canonical release comparison requires a symmetric 2x2 matrix through the A
     assert.equal(complete.diagnostic, false);
     assert.deepEqual(complete.diagnosticReasons, []);
     assert.equal(complete.summary.comparisonPairCount, 4);
+});
+
+test('canonical garden-switch release evidence requires complete workflow GPU timing', () => {
+    const { baseline, candidate } = regressionReportPair();
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+    for (const report of [
+        baseline,
+        baselineConfirmation,
+        candidate,
+        confirmation,
+    ]) {
+        const scenario = report.scenarios.find(
+            (item) =>
+                item.baseName ===
+                'game-garden-switch-high-fauna-single-context-desktop',
+        );
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            arrival.sample.gpu = sample().gpu;
+            delete arrival.sample.elapsedMs;
+            delete arrival.sample.renderedFrames;
+        }
+    }
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        { baselineConfirmation },
+    );
+
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /GPU elapsed-workflow occupancy timing is required for confirmed release evidence/,
+    );
 });
 
 test('canonical nested policy and fixture evidence fails closed', async (t) => {
@@ -1365,6 +1442,193 @@ test('minimum metrics reject a rendered-FPS decline in the correct direction', (
     assert.equal(renderedFps.pass, false);
 });
 
+test('cross-tier rendered FPS gates the declared 30 FPS target instead of baseline oversubmission', () => {
+    const scenarioFactory = (profileRun) =>
+        regressionScenario(
+            'game-cross-tier-high-camera-motion-desktop',
+            profileRun,
+        );
+    const { baseline, candidate } = reportPair(scenarioFactory);
+    for (const scenario of baseline.scenarios) {
+        scenario.sample.renderedFps = 45;
+    }
+    for (const [index, scenario] of candidate.scenarios.entries()) {
+        scenario.sample.renderedFps = [28, 30, 32][index];
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const renderedFps = comparison.comparisons.find(
+        (result) => result.id === 'frame.rendered_fps',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(renderedFps.targetAwareRenderedFps, true);
+    assert.equal(renderedFps.targetFramesPerSecond, 30);
+    assert.equal(renderedFps.minimumRenderedFps, 28);
+    assert.equal(renderedFps.maximumRenderedFps, 32);
+    assert.equal(renderedFps.baselineRelativeDiagnosticOnly, true);
+    assert.equal(renderedFps.baselineRelativeScreeningBreach, true);
+    assert.equal(renderedFps.screeningBreach, false);
+    assert.equal(renderedFps.regressionBreach, false);
+    assert.equal(
+        renderedFps.individual.every(
+            (run) =>
+                run.pass === true &&
+                run.candidateFloorPass === true &&
+                run.candidateCeilingPass === true &&
+                run.baselineRelativePass === false,
+        ),
+        true,
+    );
+    assert.match(
+        buildMarkdown(comparison),
+        /candidate 28-32 fps around declared 30 fps target; every raw run; baseline-relative ratio diagnostic only/,
+    );
+});
+
+test('cross-tier semantic rendered-FPS gate rejects underdelivery and oversubmission', async (t) => {
+    for (const [name, renderedFps] of [
+        ['underdelivery', 27.9],
+        ['oversubmission', 32.1],
+    ]) {
+        await t.test(name, () => {
+            const scenarioFactory = (profileRun) =>
+                regressionScenario(
+                    'game-cross-tier-high-camera-motion-desktop',
+                    profileRun,
+                );
+            const { baseline, candidate } = reportPair(scenarioFactory);
+            for (const scenario of candidate.scenarios) {
+                scenario.sample.renderedFps = renderedFps;
+            }
+
+            const comparison = comparePartialReports(baseline, candidate);
+            const result = comparison.comparisons.find(
+                (item) => item.id === 'frame.rendered_fps',
+            );
+            assert.equal(comparison.status, 'regression');
+            assert.equal(comparison.exitCode, 1);
+            assert.equal(result.pass, false);
+        });
+    }
+});
+
+test('confirmed target-aware FPS fails when either candidate capture violates an every-run bound', () => {
+    const scenarioFactory = (profileRun) =>
+        regressionScenario(
+            'game-cross-tier-high-camera-motion-desktop',
+            profileRun,
+        );
+    const { baseline, candidate } = reportPair(scenarioFactory);
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+    candidate.scenarios[0].sample.renderedFps = 32.1;
+
+    const comparison = compareConfirmedPartialReports(
+        baseline,
+        candidate,
+        confirmation,
+        { baselineConfirmation },
+    );
+    const renderedFps = comparison.comparisons.find(
+        (result) => result.id === 'frame.rendered_fps',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    assert.equal(renderedFps.everyRawRunGate, true);
+    assert.equal(renderedFps.reproducedRegression, true);
+    assert.equal(renderedFps.regressionBreach, true);
+    assert.deepEqual(
+        renderedFps.replications.map((replication) =>
+            replication.available ? replication.regressionBreach : null,
+        ),
+        [true, false, true, false],
+    );
+});
+
+test('cross-tier semantic rendered-FPS gate fails closed for incomplete or drifting scheduler evidence', async (t) => {
+    const cases = {
+        'baseline runtime target drift': {
+            expected:
+                /baseline\.runtime\.runtimeFrameLoop\.targetFramesPerSecond must be 30/,
+            mutate: ({ baseline }) => {
+                baseline.scenarios[0].runtime.runtimeFrameLoop.targetFramesPerSecond = 29;
+            },
+        },
+        'candidate scalar maximum drift': {
+            expected: /runtimeFrameLoopTargetFramesPerSecondMax must be 30/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopTargetFramesPerSecondMax = 60;
+            },
+        },
+        'candidate scalar minimum drift': {
+            expected: /runtimeFrameLoopTargetFramesPerSecondMin must be 30/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopTargetFramesPerSecondMin = 15;
+            },
+        },
+        'candidate endpoint missing': {
+            expected: /runtimeFrameLoopAtStart is missing/,
+            mutate: ({ candidate }) => {
+                delete candidate.scenarios[0].sample.runtimeFrameLoopAtStart;
+            },
+        },
+        'candidate endpoint invisible': {
+            expected: /runtimeFrameLoopAtEnd\.effectiveVisible must be true/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopAtEnd.effectiveVisible = false;
+            },
+        },
+        'candidate unstable leases': {
+            expected: /active lease counts must remain stable/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopActiveLeaseCountMax = 11;
+            },
+        },
+        'candidate downward lease drift': {
+            expected: /active lease counts must remain stable/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopActiveLeaseCountMin = 9;
+            },
+        },
+        'candidate incomplete observation coverage': {
+            expected:
+                /runtimeFrameLoopObservationCount must equal sample\.frames \+ 3/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopObservationCount = 302;
+            },
+        },
+        'candidate mismatched R3F receipts': {
+            expected:
+                /renderedFrames must equal the positive runtimeFrameLoopCounterDeltas\.r3fFrameCallbackCount/,
+            mutate: ({ candidate }) => {
+                candidate.scenarios[0].sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount = 149;
+            },
+        },
+    };
+
+    for (const [name, { expected, mutate }] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const scenarioFactory = (profileRun) =>
+                regressionScenario(
+                    'game-cross-tier-high-camera-motion-desktop',
+                    profileRun,
+                );
+            const pair = reportPair(scenarioFactory);
+            mutate(pair);
+
+            const comparison = comparePartialReports(
+                pair.baseline,
+                pair.candidate,
+            );
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+});
+
 test('isolated long tasks are diagnostic but a recurrent count increase fails', () => {
     const { baseline, candidate } = reportPair();
     candidate.scenarios[1].sample.longTaskCount = 1;
@@ -1700,6 +1964,9 @@ test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates t
     const gpuOccupancy = comparison.comparisons.filter(
         (result) => result.id === 'gpu.elapsed_window_occupancy_percent',
     );
+    const workflowOccupancy = comparison.comparisons.find(
+        (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
+    );
 
     assert.equal(comparison.status, 'pass');
     assert.equal(gpuP95.length, 7);
@@ -1720,13 +1987,21 @@ test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates t
         assert.equal(result.regressionBreach, false);
         assert.equal(result.pass, true);
     }
+    assert.equal(gpuOccupancy[0].diagnosticOnly, true);
+    assert.equal(
+        gpuOccupancy[0].gatedBy,
+        'gpu.elapsed_workflow_occupancy_percent',
+    );
+    assert.equal(workflowOccupancy.baselineMedian, 45);
+    assert.equal(workflowOccupancy.candidateMedian, 33);
+    assert.equal(workflowOccupancy.pass, true);
     assert.match(
         buildMarkdown(comparison),
         /diagnostic only; gated by gpu\.elapsed_window_occupancy_percent/,
     );
 });
 
-test('garden-switch elapsed-window GPU occupancy rejects a true total GPU regression', () => {
+test('garden-switch elapsed-workflow GPU occupancy rejects a true total GPU regression', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
@@ -1751,7 +2026,7 @@ test('garden-switch elapsed-window GPU occupancy rejects a true total GPU regres
 
     const comparison = comparePartialReports(baseline, candidate);
     const gpuOccupancy = comparison.comparisons.find(
-        (result) => result.id === 'gpu.elapsed_window_occupancy_percent',
+        (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
     assert.equal(comparison.status, 'regression');
@@ -1761,6 +2036,109 @@ test('garden-switch elapsed-window GPU occupancy rejects a true total GPU regres
     assert.equal(gpuOccupancy.medianRatio, 1.5);
     assert.equal(gpuOccupancy.regressionBreach, true);
     assert.equal(gpuOccupancy.pass, false);
+});
+
+test('garden-switch first short GPU window is diagnostic when whole-workflow occupancy is stable', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: 400,
+                renderedFrames: 40,
+            });
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const [
+            index,
+            arrival,
+        ] of scenario.gardenSwitch.arrivals.entries()) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: index === 0 ? 30 : 15,
+                elapsedTotalMs: index === 0 ? 600 : 400,
+                renderedFrames: 40,
+            });
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const initialOccupancy = comparison.comparisons.find(
+        (result) =>
+            result.id === 'gpu.elapsed_window_occupancy_percent' &&
+            result.phase === 'arrival-1-high-target',
+    );
+    const workflowOccupancy = comparison.comparisons.find(
+        (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(initialOccupancy.medianRatio, 1.5);
+    assert.equal(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
+    assert.equal(initialOccupancy.regressionBreach, false);
+    assert.equal(initialOccupancy.pass, true);
+    assert.equal(workflowOccupancy.baselineMedian, 40);
+    assert.equal(workflowOccupancy.candidateMedian, 42.8571);
+    assert.equal(workflowOccupancy.pass, true);
+});
+
+test('garden-switch workflow gate catches an initial-window-only total GPU regression', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const [
+            index,
+            arrival,
+        ] of scenario.gardenSwitch.arrivals.entries()) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: index === 0 ? 100 : 400,
+                renderedFrames: 40,
+            });
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const [
+            index,
+            arrival,
+        ] of scenario.gardenSwitch.arrivals.entries()) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: index === 0 ? 900 : 400,
+                renderedFrames: 40,
+            });
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const initialOccupancy = comparison.comparisons.find(
+        (result) =>
+            result.id === 'gpu.elapsed_window_occupancy_percent' &&
+            result.phase === 'arrival-1-high-target',
+    );
+    const workflowOccupancy = comparison.comparisons.find(
+        (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.pass, true);
+    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
+    assert.equal(workflowOccupancy.baselineMedian, 35.7143);
+    assert.equal(workflowOccupancy.candidateMedian, 47.1429);
+    assert.equal(workflowOccupancy.medianRatio, 1.32);
+    assert.equal(workflowOccupancy.regressionBreach, true);
+    assert.equal(workflowOccupancy.pass, false);
+    assert.deepEqual(
+        comparison.comparisons
+            .filter((result) => result.regressionBreach)
+            .map((result) => result.id),
+        ['gpu.elapsed_workflow_occupancy_percent'],
+    );
 });
 
 test('garden-switch elapsed-window GPU occupancy fails closed for incomplete totals', async (t) => {

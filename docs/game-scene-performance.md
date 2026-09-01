@@ -204,6 +204,18 @@ plus a nonblank Canvas screenshot. Screenshot dimensions follow the browser
 DPR, independently of the quality-capped WebGL backing-store dimensions. The
 auto device classes are deterministic profiler inputs rather than measurements
 from representative hardware.
+
+These bounded camera actions are discrete inputs, so their semantic cadence is
+the persistent 30 FPS ambient owner set plus explicit one-frame requests, not a
+sustained 60 FPS interaction lease. Every cross-tier RAF now observes the
+scheduler target: start, minimum, maximum, and end must remain exactly 30 FPS, visible
+endpoint snapshots and stable positive lease counts are mandatory, and rendered
+frames must reconcile with R3F frame receipts. Each raw run must deliver 28–32
+rendered FPS. Both underdelivery and oversubmission fail; the old revision's
+rendered-FPS ratio remains visible only as a diagnostic. Held camera input still
+has its separate runtime-owner scenario, which requires a real 60 FPS ownership
+window and bounded delivered cadence.
+
 Reported results therefore establish a reproducible local production-build
 regression baseline; they do not replace physical-device, sustained thermal,
 or deployed runtime validation. Do not record performance conclusions here
@@ -276,6 +288,17 @@ plateau compares H3→H4. The later arrival may release resources but must not
 increase live geometry, program, or texture counts. Reports keep all three
 independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
+
+Garden-switch GPU release comparison uses total elapsed timer-query work divided
+by total sampled wall time across the complete seven-arrival workflow. That
+whole-workflow occupancy remains a hard symmetric 2x2 gate, as do per-arrival
+occupancy windows from arrival 2 onward. Arrival 1 is a short initial window on
+a new WebGL context; its occupancy and GPU p95 remain explicit diagnostics gated
+by the full-workflow result, rather than allowing one cold-query/DVFS-sensitive
+sample to override the sustained workload. This does not discard the first
+query, widen the regression thresholds, or hide its raw values. Complete GPU
+timing for all seven arrivals is mandatory in confirmed release evidence; an
+unsupported or incomplete workflow is invalid rather than a passing skip.
 
 The lifecycle scenario is one deterministic High target repeated in three
 fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
@@ -466,6 +489,15 @@ matrix.
 | Switch displayed / visible | 15% | 50 ms |
 | Switch settled | 15% | 100 ms |
 | Long-task maximum / total duration | 20% | 10 / 20 ms |
+
+Rendered FPS uses the generic relative gate except where a scenario declares a
+semantic scheduler target. Cross-tier candidates must keep every raw run within
+28–32 FPS around an observed 30 FPS target; garden-switch arrivals must deliver
+at least 28 FPS around their 30 FPS target. Baseline-relative FPS ratios stay in
+the report as diagnostics for those cases, so eliminating oversubmission is not
+misclassified as lost performance. Garden-switch GPU p95 is also diagnostic;
+the hard work gate is elapsed GPU occupancy, including the aggregate
+seven-arrival workflow described above.
 
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
@@ -1270,6 +1302,12 @@ target state and elapsed time; actual WebGL-rendered frames and R3F receipts are
 counted independently. Each target-rate window must deliver within its bounded
 frame budget, so declared lease rates alone cannot satisfy the cadence gate.
 
+The canonical cross-tier regression matrix has a different input contract: its
+wheel and rotation-key actions are discrete requests over a persistent 30 FPS
+ambient owner set. It observes the scalar target on every RAF and hard-gates
+28–32 rendered FPS; sustained held-input 60 FPS remains the responsibility of
+the runtime-owner profiles above.
+
 Profiler telemetry is pull-based: a synchronous property-read or
 `structuredClone` burst shares one exact scheduler snapshot until its queued
 reset runs. Normal frames and scheduler wakeups therefore do not push, allocate,
@@ -1285,6 +1323,10 @@ Release evidence:
   clean `origin/main` captures; `candidate-final-1` and `candidate-final-2` are
   independent clean candidate captures of the same 39 canonical runs.
   `comparison-final` is the fail-closed symmetric 2x2 result.
+- Garden-switch comparison keeps the first short new-context GPU window visible
+  as a diagnostic and hard-gates aggregate elapsed GPU occupancy across all
+  seven arrivals, alongside the later per-arrival occupancy gates. It does not
+  discard or widen the first sample.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab, and the bundle does not prove physical-device thermal,

@@ -142,6 +142,9 @@ const runtimeOwnerDeliveryTargetRates = [30, 60];
 const runtimeOwnerMinimumDeliveryExposureMs = 500;
 const runtimeOwnerMinimumDeliveryRatio = 0.85;
 const runtimeOwnerMaximumDeliveryRatio = 1.15;
+const crossTierAmbientTargetFramesPerSecond = 30;
+const crossTierMinimumRenderedFramesPerSecond = 28;
+const crossTierMaximumRenderedFramesPerSecond = 32;
 
 function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
     return (
@@ -152,9 +155,11 @@ function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
 
 function shouldObserveRuntimeFrameLoopDuringRaf({
     buildingProfile,
+    crossTierProfile,
     runtimeOwnersProfile,
 }) {
     return (
+        crossTierProfile === true ||
         runtimeOwnersProfile === true ||
         buildingProfile?.frameRateClass === 'ambient'
     );
@@ -8366,10 +8371,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let runtimeFrameLoopActiveLeaseCountAtEnd = null;
             let runtimeFrameLoopActiveLeaseCountAtStart = null;
             let runtimeFrameLoopActiveLeaseCountMax = null;
+            let runtimeFrameLoopActiveLeaseCountMin = null;
             let runtimeFrameLoopObservationCount = 0;
             let runtimeFrameLoopTargetFramesPerSecondAtEnd = null;
             let runtimeFrameLoopTargetFramesPerSecondAtStart = null;
             let runtimeFrameLoopTargetFramesPerSecondMax = null;
+            let runtimeFrameLoopTargetFramesPerSecondMin = null;
             let runtimeOwnerDeliveryPreviousSample = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
@@ -8722,8 +8729,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     runtimeFrameLoopActiveLeaseCountMax ?? activeLeaseCount,
                     activeLeaseCount,
                 );
+                runtimeFrameLoopActiveLeaseCountMin = Math.min(
+                    runtimeFrameLoopActiveLeaseCountMin ?? activeLeaseCount,
+                    activeLeaseCount,
+                );
                 runtimeFrameLoopTargetFramesPerSecondMax = Math.max(
                     runtimeFrameLoopTargetFramesPerSecondMax ??
+                        targetFramesPerSecond,
+                    targetFramesPerSecond,
+                );
+                runtimeFrameLoopTargetFramesPerSecondMin = Math.min(
+                    runtimeFrameLoopTargetFramesPerSecondMin ??
                         targetFramesPerSecond,
                     targetFramesPerSecond,
                 );
@@ -9525,10 +9541,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 runtimeFrameLoopActiveLeaseCountAtEnd,
                 runtimeFrameLoopActiveLeaseCountAtStart,
                 runtimeFrameLoopActiveLeaseCountMax,
+                runtimeFrameLoopActiveLeaseCountMin,
                 runtimeFrameLoopObservationCount,
                 runtimeFrameLoopTargetFramesPerSecondAtEnd,
                 runtimeFrameLoopTargetFramesPerSecondAtStart,
                 runtimeFrameLoopTargetFramesPerSecondMax,
+                runtimeFrameLoopTargetFramesPerSecondMin,
                 staticOpaqueSceneCacheBypassFrameCountDelta,
                 staticOpaqueSceneCacheCaptureCountAtStart,
                 staticOpaqueSceneCacheCaptureCountDelta,
@@ -13202,7 +13220,24 @@ function evaluateCrossTierAcceptance({
         comparison: 'minimum',
         limit,
         name,
-        pass: typeof actual === 'number' && actual >= limit,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const range = (name, actual, minimumValue, maximumValue) => ({
+        actual,
+        comparison: 'range',
+        limit: {
+            maximum: maximumValue,
+            minimum: minimumValue,
+        },
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= minimumValue &&
+            actual <= maximumValue,
     });
     const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
         const expected =
@@ -13230,6 +13265,12 @@ function evaluateCrossTierAcceptance({
         1,
         Math.floor((sample.elapsedMs ?? 0) / 1_000),
     );
+    const expectedRuntimeFrameLoopObservationCount =
+        Number.isInteger(sample?.frames) && sample.frames >= 0
+            ? sample.frames + 3
+            : null;
+    const activeLeaseCountAtStart =
+        sample?.runtimeFrameLoopActiveLeaseCountAtStart;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
         exact(
@@ -13345,6 +13386,82 @@ function evaluateCrossTierAcceptance({
             sample.generatedPlantVisibleInstanceCountMin,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        exact(
+            'crossTierRuntimeTargetFramesPerSecond',
+            runtime?.runtimeFrameLoop?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleMaximumTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondMax,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleMinimumTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondMin,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleEndTargetFramesPerSecond',
+            sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartSnapshotTargetFramesPerSecond',
+            sample?.runtimeFrameLoopAtStart?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleEndSnapshotTargetFramesPerSecond',
+            sample?.runtimeFrameLoopAtEnd?.targetFramesPerSecond,
+            crossTierAmbientTargetFramesPerSecond,
+        ),
+        exact(
+            'crossTierSampleStartVisible',
+            sample?.runtimeFrameLoopAtStart?.effectiveVisible,
+            true,
+        ),
+        exact(
+            'crossTierSampleEndVisible',
+            sample?.runtimeFrameLoopAtEnd?.effectiveVisible,
+            true,
+        ),
+        minimum(
+            'crossTierSampleStartActiveLeaseCount',
+            activeLeaseCountAtStart,
+            1,
+        ),
+        exact(
+            'crossTierSampleMaximumActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountMax,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSampleMinimumActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountMin,
+            activeLeaseCountAtStart,
+        ),
+        exact(
+            'crossTierSampleEndActiveLeaseCount',
+            sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+            activeLeaseCountAtStart,
+        ),
+        minimum('crossTierRafFrames', sample?.frames, 1),
+        exact(
+            'crossTierRuntimeFrameLoopObservationCount',
+            sample?.runtimeFrameLoopObservationCount,
+            expectedRuntimeFrameLoopObservationCount,
+        ),
+        exact(
+            'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+            sample?.renderedFrames,
+            sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
+        ),
         ...(requested.motion === 'bounded-zoom-rotate'
             ? [
                   exact(
@@ -13438,7 +13555,12 @@ function evaluateCrossTierAcceptance({
             screenshotWitness?.sampledUniqueColorCount,
             16,
         ),
-        minimum('crossTierRenderedFps', sample.renderedFps, 1),
+        range(
+            'crossTierRenderedFps',
+            sample.renderedFps,
+            crossTierMinimumRenderedFramesPerSecond,
+            crossTierMaximumRenderedFramesPerSecond,
+        ),
         minimum(
             'crossTierRenderedFrames',
             sample.renderedFrames,
