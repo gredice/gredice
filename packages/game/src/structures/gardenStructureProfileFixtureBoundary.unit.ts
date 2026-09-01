@@ -48,6 +48,13 @@ describe('garden structure profile fixture boundary', () => {
             resolve(structuresRoot, 'GardenStructureKitV1AssetRenderer.tsx'),
             'utf8',
         );
+        const profileMetricsReporter = readFileSync(
+            resolve(
+                structuresRoot,
+                'GardenStructureKitV1ProfileMetricsReporter.tsx',
+            ),
+            'utf8',
+        );
         const verticalSlice = readFileSync(
             resolve(structuresRoot, 'GardenStructureVerticalSlice.tsx'),
             'utf8',
@@ -118,10 +125,41 @@ describe('garden structure profile fixture boundary', () => {
             assetRenderer,
             /lazy\(\(\)\s*=>\s*import\(['"]\.\/GardenStructureKitV1ProfileMetricsReporter['"]\)/u,
         );
+        assert.match(
+            profileMetricsReporter,
+            /requestAnimationFrame\(\(\)\s*=>\s*\{\s*const measuredProfile = measureGardenStructureKitV1ProfileMetrics/u,
+        );
+        assert.doesNotMatch(
+            profileMetricsReporter,
+            /const measuredProfile = useMemo/u,
+        );
         assert.doesNotMatch(
             verticalSlice,
             /recordGardenStructurePointerResolution/u,
         );
         assert.match(verticalSlice, /if \(!profileMetricsEnabled\) \{/u);
+    });
+
+    test('grounds named fixtures and avatar spawn through their guarded profile paths', () => {
+        const gameScene = readFileSync(
+            resolve(structuresRoot, '..', 'GameScene.tsx'),
+            'utf8',
+        );
+        const profilePage = readFileSync(
+            resolve(
+                structuresRoot,
+                '../../../../apps/garden/app/debug/profile/game/page.tsx',
+            ),
+            'utf8',
+        );
+
+        assert.match(
+            gameScene,
+            /: gardenStructureProfileFixture\s*\? createGardenStructureSceneFixtureBuildPreviewCompileInput\(\{\s*blockData,\s*document,\s*placement: gardenStructureProfileFixture\.placement,\s*revision: gardenStructureProfileFixture\.revision,\s*stacks: garden\?\.stacks,/u,
+        );
+        assert.match(
+            profilePage,
+            /gardenAvatarInitialSpawnPoint=\{\s*gardenAvatar && gardenBuilding\s*\?/u,
+        );
     });
 });

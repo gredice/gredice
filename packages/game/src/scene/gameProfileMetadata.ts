@@ -326,7 +326,6 @@ export type GameProfileMetadata = {
     gameCameraSnapshot?: GameCameraSnapshot;
     gardenStructureBlockedTransitionCount?: number;
     gardenStructureActiveRevision?: number;
-    gardenStructureAssetBytesRequested?: number;
     gardenStructureAssetBytesResident?: number;
     gardenStructureAssetResolutionIssueCount?: number;
     gardenStructureAssetResolutionStatus?: 'idle' | 'resolved';

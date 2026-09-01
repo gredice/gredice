@@ -513,12 +513,14 @@ export function GameScene({
                         );
               })()
             : gardenStructureProfileFixture
-              ? {
+              ? createGardenStructureSceneFixtureBuildPreviewCompileInput({
+                    blockData,
                     document,
                     placement: gardenStructureProfileFixture.placement,
                     revision: gardenStructureProfileFixture.revision,
+                    stacks: garden?.stacks,
                     structureId: gardenStructureProfileFixture.structureId,
-                }
+                })
               : null;
         if (!compileInput) {
             return null;
@@ -589,6 +591,14 @@ export function GameScene({
             gardenStructurePlanCacheOutcome:
                 structureFixtureBundle?.cacheOutcome ?? 'none',
         });
+        return () =>
+            updateGameProfileMetadata({
+                gardenStructurePlanCacheEstimatedBytes: 0,
+                gardenStructurePlanCacheEvictionCount: 0,
+                gardenStructurePlanCacheHitCount: 0,
+                gardenStructurePlanCacheMissCount: 0,
+                gardenStructurePlanCacheOutcome: 'none',
+            });
     }, [gardenStructureDiagnosticsEnabled, structureFixtureBundle]);
     useEffect(() => {
         if (!gardenStructureProfileTelemetryEnabled) {

@@ -3,7 +3,10 @@ import type {
     GardenStructureCollectionBatchDescription,
     GardenStructureCollectionPlan,
 } from './gardenStructureCollectionPlan';
-import type { GardenStructureWorldBounds } from './structurePlanTypes';
+import type {
+    GardenStructureSemanticPlan,
+    GardenStructureWorldBounds,
+} from './structurePlanTypes';
 
 export type GardenStructureSceneSubmissionMetrics = Readonly<{
     detailSuppressedPropCount: number;
@@ -80,47 +83,58 @@ function structureCellKey(x: number, y: number) {
  * outdoor, has no roof, or is covered only by a transparent roof. Interior
  * props below an opaque roof are admitted separately by avatar state.
  */
-export function getGardenStructureBaselineVisiblePropInstanceIds(
-    plan: GardenStructureCollectionPlan,
+export function getGardenStructurePlanBaselineVisiblePropInstanceIds(
+    plan: GardenStructureSemanticPlan,
 ) {
     const visiblePropInstanceIds = new Set<string>();
-
-    for (const structure of plan.structures) {
-        const opaqueRoofCellKeys = new Set<string>();
-        for (const batch of structure.batches.roof) {
-            if (batch.transparency !== 'opaque') {
-                continue;
-            }
-            for (let index = 0; index < batch.instanceIds.length; index += 1) {
-                const offset = index * batch.transformStride;
-                const x = batch.transforms[offset];
-                const y = batch.transforms[offset + 1];
-                if (x !== undefined && y !== undefined) {
-                    opaqueRoofCellKeys.add(structureCellKey(x, y));
-                }
-            }
+    const opaqueRoofCellKeys = new Set<string>();
+    for (const batch of plan.batches.roof) {
+        if (batch.transparency !== 'opaque') {
+            continue;
         }
-
-        for (const batch of structure.batches.props) {
-            for (const [index, instanceId] of batch.instanceIds.entries()) {
-                const offset = index * batch.transformStride;
-                const x = batch.transforms[offset];
-                const y = batch.transforms[offset + 1];
-                if (x === undefined || y === undefined) {
-                    continue;
-                }
-                const cellKey = structureCellKey(x, y);
-                const footprintIndex = structure.footprint.indexByKey[cellKey];
-                const coveredOutdoor =
-                    footprintIndex !== undefined &&
-                    structure.footprint.spaceKinds[footprintIndex] === 1;
-                if (coveredOutdoor || !opaqueRoofCellKeys.has(cellKey)) {
-                    visiblePropInstanceIds.add(instanceId);
-                }
+        for (let index = 0; index < batch.instanceIds.length; index += 1) {
+            const offset = index * batch.transformStride;
+            const x = batch.transforms[offset];
+            const y = batch.transforms[offset + 1];
+            if (x !== undefined && y !== undefined) {
+                opaqueRoofCellKeys.add(structureCellKey(x, y));
             }
         }
     }
 
+    for (const batch of plan.batches.props) {
+        for (const [index, instanceId] of batch.instanceIds.entries()) {
+            const offset = index * batch.transformStride;
+            const x = batch.transforms[offset];
+            const y = batch.transforms[offset + 1];
+            if (x === undefined || y === undefined) {
+                continue;
+            }
+            const cellKey = structureCellKey(x, y);
+            const footprintIndex = plan.footprint.indexByKey[cellKey];
+            const coveredOutdoor =
+                footprintIndex !== undefined &&
+                plan.footprint.spaceKinds[footprintIndex] === 1;
+            if (coveredOutdoor || !opaqueRoofCellKeys.has(cellKey)) {
+                visiblePropInstanceIds.add(instanceId);
+            }
+        }
+    }
+
+    return visiblePropInstanceIds;
+}
+
+export function getGardenStructureBaselineVisiblePropInstanceIds(
+    plan: GardenStructureCollectionPlan,
+) {
+    const visiblePropInstanceIds = new Set<string>();
+    for (const structure of plan.structures) {
+        for (const instanceId of getGardenStructurePlanBaselineVisiblePropInstanceIds(
+            structure,
+        )) {
+            visiblePropInstanceIds.add(instanceId);
+        }
+    }
     return visiblePropInstanceIds;
 }
 

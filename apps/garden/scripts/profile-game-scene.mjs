@@ -227,7 +227,7 @@ function summarizeGardenStructureAssetNetwork(responses, resources) {
     const response = matchingResponses.at(-1) ?? null;
     const resource = matchingResources.at(-1) ?? null;
     return {
-        gardenStructureAssetBytesRequested:
+        gardenStructureAssetNetworkBytesRequested:
             matchingResponses.reduce(
                 (total, entry) => total + (entry.bodyBytes ?? 0),
                 0,
@@ -251,6 +251,21 @@ function summarizeGardenStructureAssetNetwork(responses, resources) {
         gardenStructureAssetResourceTransferBytes:
             resource?.transferSize ?? null,
         gardenStructureAssetResourceUrl: resource?.name ?? null,
+    };
+}
+
+function mergeGardenStructureAssetNetworkRuntime({
+    buildingProfile,
+    resources,
+    responses,
+    runtime,
+}) {
+    if (!buildingProfile) {
+        return runtime;
+    }
+    return {
+        ...(runtime ?? {}),
+        ...summarizeGardenStructureAssetNetwork(responses, resources),
     };
 }
 
@@ -1004,7 +1019,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 0, footprintCells: 0, props: 0, roofs: 0 },
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
             fixture: 'none',
             mode: 'normal',
         },
@@ -1018,7 +1039,13 @@ const gardenBuildingScenarios = [
         isMobile: false,
         budget: 'gardenBuildingDesktop',
         buildingProfile: {
-            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
             fixture: 'blank',
             mode: 'normal',
         },
@@ -1031,7 +1058,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
             fixture: 'blank',
             mode: 'normal',
         },
@@ -1045,7 +1078,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
             fixture: 'house',
             mode: 'normal',
         },
@@ -1059,7 +1098,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
             fixture: 'house',
             mode: 'normal',
             workload: 'mixed-production',
@@ -1075,7 +1120,13 @@ const gardenBuildingScenarios = [
         budget: 'gardenBuildingMobile',
         buildingProfile: {
             category: 'structure',
-            expected: { edges: 0, footprintCells: 4, props: 0, roofs: 0 },
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
             fixture: 'blank',
             mode: 'editing',
         },
@@ -1091,7 +1142,13 @@ const gardenBuildingScenarios = [
         buildingProfile: {
             category: 'interior',
             cutaway: true,
-            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
             fixture: 'house',
             mode: 'editing',
         },
@@ -1105,7 +1162,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingWeatherMobile',
         buildingProfile: {
-            expected: { edges: 14, footprintCells: 12, props: 2, roofs: 1 },
+            expected: {
+                edges: 14,
+                footprintCells: 12,
+                normalVisibleProps: 2,
+                props: 2,
+                roofs: 1,
+            },
             fixture: 'greenhouse',
             mode: 'normal',
         },
@@ -1122,6 +1185,7 @@ const gardenBuildingScenarios = [
             expected: {
                 edges: 301,
                 footprintCells: 100,
+                normalVisibleProps: 34,
                 props: 100,
                 roofs: 100,
             },
@@ -1149,7 +1213,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
             fixture: 'house',
             mode: 'normal',
             motion: 'avatar-navigation',
@@ -1185,6 +1255,7 @@ const gardenBuildingScenarios = [
             expected: {
                 edges: 301,
                 footprintCells: 100,
+                normalVisibleProps: 34,
                 props: 100,
                 roofs: 100,
             },
@@ -1207,6 +1278,7 @@ const gardenBuildingScenarios = [
             expected: {
                 edges: 301,
                 footprintCells: 100,
+                normalVisibleProps: 34,
                 props: 100,
                 roofs: 100,
             },
@@ -1224,7 +1296,13 @@ const gardenBuildingScenarios = [
         isMobile: true,
         budget: 'gardenBuildingMobile',
         buildingProfile: {
-            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
             fixture: 'house',
             mode: 'editing',
             motion: 'enter-exit',
@@ -1410,6 +1488,15 @@ const scenarioSets = {
     'weather-transitions': weatherTransitionScenarios,
 };
 
+const weatherMobileBudget = Object.freeze({
+    p95FrameMs: 33.3,
+    maxFrameMs: 180,
+    longTaskCount: 2,
+    drawCallsPerFrame: 320,
+    trianglesPerFrame: 1000000,
+    jsHeapMb: 220,
+});
+
 const mobileGardenBuildingBudget = Object.freeze({
     avatarCollisionStepP95Ms: 2,
     p95FrameMs: 33.3,
@@ -1460,7 +1547,7 @@ const budgets = {
         trianglesPerFrame: 1200000,
         jsHeapMb: 220,
     },
-    weatherMobile: mobileGardenBuildingBudget,
+    weatherMobile: weatherMobileBudget,
     plants: {
         p95FrameMs: 33.3,
         maxFrameMs: 180,
@@ -3039,9 +3126,11 @@ async function prepareGardenBuildingProfile(page, buildingProfile) {
                             expected.footprintCells &&
                         profile.gardenStructureEdgeCount === expected.edges &&
                         profile.gardenStructurePropCount === expected.props &&
-                        profile.gardenStructureVisiblePropCount === 0 &&
+                        profile.gardenStructureVisiblePropCount ===
+                            (expected.normalVisibleProps ?? 0) &&
                         profile.gardenStructureExteriorSuppressedPropCount ===
-                            expected.props &&
+                            expected.props -
+                                (expected.normalVisibleProps ?? 0) &&
                         profile.gardenStructureRoofRegionCount ===
                             expected.roofs &&
                         profile.gardenStructureAssetResolutionStatus ===
@@ -3051,11 +3140,9 @@ async function prepareGardenBuildingProfile(page, buildingProfile) {
                         (emptyStructure
                             ? profile.gardenStructureProductionDrawCount ===
                                   0 &&
-                              profile.gardenStructureFallbackDrawCount === 0 &&
-                              profile.gardenStructureAssetBytesResident === 0
+                              profile.gardenStructureFallbackDrawCount === 0
                             : profile.gardenStructureProductionDrawCount > 0) &&
-                        (emptyStructure ||
-                            profile.gardenStructureAssetBytesResident > 0),
+                        profile.gardenStructureAssetBytesResident > 0,
                 );
             },
             {
@@ -3184,7 +3271,7 @@ async function prepareGardenBuildingProfile(page, buildingProfile) {
             expected: buildingProfile.expected,
             visibleProps: buildingProfile.cutaway
                 ? buildingProfile.expected.props
-                : 0,
+                : (buildingProfile.expected.normalVisibleProps ?? 0),
         },
         { timeout: 20_000 },
     );
@@ -8148,9 +8235,6 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gardenStructureActiveRevision: numberOrNull(
                 metadata.gardenStructureActiveRevision,
             ),
-            gardenStructureAssetBytesRequested: numberOrNull(
-                metadata.gardenStructureAssetBytesRequested,
-            ),
             gardenStructureAssetBytesResident: numberOrNull(
                 metadata.gardenStructureAssetBytesResident,
             ),
@@ -8826,13 +8910,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 gardenStructureKitAssetPath,
             ),
         ]);
-    runtime = {
-        ...(runtime ?? {}),
-        ...summarizeGardenStructureAssetNetwork(
-            gardenStructureAssetResponses,
-            gardenStructureAssetResources,
-        ),
-    };
+    runtime = mergeGardenStructureAssetNetworkRuntime({
+        buildingProfile: scenario.buildingProfile,
+        resources: gardenStructureAssetResources,
+        responses: gardenStructureAssetResponses,
+        runtime,
+    });
 
     const screenshotPath =
         options.screenshots ||
@@ -9223,8 +9306,8 @@ function evaluateGardenBuildingAcceptance({
                 0,
             ),
             exact(
-                'buildingAssetBytesRequested',
-                runtime?.gardenStructureAssetBytesRequested ?? 0,
+                'buildingAssetNetworkBytesRequested',
+                runtime?.gardenStructureAssetNetworkBytesRequested ?? 0,
                 0,
             ),
             exact(
@@ -9307,11 +9390,6 @@ function evaluateGardenBuildingAcceptance({
             600_000,
         ),
         exact(
-            'buildingAssetRequestedMatchesBody',
-            runtime?.gardenStructureAssetBytesRequested,
-            runtime?.gardenStructureAssetResponseBodyBytes,
-        ),
-        exact(
             'buildingAssetResourceMatchesResponse',
             runtime?.gardenStructureAssetResourceUrl,
             runtime?.gardenStructureAssetResponseUrl,
@@ -9321,9 +9399,10 @@ function evaluateGardenBuildingAcceptance({
             runtime?.gardenStructureAssetResourceDurationMs,
             0,
         ),
-        requiredProductionMetric(
+        minimum(
             'buildingAssetBytesResident',
             runtime?.gardenStructureAssetBytesResident,
+            1,
         ),
         exact(
             'buildingAssetResolutionStatus',
@@ -9460,7 +9539,7 @@ function evaluateGardenBuildingAcceptance({
     if (profile.motion !== 'edit-churn') {
         const expectedVisiblePropCount = profile.cutaway
             ? profile.expected.props
-            : 0;
+            : (profile.expected.normalVisibleProps ?? 0);
         checks.push(
             exact(
                 'buildingVisiblePropCount',
@@ -15531,6 +15610,7 @@ export {
     isProfileScreenshotWitnessValid,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
+    mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,

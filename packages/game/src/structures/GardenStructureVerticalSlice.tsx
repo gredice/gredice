@@ -24,7 +24,11 @@ import {
     type GardenStructureKitV1RuntimeBatch,
     isGardenStructureKitV1SemanticFallbackBatch,
 } from './GardenStructureKitV1AssetRenderer';
-import { getGardenStructureVerticalSliceBatches } from './gardenStructureVerticalSliceBatches';
+import { getGardenStructurePlanBaselineVisiblePropInstanceIds } from './gardenStructureSceneVisibility';
+import {
+    getGardenStructureVerticalSliceBatches,
+    getGardenStructureVerticalSliceVisibleInstanceIndices,
+} from './gardenStructureVerticalSliceBatches';
 import type {
     GardenStructureBatchDescription,
     GardenStructureSemanticPlan,
@@ -32,6 +36,10 @@ import type {
 
 const coordinateStride = 2;
 const transformStride = 3;
+
+type GetVisibleInstanceIndices = (
+    batch: GardenStructureKitV1RuntimeBatch,
+) => readonly number[];
 
 function materialColor(materialId: string) {
     if (materialId.includes('greenhouse')) {
@@ -109,12 +117,14 @@ function GardenStructureFallbackBatchInstances({
     baseHeight,
     batch,
     geometry,
+    getVisibleInstanceIndices,
     onSelect,
     selectedPartId,
 }: {
     baseHeight: number;
     batch: GardenStructureBatchDescription;
     geometry: BoxGeometry;
+    getVisibleInstanceIndices: GetVisibleInstanceIndices;
     onSelect?: (id: string) => void;
     selectedPartId: string | null;
 }) {
@@ -125,6 +135,10 @@ function GardenStructureFallbackBatchInstances({
         [batch.materialId],
     );
     const selectedColor = useMemo(() => new Color('#f59e0b'), []);
+    const visibleInstanceIndices = useMemo(
+        () => getVisibleInstanceIndices(batch),
+        [batch, getVisibleInstanceIndices],
+    );
     const transparent = batch.transparency === 'transparent';
     const material = useMemo(
         () =>
@@ -145,9 +159,17 @@ function GardenStructureFallbackBatchInstances({
         if (!mesh) {
             return;
         }
+        mesh.count = visibleInstanceIndices.length;
+        mesh.visible = visibleInstanceIndices.length > 0;
+        if (!mesh.visible) {
+            return;
+        }
         const dimensions = getBatchDimensions(batch, baseHeight);
-        for (let index = 0; index < batch.instanceIds.length; index += 1) {
-            const offset = index * transformStride;
+        for (const [
+            visibleIndex,
+            sourceIndex,
+        ] of visibleInstanceIndices.entries()) {
+            const offset = sourceIndex * transformStride;
             const x = batch.transforms[offset];
             const z = batch.transforms[offset + 1];
             const rotation = batch.transforms[offset + 2];
@@ -162,10 +184,10 @@ function GardenStructureFallbackBatchInstances({
                 dimensions.depth,
             );
             scratch.updateMatrix();
-            mesh.setMatrixAt(index, scratch.matrix);
+            mesh.setMatrixAt(visibleIndex, scratch.matrix);
             mesh.setColorAt(
-                index,
-                batch.instanceIds[index] === selectedPartId
+                visibleIndex,
+                batch.instanceIds[sourceIndex] === selectedPartId
                     ? selectedColor
                     : baseColor,
             );
@@ -176,21 +198,33 @@ function GardenStructureFallbackBatchInstances({
         }
         mesh.computeBoundingBox();
         mesh.computeBoundingSphere();
-    }, [baseColor, baseHeight, batch, scratch, selectedColor, selectedPartId]);
+    }, [
+        baseColor,
+        baseHeight,
+        batch,
+        scratch,
+        selectedColor,
+        selectedPartId,
+        visibleInstanceIndices,
+    ]);
 
     const handleClick = useCallback(
         (event: ThreeEvent<MouseEvent>) => {
             if (!onSelect || event.instanceId === undefined) {
                 return;
             }
-            const id = batch.instanceIds[event.instanceId];
+            const sourceIndex = visibleInstanceIndices[event.instanceId];
+            const id =
+                sourceIndex === undefined
+                    ? undefined
+                    : batch.instanceIds[sourceIndex];
             if (!id) {
                 return;
             }
             event.stopPropagation();
             onSelect(id);
         },
-        [batch.instanceIds, onSelect],
+        [batch.instanceIds, onSelect, visibleInstanceIndices],
     );
 
     return (
@@ -214,12 +248,14 @@ function GardenStructureVerticalSliceFallbackRenderer({
     baseHeight,
     batches,
     geometry,
+    getVisibleInstanceIndices,
     onSelect,
     selectedPartId,
 }: Readonly<{
     baseHeight: number;
     batches: readonly GardenStructureBatchDescription[];
     geometry: BoxGeometry;
+    getVisibleInstanceIndices: GetVisibleInstanceIndices;
     onSelect?: (id: string) => void;
     selectedPartId: string | null;
 }>) {
@@ -233,6 +269,7 @@ function GardenStructureVerticalSliceFallbackRenderer({
                     baseHeight={baseHeight}
                     batch={batch}
                     geometry={geometry}
+                    getVisibleInstanceIndices={getVisibleInstanceIndices}
                     key={batch.id}
                     onSelect={onSelect}
                     selectedPartId={selectedPartId}
@@ -320,6 +357,7 @@ export function GardenStructureVerticalSlice({
 }: GardenStructureVerticalSliceProps) {
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
+    const renderProps = session?.roofCutaway ?? false;
     const geometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
     useEffect(() => () => geometry.dispose(), [geometry]);
     const selectPart = useCallback(
@@ -331,14 +369,19 @@ export function GardenStructureVerticalSlice({
         },
         [session, setSession],
     );
+    const baselineVisiblePropInstanceIds = useMemo(
+        () => getGardenStructurePlanBaselineVisiblePropInstanceIds(plan),
+        [plan],
+    );
     const batches = useMemo(
         () =>
             getGardenStructureVerticalSliceBatches({
+                baselineVisiblePropInstanceIds,
                 plan,
-                renderProps: session?.roofCutaway ?? false,
-                roofCutaway: session?.roofCutaway ?? false,
+                renderProps,
+                roofCutaway: renderProps,
             }),
-        [plan, session?.roofCutaway],
+        [baselineVisiblePropInstanceIds, plan, renderProps],
     );
     const batchById = useMemo(
         () => new Map(batches.map((batch) => [batch.id, batch])),
@@ -347,6 +390,19 @@ export function GardenStructureVerticalSlice({
     const semanticFallbackBatches = useMemo(
         () => batches.filter(isGardenStructureKitV1SemanticFallbackBatch),
         [batches],
+    );
+    const getVisibleIndices = useCallback(
+        (runtimeBatch: GardenStructureKitV1RuntimeBatch) => {
+            const batch = batchById.get(runtimeBatch.id);
+            return batch
+                ? getGardenStructureVerticalSliceVisibleInstanceIndices({
+                      baselineVisiblePropInstanceIds,
+                      batch,
+                      renderProps,
+                  })
+                : [];
+        },
+        [baselineVisiblePropInstanceIds, batchById, renderProps],
     );
     const selectInstance = useCallback(
         (
@@ -372,6 +428,7 @@ export function GardenStructureVerticalSlice({
                         unresolvedIds.has(id),
                     )}
                     geometry={geometry}
+                    getVisibleInstanceIndices={getVisibleIndices}
                     onSelect={session ? selectPart : undefined}
                     selectedPartId={session?.selectedPartId ?? null}
                 />
@@ -379,6 +436,7 @@ export function GardenStructureVerticalSlice({
         },
         [
             geometry,
+            getVisibleIndices,
             plan.baseHeight,
             selectPart,
             semanticFallbackBatches,
@@ -390,6 +448,7 @@ export function GardenStructureVerticalSlice({
             baseHeight={plan.baseHeight}
             batches={semanticFallbackBatches}
             geometry={geometry}
+            getVisibleInstanceIndices={getVisibleIndices}
             onSelect={session ? selectPart : undefined}
             selectedPartId={session?.selectedPartId ?? null}
         />
@@ -400,31 +459,36 @@ export function GardenStructureVerticalSlice({
         }
         const renderedPropCount = batches
             .filter((batch) => batch.category === 'props')
-            .reduce((total, batch) => total + batch.instanceIds.length, 0);
+            .reduce(
+                (total, batch) => total + getVisibleIndices(batch).length,
+                0,
+            );
         const totalPropCount = plan.batches.props.reduce(
             (total, batch) => total + batch.instanceIds.length,
             0,
         );
         const transparentSurfaceCount = batches
             .filter((batch) => batch.transparency === 'transparent')
-            .reduce((total, batch) => total + batch.instanceIds.length, 0);
+            .reduce(
+                (total, batch) => total + getVisibleIndices(batch).length,
+                0,
+            );
         return {
             renderedPropCount,
             totalPropCount,
             transparentSurfaceCount,
         };
-    }, [batches, plan.batches.props, profileMetricsEnabled]);
+    }, [batches, getVisibleIndices, plan.batches.props, profileMetricsEnabled]);
+    const previewInstanceCount = session ? plan.footprint.ids.length : 0;
     const profileMetrics = useMemo(
         () =>
             profileMetricsEnabled
                 ? {
                       fallbackGeometry: geometry,
-                      previewInstanceCount: session
-                          ? plan.footprint.ids.length
-                          : 0,
+                      previewInstanceCount,
                   }
                 : undefined,
-        [geometry, plan.footprint.ids.length, profileMetricsEnabled, session],
+        [geometry, previewInstanceCount, profileMetricsEnabled],
     );
 
     useEffect(() => {
@@ -483,6 +547,7 @@ export function GardenStructureVerticalSlice({
                     baseHeight={plan.baseHeight}
                     batches={batches}
                     castShadows
+                    getVisibleInstanceIndices={getVisibleIndices}
                     namePrefix="GardenStructureVerticalSliceKitV1Batch"
                     onSelectInstance={session ? selectInstance : undefined}
                     profileMetrics={profileMetrics}

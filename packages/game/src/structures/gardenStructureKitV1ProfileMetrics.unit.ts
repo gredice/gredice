@@ -9,7 +9,10 @@ import {
     MeshStandardMaterial,
 } from 'three';
 import type { GardenStructureKitV1RuntimeBatch } from './GardenStructureKitV1AssetRenderer';
-import type { GardenStructureKitV1AssetResolution } from './gardenStructureKitV1AssetResolver';
+import type {
+    GardenStructureKitV1AssetResolution,
+    GardenStructureKitV1ResolvedGeometry,
+} from './gardenStructureKitV1AssetResolver';
 import {
     getGardenStructureGeometryCpuBytes,
     measureGardenStructureKitV1ProfileMetrics,
@@ -37,9 +40,19 @@ describe('garden structure kit profile metrics', () => {
 
     test('counts resolved production primitives from real geometry and deduplicates resident bytes', () => {
         const geometry = new BoxGeometry(1, 1, 1);
+        const residentOnlyGeometry = new BoxGeometry(2, 2, 2);
         const texture = new DataTexture(new Uint8Array(2 * 2 * 4), 2, 2);
+        const residentOnlyTexture = new DataTexture(
+            new Uint8Array(4 * 4 * 4),
+            4,
+            4,
+        );
         texture.generateMipmaps = false;
+        residentOnlyTexture.generateMipmaps = false;
         const material = new MeshStandardMaterial({ map: texture });
+        const residentOnlyMaterial = new MeshStandardMaterial({
+            map: residentOnlyTexture,
+        });
         const primitive = Object.freeze({
             geometry,
             material,
@@ -49,13 +62,31 @@ describe('garden structure kit profile metrics', () => {
             transparency: 'opaque',
         });
         const resolution: GardenStructureKitV1AssetResolution = Object.freeze({
-            geometries: new Map([
+            geometries: new Map<string, GardenStructureKitV1ResolvedGeometry>([
                 [
                     'floor.timber',
                     Object.freeze({
                         geometryId: 'floor.timber',
                         issues: Object.freeze([]),
                         primitives: Object.freeze([primitive]),
+                        status: 'resolved',
+                    }),
+                ],
+                [
+                    'roof.glass',
+                    Object.freeze({
+                        geometryId: 'roof.glass',
+                        issues: Object.freeze([]),
+                        primitives: Object.freeze([
+                            Object.freeze({
+                                geometry: residentOnlyGeometry,
+                                material: residentOnlyMaterial,
+                                nodeName: 'ResidentOnlyPrimitive',
+                                sourceMatrix: new Matrix4(),
+                                sourceNodeName: 'ResidentOnlyPart',
+                                transparency: 'transparent',
+                            }),
+                        ]),
                         status: 'resolved',
                     }),
                 ],
@@ -90,6 +121,8 @@ describe('garden structure kit profile metrics', () => {
             resolution,
         });
         const resident = getGardenStructureGeometryCpuBytes(geometry);
+        const residentOnly =
+            getGardenStructureGeometryCpuBytes(residentOnlyGeometry);
 
         assert.deepEqual(result.production, {
             attributeBytes: resident.attributeBytes,
@@ -111,6 +144,13 @@ describe('garden structure kit profile metrics', () => {
         assert.equal(result.preview.instanceCount, 4);
         assert.equal(result.preview.triangleCount, 48);
         assert.equal(result.unresolvedBatchCount, 1);
+        assert.deepEqual(result.resident, {
+            attributeBytes:
+                resident.attributeBytes + residentOnly.attributeBytes,
+            indexBytes: resident.indexBytes + residentOnly.indexBytes,
+            textureCount: 2,
+            textureEstimatedBytes: 80,
+        });
 
         const culled = measureGardenStructureKitV1ProfileMetrics({
             batches: [resolvedBatch, unresolvedBatch],
@@ -131,9 +171,13 @@ describe('garden structure kit profile metrics', () => {
         assert.equal(culled.fallback.drawCount, 0);
         assert.equal(culled.fallback.instanceCount, 0);
         assert.equal(culled.fallback.instanceBufferBytes, 228);
+        assert.deepEqual(culled.resident, result.resident);
 
         geometry.dispose();
+        residentOnlyGeometry.dispose();
         material.dispose();
+        residentOnlyMaterial.dispose();
         texture.dispose();
+        residentOnlyTexture.dispose();
     });
 });

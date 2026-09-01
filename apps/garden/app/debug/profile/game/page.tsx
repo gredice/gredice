@@ -465,7 +465,7 @@ export default async function GameProfilePage({
                 }
                 gardenStructureProfileFixture={gardenStructureProfileFixture}
                 gardenAvatarInitialSpawnPoint={
-                    gardenAvatar
+                    gardenAvatar && gardenBuilding
                         ? resolveGardenBuildingAvatarSpawnPoint(
                               gardenBuildingFixture,
                           )

@@ -53,6 +53,12 @@ export type GardenStructureKitV1ProfileMetrics = Readonly<{
             textureEstimatedBytes: number;
             transparentDrawCount: number;
         }>;
+    resident: Readonly<{
+        attributeBytes: number;
+        indexBytes: number;
+        textureCount: number;
+        textureEstimatedBytes: number;
+    }>;
     resolutionIssueCount: number;
     unresolvedBatchCount: number;
 }>;
@@ -185,6 +191,46 @@ function collectMaterialTextures(
             }
         }
     }
+}
+
+function measureResolvedAssetResidentBytes(
+    resolution: GardenStructureKitV1AssetResolution,
+) {
+    const geometries = new Set<BufferGeometry>();
+    const textures = new Set<Texture>();
+    for (const resolved of resolution.geometries.values()) {
+        if (resolved.status !== 'resolved') {
+            continue;
+        }
+        for (const primitive of resolved.primitives) {
+            geometries.add(primitive.geometry);
+            collectMaterialTextures(primitive.material, textures);
+        }
+    }
+
+    const attributeRanges: ArrayByteRanges = new Map();
+    const indexRanges: ArrayByteRanges = new Map();
+    let attributeBytes = 0;
+    let indexBytes = 0;
+    for (const geometry of geometries) {
+        const bytes = getGeometryCpuBytes(
+            geometry,
+            attributeRanges,
+            indexRanges,
+        );
+        attributeBytes += bytes.attributeBytes;
+        indexBytes += bytes.indexBytes;
+    }
+
+    return Object.freeze({
+        attributeBytes,
+        indexBytes,
+        textureCount: textures.size,
+        textureEstimatedBytes: [...textures].reduce(
+            (total, texture) => total + estimateTextureBytes(texture),
+            0,
+        ),
+    });
 }
 
 function emptyPass(): {
@@ -339,6 +385,7 @@ export function measureGardenStructureKitV1ProfileMetrics({
             ),
             transparentDrawCount,
         }),
+        resident: measureResolvedAssetResidentBytes(resolution),
         resolutionIssueCount: resolution.issues.length,
         unresolvedBatchCount,
     });

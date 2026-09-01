@@ -29,9 +29,9 @@ export function GardenStructureKitV1ProfileMetricsReporter({
         () => resolveGameAssetModelUrl(appBaseUrl, 'GardenStructureKitV1'),
         [appBaseUrl],
     );
-    const measuredProfile = useMemo(
-        () =>
-            measureGardenStructureKitV1ProfileMetrics({
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => {
+            const measuredProfile = measureGardenStructureKitV1ProfileMetrics({
                 batches,
                 fallbackGeometry,
                 getVisibleInstanceCount: (batch) =>
@@ -39,77 +39,84 @@ export function GardenStructureKitV1ProfileMetricsReporter({
                     batch.instanceIds.length,
                 previewInstanceCount,
                 resolution,
-            }),
-        [
-            batches,
-            fallbackGeometry,
-            getVisibleInstanceIndices,
-            previewInstanceCount,
-            resolution,
-        ],
-    );
-
-    useEffect(() => {
-        const { fallback, preview, production } = measuredProfile;
-        updateGameProfileMetadata({
-            gardenStructureAssetBytesResident:
-                production.attributeBytes +
-                production.indexBytes +
-                production.textureEstimatedBytes +
-                production.instanceBufferBytes,
-            gardenStructureAssetResolutionIssueCount:
-                measuredProfile.resolutionIssueCount,
-            gardenStructureAssetResolutionStatus: 'resolved',
-            gardenStructureAssetUnresolvedBatchCount:
-                measuredProfile.unresolvedBatchCount,
-            gardenStructureAssetUrl: assetUrl,
-            gardenStructureFallbackAttributeBytes: fallback.attributeBytes,
-            gardenStructureFallbackDrawCount: fallback.drawCount,
-            gardenStructureFallbackIndexBytes: fallback.indexBytes,
-            gardenStructureFallbackInstanceBufferBytes:
-                fallback.instanceBufferBytes,
-            gardenStructureFallbackInstanceCount: fallback.instanceCount,
-            gardenStructureFallbackTriangleCount: fallback.triangleCount,
-            gardenStructureFallbackVertexCount: fallback.vertexCount,
-            gardenStructurePreviewAttributeBytes: preview.attributeBytes,
-            gardenStructurePreviewDrawCount: preview.drawCount,
-            gardenStructurePreviewIndexBytes: preview.indexBytes,
-            gardenStructurePreviewInstanceBufferBytes:
-                preview.instanceBufferBytes,
-            gardenStructurePreviewInstanceCount: preview.instanceCount,
-            gardenStructurePreviewTriangleCount: preview.triangleCount,
-            gardenStructurePreviewVertexCount: preview.vertexCount,
-            gardenStructureProductionAttributeBytes: production.attributeBytes,
-            gardenStructureProductionDrawCount: production.drawCount,
-            gardenStructureProductionIndexBytes: production.indexBytes,
-            gardenStructureProductionInstanceBufferBytes:
-                production.instanceBufferBytes,
-            gardenStructureProductionInstanceCount: production.instanceCount,
-            gardenStructureProductionOpaqueDrawCount:
-                production.opaqueDrawCount,
-            gardenStructureProductionTextureCount: production.textureCount,
-            gardenStructureProductionTextureEstimatedBytes:
-                production.textureEstimatedBytes,
-            gardenStructureProductionTransparentDrawCount:
-                production.transparentDrawCount,
-            gardenStructureProductionTriangleCount: production.triangleCount,
-            gardenStructureProductionVertexCount: production.vertexCount,
-            gardenStructureRenderBatchCount:
-                production.drawCount + fallback.drawCount + preview.drawCount,
-            gardenStructureRenderInstanceCount:
-                production.instanceCount +
-                fallback.instanceCount +
-                preview.instanceCount,
-            gardenStructureRenderTriangleCount:
-                production.triangleCount +
-                fallback.triangleCount +
-                preview.triangleCount,
-            gardenStructureRenderVertexCount:
-                production.vertexCount +
-                fallback.vertexCount +
-                preview.vertexCount,
+            });
+            const { fallback, preview, production, resident } = measuredProfile;
+            updateGameProfileMetadata({
+                gardenStructureAssetBytesResident:
+                    resident.attributeBytes +
+                    resident.indexBytes +
+                    resident.textureEstimatedBytes +
+                    production.instanceBufferBytes,
+                gardenStructureAssetResolutionIssueCount:
+                    measuredProfile.resolutionIssueCount,
+                gardenStructureAssetResolutionStatus: 'resolved',
+                gardenStructureAssetUnresolvedBatchCount:
+                    measuredProfile.unresolvedBatchCount,
+                gardenStructureAssetUrl: assetUrl,
+                gardenStructureFallbackAttributeBytes: fallback.attributeBytes,
+                gardenStructureFallbackDrawCount: fallback.drawCount,
+                gardenStructureFallbackIndexBytes: fallback.indexBytes,
+                gardenStructureFallbackInstanceBufferBytes:
+                    fallback.instanceBufferBytes,
+                gardenStructureFallbackInstanceCount: fallback.instanceCount,
+                gardenStructureFallbackTriangleCount: fallback.triangleCount,
+                gardenStructureFallbackVertexCount: fallback.vertexCount,
+                gardenStructurePreviewAttributeBytes: preview.attributeBytes,
+                gardenStructurePreviewDrawCount: preview.drawCount,
+                gardenStructurePreviewIndexBytes: preview.indexBytes,
+                gardenStructurePreviewInstanceBufferBytes:
+                    preview.instanceBufferBytes,
+                gardenStructurePreviewInstanceCount: preview.instanceCount,
+                gardenStructurePreviewTriangleCount: preview.triangleCount,
+                gardenStructurePreviewVertexCount: preview.vertexCount,
+                gardenStructureProductionAttributeBytes:
+                    production.attributeBytes,
+                gardenStructureProductionDrawCount: production.drawCount,
+                gardenStructureProductionIndexBytes: production.indexBytes,
+                gardenStructureProductionInstanceBufferBytes:
+                    production.instanceBufferBytes,
+                gardenStructureProductionInstanceCount:
+                    production.instanceCount,
+                gardenStructureProductionOpaqueDrawCount:
+                    production.opaqueDrawCount,
+                gardenStructureProductionTextureCount: production.textureCount,
+                gardenStructureProductionTextureEstimatedBytes:
+                    production.textureEstimatedBytes,
+                gardenStructureProductionTransparentDrawCount:
+                    production.transparentDrawCount,
+                gardenStructureProductionTriangleCount:
+                    production.triangleCount,
+                gardenStructureProductionVertexCount: production.vertexCount,
+                gardenStructureRenderBatchCount:
+                    production.drawCount +
+                    fallback.drawCount +
+                    preview.drawCount,
+                gardenStructureRenderInstanceCount:
+                    production.instanceCount +
+                    fallback.instanceCount +
+                    preview.instanceCount,
+                gardenStructureRenderTriangleCount:
+                    production.triangleCount +
+                    fallback.triangleCount +
+                    preview.triangleCount,
+                gardenStructureRenderVertexCount:
+                    production.vertexCount +
+                    fallback.vertexCount +
+                    preview.vertexCount,
+            });
         });
-        return () =>
+        return () => cancelAnimationFrame(frame);
+    }, [
+        assetUrl,
+        batches,
+        fallbackGeometry,
+        getVisibleInstanceIndices,
+        previewInstanceCount,
+        resolution,
+    ]);
+
+    useEffect(
+        () => () =>
             updateGameProfileMetadata({
                 gardenStructureAssetBytesResident: 0,
                 gardenStructureAssetResolutionIssueCount: 0,
@@ -145,8 +152,9 @@ export function GardenStructureKitV1ProfileMetricsReporter({
                 gardenStructureRenderInstanceCount: 0,
                 gardenStructureRenderTriangleCount: 0,
                 gardenStructureRenderVertexCount: 0,
-            });
-    }, [assetUrl, measuredProfile]);
+            }),
+        [],
+    );
 
     return null;
 }

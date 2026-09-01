@@ -36,6 +36,7 @@ import {
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     measureStaticSceneCacheImageParity,
+    mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
@@ -395,6 +396,7 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
     assert.deepEqual(worstCase?.buildingProfile.expected, {
         edges: 301,
         footprintCells: 100,
+        normalVisibleProps: 34,
         props: 100,
         roofs: 100,
     });
@@ -403,6 +405,16 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
     assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
     assert.match(worstCase?.path ?? '', /avatar=1/);
     assert.equal(worstCase?.buildingProfile.motion, 'avatar-navigation');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('greenhouse-rain'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        2,
+    );
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('house-normal'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        0,
+    );
     const twoViewNavigation = scenarios.find((scenario) =>
         scenario.name.includes('two-view-navigation'),
     );
@@ -454,7 +466,7 @@ test('building asset network summary preserves exact response and resource timin
             ],
         ),
         {
-            gardenStructureAssetBytesRequested: 364_684,
+            gardenStructureAssetNetworkBytesRequested: 364_684,
             gardenStructureAssetRequestCount: 1,
             gardenStructureAssetResponseBodyBytes: 364_684,
             gardenStructureAssetResponseFromServiceWorker: false,
@@ -474,6 +486,63 @@ test('building asset network summary preserves exact response and resource timin
         summarizeGardenStructureAssetNetwork([], [])
             .gardenStructureAssetRequestCount,
         0,
+    );
+    const retried = summarizeGardenStructureAssetNetwork(
+        [
+            {
+                bodyBytes: 100,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+            {
+                bodyBytes: 200,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+        ],
+        [],
+    );
+    assert.equal(retried.gardenStructureAssetNetworkBytesRequested, 300);
+    assert.equal(retried.gardenStructureAssetResponseBodyBytes, 200);
+});
+
+test('building asset network merge leaves non-building runtime unchanged', () => {
+    const runtime = { qualityTier: 'medium' };
+    assert.equal(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: null,
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        runtime,
+    );
+    assert.deepEqual(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: { fixture: 'none' },
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+            gardenStructureAssetResponseBodyBytes: null,
+            gardenStructureAssetResponseFromServiceWorker: null,
+            gardenStructureAssetResponseStatus: null,
+            gardenStructureAssetResponseUrl: null,
+            gardenStructureAssetResourceDecodedBodyBytes: null,
+            gardenStructureAssetResourceDurationMs: null,
+            gardenStructureAssetResourceEncodedBodyBytes: null,
+            gardenStructureAssetResourceResponseEndMs: null,
+            gardenStructureAssetResourceResponseStartMs: null,
+            gardenStructureAssetResourceStartMs: null,
+            gardenStructureAssetResourceTransferBytes: null,
+            gardenStructureAssetResourceUrl: null,
+            qualityTier: 'medium',
+        },
     );
 });
 
@@ -498,7 +567,6 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             staticSceneCache: 'legacy',
         },
         runtime: {
-            gardenStructureAssetBytesRequested: 364_684,
             gardenStructureAssetBytesResident: 96_000,
             gardenStructureAssetRequestCount: 1,
             gardenStructureAssetResolutionIssueCount: 0,
@@ -674,12 +742,69 @@ test('building acceptance proves the no-structure baseline made no GLB request',
             staticSceneCache: 'legacy',
         },
         runtime: {
-            gardenStructureAssetBytesRequested: 0,
+            gardenStructureAssetNetworkBytesRequested: 0,
             gardenStructureAssetRequestCount: 0,
         },
     });
     assert.equal(result.pass, true);
     assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building acceptance preserves baseline-visible greenhouse and outdoor props', () => {
+    for (const fixture of [
+        {
+            expected: {
+                edges: 14,
+                footprintCells: 12,
+                normalVisibleProps: 2,
+                props: 2,
+                roofs: 1,
+            },
+            key: 'greenhouse',
+            visibleProps: 2,
+        },
+        {
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            key: 'worst-case',
+            visibleProps: 34,
+        },
+    ]) {
+        const result = evaluateGardenBuildingAcceptance({
+            apiRequests: [],
+            requested: {
+                building: '1',
+                buildingFixture: fixture.key,
+                buildingProfile: {
+                    expected: fixture.expected,
+                    fixture: fixture.key,
+                    mode: 'normal',
+                },
+            },
+            runtime: {
+                gardenStructureExteriorSuppressedPropCount:
+                    fixture.expected.props - fixture.visibleProps,
+                gardenStructureVisiblePropCount: fixture.visibleProps,
+            },
+        });
+
+        assert.ok(
+            result.checks
+                .filter((check) =>
+                    [
+                        'buildingVisibleAndSuppressedPropCoverage',
+                        'buildingVisiblePropCount',
+                        'buildingExteriorSuppressedPropCount',
+                    ].includes(check.name),
+                )
+                .every((check) => check.pass),
+        );
+    }
 });
 
 test('building acceptance gates measured avatar collision-step p95', () => {
@@ -783,8 +908,7 @@ test('building acceptance keeps an empty structure distinct from production GLB 
             staticSceneCache: 'legacy',
         },
         runtime: {
-            gardenStructureAssetBytesRequested: 364_684,
-            gardenStructureAssetBytesResident: 0,
+            gardenStructureAssetBytesResident: 96_000,
             gardenStructureAssetRequestCount: 1,
             gardenStructureAssetResolutionIssueCount: 0,
             gardenStructureAssetResolutionStatus: 'resolved',
