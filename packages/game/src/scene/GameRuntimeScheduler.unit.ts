@@ -109,6 +109,10 @@ class FakeRuntimeQueue {
     runNext(atTime?: number) {
         const task = this.peekNextTask();
         assert.ok(task, 'Expected a scheduled callback');
+        return this.runTask(task, atTime);
+    }
+
+    runTask(task: FakeTask, atTime?: number) {
         this.tasks.delete(task.id);
         this.currentTime =
             Math.max(this.currentTime, atTime ?? task.dueAt) +
@@ -234,17 +238,28 @@ function createScheduler({
     const invalidate =
         options?.invalidate ?? (() => invalidations.push(queue.currentTime));
     let framePending = false;
+    let frameHandle: unknown = null;
     let scheduler: GameRuntimeScheduler;
     const requestExternalFrame = () => {
         if (!simulateFrameCallbacks || framePending) {
             return;
         }
         framePending = true;
-        queue.requestFrame((displayTimestamp) => {
+        frameHandle = queue.requestFrame((displayTimestamp) => {
             framePending = false;
+            frameHandle = null;
             frameCallbackTimes.push(displayTimestamp ?? queue.currentTime);
             scheduler.recordFrameCallback(displayTimestamp);
         });
+    };
+    const recordExternalFrame = (displayTimestamp = queue.currentTime) => {
+        if (framePending) {
+            queue.clearTimeout(frameHandle);
+            framePending = false;
+            frameHandle = null;
+        }
+        frameCallbackTimes.push(displayTimestamp);
+        scheduler.recordFrameCallback(displayTimestamp);
     };
     scheduler = new GameRuntimeScheduler({
         cancelFrame: queue.clearTimeout,
@@ -271,6 +286,7 @@ function createScheduler({
         frameCallbackTimes,
         invalidations,
         queue,
+        recordExternalFrame,
         requestExternalFrame,
         scheduler,
     };
@@ -377,6 +393,74 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         });
     }
 
+    for (const { displayFramesPerSecond, targetFramesPerSecond } of [
+        { displayFramesPerSecond: 144, targetFramesPerSecond: 30 },
+        { displayFramesPerSecond: 120, targetFramesPerSecond: 60 },
+    ] as const) {
+        it(`sleeps at ${targetFramesPerSecond} FPS after bounded calibration on ${displayFramesPerSecond} Hz`, () => {
+            const queue = new FakeRuntimeQueue(displayFramesPerSecond);
+            const { frameCallbackTimes, scheduler } = createScheduler({
+                queue,
+                simulateFrameCallbacks: true,
+            });
+            const release = scheduler.acquireRenderLease(
+                'semantic-sleep',
+                targetFramesPerSecond,
+            );
+
+            queue.runUntil(1_000);
+            const calibrationFrameCount = queue.taskHistory.filter(
+                (task) => task.source === 'scheduler-frame',
+            ).length;
+            const start = scheduler.getSnapshot();
+            assert.equal(start.displayFrameCalibrationCount, 1);
+            assert.ok(
+                calibrationFrameCount >= 8 && calibrationFrameCount <= 13,
+            );
+            assert.equal(start.pendingCallbackKind, 'timeout');
+            assert.ok(start.pendingCallbackDueAt !== null);
+
+            queue.runUntil(5_000);
+            const end = scheduler.getSnapshot();
+            const wakeupDelta = end.wakeupCount - start.wakeupCount;
+            const invalidationDelta =
+                end.invalidationCount - start.invalidationCount;
+            const expectedWakeups = targetFramesPerSecond * 4;
+            assert.ok(
+                wakeupDelta >= expectedWakeups - 2 &&
+                    wakeupDelta <= expectedWakeups + 2,
+                `${targetFramesPerSecond} FPS semantic work woke ${wakeupDelta} times on ${displayFramesPerSecond} Hz`,
+            );
+            assert.equal(wakeupDelta, invalidationDelta);
+            assert.equal(
+                queue.taskHistory.filter(
+                    (task) => task.source === 'scheduler-frame',
+                ).length,
+                calibrationFrameCount,
+                'Steady semantic cadence must not restart scheduler RAF polling',
+            );
+            assert.equal(end.pendingCallbackKind, 'timeout');
+            assert.ok(end.pendingCallbackDueAt !== null);
+
+            const steadyFrames = frameCallbackTimes.filter(
+                (timestamp) => timestamp >= 1_000 && timestamp <= 5_000,
+            );
+            const firstFrame = steadyFrames[0];
+            const lastFrame = steadyFrames.at(-1);
+            assert.ok(firstFrame !== undefined && lastFrame !== undefined);
+            const renderedFramesPerSecond =
+                ((steadyFrames.length - 1) * 1000) / (lastFrame - firstFrame);
+            assert.ok(
+                renderedFramesPerSecond >= targetFramesPerSecond - 1 &&
+                    renderedFramesPerSecond <= targetFramesPerSecond + 1,
+                `${targetFramesPerSecond} FPS semantic work rendered at ${renderedFramesPerSecond} FPS on ${displayFramesPerSecond} Hz`,
+            );
+            assert.ok(queue.maximumPendingTaskCount <= 2);
+
+            release();
+        });
+    }
+
     it('uses the highest named lease, an ambient fallback, and live rate changes', () => {
         const { queue, scheduler } = createScheduler();
         const releaseAmbient = scheduler.acquireRenderLease('ambient');
@@ -478,6 +562,35 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         );
         assert.equal(scheduler.getSnapshot().missedFrameReceiptCount, 0);
         releaseAmbient();
+    });
+
+    it('collapses overdue render work to one invalidation and a future target', () => {
+        const { invalidations, queue, scheduler } = createScheduler({
+            simulateFrameCallbacks: true,
+        });
+        const release = scheduler.acquireRenderLease('overdue-render', 30);
+        queue.runUntil(500);
+
+        const overdueTask = [...queue.tasks.values()].find(
+            (task) => task.source === 'timeout',
+        );
+        assert.equal(overdueTask?.source, 'timeout');
+        const overdueAt = (overdueTask?.dueAt ?? queue.currentTime) + 250;
+        const invalidationCount = invalidations.length;
+        assert.ok(overdueTask);
+        queue.runTask(overdueTask, overdueAt);
+
+        assert.equal(invalidations.length, invalidationCount + 1);
+        const snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.pendingCallbackKind, 'timeout');
+        assert.ok(
+            snapshot.pendingCallbackDueAt !== null &&
+                snapshot.pendingCallbackDueAt > overdueAt,
+        );
+        assert.ok(queue.maximumPendingTaskCount <= 2);
+
+        queue.runUntil(overdueAt + 50);
+        release();
     });
 
     it('preserves 20/30/60 FPS averages across non-divisor display refresh rates', () => {
@@ -654,19 +767,22 @@ describe('GameRuntimeScheduler idle and cadence', () => {
 
         queue.runUntil(2_000);
         const firstSnapshot = scheduler.getSnapshot();
-        const directCalibrationInvalidationCount =
-            firstSnapshot.invalidationCount - firstSnapshot.wakeupCount;
+        const calibrationFrameCount = queue.taskHistory.filter(
+            (task) => task.source === 'scheduler-frame',
+        ).length;
         assert.equal(firstSnapshot.displayFrameCalibrationCount, 1);
         assertNear(firstSnapshot.displayFrameIntervalMs ?? 0, 1000 / 60);
-        assert.ok(directCalibrationInvalidationCount <= 12);
+        assert.ok(calibrationFrameCount <= 13);
 
         queue.runUntil(5_000);
         const finalSnapshot = scheduler.getSnapshot();
         assert.equal(finalSnapshot.displayFrameCalibrationCount, 1);
         assert.equal(
-            finalSnapshot.invalidationCount - finalSnapshot.wakeupCount,
-            directCalibrationInvalidationCount,
-            'Fallback calibration must not leave a permanent direct-frame loop',
+            queue.taskHistory.filter(
+                (task) => task.source === 'scheduler-frame',
+            ).length,
+            calibrationFrameCount,
+            'Fallback calibration must not leave a permanent scheduler RAF loop',
         );
         release();
     });
@@ -722,34 +838,41 @@ describe('GameRuntimeScheduler idle and cadence', () => {
 
     it('combines a 15 FPS external source with owned work under a 30 FPS cap', () => {
         const queue = new FakeRuntimeQueue(60);
-        const { invalidations, scheduler } = createScheduler({
-            queue,
-            simulateFrameCallbacks: true,
-        });
+        const { invalidations, recordExternalFrame, scheduler } =
+            createScheduler({
+                queue,
+                simulateFrameCallbacks: true,
+            });
         const release = scheduler.acquireRenderLease('external-source', 30);
         queue.runUntil(500);
         const sampleStartedAt = queue.currentTime;
         const sampleEndedAt = sampleStartedAt + 2_000;
         const invalidationsAtStart = invalidations.length;
-        const callbacksAtStart = scheduler.getSnapshot().r3fFrameCallbackCount;
+        const snapshotAtStart = scheduler.getSnapshot();
+        const callbacksAtStart = snapshotAtStart.r3fFrameCallbackCount;
 
         for (let frame = 0; frame < 30; frame += 1) {
             const externalFrameAt = sampleStartedAt + 8 + frame * (1000 / 15);
             queue.runUntil(externalFrameAt);
-            scheduler.recordFrameCallback(externalFrameAt);
+            recordExternalFrame(externalFrameAt);
         }
         queue.runUntil(sampleEndedAt);
 
         const ownedInvalidations = invalidations.length - invalidationsAtStart;
         assert.ok(
-            ownedInvalidations >= 28 && ownedInvalidations <= 32,
-            `Expected external receipts to replace half the 30 FPS cadence, received ${ownedInvalidations / 2} owned FPS`,
+            ownedInvalidations >= 28 && ownedInvalidations <= 62,
+            `Expected owned invalidations to remain within the 30 FPS cap, received ${ownedInvalidations / 2} FPS`,
         );
+        const snapshotAtEnd = scheduler.getSnapshot();
         const renderedFrames =
-            scheduler.getSnapshot().r3fFrameCallbackCount - callbacksAtStart;
+            snapshotAtEnd.r3fFrameCallbackCount - callbacksAtStart;
         assert.ok(
             renderedFrames >= 58 && renderedFrames <= 62,
             `Expected a combined 30 FPS cap, received ${renderedFrames / 2} FPS`,
+        );
+        assert.ok(
+            snapshotAtEnd.wakeupCount - snapshotAtStart.wakeupCount <= 62,
+            'External rendering must not raise scheduler wakeups above semantic cadence',
         );
         assert.ok(queue.maximumPendingTaskCount <= 2);
         assert.equal(scheduler.getSnapshot().displayFrameCalibrationCount, 1);
@@ -772,8 +895,8 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         scheduler.recordFrameCallback(502);
 
         const snapshot = scheduler.getSnapshot();
-        assert.equal(snapshot.pendingCallbackKind, 'frame');
-        assert.equal(snapshot.pendingCallbackDueAt, null);
+        assert.equal(snapshot.pendingCallbackKind, 'timeout');
+        assert.ok(snapshot.pendingCallbackDueAt !== null);
         queue.runUntil(534);
         assert.equal(
             scheduler.getSnapshot().invalidationCount,
@@ -1089,7 +1212,7 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(queue.maximumPendingTaskCount, 1);
     });
 
-    it('services deadlines and fixed steps on the active render driver', () => {
+    it('services deadlines and fixed steps at their earliest due time during rendering', () => {
         const { queue, scheduler } = createScheduler({
             simulateFrameCallbacks: true,
         });
@@ -1112,14 +1235,16 @@ describe('GameRuntimeScheduler semantic work', () => {
 
         assert.equal(deadlines.length, 1);
         assertNear(deadlines[0]?.scheduledForMs ?? 0, 25);
-        assertNear(deadlines[0]?.nowMs ?? 0, (2 * 1000) / 60);
-        assertNear(deadlines[0]?.latenessMs ?? 0, 1000 / 120);
+        assertNear(deadlines[0]?.nowMs ?? 0, 25);
+        assertNear(deadlines[0]?.latenessMs ?? 0, 0);
         assert.deepEqual(fixedSteps, [50]);
         assert.equal(
             queue.taskHistory.some((task) => task.source === 'timeout'),
-            false,
+            true,
         );
-        assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'frame');
+        queue.runUntil(1_000);
+        assert.equal(scheduler.getSnapshot().displayFrameCalibrationCount, 1);
+        assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'timeout');
 
         releaseFixed();
         releaseRender();

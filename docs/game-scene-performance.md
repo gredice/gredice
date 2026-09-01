@@ -1211,11 +1211,17 @@ Public preview capture disables continuous lease acquisition explicitly through
 visual clock, while the separate lease switch leaves the capture probe in
 control of its bounded demand-render/readback sequence.
 
-`pendingCallbackKind=frame` has no due timestamp and means the render loop is
-active. `timeout` exposes its absolute due timestamp without marking the render
-loop active; `none` has neither. Scheduled-callback and wakeup counters cover
-both scheduler callback kinds, while R3F frame callbacks remain a separate
-receipt count. Display-interval telemetry is observational.
+Semantic render work sleeps on the same due-time timeout queue as deadlines and
+fixed steps. When its target is due, the scheduler invalidates once and R3F
+aligns the actual draw to the browser's next animation frame. `loopActive`
+therefore reports active visible render ownership independently of callback
+kind. A bounded startup calibration may report `pendingCallbackKind=frame` for
+seven valid display samples, with a hard limit of 12 attempts or 750 ms. After
+that calibration, steady render ownership reports `pendingCallbackKind=timeout`
+with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
+and wakeup counters cover both bounded calibration frames and scheduler
+timeouts, while R3F frame callbacks remain a separate receipt count.
+Display-interval telemetry remains observational and never steers scheduling.
 
 Profiler telemetry is pull-based: a synchronous property-read or
 `structuredClone` burst shares one exact scheduler snapshot until its queued

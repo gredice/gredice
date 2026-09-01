@@ -549,6 +549,10 @@ export class GameRuntimeScheduler {
             return;
         }
 
+        const now = this.readNow();
+        const displayNow = Number.isFinite(displayTimestampMs)
+            ? Math.max(0, displayTimestampMs ?? now)
+            : now;
         const ownedFrameReceipt = this.awaitingFrameReceipt;
         if (this.renderRequests.size > 0) {
             const previousTarget = this.getRenderFramesPerSecond();
@@ -566,17 +570,12 @@ export class GameRuntimeScheduler {
         this.awaitingFrameReceipt = false;
         this.invalidationRetryNotBeforeAt = null;
         if (!ownedFrameReceipt) {
-            const receiptAt = Math.max(
-                this.readNow(),
-                Number.isFinite(displayTimestampMs)
-                    ? Math.max(0, displayTimestampMs ?? 0)
-                    : 0,
-            );
+            const receiptAt = Math.max(now, displayNow);
             this.deferRenderFrameTargetAfterExternalReceipt(receiptAt);
         }
-        // An active render owner already has one scheduler RAF pending. Keep
-        // the callback in place: it will observe the deferred target without
-        // cancelling and rearming once per external receipt.
+        // Keep an earlier timer in place when an external receipt moves the
+        // semantic target later. It can reconcile the new target without a
+        // cancellation/rearm pair for every external frame.
         this.reconcileSchedule();
     }
 
@@ -775,7 +774,7 @@ export class GameRuntimeScheduler {
             fixedStepOwners: uniqueSortedOwners(
                 [...this.fixedStepLeases.values()].map((lease) => lease.owner),
             ),
-            loopActive: this.pendingCallback?.kind === 'frame',
+            loopActive: this.isEffectivelyVisible() && this.hasRenderWork(),
             ownedInvalidationCount: this.counters.invalidationCount,
             pendingCallbackDueAt: this.pendingCallback?.dueAt ?? null,
             pendingCallbackKind,
@@ -1006,7 +1005,15 @@ export class GameRuntimeScheduler {
         }
         const lastInvalidatedAt = this.lastInvalidatedAt;
         if (this.isAwaitingFrame()) {
-            return (lastInvalidatedAt ?? now) + Math.max(intervalMs * 2, 100);
+            const retryAt =
+                (lastInvalidatedAt ?? now) + Math.max(intervalMs * 2, 100);
+            if (
+                this.nextRenderFrameTargetAt !== null &&
+                this.nextRenderFrameTargetAt > now + schedulerToleranceMs
+            ) {
+                return Math.min(this.nextRenderFrameTargetAt, retryAt);
+            }
+            return retryAt;
         }
         if (this.nextRenderFrameTargetAt === null) {
             return now;
@@ -1041,10 +1048,7 @@ export class GameRuntimeScheduler {
         if (this.disposed || !this.isEffectivelyVisible()) {
             return null;
         }
-        if (this.hasRenderWork()) {
-            return { dueAt: null, kind: 'frame' };
-        }
-
+        const renderDueAt = this.getNextRenderDueAt(now);
         const fixedStepDueAt = this.getNextFixedStepDueAt();
         const deadlineDueAt = this.getNextDeadlineDueAt();
         const nonRenderDueAt = [fixedStepDueAt, deadlineDueAt].reduce<
@@ -1056,10 +1060,35 @@ export class GameRuntimeScheduler {
             return earliest === null ? dueAt : Math.min(earliest, dueAt);
         }, null);
 
-        return nonRenderDueAt === null
+        if (
+            nonRenderDueAt !== null &&
+            (renderDueAt === null ||
+                nonRenderDueAt <= renderDueAt + schedulerToleranceMs)
+        ) {
+            return {
+                dueAt: Math.max(now, nonRenderDueAt),
+                kind: 'timeout',
+            };
+        }
+        if (renderDueAt !== null && !this.frameIntervalCalibrated) {
+            return { dueAt: null, kind: 'frame' };
+        }
+
+        const dueAt = [renderDueAt, nonRenderDueAt].reduce<number | null>(
+            (earliest, candidate) => {
+                if (candidate === null) {
+                    return earliest;
+                }
+                return earliest === null
+                    ? candidate
+                    : Math.min(earliest, candidate);
+            },
+            null,
+        );
+        return dueAt === null
             ? null
             : {
-                  dueAt: Math.max(now, nonRenderDueAt),
+                  dueAt: Math.max(now, dueAt),
                   kind: 'timeout',
               };
     }
@@ -1094,8 +1123,9 @@ export class GameRuntimeScheduler {
             this.pendingCallback.dueAt <=
                 nextWakeup.dueAt + schedulerToleranceMs
         ) {
-            // An earlier timer can safely reconcile a deadline or fixed-step
-            // target that moved later without a cancellation/rearm pair.
+            // An earlier timer can safely reconcile a semantic render target,
+            // deadline, or fixed-step target that moved later without a
+            // cancellation/rearm pair.
             this.emitSnapshot();
             return;
         }
@@ -1176,7 +1206,7 @@ export class GameRuntimeScheduler {
             if (!this.disposed) {
                 this.deliverFixedSteps(now);
             }
-            if (!this.disposed && callbackKind === 'frame') {
+            if (!this.disposed) {
                 this.requestInvalidationIfDue(displayNow);
             }
         } finally {
