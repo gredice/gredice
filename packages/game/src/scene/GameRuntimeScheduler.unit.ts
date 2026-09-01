@@ -1236,7 +1236,8 @@ describe('GameRuntimeScheduler semantic work', () => {
             pending.cancelledCallbackCount,
             before.cancelledCallbackCount,
         );
-        assert.deepEqual(pending.renderRequestReasons, [
+        assert.deepEqual(pending.renderRequestReasons, []);
+        assert.deepEqual(pending.coalescedRenderRequestReasons, [
             'r3f-host',
             'r3f-reconciler',
         ]);
@@ -1258,7 +1259,10 @@ describe('GameRuntimeScheduler semantic work', () => {
                 1000 / 30,
             );
         }
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
         release();
     });
 
@@ -1281,7 +1285,10 @@ describe('GameRuntimeScheduler semantic work', () => {
             (invalidations[2] ?? 0) - (invalidations[1] ?? 0),
             1000 / 60,
         );
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
         assert.equal(queue.pendingTaskCount, 0);
     });
 
@@ -1292,13 +1299,18 @@ describe('GameRuntimeScheduler semantic work', () => {
 
         assert.equal(scheduler.requestCoalescedRender('r3f-host'), true);
         assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 0);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
-            'r3f-host',
-        ]);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            ['r3f-host'],
+        );
 
         queue.runUntil(100);
         assert.equal(invalidations.length, 1);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
         assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'none');
         assert.equal(queue.pendingTaskCount, 0);
     });
@@ -1308,23 +1320,39 @@ describe('GameRuntimeScheduler semantic work', () => {
             simulateFrameCallbacks: true,
         });
         scheduler.setDocumentVisible(false);
+        const ordinaryCountersBefore = scheduler.getSnapshot();
 
         scheduler.requestCoalescedRender('r3f-host', 3);
         scheduler.requestCoalescedRender('r3f-host');
-        scheduler.requestCoalescedRender('r3f-reconciler', 3);
+        scheduler.requestCoalescedRender('r3f-host', 2);
         queue.runUntil(100);
 
+        const hidden = scheduler.getSnapshot();
         assert.equal(invalidations.length, 0);
         assert.equal(queue.pendingTaskCount, 0);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
-            'r3f-host',
-            'r3f-reconciler',
-        ]);
+        assert.deepEqual(hidden.renderRequestReasons, []);
+        assert.deepEqual(hidden.coalescedRenderRequestReasons, ['r3f-host']);
+        assert.equal(hidden.hiddenDeferredCoalescedRenderRequestCount, 1);
+        assert.equal(
+            hidden.hiddenDeferredRenderRequestCount,
+            ordinaryCountersBefore.hiddenDeferredRenderRequestCount,
+        );
+        assert.equal(
+            hidden.deferredWorkCount,
+            ordinaryCountersBefore.deferredWorkCount,
+        );
+        assert.equal(
+            hidden.nonessentialHiddenWorkCount,
+            ordinaryCountersBefore.nonessentialHiddenWorkCount,
+        );
 
         scheduler.setDocumentVisible(true);
         queue.runUntil(200);
         assert.equal(invalidations.length, 1);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
         assert.equal(queue.pendingTaskCount, 0);
     });
 
@@ -1337,15 +1365,20 @@ describe('GameRuntimeScheduler semantic work', () => {
 
         queue.runNext();
         assert.equal(invalidations.length, 1);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, [
-            'r3f-host',
-        ]);
+        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            ['r3f-host'],
+        );
 
         release();
         assert.equal(scheduler.getSnapshot().targetFramesPerSecond, 0);
         queue.runUntil(100);
         assert.equal(invalidations.length, 1);
-        assert.deepEqual(scheduler.getSnapshot().renderRequestReasons, []);
+        assert.deepEqual(
+            scheduler.getSnapshot().coalescedRenderRequestReasons,
+            [],
+        );
         assert.equal(queue.pendingTaskCount, 0);
     });
 
@@ -1848,6 +1881,7 @@ describe('GameRuntimeScheduler lifecycle and telemetry', () => {
         assert.equal(snapshot.callbackPending, false);
         assert.equal(snapshot.leaseAcquiredCount, 2);
         assert.equal(snapshot.leaseReleasedCount, 2);
+        assert.deepEqual(snapshot.coalescedRenderRequestReasons, []);
         assert.deepEqual(snapshot.renderRequestReasons, []);
         assert.deepEqual(invalidations, []);
         assert.equal(queue.pendingTaskCount, 0);

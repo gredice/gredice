@@ -274,6 +274,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             callbackPending: false,
             cancelledCallbackCount: 0,
             canvasVisible: false,
+            coalescedRenderRequestReasons: [],
             contextAvailable: false,
             deadlineCount: 0,
             deadlineOwners: [],
@@ -286,6 +287,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             fixedStepCount: 0,
             fixedStepFailureCount: 0,
             fixedStepOwners: [],
+            hiddenDeferredCoalescedRenderRequestCount: 0,
             hiddenDeferredRenderRequestCount: 0,
             invalidationCount: 0,
             invalidationFailureCount: 0,
@@ -319,6 +321,10 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
         assert.notEqual(
             first.renderLeaseSummaries,
             second.renderLeaseSummaries,
+        );
+        assert.notEqual(
+            first.coalescedRenderRequestReasons,
+            second.coalescedRenderRequestReasons,
         );
         assert.notEqual(
             first.renderRequestReasons,

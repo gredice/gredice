@@ -31,6 +31,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     activeRenderLeaseCount: number;
     callbackPending: boolean;
     cancelledCallbackCount: number;
+    coalescedRenderRequestReasons: readonly string[];
     deadlineCount: number;
     deadlineOwners: readonly string[];
     deferredWorkCount: number;
@@ -42,6 +43,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     fixedStepCount: number;
     fixedStepFailureCount: number;
     fixedStepOwners: readonly string[];
+    hiddenDeferredCoalescedRenderRequestCount: number;
     hiddenDeferredRenderRequestCount: number;
     invalidationCount: number;
     invalidationFailureCount: number;
@@ -154,6 +156,7 @@ type MutableSchedulerCounters = {
     displayFrameCalibrationCount: number;
     fixedStepCount: number;
     fixedStepFailureCount: number;
+    hiddenDeferredCoalescedRenderRequestCount: number;
     hiddenDeferredRenderRequestCount: number;
     invalidationCount: number;
     invalidationFailureCount: number;
@@ -218,6 +221,7 @@ export class GameRuntimeScheduler {
         displayFrameCalibrationCount: 0,
         fixedStepCount: 0,
         fixedStepFailureCount: 0,
+        hiddenDeferredCoalescedRenderRequestCount: 0,
         hiddenDeferredRenderRequestCount: 0,
         invalidationCount: 0,
         invalidationFailureCount: 0,
@@ -560,9 +564,8 @@ export class GameRuntimeScheduler {
                 ? Math.max(previousFrames, requestedFrames)
                 : 1,
         );
-        if (!this.isEffectivelyVisible()) {
-            this.counters.hiddenDeferredRenderRequestCount += 1;
-            this.recordNonessentialHiddenWork();
+        if (!this.isEffectivelyVisible() && previousFrames === 0) {
+            this.counters.hiddenDeferredCoalescedRenderRequestCount += 1;
         }
         if (this.getRenderFramesPerSecond() !== previousTarget) {
             this.resetRenderFrameTarget(previousTarget);
@@ -764,7 +767,7 @@ export class GameRuntimeScheduler {
         this.frameIntervalCalibrated = false;
         if (!isVisible) {
             this.counters.suspendCount += 1;
-            if (this.hasActiveWork()) {
+            if (this.hasOrdinaryActiveWork()) {
                 this.counters.deferredWorkCount += 1;
             }
             for (const reason of this.renderRequests.keys()) {
@@ -824,6 +827,9 @@ export class GameRuntimeScheduler {
             activeLeaseCount: this.renderLeases.size,
             activeRenderLeaseCount: this.renderLeases.size,
             callbackPending: this.pendingCallback !== null,
+            coalescedRenderRequestReasons: uniqueSortedOwners(
+                this.coalescedRenderRequests.keys(),
+            ),
             deadlineOwners: uniqueSortedOwners(this.deadlines.keys()),
             displayFrameIntervalMs: this.frameIntervalCalibrated
                 ? this.displayFrameIntervalMs
@@ -841,10 +847,9 @@ export class GameRuntimeScheduler {
                 [...this.renderLeases.values()].map((lease) => lease.owner),
             ),
             renderLeaseSummaries: this.getRenderLeaseSummaries(),
-            renderRequestReasons: uniqueSortedOwners([
-                ...this.renderRequests.keys(),
-                ...this.coalescedRenderRequests.keys(),
-            ]),
+            renderRequestReasons: uniqueSortedOwners(
+                this.renderRequests.keys(),
+            ),
             targetFramesPerSecond: this.getTargetFramesPerSecond(),
         };
     }
@@ -937,9 +942,10 @@ export class GameRuntimeScheduler {
         );
     }
 
-    private hasActiveWork() {
+    private hasOrdinaryActiveWork() {
         return (
-            this.hasRenderWork() ||
+            this.getTargetFramesPerSecond() > 0 ||
+            this.renderRequests.size > 0 ||
             this.fixedStepLeases.size > 0 ||
             this.deadlines.size > 0
         );
