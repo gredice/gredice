@@ -6,6 +6,7 @@ import {
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
     resolveGameProfileGardenBuilding,
+    resolveGameProfileGardenBuildingFixture,
     resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
@@ -71,6 +72,31 @@ describe('resolveGameProfileGardenBuilding', () => {
             false,
         );
         assert.equal(resolveGameProfileGardenBuildingFixtureGate('true'), true);
+    });
+});
+
+describe('resolveGameProfileGardenBuildingFixture', () => {
+    it('keeps every fixture variant behind the exact server gate', () => {
+        assert.equal(
+            resolveGameProfileGardenBuildingFixture('worst-case'),
+            null,
+        );
+        assert.equal(
+            resolveGameProfileGardenBuildingFixture('worst-case', true),
+            'worst-case',
+        );
+        assert.equal(
+            resolveGameProfileGardenBuildingFixture('blank', true),
+            'blank',
+        );
+        assert.equal(
+            resolveGameProfileGardenBuildingFixture('unexpected', true),
+            'house',
+        );
+        assert.equal(
+            resolveGameProfileGardenBuildingFixture(undefined, true),
+            null,
+        );
     });
 });
 

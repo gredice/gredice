@@ -14,6 +14,7 @@ import {
     mergeGardenAvatarCollisionWorlds,
     resolveGardenAvatarHorizontalMovement,
 } from '../entities/avatar/gardenAvatarMovement';
+import { createWorstCaseGardenStructureCompileInput } from './benchmarkStructureCompiler';
 import {
     createGardenStructureAvatarCollisionWorld,
     createGardenStructureCollectionAvatarCollisionWorld,
@@ -21,7 +22,6 @@ import {
 import {
     compileGardenStructurePlan,
     containsGardenStructureWorldCell,
-    createWorstCaseGardenStructureCompileInput,
     debugGardenStructureKitMetadata,
     getGardenStructurePackedCell,
 } from './index';

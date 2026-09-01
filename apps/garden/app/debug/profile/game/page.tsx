@@ -12,6 +12,7 @@ import {
     resolveGameProfileFlags,
     resolveGameProfileGardenAvatar,
     resolveGameProfileGardenBuilding,
+    resolveGameProfileGardenBuildingFixture,
     resolveGameProfileGardenBuildingFixtureGate,
     resolveGameProfileOperationVisuals,
     resolveGameProfileStaticSceneCache,
@@ -45,6 +46,10 @@ type GameProfileMode =
 type GameProfileMockGardenProfile = NonNullable<
     GameSceneProps['mockGardenProfile']
 >;
+
+function resolveAvatarProfileView(value: string | undefined) {
+    return value === 'third-person' ? value : null;
+}
 
 function firstValue(value: string | string[] | undefined) {
     return Array.isArray(value) ? value[0] : value;
@@ -120,6 +125,21 @@ function resolveMockGardenProfile(
     }
 
     return 'default';
+}
+
+function resolveGardenBuildingAvatarSpawnPoint(
+    fixture: ReturnType<typeof resolveGameProfileGardenBuildingFixture>,
+) {
+    if (fixture === 'house') {
+        // Starts inside the south side of the representative profile house.
+        return { x: 0, z: 1.25 };
+    }
+    if (fixture === 'worst-case') {
+        // Starts outside a solid south wall so repeated forward steps exercise
+        // the furnished 100-cell collision buckets without entering cutaway.
+        return { x: 0, z: -1.85 };
+    }
+    return undefined;
 }
 
 function resolveWeather(
@@ -306,6 +326,9 @@ export default async function GameProfilePage({
     const gardenAvatar = resolveGameProfileGardenAvatar(
         firstValue(params.avatar),
     );
+    const avatarProfileView = resolveAvatarProfileView(
+        firstValue(params.avatarProfile),
+    );
     const gardenBuildingFixtureEnabled =
         resolveGameProfileGardenBuildingFixtureGate(
             process.env.GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED,
@@ -314,6 +337,18 @@ export default async function GameProfilePage({
         firstValue(params.building),
         gardenBuildingFixtureEnabled,
     );
+    const gardenBuildingFixture = resolveGameProfileGardenBuildingFixture(
+        firstValue(params.buildingFixture),
+        gardenBuildingFixtureEnabled,
+    );
+    const gardenStructureProfileFixture =
+        gardenBuilding && gardenBuildingFixture
+            ? (
+                  await import('@gredice/game/garden-building-profile-fixture')
+              ).createGardenStructureProfileFixtureDescriptor(
+                  gardenBuildingFixture,
+              )
+            : undefined;
     const debugGameFlags = resolveGameProfileFlags(
         firstValue(params.weatherSurface),
         firstValue(params.avatar),
@@ -359,7 +394,11 @@ export default async function GameProfilePage({
             data-game-profile-quality={quality ?? 'auto'}
             data-game-profile-adaptive-high={adaptiveHigh ? '1' : '0'}
             data-game-profile-avatar={gardenAvatar ? '1' : '0'}
+            data-game-profile-avatar-view={avatarProfileView ?? undefined}
             data-game-profile-building={gardenBuilding ? '1' : '0'}
+            data-game-profile-building-fixture={
+                gardenBuilding ? gardenBuildingFixture : undefined
+            }
             data-game-profile-closeup-raised-bed-id={
                 closeupRaisedBedId ?? undefined
             }
@@ -420,7 +459,19 @@ export default async function GameProfilePage({
                 enableStaticOpaqueSceneCacheOcclusionFixture={
                     staticSceneCacheOcclusionFixture
                 }
-                gardenStructureDebugFixture={gardenBuilding}
+                gardenStructureDebugFixture={
+                    gardenBuilding &&
+                    gardenStructureProfileFixture === undefined
+                }
+                gardenStructureProfileFixture={gardenStructureProfileFixture}
+                gardenAvatarInitialSpawnPoint={
+                    gardenAvatar && gardenBuilding
+                        ? resolveGardenBuildingAvatarSpawnPoint(
+                              gardenBuildingFixture,
+                          )
+                        : undefined
+                }
+                gardenAvatarActivationRequest={avatarProfileView ? 1 : 0}
                 mockGarden
                 mockGardenProfile={mockGardenProfile}
                 noControls={!enableControls}

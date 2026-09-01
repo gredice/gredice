@@ -1,9 +1,4 @@
 export {
-    benchmarkWorstCaseGardenStructureCompiler,
-    createWorstCaseGardenStructureCompileInput,
-    createWorstCaseGardenStructureDocument,
-} from './benchmarkStructureCompiler';
-export {
     compileGardenStructurePlan,
     containsGardenStructureWorldCell,
     containsGardenStructureWorldPoint,

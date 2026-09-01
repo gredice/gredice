@@ -77,6 +77,7 @@ import {
     getGardenAvatarCameraFov,
     normalizeGardenAvatarWheelDeltaY,
 } from './gardenAvatarCameraZoom';
+import { resolveProfiledGardenAvatarHorizontalMovement } from './gardenAvatarCollisionStepProfile';
 import {
     findGardenAvatarCactusContact,
     findGardenAvatarSeatExit,
@@ -99,6 +100,7 @@ import {
     findGardenAvatarRoute,
     findGardenAvatarSpawnPoint,
     type GardenAvatarCollisionWorld,
+    type GardenAvatarHorizontalMovementInput,
     type GardenAvatarPoint,
     gardenAvatarCrouchingCollisionHeight,
     gardenAvatarMaxJumpClimbHeight,
@@ -741,6 +743,7 @@ export function GardenAvatar({
     interactionDisabled = false,
     interactiveBlockIds,
     onInteractBlock,
+    onProfileCollisionStep,
     onPresenceChange,
     onStructureInteriorChange,
     roamSeed = 'garden-avatar',
@@ -754,6 +757,7 @@ export function GardenAvatar({
     interactionDisabled?: boolean;
     interactiveBlockIds?: ReadonlySet<string>;
     onInteractBlock?: (block: Block) => boolean | GardenAvatarInteractionResult;
+    onProfileCollisionStep?: (durationMs: number) => void;
     onPresenceChange?: (presence: GardenAvatarPresenceState) => void;
     onStructureInteriorChange?: (
         presentation: GardenStructureAvatarInteriorPresentation,
@@ -1654,6 +1658,14 @@ export function GardenAvatar({
         gl.domElement.style.cursor = 'auto';
     }
 
+    const resolveHorizontalMovement = onProfileCollisionStep
+        ? (input: GardenAvatarHorizontalMovementInput) =>
+              resolveProfiledGardenAvatarHorizontalMovement({
+                  input,
+                  recordDuration: onProfileCollisionStep,
+              })
+        : resolveGardenAvatarHorizontalMovement;
+
     useFrame(({ clock }, frameDelta) => {
         const actor = actorRef.current;
         if (!actor?.visible) {
@@ -1744,7 +1756,7 @@ export function GardenAvatar({
                     }
                 } else {
                     const travel = Math.min(distance, avatarRoamSpeed * delta);
-                    const movement = resolveGardenAvatarHorizontalMovement({
+                    const movement = resolveHorizontalMovement({
                         deltaX: (dx / distance) * travel,
                         deltaZ: (dz / distance) * travel,
                         position: {
@@ -1985,7 +1997,7 @@ export function GardenAvatar({
                   );
             const previousX = actor.position.x;
             const previousZ = actor.position.z;
-            const movement = resolveGardenAvatarHorizontalMovement({
+            const movement = resolveHorizontalMovement({
                 collisionHeight: crouching
                     ? gardenAvatarCrouchingCollisionHeight
                     : gardenAvatarStandingCollisionHeight,
@@ -2043,7 +2055,7 @@ export function GardenAvatar({
                             cactus,
                             position: { x: previousX, z: previousZ },
                         });
-                    const bounce = resolveGardenAvatarHorizontalMovement({
+                    const bounce = resolveHorizontalMovement({
                         collisionHeight: crouching
                             ? gardenAvatarCrouchingCollisionHeight
                             : gardenAvatarStandingCollisionHeight,

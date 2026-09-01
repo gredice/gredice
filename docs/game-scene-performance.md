@@ -506,6 +506,160 @@ The `dense-mobile` scenario set samples:
 - `game-dense-25x25-windy-mobile`
 - `game-plant-heavy-25x25-mobile`
 
+The `buildings` scenario set is available only when the production server was
+built and started with
+`GREDICE_GARDEN_BUILDING_PROFILE_FIXTURE_ENABLED=true`. The query alone cannot
+enable the fixture. The gated server route constructs one bounded,
+serializable descriptor; production `GameScene` consumes that descriptor and
+does not import the benchmark fixture compiler. The same descriptor document
+drives normal rendering and the editor session.
+
+The matrix begins with a true no-structure baseline and fails if the production
+`GardenStructureKitV1.glb` is requested. It then covers empty shells on desktop
+and constrained mobile, a furnished house, a dense garden plus furnished house
+mixed-production workload, shell and cutaway-interior editing, greenhouse rain,
+the valid 20x9 / 100-cell / 301-edge / 100-roof-region / 100-prop comb as a
+closed-roof exterior, a fully furnished cutaway, and an edit-churn state, plus
+repeated build-mode entry/exit. Mobile runs use
+`390x844`, DPR 3, automatic quality, and emulated 4 GiB/four-core navigator
+hints. Active editing explicitly bypasses the static opaque cache.
+
+The building report copies only bounded metadata: counts, durations, cache
+outcomes, byte totals, quality/device class, and budget results. It does not
+copy a structure document, player identity, garden identity, or account
+balance. Runtime work comes from resolved production GLB primitives: opaque and
+transparent draws, vertices, triangles, unique CPU attribute/index bytes,
+estimated texture bytes, and instance-buffer bytes. Semantic fallback and
+editor-preview work remain separate columns. The network witness records the
+exact GLB URL, response status and body length together with same-origin
+Resource Timing sizes and milestones; the no-building row must remain zero.
+Each plan resolution prepares, validates, canonicalizes, and keys the document
+exactly once. Prepare-plus-cache-lookup duration starts before that work and
+ends after `cache.get`, so a hit exposes its complete hot-path cost. Miss
+resolution starts at the same point and ends after
+`compilePreparedGardenStructurePlan`, so its maximum includes the preparation
+subset instead of hiding it behind a separate near-zero cache lookup. Current
+and maximum lookup duration, miss-resolution maximum, and hit/miss outcome are
+reported separately. Editor p95 uses nearest-rank `ceil(n * 0.95) - 1`.
+Avatar collision-step samples wrap one complete production horizontal-movement
+resolution, including bounded substeps and slide retries. They remain
+default-off with the server-gated building fixture, accumulate in a fixed-size
+histogram, and report count, p95, maximum, and total duration without retaining
+positions or movement input.
+
+Outside the exact server-gated profiler, plan and navigation resolution do not
+read the profile clock, editor updates schedule no profile RAF, and the Canvas
+boundary preserves the original click handlers. The saved-structure collection
+allocates no profile fallback geometry, and the lazy kit metrics reporter (with
+its measurement code and `appBaseUrl` subscription) is not mounted.
+
+The saved-scene production layer derives one visibility set from each compiled
+structure's conservative world bounds when the camera matrix changes, and
+passes that set into the collection renderer before instance submission. An
+empty set mounts no kit renderer and therefore cannot initiate the GLB request.
+Interior prop batches additionally require an explicit per-structure admission
+set, which defaults empty for the saved scene; future avatar/authoring callers
+must supply only structures that are actually inside or cut away. The gated
+fixture editor applies the same rule directly: normal closed-roof exterior
+submits zero props and cutaway admits them. Profile metadata keeps
+structure/prop frustum rejection, exterior prop suppression, and detail-tier
+suppression as distinct counts.
+
+The building gates retain the 33.3 ms mobile p95 frame target, 100 ms
+editor-action p95 target, 500 ms maximum editor stall, 192 KiB document limit,
+and 600,000-byte production GLB response limit. Use
+`GAME_PROFILE_SOAK_MS=600000` to hold each normal/editing state for ten minutes
+before its sample; use
+`GAME_PROFILE_SAMPLE_MS=600000` when the edit-churn or entry/exit actions must
+run for the full soak window.
+
+The automated matrix also includes a constrained-mobile furnished 100-cell
+solid-wall workload for dense-bucket collision cost and separate representative
+house movement that travels in third-person and returns in first-person. It
+does not claim a doorway crossing because the timed row has no portal/interior
+witness. The owned/public WebGL component proofs cover doorway correctness, and
+the renderer-free 2D contract remains correctness evidence rather than an
+invented performance row; the building report labels that boundary explicitly.
+
+### 2026-08-30 building production profile
+
+The local production-build witness used headless Chromium 149 with ANGLE Metal
+on an Apple M4 Pro/24 GiB host, Node 24.15.0, a 5 s warmup, and a 5 s sample.
+Constrained-mobile rows used a 390x844 CSS viewport at browser DPR 3, emulated
+4 GiB/four-core navigator inputs, the resolved `auto-constrained` tier, DPR cap
+1, a 390x844 backing buffer, 1024 px shadows, and the legacy static-scene-cache
+path. These are browser/host measurements, not a physical constrained phone.
+
+| Scenario | p95 / max frame | Rendered FPS | Draws / rendered frame | Triangles / rendered frame | Long tasks | JS heap | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| No structure / no building asset | 17.2 / 17.7 ms | 29.1 | 71 | 4,050 | 0 | 57.5 MiB | pass |
+| Dense 25x25 garden + furnished house | 17.6 / 17.8 ms | 27.1 | 74 | 18,584 | 0 | 54.2 MiB | pass |
+| Furnished 100-cell closed-roof exterior | 18.4 / 18.8 ms | 27.5 | 98 | 178,822 | 0 | 57.5 MiB | pass |
+| Furnished 100-cell cutaway editor | 18.4 / 18.8 ms | 26.4 | 49 | 183,096 | 0 | 61.0 MiB | pass |
+| Furnished 100-cell edit churn | 17.3 / 18.6 ms | 59.9 | 123.4 | 183,465 | 0 | 77.6 MiB | pass |
+
+The production kit response body was 364,684 bytes, below the 600,000-byte
+gate; the same-origin local server reported 41,117 encoded bytes and 41,417
+transfer bytes. The closed-roof worst case resolved 24 production draws,
+376,320 submitted vertices, 173,044 triangles, 135,936 unique attribute bytes,
+8,472 index bytes, 115,216 instance-buffer bytes, zero textures, zero fallback
+draws, and zero unresolved batches. Cutaway admission raised this to 29 draws,
+390,432 vertices, 179,176 triangles, and 127,908 instance-buffer bytes while
+making all 100 props visible. The normal exterior made zero props visible and
+reported all 100 as exterior-suppressed.
+
+That broader report's 4.3/3.7 ms compile figures timed only the core compiler
+after preparation and are superseded by the complete miss-resolution evidence
+below. Its edit-churn row reused the plan cache; the historical editor action
+p95/max was 15.6/17.0 ms and final Canvas pointer resolution max was 2.0 ms.
+The no-structure baseline made zero kit requests and reported zero production,
+fallback, and preview draws. The automated desktop row uses a 20 ms p95 gate
+because 60 Hz headless rAF samples commonly land just above 16.7 ms; the
+physical desktop target remains 16.7 ms.
+
+### 2026-09-01 miss-resolution and avatar collision-step refresh
+
+A clean, comparable production-build run at `ee78c6524` refreshed the two
+constrained-mobile avatar rows with headless Chromium 149, Node 24.15.0, a fresh
+managed build, and 5 s warmup/sample windows. Both rows passed the 33.3 ms frame
+p95, 100 ms miss-resolution, navigation-compile, and prepare-plus-lookup gates,
+plus the initial 2 ms collision-step p95 gate.
+
+| Workload | Frame p95 / max | Long tasks | Miss resolution max | Navigation compile max | Prepare + lookup max / current | Cache | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Furnished 100-cell solid wall | 18.3 / 83.2 ms | 1 | 9.1 ms | 0.4 ms | 4.2 / 2.6 ms | hit | pass |
+| House two-view movement | 26.6 / 27.4 ms | 0 | 0.6 ms | 0 ms | 0.3 / 0.3 ms | hit | pass |
+
+The miss maximum begins before preparation and therefore supersedes the older
+core-compile-only figures. Current compile duration is zero after a hit, while
+the miss maximum remains available for acceptance. The profiler measures one
+complete production horizontal-movement resolution per collision sample; the
+fixed 0.05 ms histogram bucket makes reported p95 conservative to the bucket
+ceiling.
+
+| Workload | Total / held-key collision steps | Collision p95 / max | Collision primitives / buckets | Movement witness | Result |
+| --- | ---: | ---: | ---: | --- | --- |
+| Furnished 100-cell solid wall | 490 / 37 | 0.15 / 0.2 ms | 304 / 220 | Third-person push stopped after 0.14 m | pass |
+| House two-view movement | 512 / 71 | 0.15 / 0.2 ms | 11 / 21 | 1.23 m third-person, then 1.34 m first-person | pass |
+
+The timed house row is one representative owned-garden orientation. Existing
+four-rotation semantic movement checks and the owned/public production-WebGL
+component flows remain correctness support, not additional performance rows.
+Renderer-free 2D likewise remains a no-WebGL correctness contract. Physical
+iPhone/Android collision timing, interaction, memory, thermal behavior, GPU
+resources, and the ten-minute soak are still required separately.
+
+Run the matrix with:
+
+```bash
+cd apps/garden
+pnpm run profile:game:buildings
+```
+
+These Chromium measurements are automated production-build evidence. They are
+not physical-device frame, memory, thermal, touch, or GPU-resource proof; record
+real iPhone and Android evidence separately before rollout.
+
 The `plant-closeup` scenario set isolates the expensive transition from the
 normal garden camera into a plant-heavy raised bed:
 
@@ -706,6 +860,7 @@ GAME_PROFILE_BASE_URL=http://localhost:3001 pnpm run profile:game:existing
 GAME_PROFILE_BASE_URL=http://localhost:3201 pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=dense-mobile pnpm run profile:game
+GAME_PROFILE_SCENARIO_SET=buildings pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=garden-switch pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=lifecycle pnpm run profile:game
 GAME_PROFILE_SCENARIO_SET=weather-transitions pnpm run profile:game

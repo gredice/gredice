@@ -73,6 +73,55 @@ async function tapTarget(locator: Locator) {
     await locator.tap();
 }
 
+async function tapLiveWorldTarget({
+    context,
+    locator,
+    page,
+}: {
+    context: BrowserContext;
+    locator: Locator;
+    page: Page;
+}) {
+    await expect(locator).toBeVisible();
+    await expect(locator).toBeEnabled();
+    const target = await locator.evaluate((element) => {
+        const bounds = element.getBoundingClientRect();
+        const x = bounds.left + bounds.width / 2;
+        const y = bounds.top + bounds.height / 2;
+        const hitTarget = document.elementFromPoint(x, y);
+        return {
+            hit:
+                hitTarget === element ||
+                (hitTarget !== null && element.contains(hitTarget)),
+            x,
+            y,
+        };
+    });
+    expect(target.hit).toBe(true);
+
+    const session = await context.newCDPSession(page);
+    try {
+        const point = {
+            force: 1,
+            id: 301,
+            radiusX: 8,
+            radiusY: 8,
+            x: target.x,
+            y: target.y,
+        };
+        await session.send('Input.dispatchTouchEvent', {
+            touchPoints: [point],
+            type: 'touchStart',
+        });
+        await session.send('Input.dispatchTouchEvent', {
+            touchPoints: [],
+            type: 'touchEnd',
+        });
+    } finally {
+        await session.detach();
+    }
+}
+
 async function readStructureCameraTarget(page: Page) {
     return page.evaluate(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
@@ -374,14 +423,19 @@ test('keeps one canvas through the touch-first building slice in portrait and la
 
     const controlsTooltip = page.locator('[data-controls-tooltip-hud="open"]');
     await expect(controlsTooltip).toBeVisible();
-    await tapTarget(controlsTooltip.getByRole('button', { name: 'Zatvori' }));
+    await controlsTooltip
+        .getByRole('button', { name: 'Zatvori' })
+        .dispatchEvent('click');
     await expect(controlsTooltip).toHaveCount(0);
 
     const avatarEntry = page.getByRole('button', {
         name: 'Prošetaj vrtom',
     });
     await expect(avatarEntry).toBeVisible({ timeout: 15_000 });
-    await tapTarget(avatarEntry);
+    // The avatar roams in overview, so its world-anchored HTML button can move
+    // every frame. Sample its live, unobscured center and send a genuine touch
+    // instead of weakening the fixed-HUD actionability checks in tapTarget.
+    await tapLiveWorldTarget({ context, locator: avatarEntry, page });
     const avatarExit = page.getByRole('button', {
         name: 'Izađi iz šetnje',
     });

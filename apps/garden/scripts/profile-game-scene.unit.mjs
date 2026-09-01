@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleSummary,
@@ -21,6 +23,7 @@ import {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenBuildingAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
@@ -31,10 +34,13 @@ import {
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
     installProfileContextTracker,
+    isExpectedGardenBuildingProfileApiError,
+    isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     measureStaticSceneCacheImageParity,
+    mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
     normalizeRenderWork,
     parseArgs,
@@ -44,6 +50,7 @@ import {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
 
 const provenanceCommitA = 'a'.repeat(40);
@@ -356,6 +363,1009 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
     }
 });
 
+test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
+    const scenarios = resolveScenarios('buildings');
+    assert.equal(scenarios.length, 14);
+    assert.deepEqual(
+        scenarios.map((scenario) => scenario.name),
+        [
+            'game-building-no-structure-network-baseline-mobile',
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+            'game-building-empty-shell-constrained-mobile',
+            'game-building-furnished-house-normal-constrained-mobile',
+            'game-building-dense-garden-house-mixed-production-mobile',
+            'game-building-shell-edit-constrained-mobile',
+            'game-building-interior-edit-cutaway-constrained-mobile',
+            'game-building-greenhouse-rain-constrained-mobile',
+            'game-building-worst-case-furnished-constrained-mobile',
+            'game-building-house-two-view-navigation-constrained-mobile',
+            'game-building-worst-case-furnished-cutaway-constrained-mobile',
+            'game-building-worst-case-edit-churn-constrained-mobile',
+            'game-building-enter-exit-lifecycle-constrained-mobile',
+        ],
+    );
+    const matchedDesktop = scenarios.filter((scenario) =>
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ].includes(scenario.name),
+    );
+    assert.deepEqual(
+        matchedDesktop.map((scenario) => ({
+            budget: scenario.budget,
+            dpr: scenario.dpr,
+            frameRateClass: scenario.buildingProfile.frameRateClass,
+            isMobile: scenario.isMobile,
+            viewport: scenario.viewport,
+        })),
+        [
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+        ],
+    );
+    assert.equal(
+        matchedDesktop[0].path,
+        matchedDesktop[1].path.replace('&building=1&buildingFixture=blank', ''),
+    );
+    assert.ok(
+        [scenarios[0], ...matchedDesktop].every(
+            (scenario) =>
+                new URL(scenario.path, 'http://profile.local').searchParams.get(
+                    'cameraProfile',
+                ) === '1',
+        ),
+    );
+    assert.ok(
+        scenarios
+            .filter((scenario) => scenario.buildingProfile.fixture !== 'none')
+            .every(
+                (scenario) =>
+                    scenario.path.includes('building=1') &&
+                    scenario.path.includes('staticSceneCache=legacy') &&
+                    scenario.buildingProfile,
+            ),
+    );
+    const mobileBaseline = scenarios[0];
+    assert.equal(
+        mobileBaseline.name,
+        'game-building-no-structure-network-baseline-mobile',
+    );
+    assert.equal(mobileBaseline.isMobile, true);
+    assert.equal(mobileBaseline.buildingProfile.frameRateClass, 'ambient');
+    const worstCase = scenarios.find((scenario) =>
+        scenario.name.includes('worst-case-furnished'),
+    );
+    assert.deepEqual(worstCase?.buildingProfile.expected, {
+        edges: 301,
+        footprintCells: 100,
+        normalVisibleProps: 34,
+        props: 100,
+        roofs: 100,
+    });
+    assert.equal(worstCase?.isMobile, true);
+    assert.equal(worstCase?.navigatorMetrics.deviceMemory, 4);
+    assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
+    assert.match(worstCase?.path ?? '', /avatar=1/);
+    assert.equal(worstCase?.buildingProfile.motion, 'avatar-navigation');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('greenhouse-rain'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        2,
+    );
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('house-normal'))
+            ?.buildingProfile.expected.normalVisibleProps,
+        0,
+    );
+    const twoViewNavigation = scenarios.find((scenario) =>
+        scenario.name.includes('two-view-navigation'),
+    );
+    assert.deepEqual(
+        twoViewNavigation?.buildingProfile.avatarNavigation.legs.map(
+            (leg) => leg.view,
+        ),
+        ['third-person', 'first-person'],
+    );
+    assert.equal(
+        scenarios.find((scenario) =>
+            scenario.name.includes('furnished-cutaway'),
+        )?.buildingProfile.cutaway,
+        true,
+    );
+    assert.equal(scenarios[0].buildingProfile.fixture, 'none');
+    assert.equal(getScenarioRequest(scenarios[0].path).building, '0');
+    assert.equal(
+        scenarios.find((scenario) => scenario.name.includes('mixed-production'))
+            ?.buildingProfile.workload,
+        'mixed-production',
+    );
+});
+
+test('exact blank-shell selection automatically includes its matched desktop baseline', () => {
+    assert.deepEqual(
+        resolveScenarios('game-building-empty-shell-desktop').map(
+            (scenario) => scenario.name,
+        ),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
+    );
+    assert.deepEqual(
+        resolveScenarios('ignored', [
+            'game-building-empty-shell-desktop',
+            'game-building-no-structure-network-baseline-desktop',
+        ]).map((scenario) => scenario.name),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
+    );
+});
+
+test('building asset network summary preserves exact response and resource timing', () => {
+    const url =
+        'http://localhost:3001/assets/models/GardenStructureKitV1.glb?v=abc';
+    assert.deepEqual(
+        summarizeGardenStructureAssetNetwork(
+            [
+                {
+                    bodyBytes: 364_684,
+                    fromServiceWorker: false,
+                    status: 200,
+                    url,
+                },
+            ],
+            [
+                {
+                    decodedBodySize: 364_684,
+                    duration: 18.25,
+                    encodedBodySize: 364_684,
+                    name: url,
+                    responseEnd: 31.5,
+                    responseStart: 13.25,
+                    startTime: 10,
+                    transferSize: 364_984,
+                },
+            ],
+        ),
+        {
+            gardenStructureAssetNetworkBytesRequested: 364_684,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseFromServiceWorker: false,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: url,
+            gardenStructureAssetResourceDecodedBodyBytes: 364_684,
+            gardenStructureAssetResourceDurationMs: 18.25,
+            gardenStructureAssetResourceEncodedBodyBytes: 364_684,
+            gardenStructureAssetResourceResponseEndMs: 31.5,
+            gardenStructureAssetResourceResponseStartMs: 13.25,
+            gardenStructureAssetResourceStartMs: 10,
+            gardenStructureAssetResourceTransferBytes: 364_984,
+            gardenStructureAssetResourceUrl: url,
+        },
+    );
+    assert.equal(
+        summarizeGardenStructureAssetNetwork([], [])
+            .gardenStructureAssetRequestCount,
+        0,
+    );
+    const retried = summarizeGardenStructureAssetNetwork(
+        [
+            {
+                bodyBytes: 100,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+            {
+                bodyBytes: 200,
+                fromServiceWorker: false,
+                status: 200,
+                url,
+            },
+        ],
+        [],
+    );
+    assert.equal(retried.gardenStructureAssetNetworkBytesRequested, 300);
+    assert.equal(retried.gardenStructureAssetResponseBodyBytes, 200);
+});
+
+test('building asset network merge leaves non-building runtime unchanged', () => {
+    const runtime = { qualityTier: 'medium' };
+    assert.equal(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: null,
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        runtime,
+    );
+    assert.deepEqual(
+        mergeGardenStructureAssetNetworkRuntime({
+            buildingProfile: { fixture: 'none' },
+            resources: [],
+            responses: [],
+            runtime,
+        }),
+        {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+            gardenStructureAssetResponseBodyBytes: null,
+            gardenStructureAssetResponseFromServiceWorker: null,
+            gardenStructureAssetResponseStatus: null,
+            gardenStructureAssetResponseUrl: null,
+            gardenStructureAssetResourceDecodedBodyBytes: null,
+            gardenStructureAssetResourceDurationMs: null,
+            gardenStructureAssetResourceEncodedBodyBytes: null,
+            gardenStructureAssetResourceResponseEndMs: null,
+            gardenStructureAssetResourceResponseStartMs: null,
+            gardenStructureAssetResourceStartMs: null,
+            gardenStructureAssetResourceTransferBytes: null,
+            gardenStructureAssetResourceUrl: null,
+            qualityTier: 'medium',
+        },
+    );
+});
+
+test('building acceptance enforces bounded privacy-safe telemetry and editor budgets', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'GET', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+                motion: 'edit-churn',
+                motionResult: { actionCount: 9, kind: 'edit-churn' },
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesResident: 96_000,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResourceDurationMs: 12,
+            gardenStructureAssetResourceUrl:
+                'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureCompileCount: 4,
+            gardenStructureCompileDurationMs: 4.2,
+            gardenStructureCompileDurationMaxMs: 4.2,
+            gardenStructureDocumentPayloadBytes: 56_759,
+            gardenStructureEdgeCount: 301,
+            gardenStructureEditorActionCount: 12,
+            gardenStructureEditorActionDurationMaxMs: 42,
+            gardenStructureEditorActionDurationP95Ms: 24,
+            gardenStructureEditorActive: true,
+            gardenStructureEditorPointerResolutionCount: 1,
+            gardenStructureEditorPointerResolutionMaxMs: 3,
+            gardenStructureExteriorSuppressedPropCount: 0,
+            gardenStructureFootprintCellCount: 100,
+            gardenStructureNavigationCompileDurationMs: 2.1,
+            gardenStructureNavigationCompileDurationMaxMs: 2.1,
+            gardenStructurePlanCacheLookupDurationMs: 0.1,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructurePreviewDrawCount: 1,
+            gardenStructureProductionAttributeBytes: 40_000,
+            gardenStructureProductionDrawCount: 12,
+            gardenStructureProductionIndexBytes: 8_000,
+            gardenStructureProductionInstanceBufferBytes: 48_000,
+            gardenStructureProductionOpaqueDrawCount: 9,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 3,
+            gardenStructureProductionTriangleCount: 400_000,
+            gardenStructureProductionVertexCount: 600_000,
+            gardenStructurePropCount: 100,
+            gardenStructureRoofRegionCount: 100,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 100,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+
+    const compileMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructureCompileDurationMs: 0,
+            gardenStructureCompileDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        compileMaximumRegression.checks.find(
+            (check) => check.name === 'buildingCompileDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingCompileDurationMs',
+            pass: false,
+        },
+    );
+
+    const lookupMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        lookupMaximumRegression.checks.find(
+            (check) => check.name === 'buildingPlanCacheLookupDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingPlanCacheLookupDurationMs',
+            pass: false,
+        },
+    );
+
+    const privateOrSlow = evaluateGardenBuildingAcceptance({
+        apiRequests: [{ method: 'POST', url: 'http://localhost/api/garden' }],
+        requested: {
+            building: '1',
+            buildingFixture: 'worst-case',
+            buildingProfile: {
+                expected: {
+                    edges: 301,
+                    footprintCells: 100,
+                    props: 100,
+                    roofs: 100,
+                },
+                fixture: 'worst-case',
+                mode: 'editing',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureDocument: { private: true },
+            gardenStructureEditorActionDurationMaxMs: 501,
+        },
+    });
+    assert.equal(privateOrSlow.pass, false);
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingProfileOmitsDocument' && !check.pass,
+        ),
+    );
+    assert.ok(
+        privateOrSlow.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+});
+
+test('building acceptance proves the no-structure baseline made no GLB request', () => {
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    });
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building acceptance rejects unexpected runtime failures while allowing exact signed-out fixture reads', () => {
+    const input = {
+        apiRequests: [],
+        requested: {
+            building: '0',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'none',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetNetworkBytesRequested: 0,
+            gardenStructureAssetRequestCount: 0,
+        },
+    };
+    const expectedSignedOutErrors = [
+        '/api/gredice/api/users/current',
+        '/api/gredice/api/accounts/current',
+        '/api/gredice/api/accounts/current/sunflowers',
+        '/api/gredice/api/accounts/current/tutorial-checklist',
+        '/api/gredice/api/gardens/99999/operations?cursor=0',
+    ].map((path) => ({
+        status: 401,
+        url: `http://localhost:3101${path}`,
+    }));
+    const expectedSignedOutConsoleErrors = expectedSignedOutErrors.map(
+        (error) => ({
+            type: 'error',
+            text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+            url: error.url,
+        }),
+    );
+    const expectedNoise = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiErrors: expectedSignedOutErrors,
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'Failed to load resource: the server responded with a status of 404 (Not Found)',
+                url: 'http://127.0.0.1:3101/_vercel/insights/script.js',
+            },
+            {
+                type: 'warning',
+                text: 'THREE.Clock is deprecated',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: [],
+    });
+    assert.equal(expectedNoise.pass, true);
+    assert.deepEqual(
+        expectedNoise.checks
+            .filter((check) => check.name.startsWith('buildingUnexpected'))
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 0,
+                name: 'buildingUnexpectedApiErrors',
+                pass: true,
+            },
+            {
+                actual: 0,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: true,
+            },
+        ],
+    );
+
+    const unexpectedFailures = evaluateGardenBuildingAcceptance({
+        ...input,
+        apiRequests: [
+            {
+                method: 'POST',
+                url: expectedSignedOutErrors[0].url,
+            },
+        ],
+        apiErrors: [
+            ...expectedSignedOutErrors,
+            {
+                status: 500,
+                url: 'http://localhost:3101/api/gredice/api/directories/entities/plantSort',
+            },
+        ],
+        consoleMessages: [
+            ...expectedSignedOutConsoleErrors,
+            {
+                type: 'error',
+                text: 'THREE.WebGLProgram: Shader Error',
+                url: 'http://localhost:3101/app.js',
+            },
+        ],
+        pageErrors: ['render failed'],
+    });
+    assert.equal(unexpectedFailures.pass, false);
+    assert.ok(
+        unexpectedFailures.checks.some(
+            (check) =>
+                check.name === 'buildingNoMutationRequests' && !check.pass,
+        ),
+    );
+    assert.deepEqual(
+        unexpectedFailures.checks
+            .filter((check) =>
+                [
+                    'buildingUnexpectedApiErrors',
+                    'buildingUnexpectedConsoleErrors',
+                    'buildingPageErrors',
+                ].includes(check.name),
+            )
+            .map(({ actual, name, pass }) => ({ actual, name, pass })),
+        [
+            {
+                actual: 1,
+                name: 'buildingUnexpectedApiErrors',
+                pass: false,
+            },
+            {
+                actual: 1,
+                name: 'buildingUnexpectedConsoleErrors',
+                pass: false,
+            },
+            { actual: 1, name: 'buildingPageErrors', pass: false },
+        ],
+    );
+});
+
+test('building ambient acceptance proves a 30 FPS target with no interaction lease', () => {
+    const requested = {
+        building: '0',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                props: 0,
+                roofs: 0,
+            },
+            fixture: 'none',
+            frameRateClass: 'ambient',
+            mode: 'normal',
+        },
+        staticSceneCache: 'legacy',
+    };
+    const ambientSample = {
+        runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+        runtimeFrameLoopActiveLeaseCountAtStart: 0,
+        runtimeFrameLoopActiveLeaseCountMax: 0,
+        runtimeFrameLoopObservationCount: 301,
+        runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+        runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+        runtimeFrameLoopTargetFramesPerSecondMax: 30,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: ambientSample,
+    });
+    assert.equal(passing.pass, true);
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            ...ambientSample,
+            runtimeFrameLoopActiveLeaseCountMax: 1,
+            runtimeFrameLoopTargetFramesPerSecondMax: 60,
+        },
+    });
+    assert.deepEqual(
+        failing.checks
+            .filter(
+                (check) =>
+                    check.name.startsWith('buildingAmbient') && !check.pass,
+            )
+            .map((check) => ({ name: check.name, pass: check.pass })),
+        [
+            {
+                name: 'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                pass: false,
+            },
+            {
+                name: 'buildingAmbientSampleMaximumActiveLeaseCount',
+                pass: false,
+            },
+        ],
+    );
+});
+
+test('building matched baseline comparison tolerates bounded profiler noise', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 27,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 104,
+                gpu: { elapsedP95Ms: 4.9, valid: true },
+                p95FrameMs: 29.1,
+                renderedFps: 21,
+                trianglesPerRenderedFrame: 5_200,
+            },
+        },
+    ];
+    const comparison = buildGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, true);
+    assert.ok(comparison?.checks.every((check) => check.pass));
+
+    const applied = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(applied?.pass, true);
+    assert.equal(scenarios[1].budget.pass, true);
+    assert.equal(scenarios[1].budget.checks.length, 5);
+});
+
+test('building matched baseline comparison fails material blank-shell regressions', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 20,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 106,
+                gpu: { elapsedP95Ms: 5.1, valid: true },
+                p95FrameMs: 23.1,
+                renderedFps: 19.9,
+                trianglesPerRenderedFrame: 5_300,
+            },
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.ok(comparison?.checks.every((check) => !check.pass));
+    assert.equal(scenarios[1].budget.pass, false);
+    const summary = buildProfileSummary(scenarios, {});
+    assert.equal(summary.failedScenarios, 1);
+    assert.deepEqual(summary.failedScenarioNames, [
+        'game-building-empty-shell-desktop',
+    ]);
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: summary,
+            provenance: { comparable: true },
+        }),
+        true,
+    );
+});
+
+test('building matched baseline comparison fails closed when its control is absent', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {},
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.equal(
+        comparison?.checks[0]?.name,
+        'buildingEmptyShellMatchedBaselinePresent',
+    );
+    assert.equal(scenarios[0].budget.pass, false);
+});
+
+test('building matched baseline comparison skips unavailable GPU timing only', () => {
+    const baselineSample = {
+        drawCallsPerRenderedFrame: 100,
+        gpu: { elapsedP95Ms: 2, valid: true },
+        p95FrameMs: 27,
+        renderedFps: 25,
+        trianglesPerRenderedFrame: 5_000,
+    };
+    const candidateSample = {
+        ...baselineSample,
+        gpu: { elapsedP95Ms: null, valid: false },
+    };
+    const comparison = buildGardenBuildingMatchedBaselineComparison([
+        {
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: baselineSample,
+        },
+        {
+            name: 'game-building-empty-shell-desktop',
+            sample: candidateSample,
+        },
+    ]);
+    const gpuCheck = comparison?.checks.find(
+        (check) => check.name === 'buildingEmptyShellGpuP95Regression',
+    );
+    assert.equal(comparison?.pass, true);
+    assert.equal(gpuCheck?.pass, true);
+    assert.equal(gpuCheck?.skipped, true);
+});
+
+test('building acceptance preserves baseline-visible greenhouse and outdoor props', () => {
+    for (const fixture of [
+        {
+            expected: {
+                edges: 14,
+                footprintCells: 12,
+                normalVisibleProps: 2,
+                props: 2,
+                roofs: 1,
+            },
+            key: 'greenhouse',
+            visibleProps: 2,
+        },
+        {
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            key: 'worst-case',
+            visibleProps: 34,
+        },
+    ]) {
+        const result = evaluateGardenBuildingAcceptance({
+            apiRequests: [],
+            requested: {
+                building: '1',
+                buildingFixture: fixture.key,
+                buildingProfile: {
+                    expected: fixture.expected,
+                    fixture: fixture.key,
+                    mode: 'normal',
+                },
+            },
+            runtime: {
+                gardenStructureExteriorSuppressedPropCount:
+                    fixture.expected.props - fixture.visibleProps,
+                gardenStructureVisiblePropCount: fixture.visibleProps,
+            },
+        });
+
+        assert.ok(
+            result.checks
+                .filter((check) =>
+                    [
+                        'buildingVisibleAndSuppressedPropCoverage',
+                        'buildingVisiblePropCount',
+                        'buildingExteriorSuppressedPropCount',
+                    ].includes(check.name),
+                )
+                .every((check) => check.pass),
+        );
+    }
+});
+
+test('building acceptance gates measured avatar collision-step p95', () => {
+    const requested = {
+        avatar: '1',
+        building: '1',
+        buildingFixture: 'worst-case',
+        buildingProfile: {
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        maximumDistance: 0.25,
+                        view: 'third-person',
+                    },
+                ],
+            },
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            motionResult: {
+                collisionStepCount: 42,
+                kind: 'avatar-navigation',
+                legs: [
+                    {
+                        distance: 0.12,
+                        key: 's',
+                        view: 'third-person',
+                    },
+                ],
+            },
+        },
+    };
+    const runtime = {
+        gardenStructureAvatarCollisionStepCount: 44,
+        gardenStructureAvatarCollisionStepDurationMaxMs: 1.8,
+        gardenStructureAvatarCollisionStepDurationP95Ms: 1.5,
+        gardenStructureAvatarCollisionStepDurationTotalMs: 12,
+        gardenStructureCollisionBoxCount: 290,
+        gardenStructureCollisionBucketCount: 220,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime,
+    });
+    assert.ok(
+        passing.checks
+            .filter((check) => check.name.startsWith('buildingAvatar'))
+            .every((check) => check.pass),
+    );
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime: {
+            ...runtime,
+            gardenStructureAvatarCollisionStepDurationMaxMs: 2.4,
+            gardenStructureAvatarCollisionStepDurationP95Ms: 2.1,
+        },
+    });
+    assert.deepEqual(
+        failing.checks.find(
+            (check) => check.name === 'buildingAvatarCollisionStepP95Ms',
+        ),
+        {
+            actual: 2.1,
+            limit: 2,
+            name: 'buildingAvatarCollisionStepP95Ms',
+            pass: false,
+        },
+    );
+});
+
+test('building acceptance keeps an empty structure distinct from production GLB draws', () => {
+    const responseUrl =
+        'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc';
+    const result = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'blank',
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: 4,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture: 'blank',
+                mode: 'normal',
+            },
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            gardenStructureAssetBytesResident: 96_000,
+            gardenStructureAssetRequestCount: 1,
+            gardenStructureAssetResolutionIssueCount: 0,
+            gardenStructureAssetResolutionStatus: 'resolved',
+            gardenStructureAssetUnresolvedBatchCount: 0,
+            gardenStructureAssetUrl:
+                '/assets/models/GardenStructureKitV1.glb?v=abc',
+            gardenStructureAssetResponseBodyBytes: 364_684,
+            gardenStructureAssetResponseStatus: 200,
+            gardenStructureAssetResponseUrl: responseUrl,
+            gardenStructureAssetResourceDurationMs: 4,
+            gardenStructureAssetResourceUrl: responseUrl,
+            gardenStructureCompileDurationMs: 1,
+            gardenStructureCompileDurationMaxMs: 1,
+            gardenStructureDocumentPayloadBytes: 242,
+            gardenStructureEdgeCount: 0,
+            gardenStructureEditorActive: false,
+            gardenStructureExteriorSuppressedPropCount: 0,
+            gardenStructureFallbackDrawCount: 0,
+            gardenStructureFootprintCellCount: 4,
+            gardenStructureNavigationCompileDurationMs: 0.1,
+            gardenStructureNavigationCompileDurationMaxMs: 0.1,
+            gardenStructurePlanCacheEvictionCount: 0,
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0,
+            gardenStructurePreviewDrawCount: 0,
+            gardenStructureProductionAttributeBytes: 0,
+            gardenStructureProductionDrawCount: 0,
+            gardenStructureProductionIndexBytes: 0,
+            gardenStructureProductionInstanceBufferBytes: 0,
+            gardenStructureProductionOpaqueDrawCount: 0,
+            gardenStructureProductionTextureCount: 0,
+            gardenStructureProductionTextureEstimatedBytes: 0,
+            gardenStructureProductionTransparentDrawCount: 0,
+            gardenStructureProductionTriangleCount: 0,
+            gardenStructureProductionVertexCount: 0,
+            gardenStructurePropCount: 0,
+            gardenStructureRoofRegionCount: 0,
+            gardenStructureStructureCount: 1,
+            gardenStructureVisiblePropCount: 0,
+            gardenStructureVisibleStructureCount: 1,
+        },
+    });
+
+    assert.equal(result.pass, true);
+    assert.ok(result.checks.every((check) => check.pass));
+});
+
 test('profile request reads the deterministic closeup target', () => {
     const request = getScenarioRequest(
         '/debug/profile/game?profile=plant-heavy&quality=medium&closeupRaisedBedId=29',
@@ -594,6 +1604,8 @@ test('operation-visual High scenario is isolated behind its own opt-in set', () 
     assert.equal(scenario.repeat, 3);
     assert.deepEqual(getScenarioRequest(scenario.path), {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -1100,6 +2112,8 @@ test('profile request parses the High target fixture contract', () => {
 
     assert.deepEqual(request, {
         adaptiveHigh: '0',
+        building: '0',
+        buildingFixture: 'house',
         closeupRaisedBedId: null,
         controls: '1',
         debugHud: '0',
@@ -1350,6 +2364,125 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
         /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
     );
     assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown distinguishes ambient scheduler evidence and matched-pair failures', () => {
+    const scenario = (name, fixture, sample) => ({
+        budget: { checks: [], pass: true },
+        consoleMessages: [],
+        environment: null,
+        name,
+        pageErrors: [],
+        requested: {
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: fixture === 'blank' ? 4 : 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture,
+                frameRateClass: 'ambient',
+                mode: 'normal',
+            },
+            controls: '0',
+            debugHud: '0',
+            details: '0',
+            gardenProfile: 'default',
+            hud: '0',
+            mode: 'baseline',
+            motion: 'none',
+        },
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            canvas: null,
+            drawCallsPerFrame: 1,
+            drawCallsPerRenderedFrame: 100,
+            fps: 80,
+            gpu: { elapsedP95Ms: 2, valid: true },
+            jsHeapMb: 50,
+            longTaskCount: 0,
+            maxFrameMs: 30,
+            p95FrameMs: sample.p95FrameMs,
+            rainUnmountMs: null,
+            renderedFps: sample.renderedFps,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+            runtimeFrameLoopActiveLeaseCountAtStart: 0,
+            runtimeFrameLoopActiveLeaseCountMax: 0,
+            runtimeFrameLoopObservationCount: 300,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            trianglesPerFrame: 1,
+            trianglesPerRenderedFrame: 5_000,
+        },
+        screenshotPath: null,
+    });
+    const scenarios = [
+        scenario(
+            'game-building-no-structure-network-baseline-desktop',
+            'none',
+            { p95FrameMs: 20, renderedFps: 25 },
+        ),
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    const report = {
+        baseUrl: 'http://profile.local',
+        gardenBuildingMatchedBaselineComparison: comparison,
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'buildings',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios,
+        schemaVersion: 6,
+        sourceCommit: provenanceCommitA,
+        summary: { failedScenarios: 1 },
+    };
+    const markdown = buildMarkdown(report);
+
+    assert.match(markdown, /Sample target start\/max\/end/);
+    assert.match(markdown, /30\/30\/30 FPS \/ 0\/0\/0 \(300\)/);
+    assert.match(markdown, /Matched desktop blank-shell overhead/);
+    assert.match(markdown, /physical-device 16\.7 ms desktop target/);
+    assert.match(
+        markdown,
+        /buildingEmptyShellBrowserRafP95Regression .* exceeded both relative and absolute noise limits/,
+    );
+
+    const candidateOnly = [
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const missingComparison =
+        applyGardenBuildingMatchedBaselineComparison(candidateOnly);
+    const missingMarkdown = buildMarkdown({
+        ...report,
+        gardenBuildingMatchedBaselineComparison: missingComparison,
+        scenarios: candidateOnly,
+    });
+    assert.match(
+        missingMarkdown,
+        /buildingEmptyShellMatchedBaselinePresent \| missing \| present \| n\/a \| n\/a \| matched baseline required \| fail/,
+    );
 });
 
 test('markdown distinguishes controlled governor evidence and formats range failures', () => {
@@ -3406,6 +4539,58 @@ test('local profiler console filtering only ignores the known missing analytics 
         },
     ]) {
         assert.equal(isIgnoredLocalProfilerConsoleError(message), false);
+    }
+});
+
+test('building profile signed-out filtering is local, status-bound, and path-exact', () => {
+    const expectedError = {
+        status: 401,
+        url: 'http://localhost:3101/api/gredice/api/gardens/99999/operations?cursor=0',
+    };
+    assert.equal(isExpectedGardenBuildingProfileApiError(expectedError), true);
+    assert.equal(
+        isExpectedGardenBuildingProfileApiError({
+            ...expectedError,
+            url: 'http://[::1]:3101/api/gredice/api/accounts/current',
+        }),
+        true,
+    );
+
+    for (const error of [
+        { ...expectedError, status: 500 },
+        {
+            ...expectedError,
+            url: 'http://localhost:3101/api/gredice/api/gardens/99998/operations',
+        },
+        {
+            ...expectedError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(isExpectedGardenBuildingProfileApiError(error), false);
+    }
+
+    const expectedConsoleError = {
+        type: 'error',
+        text: 'Failed to load resource: the server responded with a status of 401 (Unauthorized)',
+        url: expectedError.url,
+    };
+    assert.equal(
+        isExpectedGardenBuildingProfileConsoleError(expectedConsoleError),
+        true,
+    );
+    for (const message of [
+        { ...expectedConsoleError, type: 'warning' },
+        { ...expectedConsoleError, text: 'THREE.WebGLProgram: Shader Error' },
+        {
+            ...expectedConsoleError,
+            url: 'https://garden.example.com/api/gredice/api/gardens/99999/operations',
+        },
+    ]) {
+        assert.equal(
+            isExpectedGardenBuildingProfileConsoleError(message),
+            false,
+        );
     }
 });
 

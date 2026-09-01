@@ -3,6 +3,7 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import {
     Component,
+    lazy,
     type ReactNode,
     Suspense,
     useCallback,
@@ -11,7 +12,13 @@ import {
     useMemo,
     useRef,
 } from 'react';
-import { Color, type InstancedMesh, Matrix4, Object3D } from 'three';
+import {
+    type BufferGeometry,
+    Color,
+    type InstancedMesh,
+    Matrix4,
+    Object3D,
+} from 'three';
 import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     type GardenStructureKitV1AssetResolution,
@@ -21,6 +28,12 @@ import {
 } from './gardenStructureKitV1AssetResolver';
 import { gardenStructureKitV1Metadata } from './gardenStructureKitV1Manifest';
 import type { GardenStructureBatchGeometryKind } from './structurePlanTypes';
+
+const GardenStructureKitV1ProfileMetricsReporter = lazy(() =>
+    import('./GardenStructureKitV1ProfileMetricsReporter').then((module) => ({
+        default: module.GardenStructureKitV1ProfileMetricsReporter,
+    })),
+);
 
 export type GardenStructureKitV1RuntimeBatch = Readonly<{
     geometryId: string;
@@ -94,6 +107,11 @@ type ResolvedDraw = Readonly<{
     batch: GardenStructureKitV1RuntimeBatch;
     id: string;
     primitive: GardenStructureKitV1ResolvedPrimitive;
+}>;
+
+type GardenStructureKitV1ResolvedProfileMetrics = Readonly<{
+    fallbackGeometry: BufferGeometry;
+    previewInstanceCount: number;
 }>;
 
 function resolveDraws(
@@ -393,10 +411,12 @@ type GardenStructureKitV1LoadedInstancesProps = Omit<
 > &
     Readonly<{
         onInstancesReady?: () => void;
+        profileMetrics?: GardenStructureKitV1ResolvedProfileMetrics;
     }>;
 
 export function GardenStructureKitV1LoadedInstances({
     onInstancesReady,
+    profileMetrics,
     ...props
 }: GardenStructureKitV1LoadedInstancesProps) {
     const gltf = useGameGLTF('GardenStructureKitV1');
@@ -408,11 +428,27 @@ export function GardenStructureKitV1LoadedInstances({
     useEffect(() => {
         onInstancesReady?.();
     }, [onInstancesReady]);
-
     return (
-        <GardenStructureKitV1ResolvedInstances
-            {...props}
-            resolution={resolution}
-        />
+        <>
+            <GardenStructureKitV1ResolvedInstances
+                {...props}
+                resolution={resolution}
+            />
+            {profileMetrics ? (
+                <Suspense fallback={null}>
+                    <GardenStructureKitV1ProfileMetricsReporter
+                        batches={props.batches}
+                        fallbackGeometry={profileMetrics.fallbackGeometry}
+                        getVisibleInstanceIndices={
+                            props.getVisibleInstanceIndices
+                        }
+                        previewInstanceCount={
+                            profileMetrics.previewInstanceCount
+                        }
+                        resolution={resolution}
+                    />
+                </Suspense>
+            ) : null}
+        </>
     );
 }

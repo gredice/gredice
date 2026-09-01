@@ -10,18 +10,20 @@ import {
     createGardenStructureTemplateSeed,
     gardenStructureSchemaVersion,
 } from '@gredice/js/gardenStructures';
+import {
+    benchmarkWorstCaseGardenStructureCompiler,
+    createWorstCaseGardenStructureCompileInput,
+    createWorstCaseGardenStructureDocument,
+} from './benchmarkStructureCompiler';
 import type {
     GardenStructureBatchDescription,
     GardenStructureCompileInput,
     GardenStructureSemanticPlan,
 } from './index';
 import {
-    benchmarkWorstCaseGardenStructureCompiler,
     compileGardenStructurePlan,
     containsGardenStructureWorldCell,
     containsGardenStructureWorldPoint,
-    createWorstCaseGardenStructureCompileInput,
-    createWorstCaseGardenStructureDocument,
     debugGardenStructureKitMetadata,
     gardenStructureKitMetadataRegistry,
     getGardenStructureCollisionBoxBounds,

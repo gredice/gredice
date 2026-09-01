@@ -17,7 +17,7 @@ import {
 } from '@gredice/js/gardenStructures';
 import { cx } from '@gredice/ui/utils';
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlockData } from '../hooks/useBlockData';
 import type { CurrentGarden } from '../hooks/useCurrentGarden';
 import { useCurrentGarden } from '../hooks/useCurrentGarden';
@@ -25,6 +25,7 @@ import {
     GardenStructureMutationClientError,
     useGardenStructureMutations,
 } from '../hooks/useGardenStructureMutations';
+import { recordGardenStructureEditorAction } from '../scene/gameProfileMetadata';
 import {
     type GardenStructureBuildCategory,
     type GardenStructureBuildSession,
@@ -109,6 +110,7 @@ import {
     type GardenStructureCanvasEdge,
     getGardenStructureCanvasEdgeChain,
 } from './editor/gardenStructureCanvasInteraction';
+import { scheduleGardenStructureEditorProfileFrame } from './editor/gardenStructureEditorProfileFrame';
 import { useGardenStructureExistingStructureAutosave } from './editor/useGardenStructureExistingStructureAutosave';
 import {
     gardenStructureBuildModeControlClassName as controlClassName,
@@ -129,6 +131,7 @@ import {
     createGardenStructureEditorOccupancyIndex,
     validateGardenStructureEditorPlacementOccupancy,
 } from './gardenStructurePlacementOccupancy';
+import type { GardenStructureProfileFixtureDescriptor } from './gardenStructureProfileFixtureDescriptor';
 import { getGardenStructureSelectablePartIds } from './gardenStructureSelectableParts';
 import type { GardenStructureSemanticPlan } from './structurePlanTypes';
 import { useGardenStructureBuildModeHistoryGuard } from './useGardenStructureBuildModeHistoryGuard';
@@ -260,6 +263,33 @@ function createNewSession({
     };
 }
 
+function createProfileFixtureSession(
+    profileFixture: GardenStructureProfileFixtureDescriptor,
+): GardenStructureBuildSession | null {
+    const seed = createGardenStructureTemplateSeed(
+        profileFixture.editorTemplateKey,
+    );
+    const created = createNewGardenStructureEditorState({
+        draftId: profileFixture.structureId,
+        gardenId: 1,
+        placement: profileFixture.placement,
+        seed: { ...seed, document: profileFixture.document },
+    });
+    if (!created.ok) {
+        return null;
+    }
+    const confirmed = confirmGardenStructureTemplatePlacement(created.value);
+    return confirmed.ok
+        ? {
+              editor: confirmed.value,
+              persistence: 'fixture',
+              category: 'structure',
+              roofCutaway: false,
+              selectedPartId: null,
+          }
+        : null;
+}
+
 function createSavedSession(
     gardenId: number,
     structure: OwnerGardenStructure,
@@ -359,6 +389,7 @@ export type GardenStructureVerticalSliceHudProps = Readonly<{
     enabled: boolean;
     fixture?: boolean;
     plan?: GardenStructureSemanticPlan;
+    profileFixture?: GardenStructureProfileFixtureDescriptor;
 }>;
 
 function gardenStructureEditorOriginsMatch(
@@ -383,11 +414,39 @@ export function GardenStructureVerticalSliceHud({
     enabled,
     fixture = false,
     plan,
+    profileFixture,
 }: GardenStructureVerticalSliceHudProps) {
     const { data: garden, refetch: refetchGarden } = useCurrentGarden();
     const { data: blockData } = useBlockData();
     const session = useGameState((state) => state.structureBuildSession);
-    const setSession = useGameState((state) => state.setStructureBuildSession);
+    const setStoredSession = useGameState(
+        (state) => state.setStructureBuildSession,
+    );
+    const profileMetricsEnabled = profileFixture !== undefined;
+    const setSession = useCallback(
+        (
+            nextSession: GardenStructureBuildSession | null,
+            action = 'editor-update',
+            profileStartedAt?: number,
+        ) => {
+            if (!profileMetricsEnabled) {
+                setStoredSession(nextSession);
+                return;
+            }
+            const startedAt = profileStartedAt ?? performance.now();
+            setStoredSession(nextSession);
+            scheduleGardenStructureEditorProfileFrame({
+                enabled: true,
+                now: () => performance.now(),
+                onDuration: (durationMs) =>
+                    recordGardenStructureEditorAction(action, durationMs),
+                requestFrame: (callback) =>
+                    window.requestAnimationFrame(callback),
+                startedAt,
+            });
+        },
+        [profileMetricsEnabled, setStoredSession],
+    );
     const gameStateStore = useGameStateStore();
     const mutations = useGardenStructureMutations(garden?.id);
     const confirmationReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -609,21 +668,27 @@ export function GardenStructureVerticalSliceHud({
                 'category' | 'editor' | 'roofCutaway' | 'selectedPartId'
             >
         >,
+        profileStartedAt?: number,
     ) {
         if (session) {
-            setSession({ ...session, ...updates });
+            setSession(
+                { ...session, ...updates },
+                'editor-update',
+                profileStartedAt,
+            );
         }
     }
 
     function applyEditorResult(
         result: GardenStructureEditorResult<GardenStructureEditorState>,
         message?: string,
+        profileStartedAt?: number,
     ) {
         if (!result.ok) {
             setAnnouncement(result.error.message);
             return false;
         }
-        updateSession({ editor: result.value });
+        updateSession({ editor: result.value }, profileStartedAt);
         if (message) {
             setAnnouncement(message);
         }
@@ -757,7 +822,7 @@ export function GardenStructureVerticalSliceHud({
         setSelectedCellKey(null);
         confirmationReturnFocusRef.current = null;
         restoreEntryFocusRef.current = true;
-        setSession(null);
+        setSession(null, 'exit');
     }
 
     function discardNewDraft() {
@@ -881,6 +946,18 @@ export function GardenStructureVerticalSliceHud({
 
     function enterBuildMode() {
         if (!garden) {
+            return;
+        }
+        if (profileFixture) {
+            const next = createProfileFixtureSession(profileFixture);
+            if (!next) {
+                setAnnouncement('Profilna građevina nije dostupna.');
+                return;
+            }
+            setSession(next, 'enter');
+            setAnnouncement(
+                `${profileFixture.label} je otvorena za profiliranje.`,
+            );
             return;
         }
         if (!fixture) {
@@ -1104,7 +1181,10 @@ export function GardenStructureVerticalSliceHud({
         );
     }
 
-    function updatePlacement(placement: GardenStructurePlacement) {
+    function updatePlacement(
+        placement: GardenStructurePlacement,
+        profileStartedAt?: number,
+    ) {
         if (!editor) {
             return;
         }
@@ -1119,25 +1199,38 @@ export function GardenStructureVerticalSliceHud({
         applyEditorResult(
             result,
             `Položaj ${placement.anchorX.toString()}, ${placement.anchorY.toString()}, rotacija ${(placement.rotation * 90).toString()} stupnjeva.`,
+            profileStartedAt,
         );
     }
 
     function nudgePlacement(deltaX: number, deltaY: number) {
+        const profileStartedAt = profileMetricsEnabled
+            ? performance.now()
+            : undefined;
         if (editor) {
-            updatePlacement({
-                ...editor.snapshot.placement,
-                anchorX: editor.snapshot.placement.anchorX + deltaX,
-                anchorY: editor.snapshot.placement.anchorY + deltaY,
-            });
+            updatePlacement(
+                {
+                    ...editor.snapshot.placement,
+                    anchorX: editor.snapshot.placement.anchorX + deltaX,
+                    anchorY: editor.snapshot.placement.anchorY + deltaY,
+                },
+                profileStartedAt,
+            );
         }
     }
 
     function rotatePlacement() {
+        const profileStartedAt = profileMetricsEnabled
+            ? performance.now()
+            : undefined;
         if (editor) {
-            updatePlacement({
-                ...editor.snapshot.placement,
-                rotation: nextRotation(editor.snapshot.placement.rotation),
-            });
+            updatePlacement(
+                {
+                    ...editor.snapshot.placement,
+                    rotation: nextRotation(editor.snapshot.placement.rotation),
+                },
+                profileStartedAt,
+            );
         }
     }
 
@@ -2437,7 +2530,8 @@ export function GardenStructureVerticalSliceHud({
         );
     }
 
-    const originTemplateLabel = templateLabel(editor.origin.templateKey);
+    const originTemplateLabel =
+        profileFixture?.label ?? templateLabel(editor.origin.templateKey);
     const saving =
         editor.save.status === 'saving' ||
         editor.demolition.status === 'submitting' ||
@@ -2448,8 +2542,9 @@ export function GardenStructureVerticalSliceHud({
         editor.demolition.status === 'unknown' ||
         editor.workflow.kind === 'confirming-footprint';
     const showTemplateChooser =
-        editor.workflow.kind === 'placing-template' ||
-        session.persistence === 'fixture';
+        !profileFixture &&
+        (editor.workflow.kind === 'placing-template' ||
+            session.persistence === 'fixture');
     const activeEditorTool =
         editor.workflow.kind === 'editing' ? editor.workflow.tool : null;
 
@@ -2592,6 +2687,13 @@ export function GardenStructureVerticalSliceHud({
                         {pricingPresentation.actionLabel}
                     </span>
                 </div>
+
+                {profileFixture ? (
+                    <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:bg-amber-950 dark:text-amber-50">
+                        Fiksni profilni tlocrt · ista verzija u prikazu i
+                        uređivaču
+                    </p>
+                ) : null}
 
                 {showTemplateChooser ? (
                     <fieldset className="mb-3">
