@@ -1160,6 +1160,11 @@ retain their maximum bounded frame count instead of adding debt. Hidden updates
 collapse to one frame, and scheduler-owned draws call the captured raw
 invalidator directly so the broker cannot recurse. Static capture explicitly
 disables continuous leases and retains raw invalidation control.
+An invalidation issued during an active R3F frame preserves R3F's native
+follow-up contract: a default or one-frame request reserves two coalesced
+receipts, so the current frame consumes one and exactly one remains pending.
+Explicit multi-frame requests and native fallback inputs retain their original
+semantics.
 
 The scheduler exposes broker-dirty reasons separately from explicit semantic
 render requests. While inactive, one cumulative counter records every broker

@@ -956,7 +956,10 @@ Progress:
   deliver them, and remain pending if the last lease disappears before receipt.
   Scheduler-owned draws call the raw invalidator directly, while static capture
   keeps the broker disabled. R3F module-level invalidators remain outside this
-  root-state boundary, so total receipt surplus stays acceptance-gated.
+  root-state boundary, so total receipt surplus stays acceptance-gated. A
+  default or one-frame invalidation issued during `useFrame` reserves two
+  coalesced receipts, preserving the native current-frame-plus-follow-up
+  behavior without adding debt to explicit multi-frame requests.
 - Broker dirty state has its own pending-reason list, total hidden-call counter,
   and unique hidden-deferred transition counter. Repeated inactive updates stay
   visible through the total counter even after the reason is pending, but cannot
