@@ -1010,6 +1010,10 @@ const standardAutoQualityDevice = {
     },
 };
 
+const gardenBuildingNoStructureBaselineName =
+    'game-building-no-structure-network-baseline-desktop';
+const gardenBuildingEmptyShellName = 'game-building-empty-shell-desktop';
+
 const gardenBuildingScenarios = [
     {
         name: 'game-building-no-structure-network-baseline-mobile',
@@ -1026,18 +1030,39 @@ const gardenBuildingScenarios = [
                 props: 0,
                 roofs: 0,
             },
+            frameRateClass: 'ambient',
             fixture: 'none',
             mode: 'normal',
         },
         ...constrainedAutoQualityDevice,
     },
     {
-        name: 'game-building-empty-shell-desktop',
+        name: gardenBuildingNoStructureBaselineName,
+        path: '/debug/profile/game?mode=baseline&quality=medium&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gardenBuildingHeadlessAmbientDesktop',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            frameRateClass: 'ambient',
+            fixture: 'none',
+            mode: 'normal',
+        },
+    },
+    {
+        name: gardenBuildingEmptyShellName,
         path: '/debug/profile/game?mode=baseline&quality=medium&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
-        budget: 'gardenBuildingDesktop',
+        budget: 'gardenBuildingHeadlessAmbientDesktop',
         buildingProfile: {
             expected: {
                 edges: 0,
@@ -1046,6 +1071,7 @@ const gardenBuildingScenarios = [
                 props: 0,
                 roofs: 0,
             },
+            frameRateClass: 'ambient',
             fixture: 'blank',
             mode: 'normal',
         },
@@ -1525,11 +1551,23 @@ const budgets = {
         jsHeapMb: 180,
     },
     gardenBuildingDesktop: {
-        // Headless Chromium's 60 Hz rAF samples commonly land just above
-        // 16.7 ms; 20 ms keeps the automated gate below 50 FPS without
-        // pretending it is physical-device 60 FPS evidence.
+        // Interactive desktop profiles that acquire a 60 FPS runtime lease
+        // retain the stricter browser-rAF responsiveness gate.
         avatarCollisionStepP95Ms: 2,
         p95FrameMs: 20,
+        maxFrameMs: 100,
+        longTaskCount: 0,
+        drawCallsPerFrame: 250,
+        trianglesPerFrame: 800000,
+        jsHeapMb: 180,
+    },
+    gardenBuildingHeadlessAmbientDesktop: {
+        // Headless browser rAF cadence is host/display dependent and is not
+        // the demand renderer's frame interval. Ambient building profiles
+        // separately prove a 30 FPS runtime target with zero active leases,
+        // then compare the blank shell with a matched no-building control.
+        avatarCollisionStepP95Ms: 2,
+        p95FrameMs: 33.3,
         maxFrameMs: 100,
         longTaskCount: 0,
         drawCallsPerFrame: 250,
@@ -2077,6 +2115,32 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
                 scenarios.push(scenario);
                 seen.add(scenario.name);
             }
+        }
+    }
+
+    const emptyShellIndex = scenarios.findIndex(
+        (scenario) => scenario.name === gardenBuildingEmptyShellName,
+    );
+    if (emptyShellIndex >= 0) {
+        const baselineIndex = scenarios.findIndex(
+            (scenario) =>
+                scenario.name === gardenBuildingNoStructureBaselineName,
+        );
+        if (baselineIndex < 0) {
+            const baseline = knownScenarios.find(
+                (scenario) =>
+                    scenario.name === gardenBuildingNoStructureBaselineName,
+            );
+            if (!baseline) {
+                throw new Error(
+                    `Missing required matched scenario: ${gardenBuildingNoStructureBaselineName}.`,
+                );
+            }
+            scenarios.splice(emptyShellIndex, 0, baseline);
+            seen.add(baseline.name);
+        } else if (baselineIndex > emptyShellIndex) {
+            const [baseline] = scenarios.splice(baselineIndex, 1);
+            scenarios.splice(emptyShellIndex, 0, baseline);
         }
     }
 
@@ -6927,6 +6991,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let gameCameraSnapshotVersionMax = null;
             let generatedPlantVisibleFieldCountMin = null;
             let generatedPlantVisibleInstanceCountMin = null;
+            let runtimeFrameLoopActiveLeaseCountAtEnd = null;
+            let runtimeFrameLoopActiveLeaseCountAtStart = null;
+            let runtimeFrameLoopActiveLeaseCountMax = null;
+            let runtimeFrameLoopObservationCount = 0;
+            let runtimeFrameLoopTargetFramesPerSecondAtEnd = null;
+            let runtimeFrameLoopTargetFramesPerSecondAtStart = null;
+            let runtimeFrameLoopTargetFramesPerSecondMax = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -7085,6 +7156,34 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                               );
                 }
             };
+            const recordRuntimeFrameLoopState = () => {
+                const telemetry =
+                    globalThis.__grediceGameProfile?.runtimeFrameLoop;
+                const activeLeaseCount = telemetry?.activeLeaseCount;
+                const targetFramesPerSecond = telemetry?.targetFramesPerSecond;
+                if (
+                    !Number.isFinite(activeLeaseCount) ||
+                    !Number.isFinite(targetFramesPerSecond)
+                ) {
+                    return;
+                }
+                runtimeFrameLoopActiveLeaseCountAtStart ??= activeLeaseCount;
+                runtimeFrameLoopTargetFramesPerSecondAtStart ??=
+                    targetFramesPerSecond;
+                runtimeFrameLoopActiveLeaseCountAtEnd = activeLeaseCount;
+                runtimeFrameLoopTargetFramesPerSecondAtEnd =
+                    targetFramesPerSecond;
+                runtimeFrameLoopActiveLeaseCountMax = Math.max(
+                    runtimeFrameLoopActiveLeaseCountMax ?? activeLeaseCount,
+                    activeLeaseCount,
+                );
+                runtimeFrameLoopTargetFramesPerSecondMax = Math.max(
+                    runtimeFrameLoopTargetFramesPerSecondMax ??
+                        targetFramesPerSecond,
+                    targetFramesPerSecond,
+                );
+                runtimeFrameLoopObservationCount += 1;
+            };
             const recordAdaptiveHighState = () => {
                 const profile = globalThis.__grediceGameProfile;
                 const dprCap =
@@ -7121,6 +7220,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordActorGroundingShadowSpeciesCounts();
             recordEffectiveDpr();
             recordGeneratedPlantVisibility();
+            recordRuntimeFrameLoopState();
             recordAdaptiveHighState();
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
@@ -7404,6 +7504,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     recordEffectiveDpr();
                     recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
+                    recordRuntimeFrameLoopState();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -7512,6 +7613,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
             const sampleEndedAt = performance.now();
             recordGameCameraMotion();
+            recordRuntimeFrameLoopState();
             const actorGroundingShadowSpeciesCountsAtEnd =
                 recordActorGroundingShadowSpeciesCounts();
             const gameCameraSnapshotAtEnd = readGameCameraSnapshot();
@@ -7789,6 +7891,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 renderedFrames,
                 rendererShaders: metrics?.rendererShaders ?? null,
                 rendererTextures: metrics?.rendererTextures ?? null,
+                runtimeFrameLoopActiveLeaseCountAtEnd,
+                runtimeFrameLoopActiveLeaseCountAtStart,
+                runtimeFrameLoopActiveLeaseCountMax,
+                runtimeFrameLoopObservationCount,
+                runtimeFrameLoopTargetFramesPerSecondAtEnd,
+                runtimeFrameLoopTargetFramesPerSecondAtStart,
+                runtimeFrameLoopTargetFramesPerSecondMax,
                 staticOpaqueSceneCacheBypassFrameCountDelta,
                 staticOpaqueSceneCacheCaptureCountAtStart,
                 staticOpaqueSceneCacheCaptureCountDelta,
@@ -8625,6 +8734,19 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.qualityTier === 'string'
                     ? metadata.qualityTier
                     : null,
+            runtimeFrameLoop:
+                metadata.runtimeFrameLoop &&
+                typeof metadata.runtimeFrameLoop === 'object' &&
+                !Array.isArray(metadata.runtimeFrameLoop)
+                    ? {
+                          activeLeaseCount: numberOrNull(
+                              metadata.runtimeFrameLoop.activeLeaseCount,
+                          ),
+                          targetFramesPerSecond: numberOrNull(
+                              metadata.runtimeFrameLoop.targetFramesPerSecond,
+                          ),
+                      }
+                    : null,
             rainParticleCount:
                 typeof metadata.rainParticleCount === 'number'
                     ? metadata.rainParticleCount
@@ -9045,6 +9167,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         budget: budgets[scenario.budget],
         requested,
         runtime,
+        sample: roundedSample,
     });
     return {
         acceptance: {
@@ -9258,6 +9381,7 @@ function evaluateGardenBuildingAcceptance({
     budget,
     requested,
     runtime,
+    sample,
 }) {
     const profile = requested?.buildingProfile;
     if (!profile) {
@@ -9287,8 +9411,59 @@ function evaluateGardenBuildingAcceptance({
             Number.isFinite(actual) &&
             actual >= limit,
     });
+    const frameRateChecks =
+        profile.frameRateClass === 'ambient'
+            ? [
+                  exact(
+                      'buildingAmbientTargetFramesPerSecond',
+                      runtime?.runtimeFrameLoop?.targetFramesPerSecond,
+                      30,
+                  ),
+                  exact(
+                      'buildingAmbientActiveLeaseCount',
+                      runtime?.runtimeFrameLoop?.activeLeaseCount,
+                      0,
+                  ),
+                  minimum(
+                      'buildingAmbientFrameLoopObservationCount',
+                      sample?.runtimeFrameLoopObservationCount,
+                      1,
+                  ),
+                  exact(
+                      'buildingAmbientSampleStartTargetFramesPerSecond',
+                      sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
+                      30,
+                  ),
+                  exact(
+                      'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                      sample?.runtimeFrameLoopTargetFramesPerSecondMax,
+                      30,
+                  ),
+                  exact(
+                      'buildingAmbientSampleEndTargetFramesPerSecond',
+                      sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+                      30,
+                  ),
+                  exact(
+                      'buildingAmbientSampleStartActiveLeaseCount',
+                      sample?.runtimeFrameLoopActiveLeaseCountAtStart,
+                      0,
+                  ),
+                  exact(
+                      'buildingAmbientSampleMaximumActiveLeaseCount',
+                      sample?.runtimeFrameLoopActiveLeaseCountMax,
+                      0,
+                  ),
+                  exact(
+                      'buildingAmbientSampleEndActiveLeaseCount',
+                      sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+                      0,
+                  ),
+              ]
+            : [];
     if (profile.fixture === 'none') {
         const checks = [
+            ...frameRateChecks,
             exact('buildingFixtureOptOut', requested.building, '0'),
             exact(
                 'buildingStructureCount',
@@ -9333,6 +9508,7 @@ function evaluateGardenBuildingAcceptance({
             ? exact(name, actual, 0)
             : minimum(name, actual, 1);
     const checks = [
+        ...frameRateChecks,
         exact('buildingFixtureOptIn', requested.building, '1'),
         exact(
             'buildingFixtureKind',
@@ -9712,6 +9888,212 @@ function evaluateGardenBuildingAcceptance({
     }
 
     return { checks, pass: checks.every((check) => check.pass) };
+}
+
+function buildGardenBuildingMatchedBaselineComparison(scenarios) {
+    const baseline = scenarios.find(
+        (scenario) =>
+            (scenario.baseName ?? scenario.name) ===
+            gardenBuildingNoStructureBaselineName,
+    );
+    const candidate = scenarios.find(
+        (scenario) =>
+            (scenario.baseName ?? scenario.name) ===
+            gardenBuildingEmptyShellName,
+    );
+    if (!candidate) {
+        return null;
+    }
+    if (!baseline) {
+        return {
+            baselineName: gardenBuildingNoStructureBaselineName,
+            candidateName: candidate.name,
+            checks: [
+                {
+                    actual: false,
+                    comparison: 'equal',
+                    limit: true,
+                    name: 'buildingEmptyShellMatchedBaselinePresent',
+                    pass: false,
+                    skipped: false,
+                },
+            ],
+            pass: false,
+        };
+    }
+
+    const maximumRegressionWithNoise = ({
+        absoluteNoise,
+        baselineValue,
+        candidateValue,
+        multiplier,
+        name,
+        unit,
+    }) => {
+        const delta = candidateValue - baselineValue;
+        const ratio = baselineValue > 0 ? candidateValue / baselineValue : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                delta: round(delta),
+                ratio: round(ratio, 4),
+            },
+            comparison: 'maximum-regression-with-noise-floor',
+            limit: {
+                absoluteNoise,
+                multiplier,
+                unit,
+            },
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                (delta <= absoluteNoise ||
+                    (ratio !== null && ratio <= multiplier)),
+            skipped: false,
+        };
+    };
+    const minimumRegressionWithNoise = ({
+        absoluteNoise,
+        baselineValue,
+        candidateValue,
+        multiplier,
+        name,
+        unit,
+    }) => {
+        const delta = baselineValue - candidateValue;
+        const ratio = baselineValue > 0 ? candidateValue / baselineValue : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                degradation: round(delta),
+                ratio: round(ratio, 4),
+            },
+            comparison: 'minimum-regression-with-noise-floor',
+            limit: {
+                absoluteNoise,
+                multiplier,
+                unit,
+            },
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                (delta <= absoluteNoise ||
+                    (ratio !== null && ratio >= multiplier)),
+            skipped: false,
+        };
+    };
+    const maximumRatio = (name, baselineValue, candidateValue, multiplier) => {
+        const ratio =
+            baselineValue > 0
+                ? candidateValue / baselineValue
+                : candidateValue === 0
+                  ? 1
+                  : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                ratio: round(ratio, 4),
+            },
+            comparison: 'maximum-ratio',
+            limit: multiplier,
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                ratio !== null &&
+                ratio <= multiplier,
+            skipped: false,
+        };
+    };
+    const baselineGpuP95Ms = baseline.sample?.gpu?.elapsedP95Ms;
+    const candidateGpuP95Ms = candidate.sample?.gpu?.elapsedP95Ms;
+    const gpuComparable =
+        baseline.sample?.gpu?.valid === true &&
+        candidate.sample?.gpu?.valid === true &&
+        Number.isFinite(baselineGpuP95Ms) &&
+        Number.isFinite(candidateGpuP95Ms);
+    const checks = [
+        maximumRegressionWithNoise({
+            absoluteNoise: 2,
+            baselineValue: baseline.sample?.p95FrameMs,
+            candidateValue: candidate.sample?.p95FrameMs,
+            multiplier: 1.15,
+            name: 'buildingEmptyShellBrowserRafP95Regression',
+            unit: 'ms',
+        }),
+        minimumRegressionWithNoise({
+            absoluteNoise: 5,
+            baselineValue: baseline.sample?.renderedFps,
+            candidateValue: candidate.sample?.renderedFps,
+            multiplier: 0.9,
+            name: 'buildingEmptyShellRenderedFpsRegression',
+            unit: 'fps',
+        }),
+        maximumRatio(
+            'buildingEmptyShellDrawCallRegression',
+            baseline.sample?.drawCallsPerRenderedFrame,
+            candidate.sample?.drawCallsPerRenderedFrame,
+            1.05,
+        ),
+        maximumRatio(
+            'buildingEmptyShellTriangleRegression',
+            baseline.sample?.trianglesPerRenderedFrame,
+            candidate.sample?.trianglesPerRenderedFrame,
+            1.05,
+        ),
+        gpuComparable
+            ? maximumRegressionWithNoise({
+                  absoluteNoise: 3,
+                  baselineValue: baselineGpuP95Ms,
+                  candidateValue: candidateGpuP95Ms,
+                  multiplier: 1.15,
+                  name: 'buildingEmptyShellGpuP95Regression',
+                  unit: 'ms',
+              })
+            : {
+                  actual: {
+                      baseline: baselineGpuP95Ms ?? null,
+                      candidate: candidateGpuP95Ms ?? null,
+                  },
+                  comparison: 'maximum-regression-with-noise-floor',
+                  limit: {
+                      absoluteNoise: 3,
+                      multiplier: 1.15,
+                      unit: 'ms',
+                  },
+                  name: 'buildingEmptyShellGpuP95Regression',
+                  pass: true,
+                  skipped: true,
+              },
+    ];
+
+    return {
+        baselineName: baseline.name,
+        candidateName: candidate.name,
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function applyGardenBuildingMatchedBaselineComparison(scenarios) {
+    const comparison = buildGardenBuildingMatchedBaselineComparison(scenarios);
+    if (!comparison) {
+        return null;
+    }
+    const candidate = scenarios.find(
+        (scenario) => scenario.name === comparison.candidateName,
+    );
+    if (!candidate) {
+        return null;
+    }
+    candidate.budget.checks.push(...comparison.checks);
+    candidate.budget.pass = candidate.budget.pass && comparison.pass;
+    return comparison;
 }
 
 async function measureProfileScreenshotWitness(path) {
@@ -14714,8 +15096,8 @@ function buildMarkdown(report) {
             'Production-build Chromium evidence only; physical-device frame, memory, thermal, touch, and GPU-resource proof remains separate.',
             'Owned/public WebGL traversal and renderer-free 2D coverage are separate correctness proofs; this table claims timing only for the listed owned-game profiler scenarios.',
             '',
-            '| Scenario | Fixture / state | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Miss resolution max / navigation max / prepare+lookup max/current / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
-            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+            '| Scenario | Fixture / state | Sample target start/max/end / leases start/max/end (observations) | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Miss resolution max / navigation max / prepare+lookup max/current / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
         );
         for (const scenario of buildingProfiles) {
             const runtime = scenario.runtime ?? {};
@@ -14730,8 +15112,46 @@ function buildMarkdown(report) {
                         ? `${motionResult.kind}: ${motionResult.collisionStepCount ?? 0} steps; ${(motionResult.legs ?? []).map((leg) => `${leg.view} ${round(leg.distance) ?? 0} m`).join(', ')}`
                         : (profile.motion ?? 'none');
             lines.push(
-                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMaxMs) ?? 0}/${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${scenario.sample.runtimeFrameLoopTargetFramesPerSecondAtStart ?? 'n/a'}/${scenario.sample.runtimeFrameLoopTargetFramesPerSecondMax ?? 'n/a'}/${scenario.sample.runtimeFrameLoopTargetFramesPerSecondAtEnd ?? 'n/a'} FPS / ${scenario.sample.runtimeFrameLoopActiveLeaseCountAtStart ?? 'n/a'}/${scenario.sample.runtimeFrameLoopActiveLeaseCountMax ?? 'n/a'}/${scenario.sample.runtimeFrameLoopActiveLeaseCountAtEnd ?? 'n/a'} (${scenario.sample.runtimeFrameLoopObservationCount ?? 0}) | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMaxMs) ?? 0}/${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
+        }
+        const matchedBaseline =
+            report.gardenBuildingMatchedBaselineComparison ?? null;
+        if (matchedBaseline) {
+            lines.push(
+                '',
+                '### Matched desktop blank-shell overhead',
+                '',
+                'The absolute 33.3 ms ceiling gates headless browser-rAF responsiveness only. It does not verify the separate physical-device 16.7 ms desktop target. The paired checks isolate blank-shell overhead from host cadence using the same viewport, quality tier, and graphics backend.',
+                '',
+                `Baseline: ${matchedBaseline.baselineName}; candidate: ${matchedBaseline.candidateName}.`,
+                '',
+                '| Check | Baseline | Candidate | Delta / degradation | Ratio | Limit | Result |',
+                '| --- | ---: | ---: | ---: | ---: | --- | --- |',
+            );
+            for (const check of matchedBaseline.checks) {
+                const actual =
+                    check.actual && typeof check.actual === 'object'
+                        ? check.actual
+                        : {};
+                const limit =
+                    check.comparison === 'equal'
+                        ? 'matched baseline required'
+                        : check.comparison === 'maximum-ratio'
+                          ? `ratio ≤ ${check.limit}`
+                          : `${check.limit.multiplier}x or ≤ ${check.limit.absoluteNoise} ${check.limit.unit} noise`;
+                const baselineValue =
+                    check.comparison === 'equal'
+                        ? 'missing'
+                        : (actual.baseline ?? 'n/a');
+                const candidateValue =
+                    check.comparison === 'equal'
+                        ? 'present'
+                        : (actual.candidate ?? 'n/a');
+                lines.push(
+                    `| ${check.name} | ${baselineValue} | ${candidateValue} | ${actual.delta ?? actual.degradation ?? 'n/a'} | ${actual.ratio ?? 'n/a'} | ${limit} | ${check.skipped ? 'skipped' : check.pass ? 'pass' : 'fail'} |`,
+                );
+            }
         }
     }
 
@@ -15132,6 +15552,19 @@ function buildMarkdown(report) {
                 if (check.comparison === 'within-pixels') {
                     return `- ${scenario.name}: ${check.name} ${display(check.actual)} not within 2px of ${display(check.limit)}`;
                 }
+                if (
+                    check.comparison === 'maximum-regression-with-noise-floor'
+                ) {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} exceeded both relative and absolute noise limits ${display(check.limit)}`;
+                }
+                if (
+                    check.comparison === 'minimum-regression-with-noise-floor'
+                ) {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} degraded beyond both relative and absolute noise limits ${display(check.limit)}`;
+                }
+                if (check.comparison === 'maximum-ratio') {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} exceeded ratio ${display(check.limit)}`;
+                }
                 const operator =
                     check.comparison === 'minimum' ||
                     check.comparison === 'finite-minimum'
@@ -15477,6 +15910,8 @@ async function main() {
             scenarios.push(result);
         }
 
+        const gardenBuildingMatchedBaselineComparison =
+            applyGardenBuildingMatchedBaselineComparison(scenarios);
         const highTargetMedians = buildHighTargetMedians(scenarios);
         const crossTierMedians = buildCrossTierMedians(highTargetMedians);
         const adaptiveHighComparisons =
@@ -15532,6 +15967,7 @@ async function main() {
             },
             adaptiveHighComparisons,
             crossTierMedians,
+            gardenBuildingMatchedBaselineComparison,
             gardenSwitchSummary: buildGardenSwitchSummary(scenarios),
             lifecycleSummary: buildLifecycleSummary(scenarios),
             scenarios,
@@ -15574,10 +16010,12 @@ async function main() {
 }
 
 export {
+    applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleSummary,

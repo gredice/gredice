@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+    applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleSummary,
@@ -361,11 +363,12 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
 
 test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
     const scenarios = resolveScenarios('buildings');
-    assert.equal(scenarios.length, 13);
+    assert.equal(scenarios.length, 14);
     assert.deepEqual(
         scenarios.map((scenario) => scenario.name),
         [
             'game-building-no-structure-network-baseline-mobile',
+            'game-building-no-structure-network-baseline-desktop',
             'game-building-empty-shell-desktop',
             'game-building-empty-shell-constrained-mobile',
             'game-building-furnished-house-normal-constrained-mobile',
@@ -380,9 +383,44 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
             'game-building-enter-exit-lifecycle-constrained-mobile',
         ],
     );
+    const matchedDesktop = scenarios.filter((scenario) =>
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ].includes(scenario.name),
+    );
+    assert.deepEqual(
+        matchedDesktop.map((scenario) => ({
+            budget: scenario.budget,
+            dpr: scenario.dpr,
+            frameRateClass: scenario.buildingProfile.frameRateClass,
+            isMobile: scenario.isMobile,
+            viewport: scenario.viewport,
+        })),
+        [
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+            {
+                budget: 'gardenBuildingHeadlessAmbientDesktop',
+                dpr: 1,
+                frameRateClass: 'ambient',
+                isMobile: false,
+                viewport: { height: 720, width: 1280 },
+            },
+        ],
+    );
+    assert.equal(
+        matchedDesktop[0].path,
+        matchedDesktop[1].path.replace('&building=1&buildingFixture=blank', ''),
+    );
     assert.ok(
         scenarios
-            .slice(1)
+            .filter((scenario) => scenario.buildingProfile.fixture !== 'none')
             .every(
                 (scenario) =>
                     scenario.path.includes('building=1') &&
@@ -390,6 +428,13 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
                     scenario.buildingProfile,
             ),
     );
+    const mobileBaseline = scenarios[0];
+    assert.equal(
+        mobileBaseline.name,
+        'game-building-no-structure-network-baseline-mobile',
+    );
+    assert.equal(mobileBaseline.isMobile, true);
+    assert.equal(mobileBaseline.buildingProfile.frameRateClass, 'ambient');
     const worstCase = scenarios.find((scenario) =>
         scenario.name.includes('worst-case-furnished'),
     );
@@ -436,6 +481,28 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
         scenarios.find((scenario) => scenario.name.includes('mixed-production'))
             ?.buildingProfile.workload,
         'mixed-production',
+    );
+});
+
+test('exact blank-shell selection automatically includes its matched desktop baseline', () => {
+    assert.deepEqual(
+        resolveScenarios('game-building-empty-shell-desktop').map(
+            (scenario) => scenario.name,
+        ),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
+    );
+    assert.deepEqual(
+        resolveScenarios('ignored', [
+            'game-building-empty-shell-desktop',
+            'game-building-no-structure-network-baseline-desktop',
+        ]).map((scenario) => scenario.name),
+        [
+            'game-building-no-structure-network-baseline-desktop',
+            'game-building-empty-shell-desktop',
+        ],
     );
 });
 
@@ -748,6 +815,205 @@ test('building acceptance proves the no-structure baseline made no GLB request',
     });
     assert.equal(result.pass, true);
     assert.ok(result.checks.every((check) => check.pass));
+});
+
+test('building ambient acceptance proves a 30 FPS target with no interaction lease', () => {
+    const requested = {
+        building: '0',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                props: 0,
+                roofs: 0,
+            },
+            fixture: 'none',
+            frameRateClass: 'ambient',
+            mode: 'normal',
+        },
+        staticSceneCache: 'legacy',
+    };
+    const ambientSample = {
+        runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+        runtimeFrameLoopActiveLeaseCountAtStart: 0,
+        runtimeFrameLoopActiveLeaseCountMax: 0,
+        runtimeFrameLoopObservationCount: 301,
+        runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+        runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+        runtimeFrameLoopTargetFramesPerSecondMax: 30,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: ambientSample,
+    });
+    assert.equal(passing.pass, true);
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested,
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            ...ambientSample,
+            runtimeFrameLoopActiveLeaseCountMax: 1,
+            runtimeFrameLoopTargetFramesPerSecondMax: 60,
+        },
+    });
+    assert.deepEqual(
+        failing.checks
+            .filter(
+                (check) =>
+                    check.name.startsWith('buildingAmbient') && !check.pass,
+            )
+            .map((check) => ({ name: check.name, pass: check.pass })),
+        [
+            {
+                name: 'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                pass: false,
+            },
+            {
+                name: 'buildingAmbientSampleMaximumActiveLeaseCount',
+                pass: false,
+            },
+        ],
+    );
+});
+
+test('building matched baseline comparison tolerates bounded profiler noise', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 27,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 104,
+                gpu: { elapsedP95Ms: 4.9, valid: true },
+                p95FrameMs: 29.1,
+                renderedFps: 21,
+                trianglesPerRenderedFrame: 5_200,
+            },
+        },
+    ];
+    const comparison = buildGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, true);
+    assert.ok(comparison?.checks.every((check) => check.pass));
+
+    const applied = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(applied?.pass, true);
+    assert.equal(scenarios[1].budget.pass, true);
+    assert.equal(scenarios[1].budget.checks.length, 5);
+});
+
+test('building matched baseline comparison fails material blank-shell regressions', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 100,
+                gpu: { elapsedP95Ms: 2, valid: true },
+                p95FrameMs: 20,
+                renderedFps: 25,
+                trianglesPerRenderedFrame: 5_000,
+            },
+        },
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {
+                drawCallsPerRenderedFrame: 106,
+                gpu: { elapsedP95Ms: 5.1, valid: true },
+                p95FrameMs: 23.1,
+                renderedFps: 19.9,
+                trianglesPerRenderedFrame: 5_300,
+            },
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.ok(comparison?.checks.every((check) => !check.pass));
+    assert.equal(scenarios[1].budget.pass, false);
+    const summary = buildProfileSummary(scenarios, {});
+    assert.equal(summary.failedScenarios, 1);
+    assert.deepEqual(summary.failedScenarioNames, [
+        'game-building-empty-shell-desktop',
+    ]);
+    assert.equal(
+        shouldFailProfileRun({
+            failOnBudget: true,
+            profileSummary: summary,
+            provenance: { comparable: true },
+        }),
+        true,
+    );
+});
+
+test('building matched baseline comparison fails closed when its control is absent', () => {
+    const scenarios = [
+        {
+            budget: { checks: [], pass: true },
+            name: 'game-building-empty-shell-desktop',
+            sample: {},
+        },
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    assert.equal(comparison?.pass, false);
+    assert.equal(
+        comparison?.checks[0]?.name,
+        'buildingEmptyShellMatchedBaselinePresent',
+    );
+    assert.equal(scenarios[0].budget.pass, false);
+});
+
+test('building matched baseline comparison skips unavailable GPU timing only', () => {
+    const baselineSample = {
+        drawCallsPerRenderedFrame: 100,
+        gpu: { elapsedP95Ms: 2, valid: true },
+        p95FrameMs: 27,
+        renderedFps: 25,
+        trianglesPerRenderedFrame: 5_000,
+    };
+    const candidateSample = {
+        ...baselineSample,
+        gpu: { elapsedP95Ms: null, valid: false },
+    };
+    const comparison = buildGardenBuildingMatchedBaselineComparison([
+        {
+            name: 'game-building-no-structure-network-baseline-desktop',
+            sample: baselineSample,
+        },
+        {
+            name: 'game-building-empty-shell-desktop',
+            sample: candidateSample,
+        },
+    ]);
+    const gpuCheck = comparison?.checks.find(
+        (check) => check.name === 'buildingEmptyShellGpuP95Regression',
+    );
+    assert.equal(comparison?.pass, true);
+    assert.equal(gpuCheck?.pass, true);
+    assert.equal(gpuCheck?.skipped, true);
 });
 
 test('building acceptance preserves baseline-visible greenhouse and outdoor props', () => {
@@ -1954,6 +2220,125 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
         /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
     );
     assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown distinguishes ambient scheduler evidence and matched-pair failures', () => {
+    const scenario = (name, fixture, sample) => ({
+        budget: { checks: [], pass: true },
+        consoleMessages: [],
+        environment: null,
+        name,
+        pageErrors: [],
+        requested: {
+            buildingProfile: {
+                expected: {
+                    edges: 0,
+                    footprintCells: fixture === 'blank' ? 4 : 0,
+                    props: 0,
+                    roofs: 0,
+                },
+                fixture,
+                frameRateClass: 'ambient',
+                mode: 'normal',
+            },
+            controls: '0',
+            debugHud: '0',
+            details: '0',
+            gardenProfile: 'default',
+            hud: '0',
+            mode: 'baseline',
+            motion: 'none',
+        },
+        runtime: {
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                targetFramesPerSecond: 30,
+            },
+        },
+        sample: {
+            canvas: null,
+            drawCallsPerFrame: 1,
+            drawCallsPerRenderedFrame: 100,
+            fps: 80,
+            gpu: { elapsedP95Ms: 2, valid: true },
+            jsHeapMb: 50,
+            longTaskCount: 0,
+            maxFrameMs: 30,
+            p95FrameMs: sample.p95FrameMs,
+            rainUnmountMs: null,
+            renderedFps: sample.renderedFps,
+            runtimeFrameLoopActiveLeaseCountAtEnd: 0,
+            runtimeFrameLoopActiveLeaseCountAtStart: 0,
+            runtimeFrameLoopActiveLeaseCountMax: 0,
+            runtimeFrameLoopObservationCount: 300,
+            runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
+            runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
+            runtimeFrameLoopTargetFramesPerSecondMax: 30,
+            trianglesPerFrame: 1,
+            trianglesPerRenderedFrame: 5_000,
+        },
+        screenshotPath: null,
+    });
+    const scenarios = [
+        scenario(
+            'game-building-no-structure-network-baseline-desktop',
+            'none',
+            { p95FrameMs: 20, renderedFps: 25 },
+        ),
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const comparison = applyGardenBuildingMatchedBaselineComparison(scenarios);
+    const report = {
+        baseUrl: 'http://profile.local',
+        gardenBuildingMatchedBaselineComparison: comparison,
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: true,
+            managedServer: true,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'buildings',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios,
+        schemaVersion: 6,
+        sourceCommit: provenanceCommitA,
+        summary: { failedScenarios: 1 },
+    };
+    const markdown = buildMarkdown(report);
+
+    assert.match(markdown, /Sample target start\/max\/end/);
+    assert.match(markdown, /30\/30\/30 FPS \/ 0\/0\/0 \(300\)/);
+    assert.match(markdown, /Matched desktop blank-shell overhead/);
+    assert.match(markdown, /physical-device 16\.7 ms desktop target/);
+    assert.match(
+        markdown,
+        /buildingEmptyShellBrowserRafP95Regression .* exceeded both relative and absolute noise limits/,
+    );
+
+    const candidateOnly = [
+        scenario('game-building-empty-shell-desktop', 'blank', {
+            p95FrameMs: 23.1,
+            renderedFps: 25,
+        }),
+    ];
+    const missingComparison =
+        applyGardenBuildingMatchedBaselineComparison(candidateOnly);
+    const missingMarkdown = buildMarkdown({
+        ...report,
+        gardenBuildingMatchedBaselineComparison: missingComparison,
+        scenarios: candidateOnly,
+    });
+    assert.match(
+        missingMarkdown,
+        /buildingEmptyShellMatchedBaselinePresent \| missing \| present \| n\/a \| n\/a \| matched baseline required \| fail/,
+    );
 });
 
 test('markdown distinguishes controlled governor evidence and formats range failures', () => {
