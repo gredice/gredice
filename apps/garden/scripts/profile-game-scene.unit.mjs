@@ -7,8 +7,10 @@ import {
     buildCrossTierMedians,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleResumeTransitionEvidence,
     buildLifecycleResumeWindowEvidence,
     buildLifecycleSummary,
+    buildLifecycleSuspendTransitionEvidence,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
@@ -31,6 +33,7 @@ import {
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     fullRuntimeFrameLoopCounterFields,
+    gameCameraSnapshotMaximumDelta,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
@@ -48,6 +51,7 @@ import {
     parseArgs,
     parseComparisonContractVersion,
     primeGardenSwitchProfileSample,
+    resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,
@@ -638,6 +642,7 @@ test('runtime-owner scenarios cover every tier with rain, camera, outline, and n
         assert.equal(scenario.runtimeOwnersProfile, true);
         assert.equal(scenario.expectedQualityTier, tier);
         assert.equal(scenario.motion, 'bounded-zoom-rotate');
+        assert.equal(scenario.motionWarmupMs, 900);
         assert.equal(scenario.repeat, 3);
         assert.equal(scenario.screenshotWitness, true);
         assert.equal(request.controls, '1');
@@ -649,6 +654,84 @@ test('runtime-owner scenarios cover every tier with rain, camera, outline, and n
         assert.equal(url.searchParams.get('cameraProfile'), '1');
         assert.equal(url.searchParams.has('fixedTimeSeconds'), false);
     }
+});
+
+test('bounded camera motion cycles are closed and alternate their leading direction', () => {
+    const first = resolveBoundedCameraMotionCycle(0);
+    const second = resolveBoundedCameraMotionCycle(1);
+
+    assert.deepEqual(first, {
+        horizontalDragOffsetsPx: [18, -18],
+        wheelDeltas: [-20, 20],
+    });
+    assert.deepEqual(second, {
+        horizontalDragOffsetsPx: [-18, 18],
+        wheelDeltas: [20, -20],
+    });
+    for (const cycle of [first, second]) {
+        assert.equal(
+            cycle.horizontalDragOffsetsPx.reduce(
+                (sum, offset) => sum + offset,
+                0,
+            ),
+            0,
+        );
+        assert.equal(
+            cycle.wheelDeltas.reduce((sum, delta) => sum + delta, 0),
+            0,
+        );
+    }
+});
+
+test('camera snapshot endpoint drift fails closed for invalid snapshots', () => {
+    const start = {
+        position: [-10, 10, -10],
+        target: [0, 0, 0],
+        zoom: 100,
+    };
+
+    assert.equal(gameCameraSnapshotMaximumDelta(start, { ...start }), 0);
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            target: [0.25, 0, 0],
+        }),
+        0.25,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            position: [-9.5, 10, -10],
+        }),
+        0.5,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, { ...start, zoom: 101 }),
+        1,
+    );
+    assert.equal(gameCameraSnapshotMaximumDelta(start, null), null);
+    assert.equal(gameCameraSnapshotMaximumDelta(null, start), null);
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            position: [Number.NaN, 10, -10],
+        }),
+        null,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            target: [0, Number.POSITIVE_INFINITY, 0],
+        }),
+        null,
+    );
+    assert.equal(
+        gameCameraSnapshotMaximumDelta(start, {
+            ...start,
+            zoom: Number.NaN,
+        }),
+        null,
+    );
 });
 
 test('static-idle scenario isolates one visible fixed-time zero-work fixture', () => {
@@ -2429,6 +2512,18 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         sample: {
             ...input.sample,
             gameCameraMotionObserved: true,
+            gameCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 21,
+                zoom: 100,
+            },
+            gameCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
             gameCameraSnapshotVersionDelta: 20,
         },
     };
@@ -2454,6 +2549,39 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         )?.pass,
         false,
     );
+
+    for (const [label, mutateEndpoint] of [
+        [
+            'position',
+            (snapshot) => {
+                snapshot.position[0] += 0.02;
+            },
+        ],
+        [
+            'target',
+            (snapshot) => {
+                snapshot.target[0] += 0.02;
+            },
+        ],
+        [
+            'zoom',
+            (snapshot) => {
+                snapshot.zoom += 0.02;
+            },
+        ],
+    ]) {
+        const cameraDrift = structuredClone(cameraMotionInput);
+        mutateEndpoint(cameraDrift.sample.gameCameraSnapshotAtEnd);
+        const cameraDriftAcceptance = evaluateCrossTierAcceptance(cameraDrift);
+        assert.equal(cameraDriftAcceptance.pass, false, label);
+        assert.equal(
+            cameraDriftAcceptance.checks.find(
+                (check) => check.name === 'crossTierCameraEndpointMaximumDelta',
+            )?.pass,
+            false,
+            label,
+        );
+    }
 });
 
 test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
@@ -3894,6 +4022,8 @@ function createPassingLifecycleLiveAcceptanceInput() {
             startCounters[field] = 0;
             endCounters[field] = 0;
         }
+        startCounters.renderRequestReasons = [];
+        endCounters.renderRequestReasons = [];
         return buildLifecycleResumeWindowEvidence({
             cdp: {
                 layoutDuration: 0.001,
@@ -3919,6 +4049,91 @@ function createPassingLifecycleLiveAcceptanceInput() {
             },
         });
     };
+    const resumeTransition = (sceneTimeSeconds) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            ownedInvalidationCount: startCounters.ownedInvalidationCount + 27,
+            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 33,
+            resumeCount: startCounters.resumeCount + 1,
+            wakeupCount: startCounters.wakeupCount + 27,
+        };
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            startCounters[field] = 0;
+            endCounters[field] = 0;
+        }
+        startCounters.renderRequestReasons = ['deferred-shadow-refresh'];
+        endCounters.renderRequestReasons = [];
+        return buildLifecycleResumeTransitionEvidence({
+            cdp: {
+                layoutDuration: 0.001,
+                scriptDuration: 0.01,
+                taskDuration: 0.02,
+            },
+            sample: {
+                drawCalls: 330,
+                elapsedMs: 900,
+                frames: 54,
+                renderedFps: 36.7,
+                renderedFrames: 33,
+                runtimeFrameLoopAtEnd: {
+                    ...endCounters,
+                    sceneTimeSeconds: sceneTimeSeconds + 0.9,
+                    targetFramesPerSecond: 30,
+                },
+                runtimeFrameLoopAtStart: {
+                    ...startCounters,
+                    sceneTimeSeconds,
+                    targetFramesPerSecond: 30,
+                },
+                submittedTriangles: 3_300,
+            },
+        });
+    };
+    const suspendTransition = (sceneTimeSeconds, lateFrameCount) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            cancelledCallbackCount: startCounters.cancelledCallbackCount + 1,
+            deferredWorkCount: startCounters.deferredWorkCount + 1,
+            nonessentialHiddenWorkCount:
+                startCounters.nonessentialHiddenWorkCount + lateFrameCount,
+            r3fFrameCallbackCount:
+                startCounters.r3fFrameCallbackCount + lateFrameCount,
+            suspendCount: startCounters.suspendCount + 1,
+        };
+        return buildLifecycleSuspendTransitionEvidence({
+            cdp: {
+                layoutDuration: 0,
+                scriptDuration: lateFrameCount * 0.001,
+                taskDuration: lateFrameCount * 0.002,
+            },
+            sample: {
+                drawCalls: lateFrameCount * 10,
+                elapsedMs: 250,
+                frames: 15,
+                renderedFps: lateFrameCount * 4,
+                renderedFrames: lateFrameCount,
+                runtimeFrameLoopAtEnd: {
+                    ...endCounters,
+                    sceneTimeSeconds: sceneTimeSeconds + lateFrameCount * 0.03,
+                    targetFramesPerSecond: 0,
+                },
+                runtimeFrameLoopAtStart: {
+                    ...startCounters,
+                    sceneTimeSeconds,
+                    targetFramesPerSecond: 0,
+                },
+                submittedTriangles: lateFrameCount * 100,
+            },
+        });
+    };
     const activeRuntimeFrameLoop = {
         ...input.active.runtimeFrameLoop,
         activeLeaseCount: 5,
@@ -3941,7 +4156,12 @@ function createPassingLifecycleLiveAcceptanceInput() {
         const phase = input[phaseName];
         phase.residualDeltas = fullRuntimeCounterValues();
         phase.residualSceneTimeDeltaSeconds = 0;
+        phase.resumeTransition = resumeTransition(100 + index);
         phase.resumeWindow = resumeWindow(101 + index);
+        phase.suspendTransition = suspendTransition(
+            99 + index,
+            phaseName === 'hidden' ? 1 : 0,
+        );
         phase.resumed = {
             ...phase.resumed,
             renderLeaseSummaries: [
@@ -3963,6 +4183,327 @@ function createPassingLifecycleLiveAcceptanceInput() {
 
     return input;
 }
+
+test('live lifecycle suspension transition permits one in-flight frame but rejects a burst', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
+        const oneLateFrame = structuredClone(input);
+        oneLateFrame[phaseName].suspendTransition.sample.renderedFrames = 1;
+        oneLateFrame[
+            phaseName
+        ].suspendTransition.counterDeltas.r3fFrameCallbackCount = 1;
+        oneLateFrame[
+            phaseName
+        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(oneLateFrame, `${prefix}RenderedFrames`)
+                .pass,
+            true,
+            `${phaseName}:one-late-rendered-frame`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                oneLateFrame,
+                `${prefix}R3fFrameCallbackDelta`,
+            ).pass,
+            true,
+            `${phaseName}:one-late-r3f-frame`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                oneLateFrame,
+                `${prefix}NonessentialHiddenWorkDelta`,
+            ).pass,
+            true,
+            `${phaseName}:one-late-hidden-frame`,
+        );
+
+        const twoLateFrames = structuredClone(oneLateFrame);
+        twoLateFrames[phaseName].suspendTransition.sample.renderedFrames = 2;
+        twoLateFrames[
+            phaseName
+        ].suspendTransition.counterDeltas.r3fFrameCallbackCount = 2;
+        twoLateFrames[
+            phaseName
+        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount = 2;
+        for (const suffix of [
+            'RenderedFrames',
+            'R3fFrameCallbackDelta',
+            'NonessentialHiddenWorkDelta',
+        ]) {
+            assert.equal(
+                lifecycleAcceptanceCheck(twoLateFrames, `${prefix}${suffix}`)
+                    .pass,
+                false,
+                `${phaseName}:two-late-frames:${suffix}`,
+            );
+        }
+
+        for (const field of [
+            'scheduledCallbackCount',
+            'wakeupCount',
+            'invalidationCount',
+            'ownedInvalidationCount',
+        ]) {
+            const oneInFlightCallback = structuredClone(input);
+            oneInFlightCallback[phaseName].suspendTransition.counterDeltas[
+                field
+            ] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    oneInFlightCallback,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                true,
+                `${phaseName}:one-in-flight:${field}`,
+            );
+
+            const callbackBurst = structuredClone(input);
+            callbackBurst[phaseName].suspendTransition.counterDeltas[field] = 2;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    callbackBurst,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:callback-burst:${field}`,
+            );
+        }
+
+        for (const [field, value, suffix] of [
+            ['suspendCount', 0, 'SuspendCountDelta'],
+            ['deferredWorkCount', 0, 'DeferredWorkCountDelta'],
+            ['cancelledCallbackCount', 2, 'CancelledCallbackCountDelta'],
+        ]) {
+            const invalidTransition = structuredClone(input);
+            invalidTransition[phaseName].suspendTransition.counterDeltas[
+                field
+            ] = value;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    invalidTransition,
+                    `${prefix}${suffix}`,
+                ).pass,
+                false,
+                `${phaseName}:transition:${field}`,
+            );
+        }
+
+        const tooLong = structuredClone(input);
+        tooLong[phaseName].suspendTransition.sample.elapsedMs = 401;
+        assert.equal(
+            lifecycleAcceptanceCheck(tooLong, `${prefix}ElapsedMsMaximum`).pass,
+            false,
+            `${phaseName}:elapsed-maximum`,
+        );
+
+        const sceneTimeAdvanced = structuredClone(input);
+        sceneTimeAdvanced[phaseName].suspendTransition.sceneTimeDeltaSeconds =
+            0.100_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeAdvanced,
+                `${prefix}SceneTimeDeltaBounded`,
+            ).pass,
+            false,
+            `${phaseName}:scene-time-bound`,
+        );
+    }
+});
+
+test('live lifecycle resume transition bounds owned cadence, browser frames, requests, and failures', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}ResumeTransition`;
+
+        const ownedCatchUp = structuredClone(input);
+        ownedCatchUp[
+            phaseName
+        ].resumeTransition.counterDeltas.ownedInvalidationCount =
+            ownedCatchUp[phaseName].resumeTransition
+                .maximumExpectedOwnedInvalidations + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                ownedCatchUp,
+                `${prefix}OwnedInvalidationCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:owned-cadence`,
+        );
+
+        const rendererBurst = structuredClone(input);
+        rendererBurst[phaseName].resumeTransition.sample.renderedFrames =
+            rendererBurst[phaseName].resumeTransition
+                .maximumExpectedRenderedFrames + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererBurst,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-browser-bound`,
+        );
+
+        const r3fBurst = structuredClone(input);
+        r3fBurst[
+            phaseName
+        ].resumeTransition.counterDeltas.r3fFrameCallbackCount =
+            r3fBurst[phaseName].resumeTransition
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fBurst,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-browser-bound`,
+        );
+
+        const semanticSurplus = structuredClone(input);
+        semanticSurplus[
+            phaseName
+        ].resumeTransition.r3fOwnedInvalidationSurplus =
+            semanticSurplus[phaseName].resumeTransition
+                .maximumExpectedR3fOwnedInvalidationSurplus + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                semanticSurplus,
+                `${prefix}R3fOwnedInvalidationSurplusBound`,
+            ).pass,
+            false,
+            `${phaseName}:semantic-surplus`,
+        );
+
+        const rendererMismatch = structuredClone(input);
+        rendererMismatch[phaseName].resumeTransition.sample.renderedFrames -= 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererMismatch,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-r3f-match`,
+        );
+
+        const missingResume = structuredClone(input);
+        missingResume[phaseName].resumeTransition.counterDeltas.resumeCount = 0;
+        assert.equal(
+            lifecycleAcceptanceCheck(missingResume, `${prefix}ResumeCountDelta`)
+                .pass,
+            false,
+            `${phaseName}:resume-count`,
+        );
+
+        const sceneTimeFastForward = structuredClone(input);
+        const elapsedSeconds =
+            sceneTimeFastForward[phaseName].resumeTransition.sample.elapsedMs /
+            1_000;
+        sceneTimeFastForward[phaseName].resumeTransition.sceneTimeDeltaSeconds =
+            elapsedSeconds + 0.150_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeFastForward,
+                `${prefix}SceneTimeDeltaBounded`,
+            ).pass,
+            false,
+            `${phaseName}:scene-time-bound`,
+        );
+
+        const pendingRequest = structuredClone(input);
+        pendingRequest[
+            phaseName
+        ].resumeTransition.sample.runtimeFrameLoopAtEnd.renderRequestReasons = [
+            'still-pending',
+        ];
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                pendingRequest,
+                `${prefix}RenderRequestsDrained`,
+            ).pass,
+            false,
+            `${phaseName}:request-drain`,
+        );
+
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            const failedRuntime = structuredClone(input);
+            failedRuntime[phaseName].resumeTransition.counterDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    failedRuntime,
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:runtime-failure:${field}`,
+            );
+        }
+    }
+});
+
+test('live lifecycle steady resume keeps owned and R3F cadence strict with no pending requests', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        const prefix = `lifecycleLive${phaseLabel}Resume`;
+
+        const ownedCatchUp = structuredClone(input);
+        ownedCatchUp[
+            phaseName
+        ].resumeWindow.counterDeltas.ownedInvalidationCount =
+            ownedCatchUp[phaseName].resumeWindow
+                .maximumExpectedOwnedInvalidations + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                ownedCatchUp,
+                `${prefix}OwnedInvalidationCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:owned-cadence`,
+        );
+
+        const r3fCatchUp = structuredClone(input);
+        r3fCatchUp[phaseName].resumeWindow.counterDeltas.r3fFrameCallbackCount =
+            r3fCatchUp[phaseName].resumeWindow
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fCatchUp,
+                `${prefix}R3fFrameCallbackCadenceBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-cadence`,
+        );
+
+        for (const [endpoint, checkSuffix] of [
+            ['runtimeFrameLoopAtStart', 'RenderRequestsEmptyAtStart'],
+            ['runtimeFrameLoopAtEnd', 'RenderRequestsEmptyAtEnd'],
+        ]) {
+            const pendingRequest = structuredClone(input);
+            pendingRequest[phaseName].resumeWindow.sample[
+                endpoint
+            ].renderRequestReasons = ['still-pending'];
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    pendingRequest,
+                    `${prefix}${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${endpoint}`,
+            );
+        }
+    }
+});
 
 test('live lifecycle acceptance gates exhaustive zero work, bounded resume health, and persistent cadence', () => {
     const input = createPassingLifecycleLiveAcceptanceInput();
@@ -4250,6 +4791,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
             hud: '0',
             mode: 'rain',
             motion: 'bounded-zoom-rotate',
+            motionWarmupMs: 900,
             outline: '1',
             quality,
             runtimeOwnersProfile: true,
@@ -4267,7 +4809,32 @@ function createPassingRuntimeOwnersAcceptanceInput({
         sample: {
             drawCalls: 1_000,
             gameCameraMotionObserved: true,
+            gameCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 6,
+                zoom: 100,
+            },
+            gameCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
             gameCameraSnapshotVersionDelta: 5,
+            motionWarmupCameraSnapshotAtEnd: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 5,
+                zoom: 100,
+            },
+            motionWarmupCameraSnapshotAtStart: {
+                position: [-10, 10, -10],
+                target: [0, 0, 0],
+                version: 1,
+                zoom: 100,
+            },
+            motionWarmupCameraSnapshotVersionDelta: 4,
             renderedFrames: 150,
             runtimeFrameLoopCounterDeltas: {
                 ownedInvalidationCount: 150,
@@ -4512,6 +5079,21 @@ test('runtime-owner acceptance fails closed on sample, target, visual, and error
             0,
             'runtimeOwnersCameraSnapshotVersionDelta',
         ],
+        [
+            'sample.motionWarmupCameraSnapshotVersionDelta',
+            0,
+            'runtimeOwnersMotionWarmupCameraVersionDelta',
+        ],
+        [
+            'sample.motionWarmupCameraSnapshotAtEnd.target.0',
+            0.02,
+            'runtimeOwnersMotionWarmupCameraEndpointMaximumDelta',
+        ],
+        [
+            'sample.gameCameraSnapshotAtEnd.target.0',
+            1,
+            'runtimeOwnersCameraEndpointMaximumDelta',
+        ],
         ['screenshotWitness.entropy', 0, 'runtimeOwnersScreenshotWitnessValid'],
     ];
 
@@ -4546,6 +5128,45 @@ test('runtime-owner acceptance fails closed on sample, target, visual, and error
             runtimeOwnersAcceptanceCheck(mutation, check).pass,
             false,
             field,
+        );
+    }
+});
+
+test('runtime-owner acceptance rejects position, target, and zoom endpoint drift', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+
+    for (const [label, mutateEndpoint] of [
+        [
+            'position',
+            (snapshot) => {
+                snapshot.position[0] += 0.02;
+            },
+        ],
+        [
+            'target',
+            (snapshot) => {
+                snapshot.target[0] += 0.02;
+            },
+        ],
+        [
+            'zoom',
+            (snapshot) => {
+                snapshot.zoom += 0.02;
+            },
+        ],
+    ]) {
+        const cameraDrift = structuredClone(input);
+        mutateEndpoint(cameraDrift.sample.gameCameraSnapshotAtEnd);
+        const cameraDriftAcceptance =
+            evaluateRuntimeOwnersAcceptance(cameraDrift);
+        assert.equal(cameraDriftAcceptance.pass, false, label);
+        assert.equal(
+            cameraDriftAcceptance.checks.find(
+                (check) =>
+                    check.name === 'runtimeOwnersCameraEndpointMaximumDelta',
+            )?.pass,
+            false,
+            label,
         );
     }
 });
@@ -4635,6 +5256,8 @@ test('runtime-owner markdown reports cadence, owned work, and screenshot evidenc
     assert.match(markdown, /30 \/ 60/);
     assert.match(markdown, /60 FPS across 5 frames/);
     assert.match(markdown, /weather-animation 30 FPS @ 95%/);
+    assert.match(markdown, /900 ms \/ Δv4 \/ drift 0/);
+    assert.match(markdown, /Δv5 \/ drift 0/);
     assert.match(markdown, /150 \/ 150 \/ 150/);
     assert.match(markdown, /\| yes \| pass \|/);
 });
@@ -4665,13 +5288,19 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
             hidden: {
                 ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
+                resumeTransition: lifecycleTransitionFixture(profileRun),
+                resumeWindow: lifecycleTransitionFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
+                suspendTransition: lifecycleTransitionFixture(profileRun),
                 zeroWorkObserved: true,
             },
             offscreen: {
                 ownedSchedulingZeroObserved: true,
                 residual: residualLifecycleFixture(profileRun),
+                resumeTransition: lifecycleTransitionFixture(profileRun),
+                resumeWindow: lifecycleTransitionFixture(profileRun),
                 runtimeSchedulerZeroObserved: true,
+                suspendTransition: lifecycleTransitionFixture(profileRun),
                 zeroWorkObserved: true,
             },
         },
@@ -4690,6 +5319,16 @@ test('lifecycle summary groups three fresh-context repeats as one scenario outsi
     assert.equal(summary.offscreen.ownedSchedulingZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.runtimeSchedulerZeroObservedRunCount, 3);
     assert.equal(summary.offscreen.zeroWorkObservedRunCount, 3);
+    assert.deepEqual(summary.offscreen.resumeTransition.renderedFrames, {
+        max: 3,
+        median: 2,
+        min: 1,
+    });
+    assert.deepEqual(summary.hidden.resumeWindow.sceneTimeDeltaSeconds, {
+        max: 3,
+        median: 2,
+        min: 1,
+    });
     const legacyCompatibleRuns = structuredClone(runs);
     for (const run of legacyCompatibleRuns) {
         delete run.lifecycle.hidden.ownedSchedulingZeroObserved;
@@ -4829,6 +5468,63 @@ test('lifecycle markdown separates owned scheduling from full zero-work witnesse
     assert.doesNotMatch(markdown, /Candidate-only live runs/);
 });
 
+test('live lifecycle markdown exposes suspension, resume transition, and steady cadence evidence', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-lifecycle-live',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                baseName: 'game-high-target-runtime-lifecycle-live-desktop',
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                lifecycle: input,
+                name: 'game-high-target-runtime-lifecycle-live-desktop-run-1',
+                pageErrors: [],
+                profileRun: 1,
+                requested: input.requested,
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCallsPerFrame: 1,
+                    drawCallsPerRenderedFrame: 5,
+                    fps: 60,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 30,
+                    trianglesPerFrame: 1,
+                    trianglesPerRenderedFrame: 5,
+                },
+                screenshotPath: null,
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /measure from before each visibility mutation/);
+    assert.match(markdown, /Candidate-live visibility transition evidence/);
+    assert.match(markdown, /offscreen \| 250 ms; 0\/0; 1\/1\/1; 0 s/);
+    assert.match(markdown, /hidden \| 250 ms; 1\/1; 1\/1\/1; 0\.03 s/);
+    assert.match(markdown, /900 ms; 33\/33\/27\/6; 0\.9 s; 0/);
+    assert.match(markdown, /900 ms; 27\/27\/27; 0\.9 s; 0\/0/);
+});
+
 function residualLifecycleFixture(value) {
     return {
         cdp: { scriptDuration: value },
@@ -4837,6 +5533,21 @@ function residualLifecycleFixture(value) {
             renderedFrames: value,
             submittedTriangles: value,
         },
+    };
+}
+
+function lifecycleTransitionFixture(value) {
+    return {
+        counterDeltas: {
+            ownedInvalidationCount: value,
+            r3fFrameCallbackCount: value,
+        },
+        r3fOwnedInvalidationSurplus: 0,
+        sample: {
+            elapsedMs: value * 100,
+            renderedFrames: value,
+        },
+        sceneTimeDeltaSeconds: value,
     };
 }
 

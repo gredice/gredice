@@ -1,6 +1,5 @@
 'use client';
 
-import { invalidate } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import {
@@ -28,6 +27,7 @@ import {
     resetGeneratedPlantProfile,
     startGeneratedPlantProfile,
 } from './generatedPlantProfileMetrics';
+import { useSceneRenderRequest } from './SceneTime';
 
 export const gameProfileCloseupCommandEventName =
     'gredice:game-profile-closeup-command';
@@ -384,6 +384,7 @@ export function resolveGameProfileRaisedBedTarget(
 export function GameProfileController() {
     const { data: garden } = useCurrentGarden();
     const gameStateStore = useGameStateStore();
+    const requestRender = useSceneRenderRequest();
     const operationVisualHighlightDispatchKeyRef = useRef<string | null>(null);
     const view = useGameState((current) => current.view);
     const closeupCameraActive = useGameState(
@@ -464,7 +465,7 @@ export function GameProfileController() {
                 species: command.species,
                 targetId: command.targetId,
             });
-            invalidate(undefined, 2);
+            requestRender('profile-animal-command', 2);
         };
 
         window.addEventListener(
@@ -477,7 +478,7 @@ export function GameProfileController() {
                 handleCommand,
             );
         };
-    }, [gameStateStore]);
+    }, [gameStateStore, requestRender]);
 
     useEffect(() => {
         recordGeneratedPlantProfileCamera({
@@ -568,7 +569,7 @@ export function GameProfileController() {
 
         setGardenTargetHighlight(highlight);
         operationVisualHighlightDispatchKeyRef.current = dispatchKey;
-        invalidate(undefined, 2);
+        requestRender('profile-operation-highlight', 2);
         updateOperationVisualHighlightProfileMetadata({
             operationVisualHighlightProfileDispatched: true,
             operationVisualHighlightProfileTargetFieldId: highlight.fieldId,
@@ -578,7 +579,12 @@ export function GameProfileController() {
             operationVisualHighlightProfileTargetRaisedBedId:
                 highlight.raisedBedId,
         });
-    }, [clearGardenTargetHighlight, garden, setGardenTargetHighlight]);
+    }, [
+        clearGardenTargetHighlight,
+        garden,
+        requestRender,
+        setGardenTargetHighlight,
+    ]);
 
     useEffect(
         () => () => {
@@ -731,7 +737,7 @@ export function GameProfileController() {
             if (!command || command.action === 'hide') {
                 if (command) {
                     setHoveredBlock(null);
-                    invalidate(undefined, 2);
+                    requestRender('profile-outline-command', 2);
                     updateGameProfileMetadata({
                         hoverOutlineProfileCommandAction: command.action,
                         hoverOutlineProfileTargetBlockId: null,
@@ -746,7 +752,7 @@ export function GameProfileController() {
                 command.raisedBedId,
             );
             setHoveredBlock(target?.block ?? null);
-            invalidate(undefined, 2);
+            requestRender('profile-outline-command', 2);
             updateGameProfileMetadata({
                 hoverOutlineProfileCommandAction: command.action,
                 hoverOutlineProfileTargetBlockId: target?.blockId ?? null,
@@ -766,7 +772,7 @@ export function GameProfileController() {
             );
             setHoveredBlock(null);
         };
-    }, [garden]);
+    }, [garden, requestRender]);
 
     return null;
 }

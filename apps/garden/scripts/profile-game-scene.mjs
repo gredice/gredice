@@ -106,6 +106,11 @@ const lifecycleExpectedGardenBlockCount = 297;
 const lifecycleExpectedGardenRaisedBedCount = 3;
 const lifecycleContextEventTimeoutMs = 20_000;
 const lifecycleResumeWindowMs = 900;
+// Resume may drain already-requested R3F frames, but that semantic surplus
+// must collapse within one bounded transition quarter-second.
+const lifecycleResumeSemanticSurplusWindowMs = 250;
+const lifecycleSuspendTransitionWindowMs = 250;
+const runtimeOwnerMotionWarmupMs = 900;
 const lifecycleLivePersistentLeaseRates = {
     'fauna:birds': 30,
     'fauna:cats': 30,
@@ -521,6 +526,7 @@ const runtimeOwnerScenarios = crossTierProfileMatrix.map((profile) => ({
     expectedShadowMapSize: profile.shadowMapSize,
     expectedShadows: profile.shadows,
     motion: 'bounded-zoom-rotate',
+    motionWarmupMs: runtimeOwnerMotionWarmupMs,
     repeat: 3,
     runtimeOwnersProfile: true,
     screenshotWitness: true,
@@ -2862,16 +2868,61 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     }
 
     if (scenario.motion === 'bounded-zoom-rotate') {
-        let direction = 1;
-        while (Date.now() - startedAt < sampleMs - 240) {
-            const panKey = direction > 0 ? 'ArrowLeft' : 'ArrowRight';
-            await page.keyboard.down(panKey);
-            await wait(120);
-            await page.keyboard.up(panKey);
-            await page.mouse.wheel(0, direction > 0 ? -20 : 20);
-            await page.keyboard.press(direction > 0 ? 'KeyQ' : 'KeyW');
-            direction *= -1;
-            await wait(120);
+        await page.evaluate(() => {
+            globalThis.__grediceProfileMotionClickAbortController?.abort();
+            const controller = new AbortController();
+            globalThis.addEventListener(
+                'click',
+                (event) => {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                },
+                { capture: true, signal: controller.signal },
+            );
+            globalThis.__grediceProfileMotionClickAbortController = controller;
+        });
+        try {
+            await page.mouse.move(centerX, centerY);
+            await page.keyboard.press('KeyQ');
+            await wait(100);
+            await page.keyboard.press('KeyW');
+            await wait(100);
+
+            const cycleBudgetMs = 300;
+            const endpointSettleMs = 300;
+            let cycleIndex = 0;
+            while (
+                Date.now() - startedAt + cycleBudgetMs <=
+                sampleMs - endpointSettleMs
+            ) {
+                const cycle = resolveBoundedCameraMotionCycle(cycleIndex);
+                for (const horizontalOffsetPx of cycle.horizontalDragOffsetsPx) {
+                    await page.mouse.move(centerX, centerY);
+                    await page.mouse.down();
+                    try {
+                        await page.mouse.move(
+                            centerX + horizontalOffsetPx,
+                            centerY,
+                            { steps: 4 },
+                        );
+                        await wait(100);
+                    } finally {
+                        await page.mouse.up();
+                    }
+                }
+                await page.mouse.move(centerX, centerY);
+                for (const deltaY of cycle.wheelDeltas) {
+                    await page.mouse.wheel(0, deltaY);
+                }
+                cycleIndex += 1;
+                await wait(40);
+            }
+            await page.mouse.move(centerX, centerY);
+        } finally {
+            await page.evaluate(() => {
+                globalThis.__grediceProfileMotionClickAbortController?.abort();
+                delete globalThis.__grediceProfileMotionClickAbortController;
+            });
         }
         const remainingMs = sampleMs - (Date.now() - startedAt);
         if (remainingMs > 0) {
@@ -2901,6 +2952,43 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (remainingMs > 0) {
         await wait(remainingMs);
     }
+}
+
+function resolveBoundedCameraMotionCycle(cycleIndex) {
+    const direction = cycleIndex % 2 === 0 ? 1 : -1;
+    return {
+        horizontalDragOffsetsPx: [18 * direction, -18 * direction],
+        wheelDeltas: [-20 * direction, 20 * direction],
+    };
+}
+
+function gameCameraSnapshotMaximumDelta(start, end) {
+    const validVector = (value) =>
+        Array.isArray(value) &&
+        value.length === 3 &&
+        value.every((component) => Number.isFinite(component));
+    if (
+        !start ||
+        !end ||
+        !validVector(start.position) ||
+        !validVector(start.target) ||
+        !validVector(end.position) ||
+        !validVector(end.target) ||
+        !Number.isFinite(start.zoom) ||
+        !Number.isFinite(end.zoom)
+    ) {
+        return null;
+    }
+
+    return Math.max(
+        Math.abs(end.zoom - start.zoom),
+        ...end.position.map((component, index) =>
+            Math.abs(component - start.position[index]),
+        ),
+        ...end.target.map((component, index) =>
+            Math.abs(component - start.target[index]),
+        ),
+    );
 }
 
 async function isReachable(baseUrl) {
@@ -4132,6 +4220,10 @@ function buildLifecycleResumeWindowEvidence(window) {
     return {
         ...window,
         counterDeltas,
+        maximumExpectedOwnedInvalidations:
+            Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
+        maximumExpectedR3fFrameCallbacks:
+            Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
         maximumExpectedRenderedFrames:
             Math.ceil(targetFramesPerSecond * elapsedSeconds) + 2,
         sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
@@ -4140,6 +4232,47 @@ function buildLifecycleResumeWindowEvidence(window) {
             'sceneTimeSeconds',
         ),
         targetFramesPerSecond,
+    };
+}
+
+function buildLifecycleResumeTransitionEvidence(window) {
+    const evidence = buildLifecycleResumeWindowEvidence(window);
+    const browserFrameBoundary = Math.max(0, evidence.sample?.frames ?? 0) + 1;
+    const maximumExpectedR3fOwnedInvalidationSurplus =
+        Math.ceil(
+            evidence.targetFramesPerSecond *
+                (lifecycleResumeSemanticSurplusWindowMs / 1_000),
+        ) + 2;
+    return {
+        ...evidence,
+        maximumExpectedR3fFrameCallbacks: browserFrameBoundary,
+        maximumExpectedRenderedFrames: browserFrameBoundary,
+        maximumExpectedR3fOwnedInvalidationSurplus,
+        r3fOwnedInvalidationSurplus:
+            typeof evidence.counterDeltas?.r3fFrameCallbackCount === 'number' &&
+            typeof evidence.counterDeltas?.ownedInvalidationCount === 'number'
+                ? evidence.counterDeltas.r3fFrameCallbackCount -
+                  evidence.counterDeltas.ownedInvalidationCount
+                : null,
+    };
+}
+
+function buildLifecycleSuspendTransitionEvidence(window) {
+    const sample = window?.sample ?? null;
+    const start = sample?.runtimeFrameLoopAtStart ?? null;
+    const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    return {
+        ...window,
+        counterDeltas: runtimeFrameLoopCounterDeltas(
+            start,
+            end,
+            fullRuntimeFrameLoopCounterFields,
+        ),
+        sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
+            start,
+            end,
+            'sceneTimeSeconds',
+        ),
     };
 }
 
@@ -4250,10 +4383,15 @@ async function waitForStaticIdleStabilization(page) {
     await waitForSettledState();
 }
 
-async function measureLifecycleWindow({ cdp, durationMs, page }) {
+async function measureLifecycleWindow({ cdp, durationMs, page, transition }) {
     const before = metricsByName(await cdp.send('Performance.getMetrics'));
     await page.evaluate(beginInteractiveProfileSample);
-    await page.waitForTimeout(durationMs);
+    const startedAt = Date.now();
+    await transition?.();
+    const remainingMs = durationMs - (Date.now() - startedAt);
+    if (remainingMs > 0) {
+        await page.waitForTimeout(remainingMs);
+    }
     const sampleAtEndpoint = await page.evaluate(
         finishInteractiveProfileSample,
     );
@@ -4827,6 +4965,197 @@ function evaluateLifecycleAcceptance({
         requested?.lifecycleLiveProfile === true
             ? fullResidualWindowChecks
             : baselineResidualWindowChecks;
+    const suspendTransitionChecks = (prefix, phase) => {
+        const transition = phase?.suspendTransition;
+        const exactZeroCounterFields = fullRuntimeFrameLoopCounterFields.filter(
+            (field) =>
+                field !== 'cancelledCallbackCount' &&
+                field !== 'deferredWorkCount' &&
+                field !== 'invalidationCount' &&
+                field !== 'nonessentialHiddenWorkCount' &&
+                field !== 'ownedInvalidationCount' &&
+                field !== 'r3fFrameCallbackCount' &&
+                field !== 'scheduledCallbackCount' &&
+                field !== 'suspendCount' &&
+                field !== 'wakeupCount',
+        );
+        return [
+            minimum(`${prefix}ElapsedMs`, transition?.sample?.elapsedMs, 200),
+            maximum(
+                `${prefix}ElapsedMsMaximum`,
+                transition?.sample?.elapsedMs,
+                400,
+            ),
+            maximum(
+                `${prefix}SceneTimeDeltaBounded`,
+                transition?.sceneTimeDeltaSeconds,
+                0.1,
+            ),
+            maximum(
+                `${prefix}RenderedFrames`,
+                transition?.sample?.renderedFrames,
+                1,
+            ),
+            finite(`${prefix}DrawCalls`, transition?.sample?.drawCalls),
+            finite(
+                `${prefix}SubmittedTriangles`,
+                transition?.sample?.submittedTriangles,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackDelta`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                1,
+            ),
+            maximum(
+                `${prefix}NonessentialHiddenWorkDelta`,
+                transition?.counterDeltas?.nonessentialHiddenWorkCount,
+                1,
+            ),
+            exact(
+                `${prefix}SuspendCountDelta`,
+                transition?.counterDeltas?.suspendCount,
+                1,
+            ),
+            exact(
+                `${prefix}DeferredWorkCountDelta`,
+                transition?.counterDeltas?.deferredWorkCount,
+                1,
+            ),
+            maximum(
+                `${prefix}CancelledCallbackCountDelta`,
+                transition?.counterDeltas?.cancelledCallbackCount,
+                1,
+            ),
+            ...[
+                'scheduledCallbackCount',
+                'wakeupCount',
+                'invalidationCount',
+                'ownedInvalidationCount',
+            ].map((field) =>
+                maximum(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    transition?.counterDeltas?.[field],
+                    1,
+                ),
+            ),
+            exact(
+                `${prefix}RendererAndR3fFrameCountMatch`,
+                transition?.sample?.renderedFrames,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+            ),
+            ...exactZeroCounterFields.map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    transition?.counterDeltas?.[field],
+                    0,
+                ),
+            ),
+        ];
+    };
+    const resumeTransitionChecks = (prefix, phase) => {
+        const transition = phase?.resumeTransition;
+        const elapsedSeconds =
+            typeof transition?.sample?.elapsedMs === 'number'
+                ? transition.sample.elapsedMs / 1_000
+                : null;
+        return [
+            minimum(`${prefix}ElapsedMs`, transition?.sample?.elapsedMs, 750),
+            maximum(
+                `${prefix}ElapsedMsMaximum`,
+                transition?.sample?.elapsedMs,
+                1_000,
+            ),
+            minimum(
+                `${prefix}SceneTimeDeltaSeconds`,
+                transition?.sceneTimeDeltaSeconds,
+                0.000_001,
+            ),
+            maximum(
+                `${prefix}SceneTimeDeltaBounded`,
+                transition?.sceneTimeDeltaSeconds,
+                elapsedSeconds === null ? null : elapsedSeconds + 0.15,
+            ),
+            minimum(
+                `${prefix}TargetFramesPerSecond`,
+                transition?.targetFramesPerSecond,
+                1,
+            ),
+            minimum(
+                `${prefix}RenderedFrames`,
+                transition?.sample?.renderedFrames,
+                1,
+            ),
+            maximum(
+                `${prefix}RenderedFramesBrowserBound`,
+                transition?.sample?.renderedFrames,
+                transition?.maximumExpectedRenderedFrames,
+            ),
+            minimum(`${prefix}DrawCalls`, transition?.sample?.drawCalls, 1),
+            minimum(
+                `${prefix}SubmittedTriangles`,
+                transition?.sample?.submittedTriangles,
+                1,
+            ),
+            minimum(
+                `${prefix}WakeupDelta`,
+                transition?.counterDeltas?.wakeupCount,
+                1,
+            ),
+            minimum(
+                `${prefix}OwnedInvalidationDelta`,
+                transition?.counterDeltas?.ownedInvalidationCount,
+                1,
+            ),
+            maximum(
+                `${prefix}OwnedInvalidationCadenceBound`,
+                transition?.counterDeltas?.ownedInvalidationCount,
+                transition?.maximumExpectedOwnedInvalidations,
+            ),
+            minimum(
+                `${prefix}R3fFrameCallbackDelta`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                1,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackBrowserBound`,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+                transition?.maximumExpectedR3fFrameCallbacks,
+            ),
+            maximum(
+                `${prefix}R3fOwnedInvalidationSurplusBound`,
+                transition?.r3fOwnedInvalidationSurplus,
+                transition?.maximumExpectedR3fOwnedInvalidationSurplus,
+            ),
+            exact(
+                `${prefix}RendererAndR3fFrameCountMatch`,
+                transition?.sample?.renderedFrames,
+                transition?.counterDeltas?.r3fFrameCallbackCount,
+            ),
+            exact(
+                `${prefix}ResumeCountDelta`,
+                transition?.counterDeltas?.resumeCount,
+                1,
+            ),
+            equivalent(
+                `${prefix}RenderRequestsDrained`,
+                transition?.sample?.runtimeFrameLoopAtEnd?.renderRequestReasons,
+                [],
+            ),
+            ...[
+                'fixedStepFailureCount',
+                'hiddenDeferredRenderRequestCount',
+                'invalidationFailureCount',
+                'missedFrameReceiptCount',
+                'nonessentialHiddenWorkCount',
+            ].map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                    transition?.counterDeltas?.[field],
+                    0,
+                ),
+            ),
+        ];
+    };
     const resumeWindowChecks = (prefix, phase) => {
         const resumeWindow = phase?.resumeWindow;
         const elapsedSeconds =
@@ -4881,10 +5210,32 @@ function evaluateLifecycleAcceptance({
                 resumeWindow?.counterDeltas?.ownedInvalidationCount,
                 1,
             ),
+            maximum(
+                `${prefix}OwnedInvalidationCadenceBound`,
+                resumeWindow?.counterDeltas?.ownedInvalidationCount,
+                resumeWindow?.maximumExpectedOwnedInvalidations,
+            ),
             minimum(
                 `${prefix}R3fFrameCallbackDelta`,
                 resumeWindow?.counterDeltas?.r3fFrameCallbackCount,
                 1,
+            ),
+            maximum(
+                `${prefix}R3fFrameCallbackCadenceBound`,
+                resumeWindow?.counterDeltas?.r3fFrameCallbackCount,
+                resumeWindow?.maximumExpectedR3fFrameCallbacks,
+            ),
+            equivalent(
+                `${prefix}RenderRequestsEmptyAtStart`,
+                resumeWindow?.sample?.runtimeFrameLoopAtStart
+                    ?.renderRequestReasons,
+                [],
+            ),
+            equivalent(
+                `${prefix}RenderRequestsEmptyAtEnd`,
+                resumeWindow?.sample?.runtimeFrameLoopAtEnd
+                    ?.renderRequestReasons,
+                [],
             ),
             ...[
                 'fixedStepFailureCount',
@@ -5606,6 +5957,22 @@ function evaluateLifecycleAcceptance({
                 hidden?.resumed?.targetFramesPerSecond,
                 lifecycleLiveTargetFramesPerSecond,
             ),
+            ...suspendTransitionChecks(
+                'lifecycleLiveOffscreenSuspendTransition',
+                offscreen,
+            ),
+            ...suspendTransitionChecks(
+                'lifecycleLiveHiddenSuspendTransition',
+                hidden,
+            ),
+            ...resumeTransitionChecks(
+                'lifecycleLiveOffscreenResumeTransition',
+                offscreen,
+            ),
+            ...resumeTransitionChecks(
+                'lifecycleLiveHiddenResumeTransition',
+                hidden,
+            ),
             ...resumeWindowChecks('lifecycleLiveOffscreenResume', offscreen),
             ...resumeWindowChecks('lifecycleLiveHiddenResume', hidden),
         );
@@ -5800,26 +6167,44 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         };
 
         const offscreenBefore = await readRuntimeFrameLoopSnapshot(page);
-        await moveLifecycleCanvasOffscreen(page, true);
-        await page.waitForFunction(
-            () => {
-                const entry =
-                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1);
-                return Boolean(
-                    entry?.isIntersecting === false &&
-                        entry.width === 0 &&
-                        entry.height === 0,
+        const suspendOffscreen = async () => {
+            await moveLifecycleCanvasOffscreen(page, true);
+            await page.waitForFunction(
+                () => {
+                    const entry =
+                        globalThis.__grediceLifecycleIntersectionEntries?.at(
+                            -1,
+                        );
+                    return Boolean(
+                        entry?.isIntersecting === false &&
+                            entry.width === 0 &&
+                            entry.height === 0,
+                    );
+                },
+                undefined,
+                { timeout: 20_000 },
+            );
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: false,
+                documentVisible: true,
+                effectiveVisible: false,
+                loopActive: false,
+            });
+        };
+        let offscreenSuspendTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            offscreenSuspendTransition =
+                buildLifecycleSuspendTransitionEvidence(
+                    await measureLifecycleWindow({
+                        cdp,
+                        durationMs: lifecycleSuspendTransitionWindowMs,
+                        page,
+                        transition: suspendOffscreen,
+                    }),
                 );
-            },
-            undefined,
-            { timeout: 20_000 },
-        );
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: false,
-            documentVisible: true,
-            effectiveVisible: false,
-            loopActive: false,
-        });
+        } else {
+            await suspendOffscreen();
+        }
         const offscreenSuspended = await readRuntimeFrameLoopSnapshot(page);
         const offscreenSuspendedIntersection =
             await readLifecycleIntersectionWitness(page);
@@ -5834,20 +6219,35 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             offscreenSampleEnd,
             residualCounterFields,
         );
-        await moveLifecycleCanvasOffscreen(page, false);
-        await page.waitForFunction(
-            () =>
-                globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
-                    ?.isIntersecting === true,
-            undefined,
-            { timeout: 20_000 },
-        );
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: true,
-            effectiveVisible: true,
-            loopActive: true,
-        });
+        const resumeOffscreen = async () => {
+            await moveLifecycleCanvasOffscreen(page, false);
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceLifecycleIntersectionEntries?.at(-1)
+                        ?.isIntersecting === true,
+                undefined,
+                { timeout: 20_000 },
+            );
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            });
+        };
+        let offscreenResumeTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            offscreenResumeTransition = buildLifecycleResumeTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleResumeWindowMs,
+                    page,
+                    transition: resumeOffscreen,
+                }),
+            );
+        } else {
+            await resumeOffscreen();
+        }
         const offscreenResumeWindow =
             scenario.lifecycleLiveProfile === true
                 ? buildLifecycleResumeWindowEvidence(
@@ -5884,11 +6284,13 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 offscreenSampleEnd,
                 offscreenResumed,
             ),
+            resumeTransition: offscreenResumeTransition,
             resumeWindow: offscreenResumeWindow,
             resumed: offscreenResumed,
             resumedControl: offscreenResumedControl,
             resumedIntersection: offscreenResumedIntersection,
             signal: 'intersection-observer',
+            suspendTransition: offscreenSuspendTransition,
             suspended: offscreenSuspended,
             suspendedIntersection: offscreenSuspendedIntersection,
             transitionDeltas: runtimeFrameLoopCounterDeltas(
@@ -5920,13 +6322,28 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
 
         await hideLifecycleOutline(page);
         const hiddenBefore = await readRuntimeFrameLoopSnapshot(page);
-        await setSyntheticDocumentHidden(page, true);
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: false,
-            effectiveVisible: false,
-            loopActive: false,
-        });
+        const suspendHidden = async () => {
+            await setSyntheticDocumentHidden(page, true);
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: false,
+                effectiveVisible: false,
+                loopActive: false,
+            });
+        };
+        let hiddenSuspendTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            hiddenSuspendTransition = buildLifecycleSuspendTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleSuspendTransitionWindowMs,
+                    page,
+                    transition: suspendHidden,
+                }),
+            );
+        } else {
+            await suspendHidden();
+        }
         const hiddenSuspended = await readRuntimeFrameLoopSnapshot(page);
         const hiddenSuspendedDocument = await page.evaluate(() => ({
             hidden: document.hidden,
@@ -5943,13 +6360,28 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             hiddenSampleEnd,
             residualCounterFields,
         );
-        await setSyntheticDocumentHidden(page, false);
-        await waitForRuntimeFrameLoopState(page, {
-            canvasVisible: true,
-            documentVisible: true,
-            effectiveVisible: true,
-            loopActive: true,
-        });
+        const resumeHidden = async () => {
+            await setSyntheticDocumentHidden(page, false);
+            await waitForRuntimeFrameLoopState(page, {
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+            });
+        };
+        let hiddenResumeTransition = null;
+        if (scenario.lifecycleLiveProfile === true) {
+            hiddenResumeTransition = buildLifecycleResumeTransitionEvidence(
+                await measureLifecycleWindow({
+                    cdp,
+                    durationMs: lifecycleResumeWindowMs,
+                    page,
+                    transition: resumeHidden,
+                }),
+            );
+        } else {
+            await resumeHidden();
+        }
         const hiddenResumeWindow =
             scenario.lifecycleLiveProfile === true
                 ? buildLifecycleResumeWindowEvidence(
@@ -5988,11 +6420,13 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
                 hiddenSampleEnd,
                 hiddenResumed,
             ),
+            resumeTransition: hiddenResumeTransition,
             resumeWindow: hiddenResumeWindow,
             resumed: hiddenResumed,
             resumedControl: hiddenResumedControl,
             resumedDocument: hiddenResumedDocument,
             signal: 'synthetic-document-hidden',
+            suspendTransition: hiddenSuspendTransition,
             suspended: hiddenSuspended,
             suspendedDocument: hiddenSuspendedDocument,
             transitionDeltas: runtimeFrameLoopCounterDeltas(
@@ -6521,11 +6955,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         await wait(options.soakMs);
     }
     const motionRunsBeforeSample = scenario.motion === 'foliage-detail-zoom';
+    const motionWarmupMs = Number.isFinite(scenario.motionWarmupMs)
+        ? Math.max(0, scenario.motionWarmupMs)
+        : 0;
+    let motionWarmupCameraSnapshotAtEnd = null;
+    let motionWarmupCameraSnapshotAtStart = null;
+    if (!motionRunsBeforeSample && scenario.motion && motionWarmupMs > 0) {
+        motionWarmupCameraSnapshotAtStart = await page.evaluate(() =>
+            globalThis.__grediceGameProfile?.gameCameraSnapshot
+                ? { ...globalThis.__grediceGameProfile.gameCameraSnapshot }
+                : null,
+        );
+        await runScenarioMotion(page, scenario, motionWarmupMs);
+        await page.waitForTimeout(250);
+        motionWarmupCameraSnapshotAtEnd = await page.evaluate(() =>
+            globalThis.__grediceGameProfile?.gameCameraSnapshot
+                ? { ...globalThis.__grediceGameProfile.gameCameraSnapshot }
+                : null,
+        );
+    }
     if (motionRunsBeforeSample) {
         await runScenarioMotion(
             page,
             scenario,
-            scenario.motionWarmupMs ?? options.warmupMs,
+            motionWarmupMs || options.warmupMs,
         );
         if (request.foliageBudget === 'legacy') {
             await page.waitForFunction(
@@ -6769,6 +7222,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 animalProfileCommandEventName,
                 animalProfileCommandRequest,
                 faunaExpectedSpecies,
+                motionWarmupCameraSnapshotAtEnd,
+                motionWarmupCameraSnapshotAtStart,
                 outlineProfileDispatched,
                 outlineProfileTelemetryAvailable,
                 placementProfileEventName,
@@ -7775,6 +8230,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 gameCameraSnapshotAtStart,
                 gameCameraSnapshotVersionDelta,
                 gameCameraSnapshotVersionMax,
+                motionWarmupCameraSnapshotAtEnd,
+                motionWarmupCameraSnapshotAtStart,
+                motionWarmupCameraSnapshotVersionDelta:
+                    motionWarmupCameraSnapshotAtStart &&
+                    motionWarmupCameraSnapshotAtEnd
+                        ? motionWarmupCameraSnapshotAtEnd.version -
+                          motionWarmupCameraSnapshotAtStart.version
+                        : null,
                 generatedPlantVisibleFieldCountMin,
                 generatedPlantVisibleInstanceCountMin,
                 instancedDrawCalls,
@@ -7898,6 +8361,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 scenario.faunaProfile === true
                     ? Object.keys(faunaHeavyExpectedFixedSpeciesCounts)
                     : [],
+            motionWarmupCameraSnapshotAtEnd,
+            motionWarmupCameraSnapshotAtStart,
             outlineProfileDispatched: outlineProfileState.dispatched,
             outlineProfileTelemetryAvailable:
                 outlineProfileState.telemetryAvailable,
@@ -8744,6 +9209,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
         motion: scenario.motion ?? scenario.interaction ?? 'none',
+        motionWarmupMs,
         operationVisuals:
             profileMetadata?.operationVisuals ?? request.operationVisuals,
         outline: profileMetadata?.outline ?? request.outline,
@@ -9528,7 +9994,43 @@ function buildLifecycleSummary(scenarios) {
         zeroWorkObservedRunCount: lifecycleRuns.filter(
             (run) => run.lifecycle?.[phase]?.zeroWorkObserved === true,
         ).length,
+        resumeTransition: transitionWindow(phase, 'resumeTransition'),
+        resumeWindow: transitionWindow(phase, 'resumeWindow'),
+        suspendTransition: transitionWindow(phase, 'suspendTransition'),
     });
+
+    function transitionWindow(phase, windowName) {
+        return {
+            elapsedMs: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sample?.elapsedMs,
+            ),
+            ownedInvalidationCount: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.counterDeltas
+                        ?.ownedInvalidationCount,
+            ),
+            r3fFrameCallbackCount: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.counterDeltas
+                        ?.r3fFrameCallbackCount,
+            ),
+            r3fOwnedInvalidationSurplus: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]
+                        ?.r3fOwnedInvalidationSurplus,
+            ),
+            renderedFrames: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sample
+                        ?.renderedFrames,
+            ),
+            sceneTimeDeltaSeconds: metric(
+                (run) =>
+                    run.lifecycle?.[phase]?.[windowName]?.sceneTimeDeltaSeconds,
+            ),
+        };
+    }
 
     return {
         baseScenarioCount: new Set(
@@ -10119,6 +10621,16 @@ function evaluateCrossTierAcceptance({
         name,
         pass: typeof actual === 'number' && actual >= limit,
     });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
     const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
         const expected =
             typeof clientSize === 'number' && typeof dpr === 'number'
@@ -10272,6 +10784,14 @@ function evaluateCrossTierAcceptance({
                       sample.gameCameraSnapshotVersionDelta,
                       1,
                   ),
+                  maximum(
+                      'crossTierCameraEndpointMaximumDelta',
+                      gameCameraSnapshotMaximumDelta(
+                          sample.gameCameraSnapshotAtStart,
+                          sample.gameCameraSnapshotAtEnd,
+                      ),
+                      0.01,
+                  ),
               ]
             : []),
         exact(
@@ -10417,6 +10937,16 @@ function evaluateRuntimeOwnersAcceptance({
             Number.isFinite(actual) &&
             actual >= limit,
     });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        comparison: 'maximum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
     const evidence = sample?.runtimeOwnerLeaseEvidence;
     const owners = evidence?.owners ?? {};
     const expectedOwners = Object.keys(runtimeOwnerLeaseRates).sort();
@@ -10440,6 +10970,24 @@ function evaluateRuntimeOwnersAcceptance({
         exact('runtimeOwnersDebugHud', requested.debugHud, '0'),
         exact('runtimeOwnersOutline', requested.outline, '1'),
         exact('runtimeOwnersMotion', requested.motion, 'bounded-zoom-rotate'),
+        exact(
+            'runtimeOwnersMotionWarmupMs',
+            requested.motionWarmupMs,
+            runtimeOwnerMotionWarmupMs,
+        ),
+        minimum(
+            'runtimeOwnersMotionWarmupCameraVersionDelta',
+            sample?.motionWarmupCameraSnapshotVersionDelta,
+            1,
+        ),
+        maximum(
+            'runtimeOwnersMotionWarmupCameraEndpointMaximumDelta',
+            gameCameraSnapshotMaximumDelta(
+                sample?.motionWarmupCameraSnapshotAtStart,
+                sample?.motionWarmupCameraSnapshotAtEnd,
+            ),
+            0.01,
+        ),
         exact(
             'runtimeOwnersFixedTimeSeconds',
             requested.fixedTimeSeconds,
@@ -10620,6 +11168,14 @@ function evaluateRuntimeOwnersAcceptance({
             'runtimeOwnersCameraSnapshotVersionDelta',
             sample?.gameCameraSnapshotVersionDelta,
             1,
+        ),
+        maximum(
+            'runtimeOwnersCameraEndpointMaximumDelta',
+            gameCameraSnapshotMaximumDelta(
+                sample?.gameCameraSnapshotAtStart,
+                sample?.gameCameraSnapshotAtEnd,
+            ),
+            0.01,
         ),
         minimum(
             'runtimeOwnersOwnedInvalidationDelta',
@@ -14570,8 +15126,8 @@ function buildMarkdown(report) {
             '',
             '## Cross-tier runtime-owner cadence witness',
             '',
-            '| Scenario / run | Tier | Target FPS min / max | Sample RAF observations | Camera cadence | Persistent 30 FPS owner coverage | Owned invalidations / R3F callbacks / rendered frames | Nonblank screenshot | Result |',
-            '| --- | --- | ---: | ---: | --- | --- | ---: | --- | --- |',
+            '| Scenario / run | Tier | Target FPS min / max | Sample RAF observations | Camera cadence | Motion preflight | Camera endpoint drift | Persistent 30 FPS owner coverage | Owned invalidations / R3F callbacks / rendered frames | Nonblank screenshot | Result |',
+            '| --- | --- | ---: | ---: | --- | --- | --- | --- | ---: | --- | --- |',
         );
         for (const scenario of runtimeOwnerProfiles) {
             const evidence = scenario.runtimeOwners;
@@ -14591,8 +15147,16 @@ function buildMarkdown(report) {
                 })
                 .join('; ');
             const camera = owners['camera-interaction'];
+            const warmupEndpointDelta = gameCameraSnapshotMaximumDelta(
+                scenario.sample?.motionWarmupCameraSnapshotAtStart,
+                scenario.sample?.motionWarmupCameraSnapshotAtEnd,
+            );
+            const sampleEndpointDelta = gameCameraSnapshotMaximumDelta(
+                scenario.sample?.gameCameraSnapshotAtStart,
+                scenario.sample?.gameCameraSnapshotAtEnd,
+            );
             lines.push(
-                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.qualityTier ?? 'n/a'} | ${evidence?.targetFramesPerSecondMin ?? 'n/a'} / ${evidence?.targetFramesPerSecondMax ?? 'n/a'} | ${evidence?.frameCount ?? 'n/a'} | ${camera?.framesPerSecond?.join(',') ?? 'n/a'} FPS across ${camera?.observedFrameCount ?? 'n/a'} frames | ${persistentCadence} | ${scenario.sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount ?? 'n/a'} / ${scenario.sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount ?? 'n/a'} / ${scenario.sample?.renderedFrames ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.qualityTier ?? 'n/a'} | ${evidence?.targetFramesPerSecondMin ?? 'n/a'} / ${evidence?.targetFramesPerSecondMax ?? 'n/a'} | ${evidence?.frameCount ?? 'n/a'} | ${camera?.framesPerSecond?.join(',') ?? 'n/a'} FPS across ${camera?.observedFrameCount ?? 'n/a'} frames | ${scenario.requested?.motionWarmupMs ?? 0} ms / Δv${scenario.sample?.motionWarmupCameraSnapshotVersionDelta ?? 'n/a'} / drift ${warmupEndpointDelta ?? 'n/a'} | Δv${scenario.sample?.gameCameraSnapshotVersionDelta ?? 'n/a'} / drift ${sampleEndpointDelta ?? 'n/a'} | ${persistentCadence} | ${scenario.sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount ?? 'n/a'} / ${scenario.sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount ?? 'n/a'} / ${scenario.sample?.renderedFrames ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
         }
     }
@@ -14649,7 +15213,7 @@ function buildMarkdown(report) {
                 : []),
             ...(liveLifecycleProfileCount > 0
                 ? [
-                      `Candidate-only live runs (${liveLifecycleProfileCount}) gate all 19 runtime counters plus R3F callbacks and renderer submissions at exact zero while suspended; finite CDP durations remain diagnostics. Resume windows gate bounded SceneTime progress, cadence restoration, positive owned work, and no catch-up burst.`,
+                      `Candidate-only live runs (${liveLifecycleProfileCount}) measure from before each visibility mutation: suspension permits at most one in-flight scheduler/R3F/renderer frame while the visibility signal settles, followed by an exact-zero residual; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
                       '',
                   ]
                 : []),
@@ -14672,6 +15236,35 @@ function buildMarkdown(report) {
             lines.push(
                 `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${lifecycle?.cold?.domContentLoadedMs ?? 'n/a'}/${lifecycle?.cold?.canvasAttachedMs ?? 'n/a'}/${lifecycle?.cold?.canvasSizedMs ?? 'n/a'}/${lifecycle?.cold?.firstSubmittedFrameMs ?? 'n/a'}/${lifecycle?.cold?.fixtureReadyMs ?? 'n/a'}/${lifecycle?.cold?.interactionReadyMs ?? 'n/a'} ms | ${lifecycle?.active?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.active?.sample?.drawCalls ?? 'n/a'} | ${lifecycle?.offscreen?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.offscreen?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.offscreen?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.offscreen)} | ${offscreenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${offscreenControl?.fixture?.canvas?.sameCanvas && offscreenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.hidden?.residual?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.hidden?.residual?.sample?.submittedTriangles ?? 'n/a'}/${lifecycle?.hidden?.residual?.cdp?.scriptDuration ?? 'n/a'} s; ${zeroWitnesses(lifecycle?.hidden)} | ${hiddenControl?.postCommandRender?.drawCalls ?? 'n/a'} / ${hiddenControl?.fixture?.canvas?.sameCanvas && hiddenControl?.fixture?.canvas?.sameContext ? 'same' : 'changed'} | ${lifecycle?.context?.lost?.lostEventCount ?? 'n/a'}/${lifecycle?.context?.lost?.lostDefaultPreventedCount ?? 'n/a'}; ${lifecycle?.context?.lostWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.drawCalls ?? 'n/a'}/${lifecycle?.context?.lostWindow?.sample?.submittedTriangles ?? 'n/a'} | ${lifecycle?.context?.restoredWindow?.sample?.renderedFrames ?? 'n/a'}/${lifecycle?.context?.restoredWindow?.sample?.drawCalls ?? 'n/a'}; ${lifecycle?.context?.restored?.sameCanvas && lifecycle?.context?.restored?.sameContext ? 'same' : 'changed'} | ${lifecycle?.cold?.screenshotWitness?.width ?? 'n/a'}x${lifecycle?.cold?.screenshotWitness?.height ?? 'n/a'} / ${screenshot(offscreenControl)} / ${screenshot(hiddenControl)} / ${screenshot(restoredControl)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
+        }
+        const liveLifecycleProfiles = lifecycleProfiles.filter(
+            (scenario) => scenario.requested?.lifecycleLiveProfile === true,
+        );
+        if (liveLifecycleProfiles.length > 0) {
+            const reasonCount = (snapshot) =>
+                Array.isArray(snapshot?.renderRequestReasons)
+                    ? snapshot.renderRequestReasons.length
+                    : 'n/a';
+            const seconds = (value) =>
+                Number.isFinite(value) ? round(value, 3) : 'n/a';
+            lines.push(
+                '',
+                'Candidate-live visibility transition evidence:',
+                '',
+                '| Scenario / run | Phase | Suspend ms; rendered/R3F; suspend/defer/cancel; SceneTime | Exact-zero residual | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Result |',
+                '| --- | --- | --- | --- | --- | --- | --- |',
+            );
+            for (const scenario of liveLifecycleProfiles) {
+                for (const phaseName of ['offscreen', 'hidden']) {
+                    const phase = scenario.lifecycle?.[phaseName];
+                    const suspend = phase?.suspendTransition;
+                    const resume = phase?.resumeTransition;
+                    const steady = phase?.resumeWindow;
+                    lines.push(
+                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s | ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                    );
+                }
+            }
         }
     }
 
@@ -15465,8 +16058,10 @@ export {
     buildCrossTierMedians,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleResumeTransitionEvidence,
     buildLifecycleResumeWindowEvidence,
     buildLifecycleSummary,
+    buildLifecycleSuspendTransitionEvidence,
     buildMarkdown,
     buildPlantCloseupAcceptance,
     buildPlantCloseupMedians,
@@ -15489,6 +16084,7 @@ export {
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     fullRuntimeFrameLoopCounterFields,
+    gameCameraSnapshotMaximumDelta,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
@@ -15507,6 +16103,7 @@ export {
     parseArgs,
     parseComparisonContractVersion,
     primeGardenSwitchProfileSample,
+    resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
     resolveScenarios,

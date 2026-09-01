@@ -5,7 +5,6 @@ import { groundGameAssetNames, primaryGameAssetNames } from './data/models';
 import { resetPlacementAnimationProfileMetrics } from './entities/placementAnimationProfileMetrics';
 import { GameRuntimeProvider } from './GameRuntimeProvider';
 import { GameScene, type GameSceneProps } from './GameScene';
-import { GameProfileController } from './scene/GameProfileController';
 import { preloadGameAssetModels } from './utils/useGameGLTF';
 
 export function GameSceneWrapper({
@@ -62,7 +61,6 @@ export function GameSceneWrapper({
                 flags={flags}
                 {...rest}
             />
-            {enableGameProfileController ? <GameProfileController /> : null}
         </GameRuntimeProvider>
     );
 }

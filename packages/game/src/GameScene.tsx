@@ -100,6 +100,7 @@ import {
     adaptiveHighQualityLevels,
 } from './scene/adaptiveHighQuality';
 import { Environment } from './scene/Environment';
+import { GameProfileController } from './scene/GameProfileController';
 import { updateGameProfileMetadata } from './scene/gameProfileMetadata';
 import {
     type GameQualityAutoProfileMetrics,
@@ -1164,6 +1165,9 @@ export function GameScene({
                     data-scene-garden-id={garden?.id}
                     data-scene-visible={sceneVisible}
                 >
+                    {enableGameProfileController ? (
+                        <GameProfileController />
+                    ) : null}
                     <ParticleSystemProvider>
                         <BlockInteractionRegistryProvider>
                             <PlacementGrid />
