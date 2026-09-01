@@ -511,6 +511,15 @@ function tryMove(
     return groundY === null ? null : { x, y: groundY, z };
 }
 
+export type GardenAvatarHorizontalMovementInput = Readonly<{
+    collisionHeight?: number;
+    deltaX: number;
+    deltaZ: number;
+    maxStepHeight?: number;
+    position: GardenAvatarPoint;
+    world: GardenAvatarCollisionWorld;
+}>;
+
 export function resolveGardenAvatarHorizontalMovement({
     collisionHeight = gardenAvatarStandingCollisionHeight,
     deltaX,
@@ -518,14 +527,7 @@ export function resolveGardenAvatarHorizontalMovement({
     maxStepHeight = gardenAvatarMaxStepHeight,
     position,
     world,
-}: {
-    collisionHeight?: number;
-    deltaX: number;
-    deltaZ: number;
-    maxStepHeight?: number;
-    position: GardenAvatarPoint;
-    world: GardenAvatarCollisionWorld;
-}) {
+}: GardenAvatarHorizontalMovementInput) {
     const distance = Math.hypot(deltaX, deltaZ);
     const steps = Math.max(1, Math.ceil(distance / maxMovementSubstep));
     const stepX = deltaX / steps;

@@ -828,7 +828,8 @@ Extend the existing profiler metadata with:
 - compiled batch, draw, instance, vertex, and triangle counts;
 - compiler duration and cache hit/miss/eviction counts;
 - building asset bytes requested/resident;
-- visible interior and prop counts;
+- visible interior and prop counts, whole-structure/prop frustum rejection, and
+  closed-roof exterior prop suppression as separate counters;
 - transparent greenhouse surface count;
 - structure navigation compile duration, walkable/blocked-edge counts,
   collision primitive/bucket counts, and avatar collision-step p95;
@@ -875,6 +876,42 @@ baselines:
   by tests. Use the spike to set the value; do not accept an unbounded first kit.
 - Headless production profiles, real iPhone/Android interaction, and
   physical-device thermal proof are reported as separate evidence.
+
+The automated production profiler owns a dedicated `buildings` matrix behind
+an exact server gate. It starts with a no-structure/no-GLB-request baseline,
+then measures empty desktop/mobile shells, a dense-garden plus furnished-house
+mixed workload, shell and cutaway-interior editing, greenhouse weather, the
+valid 20x9 / 100-cell / 301-edge / 100-roof-region / 100-prop worst case in
+both closed-roof exterior and fully furnished cutaway states, edit churn, and
+repeated enter/exit. One route-built bounded descriptor drives both normal
+rendering and editing; the production scene does not construct profile
+fixtures.
+
+The saved-scene layer performs one conservative bounds/frustum test per
+structure only when the camera projection-view matrix changes, then passes the
+resulting IDs to the collection renderer before batch instance submission. No
+visible structure means no kit renderer and no GLB request. Prop instances use
+a second explicit admission set that defaults empty; future avatar/authoring
+callers must add only the containing or actively cut-away structure. The gated
+fixture editor applies the same rule directly. This keeps the closed-roof
+exterior default at zero submitted props without confusing that optimization
+with far/detail quality suppression.
+
+Reports enforce the existing mobile frame and editor interaction targets and
+contain bounded counts/durations/cache outcomes only. Resolved production GLB
+draws, vertices, triangles, unique geometry/index bytes, texture estimates,
+instance buffers, fallback/preview work, and exact response/resource timing are
+reported separately. Each resolution prepares, validates, canonicalizes, and
+keys the document exactly once. Prepare-plus-cache-lookup timing measures that
+complete hot path on hits; miss-resolution timing starts before preparation and
+ends after the prepared plan is compiled, so it cannot hide preparation cost.
+Current and maximum lookup time, miss-resolution maximum, and hit/miss outcomes
+stay separate. When the gated profiler is off, the runtime skips profile clocks,
+editor RAF sampling, pointer wrappers, collection measurement geometry, and the
+lazy kit metrics reporter plus its `appBaseUrl` subscription. Ten-minute
+Chromium soaks remain CI/browser evidence;
+physical-device memory, thermal, interaction, and GPU-resource measurements
+remain a separate rollout gate.
 
 ## Reliability, security, and privacy
 
@@ -926,8 +963,10 @@ baselines:
 - Add profiler counters and capture a no-building baseline plus active-editing
   profile.
 
-Current headless foundation evidence (2026-08-30) establishes contract bounds
-without claiming physical-device proof:
+Current headless foundation evidence is the clean, comparable 14-scenario
+production-build Chromium matrix captured on 2026-09-01 at measured code commit
+`e38cb37bc`. All 14 budget and acceptance rows passed. This establishes
+automated contract bounds without claiming physical-device proof:
 
 | Budget or invariant | Current version 1 value/evidence |
 | --- | --- |
@@ -935,21 +974,33 @@ without claiming physical-device proof:
 | Addressable edges | 301 maximum. A connected `n`-cell polyomino has at most `4n - (n - 1)` distinct incident grid edges. |
 | Roof regions and props | 100 roof regions and 100 props; at most one bounded region/solid prop per footprint cell in the current contract. |
 | Identifiers and coordinates | 96 JavaScript/UTF-16 code units per identifier and integer local coordinates within `+/-1000`. |
-| Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,759 bytes. |
-| Worst-case compiler output | 13 render batches, 601 instances, 38 open portals, 263 blocked transitions, 210 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
-| Headless compile baseline | 2.767 ms average across 1,000 compiles on local Apple M4 Pro/24 GiB, Node 24; this is development evidence, not a constrained-mobile frame result. |
-| Fixture assets | The vertical slice uses procedural debug boxes and requests zero building GLBs. Compressed-byte and generated-kit material budgets remain a Milestone 2 gate. |
+| Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,531 bytes. |
+| Worst-case compiler output | 12 render batches, 601 instances, 38 open portals, 263 blocked transitions, 204 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
+| Headless compile baseline | 3.663 ms median across three warmed 1,000-compile Node runs (3.451-3.714 ms) on local Apple M4 Pro/24 GiB. The exact production-Chromium matrix measured complete miss-resolution max / prepare-plus-lookup max/current / navigation-compile max at 7.9 / 4.4/4.4 / 0.5 ms for the worst case and 2.6 / 1.1/1.1 / 0.2 ms for the furnished house; all passed 100 ms gates. These are host/browser measurements, not constrained-mobile CPU results. |
+| Avatar collision step | The exact matrix retained the 2 ms automated p95 gate. The furnished 100-cell solid-wall workload recorded 528 complete movement resolutions (36 during the held-key leg), 0.15 ms p95, 0.3 ms max, 304 collision primitives, and 220 buckets. Representative house two-view movement recorded 528 resolutions (72 during the held-key legs), 0.15 ms p95, 0.2 ms max, and moved 0.48 m in third-person plus 0.76 m in first-person; that timed row has no portal/interior witness and therefore makes no doorway-crossing claim. Four-rotation semantic checks and owned/public WebGL traversal remain supporting doorway correctness evidence rather than unprofiled timing claims. |
+| Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. The validated generated kit contains 23 nodes, 56 primitives, 12 materials, and 6,064 source triangles. The exact matrix resolved 28 worst-case normal, 29 worst-case cutaway, and 16 furnished-house production draws with zero unresolved batches, fallback draws, or textures. The no-structure mobile and matched desktop controls requested zero building assets and zero building bytes. |
+| Constrained-mobile browser budget | Twelve rows ran at 390x844, browser DPR 3 capped to effective DPR 1, auto-constrained tier, 1024 px shadows, and 5 s warmup/sample. Every row passed. Browser-rAF p95 ranged from 18.3 to 27.2 ms and every row recorded zero long tasks. The furnished worst-case navigation row recorded 18.3/27.4 ms p95/max; the furnished house normal row recorded 26.9/27.6 ms. These pass the 33.3 ms automated mobile p95 gate but are not physical-device results. |
+| Matched desktop blank-shell overhead | At identical 1280x720, medium quality, ANGLE Metal, 30 FPS ambient scheduling, and zero active leases, the no-structure control versus blank-shell candidate measured browser-rAF p95 26.4/25.9 ms, rendered FPS 24.8/25.6, 100/100 draws per rendered frame, 5,016/5,016 triangles per rendered frame, and 2.46/2.48 ms GPU p95. All paired regression gates passed. The 33.3 ms absolute ceiling is only a headless responsiveness guard; the separate 16.7 ms physical desktop target remains unverified. |
+| Interior/editor budget | The normal worst-case exterior submitted 34 visible props and suppressed 66; furnished cutaway submitted all 100. Worst-case edit churn recorded 63 editor actions at 22.7/45.1 ms p95/max and 3.2 ms final-Canvas pointer-resolution max, below the 100/500/100 ms gates. Placement-action timing starts at the rotate or nudge event boundary, includes synchronous normalization, equality, history, and state-update work, and ends on the next rendered frame. The lifecycle row proved its intended transient scheduler peak at 30/60/30 FPS and 0/1/0 leases; ambient rows remained 30/30/30 FPS with 0/0/0 leases for the entire sample. |
 
 The production-build Chromium/WebGL flow now proves one canvas identity across
 entry/exit, 390x844 portrait and 844x390 landscape layout, resize-aware camera
 framing and full camera restoration, an accessible DOM part selector and focus
 return, a cache hit after template reuse, real touch pointer input, two-contact
-pinch, pointer cancellation/lost capture, mid-gesture exit cleanup, and zero
-building-kit GLB requests. Headless semantic movement proves the visible open
-door traversable and a solid edge blocking in all four rotations. Physical
-avatar traversal in a production browser, frame/draw/memory profiles, soak
-behavior, and physical iPhone/Android measurements remain open Milestone 0
-evidence and must be reported separately.
+pinch, pointer cancellation/lost capture, and mid-gesture exit cleanup. The
+true no-structure row makes zero building-kit GLB requests; enabled fixtures
+measure the resolved production GLB and keep fallback/preview work separate.
+Every building acceptance row fails on unexpected API, console, or page errors
+and on non-GET API activity. Exact local signed-out fixture 401s remain visible
+in the raw bounded diagnostics and are exempted only by status, loopback host,
+and allowlisted API path.
+Headless semantic movement proves the visible open door traversable and a solid
+edge blocking in all four rotations. Production-browser WebGL component flows
+now prove owned and public avatars crossing/exiting the open room doorway and
+covered porch while preserving the same Canvas and cutaway contract. Physical
+iPhone/Android traversal, memory, thermal, touch, and GPU-resource measurements,
+plus ten-minute soak behavior, remain open Milestone 0 evidence and must be
+reported separately.
 
 Exit criteria: the architecture meets the one-canvas/no-per-part-component
 constraints and has a credible constrained-mobile budget. If it does not, fix

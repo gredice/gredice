@@ -225,6 +225,80 @@ const highTargetWeatherSurfaceThresholdTransitionExpectation = {
     trackedCount: 2,
 };
 const chromiumGraphicsBackends = ['angle-metal', 'auto', 'default'];
+const gardenStructureKitAssetPath = '/assets/models/GardenStructureKitV1.glb';
+
+function isGardenStructureKitAssetUrl(value) {
+    try {
+        return new URL(value).pathname === gardenStructureKitAssetPath;
+    } catch {
+        return false;
+    }
+}
+
+function doGardenStructureAssetUrlsMatch(assetUrl, responseUrl) {
+    if (typeof assetUrl !== 'string' || typeof responseUrl !== 'string') {
+        return false;
+    }
+    try {
+        return (
+            new URL(assetUrl, responseUrl).href === new URL(responseUrl).href
+        );
+    } catch {
+        return false;
+    }
+}
+
+function summarizeGardenStructureAssetNetwork(responses, resources) {
+    const matchingResponses = responses.filter((response) =>
+        isGardenStructureKitAssetUrl(response.url),
+    );
+    const matchingResources = resources.filter((resource) =>
+        isGardenStructureKitAssetUrl(resource.name),
+    );
+    const response = matchingResponses.at(-1) ?? null;
+    const resource = matchingResources.at(-1) ?? null;
+    return {
+        gardenStructureAssetNetworkBytesRequested:
+            matchingResponses.reduce(
+                (total, entry) => total + (entry.bodyBytes ?? 0),
+                0,
+            ) || 0,
+        gardenStructureAssetRequestCount: matchingResponses.length,
+        gardenStructureAssetResponseBodyBytes: response?.bodyBytes ?? null,
+        gardenStructureAssetResponseFromServiceWorker:
+            response?.fromServiceWorker ?? null,
+        gardenStructureAssetResponseStatus: response?.status ?? null,
+        gardenStructureAssetResponseUrl: response?.url ?? null,
+        gardenStructureAssetResourceDecodedBodyBytes:
+            resource?.decodedBodySize ?? null,
+        gardenStructureAssetResourceDurationMs: resource?.duration ?? null,
+        gardenStructureAssetResourceEncodedBodyBytes:
+            resource?.encodedBodySize ?? null,
+        gardenStructureAssetResourceResponseEndMs:
+            resource?.responseEnd ?? null,
+        gardenStructureAssetResourceResponseStartMs:
+            resource?.responseStart ?? null,
+        gardenStructureAssetResourceStartMs: resource?.startTime ?? null,
+        gardenStructureAssetResourceTransferBytes:
+            resource?.transferSize ?? null,
+        gardenStructureAssetResourceUrl: resource?.name ?? null,
+    };
+}
+
+function mergeGardenStructureAssetNetworkRuntime({
+    buildingProfile,
+    resources,
+    responses,
+    runtime,
+}) {
+    if (!buildingProfile) {
+        return runtime;
+    }
+    return {
+        ...(runtime ?? {}),
+        ...summarizeGardenStructureAssetNetwork(responses, resources),
+    };
+}
 
 const coreScenarios = [
     {
@@ -1022,6 +1096,333 @@ const standardAutoQualityDevice = {
     },
 };
 
+const gardenBuildingNoStructureBaselineName =
+    'game-building-no-structure-network-baseline-desktop';
+const gardenBuildingEmptyShellName = 'game-building-empty-shell-desktop';
+
+const gardenBuildingScenarios = [
+    {
+        name: 'game-building-no-structure-network-baseline-mobile',
+        path: '/debug/profile/game?mode=baseline&quality=auto&cameraProfile=1&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            frameRateClass: 'ambient',
+            fixture: 'none',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: gardenBuildingNoStructureBaselineName,
+        path: '/debug/profile/game?mode=baseline&quality=medium&cameraProfile=1&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gardenBuildingHeadlessAmbientDesktop',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 0,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            frameRateClass: 'ambient',
+            fixture: 'none',
+            mode: 'normal',
+        },
+    },
+    {
+        name: gardenBuildingEmptyShellName,
+        path: '/debug/profile/game?mode=baseline&quality=medium&cameraProfile=1&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 1280, height: 720 },
+        dpr: 1,
+        isMobile: false,
+        budget: 'gardenBuildingHeadlessAmbientDesktop',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            frameRateClass: 'ambient',
+            fixture: 'blank',
+            mode: 'normal',
+        },
+    },
+    {
+        name: 'game-building-empty-shell-constrained-mobile',
+        path: '/debug/profile/game?mode=baseline&quality=auto&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            fixture: 'blank',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-furnished-house-normal-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
+            fixture: 'house',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-dense-garden-house-mixed-production-mobile',
+        path: '/debug/profile/game?mode=details&profile=dense&quality=auto&building=1&buildingFixture=house&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
+            fixture: 'house',
+            mode: 'normal',
+            workload: 'mixed-production',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-shell-edit-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=blank&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            category: 'structure',
+            expected: {
+                edges: 0,
+                footprintCells: 4,
+                normalVisibleProps: 0,
+                props: 0,
+                roofs: 0,
+            },
+            fixture: 'blank',
+            mode: 'editing',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-interior-edit-cutaway-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            category: 'interior',
+            cutaway: true,
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
+            fixture: 'house',
+            mode: 'editing',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-greenhouse-rain-constrained-mobile',
+        path: '/debug/profile/game?mode=rain&quality=auto&building=1&buildingFixture=greenhouse&controls=0&hud=0&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWeatherMobile',
+        buildingProfile: {
+            expected: {
+                edges: 14,
+                footprintCells: 12,
+                normalVisibleProps: 2,
+                props: 2,
+                roofs: 1,
+            },
+            fixture: 'greenhouse',
+            mode: 'normal',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-worst-case-furnished-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&avatar=1&avatarProfile=third-person&building=1&buildingFixture=worst-case&controls=0&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWorstCaseMobile',
+        buildingProfile: {
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        durationMs: 700,
+                        maximumDistance: 0.25,
+                        view: 'third-person',
+                    },
+                ],
+            },
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-house-two-view-navigation-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&avatar=1&avatarProfile=third-person&building=1&buildingFixture=house&controls=0&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
+            fixture: 'house',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        durationMs: 700,
+                        minimumDistance: 0.35,
+                        view: 'third-person',
+                    },
+                    {
+                        key: 'w',
+                        durationMs: 700,
+                        minimumDistance: 0.35,
+                        view: 'first-person',
+                    },
+                ],
+            },
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-worst-case-furnished-cutaway-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=worst-case&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWorstCaseMobile',
+        buildingProfile: {
+            category: 'interior',
+            cutaway: true,
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'editing',
+            workload: 'furnished-cutaway',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-worst-case-edit-churn-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=worst-case&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingWorstCaseMobile',
+        buildingProfile: {
+            category: 'interior',
+            cutaway: true,
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                normalVisibleProps: 34,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'editing',
+            motion: 'edit-churn',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-enter-exit-lifecycle-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=house&controls=1&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: {
+                edges: 15,
+                footprintCells: 12,
+                normalVisibleProps: 0,
+                props: 1,
+                roofs: 2,
+            },
+            fixture: 'house',
+            mode: 'editing',
+            motion: 'enter-exit',
+        },
+        ...constrainedAutoQualityDevice,
+    },
+];
+
 const plantCloseupScenarios = [
     {
         name: 'game-plant-heavy-closeup-desktop',
@@ -1183,6 +1584,7 @@ const scenarioSets = {
     dense: denseScenarios,
     'dense-mobile': denseMobileScenarios,
     fauna: faunaHeavyScenarios,
+    buildings: gardenBuildingScenarios,
     'garden-switch': gardenSwitchScenarios,
     lifecycle: lifecycleScenarios,
     'lifecycle-live': lifecycleLiveScenarios,
@@ -1201,6 +1603,25 @@ const scenarioSets = {
     'weather-transitions': weatherTransitionScenarios,
 };
 
+const weatherMobileBudget = Object.freeze({
+    p95FrameMs: 33.3,
+    maxFrameMs: 180,
+    longTaskCount: 2,
+    drawCallsPerFrame: 320,
+    trianglesPerFrame: 1000000,
+    jsHeapMb: 220,
+});
+
+const mobileGardenBuildingBudget = Object.freeze({
+    avatarCollisionStepP95Ms: 2,
+    p95FrameMs: 33.3,
+    maxFrameMs: 180,
+    longTaskCount: 2,
+    drawCallsPerFrame: 320,
+    trianglesPerFrame: 1000000,
+    jsHeapMb: 220,
+});
+
 const budgets = {
     game: {
         p95FrameMs: 16.7,
@@ -1218,6 +1639,33 @@ const budgets = {
         trianglesPerFrame: 800000,
         jsHeapMb: 180,
     },
+    gardenBuildingDesktop: {
+        // Interactive desktop profiles that acquire a 60 FPS runtime lease
+        // retain the stricter browser-rAF responsiveness gate.
+        avatarCollisionStepP95Ms: 2,
+        p95FrameMs: 20,
+        maxFrameMs: 100,
+        longTaskCount: 0,
+        drawCallsPerFrame: 250,
+        trianglesPerFrame: 800000,
+        jsHeapMb: 180,
+    },
+    gardenBuildingHeadlessAmbientDesktop: {
+        // Headless browser rAF cadence is host/display dependent and is not
+        // the demand renderer's frame interval. Ambient building profiles
+        // separately prove a 30 FPS runtime target with zero active leases,
+        // then compare the blank shell with a matched no-building control.
+        avatarCollisionStepP95Ms: 2,
+        p95FrameMs: 33.3,
+        maxFrameMs: 100,
+        longTaskCount: 0,
+        drawCallsPerFrame: 250,
+        trianglesPerFrame: 800000,
+        jsHeapMb: 180,
+    },
+    gardenBuildingMobile: mobileGardenBuildingBudget,
+    gardenBuildingWeatherMobile: mobileGardenBuildingBudget,
+    gardenBuildingWorstCaseMobile: mobileGardenBuildingBudget,
     gameDetails: {
         p95FrameMs: 33.3,
         maxFrameMs: 150,
@@ -1226,14 +1674,7 @@ const budgets = {
         trianglesPerFrame: 1200000,
         jsHeapMb: 220,
     },
-    weatherMobile: {
-        p95FrameMs: 33.3,
-        maxFrameMs: 180,
-        longTaskCount: 2,
-        drawCallsPerFrame: 320,
-        trianglesPerFrame: 1000000,
-        jsHeapMb: 220,
-    },
+    weatherMobile: weatherMobileBudget,
     plants: {
         p95FrameMs: 33.3,
         maxFrameMs: 180,
@@ -1682,7 +2123,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -1711,6 +2152,7 @@ function allScenarios() {
         ...crossTierScenarios,
         ...denseScenarios,
         ...denseMobileScenarios,
+        ...gardenBuildingScenarios,
         ...faunaHeavyScenarios,
         ...gardenSwitchScenarios,
         ...lifecycleScenarios,
@@ -1756,7 +2198,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, buildings, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, lifecycle-live, runtime-owners, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1765,6 +2207,32 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
                 scenarios.push(scenario);
                 seen.add(scenario.name);
             }
+        }
+    }
+
+    const emptyShellIndex = scenarios.findIndex(
+        (scenario) => scenario.name === gardenBuildingEmptyShellName,
+    );
+    if (emptyShellIndex >= 0) {
+        const baselineIndex = scenarios.findIndex(
+            (scenario) =>
+                scenario.name === gardenBuildingNoStructureBaselineName,
+        );
+        if (baselineIndex < 0) {
+            const baseline = knownScenarios.find(
+                (scenario) =>
+                    scenario.name === gardenBuildingNoStructureBaselineName,
+            );
+            if (!baseline) {
+                throw new Error(
+                    `Missing required matched scenario: ${gardenBuildingNoStructureBaselineName}.`,
+                );
+            }
+            scenarios.splice(emptyShellIndex, 0, baseline);
+            seen.add(baseline.name);
+        } else if (baselineIndex > emptyShellIndex) {
+            const [baseline] = scenarios.splice(baselineIndex, 1);
+            scenarios.splice(emptyShellIndex, 0, baseline);
         }
     }
 
@@ -1854,6 +2322,8 @@ function getScenarioRequest(path) {
     const url = new URL(path, 'http://profile.local');
     return {
         adaptiveHigh: url.searchParams.get('adaptiveHigh') ?? '0',
+        building: url.searchParams.get('building') ?? '0',
+        buildingFixture: url.searchParams.get('buildingFixture') ?? 'house',
         controls: url.searchParams.get('controls') ?? '0',
         closeupRaisedBedId:
             Number.parseInt(
@@ -2813,7 +3283,319 @@ function resolveChromiumGraphicsArgs(
     return ['--use-gl=angle', '--use-angle=metal'];
 }
 
+const gardenBuildingCategoryLabels = {
+    footprint: 'Tlocrt',
+    interior: 'Interijer',
+    roof: 'Krov',
+    structure: 'Konstrukcija',
+};
+
+async function prepareGardenBuildingProfile(page, buildingProfile) {
+    if (buildingProfile.fixture === 'none') {
+        await page.waitForFunction(
+            () => {
+                const profile = globalThis.__grediceGameProfile;
+                return (
+                    (profile?.gardenStructureStructureCount ?? 0) === 0 &&
+                    (profile?.gardenStructureAssetUrl ?? '') === ''
+                );
+            },
+            undefined,
+            { timeout: 20_000 },
+        );
+        return;
+    }
+    try {
+        await page.waitForFunction(
+            ({ emptyStructure, expected }) => {
+                const profile = globalThis.__grediceGameProfile;
+                return Boolean(
+                    profile?.gardenStructureStructureCount === 1 &&
+                        profile.gardenStructureVisibleStructureCount === 1 &&
+                        profile.gardenStructureFootprintCellCount ===
+                            expected.footprintCells &&
+                        profile.gardenStructureEdgeCount === expected.edges &&
+                        profile.gardenStructurePropCount === expected.props &&
+                        profile.gardenStructureVisiblePropCount ===
+                            (expected.normalVisibleProps ?? 0) &&
+                        profile.gardenStructureExteriorSuppressedPropCount ===
+                            expected.props -
+                                (expected.normalVisibleProps ?? 0) &&
+                        profile.gardenStructureRoofRegionCount ===
+                            expected.roofs &&
+                        profile.gardenStructureAssetResolutionStatus ===
+                            'resolved' &&
+                        profile.gardenStructureAssetResolutionIssueCount ===
+                            0 &&
+                        (emptyStructure
+                            ? profile.gardenStructureProductionDrawCount ===
+                                  0 &&
+                              profile.gardenStructureFallbackDrawCount === 0
+                            : profile.gardenStructureProductionDrawCount > 0) &&
+                        profile.gardenStructureAssetBytesResident > 0,
+                );
+            },
+            {
+                expected: buildingProfile.expected,
+                emptyStructure: buildingProfile.fixture === 'blank',
+            },
+            { timeout: 60_000 },
+        );
+    } catch (error) {
+        const metadata = await page.evaluate(() => {
+            const profile = globalThis.__grediceGameProfile;
+            return profile
+                ? {
+                      assetBytesResident:
+                          profile.gardenStructureAssetBytesResident,
+                      assetResolutionIssueCount:
+                          profile.gardenStructureAssetResolutionIssueCount,
+                      assetResolutionStatus:
+                          profile.gardenStructureAssetResolutionStatus,
+                      edgeCount: profile.gardenStructureEdgeCount,
+                      exteriorSuppressedPropCount:
+                          profile.gardenStructureExteriorSuppressedPropCount,
+                      fallbackDrawCount:
+                          profile.gardenStructureFallbackDrawCount,
+                      footprintCellCount:
+                          profile.gardenStructureFootprintCellCount,
+                      productionDrawCount:
+                          profile.gardenStructureProductionDrawCount,
+                      propCount: profile.gardenStructurePropCount,
+                      roofRegionCount: profile.gardenStructureRoofRegionCount,
+                      structureCount: profile.gardenStructureStructureCount,
+                      visiblePropCount: profile.gardenStructureVisiblePropCount,
+                      visibleStructureCount:
+                          profile.gardenStructureVisibleStructureCount,
+                  }
+                : null;
+        });
+        throw new Error(
+            `Garden building profile did not reach its expected ready state: ${JSON.stringify(metadata)}`,
+            { cause: error },
+        );
+    }
+    if (buildingProfile.mode !== 'editing') {
+        if (buildingProfile.motion === 'avatar-navigation') {
+            await page
+                .getByRole('button', { name: 'Izađi iz šetnje' })
+                .waitFor({ state: 'visible', timeout: 20_000 });
+            await page.waitForFunction(
+                () => {
+                    const scene = document.querySelector(
+                        '[data-garden-avatar-debug-x]',
+                    );
+                    return Boolean(
+                        scene instanceof HTMLElement &&
+                            Number.isFinite(
+                                Number(scene.dataset.gardenAvatarDebugX),
+                            ) &&
+                            Number.isFinite(
+                                Number(scene.dataset.gardenAvatarDebugZ),
+                            ),
+                    );
+                },
+                undefined,
+                { timeout: 20_000 },
+            );
+        }
+        return;
+    }
+
+    await page.getByTestId('garden-structure-build-entry').click();
+    await page.getByTestId('garden-structure-build-hud').waitFor({
+        state: 'visible',
+        timeout: 20_000,
+    });
+    const canvas = page.locator('canvas').first();
+    const canvasBounds = await canvas.boundingBox();
+    if (!canvasBounds) {
+        throw new Error('Building profile Canvas has no interaction bounds.');
+    }
+    const pointerResolutionCount = await page.evaluate(
+        () =>
+            globalThis.__grediceGameProfile
+                ?.gardenStructureEditorPointerResolutionCount ?? 0,
+    );
+    await canvas.click({
+        position: {
+            x: Math.max(1, canvasBounds.width - 8),
+            y: 8,
+        },
+    });
+    await page.waitForFunction(
+        (previousCount) =>
+            (globalThis.__grediceGameProfile
+                ?.gardenStructureEditorPointerResolutionCount ?? 0) >
+            previousCount,
+        pointerResolutionCount,
+        { timeout: 5_000 },
+    );
+    if (buildingProfile.category) {
+        await page
+            .getByRole('button', {
+                exact: true,
+                name: gardenBuildingCategoryLabels[buildingProfile.category],
+            })
+            .click();
+    }
+    if (buildingProfile.cutaway) {
+        await page.getByRole('button', { name: 'Sakrij krov' }).click();
+    }
+    await page.waitForFunction(
+        ({ expected, visibleProps }) => {
+            const profile = globalThis.__grediceGameProfile;
+            return Boolean(
+                profile?.gardenStructureEditorActive === true &&
+                    profile.gardenStructureFootprintCellCount ===
+                        expected.footprintCells &&
+                    profile.gardenStructureEdgeCount === expected.edges &&
+                    profile.gardenStructurePropCount === expected.props &&
+                    profile.gardenStructureVisiblePropCount === visibleProps &&
+                    profile.gardenStructureExteriorSuppressedPropCount ===
+                        expected.props - visibleProps &&
+                    profile.gardenStructureRoofRegionCount === expected.roofs,
+            );
+        },
+        {
+            expected: buildingProfile.expected,
+            visibleProps: buildingProfile.cutaway
+                ? buildingProfile.expected.props
+                : (buildingProfile.expected.normalVisibleProps ?? 0),
+        },
+        { timeout: 20_000 },
+    );
+}
+
 async function runScenarioMotion(page, scenario, sampleMs) {
+    if (scenario.buildingProfile?.motion === 'edit-churn') {
+        const startedAt = Date.now();
+        let actionCount = 0;
+        while (Date.now() - startedAt < sampleMs - 360) {
+            await page
+                .getByRole('button', { exact: true, name: 'Zakreni 90°' })
+                .click();
+            actionCount += 1;
+            await page
+                .getByRole('button', {
+                    exact: true,
+                    name: actionCount % 2 === 0 ? 'Interijer' : 'Krov',
+                })
+                .click();
+            actionCount += 1;
+            await page
+                .getByRole('button', {
+                    name: /^(Prikaži|Sakrij) krov$/u,
+                })
+                .click();
+            actionCount += 1;
+            await wait(120);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return { actionCount, kind: 'edit-churn' };
+    }
+
+    if (scenario.buildingProfile?.motion === 'enter-exit') {
+        const startedAt = Date.now();
+        let cycleCount = 0;
+        while (Date.now() - startedAt < sampleMs - 700) {
+            await page.getByTestId('garden-structure-build-done').click();
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfile
+                        ?.gardenStructureCameraMode === 'browse',
+                undefined,
+                { timeout: 5_000 },
+            );
+            await page.getByTestId('garden-structure-build-entry').click();
+            await page.waitForFunction(
+                () =>
+                    globalThis.__grediceGameProfile
+                        ?.gardenStructureCameraMode === 'building',
+                undefined,
+                { timeout: 5_000 },
+            );
+            cycleCount += 1;
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return { cycleCount, kind: 'enter-exit' };
+    }
+
+    if (scenario.buildingProfile?.motion === 'avatar-navigation') {
+        const navigation = scenario.buildingProfile.avatarNavigation;
+        const startedAt = Date.now();
+        const readState = () =>
+            page.evaluate(() => {
+                const scene = document.querySelector(
+                    '[data-garden-avatar-debug-x]',
+                );
+                const profile = globalThis.__grediceGameProfile;
+                return {
+                    collisionStepCount:
+                        profile?.gardenStructureAvatarCollisionStepCount ?? 0,
+                    x:
+                        scene instanceof HTMLElement
+                            ? Number(scene.dataset.gardenAvatarDebugX)
+                            : Number.NaN,
+                    z:
+                        scene instanceof HTMLElement
+                            ? Number(scene.dataset.gardenAvatarDebugZ)
+                            : Number.NaN,
+                };
+            });
+        const initial = await readState();
+        const legs = [];
+        for (const leg of navigation.legs) {
+            if (leg.view === 'first-person') {
+                const switchView = page.getByRole('button', {
+                    name: 'Prikaži pogled iz prvog lica',
+                });
+                if (await switchView.isVisible()) {
+                    await switchView.click();
+                }
+            } else {
+                const switchView = page.getByRole('button', {
+                    name: 'Prikaži pogled iz trećeg lica',
+                });
+                if (await switchView.isVisible()) {
+                    await switchView.click();
+                }
+            }
+            const before = await readState();
+            await page.keyboard.down(leg.key);
+            try {
+                await wait(leg.durationMs);
+            } finally {
+                await page.keyboard.up(leg.key);
+            }
+            const after = await readState();
+            legs.push({
+                distance: Math.hypot(after.x - before.x, after.z - before.z),
+                endX: after.x,
+                endZ: after.z,
+                key: leg.key,
+                view: leg.view,
+            });
+        }
+        const final = await readState();
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return {
+            collisionStepCount:
+                final.collisionStepCount - initial.collisionStepCount,
+            kind: 'avatar-navigation',
+            legs,
+        };
+    }
+
     if (
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
@@ -2822,13 +3604,13 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         scenario.interaction !== 'hover-scan'
     ) {
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     const canvasBox = await page.locator('canvas').first().boundingBox();
     if (!canvasBox) {
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     const centerX = canvasBox.x + canvasBox.width * 0.52;
@@ -2838,7 +3620,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         await page.mouse.move(centerX, centerY);
         await page.mouse.wheel(0, -920);
         await wait(sampleMs);
-        return;
+        return null;
     }
 
     if (scenario.interaction === 'hover-scan') {
@@ -2867,7 +3649,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         if (remainingMs > 0) {
             await wait(remainingMs);
         }
-        return;
+        return null;
     }
 
     if (scenario.motion === 'bounded-zoom-rotate') {
@@ -2980,7 +3762,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         if (remainingMs > 0) {
             await wait(remainingMs);
         }
-        return;
+        return null;
     }
 
     let direction = 1;
@@ -3004,6 +3786,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     if (remainingMs > 0) {
         await wait(remainingMs);
     }
+    return null;
 }
 
 function resolveBoundedCameraMotionCycle(cycleIndex) {
@@ -6806,6 +7589,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const consoleMessages = [];
     const pageErrors = [];
     const apiRequests = [];
+    const gardenStructureAssetResponsePromises = [];
 
     await cdp.send('Performance.enable');
     if (scenario.navigatorMetrics) {
@@ -6833,6 +7617,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     });
     page.on('response', (response) => {
         const responseUrl = response.url();
+        if (isGardenStructureKitAssetUrl(responseUrl)) {
+            gardenStructureAssetResponsePromises.push(
+                response
+                    .body()
+                    .then((body) => ({
+                        bodyBytes: body.byteLength,
+                        fromServiceWorker: response.fromServiceWorker(),
+                        status: response.status(),
+                        url: responseUrl,
+                    }))
+                    .catch(() => ({
+                        bodyBytes: null,
+                        fromServiceWorker: response.fromServiceWorker(),
+                        status: response.status(),
+                        url: responseUrl,
+                    })),
+            );
+        }
         if (
             response.status() >= 400 &&
             new URL(responseUrl).pathname.includes('/api/')
@@ -6995,6 +7797,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60_000 },
         );
     }
+    if (scenario.buildingProfile) {
+        await prepareGardenBuildingProfile(page, scenario.buildingProfile);
+    }
 
     await page.evaluate(
         (warmupMs) =>
@@ -7152,6 +7957,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             adaptiveHigh: element.dataset.gameProfileAdaptiveHigh ?? null,
+            avatar: element.dataset.gameProfileAvatar ?? null,
+            avatarView: element.dataset.gameProfileAvatarView ?? null,
+            building: element.dataset.gameProfileBuilding ?? null,
+            buildingFixture: element.dataset.gameProfileBuildingFixture ?? null,
             autoQualityMetrics: {
                 coarsePointer:
                     typeof window.matchMedia === 'function' &&
@@ -7346,6 +8155,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let gameCameraSnapshotVersionMax = null;
             let generatedPlantVisibleFieldCountMin = null;
             let generatedPlantVisibleInstanceCountMin = null;
+            let runtimeFrameLoopActiveLeaseCountAtEnd = null;
+            let runtimeFrameLoopActiveLeaseCountAtStart = null;
+            let runtimeFrameLoopActiveLeaseCountMax = null;
+            let runtimeFrameLoopObservationCount = 0;
+            let runtimeFrameLoopTargetFramesPerSecondAtEnd = null;
+            let runtimeFrameLoopTargetFramesPerSecondAtStart = null;
+            let runtimeFrameLoopTargetFramesPerSecondMax = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -7626,6 +8442,34 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                               );
                 }
             };
+            const recordRuntimeFrameLoopState = () => {
+                const telemetry =
+                    globalThis.__grediceGameProfile?.runtimeFrameLoop;
+                const activeLeaseCount = telemetry?.activeLeaseCount;
+                const targetFramesPerSecond = telemetry?.targetFramesPerSecond;
+                if (
+                    !Number.isFinite(activeLeaseCount) ||
+                    !Number.isFinite(targetFramesPerSecond)
+                ) {
+                    return;
+                }
+                runtimeFrameLoopActiveLeaseCountAtStart ??= activeLeaseCount;
+                runtimeFrameLoopTargetFramesPerSecondAtStart ??=
+                    targetFramesPerSecond;
+                runtimeFrameLoopActiveLeaseCountAtEnd = activeLeaseCount;
+                runtimeFrameLoopTargetFramesPerSecondAtEnd =
+                    targetFramesPerSecond;
+                runtimeFrameLoopActiveLeaseCountMax = Math.max(
+                    runtimeFrameLoopActiveLeaseCountMax ?? activeLeaseCount,
+                    activeLeaseCount,
+                );
+                runtimeFrameLoopTargetFramesPerSecondMax = Math.max(
+                    runtimeFrameLoopTargetFramesPerSecondMax ??
+                        targetFramesPerSecond,
+                    targetFramesPerSecond,
+                );
+                runtimeFrameLoopObservationCount += 1;
+            };
             const recordAdaptiveHighState = () => {
                 const profile = globalThis.__grediceGameProfile;
                 const dprCap =
@@ -7662,6 +8506,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordActorGroundingShadowSpeciesCounts();
             recordEffectiveDpr();
             recordGeneratedPlantVisibility();
+            recordRuntimeFrameLoopState();
             recordAdaptiveHighState();
             const runtimeFrameLoopAtStart = readRuntimeFrameLoopSnapshot();
             recordRuntimeOwnerLeaseObservation(
@@ -7954,6 +8799,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     recordEffectiveDpr();
                     recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
+                    recordRuntimeFrameLoopState();
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -8067,6 +8913,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 runtimeFrameLoopAtEnd,
             );
             recordGameCameraMotion();
+            recordRuntimeFrameLoopState();
             const actorGroundingShadowSpeciesCountsAtEnd =
                 recordActorGroundingShadowSpeciesCounts();
             const gameCameraSnapshotAtEnd = readGameCameraSnapshot();
@@ -8379,6 +9226,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 runtimeFrameLoopAtEnd,
                 runtimeFrameLoopAtStart,
                 runtimeOwnerLeaseEvidence,
+                runtimeFrameLoopActiveLeaseCountAtEnd,
+                runtimeFrameLoopActiveLeaseCountAtStart,
+                runtimeFrameLoopActiveLeaseCountMax,
+                runtimeFrameLoopObservationCount,
+                runtimeFrameLoopTargetFramesPerSecondAtEnd,
+                runtimeFrameLoopTargetFramesPerSecondAtStart,
+                runtimeFrameLoopTargetFramesPerSecondMax,
                 staticOpaqueSceneCacheBypassFrameCountDelta,
                 staticOpaqueSceneCacheCaptureCountAtStart,
                 staticOpaqueSceneCacheCaptureCountDelta,
@@ -8470,10 +9324,13 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         }),
     );
     const motionPromise =
-        (scenario.motion || scenario.interaction) && !motionRunsBeforeSample
+        (scenario.motion ||
+            scenario.interaction ||
+            scenario.buildingProfile?.motion) &&
+        !motionRunsBeforeSample
             ? runScenarioMotion(page, scenario, sampleMs)
             : Promise.resolve();
-    const [sampleCompletion] = await Promise.all([
+    const [sampleCompletion, scenarioMotionResult] = await Promise.all([
         sampleCompletionPromise,
         motionPromise,
     ]);
@@ -8489,7 +9346,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         rendererShaders: sample.rendererShaders,
         rendererTextures: sample.rendererTextures,
     };
-    const runtime = await page.evaluate((resources) => {
+    let runtime = await page.evaluate((resources) => {
         const metadata = globalThis.__grediceGameProfile;
         if (!metadata || typeof metadata !== 'object') {
             return null;
@@ -8825,6 +9682,264 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 typeof metadata.generatedPlantVisibleInstanceCount === 'number'
                     ? metadata.generatedPlantVisibleInstanceCount
                     : null,
+            gardenStructureActiveRevision: numberOrNull(
+                metadata.gardenStructureActiveRevision,
+            ),
+            gardenStructureAssetBytesResident: numberOrNull(
+                metadata.gardenStructureAssetBytesResident,
+            ),
+            gardenStructureAssetResolutionIssueCount: numberOrNull(
+                metadata.gardenStructureAssetResolutionIssueCount,
+            ),
+            gardenStructureAssetResolutionStatus: stringOrNull(
+                metadata.gardenStructureAssetResolutionStatus,
+            ),
+            gardenStructureAssetUnresolvedBatchCount: numberOrNull(
+                metadata.gardenStructureAssetUnresolvedBatchCount,
+            ),
+            gardenStructureAssetUrl: stringOrNull(
+                metadata.gardenStructureAssetUrl,
+            ),
+            gardenStructureBlockedTransitionCount: numberOrNull(
+                metadata.gardenStructureBlockedTransitionCount,
+            ),
+            gardenStructureCameraMode: stringOrNull(
+                metadata.gardenStructureCameraMode,
+            ),
+            gardenStructureAvatarCollisionStepCount: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepCount,
+            ),
+            gardenStructureAvatarCollisionStepDurationMaxMs: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationMaxMs,
+            ),
+            gardenStructureAvatarCollisionStepDurationP95Ms: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationP95Ms,
+            ),
+            gardenStructureAvatarCollisionStepDurationTotalMs: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationTotalMs,
+            ),
+            gardenStructureCollisionBoxCount: numberOrNull(
+                metadata.gardenStructureCollisionBoxCount,
+            ),
+            gardenStructureCollisionBucketCount: numberOrNull(
+                metadata.gardenStructureCollisionBucketCount,
+            ),
+            gardenStructureCollectionDetailSuppressedPropCount: numberOrNull(
+                metadata.gardenStructureCollectionDetailSuppressedPropCount,
+            ),
+            gardenStructureCollectionExteriorSuppressedPropCount: numberOrNull(
+                metadata.gardenStructureCollectionExteriorSuppressedPropCount,
+            ),
+            gardenStructureCollectionFrustumCulledPropCount: numberOrNull(
+                metadata.gardenStructureCollectionFrustumCulledPropCount,
+            ),
+            gardenStructureCollectionFrustumCulledStructureCount: numberOrNull(
+                metadata.gardenStructureCollectionFrustumCulledStructureCount,
+            ),
+            gardenStructureCollectionPropCount: numberOrNull(
+                metadata.gardenStructureCollectionPropCount,
+            ),
+            gardenStructureCollectionStructureCount: numberOrNull(
+                metadata.gardenStructureCollectionStructureCount,
+            ),
+            gardenStructureCollectionVisiblePropCount: numberOrNull(
+                metadata.gardenStructureCollectionVisiblePropCount,
+            ),
+            gardenStructureCollectionVisibleStructureCount: numberOrNull(
+                metadata.gardenStructureCollectionVisibleStructureCount,
+            ),
+            gardenStructureCompileCount: numberOrNull(
+                metadata.gardenStructureCompileCount,
+            ),
+            gardenStructureCompileDurationMs: numberOrNull(
+                metadata.gardenStructureCompileDurationMs,
+            ),
+            gardenStructureCompileDurationMaxMs: numberOrNull(
+                metadata.gardenStructureCompileDurationMaxMs,
+            ),
+            gardenStructureDocumentPayloadBytes: numberOrNull(
+                metadata.gardenStructureDocumentPayloadBytes,
+            ),
+            gardenStructureEdgeCount: numberOrNull(
+                metadata.gardenStructureEdgeCount,
+            ),
+            gardenStructureEditorActionCount: numberOrNull(
+                metadata.gardenStructureEditorActionCount,
+            ),
+            gardenStructureEditorActionDurationMaxMs: numberOrNull(
+                metadata.gardenStructureEditorActionDurationMaxMs,
+            ),
+            gardenStructureEditorActionDurationP95Ms: numberOrNull(
+                metadata.gardenStructureEditorActionDurationP95Ms,
+            ),
+            gardenStructureEditorActionDurationTotalMs: numberOrNull(
+                metadata.gardenStructureEditorActionDurationTotalMs,
+            ),
+            gardenStructureEditorActive: booleanOrNull(
+                metadata.gardenStructureEditorActive,
+            ),
+            gardenStructureEditorLastAction: stringOrNull(
+                metadata.gardenStructureEditorLastAction,
+            ),
+            gardenStructureEditorPointerResolutionCount: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionCount,
+            ),
+            gardenStructureEditorPointerResolutionMaxMs: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionMaxMs,
+            ),
+            gardenStructureEditorPointerResolutionTotalMs: numberOrNull(
+                metadata.gardenStructureEditorPointerResolutionTotalMs,
+            ),
+            gardenStructureExteriorSuppressedPropCount: numberOrNull(
+                metadata.gardenStructureExteriorSuppressedPropCount,
+            ),
+            gardenStructureFloorCount: numberOrNull(
+                metadata.gardenStructureFloorCount,
+            ),
+            gardenStructureFallbackAttributeBytes: numberOrNull(
+                metadata.gardenStructureFallbackAttributeBytes,
+            ),
+            gardenStructureFallbackDrawCount: numberOrNull(
+                metadata.gardenStructureFallbackDrawCount,
+            ),
+            gardenStructureFallbackIndexBytes: numberOrNull(
+                metadata.gardenStructureFallbackIndexBytes,
+            ),
+            gardenStructureFallbackInstanceBufferBytes: numberOrNull(
+                metadata.gardenStructureFallbackInstanceBufferBytes,
+            ),
+            gardenStructureFallbackInstanceCount: numberOrNull(
+                metadata.gardenStructureFallbackInstanceCount,
+            ),
+            gardenStructureFallbackTriangleCount: numberOrNull(
+                metadata.gardenStructureFallbackTriangleCount,
+            ),
+            gardenStructureFallbackVertexCount: numberOrNull(
+                metadata.gardenStructureFallbackVertexCount,
+            ),
+            gardenStructureFootprintCellCount: numberOrNull(
+                metadata.gardenStructureFootprintCellCount,
+            ),
+            gardenStructureNavigationCompileDurationMs: numberOrNull(
+                metadata.gardenStructureNavigationCompileDurationMs,
+            ),
+            gardenStructureNavigationCompileDurationMaxMs: numberOrNull(
+                metadata.gardenStructureNavigationCompileDurationMaxMs,
+            ),
+            gardenStructureOpenPortalCount: numberOrNull(
+                metadata.gardenStructureOpenPortalCount,
+            ),
+            gardenStructurePlanCacheEstimatedBytes: numberOrNull(
+                metadata.gardenStructurePlanCacheEstimatedBytes,
+            ),
+            gardenStructurePlanCacheEvictionCount: numberOrNull(
+                metadata.gardenStructurePlanCacheEvictionCount,
+            ),
+            gardenStructurePlanCacheHitCount: numberOrNull(
+                metadata.gardenStructurePlanCacheHitCount,
+            ),
+            gardenStructurePlanCacheMissCount: numberOrNull(
+                metadata.gardenStructurePlanCacheMissCount,
+            ),
+            gardenStructurePlanCacheOutcome: stringOrNull(
+                metadata.gardenStructurePlanCacheOutcome,
+            ),
+            gardenStructurePlanCacheLookupDurationMs: numberOrNull(
+                metadata.gardenStructurePlanCacheLookupDurationMs,
+            ),
+            gardenStructurePlanCacheLookupDurationMaxMs: numberOrNull(
+                metadata.gardenStructurePlanCacheLookupDurationMaxMs,
+            ),
+            gardenStructurePreviewAttributeBytes: numberOrNull(
+                metadata.gardenStructurePreviewAttributeBytes,
+            ),
+            gardenStructurePreviewDrawCount: numberOrNull(
+                metadata.gardenStructurePreviewDrawCount,
+            ),
+            gardenStructurePreviewIndexBytes: numberOrNull(
+                metadata.gardenStructurePreviewIndexBytes,
+            ),
+            gardenStructurePreviewInstanceBufferBytes: numberOrNull(
+                metadata.gardenStructurePreviewInstanceBufferBytes,
+            ),
+            gardenStructurePreviewInstanceCount: numberOrNull(
+                metadata.gardenStructurePreviewInstanceCount,
+            ),
+            gardenStructurePreviewTriangleCount: numberOrNull(
+                metadata.gardenStructurePreviewTriangleCount,
+            ),
+            gardenStructurePreviewVertexCount: numberOrNull(
+                metadata.gardenStructurePreviewVertexCount,
+            ),
+            gardenStructureProductionAttributeBytes: numberOrNull(
+                metadata.gardenStructureProductionAttributeBytes,
+            ),
+            gardenStructureProductionDrawCount: numberOrNull(
+                metadata.gardenStructureProductionDrawCount,
+            ),
+            gardenStructureProductionIndexBytes: numberOrNull(
+                metadata.gardenStructureProductionIndexBytes,
+            ),
+            gardenStructureProductionInstanceBufferBytes: numberOrNull(
+                metadata.gardenStructureProductionInstanceBufferBytes,
+            ),
+            gardenStructureProductionInstanceCount: numberOrNull(
+                metadata.gardenStructureProductionInstanceCount,
+            ),
+            gardenStructureProductionOpaqueDrawCount: numberOrNull(
+                metadata.gardenStructureProductionOpaqueDrawCount,
+            ),
+            gardenStructureProductionTextureCount: numberOrNull(
+                metadata.gardenStructureProductionTextureCount,
+            ),
+            gardenStructureProductionTextureEstimatedBytes: numberOrNull(
+                metadata.gardenStructureProductionTextureEstimatedBytes,
+            ),
+            gardenStructureProductionTransparentDrawCount: numberOrNull(
+                metadata.gardenStructureProductionTransparentDrawCount,
+            ),
+            gardenStructureProductionTriangleCount: numberOrNull(
+                metadata.gardenStructureProductionTriangleCount,
+            ),
+            gardenStructureProductionVertexCount: numberOrNull(
+                metadata.gardenStructureProductionVertexCount,
+            ),
+            gardenStructurePropCount: numberOrNull(
+                metadata.gardenStructurePropCount,
+            ),
+            gardenStructureRenderBatchCount: numberOrNull(
+                metadata.gardenStructureRenderBatchCount,
+            ),
+            gardenStructureRenderInstanceCount: numberOrNull(
+                metadata.gardenStructureRenderInstanceCount,
+            ),
+            gardenStructureRenderTriangleCount: numberOrNull(
+                metadata.gardenStructureRenderTriangleCount,
+            ),
+            gardenStructureRenderVertexCount: numberOrNull(
+                metadata.gardenStructureRenderVertexCount,
+            ),
+            gardenStructureRoofRegionCount: numberOrNull(
+                metadata.gardenStructureRoofRegionCount,
+            ),
+            gardenStructureStructureCount: numberOrNull(
+                metadata.gardenStructureStructureCount,
+            ),
+            gardenStructureTransparentSurfaceCount: numberOrNull(
+                metadata.gardenStructureTransparentSurfaceCount,
+            ),
+            gardenStructureVisibleInteriorSurfaceCount: numberOrNull(
+                metadata.gardenStructureVisibleInteriorSurfaceCount,
+            ),
+            gardenStructureVisiblePropCount: numberOrNull(
+                metadata.gardenStructureVisiblePropCount,
+            ),
+            gardenStructureVisibleStructureCount: numberOrNull(
+                metadata.gardenStructureVisibleStructureCount,
+            ),
+            gardenStructureWalkableCellCount: numberOrNull(
+                metadata.gardenStructureWalkableCellCount,
+            ),
             operationVisualHighlightProfileDispatched: booleanOrNull(
                 metadata.operationVisualHighlightProfileDispatched,
             ),
@@ -8959,6 +10074,19 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             qualityTier:
                 typeof metadata.qualityTier === 'string'
                     ? metadata.qualityTier
+                    : null,
+            runtimeFrameLoop:
+                metadata.runtimeFrameLoop &&
+                typeof metadata.runtimeFrameLoop === 'object' &&
+                !Array.isArray(metadata.runtimeFrameLoop)
+                    ? {
+                          activeLeaseCount: numberOrNull(
+                              metadata.runtimeFrameLoop.activeLeaseCount,
+                          ),
+                          targetFramesPerSecond: numberOrNull(
+                              metadata.runtimeFrameLoop.targetFramesPerSecond,
+                          ),
+                      }
                     : null,
             rainParticleCount:
                 typeof metadata.rainParticleCount === 'number'
@@ -9220,6 +10348,37 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     : null,
         };
     }, instrumentedRendererResources);
+    const [gardenStructureAssetResponses, gardenStructureAssetResources] =
+        await Promise.all([
+            Promise.all(gardenStructureAssetResponsePromises),
+            page.evaluate(
+                (assetPath) =>
+                    performance
+                        .getEntriesByType('resource')
+                        .filter(
+                            (entry) =>
+                                entry instanceof PerformanceResourceTiming &&
+                                new URL(entry.name).pathname === assetPath,
+                        )
+                        .map((entry) => ({
+                            decodedBodySize: entry.decodedBodySize,
+                            duration: entry.duration,
+                            encodedBodySize: entry.encodedBodySize,
+                            name: entry.name,
+                            responseEnd: entry.responseEnd,
+                            responseStart: entry.responseStart,
+                            startTime: entry.startTime,
+                            transferSize: entry.transferSize,
+                        })),
+                gardenStructureKitAssetPath,
+            ),
+        ]);
+    runtime = mergeGardenStructureAssetNetworkRuntime({
+        buildingProfile: scenario.buildingProfile,
+        resources: gardenStructureAssetResources,
+        responses: gardenStructureAssetResponses,
+        runtime,
+    });
 
     const screenshotPath =
         options.screenshots ||
@@ -9256,12 +10415,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             : null;
     const requested = {
         adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
+        avatar: profileMetadata?.avatar ?? request.avatar,
+        avatarView: profileMetadata?.avatarView ?? null,
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
         controls: profileMetadata?.controls ?? request.controls,
+        building: profileMetadata?.building ?? request.building,
+        buildingFixture:
+            profileMetadata?.buildingFixture ?? request.buildingFixture,
         crossTierProfile: scenario.crossTierProfile === true,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
@@ -9292,7 +10456,11 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
         mode: profileMetadata?.mode ?? request.mode,
-        motion: scenario.motion ?? scenario.interaction ?? 'none',
+        motion:
+            scenario.motion ??
+            scenario.interaction ??
+            scenario.buildingProfile?.motion ??
+            'none',
         motionWarmupMs,
         operationVisuals:
             profileMetadata?.operationVisuals ?? request.operationVisuals,
@@ -9304,6 +10472,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         placementProfile:
             placementProfileRequest === null ? 'none' : 'placement-drop',
         animalProfileCommand: animalProfileCommandRequest,
+        buildingProfile: scenario.buildingProfile
+            ? {
+                  ...scenario.buildingProfile,
+                  motionResult: scenarioMotionResult,
+              }
+            : null,
         profileControl: scenario.profileControl === true,
         profileControlRecovery: scenario.profileControlRecovery === true,
         quality: profileMetadata?.quality ?? request.quality,
@@ -9338,13 +10512,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         screenshotWitness,
         staticIdle,
     });
+    const buildingAcceptance = evaluateGardenBuildingAcceptance({
+        apiErrors,
+        apiRequests,
+        budget: budgets[scenario.budget],
+        consoleMessages,
+        pageErrors,
+        requested,
+        runtime,
+        sample: roundedSample,
+    });
     return {
-        acceptance,
+        acceptance: {
+            checks: [...acceptance.checks, ...buildingAcceptance.checks],
+            pass: acceptance.pass && buildingAcceptance.pass,
+        },
         apiErrors: apiErrors.slice(0, 8),
         apiRequests: apiRequests.slice(0, 8),
         budget: {
-            checks: [...budget.checks, ...acceptance.checks],
-            pass: budget.pass && acceptance.pass,
+            checks: [
+                ...budget.checks,
+                ...acceptance.checks,
+                ...buildingAcceptance.checks,
+            ],
+            pass: budget.pass && acceptance.pass && buildingAcceptance.pass,
         },
         budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
@@ -9522,6 +10713,47 @@ function isIgnoredLocalProfilerConsoleError(message) {
     }
 }
 
+const expectedGardenBuildingProfileApiPaths = new Set([
+    '/api/gredice/api/accounts/current',
+    '/api/gredice/api/accounts/current/sunflowers',
+    '/api/gredice/api/accounts/current/tutorial-checklist',
+    '/api/gredice/api/gardens/99999/operations',
+    '/api/gredice/api/users/current',
+]);
+
+function isExpectedGardenBuildingProfileApiError(error) {
+    if (error?.status !== 401 || typeof error.url !== 'string') {
+        return false;
+    }
+
+    try {
+        const { hostname, pathname } = new URL(error.url);
+        const normalizedHostname =
+            hostname.startsWith('[') && hostname.endsWith(']')
+                ? hostname.slice(1, -1)
+                : hostname;
+        if (!['localhost', '127.0.0.1', '::1'].includes(normalizedHostname)) {
+            return false;
+        }
+        return expectedGardenBuildingProfileApiPaths.has(pathname);
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedGardenBuildingProfileConsoleError(message) {
+    return Boolean(
+        message?.type === 'error' &&
+            typeof message.text === 'string' &&
+            message.text.startsWith('Failed to load resource:') &&
+            message.text.includes('status of 401 (Unauthorized)') &&
+            isExpectedGardenBuildingProfileApiError({
+                status: 401,
+                url: message.url,
+            }),
+    );
+}
+
 function isProfileScreenshotWitnessValid(witness) {
     return Boolean(
         Number.isFinite(witness?.width) &&
@@ -9538,6 +10770,942 @@ function isProfileScreenshotWitnessValid(witness) {
             witness.sampledUniqueColorCount >= 16 &&
             witness.opaque === true,
     );
+}
+
+function readGardenBuildingAmbientSchedulerEvidence(snapshot) {
+    const summaries = Array.isArray(snapshot?.renderLeaseSummaries)
+        ? snapshot.renderLeaseSummaries
+        : null;
+    const validSummaries =
+        summaries !== null &&
+        summaries.length > 0 &&
+        summaries.every(
+            (summary) =>
+                summary &&
+                typeof summary.owner === 'string' &&
+                summary.owner.length > 0 &&
+                typeof summary.framesPerSecond === 'number' &&
+                Number.isFinite(summary.framesPerSecond) &&
+                summary.framesPerSecond > 0 &&
+                Number.isInteger(summary.leaseCount) &&
+                summary.leaseCount > 0,
+        );
+    const summaryOwners = validSummaries
+        ? summaries
+              .map((summary) => summary.owner)
+              .sort((left, right) => left.localeCompare(right))
+        : null;
+    const publishedOwners =
+        Array.isArray(snapshot?.renderLeaseOwners) &&
+        snapshot.renderLeaseOwners.every(
+            (owner) => typeof owner === 'string' && owner.length > 0,
+        )
+            ? [...snapshot.renderLeaseOwners].sort((left, right) =>
+                  left.localeCompare(right),
+              )
+            : null;
+    const semanticLeaseCount = validSummaries
+        ? summaries.reduce((total, summary) => total + summary.leaseCount, 0)
+        : null;
+    const maximumLeaseFramesPerSecond = validSummaries
+        ? Math.max(...summaries.map((summary) => summary.framesPerSecond))
+        : null;
+    const interactiveOwnerCount = validSummaries
+        ? summaries.filter((summary) => summary.owner === 'camera-interaction')
+              .length
+        : null;
+    const leaseCountsReconciled = Boolean(
+        semanticLeaseCount !== null &&
+            snapshot?.activeLeaseCount === semanticLeaseCount &&
+            snapshot.activeRenderLeaseCount === semanticLeaseCount,
+    );
+    const leaseOwnersReconciled = Boolean(
+        summaryOwners !== null &&
+            publishedOwners !== null &&
+            new Set(summaryOwners).size === summaryOwners.length &&
+            summaryOwners.length === publishedOwners.length &&
+            summaryOwners.every(
+                (owner, index) => owner === publishedOwners[index],
+            ),
+    );
+    const renderRequestsDrained = Boolean(
+        Array.isArray(snapshot?.renderRequestReasons) &&
+            snapshot.renderRequestReasons.length === 0,
+    );
+    const leaseSummariesBounded = Boolean(
+        validSummaries && maximumLeaseFramesPerSecond <= 30,
+    );
+    const visible = snapshot?.effectiveVisible === true;
+    const schedulerSettled = Boolean(
+        visible &&
+            snapshot?.targetFramesPerSecond === 30 &&
+            renderRequestsDrained &&
+            leaseSummariesBounded &&
+            interactiveOwnerCount === 0 &&
+            leaseCountsReconciled &&
+            leaseOwnersReconciled,
+    );
+    const leaseSummarySignature = validSummaries
+        ? JSON.stringify(
+              [...summaries]
+                  .sort((left, right) => left.owner.localeCompare(right.owner))
+                  .map(({ framesPerSecond, leaseCount, owner }) => ({
+                      framesPerSecond,
+                      leaseCount,
+                      owner,
+                  })),
+          )
+        : null;
+
+    return {
+        interactiveOwnerCount,
+        leaseCountsReconciled,
+        leaseOwnersReconciled,
+        leaseSummariesBounded,
+        leaseSummarySignature,
+        maximumLeaseFramesPerSecond,
+        renderRequestsDrained,
+        schedulerSettled,
+        semanticLeaseCount,
+        visible,
+    };
+}
+
+function evaluateGardenBuildingAcceptance({
+    apiErrors = [],
+    apiRequests = [],
+    budget,
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+}) {
+    const profile = requested?.buildingProfile;
+    if (!profile) {
+        return { checks: [], pass: true };
+    }
+    const exact = (name, actual, expected) => ({
+        actual,
+        expected,
+        name,
+        pass: actual === expected,
+    });
+    const maximum = (name, actual, limit) => ({
+        actual,
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual <= limit,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const runtimeErrorChecks = [
+        exact(
+            'buildingUnexpectedApiErrors',
+            apiErrors.filter(
+                (error) => !isExpectedGardenBuildingProfileApiError(error),
+            ).length,
+            0,
+        ),
+        exact(
+            'buildingUnexpectedConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message) &&
+                    !isExpectedGardenBuildingProfileConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('buildingPageErrors', pageErrors.length, 0),
+        exact(
+            'buildingNoMutationRequests',
+            apiRequests.some((request) => request.method !== 'GET'),
+            false,
+        ),
+    ];
+    const frameRateChecks = (() => {
+        if (profile.frameRateClass !== 'ambient') {
+            return [];
+        }
+        const runtimeFrameLoop = readGardenBuildingAmbientSchedulerEvidence(
+            runtime?.runtimeFrameLoop,
+        );
+        const start = readGardenBuildingAmbientSchedulerEvidence(
+            sample?.runtimeFrameLoopAtStart,
+        );
+        const end = readGardenBuildingAmbientSchedulerEvidence(
+            sample?.runtimeFrameLoopAtEnd,
+        );
+        const stableSemanticLeaseCount = Boolean(
+            start.semanticLeaseCount !== null &&
+                sample?.runtimeFrameLoopActiveLeaseCountAtStart ===
+                    start.semanticLeaseCount &&
+                sample?.runtimeFrameLoopActiveLeaseCountMax ===
+                    start.semanticLeaseCount &&
+                sample?.runtimeFrameLoopActiveLeaseCountAtEnd ===
+                    start.semanticLeaseCount &&
+                end.semanticLeaseCount === start.semanticLeaseCount &&
+                runtimeFrameLoop.semanticLeaseCount ===
+                    start.semanticLeaseCount,
+        );
+        const stableLeaseSummaries = Boolean(
+            start.leaseSummarySignature !== null &&
+                end.leaseSummarySignature === start.leaseSummarySignature &&
+                runtimeFrameLoop.leaseSummarySignature ===
+                    start.leaseSummarySignature,
+        );
+
+        return [
+            exact(
+                'buildingAmbientTargetFramesPerSecond',
+                runtime?.runtimeFrameLoop?.targetFramesPerSecond,
+                30,
+            ),
+            minimum(
+                'buildingAmbientFrameLoopObservationCount',
+                sample?.runtimeFrameLoopObservationCount,
+                2,
+            ),
+            exact(
+                'buildingAmbientSampleStartTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondAtStart,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleMaximumTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondMax,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleEndTargetFramesPerSecond',
+                sample?.runtimeFrameLoopTargetFramesPerSecondAtEnd,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleStartSnapshotTargetFramesPerSecond',
+                sample?.runtimeFrameLoopAtStart?.targetFramesPerSecond,
+                30,
+            ),
+            exact(
+                'buildingAmbientSampleEndSnapshotTargetFramesPerSecond',
+                sample?.runtimeFrameLoopAtEnd?.targetFramesPerSecond,
+                30,
+            ),
+            minimum(
+                'buildingAmbientSemanticLeaseCount',
+                start.semanticLeaseCount,
+                1,
+            ),
+            exact(
+                'buildingAmbientSampleStartActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountAtStart,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSampleMaximumActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountMax,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSampleEndActiveLeaseCount',
+                sample?.runtimeFrameLoopActiveLeaseCountAtEnd,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientRuntimeActiveLeaseCount',
+                runtime?.runtimeFrameLoop?.activeLeaseCount,
+                start.semanticLeaseCount,
+            ),
+            exact(
+                'buildingAmbientSemanticLeaseCountStable',
+                stableSemanticLeaseCount,
+                true,
+            ),
+            exact(
+                'buildingAmbientLeaseSummariesStable',
+                stableLeaseSummaries,
+                true,
+            ),
+            ...[
+                ['Runtime', runtimeFrameLoop],
+                ['SampleStart', start],
+                ['SampleEnd', end],
+            ].flatMap(([label, evidence]) => [
+                exact(`buildingAmbient${label}Visible`, evidence.visible, true),
+                exact(
+                    `buildingAmbient${label}RenderRequestsDrained`,
+                    evidence.renderRequestsDrained,
+                    true,
+                ),
+                maximum(
+                    `buildingAmbient${label}MaximumLeaseFramesPerSecond`,
+                    evidence.maximumLeaseFramesPerSecond,
+                    30,
+                ),
+                exact(
+                    `buildingAmbient${label}InteractiveOwnerCount`,
+                    evidence.interactiveOwnerCount,
+                    0,
+                ),
+                exact(
+                    `buildingAmbient${label}LeaseCountsReconciled`,
+                    evidence.leaseCountsReconciled,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}LeaseOwnersReconciled`,
+                    evidence.leaseOwnersReconciled,
+                    true,
+                ),
+                exact(
+                    `buildingAmbient${label}SchedulerSettled`,
+                    evidence.schedulerSettled,
+                    true,
+                ),
+            ]),
+        ];
+    })();
+    if (profile.fixture === 'none') {
+        const checks = [
+            ...runtimeErrorChecks,
+            ...frameRateChecks,
+            exact('buildingFixtureOptOut', requested.building, '0'),
+            exact(
+                'buildingStructureCount',
+                runtime?.gardenStructureStructureCount ?? 0,
+                0,
+            ),
+            exact(
+                'buildingVisibleStructureCount',
+                runtime?.gardenStructureVisibleStructureCount ?? 0,
+                0,
+            ),
+            exact(
+                'buildingAssetRequestCount',
+                runtime?.gardenStructureAssetRequestCount ?? 0,
+                0,
+            ),
+            exact(
+                'buildingAssetNetworkBytesRequested',
+                runtime?.gardenStructureAssetNetworkBytesRequested ?? 0,
+                0,
+            ),
+            exact(
+                'buildingAssetResponseAbsent',
+                runtime?.gardenStructureAssetResponseStatus ?? null,
+                null,
+            ),
+            exact(
+                'buildingAssetResourceAbsent',
+                runtime?.gardenStructureAssetResourceUrl ?? null,
+                null,
+            ),
+            exact(
+                'buildingProductionDrawsAbsent',
+                runtime?.gardenStructureProductionDrawCount ?? 0,
+                0,
+            ),
+        ];
+        return { checks, pass: checks.every((check) => check.pass) };
+    }
+    const requiredProductionMetric = (name, actual) =>
+        profile.fixture === 'blank'
+            ? exact(name, actual, 0)
+            : minimum(name, actual, 1);
+    const checks = [
+        ...runtimeErrorChecks,
+        ...frameRateChecks,
+        exact('buildingFixtureOptIn', requested.building, '1'),
+        exact(
+            'buildingFixtureKind',
+            requested.buildingFixture,
+            profile.fixture,
+        ),
+        exact(
+            'buildingStructureCount',
+            runtime?.gardenStructureStructureCount,
+            1,
+        ),
+        exact(
+            'buildingVisibleStructureCount',
+            runtime?.gardenStructureVisibleStructureCount,
+            1,
+        ),
+        exact(
+            'buildingFootprintCellCount',
+            runtime?.gardenStructureFootprintCellCount,
+            profile.expected.footprintCells,
+        ),
+        exact(
+            'buildingEdgeCount',
+            runtime?.gardenStructureEdgeCount,
+            profile.expected.edges,
+        ),
+        exact(
+            'buildingPropCount',
+            runtime?.gardenStructurePropCount,
+            profile.expected.props,
+        ),
+        exact(
+            'buildingRoofRegionCount',
+            runtime?.gardenStructureRoofRegionCount,
+            profile.expected.roofs,
+        ),
+        exact(
+            'buildingAssetRequestCount',
+            runtime?.gardenStructureAssetRequestCount,
+            1,
+        ),
+        exact(
+            'buildingAssetResponseStatus',
+            runtime?.gardenStructureAssetResponseStatus,
+            200,
+        ),
+        minimum(
+            'buildingAssetResponseBodyBytes',
+            runtime?.gardenStructureAssetResponseBodyBytes,
+            1,
+        ),
+        maximum(
+            'buildingAssetResponseBodyBudgetBytes',
+            runtime?.gardenStructureAssetResponseBodyBytes,
+            600_000,
+        ),
+        exact(
+            'buildingAssetResourceMatchesResponse',
+            runtime?.gardenStructureAssetResourceUrl,
+            runtime?.gardenStructureAssetResponseUrl,
+        ),
+        minimum(
+            'buildingAssetResourceDurationMs',
+            runtime?.gardenStructureAssetResourceDurationMs,
+            0,
+        ),
+        minimum(
+            'buildingAssetBytesResident',
+            runtime?.gardenStructureAssetBytesResident,
+            1,
+        ),
+        exact(
+            'buildingAssetResolutionStatus',
+            runtime?.gardenStructureAssetResolutionStatus,
+            'resolved',
+        ),
+        exact(
+            'buildingAssetResolutionIssues',
+            runtime?.gardenStructureAssetResolutionIssueCount,
+            0,
+        ),
+        exact(
+            'buildingAssetUnresolvedBatches',
+            runtime?.gardenStructureAssetUnresolvedBatchCount,
+            0,
+        ),
+        exact(
+            'buildingAssetMetadataMatchesResponse',
+            doGardenStructureAssetUrlsMatch(
+                runtime?.gardenStructureAssetUrl,
+                runtime?.gardenStructureAssetResponseUrl,
+            ),
+            true,
+        ),
+        requiredProductionMetric(
+            'buildingProductionDrawCount',
+            runtime?.gardenStructureProductionDrawCount,
+        ),
+        requiredProductionMetric(
+            'buildingProductionVertexCount',
+            runtime?.gardenStructureProductionVertexCount,
+        ),
+        requiredProductionMetric(
+            'buildingProductionTriangleCount',
+            runtime?.gardenStructureProductionTriangleCount,
+        ),
+        requiredProductionMetric(
+            'buildingProductionAttributeBytes',
+            runtime?.gardenStructureProductionAttributeBytes,
+        ),
+        requiredProductionMetric(
+            'buildingProductionIndexBytes',
+            runtime?.gardenStructureProductionIndexBytes,
+        ),
+        requiredProductionMetric(
+            'buildingProductionInstanceBufferBytes',
+            runtime?.gardenStructureProductionInstanceBufferBytes,
+        ),
+        minimum(
+            'buildingProductionTextureCount',
+            runtime?.gardenStructureProductionTextureCount,
+            0,
+        ),
+        minimum(
+            'buildingProductionTextureEstimatedBytes',
+            runtime?.gardenStructureProductionTextureEstimatedBytes,
+            0,
+        ),
+        exact(
+            'buildingProductionPassDrawCoverage',
+            typeof runtime?.gardenStructureProductionOpaqueDrawCount ===
+                'number' &&
+                typeof runtime?.gardenStructureProductionTransparentDrawCount ===
+                    'number'
+                ? runtime.gardenStructureProductionOpaqueDrawCount +
+                      runtime.gardenStructureProductionTransparentDrawCount
+                : null,
+            runtime?.gardenStructureProductionDrawCount,
+        ),
+        exact(
+            'buildingFallbackDrawCount',
+            runtime?.gardenStructureFallbackDrawCount,
+            0,
+        ),
+        minimum(
+            'buildingDocumentPayloadBytes',
+            runtime?.gardenStructureDocumentPayloadBytes,
+            1,
+        ),
+        maximum(
+            'buildingDocumentPayloadBudgetBytes',
+            runtime?.gardenStructureDocumentPayloadBytes,
+            192 * 1024,
+        ),
+        maximum(
+            'buildingCompileDurationMs',
+            runtime?.gardenStructureCompileDurationMaxMs,
+            100,
+        ),
+        maximum(
+            'buildingPlanCacheLookupDurationMs',
+            runtime?.gardenStructurePlanCacheLookupDurationMaxMs,
+            100,
+        ),
+        maximum(
+            'buildingNavigationCompileDurationMs',
+            runtime?.gardenStructureNavigationCompileDurationMaxMs,
+            100,
+        ),
+        exact(
+            'buildingPlanCacheEvictions',
+            runtime?.gardenStructurePlanCacheEvictionCount,
+            0,
+        ),
+        exact(
+            'buildingStaticSceneCacheBypassed',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'buildingProfileOmitsDocument',
+            Object.hasOwn(runtime ?? {}, 'gardenStructureDocument'),
+            false,
+        ),
+    ];
+    const visiblePropCount = runtime?.gardenStructureVisiblePropCount;
+    const exteriorSuppressedPropCount =
+        runtime?.gardenStructureExteriorSuppressedPropCount;
+    checks.push(
+        exact(
+            'buildingVisibleAndSuppressedPropCoverage',
+            typeof visiblePropCount === 'number' &&
+                typeof exteriorSuppressedPropCount === 'number'
+                ? visiblePropCount + exteriorSuppressedPropCount
+                : null,
+            profile.expected.props,
+        ),
+    );
+    if (profile.motion !== 'edit-churn') {
+        const expectedVisiblePropCount = profile.cutaway
+            ? profile.expected.props
+            : (profile.expected.normalVisibleProps ?? 0);
+        checks.push(
+            exact(
+                'buildingVisiblePropCount',
+                visiblePropCount,
+                expectedVisiblePropCount,
+            ),
+            exact(
+                'buildingExteriorSuppressedPropCount',
+                exteriorSuppressedPropCount,
+                profile.expected.props - expectedVisiblePropCount,
+            ),
+        );
+    }
+    if (profile.mode === 'editing') {
+        checks.push(
+            exact(
+                'buildingEditorActive',
+                runtime?.gardenStructureEditorActive,
+                true,
+            ),
+            minimum(
+                'buildingEditorActionCount',
+                runtime?.gardenStructureEditorActionCount,
+                1,
+            ),
+            maximum(
+                'buildingEditorActionP95Ms',
+                runtime?.gardenStructureEditorActionDurationP95Ms,
+                100,
+            ),
+            maximum(
+                'buildingEditorActionMaxMs',
+                runtime?.gardenStructureEditorActionDurationMaxMs,
+                500,
+            ),
+            minimum(
+                'buildingEditorPointerResolutionCount',
+                runtime?.gardenStructureEditorPointerResolutionCount,
+                1,
+            ),
+            maximum(
+                'buildingEditorPointerResolutionMaxMs',
+                runtime?.gardenStructureEditorPointerResolutionMaxMs,
+                100,
+            ),
+            exact(
+                'buildingPreviewDrawCount',
+                runtime?.gardenStructurePreviewDrawCount,
+                1,
+            ),
+        );
+    } else {
+        checks.push(
+            exact(
+                'buildingEditorInactive',
+                runtime?.gardenStructureEditorActive,
+                false,
+            ),
+            exact(
+                'buildingPreviewDrawCount',
+                runtime?.gardenStructurePreviewDrawCount,
+                0,
+            ),
+        );
+    }
+    if (profile.motion === 'edit-churn') {
+        checks.push(
+            minimum(
+                'buildingEditChurnActions',
+                profile.motionResult?.actionCount,
+                6,
+            ),
+            minimum(
+                'buildingEditChurnCompiles',
+                runtime?.gardenStructureCompileCount,
+                3,
+            ),
+        );
+    }
+    if (profile.motion === 'enter-exit') {
+        checks.push(
+            minimum(
+                'buildingEnterExitCycles',
+                profile.motionResult?.cycleCount,
+                2,
+            ),
+            exact(
+                'buildingEnterExitCameraRestored',
+                runtime?.gardenStructureCameraMode,
+                'building',
+            ),
+        );
+    }
+    if (profile.motion === 'avatar-navigation') {
+        const navigationResult = profile.motionResult;
+        const collisionStepP95Ms =
+            runtime?.gardenStructureAvatarCollisionStepDurationP95Ms;
+        const collisionStepMaxMs =
+            runtime?.gardenStructureAvatarCollisionStepDurationMaxMs;
+        checks.push(
+            exact('buildingAvatarProfileOptIn', requested.avatar, '1'),
+            minimum(
+                'buildingAvatarCollisionStepCount',
+                runtime?.gardenStructureAvatarCollisionStepCount,
+                1,
+            ),
+            minimum(
+                'buildingAvatarCollisionWorkloadStepCount',
+                navigationResult?.collisionStepCount,
+                10,
+            ),
+            maximum(
+                'buildingAvatarCollisionStepP95Ms',
+                collisionStepP95Ms,
+                budget?.avatarCollisionStepP95Ms,
+            ),
+            exact(
+                'buildingAvatarCollisionStepMaxCoversP95',
+                typeof collisionStepMaxMs === 'number' &&
+                    typeof collisionStepP95Ms === 'number' &&
+                    collisionStepMaxMs >= collisionStepP95Ms,
+                true,
+            ),
+            minimum(
+                'buildingAvatarCollisionStepTotalMs',
+                runtime?.gardenStructureAvatarCollisionStepDurationTotalMs,
+                0,
+            ),
+            minimum(
+                'buildingAvatarCollisionPrimitiveCount',
+                runtime?.gardenStructureCollisionBoxCount,
+                1,
+            ),
+            minimum(
+                'buildingAvatarCollisionBucketCount',
+                runtime?.gardenStructureCollisionBucketCount,
+                1,
+            ),
+        );
+        for (const [index, leg] of (
+            profile.avatarNavigation?.legs ?? []
+        ).entries()) {
+            const actualLeg = navigationResult?.legs?.[index];
+            checks.push(
+                exact(
+                    `buildingAvatarNavigationLeg${index.toString()}View`,
+                    actualLeg?.view,
+                    leg.view,
+                ),
+            );
+            if (typeof leg.minimumDistance === 'number') {
+                checks.push(
+                    minimum(
+                        `buildingAvatarNavigationLeg${index.toString()}Distance`,
+                        actualLeg?.distance,
+                        leg.minimumDistance,
+                    ),
+                );
+            }
+            if (typeof leg.maximumDistance === 'number') {
+                checks.push(
+                    maximum(
+                        `buildingAvatarNavigationLeg${index.toString()}Distance`,
+                        actualLeg?.distance,
+                        leg.maximumDistance,
+                    ),
+                );
+            }
+        }
+    }
+
+    return { checks, pass: checks.every((check) => check.pass) };
+}
+
+function buildGardenBuildingMatchedBaselineComparison(scenarios) {
+    const baseline = scenarios.find(
+        (scenario) =>
+            (scenario.baseName ?? scenario.name) ===
+            gardenBuildingNoStructureBaselineName,
+    );
+    const candidate = scenarios.find(
+        (scenario) =>
+            (scenario.baseName ?? scenario.name) ===
+            gardenBuildingEmptyShellName,
+    );
+    if (!candidate) {
+        return null;
+    }
+    if (!baseline) {
+        return {
+            baselineName: gardenBuildingNoStructureBaselineName,
+            candidateName: candidate.name,
+            checks: [
+                {
+                    actual: false,
+                    comparison: 'equal',
+                    limit: true,
+                    name: 'buildingEmptyShellMatchedBaselinePresent',
+                    pass: false,
+                    skipped: false,
+                },
+            ],
+            pass: false,
+        };
+    }
+
+    const maximumRegressionWithNoise = ({
+        absoluteNoise,
+        baselineValue,
+        candidateValue,
+        multiplier,
+        name,
+        unit,
+    }) => {
+        const delta = candidateValue - baselineValue;
+        const ratio = baselineValue > 0 ? candidateValue / baselineValue : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                delta: round(delta),
+                ratio: round(ratio, 4),
+            },
+            comparison: 'maximum-regression-with-noise-floor',
+            limit: {
+                absoluteNoise,
+                multiplier,
+                unit,
+            },
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                (delta <= absoluteNoise ||
+                    (ratio !== null && ratio <= multiplier)),
+            skipped: false,
+        };
+    };
+    const minimumRegressionWithNoise = ({
+        absoluteNoise,
+        baselineValue,
+        candidateValue,
+        multiplier,
+        name,
+        unit,
+    }) => {
+        const delta = baselineValue - candidateValue;
+        const ratio = baselineValue > 0 ? candidateValue / baselineValue : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                degradation: round(delta),
+                ratio: round(ratio, 4),
+            },
+            comparison: 'minimum-regression-with-noise-floor',
+            limit: {
+                absoluteNoise,
+                multiplier,
+                unit,
+            },
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                (delta <= absoluteNoise ||
+                    (ratio !== null && ratio >= multiplier)),
+            skipped: false,
+        };
+    };
+    const maximumRatio = (name, baselineValue, candidateValue, multiplier) => {
+        const ratio =
+            baselineValue > 0
+                ? candidateValue / baselineValue
+                : candidateValue === 0
+                  ? 1
+                  : null;
+        return {
+            actual: {
+                baseline: baselineValue,
+                candidate: candidateValue,
+                ratio: round(ratio, 4),
+            },
+            comparison: 'maximum-ratio',
+            limit: multiplier,
+            name,
+            pass:
+                Number.isFinite(baselineValue) &&
+                Number.isFinite(candidateValue) &&
+                ratio !== null &&
+                ratio <= multiplier,
+            skipped: false,
+        };
+    };
+    const baselineGpuP95Ms = baseline.sample?.gpu?.elapsedP95Ms;
+    const candidateGpuP95Ms = candidate.sample?.gpu?.elapsedP95Ms;
+    const gpuComparable =
+        baseline.sample?.gpu?.valid === true &&
+        candidate.sample?.gpu?.valid === true &&
+        Number.isFinite(baselineGpuP95Ms) &&
+        Number.isFinite(candidateGpuP95Ms);
+    const checks = [
+        maximumRegressionWithNoise({
+            absoluteNoise: 2,
+            baselineValue: baseline.sample?.p95FrameMs,
+            candidateValue: candidate.sample?.p95FrameMs,
+            multiplier: 1.15,
+            name: 'buildingEmptyShellBrowserRafP95Regression',
+            unit: 'ms',
+        }),
+        minimumRegressionWithNoise({
+            absoluteNoise: 5,
+            baselineValue: baseline.sample?.renderedFps,
+            candidateValue: candidate.sample?.renderedFps,
+            multiplier: 0.9,
+            name: 'buildingEmptyShellRenderedFpsRegression',
+            unit: 'fps',
+        }),
+        maximumRatio(
+            'buildingEmptyShellDrawCallRegression',
+            baseline.sample?.drawCallsPerRenderedFrame,
+            candidate.sample?.drawCallsPerRenderedFrame,
+            1.05,
+        ),
+        maximumRatio(
+            'buildingEmptyShellTriangleRegression',
+            baseline.sample?.trianglesPerRenderedFrame,
+            candidate.sample?.trianglesPerRenderedFrame,
+            1.05,
+        ),
+        gpuComparable
+            ? maximumRegressionWithNoise({
+                  absoluteNoise: 3,
+                  baselineValue: baselineGpuP95Ms,
+                  candidateValue: candidateGpuP95Ms,
+                  multiplier: 1.15,
+                  name: 'buildingEmptyShellGpuP95Regression',
+                  unit: 'ms',
+              })
+            : {
+                  actual: {
+                      baseline: baselineGpuP95Ms ?? null,
+                      candidate: candidateGpuP95Ms ?? null,
+                  },
+                  comparison: 'maximum-regression-with-noise-floor',
+                  limit: {
+                      absoluteNoise: 3,
+                      multiplier: 1.15,
+                      unit: 'ms',
+                  },
+                  name: 'buildingEmptyShellGpuP95Regression',
+                  pass: true,
+                  skipped: true,
+              },
+    ];
+
+    return {
+        baselineName: baseline.name,
+        candidateName: candidate.name,
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
+function applyGardenBuildingMatchedBaselineComparison(scenarios) {
+    const comparison = buildGardenBuildingMatchedBaselineComparison(scenarios);
+    if (!comparison) {
+        return null;
+    }
+    const candidate = scenarios.find(
+        (scenario) => scenario.name === comparison.candidateName,
+    );
+    if (!candidate) {
+        return null;
+    }
+    candidate.budget.checks.push(...comparison.checks);
+    candidate.budget.pass = candidate.budget.pass && comparison.pass;
+    return comparison;
 }
 
 async function measureProfileScreenshotWitness(path) {
@@ -15245,6 +17413,76 @@ function buildMarkdown(report) {
         }
     }
 
+    const buildingProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.buildingProfile,
+    );
+    if (buildingProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Garden building automated evidence',
+            '',
+            'Production-build Chromium evidence only; physical-device frame, memory, thermal, touch, and GPU-resource proof remains separate.',
+            'Owned/public WebGL traversal and renderer-free 2D coverage are separate correctness proofs; this table claims timing only for the listed owned-game profiler scenarios.',
+            '',
+            '| Scenario | Fixture / state | Sample target start/max/end / leases start/max/end (observations) | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Miss resolution max / navigation max / prepare+lookup max/current / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+        );
+        for (const scenario of buildingProfiles) {
+            const runtime = scenario.runtime ?? {};
+            const profile = scenario.requested.buildingProfile;
+            const motionResult = profile.motionResult;
+            const motion =
+                motionResult?.kind === 'edit-churn'
+                    ? `${motionResult.kind}: ${motionResult.actionCount ?? 0} actions`
+                    : motionResult?.kind === 'enter-exit'
+                      ? `${motionResult.kind}: ${motionResult.cycleCount ?? 0} cycles`
+                      : motionResult?.kind === 'avatar-navigation'
+                        ? `${motionResult.kind}: ${motionResult.collisionStepCount ?? 0} steps; ${(motionResult.legs ?? []).map((leg) => `${leg.view} ${round(leg.distance) ?? 0} m`).join(', ')}`
+                        : (profile.motion ?? 'none');
+            lines.push(
+                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${scenario.sample.runtimeFrameLoopTargetFramesPerSecondAtStart ?? 'n/a'}/${scenario.sample.runtimeFrameLoopTargetFramesPerSecondMax ?? 'n/a'}/${scenario.sample.runtimeFrameLoopTargetFramesPerSecondAtEnd ?? 'n/a'} FPS / ${scenario.sample.runtimeFrameLoopActiveLeaseCountAtStart ?? 'n/a'}/${scenario.sample.runtimeFrameLoopActiveLeaseCountMax ?? 'n/a'}/${scenario.sample.runtimeFrameLoopActiveLeaseCountAtEnd ?? 'n/a'} (${scenario.sample.runtimeFrameLoopObservationCount ?? 0}) | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMaxMs) ?? 0}/${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+        const matchedBaseline =
+            report.gardenBuildingMatchedBaselineComparison ?? null;
+        if (matchedBaseline) {
+            lines.push(
+                '',
+                '### Matched desktop blank-shell overhead',
+                '',
+                'The absolute 33.3 ms ceiling gates headless browser-rAF responsiveness only. It does not verify the separate physical-device 16.7 ms desktop target. The paired checks isolate blank-shell overhead from host cadence using the same viewport, quality tier, and graphics backend.',
+                '',
+                `Baseline: ${matchedBaseline.baselineName}; candidate: ${matchedBaseline.candidateName}.`,
+                '',
+                '| Check | Baseline | Candidate | Delta / degradation | Ratio | Limit | Result |',
+                '| --- | ---: | ---: | ---: | ---: | --- | --- |',
+            );
+            for (const check of matchedBaseline.checks) {
+                const actual =
+                    check.actual && typeof check.actual === 'object'
+                        ? check.actual
+                        : {};
+                const limit =
+                    check.comparison === 'equal'
+                        ? 'matched baseline required'
+                        : check.comparison === 'maximum-ratio'
+                          ? `ratio ≤ ${check.limit}`
+                          : `${check.limit.multiplier}x or ≤ ${check.limit.absoluteNoise} ${check.limit.unit} noise`;
+                const baselineValue =
+                    check.comparison === 'equal'
+                        ? 'missing'
+                        : (actual.baseline ?? 'n/a');
+                const candidateValue =
+                    check.comparison === 'equal'
+                        ? 'present'
+                        : (actual.candidate ?? 'n/a');
+                lines.push(
+                    `| ${check.name} | ${baselineValue} | ${candidateValue} | ${actual.delta ?? actual.degradation ?? 'n/a'} | ${actual.ratio ?? 'n/a'} | ${limit} | ${check.skipped ? 'skipped' : check.pass ? 'pass' : 'fail'} |`,
+                );
+            }
+        }
+    }
+
     const crossTierMedians = Object.entries(
         report.crossTierMedians ??
             buildCrossTierMedians(report.highTargetMedians ?? {}),
@@ -15694,16 +17932,30 @@ function buildMarkdown(report) {
                 if (check.comparison === 'within-pixels') {
                     return `- ${scenario.name}: ${check.name} ${display(check.actual)} not within 2px of ${display(check.limit)}`;
                 }
+                if (
+                    check.comparison === 'maximum-regression-with-noise-floor'
+                ) {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} exceeded both relative and absolute noise limits ${display(check.limit)}`;
+                }
+                if (
+                    check.comparison === 'minimum-regression-with-noise-floor'
+                ) {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} degraded beyond both relative and absolute noise limits ${display(check.limit)}`;
+                }
+                if (check.comparison === 'maximum-ratio') {
+                    return `- ${scenario.name}: ${check.name} ${display(check.actual)} exceeded ratio ${display(check.limit)}`;
+                }
                 const operator =
                     check.comparison === 'minimum' ||
                     check.comparison === 'finite-minimum'
                         ? '<'
-                        : check.comparison === 'equal' ||
+                        : Object.hasOwn(check, 'expected') ||
+                            check.comparison === 'equal' ||
                             check.comparison === 'equal-record' ||
                             check.comparison === 'equal-string-set'
                           ? '!='
                           : '>';
-                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit)}`;
+                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit ?? check.expected)}`;
             }),
     );
     lines.push(...(failures.length ? failures : ['- None']));
@@ -16039,6 +18291,8 @@ async function main() {
             scenarios.push(result);
         }
 
+        const gardenBuildingMatchedBaselineComparison =
+            applyGardenBuildingMatchedBaselineComparison(scenarios);
         const highTargetMedians = buildHighTargetMedians(scenarios);
         const crossTierMedians = buildCrossTierMedians(highTargetMedians);
         const adaptiveHighComparisons =
@@ -16075,7 +18329,7 @@ async function main() {
             comparisonContractVersion: gameProfileComparisonContractVersion,
             generatedAt: new Date().toISOString(),
             provenance,
-            schemaVersion: 5,
+            schemaVersion: 6,
             sourceCommit: provenance.subject.commit,
             options: {
                 allowLegacyOperationVisuals:
@@ -16094,6 +18348,7 @@ async function main() {
             },
             adaptiveHighComparisons,
             crossTierMedians,
+            gardenBuildingMatchedBaselineComparison,
             gardenSwitchSummary: buildGardenSwitchSummary(scenarios),
             lifecycleSummary: buildLifecycleSummary(scenarios),
             scenarios,
@@ -16136,10 +18391,12 @@ async function main() {
 }
 
 export {
+    applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
     beginInteractiveProfileSample,
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
+    buildGardenBuildingMatchedBaselineComparison,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleResumeTransitionEvidence,
@@ -16160,6 +18417,7 @@ export {
     evaluateBudget,
     evaluateCrossTierAcceptance,
     evaluateFaunaHeavyAcceptance,
+    evaluateGardenBuildingAcceptance,
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
@@ -16174,6 +18432,8 @@ export {
     installGardenSwitchContextTracker,
     installLifecycleMilestoneTracker,
     installProfileContextTracker,
+    isExpectedGardenBuildingProfileApiError,
+    isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
@@ -16181,6 +18441,7 @@ export {
     lifecycleZeroWorkObserved,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
+    mergeGardenStructureAssetNetworkRuntime,
     mergeProfileSampleDrain,
     normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
@@ -16192,6 +18453,7 @@ export {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    summarizeGardenStructureAssetNetwork,
 };
 
 const invokedModuleUrl = process.argv[1]

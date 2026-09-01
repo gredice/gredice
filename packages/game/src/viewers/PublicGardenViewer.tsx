@@ -726,6 +726,13 @@ function PublicGardenScene({
         () => new Set(structureInteriorPresentation.hiddenInstanceIds),
         [structureInteriorPresentation.hiddenInstanceIds],
     );
+    const visibleInteriorStructureIds = useMemo(
+        () =>
+            structureInteriorPresentation.structureId
+                ? new Set([structureInteriorPresentation.structureId])
+                : new Set<string>(),
+        [structureInteriorPresentation.structureId],
+    );
     useEffect(() => {
         if (!visitorPresence || capture) {
             publishStructureInteriorPresentation(
@@ -898,6 +905,9 @@ function PublicGardenScene({
                                                         markStructureRendererReady
                                                     }
                                                     snapshot={structureScene}
+                                                    visibleInteriorStructureIds={
+                                                        visibleInteriorStructureIds
+                                                    }
                                                 />
                                             ) : null}
                                             {sceneChildren}
