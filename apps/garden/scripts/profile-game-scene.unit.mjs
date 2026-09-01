@@ -7,6 +7,7 @@ import {
     buildCrossTierMedians,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
+    buildLifecycleResumeWindowEvidence,
     buildLifecycleSummary,
     buildMarkdown,
     buildPlantCloseupAcceptance,
@@ -25,9 +26,11 @@ import {
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
+    evaluateRuntimeOwnersAcceptance,
     evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
+    fullRuntimeFrameLoopCounterFields,
     getScenarioRequest,
     installBrowserMetrics,
     installGardenSwitchContextTracker,
@@ -40,6 +43,7 @@ import {
     lifecycleZeroWorkObserved,
     measureStaticSceneCacheImageParity,
     mergeProfileSampleDrain,
+    normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
     parseArgs,
     parseComparisonContractVersion,
@@ -584,6 +588,67 @@ test('lifecycle scenario repeats the exact High workload in fresh contexts', () 
     assert.equal(request.quality, 'high');
     assert.equal(request.staticSceneCache, 'legacy');
     assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('live lifecycle scenario measures unpinned SceneTime only in its candidate set', () => {
+    const scenarios = resolveScenarios('lifecycle-live');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    const url = new URL(scenario.path, 'http://profile.local');
+    assert.equal(
+        scenario.name,
+        'game-high-target-runtime-lifecycle-live-desktop',
+    );
+    assert.equal(scenario.lifecycleLiveProfile, true);
+    assert.equal(scenario.lifecycleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(request.lifecycle, '1');
+    assert.equal(request.gardenProfile, 'high-target');
+    assert.equal(request.outline, '1');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(url.searchParams.has('fixedTimeSeconds'), false);
+    assert.equal(
+        resolveScenarios('lifecycle')[0].lifecycleLiveProfile,
+        undefined,
+    );
+});
+
+test('runtime-owner scenarios cover every tier with rain, camera, outline, and no fixed clock', () => {
+    const scenarios = resolveScenarios('runtime-owners');
+    const expected = [
+        ['game-runtime-owners-low-desktop', 'low', 'low'],
+        ['game-runtime-owners-medium-desktop', 'medium', 'medium'],
+        ['game-runtime-owners-high-desktop', 'high', 'high'],
+        ['game-runtime-owners-auto-standard-desktop', 'auto', 'medium'],
+        [
+            'game-runtime-owners-auto-constrained-desktop',
+            'auto',
+            'auto-constrained',
+        ],
+    ];
+
+    assert.equal(scenarios.length, expected.length);
+    for (const [index, scenario] of scenarios.entries()) {
+        const [name, quality, tier] = expected[index];
+        const request = getScenarioRequest(scenario.path);
+        const url = new URL(scenario.path, 'http://profile.local');
+        assert.equal(scenario.name, name);
+        assert.equal(scenario.runtimeOwnersProfile, true);
+        assert.equal(scenario.expectedQualityTier, tier);
+        assert.equal(scenario.motion, 'bounded-zoom-rotate');
+        assert.equal(scenario.repeat, 3);
+        assert.equal(scenario.screenshotWitness, true);
+        assert.equal(request.controls, '1');
+        assert.equal(request.gardenProfile, 'high-target');
+        assert.equal(request.mode, 'rain');
+        assert.equal(request.outline, '1');
+        assert.equal(request.quality, quality);
+        assert.equal(request.staticSceneCache, 'legacy');
+        assert.equal(url.searchParams.get('cameraProfile'), '1');
+        assert.equal(url.searchParams.has('fixedTimeSeconds'), false);
+    }
 });
 
 test('static-idle scenario isolates one visible fixed-time zero-work fixture', () => {
@@ -3292,7 +3357,7 @@ test('lifecycle acceptance gates owned scheduling while keeping full residual an
         ownedSchedulingGated: true,
         rendererAndCdpGated: false,
         runtimeSchedulerGated: true,
-        reason: 'Offscreen and synthetic-hidden owned scheduling counters are gated. R3F frame callbacks, renderer submissions, hidden deferred render requests, invalidation failures, nonessential hidden work, and CDP script time remain explicit compatibility-baseline diagnostics.',
+        reason: 'The canonical comparison lifecycle preserves its compatibility gate for owned scheduling counters. Full residual runtime, renderer, and CDP evidence remains diagnostic so before-system baseline capture stays valid.',
     });
 });
 
@@ -3305,16 +3370,9 @@ test('lifecycle zero-work separates owned scheduling from full render and runtim
         suspendCount: 0,
         wakeupCount: 0,
     };
-    const fullDeltas = {
-        ...ownedDeltas,
-        displayFrameCalibrationCount: 0,
-        fixedStepFailureCount: 0,
-        hiddenDeferredRenderRequestCount: 0,
-        invalidationFailureCount: 0,
-        missedFrameReceiptCount: 0,
-        nonessentialHiddenWorkCount: 0,
-        r3fFrameCallbackCount: 0,
-    };
+    const fullDeltas = Object.fromEntries(
+        fullRuntimeFrameLoopCounterFields.map((field) => [field, 0]),
+    );
     const residual = {
         sample: {
             drawCalls: 0,
@@ -3325,27 +3383,28 @@ test('lifecycle zero-work separates owned scheduling from full render and runtim
     };
 
     assert.equal(lifecycleOwnedSchedulingZeroObserved(ownedDeltas), true);
-    assert.equal(lifecycleZeroWorkObserved(residual, ownedDeltas), true);
+    assert.equal(lifecycleZeroWorkObserved(residual, fullDeltas), true);
 
-    for (const field of [
-        'displayFrameCalibrationCount',
-        'fixedStepFailureCount',
-        'hiddenDeferredRenderRequestCount',
-        'invalidationFailureCount',
-        'missedFrameReceiptCount',
-        'nonessentialHiddenWorkCount',
-        'r3fFrameCallbackCount',
-    ]) {
-        const withResidualWork = structuredClone(residual);
-        withResidualWork.sample.runtimeFrameLoopCounterDeltas[field] = 1;
+    for (const field of fullRuntimeFrameLoopCounterFields) {
+        const withResidualDeltas = { ...fullDeltas, [field]: 1 };
         assert.equal(
-            lifecycleZeroWorkObserved(withResidualWork, ownedDeltas),
+            lifecycleZeroWorkObserved(residual, withResidualDeltas),
             false,
             field,
         );
         assert.equal(
             lifecycleOwnedSchedulingZeroObserved(ownedDeltas),
             true,
+            field,
+        );
+    }
+
+    for (const field of ['drawCalls', 'renderedFrames', 'submittedTriangles']) {
+        const withRendererWork = structuredClone(residual);
+        withRendererWork.sample[field] = 1;
+        assert.equal(
+            lifecycleZeroWorkObserved(withRendererWork, fullDeltas),
+            false,
             field,
         );
     }
@@ -3370,6 +3429,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         fixedStepFailureCount: 0,
         fixedStepOwners: [],
         hiddenDeferredRenderRequestCount: 0,
+        invalidationCount: 12,
         invalidationFailureCount: 0,
         leaseAcquiredCount: 5,
         leaseReleasedCount: 5,
@@ -3560,6 +3620,12 @@ test('lifecycle acceptance passes one complete contract and rejects focused evid
 function lifecycleAcceptanceCheck(input, name) {
     return evaluateLifecycleAcceptance(input).checks.find(
         (check) => check.name === name,
+    );
+}
+
+function fullRuntimeCounterValues(value = 0) {
+    return Object.fromEntries(
+        fullRuntimeFrameLoopCounterFields.map((field) => [field, value]),
     );
 }
 
@@ -3802,6 +3868,777 @@ function createPassingLifecycleAcceptanceInput() {
     };
 }
 
+function createPassingLifecycleLiveAcceptanceInput() {
+    const input = createPassingLifecycleAcceptanceInput();
+    const persistentLeaseSummaries = [
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:birds' },
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:cats' },
+        { framesPerSecond: 30, leaseCount: 1, owner: 'fauna:dogs' },
+        { framesPerSecond: 30, leaseCount: 2, owner: 'plant-sway' },
+    ];
+    const resumeWindow = (sceneTimeSeconds) => {
+        const startCounters = fullRuntimeCounterValues(10);
+        const endCounters = {
+            ...startCounters,
+            ownedInvalidationCount: startCounters.ownedInvalidationCount + 27,
+            r3fFrameCallbackCount: startCounters.r3fFrameCallbackCount + 27,
+            wakeupCount: startCounters.wakeupCount + 27,
+        };
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            startCounters[field] = 0;
+            endCounters[field] = 0;
+        }
+        return buildLifecycleResumeWindowEvidence({
+            cdp: {
+                layoutDuration: 0.001,
+                scriptDuration: 0.01,
+                taskDuration: 0.02,
+            },
+            sample: {
+                drawCalls: 270,
+                elapsedMs: 900,
+                renderedFps: 30,
+                renderedFrames: 27,
+                runtimeFrameLoopAtEnd: {
+                    ...endCounters,
+                    sceneTimeSeconds: sceneTimeSeconds + 0.9,
+                    targetFramesPerSecond: 30,
+                },
+                runtimeFrameLoopAtStart: {
+                    ...startCounters,
+                    sceneTimeSeconds,
+                    targetFramesPerSecond: 30,
+                },
+                submittedTriangles: 2_700,
+            },
+        });
+    };
+    const activeRuntimeFrameLoop = {
+        ...input.active.runtimeFrameLoop,
+        activeLeaseCount: 5,
+        renderLeaseSummaries: [
+            ...persistentLeaseSummaries,
+            {
+                framesPerSecond: 30,
+                leaseCount: 1,
+                owner: 'sprite-wobble',
+            },
+        ],
+        sceneTimeSeconds: 100,
+        targetFramesPerSecond: 30,
+    };
+    input.active.runtimeFrameLoop = activeRuntimeFrameLoop;
+    input.requested.fixedTimeSeconds = null;
+    input.requested.lifecycleLiveProfile = true;
+
+    for (const [index, phaseName] of ['offscreen', 'hidden'].entries()) {
+        const phase = input[phaseName];
+        phase.residualDeltas = fullRuntimeCounterValues();
+        phase.residualSceneTimeDeltaSeconds = 0;
+        phase.resumeWindow = resumeWindow(101 + index);
+        phase.resumed = {
+            ...phase.resumed,
+            renderLeaseSummaries: [
+                ...persistentLeaseSummaries,
+                {
+                    framesPerSecond: 60,
+                    leaseCount: 1,
+                    owner:
+                        phaseName === 'offscreen'
+                            ? 'particle-bursts'
+                            : 'sprite-wobble',
+                },
+            ],
+            sceneTimeSeconds: 102 + index,
+            targetFramesPerSecond: 30,
+        };
+        phase.zeroWorkObserved = true;
+    }
+
+    return input;
+}
+
+test('live lifecycle acceptance gates exhaustive zero work, bounded resume health, and persistent cadence', () => {
+    const input = createPassingLifecycleLiveAcceptanceInput();
+    const passing = evaluateLifecycleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+    assert.deepEqual(passing.residualWorkPolicy, {
+        cdpFiniteDiagnostic: true,
+        fullResidualZeroWorkGated: true,
+        ownedSchedulingGated: true,
+        rendererGated: true,
+        runtimeSchedulerGated: true,
+        reason: 'The candidate-only live lifecycle gates every offscreen and synthetic-hidden runtime counter, R3F callback, rendered frame, draw call, and submitted triangle at exact zero. CDP script, task, and layout durations remain finite diagnostics rather than zero-work gates.',
+    });
+    assert.deepEqual(
+        normalizeRenderLeaseSummaryRates(
+            input.offscreen.resumed.renderLeaseSummaries,
+            {
+                'fauna:birds': 30,
+                'fauna:cats': 30,
+                'fauna:dogs': 30,
+                'plant-sway': 30,
+            },
+        ),
+        {
+            'fauna:birds': 30,
+            'fauna:cats': 30,
+            'fauna:dogs': 30,
+            'plant-sway': 30,
+        },
+    );
+
+    for (const phaseName of ['offscreen', 'hidden']) {
+        const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
+        for (const field of fullRuntimeFrameLoopCounterFields) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residualDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}Residual${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+            assert.equal(evaluateLifecycleAcceptance(mutation).pass, false);
+        }
+        for (const [field, checkSuffix] of [
+            ['renderedFrames', 'RenderedFrames'],
+            ['drawCalls', 'DrawCalls'],
+            ['submittedTriangles', 'SubmittedTriangles'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residual.sample[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}Residual${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+        const withoutZeroWitness = structuredClone(input);
+        withoutZeroWitness[phaseName].zeroWorkObserved = false;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                withoutZeroWitness,
+                `lifecycle${phaseLabel}ResidualZeroWorkObserved`,
+            ).pass,
+            false,
+        );
+        for (const [field, suffix] of [
+            ['scriptDuration', 'ScriptDuration'],
+            ['taskDuration', 'TaskDuration'],
+            ['layoutDuration', 'LayoutDuration'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].residual.cdp[field] = Number.NaN;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycle${phaseLabel}ResidualCdp${suffix}`,
+                ).pass,
+                false,
+            );
+        }
+        const sceneTimeAdvanced = structuredClone(input);
+        sceneTimeAdvanced[phaseName].residualSceneTimeDeltaSeconds = 0.001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                sceneTimeAdvanced,
+                `lifecycleLive${phaseLabel}ResidualSceneTimeDelta`,
+            ).pass,
+            false,
+        );
+
+        for (const owner of [
+            'fauna:birds',
+            'fauna:cats',
+            'fauna:dogs',
+            'plant-sway',
+        ]) {
+            const missingOwner = structuredClone(input);
+            missingOwner[phaseName].resumed.renderLeaseSummaries = missingOwner[
+                phaseName
+            ].resumed.renderLeaseSummaries.filter(
+                (summary) => summary.owner !== owner,
+            );
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    missingOwner,
+                    `lifecycleLive${phaseLabel}RenderLeaseRatesRestored`,
+                ).pass,
+                false,
+                `${phaseName}:missing:${owner}`,
+            );
+
+            const wrongRate = structuredClone(input);
+            wrongRate[phaseName].resumed.renderLeaseSummaries.find(
+                (summary) => summary.owner === owner,
+            ).framesPerSecond = 29;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    wrongRate,
+                    `lifecycleLive${phaseLabel}RenderLeaseRatesRestored`,
+                ).pass,
+                false,
+                `${phaseName}:rate:${owner}`,
+            );
+        }
+
+        const wrongTarget = structuredClone(input);
+        wrongTarget[phaseName].resumed.targetFramesPerSecond = 29;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                wrongTarget,
+                `lifecycleLive${phaseLabel}TargetFramesPerSecondRestored`,
+            ).pass,
+            false,
+        );
+
+        for (const [path, value, checkSuffix] of [
+            ['sample.elapsedMs', 749, 'ElapsedMs'],
+            ['sample.elapsedMs', 1_001, 'ElapsedMsMaximum'],
+            ['sceneTimeDeltaSeconds', 0, 'SceneTimeDeltaSeconds'],
+            ['sceneTimeDeltaSeconds', 1.06, 'SceneTimeDeltaBounded'],
+            ['targetFramesPerSecond', 0, 'TargetFramesPerSecond'],
+            ['sample.renderedFrames', 0, 'RenderedFrames'],
+            ['sample.drawCalls', 0, 'DrawCalls'],
+            ['sample.submittedTriangles', 0, 'SubmittedTriangles'],
+            ['counterDeltas.wakeupCount', 0, 'WakeupDelta'],
+            [
+                'counterDeltas.ownedInvalidationCount',
+                0,
+                'OwnedInvalidationDelta',
+            ],
+            ['counterDeltas.r3fFrameCallbackCount', 0, 'R3fFrameCallbackDelta'],
+        ]) {
+            const mutation = structuredClone(input);
+            const segments = path.split('.');
+            let target = mutation[phaseName].resumeWindow;
+            while (segments.length > 1) {
+                target = target[segments.shift()];
+            }
+            target[segments[0]] = value;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycleLive${phaseLabel}Resume${checkSuffix}`,
+                ).pass,
+                false,
+                `${phaseName}:${path}`,
+            );
+        }
+        const catchUpBurst = structuredClone(input);
+        catchUpBurst[phaseName].resumeWindow.sample.renderedFrames =
+            catchUpBurst[phaseName].resumeWindow.maximumExpectedRenderedFrames +
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                catchUpBurst,
+                `lifecycleLive${phaseLabel}ResumeRenderedFramesCatchUpBound`,
+            ).pass,
+            false,
+        );
+        for (const field of [
+            'fixedStepFailureCount',
+            'hiddenDeferredRenderRequestCount',
+            'invalidationFailureCount',
+            'missedFrameReceiptCount',
+            'nonessentialHiddenWorkCount',
+        ]) {
+            const mutation = structuredClone(input);
+            mutation[phaseName].resumeWindow.counterDeltas[field] = 1;
+            assert.equal(
+                lifecycleAcceptanceCheck(
+                    mutation,
+                    `lifecycleLive${phaseLabel}Resume${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                ).pass,
+                false,
+                `${phaseName}:${field}`,
+            );
+        }
+    }
+});
+
+function createPassingRuntimeOwnersAcceptanceInput({
+    autoQualityDeviceClass = 'unspecified',
+    dprCap = 2,
+    groundDecorationDensity = 1,
+    quality = 'high',
+    shadowMapSize = 4_096,
+    shadowsEnabled = true,
+    tier = 'high',
+} = {}) {
+    const autoQualityMetrics =
+        autoQualityDeviceClass === 'standard'
+            ? {
+                  coarsePointer: false,
+                  coreCount: 8,
+                  dpr: 2,
+                  memoryGb: 8,
+                  narrowViewport: false,
+              }
+            : autoQualityDeviceClass === 'constrained'
+              ? {
+                    coarsePointer: false,
+                    coreCount: 4,
+                    dpr: 2,
+                    memoryGb: 4,
+                    narrowViewport: false,
+                }
+              : null;
+    const persistentOwners = Object.fromEntries(
+        [
+            'fauna:birds',
+            'fauna:cats',
+            'fauna:dogs',
+            'plant-sway',
+            'rain-particles',
+            'weather-animation',
+        ].map((owner) => [
+            owner,
+            {
+                coverageRatio: 0.95,
+                endpointObserved: true,
+                expectedFramesPerSecond: 30,
+                framesPerSecond: [30],
+                matchingObservationCount: 97,
+                matchingRafObservationCount: 95,
+                maximumLeaseCount: owner === 'plant-sway' ? 2 : 1,
+                observedFrameCount: 95,
+                observedObservationCount: 97,
+                startObserved: true,
+            },
+        ]),
+    );
+
+    return {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            autoQualityDeviceClass,
+            autoQualityMetrics,
+            controls: '1',
+            debugHud: '0',
+            details: '1',
+            dpr: 2,
+            expectedAutoQualityMetrics: autoQualityMetrics,
+            expectedDprCap: dprCap,
+            expectedGroundDecorationDensity: groundDecorationDensity,
+            expectedQualityTier: tier,
+            expectedShadowMapSize: shadowMapSize,
+            expectedShadows: shadowsEnabled,
+            fixedTimeSeconds: null,
+            gardenProfile: 'high-target',
+            hud: '0',
+            mode: 'rain',
+            motion: 'bounded-zoom-rotate',
+            outline: '1',
+            quality,
+            runtimeOwnersProfile: true,
+            staticSceneCache: 'legacy',
+            viewport: { height: 720, width: 1_280 },
+        },
+        runtime: {
+            dprCap,
+            groundDecorationDensity,
+            qualityTier: tier,
+            shadowMapSize,
+            shadowsEnabled,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample: {
+            drawCalls: 1_000,
+            gameCameraMotionObserved: true,
+            gameCameraSnapshotVersionDelta: 5,
+            renderedFrames: 150,
+            runtimeFrameLoopCounterDeltas: {
+                ownedInvalidationCount: 150,
+                r3fFrameCallbackCount: 150,
+            },
+            runtimeOwnerLeaseEvidence: {
+                endpointObserved: true,
+                frameCount: 100,
+                observationCount: 102,
+                owners: {
+                    'camera-interaction': {
+                        coverageRatio: 0.05,
+                        endpointObserved: false,
+                        expectedFramesPerSecond: 60,
+                        framesPerSecond: [60],
+                        matchingObservationCount: 5,
+                        matchingRafObservationCount: 5,
+                        maximumLeaseCount: 1,
+                        observedFrameCount: 5,
+                        observedObservationCount: 5,
+                        startObserved: false,
+                    },
+                    ...persistentOwners,
+                },
+                rafObservationCount: 100,
+                startObserved: true,
+                targetFramesPerSecondMax: 60,
+                targetFramesPerSecondMin: 30,
+            },
+            submittedTriangles: 10_000,
+        },
+        screenshotWitness: {
+            entropy: 1,
+            height: 1_440,
+            maximumChannelStandardDeviation: 10,
+            opaque: true,
+            sampledLumaRange: 40,
+            sampledUniqueColorCount: 32,
+            width: 2_560,
+        },
+    };
+}
+
+function runtimeOwnersAcceptanceCheck(input, name) {
+    return evaluateRuntimeOwnersAcceptance(input).checks.find(
+        (check) => check.name === name,
+    );
+}
+
+test('runtime-owner acceptance proves exact camera, weather, plant, and fauna cadence across tiers', () => {
+    const profiles = [
+        {
+            dprCap: 1,
+            groundDecorationDensity: 0,
+            quality: 'low',
+            shadowMapSize: 0,
+            shadowsEnabled: false,
+            tier: 'low',
+        },
+        {
+            dprCap: 1.5,
+            groundDecorationDensity: 0.5,
+            quality: 'medium',
+            shadowMapSize: 2_048,
+            tier: 'medium',
+        },
+        {},
+        {
+            autoQualityDeviceClass: 'standard',
+            dprCap: 1.5,
+            groundDecorationDensity: 0.5,
+            quality: 'auto',
+            shadowMapSize: 2_048,
+            tier: 'medium',
+        },
+        {
+            autoQualityDeviceClass: 'constrained',
+            dprCap: 1,
+            groundDecorationDensity: 0.25,
+            quality: 'auto',
+            shadowMapSize: 1_024,
+            tier: 'auto-constrained',
+        },
+    ];
+
+    for (const profile of profiles) {
+        const input = createPassingRuntimeOwnersAcceptanceInput(profile);
+        const result = evaluateRuntimeOwnersAcceptance(input);
+        assert.equal(
+            result.pass,
+            true,
+            result.checks
+                .filter((check) => !check.pass)
+                .map((check) => check.name)
+                .join(', '),
+        );
+        assert.equal(evaluateHighTargetAcceptance(input).pass, true);
+    }
+});
+
+test('runtime-owner acceptance rejects missing, intermittent, or wrong-rate owner evidence', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const owners = Object.keys(input.sample.runtimeOwnerLeaseEvidence.owners);
+    const ownerLabel = (owner) =>
+        owner
+            .split(/[:-]/u)
+            .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+            .join('');
+
+    for (const owner of owners) {
+        const missing = structuredClone(input);
+        delete missing.sample.runtimeOwnerLeaseEvidence.owners[owner];
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(missing, 'runtimeOwnersOwnerSet').pass,
+            false,
+            `missing:${owner}`,
+        );
+
+        const wrongExpectedRate = structuredClone(input);
+        wrongExpectedRate.sample.runtimeOwnerLeaseEvidence.owners[
+            owner
+        ].expectedFramesPerSecond = 29;
+        const prefix =
+            owner === 'camera-interaction'
+                ? 'runtimeOwnersCamera'
+                : `runtimeOwners${ownerLabel(owner)}`;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(
+                wrongExpectedRate,
+                `${prefix}ExpectedFramesPerSecond`,
+            ).pass,
+            false,
+            `expected-rate:${owner}`,
+        );
+
+        const wrongObservedRate = structuredClone(input);
+        wrongObservedRate.sample.runtimeOwnerLeaseEvidence.owners[
+            owner
+        ].framesPerSecond = [29];
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(
+                wrongObservedRate,
+                `${prefix}FramesPerSecond`,
+            ).pass,
+            false,
+            `observed-rate:${owner}`,
+        );
+    }
+
+    for (const owner of owners.filter(
+        (owner) => owner !== 'camera-interaction',
+    )) {
+        const prefix = `runtimeOwners${ownerLabel(owner)}`;
+        for (const [field, value, suffix] of [
+            ['coverageRatio', 0.8999, 'CoverageRatio'],
+            ['maximumLeaseCount', 0, 'MaximumLeaseCount'],
+            ['startObserved', false, 'StartObserved'],
+            ['endpointObserved', false, 'EndpointObserved'],
+        ]) {
+            const mutation = structuredClone(input);
+            mutation.sample.runtimeOwnerLeaseEvidence.owners[owner][field] =
+                value;
+            assert.equal(
+                runtimeOwnersAcceptanceCheck(mutation, `${prefix}${suffix}`)
+                    .pass,
+                false,
+                `${owner}:${field}`,
+            );
+        }
+    }
+
+    for (const [field, value, check] of [
+        [
+            'matchingRafObservationCount',
+            1,
+            'runtimeOwnersCameraMatchingFrameCount',
+        ],
+        ['observedFrameCount', 1, 'runtimeOwnersCameraObservedFrameCount'],
+        ['maximumLeaseCount', 0, 'runtimeOwnersCameraMaximumLeaseCount'],
+    ]) {
+        const mutation = structuredClone(input);
+        mutation.sample.runtimeOwnerLeaseEvidence.owners['camera-interaction'][
+            field
+        ] = value;
+        assert.equal(runtimeOwnersAcceptanceCheck(mutation, check).pass, false);
+    }
+});
+
+test('runtime-owner acceptance fails closed on sample, target, visual, and error witnesses', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const mutations = [
+        [
+            'sample.runtimeOwnerLeaseEvidence.startObserved',
+            false,
+            'runtimeOwnersStartObserved',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.endpointObserved',
+            false,
+            'runtimeOwnersEndpointObserved',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.frameCount',
+            1,
+            'runtimeOwnersFrameCount',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.rafObservationCount',
+            1,
+            'runtimeOwnersRafObservationCount',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.targetFramesPerSecondMin',
+            29,
+            'runtimeOwnersTargetFramesPerSecondMin',
+        ],
+        [
+            'sample.runtimeOwnerLeaseEvidence.targetFramesPerSecondMax',
+            59,
+            'runtimeOwnersTargetFramesPerSecondMax',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.ownedInvalidationCount',
+            0,
+            'runtimeOwnersOwnedInvalidationDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount',
+            0,
+            'runtimeOwnersR3fFrameCallbackDelta',
+        ],
+        ['sample.renderedFrames', 0, 'runtimeOwnersRenderedFrames'],
+        ['sample.drawCalls', 0, 'runtimeOwnersDrawCalls'],
+        ['sample.submittedTriangles', 0, 'runtimeOwnersSubmittedTriangles'],
+        [
+            'sample.gameCameraMotionObserved',
+            false,
+            'runtimeOwnersCameraMotionObserved',
+        ],
+        [
+            'sample.gameCameraSnapshotVersionDelta',
+            0,
+            'runtimeOwnersCameraSnapshotVersionDelta',
+        ],
+        ['screenshotWitness.entropy', 0, 'runtimeOwnersScreenshotWitnessValid'],
+    ];
+
+    for (const [path, value, check] of mutations) {
+        const mutation = structuredClone(input);
+        const segments = path.split('.');
+        let target = mutation;
+        while (segments.length > 1) {
+            target = target[segments.shift()];
+        }
+        target[segments[0]] = value;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(mutation, check).pass,
+            false,
+            path,
+        );
+        assert.equal(evaluateRuntimeOwnersAcceptance(mutation).pass, false);
+    }
+
+    for (const [field, error, check] of [
+        ['apiErrors', { status: 500 }, 'runtimeOwnersApiErrors'],
+        [
+            'consoleMessages',
+            { text: 'runtime failure', type: 'error', url: 'http://profile' },
+            'runtimeOwnersConsoleErrors',
+        ],
+        ['pageErrors', 'runtime failure', 'runtimeOwnersPageErrors'],
+    ]) {
+        const mutation = structuredClone(input);
+        mutation[field].push(error);
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(mutation, check).pass,
+            false,
+            field,
+        );
+    }
+});
+
+test('candidate runtime-owner repeats stay outside canonical High and cross-tier medians', () => {
+    const runs = [1, 2, 3].map((profileRun) => ({
+        acceptance: { pass: true },
+        baseName: 'game-runtime-owners-low-desktop',
+        budget: { pass: true },
+        name: `game-runtime-owners-low-desktop-run-${profileRun}`,
+        performanceBudget: { pass: true },
+        profileRun,
+        requested: {
+            gardenProfile: 'high-target',
+            runtimeOwnersProfile: true,
+        },
+        sample: {},
+    }));
+
+    const highTargetMedians = buildHighTargetMedians(runs);
+    assert.deepEqual(highTargetMedians, {});
+    assert.deepEqual(buildCrossTierMedians(highTargetMedians), {});
+    assert.deepEqual(buildProfileSummary(runs, highTargetMedians), {
+        failedScenarioNames: [],
+        failedScenarios: 0,
+        failedRuns: 0,
+        passedRuns: 3,
+        passedScenarios: 1,
+        totalRuns: 3,
+        totalScenarios: 1,
+    });
+});
+
+test('runtime-owner markdown reports cadence, owned work, and screenshot evidence', () => {
+    const input = createPassingRuntimeOwnersAcceptanceInput();
+    const scenario = {
+        acceptance: { pass: true },
+        baseName: 'game-runtime-owners-high-desktop',
+        budget: { checks: [], pass: true },
+        consoleMessages: [],
+        environment: null,
+        name: 'game-runtime-owners-high-desktop-run-1',
+        pageErrors: [],
+        profileRun: 1,
+        requested: input.requested,
+        runtime: input.runtime,
+        runtimeOwners: input.sample.runtimeOwnerLeaseEvidence,
+        sample: {
+            ...input.sample,
+            canvas: null,
+            drawCallsPerFrame: 1,
+            drawCallsPerRenderedFrame: 1,
+            fps: 60,
+            jsHeapMb: 1,
+            longTaskCount: 0,
+            maxFrameMs: 17,
+            p95FrameMs: 17,
+            rainUnmountMs: null,
+            renderedFps: 30,
+            trianglesPerFrame: 1,
+            trianglesPerRenderedFrame: 1,
+        },
+        screenshotPath: '/tmp/runtime-owner.png',
+        screenshotWitness: input.screenshotWitness,
+    };
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'runtime-owners',
+            soakMs: 0,
+            warmupMs: 0,
+        },
+        plantCloseupMedians: {},
+        scenarios: [scenario],
+        schemaVersion: 5,
+        sourceCommit: 'test-sha',
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /## Cross-tier runtime-owner cadence witness/);
+    assert.match(markdown, /30 \/ 60/);
+    assert.match(markdown, /60 FPS across 5 frames/);
+    assert.match(markdown, /weather-animation 30 FPS @ 95%/);
+    assert.match(markdown, /150 \/ 150 \/ 150/);
+    assert.match(markdown, /\| yes \| pass \|/);
+});
+
 test('lifecycle summary groups three fresh-context repeats as one scenario outside High medians', () => {
     const runs = [1, 2, 3].map((profileRun) => ({
         acceptance: { pass: true },
@@ -3988,6 +4825,8 @@ test('lifecycle markdown separates owned scheduling from full zero-work witnesse
     assert.match(markdown, /owned scheduling zero\/full zero/);
     assert.match(markdown, /0\/0\/0\/0\.01 s; yes\/yes/);
     assert.match(markdown, /1\/1\/1\/0\.01 s; yes\/no/);
+    assert.match(markdown, /Canonical compatibility runs \(1\)/);
+    assert.doesNotMatch(markdown, /Candidate-only live runs/);
 });
 
 function residualLifecycleFixture(value) {

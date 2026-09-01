@@ -49,6 +49,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             requireCanvasVisible: true,
             resumeCount: 0,
             r3fFrameCallbackCount: 0,
+            sceneTimeSeconds: 0,
             scheduledCallbackCount: 0,
             suspendCount: 0,
             targetFramesPerSecond: 0,
@@ -78,6 +79,7 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
         const telemetry = createRuntimeFrameLoopProfileTelemetry();
         const cacheResets: (() => void)[] = [];
         let ownedInvalidationCount = 7;
+        let sceneTimeSeconds = 12;
         let snapshotReadCount = 0;
         const unbind = bindRuntimeFrameLoopProfileTelemetry(
             telemetry,
@@ -86,6 +88,7 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
                 return {
                     ...createRuntimeFrameLoopProfileTelemetry(),
                     ownedInvalidationCount,
+                    sceneTimeSeconds,
                 };
             },
             (callback) => cacheResets.push(callback),
@@ -94,19 +97,25 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
         assert.equal(snapshotReadCount, 0);
         const first = structuredClone(telemetry);
         assert.equal(first.ownedInvalidationCount, 7);
+        assert.equal(first.sceneTimeSeconds, 12);
         assert.equal(snapshotReadCount, 1);
         ownedInvalidationCount = 9;
+        sceneTimeSeconds = 13;
         assert.equal(telemetry.ownedInvalidationCount, 7);
+        assert.equal(telemetry.sceneTimeSeconds, 12);
         assert.equal(snapshotReadCount, 1);
 
         cacheResets.shift()?.();
         const second = structuredClone(telemetry);
         assert.equal(second.ownedInvalidationCount, 9);
+        assert.equal(second.sceneTimeSeconds, 13);
         assert.equal(snapshotReadCount, 2);
 
         unbind();
         ownedInvalidationCount = 11;
+        sceneTimeSeconds = 14;
         assert.equal(telemetry.ownedInvalidationCount, 9);
+        assert.equal(telemetry.sceneTimeSeconds, 13);
         telemetry.ownedInvalidationCount = 10;
         assert.equal(telemetry.ownedInvalidationCount, 10);
     });

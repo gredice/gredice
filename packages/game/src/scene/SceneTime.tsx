@@ -163,10 +163,11 @@ export function SceneTimeProvider({
             return;
         }
 
-        return bindRuntimeFrameLoopProfileTelemetry(runtimeFrameLoop, () =>
-            scheduler.getSnapshot(),
-        );
-    }, [runtimeFrameLoop, scheduler]);
+        return bindRuntimeFrameLoopProfileTelemetry(runtimeFrameLoop, () => ({
+            ...scheduler.getSnapshot(),
+            sceneTimeSeconds: timeUniform.value,
+        }));
+    }, [runtimeFrameLoop, scheduler, timeUniform]);
 
     useEffect(() => {
         const generation = lifecycleGenerationRef.current + 1;

@@ -191,7 +191,9 @@ export type StaticOpaqueSceneCacheOcclusionFixtureState =
     | 'passed'
     | 'verifying';
 
-export type RuntimeFrameLoopProfileTelemetry = GameRuntimeSchedulerSnapshot;
+export type RuntimeFrameLoopProfileTelemetry = GameRuntimeSchedulerSnapshot & {
+    sceneTimeSeconds: number;
+};
 
 export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfileTelemetry {
     return {
@@ -232,6 +234,7 @@ export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfil
         requireCanvasVisible: true,
         resumeCount: 0,
         r3fFrameCallbackCount: 0,
+        sceneTimeSeconds: 0,
         scheduledCallbackCount: 0,
         suspendCount: 0,
         targetFramesPerSecond: 0,
