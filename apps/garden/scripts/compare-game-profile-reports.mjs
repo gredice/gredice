@@ -300,6 +300,7 @@ const requestedCompatibilityDefaultsBySchemaVersion = new Map([
     [
         6,
         {
+            continuousRenderLeases: '1',
             lifecycleLiveProfile: false,
             motionWarmupMs: 0,
             runtimeOwnersProfile: false,

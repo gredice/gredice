@@ -844,6 +844,7 @@ test('valid schema-v6 reports compare raw runs and ignore scenario order', () =>
 
 test('schema-v6 request omissions equal only their semantic defaults', async (t) => {
     const defaults = {
+        continuousRenderLeases: '1',
         lifecycleLiveProfile: false,
         motionWarmupMs: 0,
         runtimeOwnersProfile: false,
@@ -851,6 +852,7 @@ test('schema-v6 request omissions equal only their semantic defaults', async (t)
         staticIdleProfile: false,
     };
     const nonDefaults = {
+        continuousRenderLeases: '0',
         lifecycleLiveProfile: true,
         motionWarmupMs: 1,
         runtimeOwnersProfile: true,
