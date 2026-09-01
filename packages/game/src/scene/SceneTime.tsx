@@ -20,6 +20,7 @@ import {
 } from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import { consumeSceneClockActivationGap } from './sceneClockActivation';
 import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
 
 export const sceneFrameRates = {
@@ -186,7 +187,10 @@ export function SceneTimeProvider({
     }, [scheduler]);
 
     useEffect(
-        () => scheduler.subscribeActivation(() => clock.getDelta()),
+        () =>
+            scheduler.subscribeActivation(() =>
+                consumeSceneClockActivationGap(clock),
+            ),
         [clock, scheduler],
     );
 
