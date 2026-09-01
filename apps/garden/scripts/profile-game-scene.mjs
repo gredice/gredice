@@ -1017,7 +1017,7 @@ const gardenBuildingEmptyShellName = 'game-building-empty-shell-desktop';
 const gardenBuildingScenarios = [
     {
         name: 'game-building-no-structure-network-baseline-mobile',
-        path: '/debug/profile/game?mode=baseline&quality=auto&controls=0&hud=0&staticSceneCache=legacy',
+        path: '/debug/profile/game?mode=baseline&quality=auto&cameraProfile=1&controls=0&hud=0&staticSceneCache=legacy',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -1038,7 +1038,7 @@ const gardenBuildingScenarios = [
     },
     {
         name: gardenBuildingNoStructureBaselineName,
-        path: '/debug/profile/game?mode=baseline&quality=medium&controls=0&hud=0&staticSceneCache=legacy',
+        path: '/debug/profile/game?mode=baseline&quality=medium&cameraProfile=1&controls=0&hud=0&staticSceneCache=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -1058,7 +1058,7 @@ const gardenBuildingScenarios = [
     },
     {
         name: gardenBuildingEmptyShellName,
-        path: '/debug/profile/game?mode=baseline&quality=medium&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
+        path: '/debug/profile/game?mode=baseline&quality=medium&cameraProfile=1&building=1&buildingFixture=blank&controls=0&hud=0&staticSceneCache=legacy',
         viewport: { width: 1280, height: 720 },
         dpr: 1,
         isMobile: false,
@@ -15569,12 +15569,13 @@ function buildMarkdown(report) {
                     check.comparison === 'minimum' ||
                     check.comparison === 'finite-minimum'
                         ? '<'
-                        : check.comparison === 'equal' ||
+                        : Object.hasOwn(check, 'expected') ||
+                            check.comparison === 'equal' ||
                             check.comparison === 'equal-record' ||
                             check.comparison === 'equal-string-set'
                           ? '!='
                           : '>';
-                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit)}`;
+                return `- ${scenario.name}: ${check.name} ${display(check.actual)} ${operator} ${display(check.limit ?? check.expected)}`;
             }),
     );
     lines.push(...(failures.length ? failures : ['- None']));

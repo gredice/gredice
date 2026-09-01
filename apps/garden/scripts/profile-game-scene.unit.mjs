@@ -419,6 +419,14 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
         matchedDesktop[1].path.replace('&building=1&buildingFixture=blank', ''),
     );
     assert.ok(
+        [scenarios[0], ...matchedDesktop].every(
+            (scenario) =>
+                new URL(scenario.path, 'http://profile.local').searchParams.get(
+                    'cameraProfile',
+                ) === '1',
+        ),
+    );
+    assert.ok(
         scenarios
             .filter((scenario) => scenario.buildingProfile.fixture !== 'none')
             .every(
