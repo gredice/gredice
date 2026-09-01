@@ -1082,6 +1082,7 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
             runtimeFrameLoopAtStart: ambientSchedulerSnapshot(),
             runtimeFrameLoopCounterDeltas: {
                 hiddenDeferredCoalescedRenderRequestCount: 0,
+                hiddenCoalescedRenderRequestCount: 0,
             },
             runtimeFrameLoopObservationCount: 301,
             runtimeFrameLoopTargetFramesPerSecondAtEnd: 30,
@@ -1126,6 +1127,12 @@ test('building ambient acceptance proves stable semantic 30 FPS ownership', () =
             input.sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount = 1;
         },
         ['buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta'],
+    );
+    expectFailedChecks(
+        (input) => {
+            input.sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount = 1;
+        },
+        ['buildingAmbientHiddenCoalescedRenderRequestCountDelta'],
     );
 
     expectFailedChecks(
@@ -3186,6 +3193,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         fixedStepFailureCount: 0,
         fixedStepOwners: ['game-time'],
         hiddenDeferredCoalescedRenderRequestCount: 1,
+        hiddenCoalescedRenderRequestCount: 2,
         hiddenDeferredRenderRequestCount: 1,
         invalidationFailureCount: 0,
         missedFrameReceiptCount: 0,
@@ -3216,6 +3224,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.fixedStepOwners.push('weather');
         runtimeFrameLoop.fixedStepFailureCount = 1;
         runtimeFrameLoop.hiddenDeferredCoalescedRenderRequestCount = 4;
+        runtimeFrameLoop.hiddenCoalescedRenderRequestCount = 7;
         runtimeFrameLoop.hiddenDeferredRenderRequestCount = 3;
         runtimeFrameLoop.invalidationFailureCount = 2;
         runtimeFrameLoop.missedFrameReceiptCount = 1;
@@ -3272,6 +3281,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             displayFrameCalibrationCount: 1,
             fixedStepFailureCount: 1,
             hiddenDeferredCoalescedRenderRequestCount: 3,
+            hiddenCoalescedRenderRequestCount: 5,
             hiddenDeferredRenderRequestCount: 2,
             invalidationFailureCount: 2,
             missedFrameReceiptCount: 1,
@@ -3336,6 +3346,7 @@ test('interactive sampling preserves absent scheduler telemetry without changing
             displayFrameCalibrationCount: null,
             fixedStepFailureCount: null,
             hiddenDeferredCoalescedRenderRequestCount: null,
+            hiddenCoalescedRenderRequestCount: null,
             hiddenDeferredRenderRequestCount: null,
             invalidationFailureCount: null,
             missedFrameReceiptCount: null,
@@ -3368,6 +3379,11 @@ test('interactive sampling preserves absent scheduler telemetry without changing
         assert.equal(
             legacySchedulerSample.runtimeFrameLoopCounterDeltas
                 .hiddenDeferredCoalescedRenderRequestCount,
+            0,
+        );
+        assert.equal(
+            legacySchedulerSample.runtimeFrameLoopCounterDeltas
+                .hiddenCoalescedRenderRequestCount,
             0,
         );
     } finally {
@@ -4926,6 +4942,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         consoleMessages: [],
         pageErrors: [],
         requested: {
+            continuousRenderLeases: '1',
             controls: '0',
             debugHud: '0',
             details: '0',
@@ -4962,6 +4979,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         staticIdle.counterDeltas.hiddenDeferredCoalescedRenderRequestCount,
         0,
     );
+    assert.equal(staticIdle.counterDeltas.hiddenCoalescedRenderRequestCount, 0);
     assert.equal(staticIdle.rendererZeroObserved, true);
     assert.equal(staticIdle.zeroWorkObserved, true);
     const passing = evaluateStaticIdleAcceptance(input);
@@ -4972,6 +4990,15 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
             .filter((check) => !check.pass)
             .map((check) => check.name)
             .join(', '),
+    );
+
+    const withoutContinuousRenderLeases = structuredClone(input);
+    withoutContinuousRenderLeases.requested.continuousRenderLeases = '0';
+    assert.equal(
+        evaluateStaticIdleAcceptance(withoutContinuousRenderLeases).checks.find(
+            (check) => check.name === 'staticIdleContinuousRenderLeases',
+        )?.pass,
+        false,
     );
 
     const withR3fWork = structuredClone(sample);
@@ -4999,6 +5026,25 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
             sample: withCoalescedRequest,
             staticIdle: coalescedEvidence,
         }).pass,
+        false,
+    );
+
+    const withHiddenCoalescedCall = structuredClone(sample);
+    withHiddenCoalescedCall.runtimeFrameLoopAtEnd.hiddenCoalescedRenderRequestCount = 1;
+    const hiddenCoalescedEvidence = buildStaticIdleEvidence(
+        withHiddenCoalescedCall,
+    );
+    assert.equal(hiddenCoalescedEvidence.zeroWorkObserved, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withHiddenCoalescedCall,
+            staticIdle: hiddenCoalescedEvidence,
+        }).checks.find(
+            (check) =>
+                check.name ===
+                'staticIdleHiddenCoalescedRenderRequestCountDelta',
+        )?.pass,
         false,
     );
 
@@ -5351,6 +5397,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
         for (const field of [
             'fixedStepFailureCount',
             'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -5400,6 +5447,7 @@ function createPassingLifecycleLiveAcceptanceInput() {
         for (const field of [
             'fixedStepFailureCount',
             'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -5452,6 +5500,8 @@ function createPassingLifecycleLiveAcceptanceInput() {
         };
         startCounters.hiddenDeferredCoalescedRenderRequestCount = 0;
         endCounters.hiddenDeferredCoalescedRenderRequestCount = 1;
+        startCounters.hiddenCoalescedRenderRequestCount = 0;
+        endCounters.hiddenCoalescedRenderRequestCount = 3;
         startCounters.coalescedRenderRequestReasons = [];
         endCounters.coalescedRenderRequestReasons = ['r3f-root-update'];
         return buildLifecycleSuspendTransitionEvidence({
@@ -5503,13 +5553,16 @@ function createPassingLifecycleLiveAcceptanceInput() {
     input.active.sample.runtimeFrameLoopAtStart = {
         coalescedRenderRequestReasons: ['r3f-root-update'],
         hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
     };
     input.active.sample.runtimeFrameLoopAtEnd = {
         coalescedRenderRequestReasons: ['r3f-root-update'],
         hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
     };
     input.active.sample.runtimeFrameLoopCounterDeltas = {
         hiddenDeferredCoalescedRenderRequestCount: 0,
+        hiddenCoalescedRenderRequestCount: 0,
     };
     input.requested.fixedTimeSeconds = null;
     input.requested.lifecycleLiveProfile = true;
@@ -5671,6 +5724,14 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
         assert.equal(
             lifecycleAcceptanceCheck(
                 boundedDrain,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            true,
+            `${phaseName}:three-persistent-fauna-hidden-requests`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
                 `${prefix}EndCoalescedRenderRequestReasonsBounded`,
             ).pass,
             true,
@@ -5689,6 +5750,32 @@ test('live lifecycle suspension bounds action drain and requires exact-zero sett
             ).pass,
             false,
             `${phaseName}:coalesced-hidden-request-burst`,
+        );
+
+        const excessiveTotalCoalescedHiddenWork = structuredClone(input);
+        excessiveTotalCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.counterDeltas.hiddenCoalescedRenderRequestCount = 4;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                excessiveTotalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-coalesced-hidden-request-burst`,
+        );
+
+        const missingTotalCoalescedHiddenWork = structuredClone(input);
+        missingTotalCoalescedHiddenWork[
+            phaseName
+        ].suspendTransition.counterDeltas.hiddenCoalescedRenderRequestCount = 0;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                missingTotalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountIncludesDeferredDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-must-include-deferred-coalesced-work`,
         );
 
         const unexpectedCoalescedReason = structuredClone(input);
@@ -6005,6 +6092,7 @@ test('live lifecycle resume transition bounds owned cadence, browser frames, req
         for (const field of [
             'fixedStepFailureCount',
             'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -6090,6 +6178,19 @@ test('live lifecycle steady resume keeps owned and R3F cadence strict with no pe
             false,
             `${phaseName}:coalesced-hidden-work`,
         );
+
+        const totalCoalescedHiddenWork = structuredClone(input);
+        totalCoalescedHiddenWork[
+            phaseName
+        ].resumeWindow.counterDeltas.hiddenCoalescedRenderRequestCount = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                totalCoalescedHiddenWork,
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:total-coalesced-hidden-work`,
+        );
     }
 });
 
@@ -6127,6 +6228,15 @@ test('live lifecycle acceptance gates exhaustive zero work, bounded resume healt
         lifecycleAcceptanceCheck(
             activeCoalescedHiddenWork,
             'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
+        ).pass,
+        false,
+    );
+    const activeTotalCoalescedHiddenWork = structuredClone(input);
+    activeTotalCoalescedHiddenWork.active.sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount = 1;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            activeTotalCoalescedHiddenWork,
+            'lifecycleLiveActiveHiddenCoalescedRenderRequestCountDelta',
         ).pass,
         false,
     );
@@ -6313,6 +6423,7 @@ test('live lifecycle acceptance gates exhaustive zero work, bounded resume healt
         for (const field of [
             'fixedStepFailureCount',
             'hiddenDeferredCoalescedRenderRequestCount',
+            'hiddenCoalescedRenderRequestCount',
             'hiddenDeferredRenderRequestCount',
             'invalidationFailureCount',
             'missedFrameReceiptCount',
@@ -6423,6 +6534,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
         },
         sample: {
             drawCalls: 1_000,
+            elapsedMs: 5_000,
             gameCameraMotionObserved: true,
             gameCameraSnapshotAtEnd: {
                 position: [-10, 10, -10],
@@ -6450,13 +6562,30 @@ function createPassingRuntimeOwnersAcceptanceInput({
                 zoom: 100,
             },
             motionWarmupCameraSnapshotVersionDelta: 4,
-            renderedFrames: 150,
+            renderedFrames: 180,
             runtimeFrameLoopCounterDeltas: {
                 hiddenDeferredCoalescedRenderRequestCount: 0,
+                hiddenCoalescedRenderRequestCount: 0,
                 ownedInvalidationCount: 150,
-                r3fFrameCallbackCount: 150,
+                r3fFrameCallbackCount: 180,
             },
             runtimeOwnerLeaseEvidence: {
+                deliveryByTargetFramesPerSecond: {
+                    30: {
+                        actualRenderedFrames: 120,
+                        deliveryRatio: 1,
+                        durationMs: 4_000,
+                        expectedFrameBudget: 120,
+                        framesPerSecond: 30,
+                    },
+                    60: {
+                        actualRenderedFrames: 60,
+                        deliveryRatio: 1,
+                        durationMs: 1_000,
+                        expectedFrameBudget: 60,
+                        framesPerSecond: 60,
+                    },
+                },
                 endpointObserved: true,
                 frameCount: 100,
                 observationCount: 102,
@@ -6476,6 +6605,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
                     ...persistentOwners,
                 },
                 rafObservationCount: 100,
+                sceneTimeDeltaSeconds: 5,
                 startObserved: true,
                 targetFramesPerSecondMax: 60,
                 targetFramesPerSecondMin: 30,
@@ -6549,6 +6679,105 @@ test('runtime-owner acceptance proves exact camera, weather, plant, and fauna ca
         );
         assert.equal(evaluateHighTargetAcceptance(input).pass, true);
     }
+});
+
+test('runtime-owner acceptance gates delivered 30 and 60 FPS cadence', () => {
+    const setDeliveredFrames = (input, rate, actualRenderedFrames) => {
+        const delivery =
+            input.sample.runtimeOwnerLeaseEvidence
+                .deliveryByTargetFramesPerSecond[rate];
+        delivery.actualRenderedFrames = actualRenderedFrames;
+        delivery.deliveryRatio =
+            actualRenderedFrames / delivery.expectedFrameBudget;
+        const attributedRenderedFrames = Object.values(
+            input.sample.runtimeOwnerLeaseEvidence
+                .deliveryByTargetFramesPerSecond,
+        ).reduce(
+            (total, candidate) => total + candidate.actualRenderedFrames,
+            0,
+        );
+        input.sample.renderedFrames = attributedRenderedFrames;
+        input.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount =
+            attributedRenderedFrames;
+    };
+    const passing = createPassingRuntimeOwnersAcceptanceInput();
+    assert.equal(evaluateRuntimeOwnersAcceptance(passing).pass, true);
+
+    const underdelivered = structuredClone(passing);
+    setDeliveredFrames(underdelivered, 30, 100);
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            underdelivered,
+            'runtimeOwners30FpsDeliveryRatioMinimum',
+        ).pass,
+        false,
+    );
+
+    const overdelivered = structuredClone(passing);
+    setDeliveredFrames(overdelivered, 60, 70);
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            overdelivered,
+            'runtimeOwners60FpsDeliveryRatioMaximum',
+        ).pass,
+        false,
+    );
+
+    const missingSixtyFpsExposure = structuredClone(passing);
+    Object.assign(
+        missingSixtyFpsExposure.sample.runtimeOwnerLeaseEvidence
+            .deliveryByTargetFramesPerSecond[60],
+        {
+            actualRenderedFrames: 0,
+            deliveryRatio: null,
+            durationMs: 0,
+            expectedFrameBudget: 0,
+        },
+    );
+    missingSixtyFpsExposure.sample.renderedFrames = 120;
+    missingSixtyFpsExposure.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount = 120;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            missingSixtyFpsExposure,
+            'runtimeOwners60FpsDeliveryDurationMs',
+        ).pass,
+        false,
+    );
+
+    for (const [sceneTimeDeltaSeconds, checkName] of [
+        [4.7, 'runtimeOwnersSceneTimeDeltaSecondsMinimum'],
+        [5.3, 'runtimeOwnersSceneTimeDeltaSecondsMaximum'],
+    ]) {
+        const sceneTimeDrift = structuredClone(passing);
+        sceneTimeDrift.sample.runtimeOwnerLeaseEvidence.sceneTimeDeltaSeconds =
+            sceneTimeDeltaSeconds;
+        assert.equal(
+            runtimeOwnersAcceptanceCheck(sceneTimeDrift, checkName).pass,
+            false,
+        );
+    }
+
+    const r3fMismatch = structuredClone(passing);
+    r3fMismatch.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount += 1;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            r3fMismatch,
+            'runtimeOwnersRenderedFramesMatchR3fFrameCallbackDelta',
+        ).pass,
+        false,
+    );
+
+    const attributionMismatch = structuredClone(passing);
+    attributionMismatch.sample.runtimeOwnerLeaseEvidence.deliveryByTargetFramesPerSecond[60].actualRenderedFrames += 1;
+    attributionMismatch.sample.runtimeOwnerLeaseEvidence.deliveryByTargetFramesPerSecond[60].deliveryRatio =
+        61 / 60;
+    assert.equal(
+        runtimeOwnersAcceptanceCheck(
+            attributionMismatch,
+            'runtimeOwnersAttributedRenderedFramesMatchRenderedFrames',
+        ).pass,
+        false,
+    );
 });
 
 test('runtime-owner acceptance rejects missing, intermittent, or wrong-rate owner evidence', () => {
@@ -6686,6 +6915,11 @@ test('runtime-owner acceptance fails closed on sample, target, visual, and error
             'sample.runtimeFrameLoopCounterDeltas.hiddenDeferredCoalescedRenderRequestCount',
             1,
             'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
+        ],
+        [
+            'sample.runtimeFrameLoopCounterDeltas.hiddenCoalescedRenderRequestCount',
+            1,
+            'runtimeOwnersHiddenCoalescedRenderRequestCountDelta',
         ],
         ['sample.renderedFrames', 0, 'runtimeOwnersRenderedFrames'],
         ['sample.drawCalls', 0, 'runtimeOwnersDrawCalls'],
@@ -6875,11 +7109,16 @@ test('runtime-owner markdown reports cadence, owned work, and screenshot evidenc
 
     assert.match(markdown, /## Cross-tier runtime-owner cadence witness/);
     assert.match(markdown, /30 \/ 60/);
+    assert.match(markdown, /\| 5 s \| 30: 4000 ms; 120/);
+    assert.match(
+        markdown,
+        /30: 4000 ms; 120 \/ 120 \(1\) \/ 60: 1000 ms; 60 \/ 60 \(1\)/,
+    );
     assert.match(markdown, /60 FPS across 5 frames/);
     assert.match(markdown, /weather-animation 30 FPS @ 95%/);
     assert.match(markdown, /900 ms \/ Δv4 \/ drift 0/);
     assert.match(markdown, /Δv5 \/ drift 0/);
-    assert.match(markdown, /150 \/ 150 \/ 150/);
+    assert.match(markdown, /150 \/ 180 \/ 180/);
     assert.match(markdown, /\| yes \| pass \|/);
 });
 

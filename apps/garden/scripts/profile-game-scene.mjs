@@ -121,6 +121,11 @@ const lifecycleLivePersistentLeaseRates = {
     'fauna:dogs': 30,
     'plant-sway': 30,
 };
+// During suspension, each persistent fauna owner may drain one queued host
+// commit through the coalescing broker before the hidden tail becomes idle.
+const lifecycleSuspendMaximumHiddenCoalescedRenderRequestCount = Object.keys(
+    lifecycleLivePersistentLeaseRates,
+).filter((owner) => owner.startsWith('fauna:')).length;
 const runtimeOwnerPersistentLeaseRates = {
     'fauna:birds': 30,
     'fauna:cats': 30,
@@ -133,6 +138,10 @@ const runtimeOwnerLeaseRates = {
     'camera-interaction': 60,
     ...runtimeOwnerPersistentLeaseRates,
 };
+const runtimeOwnerDeliveryTargetRates = [30, 60];
+const runtimeOwnerMinimumDeliveryExposureMs = 500;
+const runtimeOwnerMinimumDeliveryRatio = 0.85;
+const runtimeOwnerMaximumDeliveryRatio = 1.15;
 
 function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
     return (
@@ -4927,6 +4936,12 @@ const runtimeFrameLoopCounterFields = [
 const allowedCoalescedRenderRequestReasons = new Set(['r3f-root-update']);
 const hiddenDeferredCoalescedRenderRequestCounterField =
     'hiddenDeferredCoalescedRenderRequestCount';
+const hiddenCoalescedRenderRequestCounterField =
+    'hiddenCoalescedRenderRequestCount';
+const legacySafeZeroRuntimeFrameLoopCounterFields = new Set([
+    hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
+]);
 const fullRuntimeFrameLoopCounterFields = [
     'scheduledCallbackCount',
     'wakeupCount',
@@ -4945,6 +4960,7 @@ const fullRuntimeFrameLoopCounterFields = [
     'invalidationFailureCount',
     'r3fFrameCallbackCount',
     hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
     'hiddenDeferredRenderRequestCount',
     'missedFrameReceiptCount',
     'nonessentialHiddenWorkCount',
@@ -4955,6 +4971,7 @@ const genericRuntimeFrameLoopCounterFields = [
     'fixedStepFailureCount',
     'r3fFrameCallbackCount',
     hiddenDeferredCoalescedRenderRequestCounterField,
+    hiddenCoalescedRenderRequestCounterField,
     'hiddenDeferredRenderRequestCount',
     'invalidationFailureCount',
     'missedFrameReceiptCount',
@@ -4999,7 +5016,7 @@ function runtimeFrameLoopCounterDeltas(
         if (typeof value === 'number') {
             return value;
         }
-        return field === hiddenDeferredCoalescedRenderRequestCounterField &&
+        return legacySafeZeroRuntimeFrameLoopCounterFields.has(field) &&
             snapshot !== null &&
             typeof snapshot === 'object' &&
             !Object.hasOwn(snapshot, field)
@@ -5929,6 +5946,7 @@ function evaluateLifecycleAcceptance({
                 field !== 'deferredWorkCount' &&
                 field !== 'invalidationCount' &&
                 field !== hiddenDeferredCoalescedRenderRequestCounterField &&
+                field !== hiddenCoalescedRenderRequestCounterField &&
                 field !== 'nonessentialHiddenWorkCount' &&
                 field !== 'ownedInvalidationCount' &&
                 field !== 'r3fFrameCallbackCount' &&
@@ -5979,6 +5997,22 @@ function evaluateLifecycleAcceptance({
                 transition?.counterDeltas
                     ?.hiddenDeferredCoalescedRenderRequestCount,
                 1,
+            ),
+            minimum(
+                `${prefix}HiddenCoalescedRenderRequestCountDeltaMinimum`,
+                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
+                0,
+            ),
+            maximum(
+                `${prefix}HiddenCoalescedRenderRequestCountDelta`,
+                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
+                lifecycleSuspendMaximumHiddenCoalescedRenderRequestCount,
+            ),
+            minimum(
+                `${prefix}HiddenCoalescedRenderRequestCountIncludesDeferredDelta`,
+                transition?.counterDeltas?.hiddenCoalescedRenderRequestCount,
+                transition?.counterDeltas
+                    ?.hiddenDeferredCoalescedRenderRequestCount,
             ),
             exact(
                 `${prefix}SuspendCountDelta`,
@@ -6134,6 +6168,7 @@ function evaluateLifecycleAcceptance({
             ...[
                 'fixedStepFailureCount',
                 hiddenDeferredCoalescedRenderRequestCounterField,
+                hiddenCoalescedRenderRequestCounterField,
                 'hiddenDeferredRenderRequestCount',
                 'invalidationFailureCount',
                 'missedFrameReceiptCount',
@@ -6243,6 +6278,7 @@ function evaluateLifecycleAcceptance({
             ...[
                 'fixedStepFailureCount',
                 hiddenDeferredCoalescedRenderRequestCounterField,
+                hiddenCoalescedRenderRequestCounterField,
                 'hiddenDeferredRenderRequestCount',
                 'invalidationFailureCount',
                 'missedFrameReceiptCount',
@@ -6955,6 +6991,12 @@ function evaluateLifecycleAcceptance({
                 'lifecycleLiveActiveHiddenDeferredCoalescedRenderRequestCountDelta',
                 active?.sample?.runtimeFrameLoopCounterDeltas
                     ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
+                'lifecycleLiveActiveHiddenCoalescedRenderRequestCountDelta',
+                active?.sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenCoalescedRenderRequestCount,
                 0,
             ),
             ...coalescedRenderRequestChecks(
@@ -8126,6 +8168,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     typeof deviceMemory === 'number' ? deviceMemory : null,
                 narrowViewport: window.innerWidth <= 640,
             },
+            continuousRenderLeases:
+                element.dataset.gameProfileContinuousRenderLeases ?? null,
             controls: element.dataset.gameProfileControls ?? null,
             closeupRaisedBedId:
                 Number.parseInt(
@@ -8283,6 +8327,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 placementProfileEventName,
                 placementProfileRequest,
                 runtimeFrameLoopRafObservationsEnabled,
+                runtimeOwnerDeliveryTargetRates,
                 runtimeOwnerLeaseExpectations,
                 runtimeOwnerLeaseRafSnapshotsEnabled,
                 sampleMs,
@@ -8325,6 +8370,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             let runtimeFrameLoopTargetFramesPerSecondAtEnd = null;
             let runtimeFrameLoopTargetFramesPerSecondAtStart = null;
             let runtimeFrameLoopTargetFramesPerSecondMax = null;
+            let runtimeOwnerDeliveryPreviousSample = null;
             const readProfileNumber = (field) => {
                 const value = globalThis.__grediceGameProfile?.[field];
                 return typeof value === 'number' ? value : null;
@@ -8347,6 +8393,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const runtimeOwnerLeaseObservation = runtimeOwnerLeaseExpectations
                 ? {
                       endpointObserved: false,
+                      deliveryByTargetFramesPerSecond: Object.fromEntries(
+                          runtimeOwnerDeliveryTargetRates.map(
+                              (framesPerSecond) => [
+                                  framesPerSecond,
+                                  {
+                                      actualRenderedFrames: 0,
+                                      durationMs: 0,
+                                      framesPerSecond,
+                                  },
+                              ],
+                          ),
+                      ),
                       frameCount: 0,
                       observationCount: 0,
                       owners: Object.fromEntries(
@@ -8373,10 +8431,51 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                       targetFramesPerSecondMin: null,
                   }
                 : null;
-            const recordRuntimeOwnerLeaseObservation = (point, snapshot) => {
+            const recordRuntimeOwnerLeaseObservation = (
+                point,
+                snapshot,
+                observedAt,
+            ) => {
                 if (!runtimeOwnerLeaseObservation || !snapshot) {
                     return;
                 }
+                const renderedFrames = metrics?.renderedFrames;
+                const targetFramesPerSecond =
+                    typeof snapshot.targetFramesPerSecond === 'number' &&
+                    Number.isFinite(snapshot.targetFramesPerSecond)
+                        ? snapshot.targetFramesPerSecond
+                        : null;
+                if (
+                    runtimeOwnerDeliveryPreviousSample !== null &&
+                    typeof renderedFrames === 'number' &&
+                    Number.isFinite(renderedFrames)
+                ) {
+                    const previous = runtimeOwnerDeliveryPreviousSample;
+                    const delivery =
+                        runtimeOwnerLeaseObservation
+                            .deliveryByTargetFramesPerSecond[
+                            previous.targetFramesPerSecond
+                        ];
+                    if (delivery) {
+                        delivery.durationMs += Math.max(
+                            0,
+                            observedAt - previous.observedAt,
+                        );
+                        delivery.actualRenderedFrames += Math.max(
+                            0,
+                            renderedFrames - previous.renderedFrames,
+                        );
+                    }
+                }
+                runtimeOwnerDeliveryPreviousSample =
+                    typeof renderedFrames === 'number' &&
+                    Number.isFinite(renderedFrames)
+                        ? {
+                              observedAt,
+                              renderedFrames,
+                              targetFramesPerSecond,
+                          }
+                        : null;
                 runtimeOwnerLeaseObservation.observationCount += 1;
                 runtimeOwnerLeaseObservation.startObserved ||=
                     point === 'start';
@@ -8386,25 +8485,22 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     runtimeOwnerLeaseObservation.rafObservationCount += 1;
                     runtimeOwnerLeaseObservation.frameCount += 1;
                 }
-                if (
-                    typeof snapshot.targetFramesPerSecond === 'number' &&
-                    Number.isFinite(snapshot.targetFramesPerSecond)
-                ) {
+                if (targetFramesPerSecond !== null) {
                     runtimeOwnerLeaseObservation.targetFramesPerSecondMax =
                         runtimeOwnerLeaseObservation.targetFramesPerSecondMax ===
                         null
-                            ? snapshot.targetFramesPerSecond
+                            ? targetFramesPerSecond
                             : Math.max(
                                   runtimeOwnerLeaseObservation.targetFramesPerSecondMax,
-                                  snapshot.targetFramesPerSecond,
+                                  targetFramesPerSecond,
                               );
                     runtimeOwnerLeaseObservation.targetFramesPerSecondMin =
                         runtimeOwnerLeaseObservation.targetFramesPerSecondMin ===
                         null
-                            ? snapshot.targetFramesPerSecond
+                            ? targetFramesPerSecond
                             : Math.min(
                                   runtimeOwnerLeaseObservation.targetFramesPerSecondMin,
-                                  snapshot.targetFramesPerSecond,
+                                  targetFramesPerSecond,
                               );
                 }
                 const summaries = Array.isArray(snapshot.renderLeaseSummaries)
@@ -8675,6 +8771,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordRuntimeOwnerLeaseObservation(
                 'start',
                 runtimeFrameLoopAtStart,
+                start,
             );
             const adaptiveHighDeclineCountAtStart = readProfileNumber(
                 'adaptiveHighDeclineCount',
@@ -8957,6 +9054,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         recordRuntimeOwnerLeaseObservation(
                             'raf',
                             readRuntimeFrameLoopSnapshot(),
+                            now,
                         );
                     }
                     recordAdaptiveHighState();
@@ -9078,6 +9176,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             recordRuntimeOwnerLeaseObservation(
                 'endpoint',
                 runtimeFrameLoopAtEnd,
+                sampleEndedAt,
             );
             recordGameCameraMotion();
             recordRuntimeFrameLoopState();
@@ -9217,6 +9316,36 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const runtimeOwnerLeaseEvidence = runtimeOwnerLeaseObservation
                 ? {
                       ...runtimeOwnerLeaseObservation,
+                      sceneTimeDeltaSeconds:
+                          typeof runtimeFrameLoopAtStart?.sceneTimeSeconds ===
+                              'number' &&
+                          typeof runtimeFrameLoopAtEnd?.sceneTimeSeconds ===
+                              'number'
+                              ? runtimeFrameLoopAtEnd.sceneTimeSeconds -
+                                runtimeFrameLoopAtStart.sceneTimeSeconds
+                              : null,
+                      deliveryByTargetFramesPerSecond: Object.fromEntries(
+                          Object.entries(
+                              runtimeOwnerLeaseObservation.deliveryByTargetFramesPerSecond,
+                          ).map(([rate, delivery]) => {
+                              const expectedFrameBudget =
+                                  (delivery.durationMs *
+                                      delivery.framesPerSecond) /
+                                  1_000;
+                              return [
+                                  rate,
+                                  {
+                                      ...delivery,
+                                      deliveryRatio:
+                                          expectedFrameBudget > 0
+                                              ? delivery.actualRenderedFrames /
+                                                expectedFrameBudget
+                                              : null,
+                                      expectedFrameBudget,
+                                  },
+                              ];
+                          }),
+                      ),
                       owners: Object.fromEntries(
                           Object.entries(
                               runtimeOwnerLeaseObservation.owners,
@@ -9474,6 +9603,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
             runtimeFrameLoopRafObservationsEnabled,
+            runtimeOwnerDeliveryTargetRates,
             runtimeOwnerLeaseExpectations,
             runtimeOwnerLeaseRafSnapshotsEnabled,
             sampleMs,
@@ -10588,6 +10718,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
         comparisonPair: scenario.comparisonPair ?? null,
         comparisonRole: scenario.comparisonRole ?? null,
+        continuousRenderLeases: profileMetadata?.continuousRenderLeases ?? null,
         controls: profileMetadata?.controls ?? request.controls,
         building: profileMetadata?.building ?? request.building,
         buildingFixture:
@@ -11146,6 +11277,12 @@ function evaluateGardenBuildingAcceptance({
                 'buildingAmbientHiddenDeferredCoalescedRenderRequestCountDelta',
                 sample?.runtimeFrameLoopCounterDeltas
                     ?.hiddenDeferredCoalescedRenderRequestCount,
+                0,
+            ),
+            exact(
+                'buildingAmbientHiddenCoalescedRenderRequestCountDelta',
+                sample?.runtimeFrameLoopCounterDeltas
+                    ?.hiddenCoalescedRenderRequestCount,
                 0,
             ),
             exact(
@@ -12535,6 +12672,11 @@ function evaluateStaticIdleAcceptance({
     const checks = [
         exact('staticIdleProfile', requested.staticIdleProfile, true),
         exact('staticIdleOptIn', requested.staticIdle, '1'),
+        exact(
+            'staticIdleContinuousRenderLeases',
+            requested.continuousRenderLeases,
+            '1',
+        ),
         exact('staticIdleMode', requested.mode, 'baseline'),
         exact('staticIdleGardenProfile', requested.gardenProfile, 'default'),
         exact('staticIdleControls', requested.controls, '0'),
@@ -13372,6 +13514,84 @@ function evaluateRuntimeOwnersAcceptance({
     });
     const evidence = sample?.runtimeOwnerLeaseEvidence;
     const owners = evidence?.owners ?? {};
+    const elapsedSeconds =
+        typeof sample?.elapsedMs === 'number' &&
+        Number.isFinite(sample.elapsedMs)
+            ? sample.elapsedMs / 1_000
+            : null;
+    const deliveryByTargetFramesPerSecond =
+        evidence?.deliveryByTargetFramesPerSecond ?? {};
+    const attributedRenderedFrames = runtimeOwnerDeliveryTargetRates.every(
+        (rate) =>
+            Number.isInteger(
+                deliveryByTargetFramesPerSecond[rate]?.actualRenderedFrames,
+            ) &&
+            deliveryByTargetFramesPerSecond[rate].actualRenderedFrames >= 0,
+    )
+        ? runtimeOwnerDeliveryTargetRates.reduce(
+              (total, rate) =>
+                  total +
+                  deliveryByTargetFramesPerSecond[rate].actualRenderedFrames,
+              0,
+          )
+        : null;
+    const deliveryChecks = runtimeOwnerDeliveryTargetRates.flatMap((rate) => {
+        const label = `${rate}Fps`;
+        const delivery = deliveryByTargetFramesPerSecond[rate];
+        const computedExpectedFrameBudget =
+            typeof delivery?.durationMs === 'number' &&
+            Number.isFinite(delivery.durationMs)
+                ? (delivery.durationMs * rate) / 1_000
+                : null;
+        const computedDeliveryRatio =
+            typeof delivery?.actualRenderedFrames === 'number' &&
+            computedExpectedFrameBudget !== null &&
+            computedExpectedFrameBudget > 0
+                ? delivery.actualRenderedFrames / computedExpectedFrameBudget
+                : null;
+        return [
+            exact(
+                `runtimeOwners${label}DeliveryFramesPerSecond`,
+                delivery?.framesPerSecond,
+                rate,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryDurationMs`,
+                delivery?.durationMs,
+                runtimeOwnerMinimumDeliveryExposureMs,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryExpectedFrameBudget`,
+                delivery?.expectedFrameBudget,
+                (runtimeOwnerMinimumDeliveryExposureMs * rate) / 1_000,
+            ),
+            exact(
+                `runtimeOwners${label}DeliveryExpectedFrameBudgetComputed`,
+                delivery?.expectedFrameBudget,
+                computedExpectedFrameBudget,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryActualRenderedFrames`,
+                delivery?.actualRenderedFrames,
+                1,
+            ),
+            minimum(
+                `runtimeOwners${label}DeliveryRatioMinimum`,
+                delivery?.deliveryRatio,
+                runtimeOwnerMinimumDeliveryRatio,
+            ),
+            maximum(
+                `runtimeOwners${label}DeliveryRatioMaximum`,
+                delivery?.deliveryRatio,
+                runtimeOwnerMaximumDeliveryRatio,
+            ),
+            exact(
+                `runtimeOwners${label}DeliveryRatioComputed`,
+                delivery?.deliveryRatio,
+                computedDeliveryRatio,
+            ),
+        ];
+    });
     const expectedOwners = Object.keys(runtimeOwnerLeaseRates).sort();
     const autoQualityRequested =
         requested.autoQualityDeviceClass === 'standard' ||
@@ -13498,6 +13718,18 @@ function evaluateRuntimeOwnersAcceptance({
             evidence?.frameCount,
             evidence?.rafObservationCount,
         ),
+        minimum(
+            'runtimeOwnersSceneTimeDeltaSecondsMinimum',
+            evidence?.sceneTimeDeltaSeconds,
+            elapsedSeconds === null
+                ? Number.NaN
+                : Math.max(0, elapsedSeconds - 0.2),
+        ),
+        maximum(
+            'runtimeOwnersSceneTimeDeltaSecondsMaximum',
+            evidence?.sceneTimeDeltaSeconds,
+            elapsedSeconds === null ? Number.NaN : elapsedSeconds + 0.2,
+        ),
         exact(
             'runtimeOwnersTargetFramesPerSecondMin',
             evidence?.targetFramesPerSecondMin,
@@ -13508,6 +13740,7 @@ function evaluateRuntimeOwnersAcceptance({
             evidence?.targetFramesPerSecondMax,
             60,
         ),
+        ...deliveryChecks,
         equivalent(
             'runtimeOwnersOwnerSet',
             Object.keys(owners).sort(),
@@ -13611,9 +13844,25 @@ function evaluateRuntimeOwnersAcceptance({
             1,
         ),
         exact(
+            'runtimeOwnersRenderedFramesMatchR3fFrameCallbackDelta',
+            sample?.renderedFrames,
+            sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount,
+        ),
+        exact(
+            'runtimeOwnersAttributedRenderedFramesMatchRenderedFrames',
+            attributedRenderedFrames,
+            sample?.renderedFrames,
+        ),
+        exact(
             'runtimeOwnersHiddenDeferredCoalescedRenderRequestCountDelta',
             sample?.runtimeFrameLoopCounterDeltas
                 ?.hiddenDeferredCoalescedRenderRequestCount,
+            0,
+        ),
+        exact(
+            'runtimeOwnersHiddenCoalescedRenderRequestCountDelta',
+            sample?.runtimeFrameLoopCounterDeltas
+                ?.hiddenCoalescedRenderRequestCount,
             0,
         ),
         minimum('runtimeOwnersRenderedFrames', sample?.renderedFrames, 1),
@@ -17555,8 +17804,8 @@ function buildMarkdown(report) {
             '',
             '## Cross-tier runtime-owner cadence witness',
             '',
-            '| Scenario / run | Tier | Target FPS min / max | Sample RAF observations | Camera cadence | Motion preflight | Camera endpoint drift | Persistent 30 FPS owner coverage | Owned invalidations / R3F callbacks / rendered frames | Nonblank screenshot | Result |',
-            '| --- | --- | ---: | ---: | --- | --- | --- | --- | ---: | --- | --- |',
+            '| Scenario / run | Tier | Target FPS min / max | Sample RAF observations | SceneTime delta | Delivered 30 / 60 FPS duration; actual / expected (ratio) | Camera cadence | Motion preflight | Camera endpoint drift | Persistent 30 FPS owner coverage | Owned invalidations / R3F callbacks / rendered frames | Nonblank screenshot | Result |',
+            '| --- | --- | ---: | ---: | ---: | --- | --- | --- | --- | --- | ---: | --- | --- |',
         );
         for (const scenario of runtimeOwnerProfiles) {
             const evidence = scenario.runtimeOwners;
@@ -17576,6 +17825,14 @@ function buildMarkdown(report) {
                 })
                 .join('; ');
             const camera = owners['camera-interaction'];
+            const deliveryByTargetFramesPerSecond =
+                evidence?.deliveryByTargetFramesPerSecond ?? {};
+            const delivery = runtimeOwnerDeliveryTargetRates
+                .map((rate) => {
+                    const rateDelivery = deliveryByTargetFramesPerSecond[rate];
+                    return `${rate}: ${typeof rateDelivery?.durationMs === 'number' ? `${round(rateDelivery.durationMs, 1)} ms` : 'n/a'}; ${rateDelivery?.actualRenderedFrames ?? 'n/a'} / ${typeof rateDelivery?.expectedFrameBudget === 'number' ? round(rateDelivery.expectedFrameBudget, 1) : 'n/a'} (${typeof rateDelivery?.deliveryRatio === 'number' ? round(rateDelivery.deliveryRatio, 3) : 'n/a'})`;
+                })
+                .join(' / ');
             const warmupEndpointDelta = gameCameraSnapshotMaximumDelta(
                 scenario.sample?.motionWarmupCameraSnapshotAtStart,
                 scenario.sample?.motionWarmupCameraSnapshotAtEnd,
@@ -17585,7 +17842,7 @@ function buildMarkdown(report) {
                 scenario.sample?.gameCameraSnapshotAtEnd,
             );
             lines.push(
-                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.qualityTier ?? 'n/a'} | ${evidence?.targetFramesPerSecondMin ?? 'n/a'} / ${evidence?.targetFramesPerSecondMax ?? 'n/a'} | ${evidence?.frameCount ?? 'n/a'} | ${camera?.framesPerSecond?.join(',') ?? 'n/a'} FPS across ${camera?.observedFrameCount ?? 'n/a'} frames | ${scenario.requested?.motionWarmupMs ?? 0} ms / Δv${scenario.sample?.motionWarmupCameraSnapshotVersionDelta ?? 'n/a'} / drift ${warmupEndpointDelta ?? 'n/a'} | Δv${scenario.sample?.gameCameraSnapshotVersionDelta ?? 'n/a'} / drift ${sampleEndpointDelta ?? 'n/a'} | ${persistentCadence} | ${scenario.sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount ?? 'n/a'} / ${scenario.sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount ?? 'n/a'} / ${scenario.sample?.renderedFrames ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.runtime?.qualityTier ?? 'n/a'} | ${evidence?.targetFramesPerSecondMin ?? 'n/a'} / ${evidence?.targetFramesPerSecondMax ?? 'n/a'} | ${evidence?.frameCount ?? 'n/a'} | ${typeof evidence?.sceneTimeDeltaSeconds === 'number' ? `${round(evidence.sceneTimeDeltaSeconds, 3)} s` : 'n/a'} | ${delivery} | ${camera?.framesPerSecond?.join(',') ?? 'n/a'} FPS across ${camera?.observedFrameCount ?? 'n/a'} frames | ${scenario.requested?.motionWarmupMs ?? 0} ms / Δv${scenario.sample?.motionWarmupCameraSnapshotVersionDelta ?? 'n/a'} / drift ${warmupEndpointDelta ?? 'n/a'} | Δv${scenario.sample?.gameCameraSnapshotVersionDelta ?? 'n/a'} / drift ${sampleEndpointDelta ?? 'n/a'} | ${persistentCadence} | ${scenario.sample?.runtimeFrameLoopCounterDeltas?.ownedInvalidationCount ?? 'n/a'} / ${scenario.sample?.runtimeFrameLoopCounterDeltas?.r3fFrameCallbackCount ?? 'n/a'} / ${scenario.sample?.renderedFrames ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
         }
     }
