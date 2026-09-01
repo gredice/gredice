@@ -948,6 +948,14 @@ Progress:
 - R3F reports a root-scoped receipt from `addAfterEffect`, after WebGL
   submission. The ordinary `useFrame` path therefore retains only shader-time
   updates; scheduler reconciliation cannot shift renderer submission timing.
+- Demand roots with continuous leases capture the immutable raw R3F invalidator
+  and replace the root-state function with a StrictMode-safe, root-isolated
+  broker. Reconciler host updates persist as coalesced dirty requests: they ride
+  an active semantic cadence, become a one-off 60 FPS request when no lease can
+  deliver them, and remain pending if the last lease disappears before receipt.
+  Scheduler-owned draws call the raw invalidator directly, while static capture
+  keeps the broker disabled. R3F module-level invalidators remain outside this
+  root-state boundary, so total receipt surplus stays acceptance-gated.
 - Bounded calibration RAF timestamps are observational telemetry only and never
   steer scheduling. The first non-owned receipt after a scheduler-owned receipt
   within one active semantic interval consumes the pending cadence slot;

@@ -1144,6 +1144,22 @@ scheduler callback. R3F acknowledges each rendered frame through a root-scoped
 `addAfterEffect` receipt after WebGL submission, keeping scheduler bookkeeping
 out of the pre-render `useFrame` path.
 
+For demand roots with continuous leases enabled, `SceneTimeProvider` captures
+the immutable raw R3F invalidator and installs one root-scoped invalidation
+broker. Reconciler host updates become persistent coalesced render requests:
+they ride an existing 20/30/60 FPS lease without raising its cadence, remain
+dirty until an actual frame receipt, and become a one-off 60 FPS request if no
+lease exists or the last lease disappears before that receipt. Repeated reasons
+retain their maximum bounded frame count instead of adding debt. Hidden updates
+collapse to one frame, and scheduler-owned draws call the captured raw
+invalidator directly so the broker cannot recurse. Static capture explicitly
+disables continuous leases and retains raw invalidation control.
+
+The broker covers R3F reconciler and direct root-state invalidations. R3F
+module-level invalidators, including a global animation driver, bypass the root
+function; lifecycle evidence therefore continues to gate total R3F receipts,
+not only scheduler-owned invalidations.
+
 The bounded calibration RAF timestamps are observational telemetry only and
 never control target FPS, cadence phase, invalidation lead, or follow-up
 classification. The first non-owned receipt after a scheduler-owned receipt
