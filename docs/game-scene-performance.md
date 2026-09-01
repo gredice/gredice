@@ -927,23 +927,40 @@ Expected impact: high on high-DPR devices.
 ### 3. Runtime work is moving to explicit semantic ownership
 
 The Canvas already uses demand rendering and shared shader time, but the first
-implementation retained an always-active 20/30 FPS ambient heartbeat. It also
-polled with browser RAF at display cadence merely to decide whether to request a
-render. `GameRuntimeScheduler` now owns one exact-due timer, named render and
-fixed-step leases, semantic multi-frame requests, deadlines, visibility/context
-gates, bounded resume deltas, and profile-only ownership telemetry. R3F remains
-the sole owner of the render RAF. Existing explicit camera, avatar, weather,
-cloud, precipitation, sky, and meteor leases are named without changing their
-20/30/60 FPS policy. Attempt- and time-bounded display-lead calibration keeps
-those rates bounded on divisor and non-divisor displays, falls back safely when
-every observed interval is out of range, and uses the R3F RAF timestamp so
-callback work cannot bias the display interval. After calibration, one
-scheduler-awaited RAF consumes exactly one absolute cadence target; early
-unrelated frames cannot move that target, while late frames skip elapsed targets
-without catch-up. This keeps cadence stable across fixed, changing, and variable
-refresh schedules without a periodic live monitor probe. Reported display
-interval telemetry is the last compatible bounded calibration and can retain an
-older interval while the absolute render cadence remains exact.
+implementation retained an always-active 20/30 FPS ambient heartbeat.
+`GameRuntimeScheduler` now owns named render and fixed-step leases, semantic
+multi-frame requests, deadlines, visibility/context gates, bounded resume
+deltas, and profile-only ownership telemetry. It retains at most one scheduler
+callback. Visible render work uses a display-aligned RAF driver; it invalidates
+only when an absolute cadence target is due and rearms after invalidation so R3F
+can register the requested render first. When only fixed-step or deadline work
+remains, one timeout owns the earliest due item. Hidden, offscreen,
+context-lost, and idle scenes retain no callback. Deadlines and fixed steps that
+coexist with rendering run on the next driver tick and expose any lateness.
+R3F acknowledges each rendered frame through a root-scoped `addAfterEffect`
+receipt after WebGL submission, keeping scheduler bookkeeping out of the
+pre-render `useFrame` path.
+
+Scheduler RAF timestamps drive cadence immediately. Attempt- and time-bounded
+display-interval calibration is observational telemetry only and never controls
+cadence phase or lead. A scheduler-requested R3F receipt acknowledges the slot
+already consumed by the driver. During the compatibility slice, external R3F
+receipts are observed but do not move the ambient target because the previous
+runtime kept those invalidations independent. Semantic owner migration and a
+zero compatibility base remove that additive stream in the next slice. Late
+work skips elapsed targets without catch-up. Existing camera, avatar, weather,
+cloud, precipitation, sky, and meteor leases retain their 20/30/60 FPS policy.
+
+`pendingCallbackKind=frame` has no due timestamp and means the render loop is
+active. `timeout` exposes its absolute due timestamp without marking the render
+loop active; `none` has neither. Scheduled-callback and wakeup counters cover
+both scheduler callback kinds, while R3F frame callbacks remain a separate
+receipt count. Display-interval telemetry is observational.
+
+Profiler telemetry is pull-based: a synchronous property-read or
+`structuredClone` burst shares one exact scheduler snapshot until its queued
+reset runs. Normal frames and scheduler wakeups therefore do not push, allocate,
+or deep-copy telemetry merely because the profiling fixture is enabled.
 
 Remaining work:
 

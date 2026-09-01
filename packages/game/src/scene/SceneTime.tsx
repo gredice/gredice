@@ -1,6 +1,6 @@
 'use client';
 
-import { addEffect, useFrame, useThree } from '@react-three/fiber';
+import { addAfterEffect, useFrame, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
@@ -18,6 +18,7 @@ import {
     GameRuntimeScheduler,
 } from './GameRuntimeScheduler';
 import type { RuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import { bindRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
 
 export const sceneFrameRates = {
     ambient: 30,
@@ -100,6 +101,11 @@ export function SceneTimeProvider({
             new GameRuntimeScheduler({
                 ambientFramesPerSecond: resolvedAmbientFramesPerSecond,
                 baseFramesPerSecond,
+                cancelFrame: (handle) => {
+                    if (typeof handle === 'number') {
+                        window.cancelAnimationFrame(handle);
+                    }
+                },
                 clearTimeout: (handle) => {
                     if (typeof handle === 'number') {
                         window.clearTimeout(handle);
@@ -113,23 +119,28 @@ export function SceneTimeProvider({
                 },
                 invalidate: () => invalidateRef.current(),
                 now: () => globalThis.performance.now(),
+                requestFrame: (callback) =>
+                    window.requestAnimationFrame(callback),
                 setTimeout: (callback, delayMs) =>
                     window.setTimeout(callback, delayMs),
             }),
     );
     const lifecycleGenerationRef = useRef(0);
-    const displayTimestampRef = useRef<number | undefined>(undefined);
-    const lastRecordedDisplayTimestampRef = useRef<number | undefined>(
-        undefined,
-    );
+    const renderedThisLoopRef = useRef(false);
     const visibilityReadyRef = useRef(false);
 
     useEffect(
         () =>
-            addEffect((timestamp) => {
-                displayTimestampRef.current = timestamp;
+            addAfterEffect((timestamp) => {
+                if (!renderedThisLoopRef.current) {
+                    return;
+                }
+                renderedThisLoopRef.current = false;
+                if (visibilityReadyRef.current) {
+                    scheduler.recordFrameCallback(timestamp);
+                }
             }),
-        [],
+        [scheduler],
     );
 
     useEffect(() => {
@@ -139,14 +150,12 @@ export function SceneTimeProvider({
 
     useEffect(() => {
         if (!runtimeFrameLoop) {
-            scheduler.setSnapshotListener(undefined);
             return;
         }
 
-        scheduler.setSnapshotListener((snapshot) => {
-            Object.assign(runtimeFrameLoop, snapshot);
-        });
-        return () => scheduler.setSnapshotListener(undefined);
+        return bindRuntimeFrameLoopProfileTelemetry(runtimeFrameLoop, () =>
+            scheduler.getSnapshot(),
+        );
     }, [runtimeFrameLoop, scheduler]);
 
     useEffect(() => {
@@ -249,15 +258,7 @@ export function SceneTimeProvider({
 
     useFrame(({ clock: sceneClock }) => {
         timeUniform.value = fixedTime ?? sceneClock.elapsedTime;
-        if (visibilityReadyRef.current) {
-            const displayTimestamp = displayTimestampRef.current;
-            scheduler.recordFrameCallback(
-                displayTimestamp !== lastRecordedDisplayTimestampRef.current
-                    ? displayTimestamp
-                    : undefined,
-            );
-            lastRecordedDisplayTimestampRef.current = displayTimestamp;
-        }
+        renderedThisLoopRef.current = true;
     });
 
     const contextValue = useMemo<SceneTimeContextValue>(

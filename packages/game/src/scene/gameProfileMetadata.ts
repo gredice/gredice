@@ -239,6 +239,64 @@ export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfil
     };
 }
 
+/**
+ * Exposes an exact scheduler snapshot to profiling readers without copying a
+ * deep telemetry object on every frame and scheduler wakeup. A synchronous
+ * property-read or structured-clone burst shares one snapshot. The cache stays
+ * valid until its queued reset runs, so later sampling observes current state.
+ */
+export function bindRuntimeFrameLoopProfileTelemetry(
+    telemetry: RuntimeFrameLoopProfileTelemetry,
+    readSnapshot: () => RuntimeFrameLoopProfileTelemetry,
+    scheduleCacheReset: (callback: () => void) => void = (callback) =>
+        globalThis.queueMicrotask(callback),
+) {
+    const fields = Object.keys(
+        telemetry,
+    ) as (keyof RuntimeFrameLoopProfileTelemetry)[];
+    let bound = true;
+    let cachedSnapshot: RuntimeFrameLoopProfileTelemetry | null = null;
+    let cacheResetScheduled = false;
+    const readCachedSnapshot = () => {
+        if (cachedSnapshot === null) {
+            cachedSnapshot = readSnapshot();
+        }
+        if (!cacheResetScheduled) {
+            cacheResetScheduled = true;
+            scheduleCacheReset(() => {
+                cachedSnapshot = null;
+                cacheResetScheduled = false;
+            });
+        }
+        return cachedSnapshot;
+    };
+
+    for (const field of fields) {
+        Object.defineProperty(telemetry, field, {
+            configurable: true,
+            enumerable: true,
+            get: () => readCachedSnapshot()[field],
+        });
+    }
+
+    return () => {
+        if (!bound) {
+            return;
+        }
+        bound = false;
+        const finalSnapshot = readSnapshot();
+        cachedSnapshot = null;
+        for (const field of fields) {
+            Object.defineProperty(telemetry, field, {
+                configurable: true,
+                enumerable: true,
+                value: finalSnapshot[field],
+                writable: true,
+            });
+        }
+    };
+}
+
 export type GameProfileMetadata = {
     adaptiveHighAmbientFps?: number;
     adaptiveHighCloudUpdateMs?: number;

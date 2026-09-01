@@ -893,11 +893,10 @@ Priority: High
 
 Problem:
 
-Demand rendering still has a permanent 20/30 FPS compatibility cadence, and
-the original scheduler wakes at display refresh merely to throttle render
-requests. Time-dependent visuals, simulations, spawning, retries, and direct
-invalidations do not yet share one ownership model, so a static scene cannot
-prove that it is genuinely idle.
+Demand rendering still has a permanent 20/30 FPS compatibility cadence.
+Time-dependent visuals, simulations, spawning, retries, and direct invalidations
+do not yet share one ownership model, so a static scene cannot prove that it is
+genuinely idle and hidden work cannot be audited from one runtime boundary.
 
 Scope:
 
@@ -932,24 +931,31 @@ Progress:
   coverage for 20/30/60 FPS cadence, one-pending-callback ownership, named lease
   rates, deadlines, fixed-step clamping, visibility interlocks, StrictMode-style
   lease lifecycles, hidden request coalescing, and disposal.
-- Replaced the SceneTime display-rate RAF poll with one phase-aligned exact-due
-  timer per invalidation; R3F alone schedules the render RAF. The scheduler
-  uses R3F's actual RAF timestamp rather than callback receipt time. Its initial
-  display-lead calibration is bounded by samples, attempts, and elapsed time,
-  with a safe fallback when all observed intervals are invalid. The calibrated
-  interval is never treated as a synthetic display lattice, so moving between
-  monitors cannot preserve averages by alternating short and long frame gaps.
-  After calibration, one
-  awaited RAF consumes one absolute cadence
-  target; external early frames leave future targets intact, and late frames
-  skip elapsed targets without catch-up. That invariant preserves cadence
-  across fixed, changing, and variable refresh schedules without live refresh
-  polling.
+- The scheduler owns at most one callback. Visible render work keeps one
+  display-aligned RAF driver that invalidates only when an absolute cadence
+  target is due and rearms after invalidation so R3F can register the requested
+  render first. When only fixed-step or deadline work remains, one timeout owns
+  the earliest due item. Hidden, offscreen, context-lost, and idle scenes retain
+  no scheduler callback. Deadlines and fixed steps that coexist with rendering
+  run on the next driver tick and report their lateness.
+- R3F reports a root-scoped receipt from `addAfterEffect`, after WebGL
+  submission. The ordinary `useFrame` path therefore retains only shader-time
+  updates; scheduler reconciliation cannot shift renderer submission timing.
+- Scheduler RAF timestamps drive cadence immediately. Bounded display-interval
+  calibration is observational telemetry only and never controls phase or lead.
+  A scheduler-requested R3F receipt acknowledges the cadence slot already
+  consumed by the driver. During the compatibility slice, external R3F
+  receipts are observed but do not move the ambient target because the previous
+  runtime kept those invalidations independent. Semantic owner migration and a
+  zero compatibility base remove the additive stream in the next slice. Late
+  work skips elapsed targets without catch-up.
 - Named all existing explicit render leases and separated ambient policy from
   the temporary nonzero compatibility base.
 - Extended production profiling with deep-cloned start/end scheduler state and
-  additive counter deltas while preserving the existing lifecycle/comparator
-  contract for clean before/after reports.
+  a pull-based telemetry view. A synchronous property-read or structured-clone
+  burst shares one exact snapshot until its queued reset; runtime frames and
+  wakeups do not push or clone telemetry. Additive counter deltas preserve the
+  existing lifecycle/comparator contract for clean before/after reports.
 - The compatibility base remains intentionally active until the remaining
   implicit visual and runtime owners migrate in the next slice.
 

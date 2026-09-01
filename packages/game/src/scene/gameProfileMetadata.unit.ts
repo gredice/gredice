@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createRuntimeFrameLoopProfileTelemetry } from './gameProfileMetadata';
+import {
+    bindRuntimeFrameLoopProfileTelemetry,
+    createRuntimeFrameLoopProfileTelemetry,
+} from './gameProfileMetadata';
 
 describe('createRuntimeFrameLoopProfileTelemetry', () => {
     it('creates an independent zeroed profile-only scheduler snapshot', () => {
@@ -67,5 +70,44 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
         );
         assert.deepEqual(second.renderLeaseOwners, []);
         assert.deepEqual(second.renderLeaseSummaries, []);
+    });
+});
+
+describe('bindRuntimeFrameLoopProfileTelemetry', () => {
+    it('pulls one exact snapshot per synchronous read burst and leaves a writable final value', () => {
+        const telemetry = createRuntimeFrameLoopProfileTelemetry();
+        const cacheResets: (() => void)[] = [];
+        let ownedInvalidationCount = 7;
+        let snapshotReadCount = 0;
+        const unbind = bindRuntimeFrameLoopProfileTelemetry(
+            telemetry,
+            () => {
+                snapshotReadCount += 1;
+                return {
+                    ...createRuntimeFrameLoopProfileTelemetry(),
+                    ownedInvalidationCount,
+                };
+            },
+            (callback) => cacheResets.push(callback),
+        );
+
+        assert.equal(snapshotReadCount, 0);
+        const first = structuredClone(telemetry);
+        assert.equal(first.ownedInvalidationCount, 7);
+        assert.equal(snapshotReadCount, 1);
+        ownedInvalidationCount = 9;
+        assert.equal(telemetry.ownedInvalidationCount, 7);
+        assert.equal(snapshotReadCount, 1);
+
+        cacheResets.shift()?.();
+        const second = structuredClone(telemetry);
+        assert.equal(second.ownedInvalidationCount, 9);
+        assert.equal(snapshotReadCount, 2);
+
+        unbind();
+        ownedInvalidationCount = 11;
+        assert.equal(telemetry.ownedInvalidationCount, 9);
+        telemetry.ownedInvalidationCount = 10;
+        assert.equal(telemetry.ownedInvalidationCount, 10);
     });
 });

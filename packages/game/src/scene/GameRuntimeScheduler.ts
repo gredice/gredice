@@ -9,14 +9,13 @@ const defaultDisplayFrameIntervalMs = 1000 / 60;
 const displayFrameCalibrationSampleCount = 7;
 const maximumDisplayFrameCalibrationAttempts = 12;
 const maximumDisplayFrameCalibrationDurationMs = 750;
-const maximumRenderInvalidationPhaseMarginMs = 2;
 const schedulerToleranceMs = 0.5;
 const maximumTimeoutMs = 2_147_483_647;
 const maximumRequestedFrames = 60;
 
 type SchedulerHandle = unknown;
 
-export type GameRuntimeSchedulerPendingCallback = 'none' | 'timeout';
+export type GameRuntimeSchedulerPendingCallback = 'frame' | 'none' | 'timeout';
 
 export type GameRuntimeSchedulerVisibility = {
     canvasVisible: boolean;
@@ -36,7 +35,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     deadlineOwners: readonly string[];
     deferredWorkCount: number;
     displayFrameCalibrationCount: number;
-    /** Last interval established by bounded calibration, not a live monitor probe. */
+    /** Observational bounded calibration; this value never steers scheduling. */
     displayFrameIntervalMs: number | null;
     disposed: boolean;
     effectiveVisible: boolean;
@@ -71,12 +70,16 @@ export type GameRuntimeSchedulerOptions = {
     ambientFramesPerSecond?: number;
     /** Always-on cadence. Keep this at zero once every visual owner has a lease. */
     baseFramesPerSecond?: number;
+    cancelFrame: (handle: SchedulerHandle) => void;
     clearTimeout: (handle: SchedulerHandle) => void;
     initialVisibility?: Partial<GameRuntimeSchedulerVisibility>;
     invalidate: () => void;
     maxDeliveredDeltaMs?: number;
     now: () => number;
     onSnapshot?: (snapshot: GameRuntimeSchedulerSnapshot) => void;
+    requestFrame: (
+        callback: (displayTimestampMs?: number) => void,
+    ) => SchedulerHandle;
     setTimeout: (callback: () => void, delayMs: number) => SchedulerHandle;
 };
 
@@ -128,15 +131,15 @@ type DeadlineEntry = {
 };
 
 type PendingCallback = {
-    dueAt: number;
+    dueAt: number | null;
     handle: SchedulerHandle;
     id: number;
-    kind: 'timeout';
+    kind: Exclude<GameRuntimeSchedulerPendingCallback, 'none'>;
 };
 
 type NextWakeup = {
-    dueAt: number;
-    kind: 'timeout';
+    dueAt: number | null;
+    kind: Exclude<GameRuntimeSchedulerPendingCallback, 'none'>;
 };
 
 type MutableSchedulerCounters = {
@@ -201,6 +204,7 @@ export class GameRuntimeScheduler {
     private ambientFramesPerSecond: number;
     private baseFramesPerSecond: number;
     private callbackSequence = 0;
+    private readonly cancelFrameEffect: (handle: SchedulerHandle) => void;
     private readonly clearTimeoutEffect: (handle: SchedulerHandle) => void;
     private readonly counters: MutableSchedulerCounters = {
         cancelledCallbackCount: 0,
@@ -235,7 +239,8 @@ export class GameRuntimeScheduler {
     private readonly displayFrameCalibrationSamplesMs: number[] = [];
     private frameIntervalCalibrationStartedAt: number | null = null;
     private frameIntervalCalibrated = false;
-    private lastFrameCallbackAt: number | null = null;
+    private awaitingFrameReceipt = false;
+    private invalidationRetryNotBeforeAt: number | null = null;
     private lastInvalidatedAt: number | null = null;
     private nextRenderFrameTargetAt: number | null = null;
     private readonly maxDeliveredDeltaMs: number;
@@ -246,11 +251,15 @@ export class GameRuntimeScheduler {
     private pendingCallback: PendingCallback | null = null;
     private readonly renderLeases = new Map<symbol, RenderLease>();
     private readonly renderRequests = new Map<string, number>();
+    private readonly requestFrameEffect: (
+        callback: (displayTimestampMs?: number) => void,
+    ) => SchedulerHandle;
     private readonly resumeListeners = new Set<() => void>();
     private readonly setTimeoutEffect: (
         callback: () => void,
         delayMs: number,
     ) => SchedulerHandle;
+    private targetFramesPerSecond = 0;
     private visibility: GameRuntimeSchedulerVisibility;
 
     constructor(options: GameRuntimeSchedulerOptions) {
@@ -260,6 +269,7 @@ export class GameRuntimeScheduler {
         this.baseFramesPerSecond = normalizeSceneFramesPerSecond(
             options.baseFramesPerSecond ?? 0,
         );
+        this.cancelFrameEffect = options.cancelFrame;
         this.clearTimeoutEffect = options.clearTimeout;
         this.invalidateEffect = options.invalidate;
         this.maxDeliveredDeltaMs = normalizePositiveMilliseconds(
@@ -268,7 +278,9 @@ export class GameRuntimeScheduler {
         );
         this.nowEffect = options.now;
         this.onSnapshotEffect = options.onSnapshot;
+        this.requestFrameEffect = options.requestFrame;
         this.setTimeoutEffect = options.setTimeout;
+        this.refreshTargetFramesPerSecond();
         this.visibility = {
             canvasVisible: options.initialVisibility?.canvasVisible ?? true,
             contextAvailable:
@@ -302,10 +314,11 @@ export class GameRuntimeScheduler {
             framesPerSecond: normalizedFramesPerSecond,
             owner: normalizedOwner,
         });
+        this.refreshTargetFramesPerSecond();
         this.counters.leaseAcquiredCount += 1;
         const nextTarget = this.getRenderFramesPerSecond();
         if (nextTarget !== previousTarget) {
-            this.resetRenderFrameTarget();
+            this.resetRenderFrameTarget(previousTarget);
         }
         if (!this.isEffectivelyVisible()) {
             this.counters.deferredWorkCount += 1;
@@ -322,9 +335,10 @@ export class GameRuntimeScheduler {
             if (!this.renderLeases.delete(token)) {
                 return;
             }
+            this.refreshTargetFramesPerSecond();
             this.counters.leaseReleasedCount += 1;
             if (this.getRenderFramesPerSecond() !== previousReleaseTarget) {
-                this.resetRenderFrameTarget();
+                this.resetRenderFrameTarget(previousReleaseTarget);
             }
             this.reconcileSchedule();
         };
@@ -458,22 +472,17 @@ export class GameRuntimeScheduler {
             this.recordNonessentialHiddenWork();
         }
         if (this.getRenderFramesPerSecond() !== previousTarget) {
-            this.resetRenderFrameTarget();
+            this.resetRenderFrameTarget(previousTarget);
         }
         this.reconcileSchedule();
         return true;
     }
 
-    /** Records entry into the adapter's R3F useFrame callback. */
-    recordFrameCallback(displayTimestampMs?: number) {
+    /** Records one root-scoped R3F render after WebGL submission. */
+    recordFrameCallback(_displayTimestampMs?: number) {
         if (this.disposed) {
             return;
         }
-        const now = this.readNow();
-        const displayNow = Number.isFinite(displayTimestampMs)
-            ? Math.max(0, displayTimestampMs ?? now)
-            : now;
-        const wasAwaitingFrame = this.isAwaitingFrame();
         this.counters.r3fFrameCallbackCount += 1;
         if (!this.isEffectivelyVisible()) {
             this.counters.nonessentialHiddenWorkCount += 1;
@@ -481,29 +490,26 @@ export class GameRuntimeScheduler {
             return;
         }
 
-        const previousTarget = this.getRenderFramesPerSecond();
-        for (const [reason, remainingFrames] of this.renderRequests) {
-            if (remainingFrames <= 1) {
-                this.renderRequests.delete(reason);
-            } else {
-                this.renderRequests.set(reason, remainingFrames - 1);
+        if (this.renderRequests.size > 0) {
+            const previousTarget = this.getRenderFramesPerSecond();
+            for (const [reason, remainingFrames] of this.renderRequests) {
+                if (remainingFrames <= 1) {
+                    this.renderRequests.delete(reason);
+                } else {
+                    this.renderRequests.set(reason, remainingFrames - 1);
+                }
+            }
+            if (this.getRenderFramesPerSecond() !== previousTarget) {
+                this.resetRenderFrameTarget(previousTarget);
             }
         }
-        if (this.getRenderFramesPerSecond() !== previousTarget) {
-            this.resetRenderFrameTarget();
-        }
-        const hasRenderWork = this.hasRenderWork();
-        if (hasRenderWork) {
-            this.observeDisplayFrameInterval(displayNow);
-        }
-        this.lastFrameCallbackAt = now;
-        if (!this.frameIntervalCalibrated && hasRenderWork) {
-            this.requestInvalidation(now);
-        }
-        if (this.frameIntervalCalibrated) {
-            this.advanceRenderFrameTarget(displayNow, wasAwaitingFrame);
-        }
-        this.reconcileSchedule();
+        this.awaitingFrameReceipt = false;
+        this.invalidationRetryNotBeforeAt = null;
+        // An active render owner already has one scheduler RAF pending. Keep
+        // this receipt state-only; that RAF already consumed its cadence slot.
+        // External receipts must not move the compatibility cadence because
+        // the previous runtime kept ambient invalidations independent.
+        this.emitSnapshot();
     }
 
     subscribeResume(listener: () => void) {
@@ -555,8 +561,9 @@ export class GameRuntimeScheduler {
         const previousTarget = this.getRenderFramesPerSecond();
         this.baseFramesPerSecond =
             normalizeSceneFramesPerSecond(framesPerSecond);
+        this.refreshTargetFramesPerSecond();
         if (this.getRenderFramesPerSecond() !== previousTarget) {
-            this.resetRenderFrameTarget();
+            this.resetRenderFrameTarget(previousTarget);
         }
         this.reconcileSchedule();
     }
@@ -568,8 +575,9 @@ export class GameRuntimeScheduler {
         const previousTarget = this.getRenderFramesPerSecond();
         this.ambientFramesPerSecond =
             normalizeSceneFramesPerSecond(framesPerSecond);
+        this.refreshTargetFramesPerSecond();
         if (this.getRenderFramesPerSecond() !== previousTarget) {
-            this.resetRenderFrameTarget();
+            this.resetRenderFrameTarget(previousTarget);
         }
         this.reconcileSchedule();
     }
@@ -598,7 +606,8 @@ export class GameRuntimeScheduler {
 
         const now = this.readNow();
         this.lastInvalidatedAt = null;
-        this.lastFrameCallbackAt = null;
+        this.awaitingFrameReceipt = false;
+        this.invalidationRetryNotBeforeAt = null;
         this.resetRenderFrameTarget();
         this.displayFrameCalibrationAttemptCount = 0;
         this.displayFrameCalibrationBeganAt = null;
@@ -673,7 +682,7 @@ export class GameRuntimeScheduler {
             fixedStepOwners: uniqueSortedOwners(
                 [...this.fixedStepLeases.values()].map((lease) => lease.owner),
             ),
-            loopActive: this.pendingCallback !== null,
+            loopActive: this.pendingCallback?.kind === 'frame',
             ownedInvalidationCount: this.counters.invalidationCount,
             pendingCallbackDueAt: this.pendingCallback?.dueAt ?? null,
             pendingCallbackKind,
@@ -711,12 +720,18 @@ export class GameRuntimeScheduler {
     }
 
     private getTargetFramesPerSecond() {
-        return resolveSceneFramesPerSecond(
-            this.baseFramesPerSecond,
-            [...this.renderLeases.values()].map(
-                (lease) => lease.framesPerSecond ?? this.ambientFramesPerSecond,
-            ),
-        );
+        return this.targetFramesPerSecond;
+    }
+
+    private refreshTargetFramesPerSecond() {
+        let targetFramesPerSecond = this.baseFramesPerSecond;
+        for (const lease of this.renderLeases.values()) {
+            targetFramesPerSecond = resolveSceneFramesPerSecond(
+                targetFramesPerSecond,
+                [lease.framesPerSecond ?? this.ambientFramesPerSecond],
+            );
+        }
+        this.targetFramesPerSecond = targetFramesPerSecond;
     }
 
     private getRenderFramesPerSecond() {
@@ -826,46 +841,45 @@ export class GameRuntimeScheduler {
         this.counters.displayFrameCalibrationCount += 1;
     }
 
-    private advanceRenderFrameTarget(now: number, wasAwaitingFrame: boolean) {
+    private resetRenderFrameTarget(previousFramesPerSecond?: number) {
+        const nextFramesPerSecond = this.getRenderFramesPerSecond();
+        if (
+            this.awaitingFrameReceipt &&
+            this.lastInvalidatedAt !== null &&
+            previousFramesPerSecond !== undefined &&
+            nextFramesPerSecond > 0 &&
+            nextFramesPerSecond < previousFramesPerSecond
+        ) {
+            this.nextRenderFrameTargetAt =
+                this.lastInvalidatedAt + 1000 / nextFramesPerSecond;
+            return;
+        }
+        this.nextRenderFrameTargetAt = null;
+    }
+
+    private isAwaitingFrame() {
+        return this.awaitingFrameReceipt;
+    }
+
+    private consumeRenderFrameTarget(now: number) {
         const framesPerSecond = this.getRenderFramesPerSecond();
         if (framesPerSecond === 0) {
             this.resetRenderFrameTarget();
             return;
         }
-
         const intervalMs = 1000 / framesPerSecond;
         if (this.nextRenderFrameTargetAt === null) {
             this.nextRenderFrameTargetAt = now + intervalMs;
             return;
         }
-        if (this.nextRenderFrameTargetAt > now + schedulerToleranceMs) {
-            // The adapter requested one display frame for this cadence target.
-            // If that frame arrives early, consume exactly one target so a
-            // variable-refresh display cannot cause a duplicate request. An
-            // unrelated external frame must leave the future target intact.
-            if (wasAwaitingFrame) {
-                this.nextRenderFrameTargetAt += intervalMs;
-            }
-            return;
-        }
-
-        const elapsedIntervals = Math.floor(
-            (now + schedulerToleranceMs - this.nextRenderFrameTargetAt) /
-                intervalMs,
+        const elapsedIntervals = Math.max(
+            0,
+            Math.floor(
+                (now + schedulerToleranceMs - this.nextRenderFrameTargetAt) /
+                    intervalMs,
+            ),
         );
         this.nextRenderFrameTargetAt += (elapsedIntervals + 1) * intervalMs;
-    }
-
-    private resetRenderFrameTarget() {
-        this.nextRenderFrameTargetAt = null;
-    }
-
-    private isAwaitingFrame() {
-        return (
-            this.lastInvalidatedAt !== null &&
-            (this.lastFrameCallbackAt === null ||
-                this.lastFrameCallbackAt <= this.lastInvalidatedAt)
-        );
     }
 
     private getNextRenderDueAt(now: number) {
@@ -875,37 +889,18 @@ export class GameRuntimeScheduler {
         }
 
         const intervalMs = 1000 / framesPerSecond;
+        if (this.invalidationRetryNotBeforeAt !== null) {
+            return this.invalidationRetryNotBeforeAt;
+        }
         const lastInvalidatedAt = this.lastInvalidatedAt;
         if (this.isAwaitingFrame()) {
             return (lastInvalidatedAt ?? now) + Math.max(intervalMs * 2, 100);
         }
-        if (
-            !this.frameIntervalCalibrated &&
-            this.frameIntervalCalibrationStartedAt !== null
-        ) {
-            return null;
-        }
-        if (
-            !this.frameIntervalCalibrated ||
-            this.nextRenderFrameTargetAt === null
-        ) {
+        if (this.nextRenderFrameTargetAt === null) {
             return now;
         }
 
-        const displayIntervalMs = this.displayFrameIntervalMs;
-        const phaseMarginMs = Math.min(
-            maximumRenderInvalidationPhaseMarginMs,
-            displayIntervalMs / 4,
-        );
-        // Calibration supplies only a bounded request lead. Treating an old
-        // interval as a display lattice after moving the canvas between
-        // monitors can preserve the average while producing alternating short
-        // and long frame gaps.
-        const earliestCadenceInvalidationAt =
-            this.nextRenderFrameTargetAt -
-            Math.min(displayIntervalMs, defaultDisplayFrameIntervalMs) +
-            phaseMarginMs;
-        return Math.max(now, earliestCadenceInvalidationAt);
+        return Math.max(now, this.nextRenderFrameTargetAt);
     }
 
     private getNextFixedStepDueAt() {
@@ -934,8 +929,10 @@ export class GameRuntimeScheduler {
         if (this.disposed || !this.isEffectivelyVisible()) {
             return null;
         }
+        if (this.hasRenderWork()) {
+            return { dueAt: null, kind: 'frame' };
+        }
 
-        const renderDueAt = this.getNextRenderDueAt(now);
         const fixedStepDueAt = this.getNextFixedStepDueAt();
         const deadlineDueAt = this.getNextDeadlineDueAt();
         const nonRenderDueAt = [fixedStepDueAt, deadlineDueAt].reduce<
@@ -947,20 +944,12 @@ export class GameRuntimeScheduler {
             return earliest === null ? dueAt : Math.min(earliest, dueAt);
         }, null);
 
-        const dueAt = [renderDueAt, nonRenderDueAt].reduce<number | null>(
-            (earliest, candidate) => {
-                if (candidate === null) {
-                    return earliest;
-                }
-                return earliest === null
-                    ? candidate
-                    : Math.min(earliest, candidate);
-            },
-            null,
-        );
-        return dueAt === null
+        return nonRenderDueAt === null
             ? null
-            : { dueAt: Math.max(now, dueAt), kind: 'timeout' };
+            : {
+                  dueAt: Math.max(now, nonRenderDueAt),
+                  kind: 'timeout',
+              };
     }
 
     private reconcileSchedule() {
@@ -979,10 +968,22 @@ export class GameRuntimeScheduler {
         }
 
         if (
-            this.pendingCallback?.kind === nextWakeup.kind &&
-            Math.abs(this.pendingCallback.dueAt - nextWakeup.dueAt) <=
-                schedulerToleranceMs
+            this.pendingCallback?.kind === 'frame' &&
+            nextWakeup.kind === 'frame'
         ) {
+            this.emitSnapshot();
+            return;
+        }
+        if (
+            this.pendingCallback?.kind === 'timeout' &&
+            nextWakeup.kind === 'timeout' &&
+            this.pendingCallback.dueAt !== null &&
+            nextWakeup.dueAt !== null &&
+            this.pendingCallback.dueAt <=
+                nextWakeup.dueAt + schedulerToleranceMs
+        ) {
+            // An earlier timer can safely reconcile a deadline or fixed-step
+            // target that moved later without a cancellation/rearm pair.
             this.emitSnapshot();
             return;
         }
@@ -994,10 +995,22 @@ export class GameRuntimeScheduler {
 
     private scheduleCallback(nextWakeup: NextWakeup, now: number) {
         const id = ++this.callbackSequence;
-        const delayMs = Math.min(
-            maximumTimeoutMs,
-            Math.max(0, nextWakeup.dueAt - now),
-        );
+        if (nextWakeup.kind === 'frame') {
+            const handle = this.requestFrameEffect((displayTimestampMs) => {
+                this.handleScheduledCallback(id, displayTimestampMs);
+            });
+            this.pendingCallback = {
+                dueAt: null,
+                handle,
+                id,
+                kind: 'frame',
+            };
+            this.counters.scheduledCallbackCount += 1;
+            return;
+        }
+
+        const dueAt = nextWakeup.dueAt ?? now;
+        const delayMs = Math.min(maximumTimeoutMs, Math.max(0, dueAt - now));
         const handle = this.setTimeoutEffect(() => {
             this.handleScheduledCallback(id);
         }, delayMs);
@@ -1016,19 +1029,20 @@ export class GameRuntimeScheduler {
             return;
         }
         this.pendingCallback = null;
-        this.clearTimeoutEffect(pendingCallback.handle);
+        if (pendingCallback.kind === 'frame') {
+            this.cancelFrameEffect(pendingCallback.handle);
+        } else {
+            this.clearTimeoutEffect(pendingCallback.handle);
+        }
         this.counters.cancelledCallbackCount += 1;
     }
 
-    private handleScheduledCallback(id: number) {
-        if (
-            this.disposed ||
-            this.pendingCallback?.id !== id ||
-            this.pendingCallback.kind !== 'timeout'
-        ) {
+    private handleScheduledCallback(id: number, displayTimestampMs?: number) {
+        if (this.disposed || this.pendingCallback?.id !== id) {
             return;
         }
 
+        const callbackKind = this.pendingCallback.kind;
         this.pendingCallback = null;
         this.counters.wakeupCount += 1;
         if (!this.isEffectivelyVisible()) {
@@ -1038,13 +1052,20 @@ export class GameRuntimeScheduler {
         }
 
         const now = this.readNow();
+        const displayNow =
+            callbackKind === 'frame' && Number.isFinite(displayTimestampMs)
+                ? Math.max(0, displayTimestampMs ?? now)
+                : now;
         try {
+            if (callbackKind === 'frame' && this.hasRenderWork()) {
+                this.observeDisplayFrameInterval(displayNow);
+            }
             this.deliverDeadlines(now);
             if (!this.disposed) {
                 this.deliverFixedSteps(now);
             }
-            if (!this.disposed) {
-                this.requestInvalidationIfDue(now);
+            if (!this.disposed && callbackKind === 'frame') {
+                this.requestInvalidationIfDue(displayNow);
             }
         } finally {
             this.reconcileSchedule();
@@ -1052,6 +1073,9 @@ export class GameRuntimeScheduler {
     }
 
     private deliverDeadlines(now: number) {
+        if (this.deadlines.size === 0) {
+            return;
+        }
         const dueDeadlines = [...this.deadlines.values()]
             .filter((deadline) => deadline.dueAt <= now + schedulerToleranceMs)
             .sort(
@@ -1078,6 +1102,9 @@ export class GameRuntimeScheduler {
     }
 
     private deliverFixedSteps(now: number) {
+        if (this.fixedStepLeases.size === 0) {
+            return;
+        }
         for (const [token, lease] of [...this.fixedStepLeases]) {
             if (this.disposed) {
                 return;
@@ -1127,20 +1154,30 @@ export class GameRuntimeScheduler {
         if (this.isAwaitingFrame()) {
             this.counters.missedFrameReceiptCount += 1;
         }
+        this.consumeRenderFrameTarget(now);
         this.requestInvalidation(now);
     }
 
     private requestInvalidation(now: number) {
-        // Consume the attempt before invoking user code so a failure cannot
-        // reconcile into an unbounded zero-delay retry loop.
-        this.lastInvalidatedAt = now;
-
+        // A failed effect did not submit a frame, but it still receives a
+        // bounded retry delay so reconciliation cannot spin at display rate.
         try {
             this.invalidateEffect();
         } catch (error) {
+            const framesPerSecond = this.getRenderFramesPerSecond();
+            const intervalMs =
+                framesPerSecond > 0
+                    ? 1000 / framesPerSecond
+                    : defaultDisplayFrameIntervalMs;
+            this.awaitingFrameReceipt = false;
+            this.invalidationRetryNotBeforeAt =
+                now + Math.max(intervalMs * 2, 100);
             this.counters.invalidationFailureCount += 1;
             throw error;
         }
+        this.awaitingFrameReceipt = true;
+        this.invalidationRetryNotBeforeAt = null;
+        this.lastInvalidatedAt = now;
         this.counters.invalidationCount += 1;
     }
 
