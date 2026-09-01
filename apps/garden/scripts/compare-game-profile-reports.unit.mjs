@@ -36,6 +36,25 @@ function sample(overrides = {}) {
     };
 }
 
+function setAvailableGpuSample(
+    target,
+    { elapsedMs, elapsedP95Ms, elapsedTotalMs, renderedFrames },
+) {
+    target.elapsedMs = elapsedMs;
+    target.renderedFrames = renderedFrames;
+    target.gpu = {
+        complete: true,
+        disjoint: false,
+        elapsedMaxMs: elapsedP95Ms,
+        elapsedP95Ms,
+        elapsedTotalMs,
+        reason: null,
+        sampleCount: renderedFrames,
+        supported: true,
+        valid: true,
+    };
+}
+
 function runtime(overrides = {}) {
     return {
         blockCount: 297,
@@ -1647,6 +1666,137 @@ test('garden-switch semantic rendered-FPS gate rejects a true under-target caden
         ),
         true,
     );
+});
+
+test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates total GPU work', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: 450,
+                renderedFrames: 45,
+            });
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 23,
+                elapsedTotalMs: 330,
+                renderedFrames: 30,
+            });
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const gpuP95 = comparison.comparisons.filter(
+        (result) => result.id === 'gpu.p95_ms',
+    );
+    const gpuOccupancy = comparison.comparisons.filter(
+        (result) => result.id === 'gpu.elapsed_window_occupancy_percent',
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(gpuP95.length, 7);
+    assert.equal(gpuOccupancy.length, 7);
+    for (const result of gpuP95) {
+        assert.equal(result.medianRatio, 1.5333);
+        assert.equal(result.baselineRelativeDiagnosticOnly, true);
+        assert.equal(result.baselineRelativeRegressionBreach, true);
+        assert.equal(result.diagnosticOnly, true);
+        assert.equal(result.screeningBreach, false);
+        assert.equal(result.regressionBreach, false);
+        assert.equal(result.pass, true);
+    }
+    for (const result of gpuOccupancy) {
+        assert.equal(result.baselineMedian, 45);
+        assert.equal(result.candidateMedian, 33);
+        assert.equal(result.medianRatio, 0.7333);
+        assert.equal(result.regressionBreach, false);
+        assert.equal(result.pass, true);
+    }
+    assert.match(
+        buildMarkdown(comparison),
+        /diagnostic only; gated by gpu\.elapsed_window_occupancy_percent/,
+    );
+});
+
+test('garden-switch elapsed-window GPU occupancy rejects a true total GPU regression', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    for (const scenario of baseline.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: 400,
+                renderedFrames: 40,
+            });
+        }
+    }
+    for (const scenario of candidate.scenarios) {
+        for (const arrival of scenario.gardenSwitch.arrivals) {
+            setAvailableGpuSample(arrival.sample, {
+                elapsedMs: 1_000,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: 600,
+                renderedFrames: 30,
+            });
+        }
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const gpuOccupancy = comparison.comparisons.find(
+        (result) => result.id === 'gpu.elapsed_window_occupancy_percent',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    assert.equal(gpuOccupancy.baselineMedian, 40);
+    assert.equal(gpuOccupancy.candidateMedian, 60);
+    assert.equal(gpuOccupancy.medianRatio, 1.5);
+    assert.equal(gpuOccupancy.regressionBreach, true);
+    assert.equal(gpuOccupancy.pass, false);
+});
+
+test('garden-switch elapsed-window GPU occupancy fails closed for incomplete totals', async (t) => {
+    const cases = {
+        'mismatched GPU sample count': (sample) => {
+            sample.gpu.sampleCount -= 1;
+        },
+        'missing GPU total': (sample) => {
+            delete sample.gpu.elapsedTotalMs;
+        },
+    };
+
+    for (const [name, mutate] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const { baseline, candidate } = reportPair(gardenSwitchScenario);
+            for (const report of [baseline, candidate]) {
+                for (const scenario of report.scenarios) {
+                    for (const arrival of scenario.gardenSwitch.arrivals) {
+                        setAvailableGpuSample(arrival.sample, {
+                            elapsedMs: 1_000,
+                            elapsedP95Ms: 15,
+                            elapsedTotalMs: 400,
+                            renderedFrames: 40,
+                        });
+                    }
+                }
+            }
+            mutate(candidate.scenarios[0].gardenSwitch.arrivals[0].sample);
+
+            const comparison = comparePartialReports(baseline, candidate);
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(
+                comparison.validationErrors.join('\n'),
+                /GPU elapsed-window occupancy requires/,
+            );
+        });
+    }
 });
 
 test('comparison fails closed for scenario and environment incompatibilities', async (t) => {

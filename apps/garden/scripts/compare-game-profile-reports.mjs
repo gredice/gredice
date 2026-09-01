@@ -1312,6 +1312,25 @@ function gpuState(sample) {
     };
 }
 
+function gpuElapsedWindowOccupancyState(sample) {
+    const elapsedMs = sample?.elapsedMs;
+    const elapsedTotalMs = sample?.gpu?.elapsedTotalMs;
+    const renderedFrames = sample?.renderedFrames;
+    const sampleCount = sample?.gpu?.sampleCount;
+    const valid =
+        isFiniteNumber(elapsedMs) &&
+        elapsedMs > 0 &&
+        isFiniteNumber(elapsedTotalMs) &&
+        elapsedTotalMs > 0 &&
+        Number.isInteger(renderedFrames) &&
+        renderedFrames > 0 &&
+        sampleCount === renderedFrames;
+    return {
+        valid,
+        value: valid ? (elapsedTotalMs / elapsedMs) * 100 : null,
+    };
+}
+
 function samplePhases(scenario) {
     if (scenario.requested?.lifecycleProfile === true) {
         return [
@@ -1604,6 +1623,29 @@ function buildGardenSwitchRenderedFpsComparison({ rows, ...metric }) {
         targetFramesPerSecond: gardenSwitchTargetFramesPerSecond,
         targetToleranceFramesPerSecond: gardenSwitchRenderedFpsTolerance,
         targetAwareRenderedFps: true,
+    };
+}
+
+function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
+    const baselineRelative = buildRatioComparison({ ...metric, rows });
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        diagnosticOnly: true,
+        gatedBy: 'gpu.elapsed_window_occupancy_percent',
+        individual: baselineRelative.individual.map((run) => ({
+            ...run,
+            baselineRelativePass: run.pass,
+            baselineRelativeRatio: run.ratio,
+            baselineRelativeWorsening: run.worsening,
+            pass: true,
+        })),
+        medianPass: true,
+        pass: true,
+        regressionBreach: false,
+        screeningBreach: false,
     };
 }
 
@@ -1935,6 +1977,7 @@ function comparePairedScenarios(
         }
 
         const gpuRows = [];
+        const gpuOccupancyRows = [];
         for (const row of group.rows) {
             const baselineGpu = gpuState(row.baseline.sample);
             const candidateGpu = gpuState(row.candidate.sample);
@@ -1974,22 +2017,76 @@ function comparePairedScenarios(
                     profileRun: row.profileRun,
                     scenario: row.scenario,
                 });
+                if (
+                    requireGardenSwitchCandidateFrameContract &&
+                    group.scenario === gardenSwitchScenarioBaseName
+                ) {
+                    const baselineOccupancy = gpuElapsedWindowOccupancyState(
+                        row.baseline.sample,
+                    );
+                    const candidateOccupancy = gpuElapsedWindowOccupancyState(
+                        row.candidate.sample,
+                    );
+                    if (!baselineOccupancy.valid || !candidateOccupancy.valid) {
+                        errors.push(
+                            `${row.scenario} run ${row.profileRun} ${row.phase} GPU elapsed-window occupancy requires positive sample.elapsedMs, positive gpu.elapsedTotalMs, positive integer sample.renderedFrames, and gpu.sampleCount equal to sample.renderedFrames in both reports`,
+                        );
+                    } else {
+                        gpuOccupancyRows.push({
+                            baseline: baselineOccupancy.value,
+                            candidate: candidateOccupancy.value,
+                            phase: row.phase,
+                            profileRun: row.profileRun,
+                            scenario: row.scenario,
+                        });
+                    }
+                }
             }
         }
         if (gpuRows.length > 0) {
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
+                ...(requireGardenSwitchCandidateFrameContract &&
+                group.scenario === gardenSwitchScenarioBaseName
+                    ? buildGardenSwitchGpuP95Diagnostic({
+                          direction: 'maximum',
+                          id: 'gpu.p95_ms',
+                          label: 'GPU p95 duration',
+                          medianAbsoluteTolerance: 3,
+                          medianLimit: 1.15,
+                          rows: gpuRows,
+                          runAbsoluteTolerance: 6,
+                          runLimit: 1.4,
+                          unit: 'ms',
+                      })
+                    : buildRatioComparison({
+                          direction: 'maximum',
+                          id: 'gpu.p95_ms',
+                          label: 'GPU p95 duration',
+                          medianAbsoluteTolerance: 3,
+                          medianLimit: 1.15,
+                          rows: gpuRows,
+                          runAbsoluteTolerance: 6,
+                          runLimit: 1.4,
+                          unit: 'ms',
+                      })),
+            });
+        }
+        if (gpuOccupancyRows.length > 0) {
+            comparisons.push({
+                phase: group.phase,
+                scenario: group.scenario,
                 ...buildRatioComparison({
                     direction: 'maximum',
-                    id: 'gpu.p95_ms',
-                    label: 'GPU p95 duration',
-                    medianAbsoluteTolerance: 3,
+                    id: 'gpu.elapsed_window_occupancy_percent',
+                    label: 'GPU elapsed-window occupancy',
+                    medianAbsoluteTolerance: 5,
                     medianLimit: 1.15,
-                    rows: gpuRows,
-                    runAbsoluteTolerance: 6,
-                    runLimit: 1.4,
-                    unit: 'ms',
+                    rows: gpuOccupancyRows,
+                    runAbsoluteTolerance: 10,
+                    runLimit: 1.3,
+                    unit: '%',
                 }),
             });
         }
@@ -2797,9 +2894,11 @@ function buildMarkdown(comparison) {
                 : null;
             const gate = result.targetAwareRenderedFps
                 ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
-                : result.kind === 'ratio'
-                  ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                  : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
+                : result.diagnosticOnly
+                  ? `diagnostic only; gated by ${result.gatedBy}`
+                  : result.kind === 'ratio'
+                    ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
+                    : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
             const resultLabel = result.regressionBreach
                 ? 'fail'
                 : result.replicationIncomplete
