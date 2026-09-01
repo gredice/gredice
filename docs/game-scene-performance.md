@@ -291,13 +291,16 @@ The active phase records the normal render sample and all runtime frame-loop
 telemetry: active named render/fixed-step leases, pending deadline owners,
 Canvas/document/context/effective visibility, target FPS, pending callback,
 scheduled callbacks, wakeups, owned invalidations, R3F frame callbacks, hidden
-deferred render requests, actual invalidation failures, fixed-step failures,
-missed frame receipts, calibrated display interval and calibration count,
-bounded work deltas, and suspend/resume counts. Generic samples
+deferred explicit render requests, hidden deferred coalesced root updates,
+actual invalidation failures, fixed-step failures, missed frame receipts,
+calibrated display interval and calibration count, bounded work deltas, and
+suspend/resume counts. Explicit semantic requests and root-update dirty state
+have separate pending-reason lists and counters so a harmless reconciler update
+cannot masquerade as application-owned deferred work. Generic samples
 deep-clone the complete scheduler state at both endpoints and report deltas for
-the legacy lifecycle counters plus R3F frame callbacks, hidden deferred render
-requests, invalidation failures, fixed-step failures, missed frame receipts,
-display calibration counts, and nonessential hidden work. The offscreen
+the legacy lifecycle counters plus R3F frame callbacks, both hidden-deferred
+request classes, invalidation failures, fixed-step failures, missed frame
+receipts, display calibration counts, and nonessential hidden work. The offscreen
 phase inserts a real viewport spacer and requires both the runtime's
 IntersectionObserver state and an independent observer witness to report a
 zero-area, nonintersecting Canvas. The document hidden phase is explicitly
@@ -1154,6 +1157,14 @@ retain their maximum bounded frame count instead of adding debt. Hidden updates
 collapse to one frame, and scheduler-owned draws call the captured raw
 invalidator directly so the broker cannot recurse. Static capture explicitly
 disables continuous leases and retains raw invalidation control.
+
+The scheduler exposes broker-dirty reasons separately from explicit semantic
+render requests. While inactive, repeated updates for the same broker reason
+increment one dedicated hidden-deferred coalesced counter only when that reason
+first becomes pending; they do not increment explicit deferred-work or
+nonessential-hidden-work counters. Lifecycle acceptance permits only the single
+root broker reason and at most one newly pending dirty transition, while every
+suspended tail still requires zero new work and zero submitted frames.
 
 The broker covers R3F reconciler and direct root-state invalidations. R3F
 module-level invalidators, including a global animation driver, bypass the root

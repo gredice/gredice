@@ -907,10 +907,11 @@ Scope:
 - Preserve existing ambient and interactive cadence through explicit owners; do
   not reduce visual density, effects, or quality-tier fidelity.
 - Expose stable owner/rate summaries, R3F frame-callback receipts, bounded resume
-  deltas, lease balance, hidden deferred render requests, actual invalidation
-  failures, quarantined fixed-step failures, missed frame receipts, calibrated
-  display interval and calibration counts, and nonessential-hidden-work
-  counters.
+  deltas, lease balance, separate hidden-deferred counters and pending reasons
+  for explicit render requests versus coalesced root updates, actual
+  invalidation failures, quarantined fixed-step failures, missed frame receipts,
+  calibrated display interval and calibration counts, and
+  nonessential-hidden-work counters.
 - Default the base cadence to zero once visual work has semantic owners. Retain
   a nonzero base only as an explicit compatibility override, and use the same
   effective-visibility boundary for game-adjacent clocks, workers, audio, and
@@ -956,6 +957,12 @@ Progress:
   Scheduler-owned draws call the raw invalidator directly, while static capture
   keeps the broker disabled. R3F module-level invalidators remain outside this
   root-state boundary, so total receipt surplus stays acceptance-gated.
+- Broker dirty state has its own pending-reason list and hidden-deferred counter.
+  A repeated inactive update increments that counter only when its normalized
+  reason first becomes pending; it cannot inflate explicit deferred-work or
+  nonessential-hidden-work telemetry. Lifecycle profiles permit only the
+  root-update broker reason, bound its suspension transition to one new dirty
+  reason, and continue to require exact-zero residual suspension work.
 - Bounded calibration RAF timestamps are observational telemetry only and never
   steer scheduling. The first non-owned receipt after a scheduler-owned receipt
   within one active semantic interval consumes the pending cadence slot;
