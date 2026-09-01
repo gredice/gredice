@@ -11,7 +11,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const comparisonContractVersion = 1;
-const profileSchemaVersion = 5;
+const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
     dirname(fileURLToPath(import.meta.url)),
     '..',
@@ -2964,10 +2964,10 @@ function printHelp() {
     console.log(`Usage: node scripts/compare-game-profile-reports.mjs [options] <baseline.json> <candidate.json>
 
 Options:
-  --baseline <path>       Baseline schema-v5 profile report
+  --baseline <path>       Baseline schema-v6 profile report
   --baseline-confirmation <path>
                           Independent repeat of the exact baseline commit
-  --candidate <path>      Candidate schema-v5 profile report
+  --candidate <path>      Candidate schema-v6 profile report
   --confirmation <path>   Independent repeat of the exact candidate commit
   --out-dir <path>        Comparison report directory
   --allow-partial         Permit a noncanonical scenario manifest for diagnostics

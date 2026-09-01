@@ -303,7 +303,7 @@ function report({ commit, scenarios, overrides = {} }) {
                 dirty: false,
             },
         })),
-        schemaVersion: 5,
+        schemaVersion: 6,
         sourceCommit: commit,
         ...overrides,
     };
@@ -793,7 +793,7 @@ test('symmetrically incomplete options, requests, policies, and fixtures are inv
     }
 });
 
-test('valid schema-v5 reports compare raw runs and ignore scenario order', () => {
+test('valid schema-v6 reports compare raw runs and ignore scenario order', () => {
     const { baseline, candidate } = reportPair();
     candidate.scenarios.reverse();
 
@@ -1980,7 +1980,7 @@ test('CLI rejects an output directory containing input evidence', async () => {
             2,
         );
         assert.equal(await readFile(baselinePath, 'utf8'), before);
-        assert.equal(JSON.parse(before).schemaVersion, 5);
+        assert.equal(JSON.parse(before).schemaVersion, 6);
     } finally {
         await rm(directory, { force: true, recursive: true });
     }
