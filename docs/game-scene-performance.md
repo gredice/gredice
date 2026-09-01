@@ -316,8 +316,9 @@ frame receipts, nonessential hidden work, and submitted WebGL
 frames/draws/triangles. The runtime now defaults the base cadence to zero; any
 nonzero base used by a profile must be an explicit, reported compatibility
 override. The full zero-work witness and CDP script time remain separate from
-the lifecycle scenario's owned-scheduling gate while canonical zero-base release
-evidence is being captured.
+the lifecycle scenario's owned-scheduling gate. The `lifecycle-live` closure
+bundle adds exhaustive zero-work and bounded live-resume gates without
+weakening the canonical lifecycle comparison contract.
 
 A separate `static-idle` scenario now hard-gates a full visible zero-work window.
 It loads a clear, fixed-midday High-quality default mock garden with details,
@@ -340,25 +341,28 @@ GAME_PROFILE_SCENARIO_SET=static-idle \
   pnpm run profile:game
 ```
 
-A preliminary 2026-09-01 local headless Playwright run against a clean
-production build observed full zero work in all three repeated static-idle
-windows. This is not final release proof: the scenario still needs a rerun on
-the final SHA, and the canonical before/after comparison remains pending. The
-implementation also gates the shared live-time minute clock, generated-plant
-work, per-scene ambient audio, and aggregate refetch intervals on runtime
-activity; canonical browser evidence for those gates remains pending.
+The final local closure bundle is retained under
+`test-results/game-profile/4717-final/acceptance`. It combines three repeated
+static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
+for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
+policy. All 21 runs must pass from one clean production build before the issue
+can close. The implementation also gates the shared live-time minute clock,
+generated-plant work, per-scene ambient audio, and aggregate refetch intervals
+on runtime activity; the lifecycle-live runs cover their shared inactive and
+resume boundary without making claims about a real background tab.
 
 Each resume must return to the same healthy Canvas and WebGL context, re-prove
 the exact fixture, accept a fresh outline command from an exact zero-target
 state, submit new draw work, and produce a nonblank screenshot.
 
-On every scheduler activation, `SceneTimeProvider` now consumes the Three.js
-clock's pending delta to refresh its internal frame timestamp and then restores
-the previous elapsed time. Unit coverage proves that both initial activation and
-a long suspended gap leave elapsed animation time unchanged before normal active
-progression resumes. Because the canonical lifecycle scenario above uses fixed
-time, a final live-time browser witness for bounded resume and no visible
-fast-forward is still required.
+On every scheduler activation, `SceneTimeProvider` consumes the Three.js clock's
+pending delta to refresh its internal frame timestamp and then restores the
+previous elapsed time. Unit coverage proves that both initial activation and a
+long suspended gap leave elapsed animation time unchanged before normal active
+progression resumes. The separate `lifecycle-live` runs keep time unfixed and
+gate the suspend drain, exact-zero steady window, bounded resume transition,
+steady resumed cadence, nonblank Canvas, and absence of request or runtime
+failures.
 
 Finally, the profiler forces `WEBGL_lose_context` without preventing the loss
 event itself. It records that the renderer handled the event, requires one
@@ -1131,29 +1135,29 @@ ambient policy.
 Render leases are shared and reference-counted by normalized owner and rate, so
 many instances of one effect retain one scheduler lease until the final consumer
 releases it. The scheduler itself retains at most one callback. Visible render
-work uses a display-aligned RAF driver; it invalidates only when an absolute
-cadence target is due and rearms after invalidation so R3F can register the
-requested render first. When only fixed-step or deadline work remains, one
-timeout owns the earliest due item. Hidden, offscreen, context-lost, and idle
-scenes retain no scheduler callback. Deadlines and fixed steps that coexist with
-rendering run on the next driver tick and expose any lateness. R3F acknowledges
-each rendered frame through a root-scoped `addAfterEffect` receipt after WebGL
-submission, keeping scheduler bookkeeping out of the pre-render `useFrame`
-path.
+work performs one bounded display-interval calibration, then sleeps on the same
+earliest-due timeout queue as fixed steps and deadlines. When an absolute render
+target is due, the scheduler invalidates once and R3F aligns the actual draw to
+the browser's next animation frame. An earlier fixed step or deadline preempts
+the render timeout. Hidden, offscreen, context-lost, and idle scenes retain no
+scheduler callback. R3F acknowledges each rendered frame through a root-scoped
+`addAfterEffect` receipt after WebGL submission, keeping scheduler bookkeeping
+out of the pre-render `useFrame` path.
 
-Scheduler RAF timestamps drive cadence immediately. Attempt- and time-bounded
-display-interval calibration is observational telemetry only and never controls
-cadence phase or lead. A scheduler-requested R3F receipt acknowledges the slot
-already consumed by the driver. External R3F receipts are observational and do
-not move the scheduler's absolute target. Late work skips elapsed targets
-without catch-up. Existing camera, avatar, weather, cloud, precipitation, sky,
-and meteor owners retain their intended 20/30/60 FPS policy.
+The bounded calibration RAF timestamps are observational telemetry only and
+never control cadence phase or lead. A scheduler-requested R3F receipt
+acknowledges the slot already consumed by the timeout. An external R3F receipt
+satisfies current visual work and defers the next owned target by at least one
+semantic interval, preventing duplicate renders during interaction-driven
+frames. Late work skips elapsed targets without catch-up. Existing camera,
+avatar, weather, cloud, precipitation, sky, and meteor owners retain their
+intended 20/30/60 FPS policy.
 
 `SceneTimeProvider` also discards the Three.js clock's activation gap without
 advancing `elapsedTime`. This keeps hidden or offscreen wall time out of shader
 and scene animation time while preserving normal progression after activation;
-the deterministic clock tests are complete, while the live browser resume
-witness remains pending.
+deterministic clock tests and the unfixed-time lifecycle closure runs cover both
+the clock boundary and the browser runtime boundary.
 
 Camera and interaction invalidations, environment and cache state, particles,
 plant and prop animation, weather transitions, and fauna activity now use named
@@ -1228,16 +1232,22 @@ Profiler telemetry is pull-based: a synchronous property-read or
 reset runs. Normal frames and scheduler wakeups therefore do not push, allocate,
 or deep-copy telemetry merely because the profiling fixture is enabled.
 
-Remaining work and verification:
+Release evidence:
 
-- Narrow always-on avatar leases where state-specific ownership can preserve the
-  same interaction cadence with less idle work.
-- Rerun the dedicated static-idle production profile three times from the final
-  clean SHA and retain its report/screenshots. The preliminary clean-build 3/3
-  full-zero result is not the canonical release artifact.
-- Complete the canonical before/after comparison and validate the zero-base
-  rollout across cross-tier, fauna, capture, and lifecycle scenarios, including
-  active owner/rate cadence and a live-time bounded-resume browser witness.
+- `4717-final/acceptance` is the 21-run static, live-lifecycle, and cross-policy
+  semantic-owner gate.
+- `4717-final/building-ambient` is the focused two-run control proving an
+  ordinary ambient structure fixture holds one stable 30 FPS owner set.
+- `4717-origin-main-vs-candidate/baseline-1` and `baseline-2` are independent
+  clean `origin/main` captures; `candidate-final-1` and `candidate-final-2` are
+  independent clean candidate captures of the same 39 canonical runs.
+  `comparison-final` is the fail-closed symmetric 2x2 result.
+- These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
+  deterministic harness only. Synthetic `document.hidden` is not a real
+  background tab, and the bundle does not prove physical-device thermal,
+  touch, memory-pressure, deployed, or production-traffic behavior.
+- Narrowing an always-on avatar owner further is a follow-up optimization only
+  where state-specific ownership can preserve the same interaction cadence.
 
 Expected impact: high across every quality tier, especially for static,
 backgrounded, and partially visible gardens, without reducing visual fidelity.

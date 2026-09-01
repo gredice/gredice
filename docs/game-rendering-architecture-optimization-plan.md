@@ -887,7 +887,7 @@ Progress:
 
 ## Milestone 9: Semantic runtime scheduling
 
-### [~] 12. Replace the ambient heartbeat with explicit runtime work
+### [x] 12. Replace the ambient heartbeat with explicit runtime work
 
 Priority: High
 
@@ -939,28 +939,27 @@ Progress:
   Repeated plant, sprite, water, decoration, or fauna instances therefore keep
   one scheduler owner alive until the final consumer releases it instead of
   multiplying identical lease records.
-- The scheduler owns at most one callback. Visible render work keeps one
-  display-aligned RAF driver that invalidates only when an absolute cadence
-  target is due and rearms after invalidation so R3F can register the requested
-  render first. When only fixed-step or deadline work remains, one timeout owns
-  the earliest due item. Hidden, offscreen, context-lost, and idle scenes retain
-  no scheduler callback. Deadlines and fixed steps that coexist with rendering
-  run on the next driver tick and report their lateness.
+- The scheduler owns at most one callback. Visible render work performs a
+  bounded display-interval calibration, then joins fixed steps and deadlines on
+  one earliest-due timeout queue. When a semantic frame is due, the timeout
+  invalidates once and R3F aligns the draw to the browser's next animation
+  frame. Earlier fixed-step and deadline targets preempt render work. Hidden,
+  offscreen, context-lost, and idle scenes retain no scheduler callback.
 - R3F reports a root-scoped receipt from `addAfterEffect`, after WebGL
   submission. The ordinary `useFrame` path therefore retains only shader-time
   updates; scheduler reconciliation cannot shift renderer submission timing.
-- Scheduler RAF timestamps drive cadence immediately. Bounded display-interval
-  calibration is observational telemetry only and never controls phase or lead.
-  A scheduler-requested R3F receipt acknowledges the cadence slot already
-  consumed by the driver. External R3F receipts remain observational and do not
-  move the scheduler's absolute target. Late work skips elapsed targets without
-  catch-up.
+- Bounded calibration RAF timestamps are observational telemetry only and never
+  control phase or lead. A scheduler-requested R3F receipt acknowledges the
+  cadence slot already consumed by the due-time callback. External R3F receipts
+  satisfy current work and defer the next owned target by at least one semantic
+  interval, coalescing interaction-driven frames. Late work skips elapsed
+  targets without catch-up.
 - `SceneTimeProvider` now consumes the Three.js clock's pending delta on
   scheduler activation only to refresh the clock's internal timestamp, then
   restores the previous `elapsedTime`. Initial activation and a long suspended
   gap are covered by deterministic unit tests, so hidden or offscreen wall time
-  is not added to elapsed animation time. A final live-time browser resume
-  witness is still pending.
+  is not added to elapsed animation time. The unfixed-time lifecycle closure
+  runs also gate exact-zero suspension and bounded browser resume.
 - Normal scenes now pass a zero base cadence. `baseFramesPerSecond` remains an
   explicit compatibility override for isolated consumers, while leases without
   an explicit rate still resolve through the active quality tier's ambient
@@ -1022,17 +1021,20 @@ Progress:
   After fixture, plant-pipeline, and scheduler stabilization, the scenario gates
   zero scheduler/R3F counter deltas and zero rendered frames, WebGL draws, and
   submitted triangles across three fresh runs.
-- A preliminary 2026-09-01 local headless Playwright run against a clean
-  production build observed the full zero-work gate in all three static-idle
-  windows. This is preliminary evidence only: the final SHA must be rerun and
-  the canonical before/after comparison remains pending.
+- The final release profile retains one 21-run clean-build bundle: three
+  static-idle windows, three unfixed-time lifecycle runs, and three owner/rate
+  runs for each Low, Medium, High, Automatic-standard, and
+  Automatic-constrained policy. Static windows gate exact zero work; lifecycle
+  runs gate zero suspension and bounded resume; owner runs gate 60 FPS camera
+  ownership and persistent 30 FPS weather, plant, and fauna ownership.
 - An already-started Three.js/WebGL `compileAsync` call cannot be preempted by an
   `AbortSignal`; suspension cancels that scene's subscription and prevents a new
   hidden prewarm from starting, but the browser/GPU may finish and retain the
-  submitted shared compilation. Canonical cross-tier, fauna, capture, and
-  lifecycle browser evidence, active owner/rate cadence evidence, and the
-  live-time bounded-resume witness for the complete zero-base slice are still
-  pending; the preliminary static-idle run does not close the release profile.
+  submitted shared compilation. The closure matrix pairs two clean
+  `origin/main` captures with two clean candidate captures across 39 canonical
+  cross-tier, fauna, garden-switch, and lifecycle runs. The local headless
+  evidence does not replace a physical-device thermal, touch, memory-pressure,
+  real background-tab, deployed, or production-traffic check.
 
 ## Suggested implementation order
 
