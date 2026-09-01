@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+    createCaptureRootAdvanceScheduler,
     createCaptureStabilityState,
     flipCapturePixelRows,
     getNextCaptureStabilityFrameDelay,
@@ -11,6 +12,115 @@ import {
     resolveCaptureContextUnpremultiplyAlpha,
     resolveCaptureFencePollOutcome,
 } from './PublicGardenCaptureProbe';
+
+function createFrameQueue() {
+    let nextHandle = 1;
+    const callbacks = new Map<number, FrameRequestCallback>();
+    const cancelled: number[] = [];
+    return {
+        callbacks,
+        cancelled,
+        cancelFrame: (handle: number) => {
+            cancelled.push(handle);
+            callbacks.delete(handle);
+        },
+        requestFrame: (callback: FrameRequestCallback) => {
+            const handle = nextHandle;
+            nextHandle += 1;
+            callbacks.set(handle, callback);
+            return handle;
+        },
+        runNext: (timestamp: number) => {
+            const entry = callbacks.entries().next().value;
+            assert.ok(entry);
+            const [handle, callback] = entry;
+            callbacks.delete(handle);
+            callback(timestamp);
+        },
+    };
+}
+
+describe('capture root advance scheduling', () => {
+    it('coalesces initial readiness and hard-gate churn without synchronous recursion', () => {
+        const queue = createFrameQueue();
+        const advances: Array<readonly [number, boolean | undefined]> = [];
+        let active = true;
+        let depth = 0;
+        let maximumDepth = 0;
+        let scheduler: ReturnType<typeof createCaptureRootAdvanceScheduler>;
+        scheduler = createCaptureRootAdvanceScheduler({
+            advance: (timestamp, runGlobalEffects) => {
+                depth += 1;
+                maximumDepth = Math.max(maximumDepth, depth);
+                advances.push([timestamp, runGlobalEffects]);
+                if (advances.length === 1) {
+                    assert.equal(scheduler.request(), true);
+                }
+                depth -= 1;
+            },
+            cancelFrame: queue.cancelFrame,
+            isActive: () => active,
+            requestFrame: queue.requestFrame,
+        });
+
+        assert.equal(scheduler.request(), true);
+        assert.equal(scheduler.request(), false);
+        assert.equal(queue.callbacks.size, 1);
+        queue.runNext(1_000);
+        assert.deepEqual(advances, [[0, false]]);
+        assert.equal(maximumDepth, 1);
+        assert.equal(queue.callbacks.size, 1);
+        queue.runNext(1_016);
+        assert.deepEqual(advances, [
+            [0, false],
+            [0.016, false],
+        ]);
+        active = false;
+        assert.equal(scheduler.request(), false);
+    });
+
+    it('queues one root frame when delayed stability becomes eligible', () => {
+        const queue = createFrameQueue();
+        const advances: number[] = [];
+        const scheduler = createCaptureRootAdvanceScheduler({
+            advance: (timestamp) => advances.push(timestamp),
+            cancelFrame: queue.cancelFrame,
+            isActive: () => true,
+            requestFrame: queue.requestFrame,
+        });
+
+        assert.equal(scheduler.request(), true);
+        queue.runNext(1_000);
+        assert.equal(scheduler.request(), true);
+        assert.equal(scheduler.request(), false);
+        queue.runNext(2_500);
+
+        assert.deepEqual(advances, [0, 1.5]);
+    });
+
+    it('cancels cleanup work and ignores a stale queued callback', () => {
+        const queue = createFrameQueue();
+        const advances: number[] = [];
+        const scheduler = createCaptureRootAdvanceScheduler({
+            advance: (timestamp) => advances.push(timestamp),
+            cancelFrame: queue.cancelFrame,
+            isActive: () => true,
+            requestFrame: queue.requestFrame,
+        });
+
+        assert.equal(scheduler.request(), true);
+        const staleCallback = queue.callbacks.values().next().value;
+        assert.ok(staleCallback);
+        scheduler.cancel();
+        assert.deepEqual(queue.cancelled, [1]);
+        assert.equal(scheduler.request(), true);
+        staleCallback(500);
+        assert.deepEqual(advances, []);
+        assert.equal(queue.callbacks.size, 1);
+        queue.runNext(1_000);
+        assert.deepEqual(advances, [0]);
+    });
+});
 
 describe('capture stability', () => {
     it('counts the first signature as frame one and captures on the second stable frame', () => {

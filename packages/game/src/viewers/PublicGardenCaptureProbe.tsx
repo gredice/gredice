@@ -1,8 +1,8 @@
 'use client';
 
 import { useProgress } from '@react-three/drei';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { type RootState, useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
 import { Box3, OrthographicCamera, Vector3 } from 'three';
 import {
     gardenPreviewHeight,
@@ -202,6 +202,58 @@ export function getNextCaptureStabilityFrameDelay(
     );
 
     return Math.max(0, Math.min(normalReadyAt, fallbackReadyAt) - now);
+}
+
+export function createCaptureRootAdvanceScheduler({
+    advance,
+    cancelFrame,
+    isActive,
+    requestFrame,
+}: {
+    advance: RootState['advance'];
+    cancelFrame: (handle: number) => void;
+    isActive: () => boolean;
+    requestFrame: (callback: FrameRequestCallback) => number;
+}) {
+    let firstTimestampMs: number | null = null;
+    let generation = 0;
+    let pendingFrame: { generation: number; handle: number } | null = null;
+
+    const cancel = () => {
+        generation += 1;
+        if (pendingFrame !== null) {
+            cancelFrame(pendingFrame.handle);
+            pendingFrame = null;
+        }
+    };
+    const request = () => {
+        if (!isActive() || pendingFrame !== null) {
+            return false;
+        }
+
+        const requestGeneration = generation + 1;
+        generation = requestGeneration;
+        const handle = requestFrame((timestampMs) => {
+            if (pendingFrame?.generation !== requestGeneration) {
+                return;
+            }
+            pendingFrame = null;
+            if (!isActive()) {
+                return;
+            }
+
+            firstTimestampMs ??= timestampMs;
+            // R3F 9.6.1 writes manual advance timestamps directly to the
+            // Three.js clock, whose elapsed time and frame deltas use seconds.
+            const elapsedSeconds =
+                Math.max(0, timestampMs - firstTimestampMs) / 1_000;
+            advance(elapsedSeconds, false);
+        });
+        pendingFrame = { generation: requestGeneration, handle };
+        return true;
+    };
+
+    return { cancel, request };
 }
 
 function validateSourceCanvas(
@@ -633,9 +685,10 @@ export function PublicGardenCaptureProbe({
     queriesIdle,
 }: PublicGardenCaptureProbeProps) {
     const attemptedRef = useRef(false);
+    const captureAdvanceEnabledRef = useRef(enabled && queriesIdle);
     const firstFrameRef = useRef<number | null>(null);
-    const invalidationTimerRef = useRef<number | null>(null);
-    const mountedRef = useRef(true);
+    const stabilityTimerRef = useRef<number | null>(null);
+    const mountedRef = useRef(false);
     const nextStabilityFrameAtRef = useRef<number | null>(null);
     const secondFrameRef = useRef<number | null>(null);
     const stabilityRef = useRef(createCaptureStabilityState());
@@ -645,7 +698,22 @@ export function PublicGardenCaptureProbe({
     const onCaptureRef = useRef(onCapture);
     const onErrorRef = useRef(onError);
     const resolvedOutput = resolveCaptureOutput(output);
-    const invalidate = useThree((state) => state.invalidate);
+    const advance = useThree((state) => state.advance);
+    captureAdvanceEnabledRef.current = enabled && queriesIdle;
+    const captureRootAdvanceScheduler = useMemo(
+        () =>
+            createCaptureRootAdvanceScheduler({
+                advance,
+                cancelFrame: (handle) => window.cancelAnimationFrame(handle),
+                isActive: () =>
+                    mountedRef.current &&
+                    captureAdvanceEnabledRef.current &&
+                    !attemptedRef.current,
+                requestFrame: (callback) =>
+                    window.requestAnimationFrame(callback),
+            }),
+        [advance],
+    );
 
     useEffect(() => {
         onCaptureRef.current = onCapture;
@@ -653,24 +721,11 @@ export function PublicGardenCaptureProbe({
     }, [onCapture, onError]);
 
     useEffect(() => {
-        if (enabled && queriesIdle) {
-            invalidate();
-            return;
-        }
-
-        if (invalidationTimerRef.current !== null) {
-            window.clearTimeout(invalidationTimerRef.current);
-            invalidationTimerRef.current = null;
-        }
-        nextStabilityFrameAtRef.current = null;
-        resetCaptureStabilityState(stabilityRef.current);
-    }, [enabled, invalidate, queriesIdle]);
-
-    useEffect(() => {
         mountedRef.current = true;
         const timeout = window.setTimeout(() => {
             if (!attemptedRef.current && mountedRef.current) {
                 attemptedRef.current = true;
+                captureRootAdvanceScheduler.cancel();
                 onErrorRef.current(
                     new Error('Garden preview scene did not become ready.'),
                 );
@@ -679,17 +734,33 @@ export function PublicGardenCaptureProbe({
         return () => {
             mountedRef.current = false;
             window.clearTimeout(timeout);
+            captureRootAdvanceScheduler.cancel();
             if (firstFrameRef.current !== null) {
                 window.cancelAnimationFrame(firstFrameRef.current);
             }
             if (secondFrameRef.current !== null) {
                 window.cancelAnimationFrame(secondFrameRef.current);
             }
-            if (invalidationTimerRef.current !== null) {
-                window.clearTimeout(invalidationTimerRef.current);
+            if (stabilityTimerRef.current !== null) {
+                window.clearTimeout(stabilityTimerRef.current);
             }
         };
-    }, []);
+    }, [captureRootAdvanceScheduler]);
+
+    useEffect(() => {
+        if (enabled && queriesIdle) {
+            captureRootAdvanceScheduler.request();
+            return;
+        }
+
+        captureRootAdvanceScheduler.cancel();
+        if (stabilityTimerRef.current !== null) {
+            window.clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = null;
+        }
+        nextStabilityFrameAtRef.current = null;
+        resetCaptureStabilityState(stabilityRef.current);
+    }, [captureRootAdvanceScheduler, enabled, queriesIdle]);
 
     useFrame(({ camera, gl, scene }) => {
         if (attemptedRef.current) {
@@ -699,25 +770,25 @@ export function PublicGardenCaptureProbe({
         const assetsLoading = useProgress.getState().active;
         const now = performance.now();
         const resetStability = () => {
-            if (invalidationTimerRef.current !== null) {
-                window.clearTimeout(invalidationTimerRef.current);
-                invalidationTimerRef.current = null;
+            if (stabilityTimerRef.current !== null) {
+                window.clearTimeout(stabilityTimerRef.current);
+                stabilityTimerRef.current = null;
             }
             nextStabilityFrameAtRef.current = null;
             resetCaptureStabilityState(stabilityRef.current);
         };
         const keepHardGateFrameTrainAlive = () => {
             resetStability();
-            invalidate();
+            captureRootAdvanceScheduler.request();
         };
         if (!enabled || !queriesIdle) {
             resetStability();
             return;
         }
 
-        // Public capture scenes render on demand. Keep immediate frames alive
-        // while hard gates settle, then schedule valid frames at the next
-        // readiness deadline so snapshot readback has less queued GPU work.
+        // Capture roots never join R3F's global demand loop. Queue only this
+        // root's manual frames while hard gates settle, then wait until the
+        // next readiness deadline so readback has less queued GPU work.
         if (assetsLoading) {
             keepHardGateFrameTrainAlive();
             return;
@@ -808,28 +879,29 @@ export function PublicGardenCaptureProbe({
         if (
             !observeCaptureStability(stabilityRef.current, { now, signature })
         ) {
-            if (invalidationTimerRef.current !== null) {
-                window.clearTimeout(invalidationTimerRef.current);
+            if (stabilityTimerRef.current !== null) {
+                window.clearTimeout(stabilityTimerRef.current);
             }
             const nextFrameDelay = getNextCaptureStabilityFrameDelay(
                 stabilityRef.current,
                 now,
             );
-            invalidationTimerRef.current = window.setTimeout(() => {
-                invalidationTimerRef.current = null;
+            stabilityTimerRef.current = window.setTimeout(() => {
+                stabilityTimerRef.current = null;
                 if (mountedRef.current && !attemptedRef.current) {
-                    invalidate();
+                    captureRootAdvanceScheduler.request();
                 }
             }, nextFrameDelay);
             nextStabilityFrameAtRef.current = now + nextFrameDelay;
             return;
         }
 
-        if (invalidationTimerRef.current !== null) {
-            window.clearTimeout(invalidationTimerRef.current);
-            invalidationTimerRef.current = null;
+        if (stabilityTimerRef.current !== null) {
+            window.clearTimeout(stabilityTimerRef.current);
+            stabilityTimerRef.current = null;
         }
         attemptedRef.current = true;
+        captureRootAdvanceScheduler.cancel();
         firstFrameRef.current = window.requestAnimationFrame(() => {
             firstFrameRef.current = null;
             if (!mountedRef.current) {

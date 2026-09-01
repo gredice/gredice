@@ -3,6 +3,7 @@
 import {
     Canvas,
     type Vector3 as FiberVector3,
+    type Frameloop,
     useFrame,
     useThree,
 } from '@react-three/fiber';
@@ -62,6 +63,7 @@ export type SceneProps = HTMLAttributes<HTMLDivElement> &
         continuousRenderLeasesEnabled?: boolean;
         debugStats?: boolean;
         fixedTimeSeconds?: number;
+        frameloop?: Frameloop;
         onAdaptiveHighProfileChange?: (
             profile: AdaptiveHighQualityLevelProfile,
         ) => void;
@@ -250,6 +252,7 @@ export function Scene({
     continuousRenderLeasesEnabled,
     debugStats,
     fixedTimeSeconds,
+    frameloop = 'demand',
     onAdaptiveHighProfileChange,
     onContextLost,
     pixelRatio,
@@ -364,7 +367,7 @@ export function Scene({
                 near: 0.01,
             }}
             {...rest}
-            frameloop="demand"
+            frameloop={frameloop}
             ref={handleCanvasRef}
         >
             <SceneTimeProvider
