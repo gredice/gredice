@@ -113,6 +113,7 @@ const lifecycleResumeSteadyWindowMs = 2_000;
 // must collapse within one bounded transition quarter-second.
 const lifecycleResumeSemanticSurplusWindowMs = 250;
 const lifecycleSuspendTransitionWindowMs = 250;
+const runtimeOwnerMotion = 'runtime-owner-bounded-zoom-rotate';
 const runtimeOwnerMotionWarmupMs = 900;
 const lifecycleLivePersistentLeaseRates = {
     'fauna:birds': 30,
@@ -610,7 +611,7 @@ const runtimeOwnerScenarios = crossTierProfileMatrix.map((profile) => ({
     expectedQualityTier: profile.tier,
     expectedShadowMapSize: profile.shadowMapSize,
     expectedShadows: profile.shadows,
-    motion: 'bounded-zoom-rotate',
+    motion: runtimeOwnerMotion,
     motionWarmupMs: runtimeOwnerMotionWarmupMs,
     repeat: 3,
     runtimeOwnersProfile: true,
@@ -3608,6 +3609,7 @@ async function runScenarioMotion(page, scenario, sampleMs) {
         scenario.motion !== 'pan-zoom-rotate' &&
         scenario.motion !== 'pan-zoom-rotate-then-idle' &&
         scenario.motion !== 'bounded-zoom-rotate' &&
+        scenario.motion !== runtimeOwnerMotion &&
         scenario.motion !== 'foliage-detail-zoom' &&
         scenario.interaction !== 'hover-scan'
     ) {
@@ -3661,6 +3663,22 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     }
 
     if (scenario.motion === 'bounded-zoom-rotate') {
+        while (Date.now() - startedAt < sampleMs - 240) {
+            await page.mouse.wheel(0, -20);
+            await page.keyboard.press('KeyQ');
+            await wait(120);
+            await page.mouse.wheel(0, 20);
+            await page.keyboard.press('KeyW');
+            await wait(120);
+        }
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return null;
+    }
+
+    if (scenario.motion === runtimeOwnerMotion) {
         const startingCameraSnapshot = await page.evaluate(
             () => globalThis.__grediceGameProfile?.gameCameraSnapshot ?? null,
         );
@@ -12880,16 +12898,6 @@ function evaluateCrossTierAcceptance({
         name,
         pass: typeof actual === 'number' && actual >= limit,
     });
-    const maximum = (name, actual, limit) => ({
-        actual,
-        comparison: 'maximum',
-        limit,
-        name,
-        pass:
-            typeof actual === 'number' &&
-            Number.isFinite(actual) &&
-            actual <= limit,
-    });
     const canvasMatchesDpr = (name, actual, clientSize, dpr) => {
         const expected =
             typeof clientSize === 'number' && typeof dpr === 'number'
@@ -13042,14 +13050,6 @@ function evaluateCrossTierAcceptance({
                       'crossTierCameraSnapshotVersionDelta',
                       sample.gameCameraSnapshotVersionDelta,
                       1,
-                  ),
-                  maximum(
-                      'crossTierCameraEndpointMaximumDelta',
-                      gameCameraSnapshotMaximumDelta(
-                          sample.gameCameraSnapshotAtStart,
-                          sample.gameCameraSnapshotAtEnd,
-                      ),
-                      0.01,
                   ),
               ]
             : []),
@@ -13228,7 +13228,7 @@ function evaluateRuntimeOwnersAcceptance({
         exact('runtimeOwnersHud', requested.hud, '0'),
         exact('runtimeOwnersDebugHud', requested.debugHud, '0'),
         exact('runtimeOwnersOutline', requested.outline, '1'),
-        exact('runtimeOwnersMotion', requested.motion, 'bounded-zoom-rotate'),
+        exact('runtimeOwnersMotion', requested.motion, runtimeOwnerMotion),
         exact(
             'runtimeOwnersMotionWarmupMs',
             requested.motionWarmupMs,

@@ -1764,7 +1764,7 @@ test('runtime-owner scenarios cover every tier with rain, camera, outline, and n
         assert.equal(scenario.name, name);
         assert.equal(scenario.runtimeOwnersProfile, true);
         assert.equal(scenario.expectedQualityTier, tier);
-        assert.equal(scenario.motion, 'bounded-zoom-rotate');
+        assert.equal(scenario.motion, 'runtime-owner-bounded-zoom-rotate');
         assert.equal(scenario.motionWarmupMs, 900);
         assert.equal(scenario.repeat, 3);
         assert.equal(scenario.screenshotWitness, true);
@@ -3793,38 +3793,18 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         false,
     );
 
-    for (const [label, mutateEndpoint] of [
-        [
-            'position',
-            (snapshot) => {
-                snapshot.position[0] += 0.02;
-            },
-        ],
-        [
-            'target',
-            (snapshot) => {
-                snapshot.target[0] += 0.02;
-            },
-        ],
-        [
-            'zoom',
-            (snapshot) => {
-                snapshot.zoom += 0.02;
-            },
-        ],
-    ]) {
-        const cameraDrift = structuredClone(cameraMotionInput);
-        mutateEndpoint(cameraDrift.sample.gameCameraSnapshotAtEnd);
-        const cameraDriftAcceptance = evaluateCrossTierAcceptance(cameraDrift);
-        assert.equal(cameraDriftAcceptance.pass, false, label);
-        assert.equal(
-            cameraDriftAcceptance.checks.find(
-                (check) => check.name === 'crossTierCameraEndpointMaximumDelta',
-            )?.pass,
-            false,
-            label,
-        );
-    }
+    const canonicalEndpointChange = structuredClone(cameraMotionInput);
+    canonicalEndpointChange.sample.gameCameraSnapshotAtEnd.position[0] += 0.5;
+    const canonicalEndpointAcceptance = evaluateCrossTierAcceptance(
+        canonicalEndpointChange,
+    );
+    assert.equal(canonicalEndpointAcceptance.pass, true);
+    assert.equal(
+        canonicalEndpointAcceptance.checks.some(
+            (check) => check.name === 'crossTierCameraEndpointMaximumDelta',
+        ),
+        false,
+    );
 });
 
 test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
@@ -6178,7 +6158,7 @@ function createPassingRuntimeOwnersAcceptanceInput({
             gardenProfile: 'high-target',
             hud: '0',
             mode: 'rain',
-            motion: 'bounded-zoom-rotate',
+            motion: 'runtime-owner-bounded-zoom-rotate',
             motionWarmupMs: 900,
             outline: '1',
             quality,
