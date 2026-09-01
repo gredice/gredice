@@ -4,6 +4,7 @@ import { createGardenStructureTemplateSeed } from '@gredice/js/gardenStructures'
 import { Frustum, Matrix4 } from 'three';
 import { compileSavedGardenStructureCollection } from './gardenStructureCollectionPlan';
 import {
+    getGardenStructureBaselineVisiblePropInstanceIds,
     getGardenStructureCollectionVisibleBatches,
     getGardenStructureCollectionVisibleInstanceIndices,
     getGardenStructureFrustumVisibleIds,
@@ -45,6 +46,7 @@ describe('garden structure scene visibility', () => {
             allBatches,
             visibleIds,
             undefined,
+            undefined,
         );
 
         assert.deepEqual([...visibleIds], ['near-house']);
@@ -64,6 +66,7 @@ describe('garden structure scene visibility', () => {
                 batch,
                 visibleIds,
                 undefined,
+                undefined,
             );
             assert.ok(
                 indices.every(
@@ -73,6 +76,122 @@ describe('garden structure scene visibility', () => {
         }
     });
 
+    test('keeps exterior-visible props while opaque interiors require avatar admission', () => {
+        const house = createGardenStructureTemplateSeed('house');
+        const greenhouse = createGardenStructureTemplateSeed('greenhouse');
+        const coveredOutdoorHouse = {
+            ...savedHouse('covered-outdoor-house', 8),
+            document: {
+                ...house.document,
+                props: [
+                    {
+                        id: 'prop-table',
+                        partId: 'prop.table',
+                        rotation: 0,
+                        x: 1,
+                        y: 3,
+                    },
+                ],
+            },
+        };
+        const noRoofHouse = {
+            ...savedHouse('no-roof-house', 16),
+            document: { ...house.document, roofRegions: [] },
+        };
+        const transparentGreenhouse = {
+            ...savedHouse('transparent-greenhouse', 24),
+            document: greenhouse.document,
+            templateKey: 'greenhouse',
+        };
+        const { plan } = compileSavedGardenStructureCollection([
+            savedHouse('opaque-house', 0),
+            coveredOutdoorHouse,
+            noRoofHouse,
+            transparentGreenhouse,
+        ]);
+        const baselineVisiblePropInstanceIds =
+            getGardenStructureBaselineVisiblePropInstanceIds(plan);
+
+        assert.equal(
+            baselineVisiblePropInstanceIds.has('prop:opaque-house:prop-table'),
+            false,
+        );
+        assert.equal(
+            baselineVisiblePropInstanceIds.has(
+                'prop:covered-outdoor-house:prop-table',
+            ),
+            true,
+        );
+        assert.equal(
+            baselineVisiblePropInstanceIds.has('prop:no-roof-house:prop-table'),
+            true,
+        );
+        assert.equal(
+            baselineVisiblePropInstanceIds.has(
+                'prop:transparent-greenhouse:prop-planter-west',
+            ),
+            true,
+        );
+        assert.equal(
+            baselineVisiblePropInstanceIds.has(
+                'prop:transparent-greenhouse:prop-planter-east',
+            ),
+            true,
+        );
+
+        const visibleStructureIds = new Set(
+            plan.structures.map(({ structureId }) => structureId),
+        );
+        const baselineIndices = plan.batches.props.flatMap((batch) =>
+            getGardenStructureCollectionVisibleInstanceIndices(
+                batch,
+                visibleStructureIds,
+                baselineVisiblePropInstanceIds,
+                new Set(),
+            ).map((index) => batch.instanceIds[index]),
+        );
+        assert.deepEqual(
+            new Set(baselineIndices),
+            baselineVisiblePropInstanceIds,
+        );
+
+        const baselineMetrics = getGardenStructureSceneSubmissionMetrics({
+            plan,
+            baselineVisiblePropInstanceIds,
+            renderProps: true,
+            visibleInteriorStructureIds: new Set(),
+            visibleStructureIds,
+        });
+        assert.equal(baselineMetrics.propCount, 5);
+        assert.equal(baselineMetrics.visiblePropCount, 4);
+        assert.equal(baselineMetrics.exteriorSuppressedPropCount, 1);
+        assert.equal(baselineMetrics.frustumCulledPropCount, 0);
+
+        const admittedStructureIds = new Set(['opaque-house']);
+        const admittedIndices = plan.batches.props.flatMap((batch) =>
+            getGardenStructureCollectionVisibleInstanceIndices(
+                batch,
+                visibleStructureIds,
+                baselineVisiblePropInstanceIds,
+                admittedStructureIds,
+            ).map((index) => batch.instanceIds[index]),
+        );
+        assert.equal(admittedIndices.length, 5);
+        assert.ok(admittedIndices.includes('prop:opaque-house:prop-table'));
+
+        const metrics = getGardenStructureSceneSubmissionMetrics({
+            plan,
+            baselineVisiblePropInstanceIds,
+            renderProps: true,
+            visibleInteriorStructureIds: admittedStructureIds,
+            visibleStructureIds,
+        });
+        assert.equal(metrics.propCount, 5);
+        assert.equal(metrics.visiblePropCount, 5);
+        assert.equal(metrics.exteriorSuppressedPropCount, 0);
+        assert.equal(metrics.frustumCulledPropCount, 0);
+    });
+
     test('suppresses closed-roof exterior props and admits only explicit interior structures', () => {
         const { plan } = compileSavedGardenStructureCollection([
             savedHouse('inside-house', 0),
@@ -80,9 +199,12 @@ describe('garden structure scene visibility', () => {
         ]);
         const visibleStructureIds = new Set(['inside-house', 'outside-house']);
         const visibleInteriorStructureIds = new Set(['inside-house']);
+        const baselineVisiblePropInstanceIds =
+            getGardenStructureBaselineVisiblePropInstanceIds(plan);
 
         const metrics = getGardenStructureSceneSubmissionMetrics({
             plan,
+            baselineVisiblePropInstanceIds,
             renderProps: true,
             visibleInteriorStructureIds,
             visibleStructureIds,
@@ -101,6 +223,7 @@ describe('garden structure scene visibility', () => {
                     getGardenStructureCollectionVisibleInstanceIndices(
                         batch,
                         visibleStructureIds,
+                        baselineVisiblePropInstanceIds,
                         visibleInteriorStructureIds,
                     ).length,
                 0,
@@ -114,9 +237,12 @@ describe('garden structure scene visibility', () => {
             savedHouse('visible-house', 0),
             savedHouse('culled-house', 8),
         ]);
+        const baselineVisiblePropInstanceIds =
+            getGardenStructureBaselineVisiblePropInstanceIds(plan);
 
         const metrics = getGardenStructureSceneSubmissionMetrics({
             plan,
+            baselineVisiblePropInstanceIds,
             renderProps: false,
             visibleInteriorStructureIds: new Set(['visible-house']),
             visibleStructureIds: new Set(['visible-house']),

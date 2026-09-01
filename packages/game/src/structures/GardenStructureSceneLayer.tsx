@@ -15,11 +15,13 @@ import { GardenStructureCollectionRenderer } from './GardenStructureCollectionRe
 import type { GardenStructureSceneSnapshot } from './gardenStructureScene';
 import {
     areGardenStructureIdSetsEqual,
+    getGardenStructureBaselineVisiblePropInstanceIds,
     getGardenStructureFrustumVisibleIds,
     getGardenStructureSceneSubmissionMetrics,
 } from './gardenStructureSceneVisibility';
 
 const emptyVisibleInteriorStructureIds: ReadonlySet<string> = new Set();
+const emptyVisiblePropInstanceIds: ReadonlySet<string> = new Set();
 
 export type GardenStructureSceneLayerProps = Readonly<{
     castShadows?: boolean;
@@ -103,21 +105,35 @@ function GardenStructureVisibleSceneCollection({
     );
     useFrame(() => updateVisibleStructureIds());
 
-    const visiblePropStructureIds = renderProps
-        ? visibleInteriorStructureIds
-        : emptyVisibleInteriorStructureIds;
+    const baselineVisiblePropInstanceIds = useMemo(
+        () =>
+            renderProps
+                ? getGardenStructureBaselineVisiblePropInstanceIds(plan)
+                : emptyVisiblePropInstanceIds,
+        [plan, renderProps],
+    );
     const submissionMetrics = useMemo(
         () =>
-            getGardenStructureSceneSubmissionMetrics({
-                plan,
-                renderProps,
-                visibleInteriorStructureIds,
-                visibleStructureIds,
-            }),
-        [plan, renderProps, visibleInteriorStructureIds, visibleStructureIds],
+            profileMetricsEnabled
+                ? getGardenStructureSceneSubmissionMetrics({
+                      plan,
+                      baselineVisiblePropInstanceIds,
+                      renderProps,
+                      visibleInteriorStructureIds,
+                      visibleStructureIds,
+                  })
+                : undefined,
+        [
+            baselineVisiblePropInstanceIds,
+            plan,
+            profileMetricsEnabled,
+            renderProps,
+            visibleInteriorStructureIds,
+            visibleStructureIds,
+        ],
     );
     useEffect(() => {
-        if (!profileMetricsEnabled || !visibilityReady) {
+        if (!profileMetricsEnabled || !visibilityReady || !submissionMetrics) {
             return;
         }
         updateGameProfileMetadata({
@@ -171,7 +187,8 @@ function GardenStructureVisibleSceneCollection({
             plan={plan}
             profileMetricsEnabled={profileMetricsEnabled}
             renderProps={renderProps}
-            visiblePropStructureIds={visiblePropStructureIds}
+            admittedPropStructureIds={visibleInteriorStructureIds}
+            baselineVisiblePropInstanceIds={baselineVisiblePropInstanceIds}
             visibleStructureIds={visibleStructureIds}
         />
     );

@@ -71,37 +71,98 @@ export function areGardenStructureIdSetsEqual(
     );
 }
 
+function structureCellKey(x: number, y: number) {
+    return `${x}|${y}`;
+}
+
+/**
+ * Props remain visible from outside when their owning cell is explicitly
+ * outdoor, has no roof, or is covered only by a transparent roof. Interior
+ * props below an opaque roof are admitted separately by avatar state.
+ */
+export function getGardenStructureBaselineVisiblePropInstanceIds(
+    plan: GardenStructureCollectionPlan,
+) {
+    const visiblePropInstanceIds = new Set<string>();
+
+    for (const structure of plan.structures) {
+        const opaqueRoofCellKeys = new Set<string>();
+        for (const batch of structure.batches.roof) {
+            if (batch.transparency !== 'opaque') {
+                continue;
+            }
+            for (let index = 0; index < batch.instanceIds.length; index += 1) {
+                const offset = index * batch.transformStride;
+                const x = batch.transforms[offset];
+                const y = batch.transforms[offset + 1];
+                if (x !== undefined && y !== undefined) {
+                    opaqueRoofCellKeys.add(structureCellKey(x, y));
+                }
+            }
+        }
+
+        for (const batch of structure.batches.props) {
+            for (const [index, instanceId] of batch.instanceIds.entries()) {
+                const offset = index * batch.transformStride;
+                const x = batch.transforms[offset];
+                const y = batch.transforms[offset + 1];
+                if (x === undefined || y === undefined) {
+                    continue;
+                }
+                const cellKey = structureCellKey(x, y);
+                const footprintIndex = structure.footprint.indexByKey[cellKey];
+                const coveredOutdoor =
+                    footprintIndex !== undefined &&
+                    structure.footprint.spaceKinds[footprintIndex] === 1;
+                if (coveredOutdoor || !opaqueRoofCellKeys.has(cellKey)) {
+                    visiblePropInstanceIds.add(instanceId);
+                }
+            }
+        }
+    }
+
+    return visiblePropInstanceIds;
+}
+
 export function getGardenStructureCollectionVisibleInstanceIndices(
     batch: GardenStructureCollectionBatchDescription,
     visibleStructureIds: ReadonlySet<string> | undefined,
-    visiblePropStructureIds: ReadonlySet<string> | undefined,
+    baselineVisiblePropInstanceIds: ReadonlySet<string> | undefined,
+    admittedPropStructureIds: ReadonlySet<string> | undefined,
 ) {
-    const effectiveVisibleIds =
-        batch.category === 'props'
-            ? intersectGardenStructureIds(
-                  visibleStructureIds,
-                  visiblePropStructureIds,
-              )
-            : visibleStructureIds;
-    if (!effectiveVisibleIds) {
-        return batch.instanceIds.map((_, index) => index);
-    }
-    return batch.structureIds.flatMap((structureId, index) =>
-        effectiveVisibleIds.has(structureId) ? [index] : [],
-    );
+    const filterPropVisibility =
+        batch.category === 'props' &&
+        (baselineVisiblePropInstanceIds !== undefined ||
+            admittedPropStructureIds !== undefined);
+    return batch.structureIds.flatMap((structureId, index) => {
+        if (visibleStructureIds && !visibleStructureIds.has(structureId)) {
+            return [];
+        }
+        if (!filterPropVisibility) {
+            return [index];
+        }
+        const instanceId = batch.instanceIds[index];
+        return (instanceId !== undefined &&
+            baselineVisiblePropInstanceIds?.has(instanceId)) ||
+            admittedPropStructureIds?.has(structureId)
+            ? [index]
+            : [];
+    });
 }
 
 export function getGardenStructureCollectionVisibleBatches(
     batches: readonly GardenStructureCollectionBatchDescription[],
     visibleStructureIds: ReadonlySet<string> | undefined,
-    visiblePropStructureIds: ReadonlySet<string> | undefined,
+    baselineVisiblePropInstanceIds: ReadonlySet<string> | undefined,
+    admittedPropStructureIds: ReadonlySet<string> | undefined,
 ) {
     return batches.filter(
         (batch) =>
             getGardenStructureCollectionVisibleInstanceIndices(
                 batch,
                 visibleStructureIds,
-                visiblePropStructureIds,
+                baselineVisiblePropInstanceIds,
+                admittedPropStructureIds,
             ).length > 0,
     );
 }
@@ -109,7 +170,8 @@ export function getGardenStructureCollectionVisibleBatches(
 function countVisibleProps(
     plan: GardenStructureCollectionPlan,
     visibleStructureIds: ReadonlySet<string>,
-    visiblePropStructureIds?: ReadonlySet<string>,
+    baselineVisiblePropInstanceIds?: ReadonlySet<string>,
+    admittedPropStructureIds?: ReadonlySet<string>,
 ) {
     return plan.batches.props.reduce(
         (total, batch) =>
@@ -117,7 +179,8 @@ function countVisibleProps(
             getGardenStructureCollectionVisibleInstanceIndices(
                 batch,
                 visibleStructureIds,
-                visiblePropStructureIds,
+                baselineVisiblePropInstanceIds,
+                admittedPropStructureIds,
             ).length,
         0,
     );
@@ -125,11 +188,13 @@ function countVisibleProps(
 
 export function getGardenStructureSceneSubmissionMetrics({
     plan,
+    baselineVisiblePropInstanceIds,
     renderProps,
     visibleInteriorStructureIds,
     visibleStructureIds,
 }: Readonly<{
     plan: GardenStructureCollectionPlan;
+    baselineVisiblePropInstanceIds: ReadonlySet<string>;
     renderProps: boolean;
     visibleInteriorStructureIds: ReadonlySet<string>;
     visibleStructureIds: ReadonlySet<string>;
@@ -146,6 +211,7 @@ export function getGardenStructureSceneSubmissionMetrics({
         ? countVisibleProps(
               plan,
               visibleStructureIds,
+              baselineVisiblePropInstanceIds,
               visibleInteriorStructureIds,
           )
         : 0;

@@ -394,28 +394,26 @@ export function GardenStructureVerticalSlice({
             selectedPartId={session?.selectedPartId ?? null}
         />
     );
-    const renderedPropCount = useMemo(
-        () =>
-            batches
-                .filter((batch) => batch.category === 'props')
-                .reduce((total, batch) => total + batch.instanceIds.length, 0),
-        [batches],
-    );
-    const totalPropCount = useMemo(
-        () =>
-            plan.batches.props.reduce(
-                (total, batch) => total + batch.instanceIds.length,
-                0,
-            ),
-        [plan.batches.props],
-    );
-    const transparentSurfaceCount = useMemo(
-        () =>
-            batches
-                .filter((batch) => batch.transparency === 'transparent')
-                .reduce((total, batch) => total + batch.instanceIds.length, 0),
-        [batches],
-    );
+    const profileCounts = useMemo(() => {
+        if (!profileMetricsEnabled) {
+            return undefined;
+        }
+        const renderedPropCount = batches
+            .filter((batch) => batch.category === 'props')
+            .reduce((total, batch) => total + batch.instanceIds.length, 0);
+        const totalPropCount = plan.batches.props.reduce(
+            (total, batch) => total + batch.instanceIds.length,
+            0,
+        );
+        const transparentSurfaceCount = batches
+            .filter((batch) => batch.transparency === 'transparent')
+            .reduce((total, batch) => total + batch.instanceIds.length, 0);
+        return {
+            renderedPropCount,
+            totalPropCount,
+            transparentSurfaceCount,
+        };
+    }, [batches, plan.batches.props, profileMetricsEnabled]);
     const profileMetrics = useMemo(
         () =>
             profileMetricsEnabled
@@ -430,7 +428,7 @@ export function GardenStructureVerticalSlice({
     );
 
     useEffect(() => {
-        if (!profileMetricsEnabled) {
+        if (!profileMetricsEnabled || !profileCounts) {
             return;
         }
         updateGameProfileMetadata({
@@ -440,13 +438,14 @@ export function GardenStructureVerticalSlice({
             gardenStructureCollisionBoxCount:
                 plan.counts.wallCollisionBoxes + plan.counts.propCollisionBoxes,
             gardenStructureExteriorSuppressedPropCount:
-                totalPropCount - renderedPropCount,
+                profileCounts.totalPropCount - profileCounts.renderedPropCount,
             gardenStructureFootprintCellCount: plan.counts.footprintCells,
             gardenStructureOpenPortalCount: plan.counts.openPortals,
-            gardenStructureTransparentSurfaceCount: transparentSurfaceCount,
+            gardenStructureTransparentSurfaceCount:
+                profileCounts.transparentSurfaceCount,
             gardenStructureVisibleInteriorSurfaceCount:
-                plan.counts.floorSurfaces + renderedPropCount,
-            gardenStructureVisiblePropCount: renderedPropCount,
+                plan.counts.floorSurfaces + profileCounts.renderedPropCount,
+            gardenStructureVisiblePropCount: profileCounts.renderedPropCount,
             gardenStructureWalkableCellCount: plan.counts.walkableCells,
         });
         return () =>
@@ -462,13 +461,7 @@ export function GardenStructureVerticalSlice({
                 gardenStructureVisiblePropCount: 0,
                 gardenStructureWalkableCellCount: 0,
             });
-    }, [
-        plan.counts,
-        profileMetricsEnabled,
-        renderedPropCount,
-        totalPropCount,
-        transparentSurfaceCount,
-    ]);
+    }, [plan.counts, profileCounts, profileMetricsEnabled]);
 
     return (
         <group
