@@ -1435,8 +1435,7 @@ dirty until an actual frame receipt, and become a one-off 60 FPS request if no
 lease exists or the last lease disappears before that receipt. Repeated reasons
 retain their maximum bounded frame count instead of adding debt. Hidden updates
 collapse to one frame, and scheduler-owned draws call the captured raw
-invalidator directly so the broker cannot recurse. Static capture explicitly
-disables continuous leases and retains raw invalidation control.
+invalidator directly so the broker cannot recurse.
 An invalidation issued during an active R3F frame preserves R3F's native
 follow-up contract: a default or one-frame request reserves two coalesced
 receipts, so the current frame consumes one and exactly one remains pending.
@@ -1453,9 +1452,35 @@ reason and one queued host commit per persistent fauna owner, and requires zero
 additional broker calls throughout every suspended tail.
 
 The broker covers R3F reconciler and direct root-state invalidations. R3F
-module-level invalidators, including a global animation driver, bypass the root
-function; lifecycle evidence therefore continues to gate total R3F receipts,
-not only scheduler-owned invalidations.
+module-level invalidators, including the shared React Spring animation driver,
+bypass the root function. Ordinary visibility-managed demand roots close that
+cross-root gap with a per-store shield: becoming inactive clears the root's
+pending frame count, switches only that root to `frameloop="never"`, clears the
+count again, and pauses descendant React Spring animations. Calls to the root's
+`setFrameloop` while hidden update the exact mode to restore instead of waking
+the root. Resume restores that requested mode without resetting the Three.js
+clock; final and StrictMode cleanup also restore the captured raw setter only
+when the lifecycle still owns it.
+
+Manual roots opt out of the ordinary visibility shield. Public preview capture
+mounts its Canvas with `frameloop="never"`, makes descendant springs immediate,
+and schedules a bounded, deduplicated `requestAnimationFrame` train whose
+callbacks call that root's `advance(elapsedSeconds, false)`. Skipping global
+before/after effects keeps another Canvas's animation work out of the capture
+root while preserving the asynchronous WebGL2 readback sequence.
+
+R3F `addAfterEffect` callbacks are also module-global. The hover-outline pass
+therefore requires a one-shot token marked by its own root's `useFrame`
+callback before it can render; another root's frame has no token to consume.
+Consumer generations prevent stale StrictMode callbacks or cleanup from using a
+replacement registration's token.
+
+Browser component witnesses exercise both two-root boundaries. The
+`r3f-root-isolation` witness keeps one looping spring root active while an
+offscreen ordinary root proves zero frame receipts, WebGL submissions, spring
+changes, and hidden work before restoring its exact demand mode. The garden
+preview capture witness keeps an active demand/spring Canvas beside the manual
+capture Canvas and still requires one nonblank, bounded capture.
 
 The bounded calibration RAF timestamps are observational telemetry only and
 never control target FPS, cadence phase, invalidation lead, or follow-up
@@ -1526,8 +1551,8 @@ offscreen Canvas's loops alive.
 Public preview capture disables continuous lease acquisition explicitly through
 `continuousRenderLeasesEnabled={false}`. It does not overload
 `fixedTimeSeconds` as a capture signal: fixed time remains the deterministic
-visual clock, while the separate lease switch leaves the capture probe in
-control of its bounded demand-render/readback sequence.
+visual clock, while the separate manual `frameloop="never"` policy leaves the
+capture probe in control of its root-local advance/readback sequence.
 
 Semantic render work sleeps on the same due-time timeout queue as deadlines and
 fixed steps. When its target is due, the scheduler invalidates once and R3F

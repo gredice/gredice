@@ -816,7 +816,10 @@ Progress:
   `141251` triangles/frame, `37.8 MB`; plant-heavy `60.8` draw calls/frame,
   `84707` triangles/frame, `61 MB`.
 - Hover outline rendering moved off `useFrame`; it now subscribes to the
-  after-render pass only while outline targets are active.
+  after-render pass only while outline targets are active. Because R3F
+  after-effects are module-global, each pass requires a one-shot token marked
+  by that Canvas root's own `useFrame` callback. Other roots cannot satisfy the
+  token, and StrictMode generations keep stale consumers from taking it.
 - Remaining callbacks are camera rig/render invalidation, active weather/cloud
   transitions, particle/animal simulations, and plant LOD/culling. Those are
   still tied to visible simulation, input, or render invalidation work rather
@@ -954,12 +957,18 @@ Progress:
   broker. Reconciler host updates persist as coalesced dirty requests: they ride
   an active semantic cadence, become a one-off 60 FPS request when no lease can
   deliver them, and remain pending if the last lease disappears before receipt.
-  Scheduler-owned draws call the raw invalidator directly, while static capture
-  keeps the broker disabled. R3F module-level invalidators remain outside this
-  root-state boundary, so total receipt surplus stays acceptance-gated. A
-  default or one-frame invalidation issued during `useFrame` reserves two
-  coalesced receipts, preserving the native current-frame-plus-follow-up
-  behavior without adding debt to explicit multi-frame requests.
+  Scheduler-owned draws call the raw invalidator directly. A default or
+  one-frame invalidation issued during `useFrame` reserves two coalesced
+  receipts, preserving the native current-frame-plus-follow-up behavior without
+  adding debt to explicit multi-frame requests.
+- R3F module-level invalidators remain outside the root-state broker. Ordinary
+  visibility-managed demand roots now close that gap with a per-store shield:
+  suspension clears `internal.frames`, changes only that root to
+  `frameloop="never"`, keeps its frame count at zero, and pauses descendant
+  React Spring work. Frameloop requests made while hidden update the exact
+  restore target. Resume restores that mode without resetting the Three.js
+  clock, while ownership-checked cleanup restores the captured raw setter and
+  remains safe across StrictMode replay.
 - Broker dirty state has its own pending-reason list, total hidden-call counter,
   and unique hidden-deferred transition counter. Repeated inactive updates stay
   visible through the total counter even after the reason is pending, but cannot
@@ -1021,11 +1030,20 @@ Progress:
   notifications gate query enablement and refetch intervals on aggregate scene
   activity; an all-inactive transition also cancels each exact query key, whose
   request consumes the query abort signal.
-- Public capture scenes explicitly disable continuous-render lease acquisition
-  with `continuousRenderLeasesEnabled={false}`. This is separate from
-  `fixedTimeSeconds`: fixed time provides deterministic visual time, while the
-  capture flag prevents ordinary continuous owners from competing with the
-  capture probe's bounded demand-render sequence.
+- Public capture scenes explicitly disable continuous-render lease acquisition,
+  opt out of the ordinary visibility shield, and mount with
+  `frameloop="never"`. This is separate from `fixedTimeSeconds`: fixed time
+  provides deterministic visual time, descendant springs resolve immediately,
+  and the probe deduplicates bounded RAF work before calling only its root's
+  `advance(elapsedSeconds, false)`. The false global-effects flag prevents an
+  active spring in another Canvas from entering the capture sequence while the
+  existing asynchronous WebGL2 readback remains unchanged.
+- Browser component witnesses exercise the two-root contract directly.
+  `r3f-root-isolation.spec.tsx` keeps one demand/spring root active while a
+  second offscreen root proves zero frames, submissions, spring changes, and
+  hidden work before exact demand-mode resume.
+  `garden-preview-capture.spec.tsx` keeps an active demand/spring Canvas beside
+  the manual capture Canvas and still requires one nonblank bounded capture.
 - Extended production profiling with deep-cloned start/end scheduler state and
   a pull-based telemetry view. A synchronous property-read or structured-clone
   burst shares one exact snapshot until its queued reset; runtime frames and
