@@ -14,6 +14,7 @@ import {
     buildProfileSummary,
     buildReportProvenance,
     buildScenarioRunQueue,
+    buildStaticIdleEvidence,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
@@ -24,6 +25,7 @@ import {
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
+    evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
@@ -582,6 +584,31 @@ test('lifecycle scenario repeats the exact High workload in fresh contexts', () 
     assert.equal(request.quality, 'high');
     assert.equal(request.staticSceneCache, 'legacy');
     assert.equal(url.searchParams.get('fixedTimeSeconds'), '43200');
+});
+
+test('static-idle scenario isolates one visible fixed-time zero-work fixture', () => {
+    const scenarios = resolveScenarios('static-idle');
+
+    assert.equal(scenarios.length, 1);
+    const [scenario] = scenarios;
+    const request = getScenarioRequest(scenario.path);
+    assert.equal(scenario.name, 'game-fixed-time-static-idle-desktop');
+    assert.equal(scenario.staticIdleProfile, true);
+    assert.equal(scenario.repeat, 3);
+    assert.equal(scenario.dpr, 2);
+    assert.equal(scenario.isMobile, false);
+    assert.equal(scenario.screenshotWitness, true);
+    assert.deepEqual(scenario.viewport, { height: 720, width: 1280 });
+    assert.equal(request.controls, '0');
+    assert.equal(request.debugHud, '0');
+    assert.equal(request.details, '0');
+    assert.equal(request.gardenProfile, 'default');
+    assert.equal(request.hud, '0');
+    assert.equal(request.mode, 'baseline');
+    assert.equal(request.quality, 'high');
+    assert.equal(request.staticIdle, '1');
+    assert.equal(request.staticSceneCache, 'legacy');
+    assert.equal(scenario.fixedTimeSeconds, 43_200);
 });
 
 test('operation-visual High scenario is isolated behind its own opt-in set', () => {
@@ -1352,6 +1379,96 @@ test('markdown reports per-rAF and per-render work in separate columns', () => {
         /\| Draw\/frame \| Draw\/render \| Triangles\/frame \| Triangles\/render \|/,
     );
     assert.match(markdown, /\| 2 \| 40 \| 15000 \| 300000 \|/);
+});
+
+test('markdown reports the visible static-idle zero-work witness', () => {
+    const markdown = buildMarkdown({
+        baseUrl: 'http://profile.local',
+        generatedAt: '2026-09-01T00:00:00.000Z',
+        highTargetMedians: {},
+        options: {
+            build: false,
+            managedServer: false,
+            sampleMs: 5_000,
+            scenarios: [],
+            scenarioSet: 'static-idle',
+            soakMs: 0,
+            warmupMs: 5_000,
+        },
+        plantCloseupMedians: {},
+        scenarios: [
+            {
+                budget: { checks: [], pass: true },
+                consoleMessages: [],
+                environment: null,
+                name: 'game-fixed-time-static-idle-desktop-run-1',
+                pageErrors: [],
+                profileRun: 1,
+                requested: {
+                    controls: '0',
+                    debugHud: '0',
+                    details: '0',
+                    gardenProfile: 'default',
+                    hud: '0',
+                    mode: 'baseline',
+                    motion: 'none',
+                    staticIdleProfile: true,
+                },
+                runtime: null,
+                sample: {
+                    canvas: null,
+                    drawCalls: 0,
+                    drawCallsPerFrame: 0,
+                    drawCallsPerRenderedFrame: 0,
+                    fps: 60,
+                    jsHeapMb: 100,
+                    longTaskCount: 0,
+                    maxFrameMs: 20,
+                    p95FrameMs: 16,
+                    rainUnmountMs: null,
+                    renderedFps: 0,
+                    renderedFrames: 0,
+                    runtimeFrameLoopAtEnd: { effectiveVisible: true },
+                    runtimeFrameLoopAtStart: { effectiveVisible: true },
+                    submittedTriangles: 0,
+                    trianglesPerFrame: 0,
+                    trianglesPerRenderedFrame: 0,
+                },
+                screenshotPath: 'static-idle.png',
+                screenshotWitness: {
+                    entropy: 1,
+                    height: 1_440,
+                    maximumChannelStandardDeviation: 10,
+                    opaque: true,
+                    sampledLumaRange: 40,
+                    sampledUniqueColorCount: 32,
+                    width: 2_560,
+                },
+                staticIdle: {
+                    counterDeltas: {
+                        deadlineCount: 0,
+                        fixedStepCount: 0,
+                        nonessentialHiddenWorkCount: 0,
+                        ownedInvalidationCount: 0,
+                        r3fFrameCallbackCount: 0,
+                        wakeupCount: 0,
+                    },
+                    schedulerSettledAtEnd: true,
+                    schedulerSettledAtStart: true,
+                    zeroWorkObserved: true,
+                },
+            },
+        ],
+        schemaVersion: 5,
+        sourceCommit: null,
+        summary: { failedScenarios: 0 },
+    });
+
+    assert.match(markdown, /## Fixed-time visible static-idle witness/);
+    assert.match(
+        markdown,
+        /wake 0, invalidate 0, fixed 0, deadline 0, hidden 0 \| 0 \| 0 \/ 0 \/ 0 \| yes \| yes \| pass/,
+    );
 });
 
 test('markdown distinguishes controlled governor evidence and formats range failures', () => {
@@ -3232,6 +3349,139 @@ test('lifecycle zero-work separates owned scheduling from full render and runtim
             field,
         );
     }
+});
+
+test('static-idle evidence and acceptance require a visible settled zero-work window', () => {
+    const schedulerSnapshot = (overrides = {}) => ({
+        activeDeadlineCount: 0,
+        activeFixedStepLeaseCount: 0,
+        activeLeaseCount: 0,
+        activeRenderLeaseCount: 0,
+        callbackPending: false,
+        cancelledCallbackCount: 2,
+        canvasVisible: true,
+        deadlineCount: 3,
+        deadlineOwners: [],
+        deferredWorkCount: 0,
+        displayFrameCalibrationCount: 7,
+        documentVisible: true,
+        effectiveVisible: true,
+        fixedStepCount: 4,
+        fixedStepFailureCount: 0,
+        fixedStepOwners: [],
+        hiddenDeferredRenderRequestCount: 0,
+        invalidationFailureCount: 0,
+        leaseAcquiredCount: 5,
+        leaseReleasedCount: 5,
+        loopActive: false,
+        missedFrameReceiptCount: 0,
+        nonessentialHiddenWorkCount: 0,
+        ownedInvalidationCount: 8,
+        pendingCallbackDueAt: null,
+        pendingCallbackKind: 'none',
+        r3fFrameCallbackCount: 6,
+        renderLeaseOwners: [],
+        renderRequestReasons: [],
+        resumeCount: 0,
+        scheduledCallbackCount: 10,
+        suspendCount: 0,
+        targetFramesPerSecond: 0,
+        wakeupCount: 10,
+        ...overrides,
+    });
+    const sample = {
+        canvas: {
+            clientHeight: 720,
+            clientWidth: 1_280,
+            height: 1_440,
+            width: 2_560,
+        },
+        drawCalls: 0,
+        elapsedMs: 5_000,
+        frames: 300,
+        renderedFps: 0,
+        renderedFrames: 0,
+        reportedDpr: 2,
+        runtimeFrameLoopAtEnd: schedulerSnapshot(),
+        runtimeFrameLoopAtStart: schedulerSnapshot(),
+        submittedTriangles: 0,
+    };
+    const staticIdle = buildStaticIdleEvidence(sample);
+    const screenshotWitness = {
+        entropy: 1,
+        height: 1_440,
+        maximumChannelStandardDeviation: 10,
+        opaque: true,
+        sampledLumaRange: 40,
+        sampledUniqueColorCount: 32,
+        width: 2_560,
+    };
+    const input = {
+        apiErrors: [],
+        consoleMessages: [],
+        pageErrors: [],
+        requested: {
+            controls: '0',
+            debugHud: '0',
+            details: '0',
+            fixedTimeSeconds: 43_200,
+            gardenProfile: 'default',
+            hud: '0',
+            mode: 'baseline',
+            quality: 'high',
+            sampleMs: 5_000,
+            staticIdle: '1',
+            staticIdleProfile: true,
+            staticSceneCache: 'legacy',
+        },
+        runtime: {
+            dprCap: 2,
+            profileGardenBlockCount: 15,
+            profileGardenId: 99_999,
+            profileGardenRaisedBedCount: 1,
+            profileGardenStackCount: 12,
+            qualityTier: 'high',
+            shadowMapSize: 4_096,
+            shadowsEnabled: true,
+            staticOpaqueSceneCacheEnabled: false,
+        },
+        sample,
+        screenshotWitness,
+        staticIdle,
+    };
+
+    assert.equal(staticIdle.schedulerSettledAtStart, true);
+    assert.equal(staticIdle.schedulerSettledAtEnd, true);
+    assert.equal(staticIdle.schedulerZeroObserved, true);
+    assert.equal(staticIdle.rendererZeroObserved, true);
+    assert.equal(staticIdle.zeroWorkObserved, true);
+    const passing = evaluateStaticIdleAcceptance(input);
+    assert.equal(
+        passing.pass,
+        true,
+        passing.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
+
+    const withR3fWork = structuredClone(sample);
+    withR3fWork.runtimeFrameLoopAtEnd.r3fFrameCallbackCount += 1;
+    const r3fEvidence = buildStaticIdleEvidence(withR3fWork);
+    assert.equal(r3fEvidence.zeroWorkObserved, false);
+    assert.equal(
+        evaluateStaticIdleAcceptance({
+            ...input,
+            sample: withR3fWork,
+            staticIdle: r3fEvidence,
+        }).pass,
+        false,
+    );
+
+    const withSubmittedFrame = { ...sample, drawCalls: 1, renderedFrames: 1 };
+    const rendererEvidence = buildStaticIdleEvidence(withSubmittedFrame);
+    assert.equal(rendererEvidence.rendererZeroObserved, false);
+    assert.equal(rendererEvidence.zeroWorkObserved, false);
 });
 
 test('lifecycle acceptance passes one complete contract and rejects focused evidence mutations', () => {

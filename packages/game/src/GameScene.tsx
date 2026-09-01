@@ -172,6 +172,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
 
     // Development purposes
     adaptiveHighQuality?: boolean;
+    continuousRenderLeasesEnabled?: boolean;
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     gardenStructureDebugFixture?: boolean;
@@ -376,6 +377,7 @@ export function GameScene({
     deferDetails,
     renderDetails: renderDetailsOverride,
     adaptiveHighQuality = true,
+    continuousRenderLeasesEnabled,
     enableGameProfileController,
     enableStaticOpaqueSceneCacheOcclusionFixture,
     gardenStructureDebugFixture,
@@ -1146,6 +1148,9 @@ export function GameScene({
                     onAdaptiveHighProfileChange={setAdaptiveHighProfile}
                     debugStats={showDebugHud}
                     profileStats={Boolean(enableGameProfileController)}
+                    continuousRenderLeasesEnabled={
+                        continuousRenderLeasesEnabled
+                    }
                     fixedTimeSeconds={fixedTimeSeconds}
                     position={sceneCameraPosition}
                     quality={qualityProfile}

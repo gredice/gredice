@@ -105,6 +105,10 @@ const lifecycleExpectedGardenStackCount = 270;
 const lifecycleExpectedGardenBlockCount = 297;
 const lifecycleExpectedGardenRaisedBedCount = 3;
 const lifecycleContextEventTimeoutMs = 20_000;
+const staticIdleExpectedGardenId = 99_999;
+const staticIdleExpectedGardenStackCount = 12;
+const staticIdleExpectedGardenBlockCount = 15;
+const staticIdleExpectedGardenRaisedBedCount = 1;
 const highTargetExpectedGeneratedPlantFieldCount = 54;
 const highTargetExpectedGeneratedPlantInstanceCount = 537;
 const highTargetOperationVisualExpectedGeneratedPlantFieldCount = 34;
@@ -528,6 +532,21 @@ const lifecycleScenarios = [
         lifecycleProfile: true,
         repeat: 3,
         screenshotWitness: true,
+    },
+];
+
+const staticIdleScenarios = [
+    {
+        name: 'game-fixed-time-static-idle-desktop',
+        path: '/debug/profile/game?mode=baseline&profile=default&quality=high&controls=0&details=0&hud=0&debugHud=0&staticSceneCache=legacy&fixedTimeSeconds=43200&staticIdle=1',
+        viewport: { width: 1280, height: 720 },
+        dpr: 2,
+        isMobile: false,
+        budget: 'gameHighTarget',
+        fixedTimeSeconds: 43_200,
+        repeat: 3,
+        screenshotWitness: true,
+        staticIdleProfile: true,
     },
 ];
 
@@ -1099,6 +1118,7 @@ const scenarioSets = {
     fauna: faunaHeavyScenarios,
     'garden-switch': gardenSwitchScenarios,
     lifecycle: lifecycleScenarios,
+    'static-idle': staticIdleScenarios,
     'high-target': highTargetScenarios,
     'high-target-foliage-budget': highTargetFoliageBudgetScenarios,
     'high-target-operation-visuals': highTargetOperationVisualScenarios,
@@ -1593,7 +1613,7 @@ function printHelp(options) {
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
-            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
+            `  --scenario-set <set>    core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or comma-separated names. Current: ${options.scenarioSet}`,
             '  --scenario <name>       Profile exact scenario name(s). Repeat or use commas.',
             '  --screenshots           Save a PNG screenshot for each scenario.',
             '  --fail-on-budget       Exit non-zero when a budget or report-comparability check fails.',
@@ -1625,6 +1645,7 @@ function allScenarios() {
         ...faunaHeavyScenarios,
         ...gardenSwitchScenarios,
         ...lifecycleScenarios,
+        ...staticIdleScenarios,
         ...highTargetScenarios,
         ...highTargetFoliageBudgetScenarios,
         ...highTargetOperationVisualScenarios,
@@ -1664,7 +1685,7 @@ function resolveScenarios(scenarioSet, scenarioNames = []) {
 
         if (!candidates.length) {
             throw new Error(
-                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
+                `Unknown scenario set or scenario: ${token}. Use core, cross-tier, dense, dense-mobile, fauna, garden-switch, lifecycle, static-idle, high-target, high-target-foliage-budget, high-target-operation-visuals, high-target-static-scene-cache, high-target-weather-materials, high-target-weather-onset, adaptive-high, outline, placement, plant-closeup, auto-quality, rewards, weather-transitions, all, or one of: ${knownScenarios.map((scenario) => scenario.name).join(', ')}.`,
             );
         }
 
@@ -1777,6 +1798,12 @@ function getScenarioRequest(path) {
             ? {
                   lifecycle:
                       url.searchParams.get('lifecycle') === '1' ? '1' : '0',
+              }
+            : {}),
+        ...(url.searchParams.has('staticIdle')
+            ? {
+                  staticIdle:
+                      url.searchParams.get('staticIdle') === '1' ? '1' : '0',
               }
             : {}),
         mode: url.searchParams.get('mode') ?? 'baseline',
@@ -3880,6 +3907,14 @@ const genericRuntimeFrameLoopCounterFields = [
     'missedFrameReceiptCount',
     'nonessentialHiddenWorkCount',
 ];
+const staticIdleRuntimeFrameLoopCounterFields = [
+    ...genericRuntimeFrameLoopCounterFields,
+    'deadlineCount',
+    'deferredWorkCount',
+    'fixedStepCount',
+    'leaseAcquiredCount',
+    'leaseReleasedCount',
+];
 
 async function readRuntimeFrameLoopSnapshot(page) {
     return page.evaluate(() => {
@@ -3944,6 +3979,113 @@ function lifecycleZeroWorkObserved(residual, deltas) {
         residual.sample.drawCalls === 0 &&
         residual.sample.submittedTriangles === 0
     );
+}
+
+function staticIdleSchedulerSettled(snapshot) {
+    return Boolean(
+        snapshot?.effectiveVisible === true &&
+            snapshot.activeDeadlineCount === 0 &&
+            snapshot.activeFixedStepLeaseCount === 0 &&
+            snapshot.activeLeaseCount === 0 &&
+            snapshot.activeRenderLeaseCount === 0 &&
+            snapshot.callbackPending === false &&
+            snapshot.loopActive === false &&
+            snapshot.pendingCallbackKind === 'none' &&
+            snapshot.pendingCallbackDueAt === null &&
+            snapshot.targetFramesPerSecond === 0 &&
+            Array.isArray(snapshot.deadlineOwners) &&
+            snapshot.deadlineOwners.length === 0 &&
+            Array.isArray(snapshot.fixedStepOwners) &&
+            snapshot.fixedStepOwners.length === 0 &&
+            Array.isArray(snapshot.renderLeaseOwners) &&
+            snapshot.renderLeaseOwners.length === 0 &&
+            Array.isArray(snapshot.renderRequestReasons) &&
+            snapshot.renderRequestReasons.length === 0,
+    );
+}
+
+function buildStaticIdleEvidence(sample) {
+    const start = sample?.runtimeFrameLoopAtStart ?? null;
+    const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    const counterDeltas = runtimeFrameLoopCounterDeltas(
+        start,
+        end,
+        staticIdleRuntimeFrameLoopCounterFields,
+    );
+    const schedulerZeroObserved = staticIdleRuntimeFrameLoopCounterFields.every(
+        (field) => counterDeltas[field] === 0,
+    );
+    const rendererZeroObserved =
+        sample?.renderedFrames === 0 &&
+        sample.drawCalls === 0 &&
+        sample.submittedTriangles === 0;
+    const zeroWorkObserved =
+        schedulerZeroObserved &&
+        lifecycleZeroWorkObserved(
+            {
+                sample: {
+                    ...sample,
+                    runtimeFrameLoopCounterDeltas: counterDeltas,
+                },
+            },
+            counterDeltas,
+        );
+
+    return {
+        counterDeltas,
+        ownedSchedulingZeroObserved:
+            lifecycleOwnedSchedulingZeroObserved(counterDeltas),
+        rendererZeroObserved,
+        schedulerSettledAtEnd: staticIdleSchedulerSettled(end),
+        schedulerSettledAtStart: staticIdleSchedulerSettled(start),
+        schedulerZeroObserved,
+        zeroWorkObserved,
+    };
+}
+
+async function waitForStaticIdleStabilization(page) {
+    const waitForSettledState = () =>
+        page.waitForFunction(
+            (expectedFixture) => {
+                const profile = globalThis.__grediceGameProfile;
+                const telemetry = profile?.runtimeFrameLoop;
+                return Boolean(
+                    profile?.profileGardenId === expectedFixture.gardenId &&
+                        profile.profileGardenStackCount ===
+                            expectedFixture.stackCount &&
+                        profile.profileGardenBlockCount ===
+                            expectedFixture.blockCount &&
+                        profile.profileGardenRaisedBedCount ===
+                            expectedFixture.raisedBedCount &&
+                        telemetry?.r3fFrameCallbackCount >= 1 &&
+                        telemetry.effectiveVisible === true &&
+                        telemetry.activeDeadlineCount === 0 &&
+                        telemetry.activeFixedStepLeaseCount === 0 &&
+                        telemetry.activeLeaseCount === 0 &&
+                        telemetry.activeRenderLeaseCount === 0 &&
+                        telemetry.callbackPending === false &&
+                        telemetry.loopActive === false &&
+                        telemetry.pendingCallbackKind === 'none' &&
+                        telemetry.pendingCallbackDueAt === null &&
+                        telemetry.targetFramesPerSecond === 0 &&
+                        telemetry.deadlineOwners?.length === 0 &&
+                        telemetry.fixedStepOwners?.length === 0 &&
+                        telemetry.renderLeaseOwners?.length === 0 &&
+                        telemetry.renderRequestReasons?.length === 0,
+                );
+            },
+            {
+                blockCount: staticIdleExpectedGardenBlockCount,
+                gardenId: staticIdleExpectedGardenId,
+                raisedBedCount: staticIdleExpectedGardenRaisedBedCount,
+                stackCount: staticIdleExpectedGardenStackCount,
+            },
+            { timeout: 60_000 },
+        );
+
+    await waitForSettledState();
+    await page.waitForTimeout(250);
+    await waitForSettledState();
 }
 
 async function measureLifecycleWindow({ cdp, durationMs, page }) {
@@ -5920,6 +6062,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             new Promise((resolveWarmup) => setTimeout(resolveWarmup, warmupMs)),
         options.warmupMs,
     );
+    if (scenario.staticIdleProfile === true) {
+        await waitForStaticIdleStabilization(page);
+    }
     if (
         scenario.staticSceneCacheBenchmark === true &&
         request.staticSceneCache === 'cache'
@@ -6085,6 +6230,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             quality: element.dataset.gameProfileQuality ?? null,
             staticSceneCache:
                 element.dataset.gameProfileStaticSceneCache ?? null,
+            staticIdle: element.dataset.gameProfileStaticIdle ?? null,
             staticSceneCacheOcclusionFixture:
                 element.dataset.gameProfileStaticSceneCacheOcclusionFixture ??
                 null,
@@ -7977,6 +8123,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     await context.close();
 
     const roundedSample = roundSample(sample);
+    const staticIdle =
+        scenario.staticIdleProfile === true
+            ? buildStaticIdleEvidence(roundedSample)
+            : null;
     const requested = {
         adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
         autoQualityDeviceClass:
@@ -8033,6 +8183,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         sampleMs,
         staticSceneCache:
             profileMetadata?.staticSceneCache ?? request.staticSceneCache,
+        staticIdle: profileMetadata?.staticIdle ?? request.staticIdle ?? '0',
+        staticIdleProfile: scenario.staticIdleProfile === true,
         staticSceneCacheVisualDeterministic:
             scenario.staticSceneCacheVisualDeterministic !== false,
         staticSceneCacheOcclusionFixture:
@@ -8055,6 +8207,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         runtime,
         sample: roundedSample,
         screenshotWitness,
+        staticIdle,
     });
     return {
         acceptance,
@@ -8093,6 +8246,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         servedBuildProvenance,
         screenshotPath,
         screenshotWitness,
+        staticIdle,
         url,
         name: scenario.name,
     };
@@ -8836,6 +8990,206 @@ function buildLifecycleSummary(scenarios) {
     };
 }
 
+function evaluateStaticIdleAcceptance({
+    apiErrors = [],
+    consoleMessages = [],
+    pageErrors = [],
+    requested,
+    runtime,
+    sample,
+    screenshotWitness,
+    staticIdle,
+}) {
+    if (requested?.staticIdleProfile !== true) {
+        return { checks: [], pass: true };
+    }
+
+    const exact = (name, actual, expected) => ({
+        actual,
+        comparison: 'equal',
+        limit: expected,
+        name,
+        pass: actual === expected,
+    });
+    const minimum = (name, actual, limit) => ({
+        actual,
+        comparison: 'minimum',
+        limit,
+        name,
+        pass:
+            typeof actual === 'number' &&
+            Number.isFinite(actual) &&
+            actual >= limit,
+    });
+    const start = sample?.runtimeFrameLoopAtStart;
+    const end = sample?.runtimeFrameLoopAtEnd;
+    const checks = [
+        exact('staticIdleProfile', requested.staticIdleProfile, true),
+        exact('staticIdleOptIn', requested.staticIdle, '1'),
+        exact('staticIdleMode', requested.mode, 'baseline'),
+        exact('staticIdleGardenProfile', requested.gardenProfile, 'default'),
+        exact('staticIdleControls', requested.controls, '0'),
+        exact('staticIdleDetails', requested.details, '0'),
+        exact('staticIdleHud', requested.hud, '0'),
+        exact('staticIdleDebugHud', requested.debugHud, '0'),
+        exact('staticIdleFixedTimeSeconds', requested.fixedTimeSeconds, 43_200),
+        exact('staticIdleQualityRequest', requested.quality, 'high'),
+        exact('staticIdleQualityTier', runtime?.qualityTier, 'high'),
+        exact('staticIdleDprCap', runtime?.dprCap, 2),
+        exact('staticIdleShadowsEnabled', runtime?.shadowsEnabled, true),
+        exact('staticIdleShadowMapSize', runtime?.shadowMapSize, 4_096),
+        exact('staticIdleReportedDpr', sample?.reportedDpr, 2),
+        exact(
+            'staticIdleCanvasClientWidth',
+            sample?.canvas?.clientWidth,
+            1_280,
+        ),
+        exact(
+            'staticIdleCanvasClientHeight',
+            sample?.canvas?.clientHeight,
+            720,
+        ),
+        exact('staticIdleCanvasWidth', sample?.canvas?.width, 2_560),
+        exact('staticIdleCanvasHeight', sample?.canvas?.height, 1_440),
+        exact(
+            'staticIdleStaticSceneCacheRequest',
+            requested.staticSceneCache,
+            'legacy',
+        ),
+        exact(
+            'staticIdleStaticSceneCacheEnabled',
+            runtime?.staticOpaqueSceneCacheEnabled,
+            false,
+        ),
+        exact(
+            'staticIdleGardenId',
+            runtime?.profileGardenId,
+            staticIdleExpectedGardenId,
+        ),
+        exact(
+            'staticIdleGardenStackCount',
+            runtime?.profileGardenStackCount,
+            staticIdleExpectedGardenStackCount,
+        ),
+        exact(
+            'staticIdleGardenBlockCount',
+            runtime?.profileGardenBlockCount,
+            staticIdleExpectedGardenBlockCount,
+        ),
+        exact(
+            'staticIdleGardenRaisedBedCount',
+            runtime?.profileGardenRaisedBedCount,
+            staticIdleExpectedGardenRaisedBedCount,
+        ),
+        exact('staticIdleCanvasVisibleAtStart', start?.canvasVisible, true),
+        exact('staticIdleDocumentVisibleAtStart', start?.documentVisible, true),
+        exact(
+            'staticIdleEffectiveVisibleAtStart',
+            start?.effectiveVisible,
+            true,
+        ),
+        exact('staticIdleCanvasVisibleAtEnd', end?.canvasVisible, true),
+        exact('staticIdleDocumentVisibleAtEnd', end?.documentVisible, true),
+        exact('staticIdleEffectiveVisibleAtEnd', end?.effectiveVisible, true),
+        minimum(
+            'staticIdleSetupR3fFrameCallbacks',
+            start?.r3fFrameCallbackCount,
+            1,
+        ),
+        exact(
+            'staticIdleSchedulerSettledAtStart',
+            staticIdle?.schedulerSettledAtStart,
+            true,
+        ),
+        exact(
+            'staticIdleSchedulerSettledAtEnd',
+            staticIdle?.schedulerSettledAtEnd,
+            true,
+        ),
+        exact(
+            'staticIdleOwnedSchedulingZeroObserved',
+            staticIdle?.ownedSchedulingZeroObserved,
+            true,
+        ),
+        exact(
+            'staticIdleSchedulerZeroObserved',
+            staticIdle?.schedulerZeroObserved,
+            true,
+        ),
+        exact(
+            'staticIdleRendererZeroObserved',
+            staticIdle?.rendererZeroObserved,
+            true,
+        ),
+        exact('staticIdleZeroWorkObserved', staticIdle?.zeroWorkObserved, true),
+        ...staticIdleRuntimeFrameLoopCounterFields.map((field) =>
+            exact(
+                `staticIdle${field[0].toUpperCase()}${field.slice(1)}Delta`,
+                staticIdle?.counterDeltas?.[field],
+                0,
+            ),
+        ),
+        minimum(
+            'staticIdleElapsedMs',
+            sample?.elapsedMs,
+            Math.max(0, (requested.sampleMs ?? 0) - 100),
+        ),
+        minimum('staticIdleBrowserFrames', sample?.frames, 1),
+        exact('staticIdleRenderedFps', sample?.renderedFps, 0),
+        exact('staticIdleRenderedFrames', sample?.renderedFrames, 0),
+        exact('staticIdleDrawCalls', sample?.drawCalls, 0),
+        exact('staticIdleSubmittedTriangles', sample?.submittedTriangles, 0),
+        exact(
+            'staticIdleScreenshotWitnessValid',
+            isProfileScreenshotWitnessValid(screenshotWitness),
+            true,
+        ),
+        exact(
+            'staticIdleScreenshotWidth',
+            screenshotWitness?.width,
+            sample?.canvas?.width,
+        ),
+        exact(
+            'staticIdleScreenshotHeight',
+            screenshotWitness?.height,
+            sample?.canvas?.height,
+        ),
+        exact('staticIdleScreenshotOpaque', screenshotWitness?.opaque, true),
+        minimum('staticIdleScreenshotEntropy', screenshotWitness?.entropy, 0.5),
+        minimum(
+            'staticIdleScreenshotMaximumChannelStandardDeviation',
+            screenshotWitness?.maximumChannelStandardDeviation,
+            5,
+        ),
+        minimum(
+            'staticIdleScreenshotSampledLumaRange',
+            screenshotWitness?.sampledLumaRange,
+            20,
+        ),
+        minimum(
+            'staticIdleScreenshotSampledUniqueColorCount',
+            screenshotWitness?.sampledUniqueColorCount,
+            16,
+        ),
+        exact('staticIdleApiErrors', apiErrors.length, 0),
+        exact(
+            'staticIdleConsoleErrors',
+            consoleMessages.filter(
+                (message) =>
+                    message.type === 'error' &&
+                    !isIgnoredLocalProfilerConsoleError(message),
+            ).length,
+            0,
+        ),
+        exact('staticIdlePageErrors', pageErrors.length, 0),
+    ];
+
+    return {
+        checks,
+        pass: checks.every((check) => check.pass),
+    };
+}
+
 function evaluateFaunaHeavyAcceptance({
     apiErrors = [],
     apiRequests = [],
@@ -9456,7 +9810,21 @@ function evaluateHighTargetAcceptance({
     runtime,
     sample,
     screenshotWitness,
+    staticIdle,
 }) {
+    if (requested?.staticIdleProfile === true) {
+        return evaluateStaticIdleAcceptance({
+            apiErrors,
+            consoleMessages,
+            pageErrors,
+            requested,
+            runtime,
+            sample,
+            screenshotWitness,
+            staticIdle: staticIdle ?? buildStaticIdleEvidence(sample),
+        });
+    }
+
     if (requested?.faunaProfile === true) {
         return evaluateFaunaHeavyAcceptance({
             apiErrors,
@@ -13252,6 +13620,26 @@ function buildMarkdown(report) {
         );
     }
 
+    const staticIdleProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.staticIdleProfile === true,
+    );
+    if (staticIdleProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Fixed-time visible static-idle witness',
+            '',
+            '| Scenario / run | Visible / settled start-end | Scheduler counter deltas | R3F callbacks | WebGL frames / draws / triangles | Nonblank screenshot | Full zero work | Result |',
+            '| --- | --- | --- | ---: | ---: | --- | --- | --- |',
+        );
+        for (const scenario of staticIdleProfiles) {
+            const evidence = scenario.staticIdle;
+            const counterDeltas = evidence?.counterDeltas ?? {};
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${scenario.sample?.runtimeFrameLoopAtStart?.effectiveVisible === true && scenario.sample?.runtimeFrameLoopAtEnd?.effectiveVisible === true ? 'yes' : 'no'} / ${evidence?.schedulerSettledAtStart === true && evidence?.schedulerSettledAtEnd === true ? 'yes' : 'no'} | wake ${counterDeltas.wakeupCount ?? 'n/a'}, invalidate ${counterDeltas.ownedInvalidationCount ?? 'n/a'}, fixed ${counterDeltas.fixedStepCount ?? 'n/a'}, deadline ${counterDeltas.deadlineCount ?? 'n/a'}, hidden ${counterDeltas.nonessentialHiddenWorkCount ?? 'n/a'} | ${counterDeltas.r3fFrameCallbackCount ?? 'n/a'} | ${scenario.sample?.renderedFrames ?? 'n/a'} / ${scenario.sample?.drawCalls ?? 'n/a'} / ${scenario.sample?.submittedTriangles ?? 'n/a'} | ${isProfileScreenshotWitnessValid(scenario.screenshotWitness) ? 'yes' : 'no'} | ${evidence?.zeroWorkObserved ? 'yes' : 'no'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const crossTierMedians = Object.entries(
         report.crossTierMedians ??
             buildCrossTierMedians(report.highTargetMedians ?? {}),
@@ -14112,6 +14500,7 @@ export {
     buildProfileSummary,
     buildReportProvenance,
     buildScenarioRunQueue,
+    buildStaticIdleEvidence,
     buildStaticSceneCacheComparisons,
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
@@ -14122,6 +14511,7 @@ export {
     evaluateGardenSwitchAcceptance,
     evaluateHighTargetAcceptance,
     evaluateLifecycleAcceptance,
+    evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
     finishInteractiveProfileSample,
     getScenarioRequest,
