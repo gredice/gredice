@@ -462,10 +462,13 @@ test('sandbox mutations always stay free and never invoke pricing effects', asyn
 
     const resized = await resizeGardenStructureDocument(
         {
+            anchorX: 0,
+            anchorY: 0,
             gardenId,
             structureId: structure.id,
             expectedRevision: 1,
             document: oneCellDocument(),
+            rotation: 0,
         },
         failIfCalled,
     );
@@ -574,10 +577,13 @@ test('normal zero-delta resize still requires and invokes its pricing effect', a
     );
     const effects: GardenStructurePricingEffect[] = [];
     const callerInput = {
+        anchorX: 0,
+        anchorY: 0,
         gardenId,
         structureId: structure.id,
         expectedRevision: 1,
         document: twoCellDocument(),
+        rotation: 0 as const,
         // A caller-authored value cannot inflate principal on equal-area edits.
         refundableSunflowerPrincipal: 200,
     };
@@ -616,15 +622,26 @@ test('resize, placement, and soft deletion preserve guarded lifecycle state', as
 
     const resized = await resizeGardenStructureDocument(
         {
+            anchorX: -2,
+            anchorY: 4,
             gardenId,
             structureId: structure.id,
             expectedRevision: 1,
             document: oneCellDocument(),
+            rotation: 1,
         },
         normalPricingOptions(effects),
     );
     assert.equal(resized?.structure.revision, 2);
     assert.equal(resized?.structure.refundableSunflowerPrincipal, 50);
+    assert.deepEqual(
+        resized && {
+            anchorX: resized.structure.anchorX,
+            anchorY: resized.structure.anchorY,
+            rotation: resized.structure.rotation,
+        },
+        { anchorX: -2, anchorY: 4, rotation: 1 },
+    );
     assert.deepEqual(resized?.priceDelta, {
         cellDelta: -1,
         debit: 0,

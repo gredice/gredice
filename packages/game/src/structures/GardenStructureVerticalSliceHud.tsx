@@ -1922,7 +1922,7 @@ export function GardenStructureVerticalSliceHud({
                 });
             const failed =
                 conflictRevision !== undefined
-                    ? markGardenStructureEditorConflict(begun.value, {
+                    ? markGardenStructureEditorConflict(active.editor, {
                           operationId,
                           actualRevision: conflictRevision,
                       })

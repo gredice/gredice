@@ -1053,15 +1053,21 @@ export async function replaceGardenStructureDocument(
 
 export async function resizeGardenStructureDocument(
     {
+        anchorX,
+        anchorY,
         document: inputDocument,
         expectedRevision,
         gardenId,
+        rotation,
         structureId,
         validationOptions,
     }: {
+        anchorX: number;
+        anchorY: number;
         document: unknown;
         expectedRevision: number;
         gardenId: number;
+        rotation: GardenStructureRotation;
         structureId: string;
         validationOptions?: GardenStructureValidationOptions;
     },
@@ -1069,6 +1075,9 @@ export async function resizeGardenStructureDocument(
 ) {
     assertGardenId(gardenId);
     assertIdentifier(structureId, 'Garden structure ID');
+    assertCoordinate(anchorX, 'Garden structure anchor X');
+    assertCoordinate(anchorY, 'Garden structure anchor Y');
+    assertRotation(rotation);
     assertPositiveInteger(
         expectedRevision,
         'Expected garden structure revision',
@@ -1119,10 +1128,13 @@ export async function resizeGardenStructureDocument(
             await db
                 .update(gardenStructures)
                 .set({
+                    anchorX,
+                    anchorY,
                     document,
                     refundableSunflowerPrincipal:
                         priceDelta.nextRefundablePrincipal,
                     revision: sql`${gardenStructures.revision} + 1`,
+                    rotation,
                 })
                 .where(
                     and(

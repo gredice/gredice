@@ -15,6 +15,10 @@ const historyGuardSource = readFileSync(
     join(sourceRoot, 'structures/useGardenStructureBuildModeHistoryGuard.ts'),
     'utf8',
 );
+const mutationSource = readFileSync(
+    join(sourceRoot, 'hooks/useGardenStructureMutations.ts'),
+    'utf8',
+);
 function sourceBetween(source: string, start: string, end: string) {
     const startIndex = source.indexOf(start);
     const endIndex = source.indexOf(end, startIndex + start.length);
@@ -113,6 +117,34 @@ test('keeps new drafts local until the explicit Done action', () => {
 
     assert.doesNotMatch(startFlow, /mutations\.save\.(?:mutate|mutateAsync)/);
     assert.match(buildHudSource, /onClick=\{saveAndExit\}/);
+});
+
+test('applies asynchronous save conflicts to the current matching editor', () => {
+    assert.match(
+        buildHudSource,
+        /markGardenStructureEditorConflict\(\s*active\.editor,/,
+    );
+});
+
+test('submits the complete adjusted placement with footprint resizes', () => {
+    const resizeSubmission = sourceBetween(
+        mutationSource,
+        "case 'resize':",
+        "case 'placement':",
+    );
+
+    assert.match(
+        resizeSubmission,
+        /anchorX: save\.submittedSnapshot\.placement\.anchorX/,
+    );
+    assert.match(
+        resizeSubmission,
+        /anchorY: save\.submittedSnapshot\.placement\.anchorY/,
+    );
+    assert.match(
+        resizeSubmission,
+        /rotation: save\.submittedSnapshot\.placement\.rotation/,
+    );
 });
 
 test('keeps the editor background inert while a confirmation is open', () => {

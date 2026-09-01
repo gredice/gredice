@@ -3,11 +3,30 @@ import {
     gardenStructureKitV1Catalog,
 } from '@gredice/game/garden-structure-catalog';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { type ComponentProps, useState } from 'react';
+
+function InteractiveCatalogPicker(
+    args: ComponentProps<typeof GardenStructureCatalogPicker>,
+) {
+    const [selectedKey, setSelectedKey] = useState(args.selectedKey);
+
+    return (
+        <GardenStructureCatalogPicker
+            {...args}
+            onSelectionChange={(entry) => {
+                setSelectedKey(entry?.key ?? null);
+                args.onSelectionChange(entry);
+            }}
+            selectedKey={selectedKey}
+        />
+    );
+}
 
 const meta = {
     title: 'packages/game/Structures/GardenStructureCatalogPicker',
     component: GardenStructureCatalogPicker,
     tags: ['autodocs'],
+    render: (args) => <InteractiveCatalogPicker {...args} />,
     args: {
         ariaLabel: 'Predložak građevine',
         entries: gardenStructureKitV1Catalog.templates,

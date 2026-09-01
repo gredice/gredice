@@ -165,7 +165,13 @@ export type ReplaceGardenStructureCommand =
     RevisionGuardedGardenStructureCommand & Readonly<{ document: unknown }>;
 
 export type ResizeGardenStructureCommand =
-    RevisionGuardedGardenStructureCommand & Readonly<{ document: unknown }>;
+    RevisionGuardedGardenStructureCommand &
+        Readonly<{
+            anchorX: number;
+            anchorY: number;
+            document: unknown;
+            rotation: GardenStructureRotation;
+        }>;
 
 export type UpdateGardenStructurePlacementCommand =
     RevisionGuardedGardenStructureCommand &
@@ -227,7 +233,12 @@ type ReplaceStructureRecordInput = Readonly<{
     validationOptions: CreateStructureRecordInput['validationOptions'];
 }>;
 
-type ResizeStructureRecordInput = ReplaceStructureRecordInput;
+type ResizeStructureRecordInput = ReplaceStructureRecordInput &
+    Readonly<{
+        anchorX: number;
+        anchorY: number;
+        rotation: GardenStructureRotation;
+    }>;
 
 type PlacementStructureRecordInput = Readonly<{
     anchorX: number;
@@ -1290,11 +1301,15 @@ export function createGardenStructureApplicationService<Transaction>(
     async function resize(command: ResizeGardenStructureCommand) {
         assertMutationAllowed(command);
         assertExpectedRevision(command.expectedRevision);
+        assertPlacement(command.anchorX, command.anchorY, command.rotation);
         const payload = {
             accountId: command.accountId,
+            anchorX: command.anchorX,
+            anchorY: command.anchorY,
             document: command.document,
             expectedRevision: command.expectedRevision,
             gardenId: command.gardenId,
+            rotation: command.rotation,
             structureId: command.structureId,
         };
         return executeMutation(command, 'resize', payload, async (context) => {
@@ -1311,7 +1326,10 @@ export function createGardenStructureApplicationService<Transaction>(
             );
             const candidate = {
                 ...current,
+                anchorX: command.anchorX,
+                anchorY: command.anchorY,
                 document,
+                rotation: command.rotation,
             };
             await assertCandidateOccupancy(
                 candidate,
@@ -1321,9 +1339,12 @@ export function createGardenStructureApplicationService<Transaction>(
             );
             const result = await dependencies.resizeStructure(
                 {
+                    anchorX: command.anchorX,
+                    anchorY: command.anchorY,
                     document,
                     expectedRevision: command.expectedRevision,
                     gardenId: command.gardenId,
+                    rotation: command.rotation,
                     structureId: command.structureId,
                     validationOptions: {
                         isReferenceAllowed: validateReference,

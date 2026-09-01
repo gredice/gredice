@@ -69,17 +69,8 @@ async function waitForStructureInsideVisibleViewport(
     }, viewport);
 }
 
-async function tapCenter(page: Page, locator: Locator) {
-    await locator.scrollIntoViewIfNeeded();
-    const bounds = await locator.boundingBox();
-    expect(bounds).not.toBeNull();
-    if (!bounds) {
-        return;
-    }
-    await page.touchscreen.tap(
-        bounds.x + bounds.width / 2,
-        bounds.y + bounds.height / 2,
-    );
+async function tapTarget(locator: Locator) {
+    await locator.tap();
 }
 
 async function dispatchCanvasTouchGesture({
@@ -342,8 +333,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
 
     const controlsDialog = page.getByRole('dialog');
     if (await controlsDialog.isVisible()) {
-        await tapCenter(
-            page,
+        await tapTarget(
             controlsDialog.getByRole('button', { name: 'Zatvori' }),
         );
         await expect(controlsDialog).toHaveCount(0);
@@ -353,16 +343,16 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         name: 'Prošetaj vrtom',
     });
     await expect(avatarEntry).toBeVisible({ timeout: 15_000 });
-    await tapCenter(page, avatarEntry);
+    await tapTarget(avatarEntry);
     const avatarExit = page.getByRole('button', {
         name: 'Izađi iz šetnje',
     });
     await expect(avatarExit).toBeVisible();
-    await tapCenter(page, avatarExit);
+    await tapTarget(avatarExit);
 
     const entry = page.getByTestId('garden-structure-build-entry');
     await expect(entry).toBeVisible();
-    await tapCenter(page, entry);
+    await tapTarget(entry);
 
     const hud = page.getByTestId('garden-structure-build-hud');
     const sheet = page.getByTestId('garden-structure-build-sheet');
@@ -392,14 +382,12 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         'src',
         /\/assets\/structures\/gredice-buildings\/v1\/catalog\/templates\//,
     );
-    await tapCenter(
-        page,
+    await tapTarget(
         templateCatalog.locator('label:has(input[value$=":template:blank"])'),
     );
     await expect(hud).toContainText('4 / 100 polja');
     await expect(hud).toContainText('200 🌻');
-    await tapCenter(
-        page,
+    await tapTarget(
         templateCatalog.locator('label:has(input[value$=":template:house"])'),
     );
     await page.waitForFunction(() => {
@@ -418,18 +406,15 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     ).toHaveCount(1);
     await partSelect.selectOption(openDoorId);
     await expect(hud).toContainText(`Odabrano: ${openDoorId}`);
-    await tapCenter(page, page.getByRole('button', { name: 'Sakrij krov' }));
+    await tapTarget(page.getByRole('button', { name: 'Sakrij krov' }));
     await expect(
         page.getByRole('button', { name: 'Prikaži krov' }),
     ).toBeVisible();
-    await tapCenter(
-        page,
-        page.getByRole('button', { name: 'Krov', exact: true }),
-    );
+    await tapTarget(page.getByRole('button', { name: 'Krov', exact: true }));
     await expect(
         partSelect.locator('option[value^="roof:debug-garden-structure:"]'),
     ).not.toHaveCount(0);
-    await tapCenter(page, page.getByRole('button', { name: 'Tlocrt' }));
+    await tapTarget(page.getByRole('button', { name: 'Tlocrt' }));
     const footprintTargets = await page
         .locator('[data-structure-canvas-target-kind="add-cell"]')
         .evaluateAll((elements) =>
@@ -492,10 +477,7 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         ),
     ).toHaveCount(1);
 
-    await tapCenter(
-        page,
-        page.getByRole('button', { name: 'Ruka / pomicanje' }),
-    );
+    await tapTarget(page.getByRole('button', { name: 'Ruka / pomicanje' }));
     await expect(
         page.getByRole('button', { name: 'Ruka / pomicanje' }),
     ).toHaveAttribute('aria-pressed', 'true');
@@ -536,15 +518,14 @@ test('keeps one canvas through the touch-first building slice in portrait and la
         );
     }, targetBeforeHandPan);
 
-    await tapCenter(page, page.getByRole('button', { name: 'Konstrukcija' }));
+    await tapTarget(page.getByRole('button', { name: 'Konstrukcija' }));
     const edgeCatalog = page.getByTestId('garden-structure-edge-catalog');
     await expect(edgeCatalog.locator('canvas')).toHaveCount(0);
     await expect(edgeCatalog.locator('img').first()).toHaveAttribute(
         'src',
         /\/assets\/structures\/gredice-buildings\/v1\/catalog\/parts\//,
     );
-    await tapCenter(
-        page,
+    await tapTarget(
         edgeCatalog.locator('label:has(input[value$=":part:window.house"])'),
     );
     const northEdgeTargets = page.locator(
@@ -597,11 +578,11 @@ test('keeps one canvas through the touch-first building slice in portrait and la
     await page.touchscreen.tap(firstEdge.screenX, firstEdge.screenY);
     await page.touchscreen.tap(secondEdge.screenX, secondEdge.screenY);
     await expect(hud).toContainText('rubova čeka potvrdu');
-    await tapCenter(page, page.getByRole('button', { name: 'Potvrdi lanac' }));
+    await tapTarget(page.getByRole('button', { name: 'Potvrdi lanac' }));
     await expect(hud).toContainText(/Lanac s \d+ rubova je primijenjen/);
 
-    await tapCenter(page, page.getByRole('button', { name: 'Tlocrt' }));
-    await tapCenter(page, page.getByRole('button', { name: 'Zakreni 90°' }));
+    await tapTarget(page.getByRole('button', { name: 'Tlocrt' }));
+    await tapTarget(page.getByRole('button', { name: 'Zakreni 90°' }));
 
     await page.waitForFunction(() => {
         const profile = Reflect.get(window, '__grediceGameProfile');
