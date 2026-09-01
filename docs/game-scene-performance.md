@@ -316,13 +316,49 @@ frame receipts, nonessential hidden work, and submitted WebGL
 frames/draws/triangles. The runtime now defaults the base cadence to zero; any
 nonzero base used by a profile must be an explicit, reported compatibility
 override. The full zero-work witness and CDP script time remain separate from
-the owned-scheduling gate while canonical zero-base release evidence is being
-captured. The implementation now gates the shared minute clock, generated-plant
+the lifecycle scenario's owned-scheduling gate while canonical zero-base release
+evidence is being captured.
+
+A separate `static-idle` scenario now hard-gates a full visible zero-work window.
+It loads a clear, fixed-midday High-quality default mock garden with details,
+controls, HUD, debug HUD, and continuous render leases disabled, with the static
+opaque cache kept on its legacy disabled path. The explicit `staticIdle=1` route
+gate also passes `authenticatedGardenQueriesEnabled={false}` into the game
+runtime, so the fixture does not enable the runtime's authenticated garden
+queries. After the fixture, generated-plant pipeline, and scheduler all settle,
+each run requires zero scheduler and R3F counter deltas, zero rendered frames,
+zero WebGL draws, zero submitted triangles, no API, console, or page errors, and
+a valid nonblank screenshot.
+
+Run that isolated witness directly with:
+
+```bash
+cd apps/garden
+GAME_PROFILE_SCENARIO_SET=static-idle \
+  GAME_PROFILE_FAIL_ON_BUDGET=1 \
+  GAME_PROFILE_SCREENSHOTS=1 \
+  pnpm run profile:game
+```
+
+A preliminary 2026-09-01 local headless Playwright run against a clean
+production build observed full zero work in all three repeated static-idle
+windows. This is not final release proof: the scenario still needs a rerun on
+the final SHA, and the canonical before/after comparison remains pending. The
+implementation also gates the shared live-time minute clock, generated-plant
 work, per-scene ambient audio, and aggregate refetch intervals on runtime
 activity; canonical browser evidence for those gates remains pending.
+
 Each resume must return to the same healthy Canvas and WebGL context, re-prove
 the exact fixture, accept a fresh outline command from an exact zero-target
 state, submit new draw work, and produce a nonblank screenshot.
+
+On every scheduler activation, `SceneTimeProvider` now consumes the Three.js
+clock's pending delta to refresh its internal frame timestamp and then restores
+the previous elapsed time. Unit coverage proves that both initial activation and
+a long suspended gap leave elapsed animation time unchanged before normal active
+progression resumes. Because the canonical lifecycle scenario above uses fixed
+time, a final live-time browser witness for bounded resume and no visible
+fast-forward is still required.
 
 Finally, the profiler forces `WEBGL_lose_context` without preventing the loss
 event itself. It records that the renderer handled the event, requires one
@@ -958,6 +994,12 @@ not move the scheduler's absolute target. Late work skips elapsed targets
 without catch-up. Existing camera, avatar, weather, cloud, precipitation, sky,
 and meteor owners retain their intended 20/30/60 FPS policy.
 
+`SceneTimeProvider` also discards the Three.js clock's activation gap without
+advancing `elapsedTime`. This keeps hidden or offscreen wall time out of shader
+and scene animation time while preserving normal progression after activation;
+the deterministic clock tests are complete, while the live browser resume
+witness remains pending.
+
 Camera and interaction invalidations, environment and cache state, particles,
 plant and prop animation, weather transitions, and fauna activity now use named
 leases or semantic render requests. Finite lightning, meteor, slug, and squirrel
@@ -982,6 +1024,15 @@ raised-bed notifications use the same aggregate activity gate for both query
 enablement and refetch intervals. When every scene becomes inactive they also
 cancel their exact query keys, and the underlying requests consume the query
 abort signal instead of finishing unnecessary offscreen fetches.
+
+The app theme manager no longer owns an independent 60-second interval. It uses
+the minute-boundary clock primitive, stops its timeout on document or page hide,
+and synchronizes immediately before scheduling one aligned timeout on resume.
+The controls tooltip's 50 ms phase interval is separately gated by document
+visibility and aggregate scene activity. The sunflower HUD target lookup replaces
+500 ms polling with a mutation observer that disconnects while hidden or
+inactive, disconnects once the target is found, and refreshes when activity
+returns.
 
 Generated-plant batches do not enqueue missing render-data work until their own
 scene is active. When suspension removes the last subscriber, queued tasks are
@@ -1020,11 +1071,12 @@ Remaining work and verification:
 
 - Narrow always-on avatar leases where state-specific ownership can preserve the
   same interaction cadence with less idle work.
-- Capture canonical browser evidence that a clear deterministic static scene
-  with continuous leases explicitly disabled reaches zero R3F frame callbacks,
-  zero WebGL submissions, and zero nonessential work after stabilization, then
-  validate the zero-base rollout across cross-tier, fauna, capture, and
-  lifecycle scenarios.
+- Rerun the dedicated static-idle production profile three times from the final
+  clean SHA and retain its report/screenshots. The preliminary clean-build 3/3
+  full-zero result is not the canonical release artifact.
+- Complete the canonical before/after comparison and validate the zero-base
+  rollout across cross-tier, fauna, capture, and lifecycle scenarios, including
+  active owner/rate cadence and a live-time bounded-resume browser witness.
 
 Expected impact: high across every quality tier, especially for static,
 backgrounded, and partially visible gardens, without reducing visual fidelity.

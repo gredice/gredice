@@ -955,6 +955,12 @@ Progress:
   consumed by the driver. External R3F receipts remain observational and do not
   move the scheduler's absolute target. Late work skips elapsed targets without
   catch-up.
+- `SceneTimeProvider` now consumes the Three.js clock's pending delta on
+  scheduler activation only to refresh the clock's internal timestamp, then
+  restores the previous `elapsedTime`. Initial activation and a long suspended
+  gap are covered by deterministic unit tests, so hidden or offscreen wall time
+  is not added to elapsed animation time. A final live-time browser resume
+  witness is still pending.
 - Normal scenes now pass a zero base cadence. `baseFramesPerSecond` remains an
   explicit compatibility override for isolated consumers, while leases without
   an explicit rate still resolve through the active quality tier's ambient
@@ -977,6 +983,15 @@ Progress:
   clock. It aligns its single timeout to minute boundaries, stops while the
   document is hidden or every registered scene is inactive, and publishes the
   current time before rescheduling on resume.
+- Replaced the app theme manager's independent 60-second interval with the same
+  minute-boundary clock primitive. Theme scheduling stops on document hide or
+  page hide and resynchronizes before arming one aligned timeout on visibility
+  or page-show resume.
+- The open controls tooltip now owns its 50 ms phase interval only while the
+  document is visible and aggregate scene activity is active; reduced-motion
+  behavior remains interval-free. The sunflower HUD target locator no longer
+  polls every 500 ms: it uses a mutation observer, disconnects while hidden or
+  inactive and after locating the target, and refreshes when activity resumes.
 - Generated-plant batches defer new queue work until their own scene is active.
   Suspension removes unsubscribed queued tasks and propagates cancellation into
   the single in-flight executor; worker cancellation terminates the active
@@ -999,11 +1014,25 @@ Progress:
   burst shares one exact snapshot until its queued reset; runtime frames and
   wakeups do not push or clone telemetry. Additive counter deltas preserve the
   existing lifecycle/comparator contract for clean before/after reports.
+- Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
+  clear High-quality mock scene. The `staticIdle=1` query explicitly disables
+  continuous render leases and passes
+  `authenticatedGardenQueriesEnabled={false}`, isolating the mock fixture from
+  signed-in garden queries instead of relying on incidental mock-query behavior.
+  After fixture, plant-pipeline, and scheduler stabilization, the scenario gates
+  zero scheduler/R3F counter deltas and zero rendered frames, WebGL draws, and
+  submitted triangles across three fresh runs.
+- A preliminary 2026-09-01 local headless Playwright run against a clean
+  production build observed the full zero-work gate in all three static-idle
+  windows. This is preliminary evidence only: the final SHA must be rerun and
+  the canonical before/after comparison remains pending.
 - An already-started Three.js/WebGL `compileAsync` call cannot be preempted by an
   `AbortSignal`; suspension cancels that scene's subscription and prevents a new
   hidden prewarm from starting, but the browser/GPU may finish and retain the
   submitted shared compilation. Canonical cross-tier, fauna, capture, and
-  lifecycle browser evidence for the complete zero-base slice is still pending.
+  lifecycle browser evidence, active owner/rate cadence evidence, and the
+  live-time bounded-resume witness for the complete zero-base slice are still
+  pending; the preliminary static-idle run does not close the release profile.
 
 ## Suggested implementation order
 
