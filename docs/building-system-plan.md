@@ -963,8 +963,9 @@ remain a separate rollout gate.
 - Add profiler counters and capture a no-building baseline plus active-editing
   profile.
 
-Current headless foundation evidence (2026-08-30, with a 2026-09-01 avatar
-follow-up) establishes contract bounds without claiming physical-device proof:
+Current headless foundation evidence (2026-08-30 broader matrix, with a clean
+2026-09-01 two-row timing refresh at `99609d91e`) establishes contract bounds
+without claiming physical-device proof:
 
 | Budget or invariant | Current version 1 value/evidence |
 | --- | --- |
@@ -974,11 +975,11 @@ follow-up) establishes contract bounds without claiming physical-device proof:
 | Identifiers and coordinates | 96 JavaScript/UTF-16 code units per identifier and integer local coordinates within `+/-1000`. |
 | Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,531 bytes. |
 | Worst-case compiler output | 12 render batches, 601 instances, 38 open portals, 263 blocked transitions, 204 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
-| Headless compile baseline | 3.663 ms median across three warmed 1,000-compile runs (3.451-3.714 ms) on local Apple M4 Pro/24 GiB, Node 24; production-Chromium miss-only compiles were 3.7-4.3 ms. This is not a constrained-mobile CPU result. |
-| Avatar collision step | A clean comparable production-Chromium run set an initial 2 ms automated p95 gate. The furnished 100-cell solid-wall workload recorded 440 complete movement resolutions (33 during the held-key leg), 0.15 ms p95, 2.0 ms max, 304 collision primitives, and 220 buckets. Representative house two-view movement recorded 499 resolutions (65 during the held-key legs), 0.15 ms p95, 0.2 ms max, and moved 1.34 m in third-person plus 1.23 m in first-person; that timed row has no portal/interior witness and therefore makes no doorway-crossing claim. Four-rotation semantic checks and owned/public WebGL traversal remain supporting doorway correctness evidence rather than unprofiled timing claims. |
-| Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. The validated generated kit contains 23 nodes, 56 primitives, 12 materials, and 6,064 source triangles. Worst-case normal/cutaway resolved 24/29 production draws with zero unresolved batches or fallback draws and zero textures. |
-| Constrained-mobile browser budget | At 390x844, browser DPR 3 capped to effective DPR 1, auto-constrained tier, 1024 px shadows, 5 s warmup/sample: closed-roof 100-cell p95/max 18.4/18.8 ms, cutaway 18.4/18.8 ms, and edit churn 17.3/18.6 ms; all passed the 33.3 ms mobile p95 gate with zero long tasks. |
-| Interior/editor budget | Closed-roof exterior submitted 0 props and suppressed 100; cutaway submitted all 100. Edit churn action p95/max was 15.6/17.0 ms and final Canvas pointer resolution max was 2.0 ms, below the 100/500/100 ms gates. |
+| Headless compile baseline | 3.663 ms median across three warmed 1,000-compile Node runs (3.451-3.714 ms) on local Apple M4 Pro/24 GiB. The clean production-Chromium refresh measured complete miss-resolution max / prepare-plus-lookup max/current / navigation-compile max at 10.3 / 5.0/2.6 / 0.4 ms for the worst case and 0.7 / 0.4/0.2 / 0.1 ms for the house; all passed 100 ms gates. These are host/browser measurements, not constrained-mobile CPU results. |
+| Avatar collision step | The clean comparable production-Chromium refresh retained the initial 2 ms automated p95 gate. The furnished 100-cell solid-wall workload recorded 445 complete movement resolutions (31 during the held-key leg), 0.15 ms p95, 0.2 ms max, 304 collision primitives, and 220 buckets. Representative house two-view movement recorded 452 resolutions (66 during the held-key legs), 0.10 ms p95, 0.2 ms max, and moved 1.39 m in third-person plus 1.24 m in first-person; that timed row has no portal/interior witness and therefore makes no doorway-crossing claim. Four-rotation semantic checks and owned/public WebGL traversal remain supporting doorway correctness evidence rather than unprofiled timing claims. |
+| Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. The validated generated kit contains 23 nodes, 56 primitives, 12 materials, and 6,064 source triangles. The refresh resolved 24 worst-case and 16 house production draws with zero unresolved batches, fallback draws, or textures; the broader historical cutaway row resolved 29 draws. |
+| Constrained-mobile browser budget | At 390x844, browser DPR 3 capped to effective DPR 1, auto-constrained tier, 1024 px shadows, and 5 s warmup/sample, the refreshed worst-case row recorded 26.9/98.1 ms p95/max with one long task and the house row recorded 27.1/27.3 ms with zero long tasks. Both passed the 33.3 ms mobile p95 gate. |
+| Interior/editor budget | Not rerun by the two-row timing refresh. The broader 2026-08-30 matrix remains explicit historical evidence: closed-roof exterior submitted 0 props and suppressed 100; cutaway submitted all 100; edit-churn action p95/max was 15.6/17.0 ms and final Canvas pointer resolution max was 2.0 ms, below the 100/500/100 ms gates. |
 
 The production-build Chromium/WebGL flow now proves one canvas identity across
 entry/exit, 390x844 portrait and 844x390 landscape layout, resize-aware camera
