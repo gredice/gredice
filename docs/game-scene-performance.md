@@ -534,7 +534,11 @@ editor-preview work remain separate columns. The network witness records the
 exact GLB URL, response status and body length together with same-origin
 Resource Timing sizes and milestones; the no-building row must remain zero.
 Compilation time is miss-only, cache lookup time is separate, and editor p95
-uses nearest-rank `ceil(n * 0.95) - 1`.
+uses nearest-rank `ceil(n * 0.95) - 1`. Avatar collision-step samples wrap one
+complete production horizontal-movement resolution, including bounded substeps
+and slide retries. They remain default-off with the server-gated building
+fixture, accumulate in a fixed-size histogram, and report count, p95, maximum,
+and total duration without retaining positions or movement input.
 
 The saved-scene production layer derives one visibility set from each compiled
 structure's conservative world bounds when the camera matrix changes, and
@@ -555,6 +559,13 @@ and 600,000-byte production GLB response limit. Use
 before its sample; use
 `GAME_PROFILE_SAMPLE_MS=600000` when the edit-churn or entry/exit actions must
 run for the full soak window.
+
+The automated matrix also includes a constrained-mobile furnished 100-cell
+solid-wall workload for dense-bucket collision cost and a separate house
+doorway round trip that moves in third-person and returns in first-person. The
+owned/public WebGL component proofs and renderer-free 2D contract remain
+correctness evidence rather than invented performance rows; the building report
+labels that boundary explicitly.
 
 ### 2026-08-30 building production profile
 

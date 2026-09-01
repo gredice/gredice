@@ -100,7 +100,12 @@ import {
     adaptiveHighQualityLevels,
 } from './scene/adaptiveHighQuality';
 import { Environment } from './scene/Environment';
-import { updateGameProfileMetadata } from './scene/gameProfileMetadata';
+import {
+    recordGardenStructureAvatarCollisionStep,
+    recordGardenStructureCompileDurations,
+    setGardenStructureProfileTelemetryEnabled,
+    updateGameProfileMetadata,
+} from './scene/gameProfileMetadata';
 import {
     type GameQualityAutoProfileMetrics,
     type GameQualitySetting,
@@ -110,6 +115,10 @@ import {
 } from './scene/gameQuality';
 import { Scene } from './scene/Scene';
 import { StaticOpaqueSceneCacheOcclusionFixture } from './scene/StaticOpaqueSceneCacheOcclusionFixture';
+import {
+    compileGardenStructurePlan,
+    getGardenStructurePlanCacheKey,
+} from './structures/compileGardenStructurePlan';
 import { GardenStructureSceneLayerDynamic } from './structures/GardenStructureSceneLayerDynamic';
 import { GardenStructureVerticalSliceDynamic } from './structures/GardenStructureVerticalSliceDynamic';
 import { createGardenStructureAvatarCollisionWorld } from './structures/gardenStructureAvatarCollision';
@@ -119,6 +128,7 @@ import {
     type GardenStructureAvatarInteriorPresentation,
 } from './structures/gardenStructureAvatarInterior';
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
+import type { GardenStructureProfileFixtureDescriptor } from './structures/gardenStructureProfileFixtureDescriptor';
 import {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
@@ -126,6 +136,7 @@ import {
     useGardenStructureSceneSnapshot,
 } from './structures/gardenStructureScene';
 import { resolveGardenStructureBuildCameraFrame } from './structures/structureBuildCamera';
+import { useGardenStructurePointerProfileHandlers } from './structures/useGardenStructurePointerProfileHandlers';
 import type { Block } from './types/Block';
 import type { Stack } from './types/Stack';
 import {
@@ -175,6 +186,7 @@ export type GameSceneProps = HTMLAttributes<HTMLDivElement> & {
     enableGameProfileController?: boolean;
     enableStaticOpaqueSceneCacheOcclusionFixture?: boolean;
     gardenStructureDebugFixture?: boolean;
+    gardenStructureProfileFixture?: GardenStructureProfileFixtureDescriptor;
     gardenAvatarActivationRequest?: number;
     gardenAvatarInitialSpawnPoint?: Pick<GardenAvatarPoint, 'x' | 'z'>;
     flags?: GameFeatureFlags;
@@ -379,9 +391,12 @@ export function GameScene({
     enableGameProfileController,
     enableStaticOpaqueSceneCacheOcclusionFixture,
     gardenStructureDebugFixture,
+    gardenStructureProfileFixture,
     gardenAvatarActivationRequest,
     gardenAvatarInitialSpawnPoint,
     fixedTimeSeconds,
+    onClick,
+    onClickCapture,
     staticOpaqueSceneCache = true,
     ...rest
 }: GameSceneInnerProps) {
@@ -449,74 +464,140 @@ export function GameScene({
                 ? structureBuildSession.editor.origin.structureId
                 : structureBuildSession.editor.origin.draftId
             : null;
+    const gardenStructureProfileTelemetryEnabled = Boolean(
+        enableGameProfileController &&
+            gardenStructureProfileFixture &&
+            gardenStructureVerticalSliceEnabled,
+    );
+    const gardenStructureDiagnosticsEnabled = Boolean(
+        gardenStructureDebugFixture || gardenStructureProfileFixture,
+    );
     const structureFixtureBundle = useMemo(() => {
         const editor = structureBuildSession?.editor;
-        if (!gardenStructureVerticalSliceEnabled || !editor) {
+        if (
+            !gardenStructureVerticalSliceEnabled ||
+            (!editor && !gardenStructureProfileFixture)
+        ) {
             return null;
         }
         const cache =
             structurePlanCacheRef.current ?? new GardenStructurePlanCache();
         structurePlanCacheRef.current = cache;
-        const structureId =
-            editor.origin.kind === 'new-draft'
-                ? editor.origin.draftId
-                : editor.origin.structureId;
-        const revision =
-            editor.origin.kind === 'saved-structure'
-                ? editor.origin.revision
-                : editor.history.past.length + 1;
-        const previewInput = {
-            blockData,
-            document: editor.snapshot.document,
-            placement: editor.snapshot.placement,
-            revision,
-            stacks: garden?.stacks,
-            structureId,
-        };
-        const compileInput =
-            structureBuildSession.persistence === 'fixture'
-                ? createGardenStructureSceneFixtureBuildPreviewCompileInput(
-                      previewInput,
-                  )
-                : createGardenStructureSceneBuildPreviewCompileInput(
-                      previewInput,
-                  );
+        const document =
+            editor?.snapshot.document ??
+            gardenStructureProfileFixture?.document;
+        if (!document) {
+            return null;
+        }
+        const compileInput = editor
+            ? (() => {
+                  const structureId =
+                      editor.origin.kind === 'new-draft'
+                          ? editor.origin.draftId
+                          : editor.origin.structureId;
+                  const revision =
+                      editor.origin.kind === 'saved-structure'
+                          ? editor.origin.revision
+                          : editor.history.past.length + 1;
+                  const previewInput = {
+                      blockData,
+                      document,
+                      placement: editor.snapshot.placement,
+                      revision,
+                      stacks: garden?.stacks,
+                      structureId,
+                  };
+                  return structureBuildSession?.persistence === 'fixture'
+                      ? createGardenStructureSceneFixtureBuildPreviewCompileInput(
+                            previewInput,
+                        )
+                      : createGardenStructureSceneBuildPreviewCompileInput(
+                            previewInput,
+                        );
+              })()
+            : gardenStructureProfileFixture
+              ? {
+                    document,
+                    placement: gardenStructureProfileFixture.placement,
+                    revision: gardenStructureProfileFixture.revision,
+                    structureId: gardenStructureProfileFixture.structureId,
+                }
+              : null;
         if (!compileInput) {
             return null;
         }
-        const startedAt = performance.now();
-        const plan = cache.getOrCompile(compileInput);
+        const cacheKey = getGardenStructurePlanCacheKey(compileInput);
+        const lookupStartedAt = performance.now();
+        const cached = cache.get(cacheKey);
+        const lookupDurationMs = performance.now() - lookupStartedAt;
+        let cacheOutcome: 'hit' | 'miss';
+        let compileDurationMs = 0;
+        let plan = cached;
+        if (plan) {
+            cacheOutcome = 'hit';
+        } else {
+            cacheOutcome = 'miss';
+            const compileStartedAt = performance.now();
+            plan = compileGardenStructurePlan(compileInput);
+            compileDurationMs = performance.now() - compileStartedAt;
+            cache.set(plan);
+        }
         const cacheSnapshot = cache.snapshot();
         return {
-            compileDurationMs: performance.now() - startedAt,
+            cacheOutcome,
+            compileDurationMs,
+            document,
             documentPayloadBytes:
-                getGardenStructurePayloadByteLength(editor.snapshot.document) ??
-                0,
+                getGardenStructurePayloadByteLength(document) ?? 0,
+            lookupDurationMs,
             plan,
             cacheSnapshot,
         };
     }, [
         blockData,
         garden?.stacks,
+        gardenStructureProfileFixture,
         gardenStructureVerticalSliceEnabled,
         structureBuildSession?.editor,
         structureBuildSession?.persistence,
     ]);
-    const structureFixtureCollisionWorld = useMemo(
-        () =>
-            structureFixtureBundle
-                ? createGardenStructureAvatarCollisionWorld(
-                      structureFixtureBundle.plan,
-                  )
-                : undefined,
-        [structureFixtureBundle],
-    );
+    const structureFixtureCollisionWorld = useMemo(() => {
+        if (!structureFixtureBundle) {
+            return undefined;
+        }
+        const startedAt = performance.now();
+        const collisionWorld = createGardenStructureAvatarCollisionWorld(
+            structureFixtureBundle.plan,
+        );
+        return {
+            collisionWorld,
+            durationMs: performance.now() - startedAt,
+        };
+    }, [structureFixtureBundle]);
+    useEffect(() => {
+        if (!gardenStructureProfileTelemetryEnabled) {
+            return;
+        }
+        setGardenStructureProfileTelemetryEnabled(true);
+        return () => setGardenStructureProfileTelemetryEnabled(false);
+    }, [gardenStructureProfileTelemetryEnabled]);
     useEffect(() => {
         updateGameProfileMetadata({
+            gardenStructureActiveRevision:
+                structureFixtureBundle?.plan.revision ?? 0,
+            gardenStructureCompileCount:
+                structureFixtureBundle?.cacheSnapshot.missCount ?? 0,
             gardenStructureCompileDurationMs:
                 structureFixtureBundle?.compileDurationMs ?? 0,
             gardenStructureDocumentPayloadBytes:
                 structureFixtureBundle?.documentPayloadBytes ?? 0,
+            gardenStructureEdgeCount:
+                structureFixtureBundle?.document.edges.length ?? 0,
+            gardenStructureEditorActive: structureBuildActive,
+            gardenStructureFloorCount:
+                structureFixtureBundle?.document.floors.length ?? 0,
+            gardenStructureNavigationCompileDurationMs:
+                structureFixtureCollisionWorld?.durationMs ?? 0,
             gardenStructurePlanCacheEstimatedBytes:
                 structureFixtureBundle?.cacheSnapshot.estimatedBytes ?? 0,
             gardenStructurePlanCacheEvictionCount:
@@ -525,8 +606,34 @@ export function GameScene({
                 structureFixtureBundle?.cacheSnapshot.hitCount ?? 0,
             gardenStructurePlanCacheMissCount:
                 structureFixtureBundle?.cacheSnapshot.missCount ?? 0,
+            gardenStructurePlanCacheOutcome:
+                structureFixtureBundle?.cacheOutcome ?? 'none',
+            gardenStructurePlanCacheLookupDurationMs:
+                structureFixtureBundle?.lookupDurationMs ?? 0,
+            gardenStructurePropCount:
+                structureFixtureBundle?.document.props.length ?? 0,
+            gardenStructureRoofRegionCount:
+                structureFixtureBundle?.document.roofRegions.length ?? 0,
+            gardenStructureStructureCount: structureFixtureBundle ? 1 : 0,
+            gardenStructureVisibleStructureCount: structureFixtureBundle
+                ? 1
+                : 0,
         });
-    }, [structureFixtureBundle]);
+        if (gardenStructureProfileTelemetryEnabled) {
+            recordGardenStructureCompileDurations({
+                cacheOutcome: structureFixtureBundle?.cacheOutcome ?? 'none',
+                compileDurationMs:
+                    structureFixtureBundle?.compileDurationMs ?? 0,
+                navigationCompileDurationMs:
+                    structureFixtureCollisionWorld?.durationMs ?? 0,
+            });
+        }
+    }, [
+        gardenStructureProfileTelemetryEnabled,
+        structureBuildActive,
+        structureFixtureBundle,
+        structureFixtureCollisionWorld?.durationMs,
+    ]);
     useEffect(() => {
         if (!gardenStructureVerticalSliceEnabled || !gameCamera) {
             return;
@@ -870,15 +977,22 @@ export function GameScene({
         () => new Set(structureInteriorPresentation.hiddenInstanceIds),
         [structureInteriorPresentation.hiddenInstanceIds],
     );
+    const visibleInteriorStructureIds = useMemo(
+        () =>
+            structureInteriorPresentation.structureId
+                ? new Set([structureInteriorPresentation.structureId])
+                : new Set<string>(),
+        [structureInteriorPresentation.structureId],
+    );
     const hiddenStructureEdgeCount = useMemo(
         () =>
-            gardenStructureDebugFixture
+            gardenStructureDiagnosticsEnabled
                 ? structureInteriorPresentation.hiddenInstanceIds.filter((id) =>
                       id.startsWith('edge:'),
                   ).length
                 : undefined,
         [
-            gardenStructureDebugFixture,
+            gardenStructureDiagnosticsEnabled,
             structureInteriorPresentation.hiddenInstanceIds,
         ],
     );
@@ -886,24 +1000,25 @@ export function GameScene({
         useState<GardenAvatarPresenceState | null>(null);
     const publishGardenAvatarDebugPresence = useCallback(
         (presence: GardenAvatarPresenceState) => {
-            if (gardenStructureDebugFixture) {
+            if (gardenStructureDiagnosticsEnabled) {
                 setGardenAvatarDebugPresence(presence);
             }
         },
-        [gardenStructureDebugFixture],
+        [gardenStructureDiagnosticsEnabled],
     );
     const structureAvatarCollisionWorld = useMemo(() => {
         if (
             savedStructureScene.collisionWorld &&
-            structureFixtureCollisionWorld
+            structureFixtureCollisionWorld?.collisionWorld
         ) {
             return mergeGardenAvatarCollisionWorlds(
                 savedStructureScene.collisionWorld,
-                structureFixtureCollisionWorld,
+                structureFixtureCollisionWorld.collisionWorld,
             );
         }
         return (
-            savedStructureScene.collisionWorld ?? structureFixtureCollisionWorld
+            savedStructureScene.collisionWorld ??
+            structureFixtureCollisionWorld?.collisionWorld
         );
     }, [savedStructureScene.collisionWorld, structureFixtureCollisionWorld]);
     const fenceGateBlockIds = useMemo(
@@ -1006,6 +1121,15 @@ export function GameScene({
         setStructureBuildSession,
         structureBuildSession,
     ]);
+    const profilePointerEventsEnabled = Boolean(
+        gardenStructureProfileTelemetryEnabled && structureBuildActive,
+    );
+    const { handleClick, handleClickCapture } =
+        useGardenStructurePointerProfileHandlers({
+            enabled: profilePointerEventsEnabled,
+            onClick,
+            onClickCapture,
+        });
     const isLoading = gardenLoading && transitionedGardenData === undefined;
     const interactWithAvatarBlock = useCallback(
         (block: Block): GardenAvatarInteractionResult => {
@@ -1079,6 +1203,10 @@ export function GameScene({
     }
 
     return (
+        // The root passively observes Canvas-target clicks for profiler timing;
+        // actionable keyboard controls remain on their existing buttons/tools.
+        // biome-ignore lint/a11y/noStaticElementInteractions: passive profiler boundary, not an interactive control
+        // biome-ignore lint/a11y/useKeyWithClickEvents: Canvas click timing has no equivalent keyboard event
         <div
             className={cx(
                 styles.interactionSurface,
@@ -1086,6 +1214,8 @@ export function GameScene({
                 className,
             )}
             {...rest}
+            onClick={handleClick}
+            onClickCapture={handleClickCapture}
             data-garden-structure-diagnostic-status={
                 savedStructureScene.diagnostics.status
             }
@@ -1100,17 +1230,17 @@ export function GameScene({
                 structureInteriorPresentation.structureId ?? 'outside'
             }
             data-garden-avatar-debug-x={
-                gardenStructureDebugFixture
+                gardenStructureDiagnosticsEnabled
                     ? gardenAvatarDebugPresence?.position[0]
                     : undefined
             }
             data-garden-avatar-debug-z={
-                gardenStructureDebugFixture
+                gardenStructureDiagnosticsEnabled
                     ? gardenAvatarDebugPresence?.position[2]
                     : undefined
             }
             data-garden-avatar-debug-yaw={
-                gardenStructureDebugFixture
+                gardenStructureDiagnosticsEnabled
                     ? gardenAvatarDebugPresence?.yaw
                     : undefined
             }
@@ -1241,12 +1371,22 @@ export function GameScene({
                                         hiddenInstanceIds={
                                             hiddenStructureInstanceIds
                                         }
+                                        profileMetricsEnabled={Boolean(
+                                            enableGameProfileController &&
+                                                !gardenStructureProfileFixture,
+                                        )}
                                         snapshot={savedStructureScene}
+                                        visibleInteriorStructureIds={
+                                            visibleInteriorStructureIds
+                                        }
                                     />
                                 ) : null}
                                 {structureFixtureBundle ? (
                                     <GardenStructureVerticalSliceDynamic
                                         plan={structureFixtureBundle.plan}
+                                        profileMetricsEnabled={
+                                            gardenStructureProfileTelemetryEnabled
+                                        }
                                     />
                                 ) : null}
                                 {renderDetails && zoom !== 'far' && (
@@ -1388,8 +1528,13 @@ export function GameScene({
                                                     interactWithAvatarBlock
                                                 }
                                                 onPresenceChange={
-                                                    gardenStructureDebugFixture
+                                                    gardenStructureDiagnosticsEnabled
                                                         ? publishGardenAvatarDebugPresence
+                                                        : undefined
+                                                }
+                                                onProfileCollisionStep={
+                                                    gardenStructureProfileTelemetryEnabled
+                                                        ? recordGardenStructureAvatarCollisionStep
                                                         : undefined
                                                 }
                                                 onStructureInteriorChange={
@@ -1527,9 +1672,13 @@ export function GameScene({
                         gardenStructureVerticalSliceEnabled
                     }
                     gardenStructureDebugFixture={Boolean(
-                        gardenStructureDebugFixture,
+                        gardenStructureDebugFixture ||
+                            gardenStructureProfileFixture,
                     )}
                     gardenStructureDebugPlan={structureFixtureBundle?.plan}
+                    gardenStructureProfileFixture={
+                        gardenStructureProfileFixture
+                    }
                     noWeather={noWeather}
                     suppressOpeningHud={suppressOpeningHud}
                 />

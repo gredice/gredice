@@ -38,6 +38,7 @@ import { GiftBoxModal } from './modals/GiftBoxModal';
 import { OverviewModal } from './modals/OverviewModal';
 import { WoodenSignModal } from './modals/WoodenSignModal';
 import { GardenStructureVerticalSliceHudDynamic } from './structures/GardenStructureVerticalSliceHudDynamic';
+import type { GardenStructureProfileFixtureDescriptor } from './structures/gardenStructureProfileFixtureDescriptor';
 import type { GardenStructureSemanticPlan } from './structures/structurePlanTypes';
 import { useGameState } from './useGameState';
 
@@ -69,6 +70,7 @@ export function GameHud({
     gardenStructureBuildEnabled = false,
     gardenStructureDebugFixture,
     gardenStructureDebugPlan,
+    gardenStructureProfileFixture,
     noWeather,
     suppressOpeningHud,
     viewMode = '3d',
@@ -77,6 +79,7 @@ export function GameHud({
     gardenStructureBuildEnabled?: boolean;
     gardenStructureDebugFixture?: boolean;
     gardenStructureDebugPlan?: GardenStructureSemanticPlan;
+    gardenStructureProfileFixture?: GardenStructureProfileFixtureDescriptor;
     noWeather?: boolean;
     suppressOpeningHud?: boolean;
     viewMode?: GardenViewMode;
@@ -155,6 +158,7 @@ export function GameHud({
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
+                    profileFixture={gardenStructureProfileFixture}
                 />
                 {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}
             </>
@@ -337,6 +341,7 @@ export function GameHud({
                     enabled
                     fixture={gardenStructureDebugFixture}
                     plan={gardenStructureDebugPlan}
+                    profileFixture={gardenStructureProfileFixture}
                 />
             ) : null}
             {debugHud && viewMode === '3d' ? <DebugHudDynamic /> : null}

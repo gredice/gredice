@@ -1113,7 +1113,7 @@ const gardenBuildingScenarios = [
     },
     {
         name: 'game-building-worst-case-furnished-constrained-mobile',
-        path: '/debug/profile/game?mode=details&quality=auto&building=1&buildingFixture=worst-case&controls=0&hud=0&staticSceneCache=legacy',
+        path: '/debug/profile/game?mode=details&quality=auto&avatar=1&avatarProfile=third-person&building=1&buildingFixture=worst-case&controls=0&hud=1&staticSceneCache=legacy',
         viewport: { width: 390, height: 844 },
         dpr: 3,
         isMobile: true,
@@ -1127,6 +1127,48 @@ const gardenBuildingScenarios = [
             },
             fixture: 'worst-case',
             mode: 'normal',
+            motion: 'avatar-navigation',
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        durationMs: 700,
+                        maximumDistance: 0.25,
+                        view: 'third-person',
+                    },
+                ],
+            },
+        },
+        ...constrainedAutoQualityDevice,
+    },
+    {
+        name: 'game-building-house-avatar-door-navigation-constrained-mobile',
+        path: '/debug/profile/game?mode=details&quality=auto&avatar=1&avatarProfile=third-person&building=1&buildingFixture=house&controls=0&hud=1&staticSceneCache=legacy',
+        viewport: { width: 390, height: 844 },
+        dpr: 3,
+        isMobile: true,
+        budget: 'gardenBuildingMobile',
+        buildingProfile: {
+            expected: { edges: 15, footprintCells: 12, props: 1, roofs: 2 },
+            fixture: 'house',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        durationMs: 700,
+                        minimumDistance: 0.35,
+                        view: 'third-person',
+                    },
+                    {
+                        key: 'w',
+                        durationMs: 700,
+                        minimumDistance: 0.35,
+                        view: 'first-person',
+                    },
+                ],
+            },
         },
         ...constrainedAutoQualityDevice,
     },
@@ -1368,6 +1410,16 @@ const scenarioSets = {
     'weather-transitions': weatherTransitionScenarios,
 };
 
+const mobileGardenBuildingBudget = Object.freeze({
+    avatarCollisionStepP95Ms: 2,
+    p95FrameMs: 33.3,
+    maxFrameMs: 180,
+    longTaskCount: 2,
+    drawCallsPerFrame: 320,
+    trianglesPerFrame: 1000000,
+    jsHeapMb: 220,
+});
+
 const budgets = {
     game: {
         p95FrameMs: 16.7,
@@ -1389,6 +1441,7 @@ const budgets = {
         // Headless Chromium's 60 Hz rAF samples commonly land just above
         // 16.7 ms; 20 ms keeps the automated gate below 50 FPS without
         // pretending it is physical-device 60 FPS evidence.
+        avatarCollisionStepP95Ms: 2,
         p95FrameMs: 20,
         maxFrameMs: 100,
         longTaskCount: 0,
@@ -1396,30 +1449,9 @@ const budgets = {
         trianglesPerFrame: 800000,
         jsHeapMb: 180,
     },
-    gardenBuildingMobile: {
-        p95FrameMs: 33.3,
-        maxFrameMs: 180,
-        longTaskCount: 2,
-        drawCallsPerFrame: 320,
-        trianglesPerFrame: 1000000,
-        jsHeapMb: 220,
-    },
-    gardenBuildingWeatherMobile: {
-        p95FrameMs: 33.3,
-        maxFrameMs: 180,
-        longTaskCount: 2,
-        drawCallsPerFrame: 320,
-        trianglesPerFrame: 1000000,
-        jsHeapMb: 220,
-    },
-    gardenBuildingWorstCaseMobile: {
-        p95FrameMs: 33.3,
-        maxFrameMs: 180,
-        longTaskCount: 2,
-        drawCallsPerFrame: 320,
-        trianglesPerFrame: 1000000,
-        jsHeapMb: 220,
-    },
+    gardenBuildingMobile: mobileGardenBuildingBudget,
+    gardenBuildingWeatherMobile: mobileGardenBuildingBudget,
+    gardenBuildingWorstCaseMobile: mobileGardenBuildingBudget,
     gameDetails: {
         p95FrameMs: 33.3,
         maxFrameMs: 150,
@@ -1428,14 +1460,7 @@ const budgets = {
         trianglesPerFrame: 1200000,
         jsHeapMb: 220,
     },
-    weatherMobile: {
-        p95FrameMs: 33.3,
-        maxFrameMs: 180,
-        longTaskCount: 2,
-        drawCallsPerFrame: 320,
-        trianglesPerFrame: 1000000,
-        jsHeapMb: 220,
-    },
+    weatherMobile: mobileGardenBuildingBudget,
     plants: {
         p95FrameMs: 33.3,
         maxFrameMs: 180,
@@ -3074,6 +3099,29 @@ async function prepareGardenBuildingProfile(page, buildingProfile) {
         );
     }
     if (buildingProfile.mode !== 'editing') {
+        if (buildingProfile.motion === 'avatar-navigation') {
+            await page
+                .getByRole('button', { name: 'Izađi iz šetnje' })
+                .waitFor({ state: 'visible', timeout: 20_000 });
+            await page.waitForFunction(
+                () => {
+                    const scene = document.querySelector(
+                        '[data-garden-avatar-debug-x]',
+                    );
+                    return Boolean(
+                        scene instanceof HTMLElement &&
+                            Number.isFinite(
+                                Number(scene.dataset.gardenAvatarDebugX),
+                            ) &&
+                            Number.isFinite(
+                                Number(scene.dataset.gardenAvatarDebugZ),
+                            ),
+                    );
+                },
+                undefined,
+                { timeout: 20_000 },
+            );
+        }
         return;
     }
 
@@ -3200,6 +3248,75 @@ async function runScenarioMotion(page, scenario, sampleMs) {
             await wait(remainingMs);
         }
         return { cycleCount, kind: 'enter-exit' };
+    }
+
+    if (scenario.buildingProfile?.motion === 'avatar-navigation') {
+        const navigation = scenario.buildingProfile.avatarNavigation;
+        const startedAt = Date.now();
+        const readState = () =>
+            page.evaluate(() => {
+                const scene = document.querySelector(
+                    '[data-garden-avatar-debug-x]',
+                );
+                const profile = globalThis.__grediceGameProfile;
+                return {
+                    collisionStepCount:
+                        profile?.gardenStructureAvatarCollisionStepCount ?? 0,
+                    x:
+                        scene instanceof HTMLElement
+                            ? Number(scene.dataset.gardenAvatarDebugX)
+                            : Number.NaN,
+                    z:
+                        scene instanceof HTMLElement
+                            ? Number(scene.dataset.gardenAvatarDebugZ)
+                            : Number.NaN,
+                };
+            });
+        const initial = await readState();
+        const legs = [];
+        for (const leg of navigation.legs) {
+            if (leg.view === 'first-person') {
+                const switchView = page.getByRole('button', {
+                    name: 'Prikaži pogled iz prvog lica',
+                });
+                if (await switchView.isVisible()) {
+                    await switchView.click();
+                }
+            } else {
+                const switchView = page.getByRole('button', {
+                    name: 'Prikaži pogled iz trećeg lica',
+                });
+                if (await switchView.isVisible()) {
+                    await switchView.click();
+                }
+            }
+            const before = await readState();
+            await page.keyboard.down(leg.key);
+            try {
+                await wait(leg.durationMs);
+            } finally {
+                await page.keyboard.up(leg.key);
+            }
+            const after = await readState();
+            legs.push({
+                distance: Math.hypot(after.x - before.x, after.z - before.z),
+                endX: after.x,
+                endZ: after.z,
+                key: leg.key,
+                view: leg.view,
+            });
+        }
+        const final = await readState();
+        const remainingMs = sampleMs - (Date.now() - startedAt);
+        if (remainingMs > 0) {
+            await wait(remainingMs);
+        }
+        return {
+            collisionStepCount:
+                final.collisionStepCount - initial.collisionStepCount,
+            kind: 'avatar-navigation',
+            legs,
+        };
     }
 
     if (
@@ -6529,6 +6646,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
 
         return {
             adaptiveHigh: element.dataset.gameProfileAdaptiveHigh ?? null,
+            avatar: element.dataset.gameProfileAvatar ?? null,
+            avatarView: element.dataset.gameProfileAvatarView ?? null,
             building: element.dataset.gameProfileBuilding ?? null,
             buildingFixture: element.dataset.gameProfileBuildingFixture ?? null,
             autoQualityMetrics: {
@@ -8053,6 +8172,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gardenStructureCameraMode: stringOrNull(
                 metadata.gardenStructureCameraMode,
             ),
+            gardenStructureAvatarCollisionStepCount: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepCount,
+            ),
+            gardenStructureAvatarCollisionStepDurationMaxMs: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationMaxMs,
+            ),
+            gardenStructureAvatarCollisionStepDurationP95Ms: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationP95Ms,
+            ),
+            gardenStructureAvatarCollisionStepDurationTotalMs: numberOrNull(
+                metadata.gardenStructureAvatarCollisionStepDurationTotalMs,
+            ),
             gardenStructureCollisionBoxCount: numberOrNull(
                 metadata.gardenStructureCollisionBoxCount,
             ),
@@ -8088,6 +8219,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
             gardenStructureCompileDurationMs: numberOrNull(
                 metadata.gardenStructureCompileDurationMs,
+            ),
+            gardenStructureCompileDurationMaxMs: numberOrNull(
+                metadata.gardenStructureCompileDurationMaxMs,
             ),
             gardenStructureDocumentPayloadBytes: numberOrNull(
                 metadata.gardenStructureDocumentPayloadBytes,
@@ -8154,6 +8288,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
             gardenStructureNavigationCompileDurationMs: numberOrNull(
                 metadata.gardenStructureNavigationCompileDurationMs,
+            ),
+            gardenStructureNavigationCompileDurationMaxMs: numberOrNull(
+                metadata.gardenStructureNavigationCompileDurationMaxMs,
             ),
             gardenStructureOpenPortalCount: numberOrNull(
                 metadata.gardenStructureOpenPortalCount,
@@ -8725,6 +8862,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const roundedSample = roundSample(sample);
     const requested = {
         adaptiveHigh: profileMetadata?.adaptiveHigh ?? request.adaptiveHigh,
+        avatar: profileMetadata?.avatar ?? request.avatar,
+        avatarView: profileMetadata?.avatarView ?? null,
         autoQualityDeviceClass:
             scenario.autoQualityDeviceClass ?? 'unspecified',
         autoQualityMetrics: profileMetadata?.autoQualityMetrics ?? null,
@@ -8817,6 +8956,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     });
     const buildingAcceptance = evaluateGardenBuildingAcceptance({
         apiRequests,
+        budget: budgets[scenario.budget],
         requested,
         runtime,
     });
@@ -9027,7 +9167,12 @@ function isProfileScreenshotWitnessValid(witness) {
     );
 }
 
-function evaluateGardenBuildingAcceptance({ apiRequests, requested, runtime }) {
+function evaluateGardenBuildingAcceptance({
+    apiRequests,
+    budget,
+    requested,
+    runtime,
+}) {
     const profile = requested?.buildingProfile;
     if (!profile) {
         return { checks: [], pass: true };
@@ -9262,7 +9407,7 @@ function evaluateGardenBuildingAcceptance({ apiRequests, requested, runtime }) {
         ),
         maximum(
             'buildingCompileDurationMs',
-            runtime?.gardenStructureCompileDurationMs,
+            runtime?.gardenStructureCompileDurationMaxMs,
             100,
         ),
         maximum(
@@ -9272,7 +9417,7 @@ function evaluateGardenBuildingAcceptance({ apiRequests, requested, runtime }) {
         ),
         maximum(
             'buildingNavigationCompileDurationMs',
-            runtime?.gardenStructureNavigationCompileDurationMs,
+            runtime?.gardenStructureNavigationCompileDurationMaxMs,
             100,
         ),
         exact(
@@ -9405,6 +9550,83 @@ function evaluateGardenBuildingAcceptance({ apiRequests, requested, runtime }) {
                 'building',
             ),
         );
+    }
+    if (profile.motion === 'avatar-navigation') {
+        const navigationResult = profile.motionResult;
+        const collisionStepP95Ms =
+            runtime?.gardenStructureAvatarCollisionStepDurationP95Ms;
+        const collisionStepMaxMs =
+            runtime?.gardenStructureAvatarCollisionStepDurationMaxMs;
+        checks.push(
+            exact('buildingAvatarProfileOptIn', requested.avatar, '1'),
+            minimum(
+                'buildingAvatarCollisionStepCount',
+                runtime?.gardenStructureAvatarCollisionStepCount,
+                1,
+            ),
+            minimum(
+                'buildingAvatarCollisionWorkloadStepCount',
+                navigationResult?.collisionStepCount,
+                10,
+            ),
+            maximum(
+                'buildingAvatarCollisionStepP95Ms',
+                collisionStepP95Ms,
+                budget?.avatarCollisionStepP95Ms,
+            ),
+            exact(
+                'buildingAvatarCollisionStepMaxCoversP95',
+                typeof collisionStepMaxMs === 'number' &&
+                    typeof collisionStepP95Ms === 'number' &&
+                    collisionStepMaxMs >= collisionStepP95Ms,
+                true,
+            ),
+            minimum(
+                'buildingAvatarCollisionStepTotalMs',
+                runtime?.gardenStructureAvatarCollisionStepDurationTotalMs,
+                0,
+            ),
+            minimum(
+                'buildingAvatarCollisionPrimitiveCount',
+                runtime?.gardenStructureCollisionBoxCount,
+                1,
+            ),
+            minimum(
+                'buildingAvatarCollisionBucketCount',
+                runtime?.gardenStructureCollisionBucketCount,
+                1,
+            ),
+        );
+        for (const [index, leg] of (
+            profile.avatarNavigation?.legs ?? []
+        ).entries()) {
+            const actualLeg = navigationResult?.legs?.[index];
+            checks.push(
+                exact(
+                    `buildingAvatarNavigationLeg${index.toString()}View`,
+                    actualLeg?.view,
+                    leg.view,
+                ),
+            );
+            if (typeof leg.minimumDistance === 'number') {
+                checks.push(
+                    minimum(
+                        `buildingAvatarNavigationLeg${index.toString()}Distance`,
+                        actualLeg?.distance,
+                        leg.minimumDistance,
+                    ),
+                );
+            }
+            if (typeof leg.maximumDistance === 'number') {
+                checks.push(
+                    maximum(
+                        `buildingAvatarNavigationLeg${index.toString()}Distance`,
+                        actualLeg?.distance,
+                        leg.maximumDistance,
+                    ),
+                );
+            }
+        }
     }
 
     return { checks, pass: checks.every((check) => check.pass) };
@@ -14408,9 +14630,10 @@ function buildMarkdown(report) {
             '## Garden building automated evidence',
             '',
             'Production-build Chromium evidence only; physical-device frame, memory, thermal, touch, and GPU-resource proof remains separate.',
+            'Owned/public WebGL traversal and renderer-free 2D coverage are separate correctness proofs; this table claims timing only for the listed owned-game profiler scenarios.',
             '',
-            '| Scenario | Fixture / state | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Compile miss / lookup / cache outcome | Editor actions p95/max / pointer max | Motion | Result |',
-            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
+            '| Scenario | Fixture / state | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Compile max / navigation max / current lookup / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
+            '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
         );
         for (const scenario of buildingProfiles) {
             const runtime = scenario.runtime ?? {};
@@ -14421,9 +14644,11 @@ function buildMarkdown(report) {
                     ? `${motionResult.kind}: ${motionResult.actionCount ?? 0} actions`
                     : motionResult?.kind === 'enter-exit'
                       ? `${motionResult.kind}: ${motionResult.cycleCount ?? 0} cycles`
-                      : (profile.motion ?? 'none');
+                      : motionResult?.kind === 'avatar-navigation'
+                        ? `${motionResult.kind}: ${motionResult.collisionStepCount ?? 0} steps; ${(motionResult.legs ?? []).map((leg) => `${leg.view} ${round(leg.distance) ?? 0} m`).join(', ')}`
+                        : (profile.motion ?? 'none');
             lines.push(
-                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
         }
     }

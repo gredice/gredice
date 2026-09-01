@@ -341,6 +341,10 @@ export type GameProfileMetadata = {
     gardenStructureCameraTargetY?: number;
     gardenStructureCameraTargetZ?: number;
     gardenStructureCameraZoom?: number;
+    gardenStructureAvatarCollisionStepCount?: number;
+    gardenStructureAvatarCollisionStepDurationMaxMs?: number;
+    gardenStructureAvatarCollisionStepDurationP95Ms?: number;
+    gardenStructureAvatarCollisionStepDurationTotalMs?: number;
     gardenStructureCollisionBoxCount?: number;
     gardenStructureCollisionBucketCount?: number;
     gardenStructureCollectionDetailSuppressedPropCount?: number;
@@ -353,6 +357,7 @@ export type GameProfileMetadata = {
     gardenStructureCollectionVisibleStructureCount?: number;
     gardenStructureCompileCount?: number;
     gardenStructureCompileDurationMs?: number;
+    gardenStructureCompileDurationMaxMs?: number;
     gardenStructureDocumentPayloadBytes?: number;
     gardenStructureEdgeCount?: number;
     gardenStructureEditorActionCount?: number;
@@ -375,6 +380,7 @@ export type GameProfileMetadata = {
     gardenStructureFallbackVertexCount?: number;
     gardenStructureFootprintCellCount?: number;
     gardenStructureNavigationCompileDurationMs?: number;
+    gardenStructureNavigationCompileDurationMaxMs?: number;
     gardenStructureOpenPortalCount?: number;
     gardenStructurePlanCacheEstimatedBytes?: number;
     gardenStructurePlanCacheEvictionCount?: number;
@@ -572,6 +578,16 @@ export function updateGameProfileMetadata(metadata: GameProfileMetadata) {
 
 const gardenStructureEditorActionSampleLimit = 64;
 const gardenStructureEditorActionSamples: number[] = [];
+const gardenStructureAvatarCollisionStepBucketWidthMs = 0.05;
+const gardenStructureAvatarCollisionStepFiniteBucketCount = 200;
+const gardenStructureAvatarCollisionStepOverflowBucket =
+    gardenStructureAvatarCollisionStepFiniteBucketCount + 1;
+const gardenStructureAvatarCollisionStepBucketCount =
+    gardenStructureAvatarCollisionStepOverflowBucket + 1;
+const gardenStructureAvatarCollisionStepFenwickTree = new Uint32Array(
+    gardenStructureAvatarCollisionStepBucketCount + 1,
+);
+let gardenStructureAvatarCollisionStepSampleCount = 0;
 let gardenStructureProfileTelemetryEnabled = false;
 let gardenStructurePointerStartedAt: number | null = null;
 
@@ -587,7 +603,15 @@ export function setGardenStructureProfileTelemetryEnabled(enabled: boolean) {
     gardenStructureProfileTelemetryEnabled = enabled;
     gardenStructurePointerStartedAt = null;
     gardenStructureEditorActionSamples.length = 0;
+    gardenStructureAvatarCollisionStepFenwickTree.fill(0);
+    gardenStructureAvatarCollisionStepSampleCount = 0;
     updateGameProfileMetadata({
+        gardenStructureAvatarCollisionStepCount: 0,
+        gardenStructureAvatarCollisionStepDurationMaxMs: 0,
+        gardenStructureAvatarCollisionStepDurationP95Ms: 0,
+        gardenStructureAvatarCollisionStepDurationTotalMs: 0,
+        gardenStructureCompileDurationMaxMs: 0,
+        gardenStructureCompileDurationMs: 0,
         gardenStructureEditorActionCount: 0,
         gardenStructureEditorActionDurationMaxMs: 0,
         gardenStructureEditorActionDurationP95Ms: 0,
@@ -596,6 +620,136 @@ export function setGardenStructureProfileTelemetryEnabled(enabled: boolean) {
         gardenStructureEditorPointerResolutionCount: 0,
         gardenStructureEditorPointerResolutionMaxMs: 0,
         gardenStructureEditorPointerResolutionTotalMs: 0,
+        gardenStructureNavigationCompileDurationMaxMs: 0,
+        gardenStructureNavigationCompileDurationMs: 0,
+    });
+}
+
+function getGardenStructureAvatarCollisionStepP95(maxDurationMs: number) {
+    let target = Math.ceil(
+        gardenStructureAvatarCollisionStepSampleCount * 0.95,
+    );
+    let fenwickIndex = 0;
+    let binaryStep = 1;
+    while (binaryStep * 2 <= gardenStructureAvatarCollisionStepBucketCount) {
+        binaryStep *= 2;
+    }
+    while (binaryStep > 0) {
+        const nextIndex = fenwickIndex + binaryStep;
+        if (
+            nextIndex <= gardenStructureAvatarCollisionStepBucketCount &&
+            gardenStructureAvatarCollisionStepFenwickTree[nextIndex] < target
+        ) {
+            fenwickIndex = nextIndex;
+            target -= gardenStructureAvatarCollisionStepFenwickTree[nextIndex];
+        }
+        binaryStep = Math.floor(binaryStep / 2);
+    }
+    const bucket = Math.min(
+        fenwickIndex,
+        gardenStructureAvatarCollisionStepOverflowBucket,
+    );
+    return bucket === gardenStructureAvatarCollisionStepOverflowBucket
+        ? maxDurationMs
+        : bucket * gardenStructureAvatarCollisionStepBucketWidthMs;
+}
+
+function addGardenStructureAvatarCollisionStepBucket(bucket: number) {
+    let fenwickIndex = bucket + 1;
+    while (
+        fenwickIndex < gardenStructureAvatarCollisionStepFenwickTree.length
+    ) {
+        gardenStructureAvatarCollisionStepFenwickTree[fenwickIndex] += 1;
+        fenwickIndex += fenwickIndex & -fenwickIndex;
+    }
+}
+
+/**
+ * Records the measured duration around one real horizontal avatar movement
+ * resolution. The fixed-size histogram keeps profiling memory and p95 work
+ * bounded independently of soak duration.
+ */
+export function recordGardenStructureAvatarCollisionStep(durationMs: number) {
+    if (
+        !gardenStructureProfileTelemetryEnabled ||
+        !Number.isFinite(durationMs) ||
+        durationMs < 0
+    ) {
+        return;
+    }
+
+    const bucket = Math.min(
+        Math.ceil(durationMs / gardenStructureAvatarCollisionStepBucketWidthMs),
+        gardenStructureAvatarCollisionStepOverflowBucket,
+    );
+    addGardenStructureAvatarCollisionStepBucket(bucket);
+    gardenStructureAvatarCollisionStepSampleCount += 1;
+    const current = readGameProfileMetadata();
+    const maxDurationMs = Math.max(
+        current?.gardenStructureAvatarCollisionStepDurationMaxMs ?? 0,
+        durationMs,
+    );
+    if (!current) {
+        return;
+    }
+    current.gardenStructureAvatarCollisionStepCount =
+        gardenStructureAvatarCollisionStepSampleCount;
+    current.gardenStructureAvatarCollisionStepDurationMaxMs = maxDurationMs;
+    current.gardenStructureAvatarCollisionStepDurationP95Ms =
+        getGardenStructureAvatarCollisionStepP95(maxDurationMs);
+    current.gardenStructureAvatarCollisionStepDurationTotalMs =
+        (current.gardenStructureAvatarCollisionStepDurationTotalMs ?? 0) +
+        durationMs;
+}
+
+export function recordGardenStructureCompileDurations({
+    cacheOutcome,
+    compileDurationMs,
+    navigationCompileDurationMs,
+}: Readonly<{
+    cacheOutcome: 'hit' | 'miss' | 'none';
+    compileDurationMs: number;
+    navigationCompileDurationMs: number;
+}>) {
+    if (!gardenStructureProfileTelemetryEnabled) {
+        return;
+    }
+
+    const compileDurationValid =
+        Number.isFinite(compileDurationMs) && compileDurationMs >= 0;
+    const navigationDurationValid =
+        Number.isFinite(navigationCompileDurationMs) &&
+        navigationCompileDurationMs >= 0;
+    if (!compileDurationValid && !navigationDurationValid) {
+        return;
+    }
+
+    const current = readGameProfileMetadata();
+    updateGameProfileMetadata({
+        ...(compileDurationValid
+            ? {
+                  gardenStructureCompileDurationMs: compileDurationMs,
+                  gardenStructureCompileDurationMaxMs:
+                      cacheOutcome === 'miss'
+                          ? Math.max(
+                                current?.gardenStructureCompileDurationMaxMs ??
+                                    0,
+                                compileDurationMs,
+                            )
+                          : (current?.gardenStructureCompileDurationMaxMs ?? 0),
+              }
+            : {}),
+        ...(navigationDurationValid
+            ? {
+                  gardenStructureNavigationCompileDurationMs:
+                      navigationCompileDurationMs,
+                  gardenStructureNavigationCompileDurationMaxMs: Math.max(
+                      current?.gardenStructureNavigationCompileDurationMaxMs ??
+                          0,
+                      navigationCompileDurationMs,
+                  ),
+              }
+            : {}),
     });
 }
 

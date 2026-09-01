@@ -5,6 +5,8 @@ import {
     createRuntimeFrameLoopProfileTelemetry,
     getGardenStructureProfileP95,
     readGameProfileMetadata,
+    recordGardenStructureAvatarCollisionStep,
+    recordGardenStructureCompileDurations,
     recordGardenStructurePointerResolution,
     setGardenStructureProfileTelemetryEnabled,
 } from './gameProfileMetadata';
@@ -25,6 +27,131 @@ describe('getGardenStructureProfileP95', () => {
             ),
             20,
         );
+    });
+});
+
+describe('garden structure avatar collision-step profile', () => {
+    it('keeps a bounded nearest-rank p95 and resets before a new session', () => {
+        const previousWindow = Object.getOwnPropertyDescriptor(
+            globalThis,
+            'window',
+        );
+        Object.defineProperty(globalThis, 'window', {
+            configurable: true,
+            value: {},
+        });
+        try {
+            setGardenStructureProfileTelemetryEnabled(false);
+            recordGardenStructureAvatarCollisionStep(5);
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepCount,
+                0,
+            );
+            setGardenStructureProfileTelemetryEnabled(true);
+            recordGardenStructureAvatarCollisionStep(Number.NaN);
+            recordGardenStructureAvatarCollisionStep(-1);
+            for (let sample = 1; sample <= 20; sample += 1) {
+                recordGardenStructureAvatarCollisionStep(sample * 0.05);
+            }
+
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepCount,
+                20,
+            );
+            assert.ok(
+                Math.abs(
+                    (readGameProfileMetadata()
+                        ?.gardenStructureAvatarCollisionStepDurationP95Ms ??
+                        0) - 0.95,
+                ) < 0.000_001,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepDurationMaxMs,
+                1,
+            );
+
+            setGardenStructureProfileTelemetryEnabled(true);
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepCount,
+                0,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepDurationP95Ms,
+                0,
+            );
+            for (let durationMs = 11; durationMs <= 30; durationMs += 1) {
+                recordGardenStructureAvatarCollisionStep(durationMs);
+            }
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureAvatarCollisionStepDurationP95Ms,
+                30,
+            );
+            setGardenStructureProfileTelemetryEnabled(false);
+        } finally {
+            if (previousWindow) {
+                Object.defineProperty(globalThis, 'window', previousWindow);
+            } else {
+                Reflect.deleteProperty(globalThis, 'window');
+            }
+        }
+    });
+});
+
+describe('garden structure compile profile maxima', () => {
+    it('retains miss and navigation maxima when later current samples are zero', () => {
+        const previousWindow = Object.getOwnPropertyDescriptor(
+            globalThis,
+            'window',
+        );
+        Object.defineProperty(globalThis, 'window', {
+            configurable: true,
+            value: {},
+        });
+        try {
+            setGardenStructureProfileTelemetryEnabled(true);
+            recordGardenStructureCompileDurations({
+                cacheOutcome: 'miss',
+                compileDurationMs: 120,
+                navigationCompileDurationMs: 120,
+            });
+            recordGardenStructureCompileDurations({
+                cacheOutcome: 'hit',
+                compileDurationMs: 0,
+                navigationCompileDurationMs: 0,
+            });
+
+            assert.equal(
+                readGameProfileMetadata()?.gardenStructureCompileDurationMs,
+                0,
+            );
+            assert.equal(
+                readGameProfileMetadata()?.gardenStructureCompileDurationMaxMs,
+                120,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureNavigationCompileDurationMs,
+                0,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructureNavigationCompileDurationMaxMs,
+                120,
+            );
+            setGardenStructureProfileTelemetryEnabled(false);
+        } finally {
+            if (previousWindow) {
+                Object.defineProperty(globalThis, 'window', previousWindow);
+            } else {
+                Reflect.deleteProperty(globalThis, 'window');
+            }
+        }
     });
 });
 

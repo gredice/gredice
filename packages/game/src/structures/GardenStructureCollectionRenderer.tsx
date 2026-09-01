@@ -26,6 +26,11 @@ import {
     getVisibleGardenStructureIds,
 } from './gardenStructureCollectionPlan';
 import { isGardenStructureKitV1DefinitionCompatible } from './gardenStructureKitV1Compatibility';
+import {
+    getGardenStructureCollectionVisibleBatches,
+    getGardenStructureCollectionVisibleInstanceIndices,
+    intersectGardenStructureIds,
+} from './gardenStructureSceneVisibility';
 
 export type GardenStructureCollectionSelection = Readonly<{
     instanceId: string;
@@ -39,8 +44,10 @@ export type GardenStructureCollectionRendererProps = Readonly<{
     onRendererReady?: () => void;
     onSelect?: (selection: GardenStructureCollectionSelection) => void;
     plan: GardenStructureCollectionPlan;
+    profileMetricsEnabled?: boolean;
     renderProps?: boolean;
     selectedInstanceId?: string | null;
+    visiblePropStructureIds?: ReadonlySet<string>;
     visibleStructureIds?: ReadonlySet<string>;
 }>;
 
@@ -66,34 +73,19 @@ function materialColor(materialId: string) {
     return '#9a6542';
 }
 
-function intersectVisibleStructureIds(
-    first: ReadonlySet<string> | undefined,
-    second: ReadonlySet<string> | undefined,
-) {
-    if (!first) {
-        return second;
-    }
-    if (!second) {
-        return first;
-    }
-    return new Set([...first].filter((structureId) => second.has(structureId)));
-}
-
 function getVisibleInstanceIndices(
     batch: GardenStructureCollectionBatchDescription,
     hiddenInstanceIds: ReadonlySet<string> | undefined,
+    visiblePropStructureIds: ReadonlySet<string> | undefined,
     visibleStructureIds: ReadonlySet<string> | undefined,
 ) {
-    if (!visibleStructureIds && !hiddenInstanceIds?.size) {
-        return batch.instanceIds.map((_, index) => index);
-    }
-    return batch.structureIds.flatMap((structureId, index) => {
+    return getGardenStructureCollectionVisibleInstanceIndices(
+        batch,
+        visibleStructureIds,
+        visiblePropStructureIds,
+    ).filter((index) => {
         const instanceId = batch.instanceIds[index];
-        return (!visibleStructureIds || visibleStructureIds.has(structureId)) &&
-            instanceId !== undefined &&
-            !hiddenInstanceIds?.has(instanceId)
-            ? [index]
-            : [];
+        return instanceId !== undefined && !hiddenInstanceIds?.has(instanceId);
     });
 }
 
@@ -104,6 +96,7 @@ function GardenStructureCollectionFallbackBatchInstances({
     hiddenInstanceIds,
     onSelect,
     selectedInstanceId,
+    visiblePropStructureIds,
     visibleStructureIds,
 }: {
     batch: GardenStructureCollectionBatchDescription;
@@ -112,6 +105,7 @@ function GardenStructureCollectionFallbackBatchInstances({
     hiddenInstanceIds?: ReadonlySet<string>;
     onSelect?: GardenStructureCollectionRendererProps['onSelect'];
     selectedInstanceId: string | null;
+    visiblePropStructureIds?: ReadonlySet<string>;
     visibleStructureIds?: ReadonlySet<string>;
 }) {
     const meshRef = useRef<InstancedMesh>(null);
@@ -142,9 +136,15 @@ function GardenStructureCollectionFallbackBatchInstances({
             getVisibleInstanceIndices(
                 batch,
                 hiddenInstanceIds,
+                visiblePropStructureIds,
                 visibleStructureIds,
             ),
-        [batch, hiddenInstanceIds, visibleStructureIds],
+        [
+            batch,
+            hiddenInstanceIds,
+            visiblePropStructureIds,
+            visibleStructureIds,
+        ],
     );
 
     useEffect(() => () => material.dispose(), [material]);
@@ -261,6 +261,7 @@ function GardenStructureCollectionFallbackRenderer({
     hiddenInstanceIds,
     onSelect,
     selectedInstanceId,
+    visiblePropStructureIds,
     visibleStructureIds,
 }: Readonly<{
     batches: readonly GardenStructureCollectionBatchDescription[];
@@ -268,6 +269,7 @@ function GardenStructureCollectionFallbackRenderer({
     hiddenInstanceIds?: ReadonlySet<string>;
     onSelect?: GardenStructureCollectionRendererProps['onSelect'];
     selectedInstanceId: string | null;
+    visiblePropStructureIds?: ReadonlySet<string>;
     visibleStructureIds?: ReadonlySet<string>;
 }>) {
     const geometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
@@ -287,6 +289,7 @@ function GardenStructureCollectionFallbackRenderer({
                     key={batch.id}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visiblePropStructureIds={visiblePropStructureIds}
                     visibleStructureIds={visibleStructureIds}
                 />
             ))}
@@ -307,8 +310,10 @@ export function GardenStructureCollectionRenderer({
     onRendererReady,
     onSelect,
     plan,
+    profileMetricsEnabled = false,
     renderProps = true,
     selectedInstanceId = null,
+    visiblePropStructureIds,
     visibleStructureIds,
 }: GardenStructureCollectionRendererProps) {
     const predicateVisibleIds = useMemo(
@@ -320,7 +325,7 @@ export function GardenStructureCollectionRenderer({
     );
     const effectiveVisibleIds = useMemo(
         () =>
-            intersectVisibleStructureIds(
+            intersectGardenStructureIds(
                 visibleStructureIds,
                 predicateVisibleIds,
             ),
@@ -335,19 +340,28 @@ export function GardenStructureCollectionRenderer({
         ],
         [plan.batches, renderProps],
     );
+    const visibleAvailableBatches = useMemo(
+        () =>
+            getGardenStructureCollectionVisibleBatches(
+                availableBatches,
+                effectiveVisibleIds,
+                visiblePropStructureIds,
+            ),
+        [availableBatches, effectiveVisibleIds, visiblePropStructureIds],
+    );
     const batches = useMemo(
         () =>
-            availableBatches.filter(
+            visibleAvailableBatches.filter(
                 ({ assetFallbackOnly }) => !assetFallbackOnly,
             ),
-        [availableBatches],
+        [visibleAvailableBatches],
     );
     const assetFallbackOnlyBatches = useMemo(
         () =>
-            availableBatches.filter(
+            visibleAvailableBatches.filter(
                 ({ assetFallbackOnly }) => assetFallbackOnly,
             ),
-        [availableBatches],
+        [visibleAvailableBatches],
     );
     const representedStructureIds = useMemo(
         () => new Set(batches.flatMap(({ structureIds }) => structureIds)),
@@ -367,7 +381,7 @@ export function GardenStructureCollectionRenderer({
     );
     const orphanAssetFallbackVisibleIds = useMemo(
         () =>
-            intersectVisibleStructureIds(
+            intersectGardenStructureIds(
                 effectiveVisibleIds,
                 orphanAssetFallbackStructureIds,
             ),
@@ -407,10 +421,7 @@ export function GardenStructureCollectionRenderer({
     );
     const assetFallbackVisibleIds = useMemo(
         () =>
-            intersectVisibleStructureIds(
-                effectiveVisibleIds,
-                assetStructureIds,
-            ),
+            intersectGardenStructureIds(effectiveVisibleIds, assetStructureIds),
         [assetStructureIds, effectiveVisibleIds],
     );
     const assetFallbackBoxStructureIds = useMemo(
@@ -434,7 +445,7 @@ export function GardenStructureCollectionRenderer({
     );
     const assetFootprintFallbackVisibleIds = useMemo(
         () =>
-            intersectVisibleStructureIds(
+            intersectGardenStructureIds(
                 assetFallbackVisibleIds,
                 assetFootprintFallbackStructureIds,
             ),
@@ -447,11 +458,17 @@ export function GardenStructureCollectionRenderer({
                 ? getVisibleInstanceIndices(
                       batch,
                       hiddenInstanceIds,
+                      visiblePropStructureIds,
                       effectiveVisibleIds,
                   )
                 : [];
         },
-        [batchById, effectiveVisibleIds, hiddenInstanceIds],
+        [
+            batchById,
+            effectiveVisibleIds,
+            hiddenInstanceIds,
+            visiblePropStructureIds,
+        ],
     );
     const selectInstance = useCallback(
         (
@@ -480,7 +497,7 @@ export function GardenStructureCollectionRenderer({
                     batch.rendersSemanticFallback ? [] : batch.structureIds,
                 ),
             );
-            const footprintVisibleIds = intersectVisibleStructureIds(
+            const footprintVisibleIds = intersectGardenStructureIds(
                 effectiveVisibleIds,
                 unresolvedWithoutBoxStructureIds,
             );
@@ -496,6 +513,7 @@ export function GardenStructureCollectionRenderer({
                             hiddenInstanceIds={hiddenInstanceIds}
                             onSelect={onSelect}
                             selectedInstanceId={selectedInstanceId}
+                            visiblePropStructureIds={visiblePropStructureIds}
                             visibleStructureIds={effectiveVisibleIds}
                         />
                     ) : null}
@@ -506,6 +524,7 @@ export function GardenStructureCollectionRenderer({
                             hiddenInstanceIds={hiddenInstanceIds}
                             onSelect={onSelect}
                             selectedInstanceId={selectedInstanceId}
+                            visiblePropStructureIds={visiblePropStructureIds}
                             visibleStructureIds={footprintVisibleIds}
                         />
                     ) : null}
@@ -521,6 +540,7 @@ export function GardenStructureCollectionRenderer({
             onSelect,
             selectedInstanceId,
             assetFallbackBatches,
+            visiblePropStructureIds,
         ],
     );
     const fallback = (
@@ -532,6 +552,7 @@ export function GardenStructureCollectionRenderer({
                     hiddenInstanceIds={hiddenInstanceIds}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visiblePropStructureIds={visiblePropStructureIds}
                     visibleStructureIds={assetFallbackVisibleIds}
                 />
             ) : null}
@@ -543,6 +564,7 @@ export function GardenStructureCollectionRenderer({
                     hiddenInstanceIds={hiddenInstanceIds}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visiblePropStructureIds={visiblePropStructureIds}
                     visibleStructureIds={assetFootprintFallbackVisibleIds}
                 />
             ) : null}
@@ -551,6 +573,21 @@ export function GardenStructureCollectionRenderer({
 
     const fallbackOnlyPlanCacheKey =
         assetBatches.length === 0 ? plan.cacheKey : null;
+    const profileFallbackGeometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
+    useEffect(
+        () => () => profileFallbackGeometry.dispose(),
+        [profileFallbackGeometry],
+    );
+    const profileMetrics = useMemo(
+        () =>
+            profileMetricsEnabled
+                ? {
+                      fallbackGeometry: profileFallbackGeometry,
+                      previewInstanceCount: 0,
+                  }
+                : undefined,
+        [profileFallbackGeometry, profileMetricsEnabled],
+    );
     useEffect(() => {
         if (fallbackOnlyPlanCacheKey !== null) {
             onRendererReady?.();
@@ -573,6 +610,7 @@ export function GardenStructureCollectionRenderer({
                     hiddenInstanceIds={hiddenInstanceIds}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visiblePropStructureIds={visiblePropStructureIds}
                     visibleStructureIds={effectiveVisibleIds}
                 />
             ) : null}
@@ -583,6 +621,7 @@ export function GardenStructureCollectionRenderer({
                     hiddenInstanceIds={hiddenInstanceIds}
                     onSelect={onSelect}
                     selectedInstanceId={selectedInstanceId}
+                    visiblePropStructureIds={visiblePropStructureIds}
                     visibleStructureIds={orphanAssetFallbackVisibleIds}
                 />
             ) : null}
@@ -598,6 +637,7 @@ export function GardenStructureCollectionRenderer({
                         namePrefix="GardenStructureCollectionKitV1Batch"
                         onInstancesReady={onRendererReady}
                         onSelectInstance={onSelect ? selectInstance : undefined}
+                        profileMetrics={profileMetrics}
                         renderFallback={renderFallback}
                         selectedInstanceId={selectedInstanceId}
                     />

@@ -15,10 +15,7 @@ import {
     MeshStandardMaterial,
     Object3D,
 } from 'three';
-import {
-    recordGardenStructurePointerResolution,
-    updateGameProfileMetadata,
-} from '../scene/gameProfileMetadata';
+import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
 import { useGameState } from '../useGameState';
 import { debugGardenStructureKitMetadata } from './debugStructureKit';
 import {
@@ -183,7 +180,6 @@ function GardenStructureFallbackBatchInstances({
 
     const handleClick = useCallback(
         (event: ThreeEvent<MouseEvent>) => {
-            const startedAt = performance.now();
             if (!onSelect || event.instanceId === undefined) {
                 return;
             }
@@ -193,9 +189,6 @@ function GardenStructureFallbackBatchInstances({
             }
             event.stopPropagation();
             onSelect(id);
-            recordGardenStructurePointerResolution(
-                performance.now() - startedAt,
-            );
         },
         [batch.instanceIds, onSelect],
     );
@@ -318,10 +311,12 @@ function GardenStructureFootprintPreview({
 
 export type GardenStructureVerticalSliceProps = Readonly<{
     plan: GardenStructureSemanticPlan;
+    profileMetricsEnabled?: boolean;
 }>;
 
 export function GardenStructureVerticalSlice({
     plan,
+    profileMetricsEnabled = false,
 }: GardenStructureVerticalSliceProps) {
     const session = useGameState((state) => state.structureBuildSession);
     const setSession = useGameState((state) => state.setStructureBuildSession);
@@ -340,17 +335,10 @@ export function GardenStructureVerticalSlice({
         () =>
             getGardenStructureVerticalSliceBatches({
                 plan,
+                renderProps: session?.roofCutaway ?? false,
                 roofCutaway: session?.roofCutaway ?? false,
             }),
         [plan, session?.roofCutaway],
-    );
-    const renderedInstanceCount = useMemo(
-        () =>
-            batches.reduce(
-                (total, batch) => total + batch.instanceIds.length,
-                0,
-            ),
-        [batches],
     );
     const batchById = useMemo(
         () => new Map(batches.map((batch) => [batch.id, batch])),
@@ -413,12 +401,32 @@ export function GardenStructureVerticalSlice({
                 .reduce((total, batch) => total + batch.instanceIds.length, 0),
         [batches],
     );
+    const totalPropCount = useMemo(
+        () =>
+            plan.batches.props.reduce(
+                (total, batch) => total + batch.instanceIds.length,
+                0,
+            ),
+        [plan.batches.props],
+    );
     const transparentSurfaceCount = useMemo(
         () =>
             batches
                 .filter((batch) => batch.transparency === 'transparent')
                 .reduce((total, batch) => total + batch.instanceIds.length, 0),
         [batches],
+    );
+    const profileMetrics = useMemo(
+        () =>
+            profileMetricsEnabled
+                ? {
+                      fallbackGeometry: geometry,
+                      previewInstanceCount: session
+                          ? plan.footprint.ids.length
+                          : 0,
+                  }
+                : undefined,
+        [geometry, plan.footprint.ids.length, profileMetricsEnabled, session],
     );
 
     useEffect(() => {
@@ -428,12 +436,10 @@ export function GardenStructureVerticalSlice({
             gardenStructureCollisionBucketCount: plan.counts.spatialBuckets,
             gardenStructureCollisionBoxCount:
                 plan.counts.wallCollisionBoxes + plan.counts.propCollisionBoxes,
+            gardenStructureExteriorSuppressedPropCount:
+                totalPropCount - renderedPropCount,
             gardenStructureFootprintCellCount: plan.counts.footprintCells,
             gardenStructureOpenPortalCount: plan.counts.openPortals,
-            gardenStructureRenderBatchCount: batches.length,
-            gardenStructureRenderInstanceCount: renderedInstanceCount,
-            gardenStructureRenderTriangleCount: renderedInstanceCount * 12,
-            gardenStructureRenderVertexCount: renderedInstanceCount * 24,
             gardenStructureTransparentSurfaceCount: transparentSurfaceCount,
             gardenStructureVisibleInteriorSurfaceCount:
                 plan.counts.floorSurfaces + renderedPropCount,
@@ -445,22 +451,18 @@ export function GardenStructureVerticalSlice({
                 gardenStructureBlockedTransitionCount: 0,
                 gardenStructureCollisionBucketCount: 0,
                 gardenStructureCollisionBoxCount: 0,
+                gardenStructureExteriorSuppressedPropCount: 0,
                 gardenStructureFootprintCellCount: 0,
                 gardenStructureOpenPortalCount: 0,
-                gardenStructureRenderBatchCount: 0,
-                gardenStructureRenderInstanceCount: 0,
-                gardenStructureRenderTriangleCount: 0,
-                gardenStructureRenderVertexCount: 0,
                 gardenStructureTransparentSurfaceCount: 0,
                 gardenStructureVisibleInteriorSurfaceCount: 0,
                 gardenStructureVisiblePropCount: 0,
                 gardenStructureWalkableCellCount: 0,
             });
     }, [
-        batches.length,
         plan.counts,
-        renderedInstanceCount,
         renderedPropCount,
+        totalPropCount,
         transparentSurfaceCount,
     ]);
 
@@ -486,6 +488,7 @@ export function GardenStructureVerticalSlice({
                     castShadows
                     namePrefix="GardenStructureVerticalSliceKitV1Batch"
                     onSelectInstance={session ? selectInstance : undefined}
+                    profileMetrics={profileMetrics}
                     renderFallback={renderFallback}
                     selectedInstanceId={session?.selectedPartId ?? null}
                 />

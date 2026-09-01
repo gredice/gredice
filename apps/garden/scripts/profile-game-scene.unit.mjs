@@ -360,7 +360,7 @@ test('plant closeup scenario set resolves deterministic desktop and mobile runs'
 
 test('building scenario set covers gated normal, editing, worst-case, weather, and lifecycle workloads', () => {
     const scenarios = resolveScenarios('buildings');
-    assert.equal(scenarios.length, 12);
+    assert.equal(scenarios.length, 13);
     assert.deepEqual(
         scenarios.map((scenario) => scenario.name),
         [
@@ -373,6 +373,7 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
             'game-building-interior-edit-cutaway-constrained-mobile',
             'game-building-greenhouse-rain-constrained-mobile',
             'game-building-worst-case-furnished-constrained-mobile',
+            'game-building-house-avatar-door-navigation-constrained-mobile',
             'game-building-worst-case-furnished-cutaway-constrained-mobile',
             'game-building-worst-case-edit-churn-constrained-mobile',
             'game-building-enter-exit-lifecycle-constrained-mobile',
@@ -400,6 +401,17 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
     assert.equal(worstCase?.isMobile, true);
     assert.equal(worstCase?.navigatorMetrics.deviceMemory, 4);
     assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
+    assert.match(worstCase?.path ?? '', /avatar=1/);
+    assert.equal(worstCase?.buildingProfile.motion, 'avatar-navigation');
+    const avatarDoorway = scenarios.find((scenario) =>
+        scenario.name.includes('avatar-door-navigation'),
+    );
+    assert.deepEqual(
+        avatarDoorway?.buildingProfile.avatarNavigation.legs.map(
+            (leg) => leg.view,
+        ),
+        ['third-person', 'first-person'],
+    );
     assert.equal(
         scenarios.find((scenario) =>
             scenario.name.includes('furnished-cutaway'),
@@ -503,6 +515,7 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
                 'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc',
             gardenStructureCompileCount: 4,
             gardenStructureCompileDurationMs: 4.2,
+            gardenStructureCompileDurationMaxMs: 4.2,
             gardenStructureDocumentPayloadBytes: 56_759,
             gardenStructureEdgeCount: 301,
             gardenStructureEditorActionCount: 12,
@@ -514,6 +527,7 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             gardenStructureExteriorSuppressedPropCount: 0,
             gardenStructureFootprintCellCount: 100,
             gardenStructureNavigationCompileDurationMs: 2.1,
+            gardenStructureNavigationCompileDurationMaxMs: 2.1,
             gardenStructurePlanCacheLookupDurationMs: 0.1,
             gardenStructurePlanCacheEvictionCount: 0,
             gardenStructureFallbackDrawCount: 0,
@@ -537,6 +551,39 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
     });
     assert.equal(result.pass, true);
     assert.ok(result.checks.every((check) => check.pass));
+
+    const compileMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructureCompileDurationMs: 0,
+            gardenStructureCompileDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        compileMaximumRegression.checks.find(
+            (check) => check.name === 'buildingCompileDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingCompileDurationMs',
+            pass: false,
+        },
+    );
 
     const privateOrSlow = evaluateGardenBuildingAcceptance({
         apiRequests: [{ method: 'POST', url: 'http://localhost/api/garden' }],
@@ -601,6 +648,86 @@ test('building acceptance proves the no-structure baseline made no GLB request',
     assert.ok(result.checks.every((check) => check.pass));
 });
 
+test('building acceptance gates measured avatar collision-step p95', () => {
+    const requested = {
+        avatar: '1',
+        building: '1',
+        buildingFixture: 'worst-case',
+        buildingProfile: {
+            avatarNavigation: {
+                legs: [
+                    {
+                        key: 's',
+                        maximumDistance: 0.25,
+                        view: 'third-person',
+                    },
+                ],
+            },
+            expected: {
+                edges: 301,
+                footprintCells: 100,
+                props: 100,
+                roofs: 100,
+            },
+            fixture: 'worst-case',
+            mode: 'normal',
+            motion: 'avatar-navigation',
+            motionResult: {
+                collisionStepCount: 42,
+                kind: 'avatar-navigation',
+                legs: [
+                    {
+                        distance: 0.12,
+                        key: 's',
+                        view: 'third-person',
+                    },
+                ],
+            },
+        },
+    };
+    const runtime = {
+        gardenStructureAvatarCollisionStepCount: 44,
+        gardenStructureAvatarCollisionStepDurationMaxMs: 1.8,
+        gardenStructureAvatarCollisionStepDurationP95Ms: 1.5,
+        gardenStructureAvatarCollisionStepDurationTotalMs: 12,
+        gardenStructureCollisionBoxCount: 290,
+        gardenStructureCollisionBucketCount: 220,
+    };
+    const passing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime,
+    });
+    assert.ok(
+        passing.checks
+            .filter((check) => check.name.startsWith('buildingAvatar'))
+            .every((check) => check.pass),
+    );
+
+    const failing = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        budget: { avatarCollisionStepP95Ms: 2 },
+        requested,
+        runtime: {
+            ...runtime,
+            gardenStructureAvatarCollisionStepDurationMaxMs: 2.4,
+            gardenStructureAvatarCollisionStepDurationP95Ms: 2.1,
+        },
+    });
+    assert.deepEqual(
+        failing.checks.find(
+            (check) => check.name === 'buildingAvatarCollisionStepP95Ms',
+        ),
+        {
+            actual: 2.1,
+            limit: 2,
+            name: 'buildingAvatarCollisionStepP95Ms',
+            pass: false,
+        },
+    );
+});
+
 test('building acceptance keeps an empty structure distinct from production GLB draws', () => {
     const responseUrl =
         'http://localhost/assets/models/GardenStructureKitV1.glb?v=abc';
@@ -636,6 +763,7 @@ test('building acceptance keeps an empty structure distinct from production GLB 
             gardenStructureAssetResourceDurationMs: 4,
             gardenStructureAssetResourceUrl: responseUrl,
             gardenStructureCompileDurationMs: 1,
+            gardenStructureCompileDurationMaxMs: 1,
             gardenStructureDocumentPayloadBytes: 242,
             gardenStructureEdgeCount: 0,
             gardenStructureEditorActive: false,
@@ -643,6 +771,7 @@ test('building acceptance keeps an empty structure distinct from production GLB 
             gardenStructureFallbackDrawCount: 0,
             gardenStructureFootprintCellCount: 4,
             gardenStructureNavigationCompileDurationMs: 0.1,
+            gardenStructureNavigationCompileDurationMaxMs: 0.1,
             gardenStructurePlanCacheEvictionCount: 0,
             gardenStructurePlanCacheLookupDurationMs: 0,
             gardenStructurePreviewDrawCount: 0,

@@ -968,7 +968,7 @@ without claiming physical-device proof:
 | Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,531 bytes. |
 | Worst-case compiler output | 12 render batches, 601 instances, 38 open portals, 263 blocked transitions, 190 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
 | Headless compile baseline | 3.663 ms median across three warmed 1,000-compile runs (3.451-3.714 ms) on local Apple M4 Pro/24 GiB, Node 24; production-Chromium miss-only compiles were 3.7-4.3 ms. This is not a constrained-mobile CPU result. |
-| Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. Worst-case normal/cutaway resolved 24/29 production draws with zero unresolved batches or fallback draws and zero textures. |
+| Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. The validated generated kit contains 23 nodes, 56 primitives, 12 materials, and 6,064 source triangles. Worst-case normal/cutaway resolved 24/29 production draws with zero unresolved batches or fallback draws and zero textures. |
 | Constrained-mobile browser budget | At 390x844, browser DPR 3 capped to effective DPR 1, auto-constrained tier, 1024 px shadows, 5 s warmup/sample: closed-roof 100-cell p95/max 18.4/18.8 ms, cutaway 18.4/18.8 ms, and edit churn 17.3/18.6 ms; all passed the 33.3 ms mobile p95 gate with zero long tasks. |
 | Interior/editor budget | Closed-roof exterior submitted 0 props and suppressed 100; cutaway submitted all 100. Edit churn action p95/max was 15.6/17.0 ms and final Canvas pointer resolution max was 2.0 ms, below the 100/500/100 ms gates. |
 
@@ -980,10 +980,12 @@ pinch, pointer cancellation/lost capture, and mid-gesture exit cleanup. The
 true no-structure row makes zero building-kit GLB requests; enabled fixtures
 measure the resolved production GLB and keep fallback/preview work separate.
 Headless semantic movement proves the visible open door traversable and a solid
-edge blocking in all four rotations. Physical avatar traversal in a production
-browser, ten-minute soak behavior, and physical iPhone/Android memory, thermal,
-touch, and GPU-resource measurements remain open Milestone 0 evidence and must
-be reported separately.
+edge blocking in all four rotations. Production-browser WebGL component flows
+now prove owned and public avatars crossing/exiting the open room doorway and
+covered porch while preserving the same Canvas and cutaway contract. Physical
+iPhone/Android traversal, memory, thermal, touch, and GPU-resource measurements,
+plus ten-minute soak behavior, remain open Milestone 0 evidence and must be
+reported separately.
 
 Exit criteria: the architecture meets the one-canvas/no-per-part-component
 constraints and has a credible constrained-mobile budget. If it does not, fix

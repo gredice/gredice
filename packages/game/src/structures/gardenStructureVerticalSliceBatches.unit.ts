@@ -126,6 +126,7 @@ test('rejects same-identity metadata drift before fixture geometry can diverge',
         () =>
             getGardenStructureVerticalSliceBatches({
                 plan,
+                renderProps: false,
                 roofCutaway: false,
             }),
         /matching immutable debug kit/u,
