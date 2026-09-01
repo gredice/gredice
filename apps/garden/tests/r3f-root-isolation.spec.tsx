@@ -38,7 +38,10 @@ test('isolates spring demand and submitted work between two Canvas roots', async
         .toBe('never');
 
     const suspendedStart = await readSnapshot();
-    await page.waitForTimeout(1_000);
+    // Software WebGL component tests can submit near 15 FPS under load. Keep
+    // the activity precondition intact while observing the hidden root across
+    // a longer, stricter no-work interval.
+    await page.waitForTimeout(2_000);
     const suspendedEnd = await readSnapshot();
 
     expect(suspendedEnd.active.r3fFrameCallbackCount).toBeGreaterThan(

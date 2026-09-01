@@ -377,6 +377,7 @@ export function Scene({
                 baseFramesPerSecond={baseFramesPerSecond ?? 0}
                 continuousRenderLeasesEnabled={continuousRenderLeasesEnabled}
                 fixedTimeSeconds={fixedTimeSeconds}
+                manualFrameloop={frameloop === 'never'}
                 runtimeFrameLoop={runtimeFrameLoop}
                 suspendWhenOffscreen={suspendWhenOffscreen}
             >

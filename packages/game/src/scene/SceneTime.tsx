@@ -1,5 +1,6 @@
 'use client';
 
+import { SpringContext } from '@react-spring/three';
 import {
     addAfterEffect,
     type RootState,
@@ -33,6 +34,10 @@ import {
     installR3FRootInvalidationBroker,
     readRawR3FRootInvalidate,
 } from './r3fRootInvalidationBroker';
+import {
+    installR3FRootFrameloopVisibility,
+    resolveSceneSpringContext,
+} from './r3fRootLifecycle';
 import { consumeSceneClockActivationGap } from './sceneClockActivation';
 import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
 
@@ -91,43 +96,64 @@ function readCanvasViewportVisible(canvas: HTMLCanvasElement) {
     );
 }
 
-function R3FRootInvalidationBroker({
-    enabled,
+function R3FRootLifecycle({
     isFrameRendering,
+    manageVisibility,
     rawInvalidate,
     rootStore,
     scheduler,
 }: {
-    enabled: boolean;
     isFrameRendering: () => boolean;
+    manageVisibility: boolean;
     rawInvalidate: RootState['invalidate'];
     rootStore: RootStore;
     scheduler: GameRuntimeScheduler;
 }) {
-    const enabledRef = useRef(enabled);
-    const ownerRef = useRef(Symbol('game-runtime-invalidation-broker'));
+    const brokerOwnerRef = useRef(Symbol('game-runtime-invalidation-broker'));
+    const frameloopOwnerRef = useRef(
+        Symbol('game-runtime-frameloop-visibility'),
+    );
     const requestCoalescedRenderRef = useRef<
         (reason: string, frames?: number) => boolean
     >(() => false);
-    enabledRef.current = enabled;
     requestCoalescedRenderRef.current = (reason, frames) =>
         scheduler.requestCoalescedRender(reason, frames);
 
     useLayoutEffect(() => {
-        if (!enabled) {
-            return;
-        }
+        // Install the hidden-root shield first. R3F subscribes to every store
+        // update with its module-local invalidator, so the root must already be
+        // in `never` mode before broker installation mutates the store.
+        const frameloopVisibility = installR3FRootFrameloopVisibility({
+            enabled: manageVisibility,
+            owner: frameloopOwnerRef.current,
+            store: rootStore,
+        });
+        const unsubscribeVisibility = frameloopVisibility.managed
+            ? scheduler.subscribeVisibility(frameloopVisibility.setVisible)
+            : () => undefined;
 
-        return installR3FRootInvalidationBroker({
-            isEnabled: () => enabledRef.current,
+        const releaseBroker = installR3FRootInvalidationBroker({
+            isEnabled: () => true,
             isFrameRendering,
-            owner: ownerRef.current,
+            owner: brokerOwnerRef.current,
             rawInvalidate,
             requestCoalescedRender: (reason, frames) =>
                 requestCoalescedRenderRef.current(reason, frames),
             store: rootStore,
         });
-    }, [enabled, isFrameRendering, rawInvalidate, rootStore]);
+
+        return () => {
+            unsubscribeVisibility();
+            releaseBroker();
+            frameloopVisibility.release();
+        };
+    }, [
+        isFrameRendering,
+        manageVisibility,
+        rawInvalidate,
+        rootStore,
+        scheduler,
+    ]);
 
     return null;
 }
@@ -138,6 +164,7 @@ export function SceneTimeProvider({
     children,
     continuousRenderLeasesEnabled = true,
     fixedTimeSeconds,
+    manualFrameloop = false,
     runtimeFrameLoop,
     suspendWhenOffscreen = true,
 }: PropsWithChildren<{
@@ -145,6 +172,7 @@ export function SceneTimeProvider({
     baseFramesPerSecond?: number;
     continuousRenderLeasesEnabled?: boolean;
     fixedTimeSeconds?: number;
+    manualFrameloop?: boolean;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;
     suspendWhenOffscreen?: boolean;
 }>) {
@@ -194,6 +222,36 @@ export function SceneTimeProvider({
     const renderedThisLoopRef = useRef(false);
     const visibilityReadyRef = useRef(false);
     const isFrameRendering = useCallback(() => renderedThisLoopRef.current, []);
+    const subscribeRuntimeVisibilitySnapshot = useCallback(
+        (listener: () => void) =>
+            scheduler.subscribeVisibility(() => listener()),
+        [scheduler],
+    );
+    const getRuntimeVisible = useCallback(
+        () => scheduler.getEffectiveVisibility(),
+        [scheduler],
+    );
+    const runtimeVisible = useSyncExternalStore(
+        subscribeRuntimeVisibilitySnapshot,
+        getRuntimeVisible,
+        () => false,
+    );
+    const inheritedSpringContext = useContext(SpringContext);
+    const springContextValue = useMemo(
+        () =>
+            resolveSceneSpringContext({
+                context: inheritedSpringContext,
+                manualFrameloop,
+                runtimeVisible,
+                visibilityManaged: suspendWhenOffscreen,
+            }),
+        [
+            inheritedSpringContext,
+            manualFrameloop,
+            runtimeVisible,
+            suspendWhenOffscreen,
+        ],
+    );
 
     useEffect(
         () =>
@@ -375,14 +433,16 @@ export function SceneTimeProvider({
 
     return (
         <SceneTimeContext.Provider value={contextValue}>
-            <R3FRootInvalidationBroker
-                enabled={continuousRenderLeasesEnabled}
-                isFrameRendering={isFrameRendering}
-                rawInvalidate={rawInvalidate}
-                rootStore={rootStore}
-                scheduler={scheduler}
-            />
-            {children}
+            <SpringContext.Provider value={springContextValue}>
+                <R3FRootLifecycle
+                    isFrameRendering={isFrameRendering}
+                    manageVisibility={suspendWhenOffscreen}
+                    rawInvalidate={rawInvalidate}
+                    rootStore={rootStore}
+                    scheduler={scheduler}
+                />
+                {children}
+            </SpringContext.Provider>
         </SceneTimeContext.Provider>
     );
 }
