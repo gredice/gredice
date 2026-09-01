@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { GameCameraSnapshot } from '../controls/GameCameraRigApi';
 import { useHoveredBlockStore } from '../controls/useHoveredBlockStore';
 import {
     resetAnimalProfileCommandMetrics,
@@ -37,6 +38,8 @@ export const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
 export const gameProfileAnimalCommandEventName =
     'gredice:game-profile-animal-command';
+export const gameProfileCameraRestoreCommandEventName =
+    'gredice:game-profile-camera-restore-command';
 
 type ProfileGarden = {
     id?: number;
@@ -94,6 +97,44 @@ export type GameProfileAnimalCommand = {
     species: 'Cow';
     targetId?: null;
 };
+
+export type GameProfileCameraRestoreCommand = Pick<
+    GameCameraSnapshot,
+    'position' | 'target' | 'zoom'
+>;
+
+export function readGameProfileCameraRestoreCommand(
+    value: unknown,
+): GameProfileCameraRestoreCommand | null {
+    if (!value || typeof value !== 'object') {
+        return null;
+    }
+
+    const position = Reflect.get(value, 'position');
+    const target = Reflect.get(value, 'target');
+    const zoom = Reflect.get(value, 'zoom');
+    const isFiniteVector = (
+        candidate: unknown,
+    ): candidate is [number, number, number] =>
+        Array.isArray(candidate) &&
+        candidate.length === 3 &&
+        candidate.every(
+            (component) =>
+                typeof component === 'number' && Number.isFinite(component),
+        );
+
+    if (
+        !isFiniteVector(position) ||
+        !isFiniteVector(target) ||
+        typeof zoom !== 'number' ||
+        !Number.isFinite(zoom) ||
+        zoom <= 0
+    ) {
+        return null;
+    }
+
+    return { position: [...position], target: [...target], zoom };
+}
 
 export function readGameProfileAnimalCommand(
     value: unknown,
@@ -502,6 +543,33 @@ export function GameProfileController() {
 
         recordCameraSnapshot(gameCamera.getSnapshot());
         return gameCamera.subscribe(recordCameraSnapshot);
+    }, [gameCamera]);
+
+    useEffect(() => {
+        if (!gameCamera) {
+            return;
+        }
+
+        const handleCommand = (event: Event) => {
+            const command =
+                event instanceof CustomEvent
+                    ? readGameProfileCameraRestoreCommand(event.detail)
+                    : null;
+            if (command) {
+                gameCamera.restore(command, { immediate: true });
+            }
+        };
+
+        window.addEventListener(
+            gameProfileCameraRestoreCommandEventName,
+            handleCommand,
+        );
+        return () => {
+            window.removeEventListener(
+                gameProfileCameraRestoreCommandEventName,
+                handleCommand,
+            );
+        };
     }, [gameCamera]);
 
     useEffect(() => {

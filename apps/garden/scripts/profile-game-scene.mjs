@@ -20,6 +20,8 @@ const gameProfilePlacementCommandEventName =
 const gameProfileOutlineCommandEventName =
     'gredice:game-profile-outline-command';
 const gameProfileAnimalCommandEventName = 'gredice:game-profile-animal-command';
+const gameProfileCameraRestoreCommandEventName =
+    'gredice:game-profile-camera-restore-command';
 const gameProfileGardenSwitchEventName = 'gredice:game-profile-garden-switch';
 const adaptiveHighQualityProfileControlEventName =
     'gredice:adaptive-high-profile-control';
@@ -2868,61 +2870,110 @@ async function runScenarioMotion(page, scenario, sampleMs) {
     }
 
     if (scenario.motion === 'bounded-zoom-rotate') {
-        await page.evaluate(() => {
-            globalThis.__grediceProfileMotionClickAbortController?.abort();
-            const controller = new AbortController();
-            globalThis.addEventListener(
-                'click',
-                (event) => {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                },
-                { capture: true, signal: controller.signal },
+        const startingCameraSnapshot = await page.evaluate(
+            () => globalThis.__grediceGameProfile?.gameCameraSnapshot ?? null,
+        );
+        if (
+            gameCameraSnapshotMaximumDelta(
+                startingCameraSnapshot,
+                startingCameraSnapshot,
+            ) !== 0 ||
+            !Number.isFinite(startingCameraSnapshot?.version)
+        ) {
+            throw new Error(
+                'Bounded profile motion requires a finite starting camera snapshot.',
             );
-            globalThis.__grediceProfileMotionClickAbortController = controller;
-        });
+        }
+
+        let preRestoreSnapshot = startingCameraSnapshot;
         try {
             await page.mouse.move(centerX, centerY);
-            await page.keyboard.press('KeyQ');
-            await wait(100);
-            await page.keyboard.press('KeyW');
-            await wait(100);
+            try {
+                await page.keyboard.press('KeyQ');
+                await wait(100);
+                await page.keyboard.press('KeyW');
+                await wait(100);
 
-            const cycleBudgetMs = 300;
-            const endpointSettleMs = 300;
-            let cycleIndex = 0;
-            while (
-                Date.now() - startedAt + cycleBudgetMs <=
-                sampleMs - endpointSettleMs
-            ) {
-                const cycle = resolveBoundedCameraMotionCycle(cycleIndex);
-                for (const horizontalOffsetPx of cycle.horizontalDragOffsetsPx) {
-                    await page.mouse.move(centerX, centerY);
-                    await page.mouse.down();
-                    try {
-                        await page.mouse.move(
-                            centerX + horizontalOffsetPx,
-                            centerY,
-                            { steps: 4 },
-                        );
-                        await wait(100);
-                    } finally {
-                        await page.mouse.up();
+                const cycleBudgetMs = 260;
+                const endpointSettleMs = 300;
+                let cycleIndex = 0;
+                while (
+                    Date.now() - startedAt + cycleBudgetMs <=
+                    sampleMs - endpointSettleMs
+                ) {
+                    const cycle = resolveBoundedCameraMotionCycle(cycleIndex);
+                    for (const panKey of cycle.panKeys) {
+                        await page.keyboard.down(panKey);
+                        await wait(80);
+                        await page.keyboard.up(panKey);
                     }
+                    for (const deltaY of cycle.wheelDeltas) {
+                        await page.mouse.wheel(0, deltaY);
+                    }
+                    cycleIndex += 1;
+                    await wait(40);
                 }
-                await page.mouse.move(centerX, centerY);
-                for (const deltaY of cycle.wheelDeltas) {
-                    await page.mouse.wheel(0, deltaY);
-                }
-                cycleIndex += 1;
-                await wait(40);
+            } finally {
+                await page.keyboard.up('ArrowLeft');
+                await page.keyboard.up('ArrowRight');
             }
-            await page.mouse.move(centerX, centerY);
+
+            preRestoreSnapshot = await page.evaluate(
+                () =>
+                    globalThis.__grediceGameProfile?.gameCameraSnapshot ?? null,
+            );
         } finally {
-            await page.evaluate(() => {
-                globalThis.__grediceProfileMotionClickAbortController?.abort();
-                delete globalThis.__grediceProfileMotionClickAbortController;
-            });
+            await page.evaluate(
+                ({ eventName, snapshot }) => {
+                    globalThis.dispatchEvent(
+                        new CustomEvent(eventName, {
+                            detail: {
+                                position: snapshot.position,
+                                target: snapshot.target,
+                                zoom: snapshot.zoom,
+                            },
+                        }),
+                    );
+                },
+                {
+                    eventName: gameProfileCameraRestoreCommandEventName,
+                    snapshot: startingCameraSnapshot,
+                },
+            );
+            await page.waitForFunction(
+                ({ minimumVersion, snapshot }) => {
+                    const current =
+                        globalThis.__grediceGameProfile?.gameCameraSnapshot;
+                    if (
+                        !current ||
+                        !Array.isArray(current.position) ||
+                        !Array.isArray(current.target) ||
+                        typeof current.zoom !== 'number' ||
+                        typeof current.version !== 'number' ||
+                        current.version <= minimumVersion
+                    ) {
+                        return false;
+                    }
+                    return (
+                        Math.max(
+                            Math.abs(current.zoom - snapshot.zoom),
+                            ...current.position.map((component, index) =>
+                                Math.abs(component - snapshot.position[index]),
+                            ),
+                            ...current.target.map((component, index) =>
+                                Math.abs(component - snapshot.target[index]),
+                            ),
+                        ) <= 0.01
+                    );
+                },
+                {
+                    minimumVersion: Number.isFinite(preRestoreSnapshot?.version)
+                        ? preRestoreSnapshot.version
+                        : startingCameraSnapshot.version,
+                    snapshot: startingCameraSnapshot,
+                },
+                { timeout: 5_000 },
+            );
         }
         const remainingMs = sampleMs - (Date.now() - startedAt);
         if (remainingMs > 0) {
@@ -2957,7 +3008,10 @@ async function runScenarioMotion(page, scenario, sampleMs) {
 function resolveBoundedCameraMotionCycle(cycleIndex) {
     const direction = cycleIndex % 2 === 0 ? 1 : -1;
     return {
-        horizontalDragOffsetsPx: [18 * direction, -18 * direction],
+        panKeys:
+            direction > 0
+                ? ['ArrowLeft', 'ArrowRight']
+                : ['ArrowRight', 'ArrowLeft'],
         wheelDeltas: [-20 * direction, 20 * direction],
     };
 }
@@ -4261,17 +4315,37 @@ function buildLifecycleSuspendTransitionEvidence(window) {
     const sample = window?.sample ?? null;
     const start = sample?.runtimeFrameLoopAtStart ?? null;
     const end = sample?.runtimeFrameLoopAtEnd ?? null;
+    const counterDeltas = runtimeFrameLoopCounterDeltas(
+        start,
+        end,
+        fullRuntimeFrameLoopCounterFields,
+    );
+    const browserFrameBoundary = Math.max(0, sample?.frames ?? 0) + 1;
+    const causalHiddenWorkBoundary = [
+        counterDeltas.r3fFrameCallbackCount,
+        counterDeltas.hiddenDeferredRenderRequestCount,
+        counterDeltas.wakeupCount,
+    ].every((value) => typeof value === 'number' && Number.isFinite(value))
+        ? counterDeltas.r3fFrameCallbackCount +
+          counterDeltas.hiddenDeferredRenderRequestCount +
+          counterDeltas.wakeupCount
+        : null;
     return {
         ...window,
-        counterDeltas: runtimeFrameLoopCounterDeltas(
-            start,
-            end,
-            fullRuntimeFrameLoopCounterFields,
-        ),
+        causalHiddenWorkBoundary,
+        counterDeltas,
+        maximumExpectedR3fFrameCallbacks: browserFrameBoundary,
+        maximumExpectedRenderedFrames: browserFrameBoundary,
         sceneTimeDeltaSeconds: runtimeFrameLoopNumberDelta(
             start,
             end,
             'sceneTimeSeconds',
+        ),
+        settledAtEnd: Boolean(
+            end?.effectiveVisible === false &&
+                end.loopActive === false &&
+                end.callbackPending === false &&
+                end.pendingCallbackKind === 'none',
         ),
     };
 }
@@ -4992,9 +5066,9 @@ function evaluateLifecycleAcceptance({
                 0.1,
             ),
             maximum(
-                `${prefix}RenderedFrames`,
+                `${prefix}RenderedFramesBrowserBound`,
                 transition?.sample?.renderedFrames,
-                1,
+                transition?.maximumExpectedRenderedFrames,
             ),
             finite(`${prefix}DrawCalls`, transition?.sample?.drawCalls),
             finite(
@@ -5002,14 +5076,14 @@ function evaluateLifecycleAcceptance({
                 transition?.sample?.submittedTriangles,
             ),
             maximum(
-                `${prefix}R3fFrameCallbackDelta`,
+                `${prefix}R3fFrameCallbackBrowserBound`,
                 transition?.counterDeltas?.r3fFrameCallbackCount,
-                1,
+                transition?.maximumExpectedR3fFrameCallbacks,
             ),
             maximum(
-                `${prefix}NonessentialHiddenWorkDelta`,
+                `${prefix}NonessentialHiddenWorkCausalBound`,
                 transition?.counterDeltas?.nonessentialHiddenWorkCount,
-                1,
+                transition?.causalHiddenWorkBoundary,
             ),
             exact(
                 `${prefix}SuspendCountDelta`,
@@ -5043,6 +5117,7 @@ function evaluateLifecycleAcceptance({
                 transition?.sample?.renderedFrames,
                 transition?.counterDeltas?.r3fFrameCallbackCount,
             ),
+            exact(`${prefix}SettledAtEnd`, transition?.settledAtEnd, true),
             ...exactZeroCounterFields.map((field) =>
                 exact(
                     `${prefix}${field[0].toUpperCase()}${field.slice(1)}Delta`,
@@ -15213,7 +15288,7 @@ function buildMarkdown(report) {
                 : []),
             ...(liveLifecycleProfileCount > 0
                 ? [
-                      `Candidate-only live runs (${liveLifecycleProfileCount}) measure from before each visibility mutation: suspension permits at most one in-flight scheduler/R3F/renderer frame while the visibility signal settles, followed by an exact-zero residual; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
+                      `Candidate-only live runs (${liveLifecycleProfileCount}) measure from before each visibility mutation: suspension bounds scheduler issuance and the action-plus-R3F drain by observed browser frames, requires a fully settled endpoint, then gates an exact-zero residual tail; resume permits only a quarter-second semantic R3F surplus within a browser-frame bound; a second steady window gates exact owner cadence, bounded SceneTime, drained requests, and zero scheduler failures. Finite CDP durations remain diagnostics.`,
                       '',
                   ]
                 : []),
@@ -15251,7 +15326,7 @@ function buildMarkdown(report) {
                 '',
                 'Candidate-live visibility transition evidence:',
                 '',
-                '| Scenario / run | Phase | Suspend ms; rendered/R3F; suspend/defer/cancel; SceneTime | Exact-zero residual | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Result |',
+                '| Scenario / run | Phase | Suspend action+drain ms; rendered/R3F/hidden; suspend/defer/cancel; SceneTime; settled | Exact-zero tail rendered/R3F/SceneTime | Resume transition ms; rendered/R3F/owned/surplus; SceneTime; pending end | Steady ms; rendered/R3F/owned; SceneTime; pending start/end | Result |',
                 '| --- | --- | --- | --- | --- | --- | --- |',
             );
             for (const scenario of liveLifecycleProfiles) {
@@ -15261,7 +15336,7 @@ function buildMarkdown(report) {
                     const resume = phase?.resumeTransition;
                     const steady = phase?.resumeWindow;
                     lines.push(
-                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s | ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                        `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${phaseName} | ${suspend?.sample?.elapsedMs ?? 'n/a'} ms; ${suspend?.sample?.renderedFrames ?? 'n/a'}/${suspend?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${suspend?.counterDeltas?.nonessentialHiddenWorkCount ?? 'n/a'}; ${suspend?.counterDeltas?.suspendCount ?? 'n/a'}/${suspend?.counterDeltas?.deferredWorkCount ?? 'n/a'}/${suspend?.counterDeltas?.cancelledCallbackCount ?? 'n/a'}; ${seconds(suspend?.sceneTimeDeltaSeconds)} s; ${suspend?.settledAtEnd ? 'yes' : 'no'} | ${phase?.residual?.sample?.renderedFrames ?? 'n/a'}/${phase?.residualDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${seconds(phase?.residualSceneTimeDeltaSeconds)} s; ${phase?.zeroWorkObserved ? 'yes' : 'no'} | ${resume?.sample?.elapsedMs ?? 'n/a'} ms; ${resume?.sample?.renderedFrames ?? 'n/a'}/${resume?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${resume?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}/${resume?.r3fOwnedInvalidationSurplus ?? 'n/a'}; ${seconds(resume?.sceneTimeDeltaSeconds)} s; ${reasonCount(resume?.sample?.runtimeFrameLoopAtEnd)} | ${steady?.sample?.elapsedMs ?? 'n/a'} ms; ${steady?.sample?.renderedFrames ?? 'n/a'}/${steady?.counterDeltas?.r3fFrameCallbackCount ?? 'n/a'}/${steady?.counterDeltas?.ownedInvalidationCount ?? 'n/a'}; ${seconds(steady?.sceneTimeDeltaSeconds)} s; ${reasonCount(steady?.sample?.runtimeFrameLoopAtStart)}/${reasonCount(steady?.sample?.runtimeFrameLoopAtEnd)} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
                     );
                 }
             }

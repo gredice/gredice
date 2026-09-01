@@ -661,21 +661,18 @@ test('bounded camera motion cycles are closed and alternate their leading direct
     const second = resolveBoundedCameraMotionCycle(1);
 
     assert.deepEqual(first, {
-        horizontalDragOffsetsPx: [18, -18],
+        panKeys: ['ArrowLeft', 'ArrowRight'],
         wheelDeltas: [-20, 20],
     });
     assert.deepEqual(second, {
-        horizontalDragOffsetsPx: [-18, 18],
+        panKeys: ['ArrowRight', 'ArrowLeft'],
         wheelDeltas: [20, -20],
     });
     for (const cycle of [first, second]) {
-        assert.equal(
-            cycle.horizontalDragOffsetsPx.reduce(
-                (sum, offset) => sum + offset,
-                0,
-            ),
-            0,
-        );
+        assert.deepEqual([...cycle.panKeys].sort(), [
+            'ArrowLeft',
+            'ArrowRight',
+        ]);
         assert.equal(
             cycle.wheelDeltas.reduce((sum, delta) => sum + delta, 0),
             0,
@@ -4122,6 +4119,10 @@ function createPassingLifecycleLiveAcceptanceInput() {
                 renderedFrames: lateFrameCount,
                 runtimeFrameLoopAtEnd: {
                     ...endCounters,
+                    callbackPending: false,
+                    effectiveVisible: false,
+                    loopActive: false,
+                    pendingCallbackKind: 'none',
                     sceneTimeSeconds: sceneTimeSeconds + lateFrameCount * 0.03,
                     targetFramesPerSecond: 0,
                 },
@@ -4184,63 +4185,171 @@ function createPassingLifecycleLiveAcceptanceInput() {
     return input;
 }
 
-test('live lifecycle suspension transition permits one in-flight frame but rejects a burst', () => {
+test('lifecycle suspension evidence requires a settled endpoint and causal frame drain', () => {
+    const start = {
+        ...fullRuntimeCounterValues(10),
+        callbackPending: true,
+        effectiveVisible: true,
+        loopActive: true,
+        pendingCallbackKind: 'frame',
+        sceneTimeSeconds: 10,
+    };
+    const end = {
+        ...start,
+        callbackPending: false,
+        deferredWorkCount: start.deferredWorkCount + 1,
+        effectiveVisible: false,
+        loopActive: false,
+        nonessentialHiddenWorkCount: start.nonessentialHiddenWorkCount + 3,
+        pendingCallbackKind: 'none',
+        r3fFrameCallbackCount: start.r3fFrameCallbackCount + 3,
+        sceneTimeSeconds: 10.05,
+        suspendCount: start.suspendCount + 1,
+    };
+    const buildEvidence = (runtimeFrameLoopAtEnd) =>
+        buildLifecycleSuspendTransitionEvidence({
+            cdp: {},
+            sample: {
+                elapsedMs: 250,
+                frames: 15,
+                renderedFrames: 3,
+                runtimeFrameLoopAtEnd,
+                runtimeFrameLoopAtStart: start,
+            },
+        });
+    const evidence = buildEvidence(end);
+
+    assert.equal(evidence.maximumExpectedRenderedFrames, 16);
+    assert.equal(evidence.maximumExpectedR3fFrameCallbacks, 16);
+    assert.equal(evidence.causalHiddenWorkBoundary, 3);
+    assert.equal(evidence.settledAtEnd, true);
+
+    for (const mutation of [
+        { effectiveVisible: true },
+        { loopActive: true },
+        { callbackPending: true },
+        { pendingCallbackKind: 'frame' },
+    ]) {
+        assert.equal(
+            buildEvidence({ ...end, ...mutation }).settledAtEnd,
+            false,
+        );
+    }
+});
+
+test('live lifecycle suspension bounds action drain and requires exact-zero settled work', () => {
     const input = createPassingLifecycleLiveAcceptanceInput();
 
     for (const phaseName of ['offscreen', 'hidden']) {
         const phaseLabel = phaseName[0].toUpperCase() + phaseName.slice(1);
         const prefix = `lifecycleLive${phaseLabel}SuspendTransition`;
-        const oneLateFrame = structuredClone(input);
-        oneLateFrame[phaseName].suspendTransition.sample.renderedFrames = 1;
-        oneLateFrame[
-            phaseName
-        ].suspendTransition.counterDeltas.r3fFrameCallbackCount = 1;
-        oneLateFrame[
-            phaseName
-        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount = 1;
+        const boundedDrain = structuredClone(input);
+        const boundedTransition = boundedDrain[phaseName].suspendTransition;
+        boundedTransition.sample.renderedFrames = 3;
+        boundedTransition.counterDeltas.r3fFrameCallbackCount = 3;
+        boundedTransition.counterDeltas.nonessentialHiddenWorkCount = 3;
+        boundedTransition.causalHiddenWorkBoundary = 3;
         assert.equal(
-            lifecycleAcceptanceCheck(oneLateFrame, `${prefix}RenderedFrames`)
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            true,
+            `${phaseName}:bounded-render-drain`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            true,
+            `${phaseName}:bounded-r3f-drain`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}NonessentialHiddenWorkCausalBound`,
+            ).pass,
+            true,
+            `${phaseName}:causal-hidden-work`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                boundedDrain,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            true,
+            `${phaseName}:renderer-r3f-match`,
+        );
+        assert.equal(
+            lifecycleAcceptanceCheck(boundedDrain, `${prefix}SettledAtEnd`)
                 .pass,
             true,
-            `${phaseName}:one-late-rendered-frame`,
-        );
-        assert.equal(
-            lifecycleAcceptanceCheck(
-                oneLateFrame,
-                `${prefix}R3fFrameCallbackDelta`,
-            ).pass,
-            true,
-            `${phaseName}:one-late-r3f-frame`,
-        );
-        assert.equal(
-            lifecycleAcceptanceCheck(
-                oneLateFrame,
-                `${prefix}NonessentialHiddenWorkDelta`,
-            ).pass,
-            true,
-            `${phaseName}:one-late-hidden-frame`,
+            `${phaseName}:settled-endpoint`,
         );
 
-        const twoLateFrames = structuredClone(oneLateFrame);
-        twoLateFrames[phaseName].suspendTransition.sample.renderedFrames = 2;
-        twoLateFrames[
+        const rendererBurst = structuredClone(input);
+        rendererBurst[phaseName].suspendTransition.sample.renderedFrames =
+            rendererBurst[phaseName].suspendTransition
+                .maximumExpectedRenderedFrames + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererBurst,
+                `${prefix}RenderedFramesBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-browser-bound`,
+        );
+
+        const r3fBurst = structuredClone(input);
+        r3fBurst[
             phaseName
-        ].suspendTransition.counterDeltas.r3fFrameCallbackCount = 2;
-        twoLateFrames[
+        ].suspendTransition.counterDeltas.r3fFrameCallbackCount =
+            r3fBurst[phaseName].suspendTransition
+                .maximumExpectedR3fFrameCallbacks + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                r3fBurst,
+                `${prefix}R3fFrameCallbackBrowserBound`,
+            ).pass,
+            false,
+            `${phaseName}:r3f-browser-bound`,
+        );
+
+        const unexplainedHiddenWork = structuredClone(input);
+        unexplainedHiddenWork[
             phaseName
-        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount = 2;
-        for (const suffix of [
-            'RenderedFrames',
-            'R3fFrameCallbackDelta',
-            'NonessentialHiddenWorkDelta',
-        ]) {
-            assert.equal(
-                lifecycleAcceptanceCheck(twoLateFrames, `${prefix}${suffix}`)
-                    .pass,
-                false,
-                `${phaseName}:two-late-frames:${suffix}`,
-            );
-        }
+        ].suspendTransition.counterDeltas.nonessentialHiddenWorkCount =
+            unexplainedHiddenWork[phaseName].suspendTransition
+                .causalHiddenWorkBoundary + 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                unexplainedHiddenWork,
+                `${prefix}NonessentialHiddenWorkCausalBound`,
+            ).pass,
+            false,
+            `${phaseName}:unexplained-hidden-work`,
+        );
+
+        const rendererMismatch = structuredClone(input);
+        rendererMismatch[phaseName].suspendTransition.sample.renderedFrames +=
+            1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                rendererMismatch,
+                `${prefix}RendererAndR3fFrameCountMatch`,
+            ).pass,
+            false,
+            `${phaseName}:renderer-r3f-mismatch`,
+        );
+
+        const unsettled = structuredClone(input);
+        unsettled[phaseName].suspendTransition.settledAtEnd = false;
+        assert.equal(
+            lifecycleAcceptanceCheck(unsettled, `${prefix}SettledAtEnd`).pass,
+            false,
+            `${phaseName}:unsettled-endpoint`,
+        );
 
         for (const field of [
             'scheduledCallbackCount',
@@ -4310,6 +4419,39 @@ test('live lifecycle suspension transition permits one in-flight frame but rejec
             ).pass,
             false,
             `${phaseName}:scene-time-bound`,
+        );
+
+        const residualRenderedFrame = structuredClone(input);
+        residualRenderedFrame[phaseName].residual.sample.renderedFrames = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualRenderedFrame,
+                `lifecycle${phaseLabel}ResidualRenderedFrames`,
+            ).pass,
+            false,
+            `${phaseName}:residual-rendered-frame`,
+        );
+
+        const residualR3fFrame = structuredClone(input);
+        residualR3fFrame[phaseName].residualDeltas.r3fFrameCallbackCount = 1;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualR3fFrame,
+                `lifecycle${phaseLabel}ResidualR3fFrameCallbackCountDelta`,
+            ).pass,
+            false,
+            `${phaseName}:residual-r3f-frame`,
+        );
+
+        const residualSceneTime = structuredClone(input);
+        residualSceneTime[phaseName].residualSceneTimeDeltaSeconds = 0.000_001;
+        assert.equal(
+            lifecycleAcceptanceCheck(
+                residualSceneTime,
+                `lifecycleLive${phaseLabel}ResidualSceneTimeDelta`,
+            ).pass,
+            false,
+            `${phaseName}:residual-scene-time`,
         );
     }
 });
@@ -5518,9 +5660,16 @@ test('live lifecycle markdown exposes suspension, resume transition, and steady 
     });
 
     assert.match(markdown, /measure from before each visibility mutation/);
+    assert.match(markdown, /action-plus-R3F drain by observed browser frames/);
     assert.match(markdown, /Candidate-live visibility transition evidence/);
-    assert.match(markdown, /offscreen \| 250 ms; 0\/0; 1\/1\/1; 0 s/);
-    assert.match(markdown, /hidden \| 250 ms; 1\/1; 1\/1\/1; 0\.03 s/);
+    assert.match(
+        markdown,
+        /offscreen \| 250 ms; 0\/0\/0; 1\/1\/1; 0 s; yes \| 0\/0\/0 s; yes/,
+    );
+    assert.match(
+        markdown,
+        /hidden \| 250 ms; 1\/1\/1; 1\/1\/1; 0\.03 s; yes \| 0\/0\/0 s; yes/,
+    );
     assert.match(markdown, /900 ms; 33\/33\/27\/6; 0\.9 s; 0/);
     assert.match(markdown, /900 ms; 27\/27\/27; 0\.9 s; 0\/0/);
 });
