@@ -1226,7 +1226,9 @@ that calibration, steady render ownership reports `pendingCallbackKind=timeout`
 with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
 and wakeup counters cover both bounded calibration frames and scheduler
 timeouts, while R3F frame callbacks remain a separate receipt count.
-Display-interval telemetry remains observational and never steers scheduling.
+Display-interval calibration never selects semantic target FPS, cadence phase,
+or invalidation lead. Its only scheduling use is the bounded immediate-follow-up
+classification described above.
 
 Profiler telemetry is pull-based: a synchronous property-read or
 `structuredClone` burst shares one exact scheduler snapshot until its queued

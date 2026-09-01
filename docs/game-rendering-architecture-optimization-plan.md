@@ -948,12 +948,12 @@ Progress:
 - R3F reports a root-scoped receipt from `addAfterEffect`, after WebGL
   submission. The ordinary `useFrame` path therefore retains only shader-time
   updates; scheduler reconciliation cannot shift renderer submission timing.
-- Bounded calibration RAF timestamps are observational telemetry only and never
-  control phase or lead. A scheduler-requested R3F receipt acknowledges the
-  cadence slot already consumed by the due-time callback. External R3F receipts
-  satisfy current work and defer the next owned target by at least one semantic
-  interval, coalescing interaction-driven frames. Late work skips elapsed
-  targets without catch-up.
+- Bounded calibration RAF timestamps never select semantic target FPS, cadence
+  phase, or invalidation lead. The calibrated interval only identifies the
+  first immediate non-owned follow-up to a scheduler-owned receipt. That
+  follow-up consumes the pending semantic slot; subsequent external receipts
+  defer the next owned target without banking cadence debt. Late work skips
+  elapsed targets without catch-up.
 - `SceneTimeProvider` now consumes the Three.js clock's pending delta on
   scheduler activation only to refresh the clock's internal timestamp, then
   restores the previous `elapsedTime`. Initial activation and a long suspended
