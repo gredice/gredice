@@ -573,20 +573,23 @@ export function GardenStructureCollectionRenderer({
 
     const fallbackOnlyPlanCacheKey =
         assetBatches.length === 0 ? plan.cacheKey : null;
-    const profileFallbackGeometry = useMemo(() => new BoxGeometry(1, 1, 1), []);
+    const profileFallbackGeometry = useMemo(
+        () => (profileMetricsEnabled ? new BoxGeometry(1, 1, 1) : undefined),
+        [profileMetricsEnabled],
+    );
     useEffect(
-        () => () => profileFallbackGeometry.dispose(),
+        () => () => profileFallbackGeometry?.dispose(),
         [profileFallbackGeometry],
     );
     const profileMetrics = useMemo(
         () =>
-            profileMetricsEnabled
+            profileFallbackGeometry
                 ? {
                       fallbackGeometry: profileFallbackGeometry,
                       previewInstanceCount: 0,
                   }
                 : undefined,
-        [profileFallbackGeometry, profileMetricsEnabled],
+        [profileFallbackGeometry],
     );
     useEffect(() => {
         if (fallbackOnlyPlanCacheKey !== null) {

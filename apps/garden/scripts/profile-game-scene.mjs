@@ -1142,7 +1142,7 @@ const gardenBuildingScenarios = [
         ...constrainedAutoQualityDevice,
     },
     {
-        name: 'game-building-house-avatar-door-navigation-constrained-mobile',
+        name: 'game-building-house-two-view-navigation-constrained-mobile',
         path: '/debug/profile/game?mode=details&quality=auto&avatar=1&avatarProfile=third-person&building=1&buildingFixture=house&controls=0&hud=1&staticSceneCache=legacy',
         viewport: { width: 390, height: 844 },
         dpr: 3,
@@ -8313,6 +8313,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             gardenStructurePlanCacheLookupDurationMs: numberOrNull(
                 metadata.gardenStructurePlanCacheLookupDurationMs,
             ),
+            gardenStructurePlanCacheLookupDurationMaxMs: numberOrNull(
+                metadata.gardenStructurePlanCacheLookupDurationMaxMs,
+            ),
             gardenStructurePreviewAttributeBytes: numberOrNull(
                 metadata.gardenStructurePreviewAttributeBytes,
             ),
@@ -9412,7 +9415,7 @@ function evaluateGardenBuildingAcceptance({
         ),
         maximum(
             'buildingPlanCacheLookupDurationMs',
-            runtime?.gardenStructurePlanCacheLookupDurationMs,
+            runtime?.gardenStructurePlanCacheLookupDurationMaxMs,
             100,
         ),
         maximum(
@@ -14632,7 +14635,7 @@ function buildMarkdown(report) {
             'Production-build Chromium evidence only; physical-device frame, memory, thermal, touch, and GPU-resource proof remains separate.',
             'Owned/public WebGL traversal and renderer-free 2D coverage are separate correctness proofs; this table claims timing only for the listed owned-game profiler scenarios.',
             '',
-            '| Scenario | Fixture / state | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Compile max / navigation max / current lookup / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
+            '| Scenario | Fixture / state | Cells / edges / roofs / props | Visible / exterior-suppressed props | Actual draws prod/fallback/preview | Production vertices / triangles | Unique attr / index / texture bytes | Instance buffers prod/fallback/preview | GLB requests / status / body | Resource duration / encoded / transfer | Miss resolution max / navigation max / prepare+lookup max/current / cache outcome | Avatar collision steps / p95 / max | Editor actions p95/max / pointer max | Motion | Result |',
             '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |',
         );
         for (const scenario of buildingProfiles) {
@@ -14648,7 +14651,7 @@ function buildMarkdown(report) {
                         ? `${motionResult.kind}: ${motionResult.collisionStepCount ?? 0} steps; ${(motionResult.legs ?? []).map((leg) => `${leg.view} ${round(leg.distance) ?? 0} m`).join(', ')}`
                         : (profile.motion ?? 'none');
             lines.push(
-                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+                `| ${scenario.name} | ${profile.fixture} / ${profile.mode}${profile.workload ? ` / ${profile.workload}` : ''} | ${runtime.gardenStructureFootprintCellCount ?? 0} / ${runtime.gardenStructureEdgeCount ?? 0} / ${runtime.gardenStructureRoofRegionCount ?? 0} / ${runtime.gardenStructurePropCount ?? 0} | ${runtime.gardenStructureVisiblePropCount ?? 0} / ${runtime.gardenStructureExteriorSuppressedPropCount ?? 0} | ${runtime.gardenStructureProductionDrawCount ?? 0} / ${runtime.gardenStructureFallbackDrawCount ?? 0} / ${runtime.gardenStructurePreviewDrawCount ?? 0} | ${runtime.gardenStructureProductionVertexCount ?? 0} / ${runtime.gardenStructureProductionTriangleCount ?? 0} | ${runtime.gardenStructureProductionAttributeBytes ?? 0} / ${runtime.gardenStructureProductionIndexBytes ?? 0} / ${runtime.gardenStructureProductionTextureEstimatedBytes ?? 0} B | ${runtime.gardenStructureProductionInstanceBufferBytes ?? 0} / ${runtime.gardenStructureFallbackInstanceBufferBytes ?? 0} / ${runtime.gardenStructurePreviewInstanceBufferBytes ?? 0} B | ${runtime.gardenStructureAssetRequestCount ?? 0} / ${runtime.gardenStructureAssetResponseStatus ?? 'none'} / ${runtime.gardenStructureAssetResponseBodyBytes ?? 0} B | ${round(runtime.gardenStructureAssetResourceDurationMs) ?? 'n/a'} ms / ${runtime.gardenStructureAssetResourceEncodedBodyBytes ?? 'n/a'} / ${runtime.gardenStructureAssetResourceTransferBytes ?? 'n/a'} B | ${round(runtime.gardenStructureCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureNavigationCompileDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructurePlanCacheLookupDurationMaxMs) ?? 0}/${round(runtime.gardenStructurePlanCacheLookupDurationMs) ?? 0} ms / ${runtime.gardenStructurePlanCacheOutcome ?? 'none'} | ${runtime.gardenStructureAvatarCollisionStepCount ?? 0} / ${round(runtime.gardenStructureAvatarCollisionStepDurationP95Ms) ?? 0} ms / ${round(runtime.gardenStructureAvatarCollisionStepDurationMaxMs) ?? 0} ms | ${runtime.gardenStructureEditorActionCount ?? 0}: ${round(runtime.gardenStructureEditorActionDurationP95Ms) ?? 0}/${round(runtime.gardenStructureEditorActionDurationMaxMs) ?? 0} ms / ${round(runtime.gardenStructureEditorPointerResolutionMaxMs) ?? 0} ms | ${motion} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
             );
         }
     }

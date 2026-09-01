@@ -15,9 +15,10 @@ test('measures capture through the R3F mesh target and outer bubble', async ({
     });
     const fixture = await mount(<GardenStructurePointerProfileFixture />);
     const result = fixture;
-    await page.waitForTimeout(250);
-    expect(pageErrors).toEqual([]);
-    expect(consoleErrors).toEqual([]);
+    await expect(result).toHaveAttribute(
+        'data-disabled-handlers-preserved',
+        'true',
+    );
     await expect(result).toHaveAttribute('data-canvas-ready', 'true');
 
     await result.locator('canvas').click({ position: { x: 160, y: 120 } });
@@ -36,4 +37,6 @@ test('measures capture through the R3F mesh target and outer bubble', async ({
     expect(durationMs).toBeGreaterThanOrEqual(5);
     expect(durationMs).toBeLessThan(100);
     expect(totalMs).toBe(durationMs);
+    expect(pageErrors).toEqual([]);
+    expect(consoleErrors).toEqual([]);
 });

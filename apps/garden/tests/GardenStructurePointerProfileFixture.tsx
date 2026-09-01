@@ -57,6 +57,13 @@ export function GardenStructurePointerProfileFixture() {
                 eventsRef.current = ['capture'];
             },
         });
+    const disabledClick = useCallback(() => undefined, []);
+    const disabledClickCapture = useCallback(() => undefined, []);
+    const disabledHandlers = useGardenStructurePointerProfileHandlers({
+        enabled: false,
+        onClick: disabledClick,
+        onClickCapture: disabledClickCapture,
+    });
 
     return (
         // This fixture mirrors GameScene's passive Canvas profiler boundary.
@@ -65,6 +72,12 @@ export function GardenStructurePointerProfileFixture() {
         <div
             className="h-[240px] w-[320px]"
             data-canvas-ready={canvasReady ? 'true' : 'false'}
+            data-disabled-handlers-preserved={
+                disabledHandlers.handleClick === disabledClick &&
+                disabledHandlers.handleClickCapture === disabledClickCapture
+                    ? 'true'
+                    : 'false'
+            }
             data-pointer-count={snapshot.count}
             data-pointer-duration-max-ms={snapshot.durationMaxMs}
             data-pointer-duration-total-ms={snapshot.durationTotalMs}

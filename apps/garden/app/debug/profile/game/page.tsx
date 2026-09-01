@@ -131,7 +131,7 @@ function resolveGardenBuildingAvatarSpawnPoint(
     fixture: ReturnType<typeof resolveGameProfileGardenBuildingFixture>,
 ) {
     if (fixture === 'house') {
-        // Starts just inside the south doorway of the profile placement.
+        // Starts inside the south side of the representative profile house.
         return { x: 0, z: 1.25 };
     }
     if (fixture === 'worst-case') {

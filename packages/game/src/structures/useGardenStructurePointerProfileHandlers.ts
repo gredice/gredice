@@ -34,5 +34,7 @@ export function useGardenStructurePointerProfileHandlers({
         [enabled, onClick],
     );
 
-    return { handleClick, handleClickCapture };
+    return enabled
+        ? { handleClick, handleClickCapture }
+        : { handleClick: onClick, handleClickCapture: onClickCapture };
 }

@@ -118,11 +118,13 @@ describe('garden structure compile profile maxima', () => {
             recordGardenStructureCompileDurations({
                 cacheOutcome: 'miss',
                 compileDurationMs: 120,
+                lookupDurationMs: 120,
                 navigationCompileDurationMs: 120,
             });
             recordGardenStructureCompileDurations({
                 cacheOutcome: 'hit',
                 compileDurationMs: 0,
+                lookupDurationMs: 20,
                 navigationCompileDurationMs: 0,
             });
 
@@ -142,6 +144,16 @@ describe('garden structure compile profile maxima', () => {
             assert.equal(
                 readGameProfileMetadata()
                     ?.gardenStructureNavigationCompileDurationMaxMs,
+                120,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructurePlanCacheLookupDurationMs,
+                20,
+            );
+            assert.equal(
+                readGameProfileMetadata()
+                    ?.gardenStructurePlanCacheLookupDurationMaxMs,
                 120,
             );
             setGardenStructureProfileTelemetryEnabled(false);

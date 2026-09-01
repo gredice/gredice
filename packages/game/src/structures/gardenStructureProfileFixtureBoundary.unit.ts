@@ -73,6 +73,14 @@ describe('garden structure profile fixture boundary', () => {
             /createWorstCaseGardenStructureDocument/,
         );
         assert.doesNotMatch(gameScene, /createGardenStructureTemplateSeed/);
+        assert.match(
+            gameScene,
+            /const startedAt = gardenStructureProfileTelemetryEnabled\s*\? performance\.now\(\)\s*: 0;/u,
+        );
+        assert.match(
+            gameScene,
+            /durationMs: gardenStructureProfileTelemetryEnabled\s*\? performance\.now\(\) - startedAt\s*: 0/u,
+        );
         assert.doesNotMatch(productionBarrel, /benchmarkStructureCompiler/);
         assert.match(serverBoundary, /import ['"]server-only['"]/u);
         assert.doesNotMatch(
@@ -102,8 +110,18 @@ describe('garden structure profile fixture boundary', () => {
             /recordGardenStructurePointerResolution/u,
         );
         assert.doesNotMatch(
+            assetRenderer,
+            /measureGardenStructureKitV1ProfileMetrics/u,
+        );
+        assert.doesNotMatch(assetRenderer, /useGameState/u);
+        assert.match(
+            assetRenderer,
+            /lazy\(\(\)\s*=>\s*import\(['"]\.\/GardenStructureKitV1ProfileMetricsReporter['"]\)/u,
+        );
+        assert.doesNotMatch(
             verticalSlice,
             /recordGardenStructurePointerResolution/u,
         );
+        assert.match(verticalSlice, /if \(!profileMetricsEnabled\) \{/u);
     });
 });

@@ -430,6 +430,9 @@ export function GardenStructureVerticalSlice({
     );
 
     useEffect(() => {
+        if (!profileMetricsEnabled) {
+            return;
+        }
         updateGameProfileMetadata({
             gardenStructureBlockedTransitionCount:
                 plan.counts.blockedTransitions,
@@ -461,6 +464,7 @@ export function GardenStructureVerticalSlice({
             });
     }, [
         plan.counts,
+        profileMetricsEnabled,
         renderedPropCount,
         totalPropCount,
         transparentSurfaceCount,

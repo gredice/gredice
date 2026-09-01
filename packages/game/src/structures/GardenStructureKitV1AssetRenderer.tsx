@@ -3,6 +3,7 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import {
     Component,
+    lazy,
     type ReactNode,
     Suspense,
     useCallback,
@@ -18,9 +19,7 @@ import {
     Matrix4,
     Object3D,
 } from 'three';
-import { updateGameProfileMetadata } from '../scene/gameProfileMetadata';
-import { useGameState } from '../useGameState';
-import { resolveGameAssetModelUrl, useGameGLTF } from '../utils/useGameGLTF';
+import { useGameGLTF } from '../utils/useGameGLTF';
 import {
     type GardenStructureKitV1AssetResolution,
     type GardenStructureKitV1ResolvedPrimitive,
@@ -28,8 +27,13 @@ import {
     resolveGardenStructureKitV1BatchGeometry,
 } from './gardenStructureKitV1AssetResolver';
 import { gardenStructureKitV1Metadata } from './gardenStructureKitV1Manifest';
-import { measureGardenStructureKitV1ProfileMetrics } from './gardenStructureKitV1ProfileMetrics';
 import type { GardenStructureBatchGeometryKind } from './structurePlanTypes';
+
+const GardenStructureKitV1ProfileMetricsReporter = lazy(() =>
+    import('./GardenStructureKitV1ProfileMetricsReporter').then((module) => ({
+        default: module.GardenStructureKitV1ProfileMetricsReporter,
+    })),
+);
 
 export type GardenStructureKitV1RuntimeBatch = Readonly<{
     geometryId: string;
@@ -106,7 +110,6 @@ type ResolvedDraw = Readonly<{
 }>;
 
 type GardenStructureKitV1ResolvedProfileMetrics = Readonly<{
-    assetUrl: string;
     fallbackGeometry: BufferGeometry;
     previewInstanceCount: number;
 }>;
@@ -332,7 +335,6 @@ function GardenStructureKitV1ResolvedInstances({
     getVisibleInstanceIndices,
     namePrefix,
     onSelectInstance,
-    profileMetrics,
     renderFallback,
     resolution,
     selectedInstanceId,
@@ -348,7 +350,6 @@ function GardenStructureKitV1ResolvedInstances({
         batch: GardenStructureKitV1RuntimeBatch,
         sourceIndex: number,
     ) => void;
-    profileMetrics?: GardenStructureKitV1ResolvedProfileMetrics;
     renderFallback: (batchIds: readonly string[]) => ReactNode;
     resolution: GardenStructureKitV1AssetResolution;
     selectedInstanceId: string | null;
@@ -357,122 +358,6 @@ function GardenStructureKitV1ResolvedInstances({
         () => resolveDraws(batches, resolution),
         [batches, resolution],
     );
-    const measuredProfile = useMemo(
-        () =>
-            profileMetrics
-                ? measureGardenStructureKitV1ProfileMetrics({
-                      batches,
-                      fallbackGeometry: profileMetrics.fallbackGeometry,
-                      getVisibleInstanceCount: (batch) =>
-                          getVisibleInstanceIndices?.(batch).length ??
-                          batch.instanceIds.length,
-                      previewInstanceCount: profileMetrics.previewInstanceCount,
-                      resolution,
-                  })
-                : null,
-        [batches, getVisibleInstanceIndices, profileMetrics, resolution],
-    );
-    useEffect(() => {
-        if (!measuredProfile || !profileMetrics) {
-            return;
-        }
-        const { fallback, preview, production } = measuredProfile;
-        updateGameProfileMetadata({
-            gardenStructureAssetBytesResident:
-                production.attributeBytes +
-                production.indexBytes +
-                production.textureEstimatedBytes +
-                production.instanceBufferBytes,
-            gardenStructureAssetResolutionIssueCount:
-                measuredProfile.resolutionIssueCount,
-            gardenStructureAssetResolutionStatus: 'resolved',
-            gardenStructureAssetUnresolvedBatchCount:
-                measuredProfile.unresolvedBatchCount,
-            gardenStructureAssetUrl: profileMetrics.assetUrl,
-            gardenStructureFallbackAttributeBytes: fallback.attributeBytes,
-            gardenStructureFallbackDrawCount: fallback.drawCount,
-            gardenStructureFallbackIndexBytes: fallback.indexBytes,
-            gardenStructureFallbackInstanceBufferBytes:
-                fallback.instanceBufferBytes,
-            gardenStructureFallbackInstanceCount: fallback.instanceCount,
-            gardenStructureFallbackTriangleCount: fallback.triangleCount,
-            gardenStructureFallbackVertexCount: fallback.vertexCount,
-            gardenStructurePreviewAttributeBytes: preview.attributeBytes,
-            gardenStructurePreviewDrawCount: preview.drawCount,
-            gardenStructurePreviewIndexBytes: preview.indexBytes,
-            gardenStructurePreviewInstanceBufferBytes:
-                preview.instanceBufferBytes,
-            gardenStructurePreviewInstanceCount: preview.instanceCount,
-            gardenStructurePreviewTriangleCount: preview.triangleCount,
-            gardenStructurePreviewVertexCount: preview.vertexCount,
-            gardenStructureProductionAttributeBytes: production.attributeBytes,
-            gardenStructureProductionDrawCount: production.drawCount,
-            gardenStructureProductionIndexBytes: production.indexBytes,
-            gardenStructureProductionInstanceBufferBytes:
-                production.instanceBufferBytes,
-            gardenStructureProductionInstanceCount: production.instanceCount,
-            gardenStructureProductionOpaqueDrawCount:
-                production.opaqueDrawCount,
-            gardenStructureProductionTextureCount: production.textureCount,
-            gardenStructureProductionTextureEstimatedBytes:
-                production.textureEstimatedBytes,
-            gardenStructureProductionTransparentDrawCount:
-                production.transparentDrawCount,
-            gardenStructureProductionTriangleCount: production.triangleCount,
-            gardenStructureProductionVertexCount: production.vertexCount,
-            gardenStructureRenderBatchCount:
-                production.drawCount + fallback.drawCount + preview.drawCount,
-            gardenStructureRenderInstanceCount:
-                production.instanceCount +
-                fallback.instanceCount +
-                preview.instanceCount,
-            gardenStructureRenderTriangleCount:
-                production.triangleCount +
-                fallback.triangleCount +
-                preview.triangleCount,
-            gardenStructureRenderVertexCount:
-                production.vertexCount +
-                fallback.vertexCount +
-                preview.vertexCount,
-        });
-        return () =>
-            updateGameProfileMetadata({
-                gardenStructureAssetBytesResident: 0,
-                gardenStructureAssetResolutionIssueCount: 0,
-                gardenStructureAssetResolutionStatus: 'idle',
-                gardenStructureAssetUnresolvedBatchCount: 0,
-                gardenStructureAssetUrl: '',
-                gardenStructureFallbackAttributeBytes: 0,
-                gardenStructureFallbackDrawCount: 0,
-                gardenStructureFallbackIndexBytes: 0,
-                gardenStructureFallbackInstanceBufferBytes: 0,
-                gardenStructureFallbackInstanceCount: 0,
-                gardenStructureFallbackTriangleCount: 0,
-                gardenStructureFallbackVertexCount: 0,
-                gardenStructurePreviewAttributeBytes: 0,
-                gardenStructurePreviewDrawCount: 0,
-                gardenStructurePreviewIndexBytes: 0,
-                gardenStructurePreviewInstanceBufferBytes: 0,
-                gardenStructurePreviewInstanceCount: 0,
-                gardenStructurePreviewTriangleCount: 0,
-                gardenStructurePreviewVertexCount: 0,
-                gardenStructureProductionAttributeBytes: 0,
-                gardenStructureProductionDrawCount: 0,
-                gardenStructureProductionIndexBytes: 0,
-                gardenStructureProductionInstanceBufferBytes: 0,
-                gardenStructureProductionInstanceCount: 0,
-                gardenStructureProductionOpaqueDrawCount: 0,
-                gardenStructureProductionTextureCount: 0,
-                gardenStructureProductionTextureEstimatedBytes: 0,
-                gardenStructureProductionTransparentDrawCount: 0,
-                gardenStructureProductionTriangleCount: 0,
-                gardenStructureProductionVertexCount: 0,
-                gardenStructureRenderBatchCount: 0,
-                gardenStructureRenderInstanceCount: 0,
-                gardenStructureRenderTriangleCount: 0,
-                gardenStructureRenderVertexCount: 0,
-            });
-    }, [measuredProfile, profileMetrics]);
     const commonProps = {
         baseHeight,
         castShadows,
@@ -522,14 +407,11 @@ function GardenStructureKitV1ResolvedInstances({
 
 type GardenStructureKitV1LoadedInstancesProps = Omit<
     Parameters<typeof GardenStructureKitV1ResolvedInstances>[0],
-    'profileMetrics' | 'resolution'
+    'resolution'
 > &
     Readonly<{
         onInstancesReady?: () => void;
-        profileMetrics?: Omit<
-            GardenStructureKitV1ResolvedProfileMetrics,
-            'assetUrl'
-        >;
+        profileMetrics?: GardenStructureKitV1ResolvedProfileMetrics;
     }>;
 
 export function GardenStructureKitV1LoadedInstances({
@@ -537,7 +419,6 @@ export function GardenStructureKitV1LoadedInstances({
     profileMetrics,
     ...props
 }: GardenStructureKitV1LoadedInstancesProps) {
-    const appBaseUrl = useGameState((state) => state.appBaseUrl);
     const gltf = useGameGLTF('GardenStructureKitV1');
     const resolution = useMemo(
         () => resolveGardenStructureKitV1Asset(gltf.scene),
@@ -547,25 +428,27 @@ export function GardenStructureKitV1LoadedInstances({
     useEffect(() => {
         onInstancesReady?.();
     }, [onInstancesReady]);
-    const resolvedProfileMetrics = useMemo(
-        () =>
-            profileMetrics
-                ? {
-                      ...profileMetrics,
-                      assetUrl: resolveGameAssetModelUrl(
-                          appBaseUrl,
-                          'GardenStructureKitV1',
-                      ),
-                  }
-                : undefined,
-        [appBaseUrl, profileMetrics],
-    );
-
     return (
-        <GardenStructureKitV1ResolvedInstances
-            {...props}
-            profileMetrics={resolvedProfileMetrics}
-            resolution={resolution}
-        />
+        <>
+            <GardenStructureKitV1ResolvedInstances
+                {...props}
+                resolution={resolution}
+            />
+            {profileMetrics ? (
+                <Suspense fallback={null}>
+                    <GardenStructureKitV1ProfileMetricsReporter
+                        batches={props.batches}
+                        fallbackGeometry={profileMetrics.fallbackGeometry}
+                        getVisibleInstanceIndices={
+                            props.getVisibleInstanceIndices
+                        }
+                        previewInstanceCount={
+                            profileMetrics.previewInstanceCount
+                        }
+                        resolution={resolution}
+                    />
+                </Suspense>
+            ) : null}
+        </>
     );
 }

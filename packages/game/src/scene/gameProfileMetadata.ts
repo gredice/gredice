@@ -385,6 +385,7 @@ export type GameProfileMetadata = {
     gardenStructurePlanCacheEstimatedBytes?: number;
     gardenStructurePlanCacheEvictionCount?: number;
     gardenStructurePlanCacheHitCount?: number;
+    gardenStructurePlanCacheLookupDurationMaxMs?: number;
     gardenStructurePlanCacheMissCount?: number;
     gardenStructurePlanCacheOutcome?: 'hit' | 'miss' | 'none';
     gardenStructurePlanCacheLookupDurationMs?: number;
@@ -622,6 +623,8 @@ export function setGardenStructureProfileTelemetryEnabled(enabled: boolean) {
         gardenStructureEditorPointerResolutionTotalMs: 0,
         gardenStructureNavigationCompileDurationMaxMs: 0,
         gardenStructureNavigationCompileDurationMs: 0,
+        gardenStructurePlanCacheLookupDurationMaxMs: 0,
+        gardenStructurePlanCacheLookupDurationMs: 0,
     });
 }
 
@@ -705,10 +708,12 @@ export function recordGardenStructureAvatarCollisionStep(durationMs: number) {
 export function recordGardenStructureCompileDurations({
     cacheOutcome,
     compileDurationMs,
+    lookupDurationMs,
     navigationCompileDurationMs,
 }: Readonly<{
     cacheOutcome: 'hit' | 'miss' | 'none';
     compileDurationMs: number;
+    lookupDurationMs: number;
     navigationCompileDurationMs: number;
 }>) {
     if (!gardenStructureProfileTelemetryEnabled) {
@@ -720,7 +725,13 @@ export function recordGardenStructureCompileDurations({
     const navigationDurationValid =
         Number.isFinite(navigationCompileDurationMs) &&
         navigationCompileDurationMs >= 0;
-    if (!compileDurationValid && !navigationDurationValid) {
+    const lookupDurationValid =
+        Number.isFinite(lookupDurationMs) && lookupDurationMs >= 0;
+    if (
+        !compileDurationValid &&
+        !navigationDurationValid &&
+        !lookupDurationValid
+    ) {
         return;
     }
 
@@ -748,6 +759,15 @@ export function recordGardenStructureCompileDurations({
                           0,
                       navigationCompileDurationMs,
                   ),
+              }
+            : {}),
+        ...(lookupDurationValid
+            ? {
+                  gardenStructurePlanCacheLookupDurationMaxMs: Math.max(
+                      current?.gardenStructurePlanCacheLookupDurationMaxMs ?? 0,
+                      lookupDurationMs,
+                  ),
+                  gardenStructurePlanCacheLookupDurationMs: lookupDurationMs,
               }
             : {}),
     });

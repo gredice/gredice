@@ -110,6 +110,7 @@ import {
     type GardenStructureCanvasEdge,
     getGardenStructureCanvasEdgeChain,
 } from './editor/gardenStructureCanvasInteraction';
+import { scheduleGardenStructureEditorProfileFrame } from './editor/gardenStructureEditorProfileFrame';
 import { useGardenStructureExistingStructureAutosave } from './editor/useGardenStructureExistingStructureAutosave';
 import {
     gardenStructureBuildModeControlClassName as controlClassName,
@@ -421,21 +422,30 @@ export function GardenStructureVerticalSliceHud({
     const setStoredSession = useGameState(
         (state) => state.setStructureBuildSession,
     );
+    const profileMetricsEnabled = profileFixture !== undefined;
     const setSession = useCallback(
         (
             nextSession: GardenStructureBuildSession | null,
             action = 'editor-update',
         ) => {
+            if (!profileMetricsEnabled) {
+                setStoredSession(nextSession);
+                return;
+            }
             const startedAt = performance.now();
             setStoredSession(nextSession);
-            window.requestAnimationFrame(() =>
-                recordGardenStructureEditorAction(
-                    action,
-                    performance.now() - startedAt,
-                ),
-            );
+            scheduleGardenStructureEditorProfileFrame({
+                enabled: true,
+                onFrame: () =>
+                    recordGardenStructureEditorAction(
+                        action,
+                        performance.now() - startedAt,
+                    ),
+                requestFrame: (callback) =>
+                    window.requestAnimationFrame(callback),
+            });
         },
-        [setStoredSession],
+        [profileMetricsEnabled, setStoredSession],
     );
     const gameStateStore = useGameStateStore();
     const mutations = useGardenStructureMutations(garden?.id);

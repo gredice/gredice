@@ -533,12 +533,25 @@ estimated texture bytes, and instance-buffer bytes. Semantic fallback and
 editor-preview work remain separate columns. The network witness records the
 exact GLB URL, response status and body length together with same-origin
 Resource Timing sizes and milestones; the no-building row must remain zero.
-Compilation time is miss-only, cache lookup time is separate, and editor p95
-uses nearest-rank `ceil(n * 0.95) - 1`. Avatar collision-step samples wrap one
-complete production horizontal-movement resolution, including bounded substeps
-and slide retries. They remain default-off with the server-gated building
-fixture, accumulate in a fixed-size histogram, and report count, p95, maximum,
-and total duration without retaining positions or movement input.
+Each plan resolution prepares, validates, canonicalizes, and keys the document
+exactly once. Prepare-plus-cache-lookup duration starts before that work and
+ends after `cache.get`, so a hit exposes its complete hot-path cost. Miss
+resolution starts at the same point and ends after
+`compilePreparedGardenStructurePlan`, so its maximum includes the preparation
+subset instead of hiding it behind a separate near-zero cache lookup. Current
+and maximum lookup duration, miss-resolution maximum, and hit/miss outcome are
+reported separately. Editor p95 uses nearest-rank `ceil(n * 0.95) - 1`.
+Avatar collision-step samples wrap one complete production horizontal-movement
+resolution, including bounded substeps and slide retries. They remain
+default-off with the server-gated building fixture, accumulate in a fixed-size
+histogram, and report count, p95, maximum, and total duration without retaining
+positions or movement input.
+
+Outside the exact server-gated profiler, plan and navigation resolution do not
+read the profile clock, editor updates schedule no profile RAF, and the Canvas
+boundary preserves the original click handlers. The saved-structure collection
+allocates no profile fallback geometry, and the lazy kit metrics reporter (with
+its measurement code and `appBaseUrl` subscription) is not mounted.
 
 The saved-scene production layer derives one visibility set from each compiled
 structure's conservative world bounds when the camera matrix changes, and
@@ -561,11 +574,12 @@ before its sample; use
 run for the full soak window.
 
 The automated matrix also includes a constrained-mobile furnished 100-cell
-solid-wall workload for dense-bucket collision cost and a separate house
-doorway round trip that moves in third-person and returns in first-person. The
-owned/public WebGL component proofs and renderer-free 2D contract remain
-correctness evidence rather than invented performance rows; the building report
-labels that boundary explicitly.
+solid-wall workload for dense-bucket collision cost and separate representative
+house movement that travels in third-person and returns in first-person. It
+does not claim a doorway crossing because the timed row has no portal/interior
+witness. The owned/public WebGL component proofs cover doorway correctness, and
+the renderer-free 2D contract remains correctness evidence rather than an
+invented performance row; the building report labels that boundary explicitly.
 
 ### 2026-08-30 building production profile
 
@@ -613,7 +627,7 @@ ceiling.
 | Workload | Total / held-key collision steps | Collision p95 / max | Collision primitives / buckets | Movement witness | Result |
 | --- | ---: | ---: | ---: | --- | --- |
 | Furnished 100-cell solid wall | 440 / 33 | 0.15 / 2.0 ms | 304 / 220 | Third-person push stopped after 0.14 m | pass |
-| House doorway round trip | 499 / 65 | 0.15 / 0.2 ms | 11 / 21 | 1.34 m third-person, then 1.23 m first-person | pass |
+| House two-view movement | 499 / 65 | 0.15 / 0.2 ms | 11 / 21 | 1.34 m third-person, then 1.23 m first-person | pass |
 
 The timed house row is one representative owned-garden orientation. Existing
 four-rotation semantic movement checks and the owned/public production-WebGL

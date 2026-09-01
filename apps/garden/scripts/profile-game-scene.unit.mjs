@@ -373,7 +373,7 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
             'game-building-interior-edit-cutaway-constrained-mobile',
             'game-building-greenhouse-rain-constrained-mobile',
             'game-building-worst-case-furnished-constrained-mobile',
-            'game-building-house-avatar-door-navigation-constrained-mobile',
+            'game-building-house-two-view-navigation-constrained-mobile',
             'game-building-worst-case-furnished-cutaway-constrained-mobile',
             'game-building-worst-case-edit-churn-constrained-mobile',
             'game-building-enter-exit-lifecycle-constrained-mobile',
@@ -403,11 +403,11 @@ test('building scenario set covers gated normal, editing, worst-case, weather, a
     assert.equal(worstCase?.navigatorMetrics.hardwareConcurrency, 4);
     assert.match(worstCase?.path ?? '', /avatar=1/);
     assert.equal(worstCase?.buildingProfile.motion, 'avatar-navigation');
-    const avatarDoorway = scenarios.find((scenario) =>
-        scenario.name.includes('avatar-door-navigation'),
+    const twoViewNavigation = scenarios.find((scenario) =>
+        scenario.name.includes('two-view-navigation'),
     );
     assert.deepEqual(
-        avatarDoorway?.buildingProfile.avatarNavigation.legs.map(
+        twoViewNavigation?.buildingProfile.avatarNavigation.legs.map(
             (leg) => leg.view,
         ),
         ['third-person', 'first-person'],
@@ -529,6 +529,7 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             gardenStructureNavigationCompileDurationMs: 2.1,
             gardenStructureNavigationCompileDurationMaxMs: 2.1,
             gardenStructurePlanCacheLookupDurationMs: 0.1,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0.1,
             gardenStructurePlanCacheEvictionCount: 0,
             gardenStructureFallbackDrawCount: 0,
             gardenStructurePreviewDrawCount: 1,
@@ -581,6 +582,39 @@ test('building acceptance enforces bounded privacy-safe telemetry and editor bud
             actual: 101,
             limit: 100,
             name: 'buildingCompileDurationMs',
+            pass: false,
+        },
+    );
+
+    const lookupMaximumRegression = evaluateGardenBuildingAcceptance({
+        apiRequests: [],
+        requested: {
+            building: '1',
+            buildingFixture: 'house',
+            buildingProfile: {
+                expected: {
+                    edges: 15,
+                    footprintCells: 12,
+                    props: 1,
+                    roofs: 2,
+                },
+                fixture: 'house',
+                mode: 'normal',
+            },
+        },
+        runtime: {
+            gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 101,
+        },
+    });
+    assert.deepEqual(
+        lookupMaximumRegression.checks.find(
+            (check) => check.name === 'buildingPlanCacheLookupDurationMs',
+        ),
+        {
+            actual: 101,
+            limit: 100,
+            name: 'buildingPlanCacheLookupDurationMs',
             pass: false,
         },
     );
@@ -774,6 +808,7 @@ test('building acceptance keeps an empty structure distinct from production GLB 
             gardenStructureNavigationCompileDurationMaxMs: 0.1,
             gardenStructurePlanCacheEvictionCount: 0,
             gardenStructurePlanCacheLookupDurationMs: 0,
+            gardenStructurePlanCacheLookupDurationMaxMs: 0,
             gardenStructurePreviewDrawCount: 0,
             gardenStructureProductionAttributeBytes: 0,
             gardenStructureProductionDrawCount: 0,
