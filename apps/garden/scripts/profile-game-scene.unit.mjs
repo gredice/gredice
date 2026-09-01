@@ -62,6 +62,7 @@ import {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
@@ -93,6 +94,37 @@ test('full scheduler snapshots are sampled per RAF only for runtime-owner accept
             'plant-sway': 30,
         }),
         120,
+    );
+});
+
+test('scheduler scalar telemetry is observed per RAF only when acceptance needs maxima', () => {
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            runtimeOwnersProfile: false,
+        }),
+        false,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: { frameRateClass: 'ambient' },
+            runtimeOwnersProfile: false,
+        }),
+        true,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: { frameRateClass: 'interactive' },
+            runtimeOwnersProfile: false,
+        }),
+        false,
+    );
+    assert.equal(
+        shouldObserveRuntimeFrameLoopDuringRaf({
+            buildingProfile: undefined,
+            runtimeOwnersProfile: true,
+        }),
+        true,
     );
 });
 

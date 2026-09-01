@@ -141,6 +141,16 @@ function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
     );
 }
 
+function shouldObserveRuntimeFrameLoopDuringRaf({
+    buildingProfile,
+    runtimeOwnersProfile,
+}) {
+    return (
+        runtimeOwnersProfile === true ||
+        buildingProfile?.frameRateClass === 'ambient'
+    );
+}
+
 const staticIdleExpectedGardenId = 99_999;
 const staticIdleExpectedGardenStackCount = 12;
 const staticIdleExpectedGardenBlockCount = 15;
@@ -8136,6 +8146,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenario.runtimeOwnersProfile === true ? runtimeOwnerLeaseRates : null;
     const runtimeOwnerLeaseRafSnapshotsEnabled =
         shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations);
+    const runtimeFrameLoopRafObservationsEnabled =
+        shouldObserveRuntimeFrameLoopDuringRaf(scenario);
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
@@ -8151,6 +8163,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 outlineProfileTelemetryAvailable,
                 placementProfileEventName,
                 placementProfileRequest,
+                runtimeFrameLoopRafObservationsEnabled,
                 runtimeOwnerLeaseExpectations,
                 runtimeOwnerLeaseRafSnapshotsEnabled,
                 sampleMs,
@@ -8832,7 +8845,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                     recordEffectiveDpr();
                     recordGameCameraMotion();
                     recordGeneratedPlantVisibility();
-                    recordRuntimeFrameLoopState();
+                    if (runtimeFrameLoopRafObservationsEnabled) {
+                        recordRuntimeFrameLoopState();
+                    }
                     const rainParticleCount =
                         globalThis.__grediceGameProfile?.rainParticleCount;
                     if (
@@ -9339,6 +9354,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 outlineProfileState.telemetryAvailable,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
+            runtimeFrameLoopRafObservationsEnabled,
             runtimeOwnerLeaseExpectations,
             runtimeOwnerLeaseRafSnapshotsEnabled,
             sampleMs,
@@ -18460,6 +18476,7 @@ export {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
 };
