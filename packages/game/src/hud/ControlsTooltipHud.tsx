@@ -4,6 +4,9 @@ import { IconButton } from '@gredice/ui/IconButton';
 import { Check, GamepadDirectional } from '@gredice/ui/icons';
 import { Popper } from '@gredice/ui/Popper';
 import { useEffect, useState } from 'react';
+import { observeDocumentVisibility } from '../hooks/documentVisibilityObserver';
+import { VisibilityAwareInterval } from '../hooks/visibilityAwareInterval';
+import { useGameSceneRuntimeActive } from '../scene/sceneRuntimeActivity';
 import { ButtonGreen } from '../shared-ui/ButtonGreen';
 import type { DeviceType } from './controls-tooltip';
 import { ControlsVisualization } from './controls-tooltip';
@@ -74,6 +77,7 @@ export function ControlsTooltipHud({
     const [deviceType, setDeviceType] = useState<DeviceType>('desktop');
     const [open, setOpen] = useState(false);
     const [phase, setPhase] = useState(0.75);
+    const runtimeActive = useGameSceneRuntimeActive();
 
     useEffect(() => {
         const syncDeviceType = () => {
@@ -97,12 +101,27 @@ export function ControlsTooltipHud({
     useEffect(() => {
         if (!open || prefersReducedMotion()) return;
 
-        const interval = window.setInterval(() => {
-            setPhase((current) => current + 0.12);
-        }, 50);
+        const interval = new VisibilityAwareInterval({
+            clearInterval: (handle) => window.clearInterval(Number(handle)),
+            documentVisible: !document.hidden,
+            intervalMs: 50,
+            runtimeActive,
+            setInterval: (callback, intervalMs) =>
+                window.setInterval(callback, intervalMs),
+            tick: () => setPhase((current) => current + 0.12),
+        });
+        const stopVisibilityTracking = observeDocumentVisibility({
+            documentTarget: document,
+            onVisibilityChange: (visible) =>
+                interval.setDocumentVisible(visible),
+            windowTarget: window,
+        });
 
-        return () => window.clearInterval(interval);
-    }, [open]);
+        return () => {
+            stopVisibilityTracking();
+            interval.dispose();
+        };
+    }, [open, runtimeActive]);
 
     const dismiss = () => {
         setOpen(false);

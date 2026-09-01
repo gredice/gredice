@@ -6,6 +6,7 @@ import {
     isDayNightCycleDisabled,
 } from '../utils/dayNightCycle';
 import { resolveDayNightTheme } from './dayNightTheme';
+import { startThemeManagerClock } from './themeManagerClock';
 
 // Zagreb, Croatia coordinates
 const defaultLocation = { lat: 45.739, lon: 16.572 };
@@ -55,11 +56,18 @@ export function useThemeManager() {
             }
         }
 
-        sync();
-        const interval = setInterval(sync, 60_000);
+        const stopClock = startThemeManagerClock({
+            clearTimeout: (handle) => globalThis.clearTimeout(Number(handle)),
+            documentTarget: document,
+            now: Date.now,
+            setTimeout: (callback, delayMs) =>
+                globalThis.setTimeout(callback, delayMs),
+            sync,
+            windowTarget: window,
+        });
         window.addEventListener(DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT, sync);
         return () => {
-            clearInterval(interval);
+            stopClock();
             window.removeEventListener(
                 DAY_NIGHT_CYCLE_DISABLED_CHANGE_EVENT,
                 sync,
