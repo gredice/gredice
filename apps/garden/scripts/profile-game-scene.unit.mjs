@@ -7,6 +7,7 @@ import {
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
+    buildGardenSwitchBudgets,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleResumeTransitionEvidence,
@@ -4732,6 +4733,40 @@ test('fauna acceptance requires the exact fixture, census, command, network, and
     assert.match(markdown, /cow:2\/2/);
     assert.match(markdown, /CowShelter:-6:-1:1/);
     assert.match(markdown, /entropy 5\.2/);
+});
+
+test('garden-switch budgets apply the absolute retained-heap ceiling', () => {
+    const acceptance = {
+        checks: [
+            { name: 'gardenSwitchMaximumFrameStallWithinMs', pass: true },
+            { name: 'gardenSwitchFixture', pass: true },
+        ],
+        pass: true,
+    };
+    const passing = buildGardenSwitchBudgets({
+        acceptance,
+        memory: { retainedJsHeapMb: 319 },
+    });
+    const failing = buildGardenSwitchBudgets({
+        acceptance,
+        memory: { retainedJsHeapMb: 321 },
+    });
+
+    assert.equal(passing.budget.pass, true);
+    assert.equal(passing.performanceBudget.pass, true);
+    assert.deepEqual(
+        passing.budget.checks.find(
+            (check) => check.name === 'retainedJsHeapMb',
+        ),
+        {
+            actual: 319,
+            limit: 320,
+            name: 'retainedJsHeapMb',
+            pass: true,
+        },
+    );
+    assert.equal(failing.budget.pass, false);
+    assert.equal(failing.performanceBudget.pass, false);
 });
 
 test('garden-switch acceptance fails closed across fixtures, interaction, visuals, identity, timing, and resources', () => {

@@ -4985,23 +4985,16 @@ async function measureGardenSwitchScenario(
             requested,
         });
         const finalArrival = arrivals.at(-1);
-        const transitionChecks = acceptance.checks.filter(
-            (check) =>
-                check.name.includes('FrameStall') ||
-                check.name.includes('WithinMs') ||
-                check.name.includes('AfterFadeOutMs') ||
-                check.name.includes('SettleDurationMs'),
-        );
-        const budget = {
-            checks: acceptance.checks,
-            pass: acceptance.pass,
-        };
+        const { budget, performanceBudget } = buildGardenSwitchBudgets({
+            acceptance,
+            memory,
+        });
         return {
             acceptance,
             apiErrors: apiErrors.slice(0, 8),
             apiRequests: apiRequests.slice(0, 8),
             budget,
-            budgetName: 'gardenSwitch',
+            budgetName: 'gameHighTarget',
             canvasReadyMs,
             consoleMessages: consoleMessages.slice(0, 8),
             cdp: null,
@@ -5012,10 +5005,7 @@ async function measureGardenSwitchScenario(
             name: scenario.name,
             pageErrors: pageErrors.slice(0, 8),
             path: scenario.path,
-            performanceBudget: {
-                checks: transitionChecks,
-                pass: transitionChecks.every((check) => check.pass),
-            },
+            performanceBudget,
             requested,
             runtime: {
                 ...finalArrival?.fixture,
@@ -11141,15 +11131,7 @@ function evaluateBudget(sample, budget, memory = null) {
         name,
         pass: actual <= limit,
     }));
-    if (budget.jsHeapMb !== undefined) {
-        const actual = memory?.retainedJsHeapMb ?? null;
-        checks.push({
-            actual,
-            limit: budget.jsHeapMb,
-            name: 'retainedJsHeapMb',
-            pass: Number.isFinite(actual) && actual <= budget.jsHeapMb,
-        });
-    }
+    checks.push(...evaluateRetainedHeapBudget(memory, budget).checks);
     for (const name of [
         'drawCallsPerFrame',
         'drawCallsPerRenderedFrame',
@@ -11181,6 +11163,49 @@ function evaluateBudget(sample, budget, memory = null) {
     return {
         checks,
         pass: checks.every((check) => check.pass),
+    };
+}
+
+function evaluateRetainedHeapBudget(memory, budget) {
+    if (budget.jsHeapMb === undefined) {
+        return { checks: [], pass: true };
+    }
+    const actual = memory?.retainedJsHeapMb ?? null;
+    const check = {
+        actual,
+        limit: budget.jsHeapMb,
+        name: 'retainedJsHeapMb',
+        pass: Number.isFinite(actual) && actual <= budget.jsHeapMb,
+    };
+    return {
+        checks: [check],
+        pass: check.pass,
+    };
+}
+
+function buildGardenSwitchBudgets({ acceptance, memory }) {
+    const retainedHeapBudget = evaluateRetainedHeapBudget(
+        memory,
+        budgets.gameHighTarget,
+    );
+    const transitionChecks = acceptance.checks.filter(
+        (check) =>
+            check.name.includes('FrameStall') ||
+            check.name.includes('WithinMs') ||
+            check.name.includes('AfterFadeOutMs') ||
+            check.name.includes('SettleDurationMs'),
+    );
+    return {
+        budget: {
+            checks: [...retainedHeapBudget.checks, ...acceptance.checks],
+            pass: retainedHeapBudget.pass && acceptance.pass,
+        },
+        performanceBudget: {
+            checks: [...retainedHeapBudget.checks, ...transitionChecks],
+            pass:
+                retainedHeapBudget.pass &&
+                transitionChecks.every((check) => check.pass),
+        },
     };
 }
 
@@ -19200,6 +19225,7 @@ export {
     buildAdaptiveHighComparisons,
     buildCrossTierMedians,
     buildGardenBuildingMatchedBaselineComparison,
+    buildGardenSwitchBudgets,
     buildGardenSwitchSummary,
     buildHighTargetMedians,
     buildLifecycleResumeTransitionEvidence,
