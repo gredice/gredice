@@ -62,8 +62,39 @@ import {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
 } from './profile-game-scene.mjs';
+
+test('full scheduler snapshots are sampled per RAF only for runtime-owner acceptance', () => {
+    const countRafSnapshotReads = (runtimeOwnerLeaseExpectations) => {
+        let readCount = 0;
+        const readFullSnapshot = () => {
+            readCount += 1;
+            return { renderLeaseSummaries: [] };
+        };
+        for (let frame = 0; frame < 120; frame += 1) {
+            if (
+                shouldReadRuntimeOwnerLeaseRafSnapshot(
+                    runtimeOwnerLeaseExpectations,
+                )
+            ) {
+                readFullSnapshot();
+            }
+        }
+        return readCount;
+    };
+
+    assert.equal(countRafSnapshotReads(null), 0);
+    assert.equal(countRafSnapshotReads(undefined), 0);
+    assert.equal(
+        countRafSnapshotReads({
+            'camera-interaction': 60,
+            'plant-sway': 30,
+        }),
+        120,
+    );
+});
 
 const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);

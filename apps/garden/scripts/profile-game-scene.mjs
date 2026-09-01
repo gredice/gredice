@@ -132,6 +132,14 @@ const runtimeOwnerLeaseRates = {
     'camera-interaction': 60,
     ...runtimeOwnerPersistentLeaseRates,
 };
+
+function shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations) {
+    return (
+        runtimeOwnerLeaseExpectations !== null &&
+        runtimeOwnerLeaseExpectations !== undefined
+    );
+}
+
 const staticIdleExpectedGardenId = 99_999;
 const staticIdleExpectedGardenStackCount = 12;
 const staticIdleExpectedGardenBlockCount = 15;
@@ -8106,6 +8114,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         scenario.weatherSurfaceTransition ?? null;
     const placementProfileRequest = scenario.placementProfile ?? null;
     const animalProfileCommandRequest = scenario.animalProfileCommand ?? null;
+    const runtimeOwnerLeaseExpectations =
+        scenario.runtimeOwnersProfile === true ? runtimeOwnerLeaseRates : null;
+    const runtimeOwnerLeaseRafSnapshotsEnabled =
+        shouldReadRuntimeOwnerLeaseRafSnapshot(runtimeOwnerLeaseExpectations);
     const samplePromise = page.evaluate(
         async (sampleOptions) => {
             const {
@@ -8122,6 +8134,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 placementProfileEventName,
                 placementProfileRequest,
                 runtimeOwnerLeaseExpectations,
+                runtimeOwnerLeaseRafSnapshotsEnabled,
                 sampleMs,
                 weatherTransitionEventName,
                 weatherTransitionRequest,
@@ -8790,10 +8803,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 const step = (now) => {
                     intervals.push(now - last);
                     last = now;
-                    recordRuntimeOwnerLeaseObservation(
-                        'raf',
-                        readRuntimeFrameLoopSnapshot(),
-                    );
+                    if (runtimeOwnerLeaseRafSnapshotsEnabled) {
+                        recordRuntimeOwnerLeaseObservation(
+                            'raf',
+                            readRuntimeFrameLoopSnapshot(),
+                        );
+                    }
                     recordAdaptiveHighState();
                     recordActorGroundingShadowSpeciesCounts();
                     recordEffectiveDpr();
@@ -9306,10 +9321,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 outlineProfileState.telemetryAvailable,
             placementProfileEventName: gameProfilePlacementCommandEventName,
             placementProfileRequest,
-            runtimeOwnerLeaseExpectations:
-                scenario.runtimeOwnersProfile === true
-                    ? runtimeOwnerLeaseRates
-                    : null,
+            runtimeOwnerLeaseExpectations,
+            runtimeOwnerLeaseRafSnapshotsEnabled,
             sampleMs,
             weatherTransitionEventName: gameProfileWeatherTransitionEventName,
             weatherTransitionRequest,
@@ -18447,6 +18460,7 @@ export {
     resolveChromiumGraphicsBackend,
     resolveScenarios,
     shouldFailProfileRun,
+    shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
 };
 
