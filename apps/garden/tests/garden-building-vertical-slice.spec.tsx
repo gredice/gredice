@@ -87,6 +87,33 @@ async function readStructureCameraTarget(page: Page) {
     });
 }
 
+async function waitForStructureCameraReady(page: Page) {
+    await page.waitForFunction(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Reflect.get(profile, 'gardenStructureCameraMode') === 'building' &&
+            [
+                'gardenStructureCameraTargetX',
+                'gardenStructureCameraTargetY',
+                'gardenStructureCameraTargetZ',
+                'gardenStructureProjectedLeft',
+            ].every((key) => Number.isFinite(Number(Reflect.get(profile, key))))
+        );
+    });
+}
+
+async function waitForBrowserAnimationFrames(page: Page, frameCount: number) {
+    await page.evaluate(async (count) => {
+        for (let frame = 0; frame < count; frame += 1) {
+            await new Promise<void>((resolve) => {
+                requestAnimationFrame(() => resolve());
+            });
+        }
+    }, frameCount);
+}
+
 async function dispatchCanvasTouchGesture({
     cancel = true,
     context,
@@ -799,12 +826,32 @@ test('supports keyboard authoring, reduced motion, Escape unwinding, and focus r
     test.setTimeout(30_000);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(buildingKeyboardProfileUrl, { waitUntil: 'networkidle' });
+    await page.waitForFunction(() => {
+        const profile = Reflect.get(window, '__grediceGameProfile');
+        return (
+            typeof profile === 'object' &&
+            profile !== null &&
+            Number.isFinite(
+                Number(Reflect.get(profile, 'gardenStructureCameraTargetX')),
+            )
+        );
+    });
+    const cameraTargetBeforeBuildMode = await readStructureCameraTarget(page);
 
     const entry = page.getByTestId('garden-structure-build-entry');
     await entry.focus();
     await page.keyboard.press('Enter');
     const done = page.getByTestId('garden-structure-build-done');
     await expect(done).toBeFocused();
+    await waitForStructureCameraReady(page);
+    await expect
+        .poll(async () =>
+            Math.abs(
+                (await readStructureCameraTarget(page)).x -
+                    cameraTargetBeforeBuildMode.x,
+            ),
+        )
+        .toBeGreaterThan(0.01);
     await page.evaluate(() => {
         const activeElement = document.activeElement;
         if (activeElement instanceof HTMLElement) {
@@ -813,16 +860,28 @@ test('supports keyboard authoring, reduced motion, Escape unwinding, and focus r
     });
     const cameraTargetBeforeNudge = await readStructureCameraTarget(page);
     await page.keyboard.down('ArrowRight');
-    await page.waitForTimeout(250);
-    await page.keyboard.up('ArrowRight');
-    await expect(page.getByText('Položaj 0, -1.')).toBeVisible();
-    const cameraTargetAfterNudge = await readStructureCameraTarget(page);
-    expect(cameraTargetAfterNudge.x).toBeCloseTo(
-        cameraTargetBeforeNudge.x + 1,
-        4,
-    );
-    expect(cameraTargetAfterNudge.y).toBeCloseTo(cameraTargetBeforeNudge.y, 4);
-    expect(cameraTargetAfterNudge.z).toBeCloseTo(cameraTargetBeforeNudge.z, 4);
+    try {
+        await expect(page.getByText('Položaj 0, -1.')).toBeVisible();
+        await expect
+            .poll(async () => (await readStructureCameraTarget(page)).x)
+            .toBeCloseTo(cameraTargetBeforeNudge.x + 1, 4);
+        await waitForBrowserAnimationFrames(page, 5);
+        const cameraTargetAfterNudge = await readStructureCameraTarget(page);
+        expect(cameraTargetAfterNudge.x).toBeCloseTo(
+            cameraTargetBeforeNudge.x + 1,
+            4,
+        );
+        expect(cameraTargetAfterNudge.y).toBeCloseTo(
+            cameraTargetBeforeNudge.y,
+            4,
+        );
+        expect(cameraTargetAfterNudge.z).toBeCloseTo(
+            cameraTargetBeforeNudge.z,
+            4,
+        );
+    } finally {
+        await page.keyboard.up('ArrowRight');
+    }
 
     const structureTool = page.getByRole('button', {
         name: 'Konstrukcija',
