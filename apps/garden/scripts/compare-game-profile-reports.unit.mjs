@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
 import {
+    buildCrossTierCheckNameInventory,
     buildMarkdown,
     compareConfirmedReports,
     compareReports,
@@ -593,6 +594,22 @@ function regressionScenario(baseName, profileRun) {
             runtimeFrameLoopTargetFramesPerSecondAtStart: 30,
             runtimeFrameLoopTargetFramesPerSecondMax: 30,
         };
+        const checkNames = buildCrossTierCheckNameInventory(baseName);
+        scenario.acceptance = {
+            checks: checkNames.acceptance.map((name) => ({ name, pass: true })),
+            pass: true,
+        };
+        scenario.performanceBudget = {
+            checks: checkNames.performance.map((name) => ({
+                name,
+                pass: true,
+            })),
+            pass: true,
+        };
+        scenario.budget = {
+            checks: checkNames.budget.map((name) => ({ name, pass: true })),
+            pass: true,
+        };
     }
     if (baseName === 'game-fauna-heavy-day-interaction-desktop') {
         scenario.requested.faunaProfile = true;
@@ -641,6 +658,225 @@ function regressionReportPair() {
         candidate: regressionReport(candidateCommit),
     };
 }
+
+function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
+    const requiredFailures = new Set([
+        'crossTierSampleStartActiveLeaseCount',
+        'crossTierSemanticLeaseTopologyAvailable',
+        'crossTierSemanticStartLeaseTopologyCount',
+        'crossTierSemanticEndLeaseTopologyCount',
+        'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+        'crossTierRenderedFps',
+    ]);
+    for (const scenario of reportValue.scenarios) {
+        if (!scenario.baseName.startsWith('game-cross-tier-')) {
+            continue;
+        }
+        scenario.runtime.runtimeFrameLoop.activeLeaseCount = 0;
+        scenario.sample.renderedFps = 37;
+        scenario.sample.runtimeFrameLoopActiveLeaseCountAtEnd = 0;
+        scenario.sample.runtimeFrameLoopActiveLeaseCountMin = 0;
+        scenario.sample.runtimeFrameLoopActiveLeaseCountAtStart = 0;
+        scenario.sample.runtimeFrameLoopActiveLeaseCountMax = 0;
+        scenario.sample.runtimeFrameLoopAtEnd = {
+            activeLeaseCount: 0,
+            effectiveVisible: true,
+            loopActive: true,
+            targetFramesPerSecond: 30,
+        };
+        scenario.sample.runtimeFrameLoopAtStart = structuredClone(
+            scenario.sample.runtimeFrameLoopAtEnd,
+        );
+        scenario.sample.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount =
+            null;
+        scenario.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd = null;
+        scenario.sample.runtimeFrameLoopSemanticLeaseTopologyAtStart = null;
+        scenario.acceptance = {
+            checks: scenario.acceptance.checks.map((check) => ({
+                ...check,
+                pass: !requiredFailures.has(check.name),
+            })),
+            pass: false,
+        };
+        scenario.budget = {
+            checks: scenario.budget.checks.map((check) => ({
+                ...check,
+                pass: !requiredFailures.has(check.name),
+            })),
+            pass: false,
+        };
+    }
+    return reportValue;
+}
+
+test('legacy heartbeat baseline contract preserves strict candidate evidence', () => {
+    const pair = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+
+    const rejectedWithoutContract = compareReports(
+        pair.baseline,
+        pair.candidate,
+    );
+    assert.equal(rejectedWithoutContract.status, 'invalid');
+    assert.match(
+        rejectedWithoutContract.validationErrors.join('\n'),
+        /acceptance\.pass is not true|active lease counts/,
+    );
+
+    const acceptedLegacyBaseline = compareReports(
+        pair.baseline,
+        pair.candidate,
+        { baselineSchedulerContract: 'legacy-heartbeat-v1' },
+    );
+    assert.equal(acceptedLegacyBaseline.status, 'needs-rerun');
+    assert.equal(acceptedLegacyBaseline.comparable, true);
+    assert.deepEqual(acceptedLegacyBaseline.validationErrors, []);
+    assert.equal(
+        acceptedLegacyBaseline.baseline.schedulerContract,
+        'legacy-heartbeat-v1',
+    );
+    assert.equal(
+        acceptedLegacyBaseline.candidate.schedulerContract,
+        'canonical-v1',
+    );
+});
+
+test('legacy heartbeat baseline contract passes only as a strict symmetric matrix', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        {
+            baselineConfirmation,
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
+    assert.equal(comparison.diagnostic, false);
+    assert.equal(
+        comparison.baselineConfirmation.schedulerContract,
+        'legacy-heartbeat-v1',
+    );
+    assert.match(
+        buildMarkdown(comparison),
+        /Baseline scheduler contract: legacy-heartbeat-v1/,
+    );
+});
+
+test('legacy heartbeat baseline contract rejects drift and cannot relax candidates', async (t) => {
+    const cases = {
+        'deleted passed baseline witness': ({ baseline }) => {
+            const scenario = baseline.scenarios.find((value) =>
+                value.baseName.startsWith('game-cross-tier-'),
+            );
+            scenario.acceptance.checks = scenario.acceptance.checks.filter(
+                ({ name }) => name !== 'crossTierScreenshotEntropy',
+            );
+            scenario.budget.checks = scenario.budget.checks.filter(
+                ({ name }) => name !== 'crossTierScreenshotEntropy',
+            );
+        },
+        'symmetric deleted witness': ({ baseline, candidate }) => {
+            for (const reportValue of [baseline, candidate]) {
+                const scenario = reportValue.scenarios.find((value) =>
+                    value.baseName.startsWith('game-cross-tier-'),
+                );
+                scenario.acceptance.checks = scenario.acceptance.checks.filter(
+                    ({ name }) => name !== 'crossTierApiErrors',
+                );
+                scenario.budget.checks = scenario.budget.checks.filter(
+                    ({ name }) => name !== 'crossTierApiErrors',
+                );
+            }
+        },
+        'extra baseline failure': ({ baseline }) => {
+            const scenario = baseline.scenarios.find((value) =>
+                value.baseName.startsWith('game-cross-tier-'),
+            );
+            scenario.acceptance.checks.push({
+                name: 'crossTierScreenshotWitnessValid',
+                pass: false,
+            });
+            scenario.budget.checks.push({
+                name: 'crossTierScreenshotWitnessValid',
+                pass: false,
+            });
+        },
+        'legacy lease drift': ({ baseline }) => {
+            const scenario = baseline.scenarios.find((value) =>
+                value.baseName.startsWith('game-cross-tier-'),
+            );
+            scenario.sample.runtimeFrameLoopActiveLeaseCountMax = 1;
+        },
+        'legacy FPS underdelivery': ({ baseline }) => {
+            const scenario = baseline.scenarios.find((value) =>
+                value.baseName.startsWith('game-cross-tier-'),
+            );
+            scenario.sample.renderedFps = 27;
+        },
+        'legacy subject equals harness': ({ baseline }) => {
+            baseline.provenance.harness.commit =
+                baseline.provenance.subject.commit;
+        },
+        'candidate uses legacy evidence': ({ candidate }) => {
+            applyLegacyHeartbeatSchedulerEvidence(candidate);
+        },
+    };
+
+    for (const [name, mutate] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+            mutate(pair);
+            const comparison = compareReports(pair.baseline, pair.candidate, {
+                baselineSchedulerContract: 'legacy-heartbeat-v1',
+            });
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+        });
+    }
+
+    const pair = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+    const partial = compareReports(pair.baseline, pair.candidate, {
+        allowPartial: true,
+        baselineSchedulerContract: 'legacy-heartbeat-v1',
+    });
+    assert.equal(partial.status, 'invalid');
+    assert.match(
+        partial.validationErrors.join('\n'),
+        /requires the complete canonical manifest/,
+    );
+    const sameSourceMode = compareReports(pair.baseline, pair.candidate, {
+        allowSameSource: true,
+        baselineSchedulerContract: 'legacy-heartbeat-v1',
+    });
+    assert.equal(sameSourceMode.status, 'invalid');
+    assert.match(
+        sameSourceMode.validationErrors.join('\n'),
+        /cannot use same-source comparison mode/,
+    );
+
+    const bypassPair = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(bypassPair.baseline);
+    applyLegacyHeartbeatSchedulerEvidence(bypassPair.candidate);
+    const candidateBypass = compareReports(
+        bypassPair.baseline,
+        bypassPair.candidate,
+        {
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+            candidateSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+    assert.equal(candidateBypass.status, 'invalid');
+});
 
 test('canonical regression manifest is required outside diagnostic mode', () => {
     const partial = reportPair();
@@ -2811,6 +3047,8 @@ test('argument parser supports positional and named paths without threshold over
         'before.json',
         '--baseline-confirmation',
         'before-repeat.json',
+        '--baseline-scheduler-contract',
+        'legacy-heartbeat-v1',
         '--candidate',
         'after.json',
         '--confirmation',
@@ -2818,6 +3056,7 @@ test('argument parser supports positional and named paths without threshold over
     ]);
     assert.equal(named.baselinePath, resolve('before.json'));
     assert.equal(named.baselineConfirmationPath, resolve('before-repeat.json'));
+    assert.equal(named.baselineSchedulerContract, 'legacy-heartbeat-v1');
     assert.equal(named.confirmationPath, resolve('after-repeat.json'));
     assert.throws(
         () =>
@@ -2850,6 +3089,28 @@ test('argument parser supports positional and named paths without threshold over
     assert.throws(
         () => parseArgs(['--median-frame-limit', '1.5']),
         /Unknown option/,
+    );
+    assert.throws(
+        () =>
+            parseArgs([
+                '--baseline-scheduler-contract',
+                'unknown-v1',
+                '--allow-partial',
+                'before.json',
+                'after.json',
+            ]),
+        /Unsupported baseline scheduler contract/,
+    );
+    assert.throws(
+        () =>
+            parseArgs([
+                '--baseline-scheduler-contract',
+                'legacy-heartbeat-v1',
+                '--allow-same-source',
+                'before.json',
+                'after.json',
+            ]),
+        /cannot be combined/,
     );
 });
 

@@ -404,8 +404,10 @@ headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
 Capture the complete regression bundle before and after a runtime change with
-the same machine, browser, options, deterministic fixtures, and one exact clean
-profiler harness. The harness is the checkout that runs
+the same machine, browser, measurement options, deterministic fixtures, and one
+exact clean profiler harness. The baseline-only `GAME_PROFILE_FAIL_ON_BUDGET=0`
+below changes process exit policy, not any measured option; the comparator owns
+the exact legacy failure allowlist. The harness is the checkout that runs
 `profile-game-scene.mjs`; select its commit after the profiling contract is
 final, then keep that checkout at the same clean `HEAD` for all four reports.
 Do not run the baseline reports with the profiler script from the baseline
@@ -425,6 +427,11 @@ commits. That difference is intentional: only the subject changes across the
 comparison, while the harness remains fixed. This split is valid only for an
 externally supplied server. A managed profiler build still requires its subject
 and harness commits to match and treats a difference as stale-build provenance.
+When the selected `origin/main` subject predates semantic lease topology and R3F
+receipt telemetry, capture it as a `legacy-heartbeat-v1` scheduler baseline. That
+contract is baseline-only: the comparator requires the old zero-lease/null-
+topology signature and allowlists only the resulting scheduler checks, while the
+candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
 state `false`; the current comparison contract is `1`. Run only one subject
@@ -458,6 +465,8 @@ output directories so no report can overwrite another:
 cd apps/garden
 test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
 
+# The legacy scheduler is expected to fail only its superseded scheduler checks;
+# the symmetric comparator validates that exact failure set.
 GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
@@ -471,7 +480,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
-GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
 
@@ -490,7 +499,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
-GAME_PROFILE_FAIL_ON_BUDGET=1 \
+GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
 
@@ -538,6 +547,7 @@ cd apps/garden
 pnpm run profile:game:compare \
   --baseline test-results/game-profile/baseline/latest.json \
   --baseline-confirmation test-results/game-profile/baseline-confirmation/latest.json \
+  --baseline-scheduler-contract legacy-heartbeat-v1 \
   --candidate test-results/game-profile/candidate/latest.json \
   --confirmation test-results/game-profile/candidate-confirmation/latest.json \
   --out-dir test-results/game-profile/comparisons/baseline-to-candidate
@@ -565,6 +575,21 @@ but do not fail the confirmed result. The exported single-pair comparison API
 also marks its output diagnostic and returns `needs-rerun` for an otherwise
 passing canonical pair; only the complete confirmed API can emit a
 non-diagnostic pass.
+
+`legacy-heartbeat-v1` is not a partial or same-source escape hatch. It requires
+the full symmetric 2x2 matrix, two independently captured clean baseline
+reports, a baseline subject different from the clean harness, positive semantic
+RAF observation coverage, an observed 30 FPS target, stable zero legacy lease
+counts, absent lease topology, and an unavailable R3F receipt. The only accepted
+raw cross-tier failures are the five checks directly implied by that old
+telemetry shape plus `crossTierRenderedFps` when the old heartbeat oversubmits
+outside 28–32 FPS. Any visual, fixture, quality, retained-heap, CPU/GPU, request,
+console, lifecycle, or other budget failure still invalidates the baseline.
+The complete cross-tier acceptance, performance, and composite check-name
+inventories are fixed by the comparator, so deleting a passing witness from one
+or every report is also invalid.
+Candidate reports cannot select this contract through either the CLI or public
+comparison API.
 
 Each repeat must preserve its subject commit, harness commit, fixtures, options,
 runtime, and environment while using a different report path and valid capture
@@ -633,10 +658,11 @@ seven-arrival workflow described above.
 
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
-relative boundary. These are profiler noise floors, not product budgets; each
-raw run must still pass the scenario's checked absolute performance budget
-before either report is comparable. The comparator validates both the aggregate
-budget outcome and every recorded absolute-budget check in every raw run.
+relative boundary. These are profiler noise floors, not product budgets. Every
+canonical candidate run and every non-legacy baseline check must pass its
+checked absolute performance budget before the reports are comparable. The
+comparator validates both aggregate and individual raw checks; the explicit
+`legacy-heartbeat-v1` exception is limited to the scheduler failure set above.
 For cross-tier scenarios it also derives the required requested quality,
 Automatic device inputs, DPR cap, decoration density, resolved tier, shadow-map
 size, and shadow state from the canonical scenario name; two reports cannot
@@ -655,7 +681,8 @@ measurements. The default gate requires the complete
 scenario, and it rejects an output directory that contains either input report.
 `--allow-partial` and `--allow-same-source` exist only for local harness
 diagnostics, are marked as diagnostic in the generated report, and must not be
-used as release evidence.
+used as release evidence. Neither can be combined with the legacy scheduler
+baseline contract.
 
 Run every profiler scenario together:
 
@@ -1481,10 +1508,12 @@ Required release evidence before merge:
 - `4717-origin-main-vs-candidate/baseline-1` and `baseline-2` are independent
   captures of the same clean `origin/main` subject, collected by the same exact
   clean profiler harness used for `candidate-final-1` and `candidate-final-2`.
-  The candidate pair independently captures the same clean candidate subject
-  and the same 39 canonical runs. `comparison-final` is the fail-closed
-  symmetric 2x2 result; “independent” means separate profiler executions and
-  reports, not different harness commits.
+  The origin/main pair uses the exact `legacy-heartbeat-v1` baseline contract;
+  its superseded scheduler checks may fail only as described above. The
+  candidate pair independently captures the same clean candidate subject and
+  the same 39 canonical runs under `canonical-v1`. `comparison-final` is the
+  fail-closed symmetric 2x2 result; “independent” means separate profiler
+  executions and reports, not different harness commits.
 - Garden-switch comparison keeps the first short new-context GPU window visible
   as a diagnostic and hard-gates aggregate elapsed GPU occupancy across all
   seven arrivals, alongside the later per-arrival occupancy gates. It does not

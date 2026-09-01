@@ -22,6 +22,12 @@ const retainedHeapMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
 const crossTierRuntimeFrameLoopObservationMode =
     'separate-semantic-raf-window-v1';
+const canonicalSchedulerBaselineContract = 'canonical-v1';
+const legacyHeartbeatSchedulerBaselineContract = 'legacy-heartbeat-v1';
+const schedulerBaselineContracts = new Set([
+    canonicalSchedulerBaselineContract,
+    legacyHeartbeatSchedulerBaselineContract,
+]);
 const regressionScenarioSet = 'cross-tier,fauna,garden-switch,lifecycle';
 const regressionScenarioBaseNames = [
     'game-cross-tier-low-steady-desktop',
@@ -53,6 +59,109 @@ const crossTierMinimumRenderedFps =
     crossTierTargetFramesPerSecond - crossTierRenderedFpsTolerance;
 const crossTierMaximumRenderedFps =
     crossTierTargetFramesPerSecond + crossTierRenderedFpsTolerance;
+const legacyHeartbeatRequiredFailureNames = [
+    'crossTierSampleStartActiveLeaseCount',
+    'crossTierSemanticLeaseTopologyAvailable',
+    'crossTierSemanticStartLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopologyCount',
+    'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+];
+const crossTierAcceptanceCheckPrefix = [
+    'crossTierGardenProfile',
+    'crossTierQualityRequest',
+    'crossTierQualityTier',
+];
+const crossTierAutoAcceptanceChecks = [
+    'crossTierAutoMemoryGb',
+    'crossTierAutoCoreCount',
+    'crossTierAutoReportedDpr',
+    'crossTierAutoCoarsePointer',
+    'crossTierAutoNarrowViewport',
+];
+const crossTierAcceptanceChecksBeforeMotion = [
+    'crossTierDprCap',
+    'crossTierShadowsEnabled',
+    'crossTierShadowMapSize',
+    'crossTierGroundDecorationDensity',
+    'crossTierReportedDpr',
+    'crossTierCanvasClientWidth',
+    'crossTierCanvasClientHeight',
+    'crossTierCanvasWidth',
+    'crossTierCanvasHeight',
+    'crossTierGeneratedPlantFields',
+    'crossTierExpectedGeneratedPlantInstances',
+    'crossTierGeneratedPlantInstances',
+    'crossTierVisiblePlantFields',
+    'crossTierVisiblePlantInstances',
+    'crossTierMinimumVisiblePlantFields',
+    'crossTierMinimumVisiblePlantInstances',
+    'crossTierRuntimeTargetFramesPerSecond',
+    'crossTierSampleStartTargetFramesPerSecond',
+    'crossTierSampleMaximumTargetFramesPerSecond',
+    'crossTierSampleMinimumTargetFramesPerSecond',
+    'crossTierSampleEndTargetFramesPerSecond',
+    'crossTierSampleStartSnapshotTargetFramesPerSecond',
+    'crossTierSampleEndSnapshotTargetFramesPerSecond',
+    'crossTierSampleStartVisible',
+    'crossTierSampleEndVisible',
+    'crossTierSampleStartActiveLeaseCount',
+    'crossTierSampleMaximumActiveLeaseCount',
+    'crossTierSampleMinimumActiveLeaseCount',
+    'crossTierSampleEndActiveLeaseCount',
+    'crossTierSemanticLeaseTopologyAvailable',
+    'crossTierSemanticStartLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopologyCount',
+    'crossTierSemanticEndLeaseTopology',
+    'crossTierControlStartLeaseTopology',
+    'crossTierControlEndLeaseTopology',
+    'crossTierRafFrames',
+    'crossTierSemanticRafFrames',
+    'crossTierRuntimeFrameLoopObservationCount',
+    'crossTierPerformanceMeasurementMode',
+    'crossTierRuntimeFrameLoopObservationMode',
+    'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
+];
+const crossTierCameraMotionAcceptanceChecks = [
+    'crossTierCameraMotionObserved',
+    'crossTierCameraSnapshotVersionDelta',
+];
+const crossTierAcceptanceCheckSuffix = [
+    'crossTierStaticSceneCacheRequest',
+    'crossTierStaticSceneCacheEnabled',
+    'crossTierOutlineFlag',
+    'crossTierOutlineProfile',
+    'crossTierOutlineRaisedBedId',
+    'crossTierOutlineProfileDispatched',
+    'crossTierOutlineTelemetryAvailable',
+    'crossTierOutlineActiveTargets',
+    'crossTierOutlineStyleGroups',
+    'crossTierOutlineCommandAction',
+    'crossTierOutlineTargetBlockId',
+    'crossTierScreenshotWitnessValid',
+    'crossTierScreenshotWidth',
+    'crossTierScreenshotHeight',
+    'crossTierScreenshotOpaque',
+    'crossTierScreenshotEntropy',
+    'crossTierScreenshotMaximumChannelStandardDeviation',
+    'crossTierScreenshotSampledLumaRange',
+    'crossTierScreenshotSampledUniqueColorCount',
+    'crossTierRenderedFps',
+    'crossTierRenderedFrames',
+    'crossTierDrawCalls',
+    'crossTierSubmittedTriangles',
+    'crossTierApiErrors',
+    'crossTierConsoleErrors',
+    'crossTierPageErrors',
+];
+const crossTierPerformanceCheckNames = [
+    'p95FrameMs',
+    'maxFrameMs',
+    'longTaskCount',
+    'retainedJsHeapMb',
+    'drawCallsPerRenderedFrame',
+    'trianglesPerRenderedFrame',
+    'gpuElapsedP95Ms',
+];
 const crossTierBaseNamePattern =
     /^game-cross-tier-(low|medium|high|auto-standard|auto-constrained)-(steady|camera-motion)-desktop$/;
 const canonicalCrossTierPolicies = {
@@ -568,6 +677,278 @@ function validateCrossTierObserverIsolation(errors, sample, path) {
     }
 }
 
+function validateLegacyHeartbeatControlSnapshot(errors, value, path) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        value.activeLeaseCount,
+        0,
+        `${path}.activeLeaseCount`,
+    );
+    validateExactValue(
+        errors,
+        value.targetFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${path}.targetFramesPerSecond`,
+    );
+    validateExactValue(
+        errors,
+        value.effectiveVisible,
+        true,
+        `${path}.effectiveVisible`,
+    );
+    validateExactValue(errors, value.loopActive, true, `${path}.loopActive`);
+    for (const field of [
+        'activeRenderLeaseCount',
+        'renderLeaseOwners',
+        'renderLeaseSummaries',
+    ]) {
+        if (hasOwn(value, field)) {
+            errors.push(
+                `${path}.${field} must be absent for the legacy contract`,
+            );
+        }
+    }
+}
+
+function validateLegacyHeartbeatCrossTierEvidence(errors, scenario, path) {
+    const runtimeFrameLoop = scenario.runtime?.runtimeFrameLoop;
+    if (!isRecord(runtimeFrameLoop)) {
+        errors.push(`${path}.runtime.runtimeFrameLoop is missing`);
+    } else {
+        validateExactValue(
+            errors,
+            runtimeFrameLoop.activeLeaseCount,
+            0,
+            `${path}.runtime.runtimeFrameLoop.activeLeaseCount`,
+        );
+        validateExactValue(
+            errors,
+            runtimeFrameLoop.targetFramesPerSecond,
+            crossTierTargetFramesPerSecond,
+            `${path}.runtime.runtimeFrameLoop.targetFramesPerSecond`,
+        );
+    }
+
+    const sample = scenario.sample;
+    const samplePath = `${path}.sample`;
+    if (!isRecord(sample)) {
+        errors.push(`${samplePath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        sample.performanceMeasurementMode,
+        crossTierPerformanceMeasurementMode,
+        `${samplePath}.performanceMeasurementMode`,
+    );
+    validateExactValue(
+        errors,
+        sample.runtimeFrameLoopObservationMode,
+        crossTierRuntimeFrameLoopObservationMode,
+        `${samplePath}.runtimeFrameLoopObservationMode`,
+    );
+
+    const rafFrameCount = sample.runtimeFrameLoopObservationRafFrameCount;
+    if (!Number.isInteger(rafFrameCount) || rafFrameCount <= 0) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopObservationRafFrameCount must be a positive integer`,
+        );
+    }
+    const observationCount = sample.runtimeFrameLoopObservationCount;
+    if (
+        !Number.isInteger(observationCount) ||
+        observationCount !== rafFrameCount + 3
+    ) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopObservationCount must equal runtimeFrameLoopObservationRafFrameCount + 3`,
+        );
+    }
+
+    for (const field of [
+        'runtimeFrameLoopTargetFramesPerSecondAtStart',
+        'runtimeFrameLoopTargetFramesPerSecondMin',
+        'runtimeFrameLoopTargetFramesPerSecondMax',
+        'runtimeFrameLoopTargetFramesPerSecondAtEnd',
+    ]) {
+        validateExactValue(
+            errors,
+            sample[field],
+            crossTierTargetFramesPerSecond,
+            `${samplePath}.${field}`,
+        );
+    }
+    for (const field of [
+        'runtimeFrameLoopActiveLeaseCountAtStart',
+        'runtimeFrameLoopActiveLeaseCountMin',
+        'runtimeFrameLoopActiveLeaseCountMax',
+        'runtimeFrameLoopActiveLeaseCountAtEnd',
+    ]) {
+        validateExactValue(errors, sample[field], 0, `${samplePath}.${field}`);
+    }
+    for (const field of [
+        'runtimeFrameLoopSemanticLeaseTopologyAtStart',
+        'runtimeFrameLoopSemanticLeaseTopologyAtEnd',
+    ]) {
+        if (!hasOwn(sample, field) || sample[field] !== null) {
+            errors.push(`${samplePath}.${field} must be explicit null`);
+        }
+    }
+    validateLegacyHeartbeatControlSnapshot(
+        errors,
+        sample.runtimeFrameLoopAtStart,
+        `${samplePath}.runtimeFrameLoopAtStart`,
+    );
+    validateLegacyHeartbeatControlSnapshot(
+        errors,
+        sample.runtimeFrameLoopAtEnd,
+        `${samplePath}.runtimeFrameLoopAtEnd`,
+    );
+
+    for (const field of ['frames', 'renderedFrames']) {
+        if (!Number.isInteger(sample[field]) || sample[field] <= 0) {
+            errors.push(`${samplePath}.${field} must be a positive integer`);
+        }
+    }
+    if (!isFiniteNumber(sample.renderedFps) || sample.renderedFps <= 0) {
+        errors.push(
+            `${samplePath}.renderedFps must be a positive finite number`,
+        );
+    }
+    const counterDeltas = sample.runtimeFrameLoopCounterDeltas;
+    if (
+        !isRecord(counterDeltas) ||
+        !hasOwn(counterDeltas, 'r3fFrameCallbackCount') ||
+        counterDeltas.r3fFrameCallbackCount !== null
+    ) {
+        errors.push(
+            `${samplePath}.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount must be explicit null`,
+        );
+    }
+}
+
+function legacyHeartbeatExpectedFailureNames(sample) {
+    const expected = [...legacyHeartbeatRequiredFailureNames];
+    if (
+        isFiniteNumber(sample?.renderedFps) &&
+        sample.renderedFps > crossTierMaximumRenderedFps
+    ) {
+        expected.push('crossTierRenderedFps');
+    }
+    return expected.sort();
+}
+
+function buildCrossTierCheckNameInventory(baseName) {
+    const acceptance = [
+        ...crossTierAcceptanceCheckPrefix,
+        ...(baseName.includes('-auto-') ? crossTierAutoAcceptanceChecks : []),
+        ...crossTierAcceptanceChecksBeforeMotion,
+        ...(baseName.includes('-camera-motion-')
+            ? crossTierCameraMotionAcceptanceChecks
+            : []),
+        ...crossTierAcceptanceCheckSuffix,
+    ];
+    const performance = [...crossTierPerformanceCheckNames];
+    return {
+        acceptance,
+        budget: [...performance, ...acceptance],
+        performance,
+    };
+}
+
+function validateCheckNameInventory(errors, value, path, expectedNames) {
+    if (!isRecord(value) || !Array.isArray(value.checks)) {
+        errors.push(`${path}.checks must be an array`);
+        return;
+    }
+    const names = [];
+    const seen = new Set();
+    for (const [index, check] of value.checks.entries()) {
+        if (!isRecord(check) || !isNonEmptyString(check.name)) {
+            errors.push(`${path}.checks[${index}] must have a name`);
+            continue;
+        }
+        if (seen.has(check.name)) {
+            errors.push(`${path}.checks has duplicate name ${check.name}`);
+        }
+        seen.add(check.name);
+        names.push(check.name);
+    }
+    validateExactValue(
+        errors,
+        names,
+        expectedNames,
+        `${path} check name inventory`,
+    );
+}
+
+function validateCrossTierCheckNameInventories(errors, scenario, path) {
+    const expected = buildCrossTierCheckNameInventory(scenario.baseName);
+    validateCheckNameInventory(
+        errors,
+        scenario.acceptance,
+        `${path} acceptance`,
+        expected.acceptance,
+    );
+    validateCheckNameInventory(
+        errors,
+        scenario.performanceBudget,
+        `${path} performanceBudget`,
+        expected.performance,
+    );
+    validateCheckNameInventory(
+        errors,
+        scenario.budget,
+        `${path} budget`,
+        expected.budget,
+    );
+}
+
+function validateLegacyHeartbeatCheckOutcome(
+    errors,
+    value,
+    path,
+    expectedFailureNames,
+) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    if (value.pass !== false) {
+        errors.push(`${path}.pass must be false for the legacy contract`);
+    }
+    if (!Array.isArray(value.checks) || value.checks.length === 0) {
+        errors.push(`${path}.checks must be a non-empty array`);
+        return;
+    }
+    const failedNames = [];
+    const seenNames = new Set();
+    for (const [index, check] of value.checks.entries()) {
+        if (!isRecord(check) || !isNonEmptyString(check.name)) {
+            errors.push(`${path}.checks[${index}] must have a name`);
+            continue;
+        }
+        if (seenNames.has(check.name)) {
+            errors.push(`${path}.checks has duplicate name ${check.name}`);
+        }
+        seenNames.add(check.name);
+        if (typeof check.pass !== 'boolean') {
+            errors.push(`${path}.checks[${index}].pass must be a boolean`);
+        } else if (!check.pass) {
+            failedNames.push(check.name);
+        }
+    }
+    validateExactValue(
+        errors,
+        failedNames.sort(),
+        expectedFailureNames,
+        `${path} failed check names`,
+    );
+}
+
 function validatePassingChecks(errors, value, path) {
     if (!isRecord(value)) {
         errors.push(`${path} is missing`);
@@ -703,7 +1084,13 @@ function validateAutoQualityMetrics(errors, metrics, path) {
     validatePositiveNumber(errors, metrics.memoryGb, `${path}.memoryGb`);
 }
 
-function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
+function validateCanonicalScenarioEvidence(
+    errors,
+    scenario,
+    label,
+    key,
+    { schedulerBaselineContract = canonicalSchedulerBaselineContract } = {},
+) {
     const requested = scenario.requested;
     const runtime = scenario.runtime;
     const path = `${label} scenario ${key}`;
@@ -716,11 +1103,18 @@ function validateCanonicalScenarioEvidence(errors, scenario, label, key) {
     }
 
     if (scenario.baseName.startsWith('game-cross-tier-')) {
-        validateCrossTierObserverIsolation(
-            errors,
-            scenario.sample,
-            `${path} sample`,
-        );
+        if (
+            schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract
+        ) {
+            validateLegacyHeartbeatCrossTierEvidence(errors, scenario, path);
+        } else {
+            validateCrossTierObserverIsolation(
+                errors,
+                scenario.sample,
+                `${path} sample`,
+            );
+        }
         const profileSlug = crossTierBaseNamePattern.exec(
             scenario.baseName,
         )?.[1];
@@ -1010,10 +1404,31 @@ function requestedCompatibilitySignature(requested, schemaVersion) {
     return defaults ? { ...defaults, ...requested } : requested;
 }
 
-function validateReport(report, label, { allowPartial = false } = {}) {
+function validateReport(
+    report,
+    label,
+    {
+        allowPartial = false,
+        schedulerBaselineContract = canonicalSchedulerBaselineContract,
+    } = {},
+) {
     const errors = [];
     if (!isRecord(report)) {
         return [`${label} report is not an object`];
+    }
+    if (!schedulerBaselineContracts.has(schedulerBaselineContract)) {
+        errors.push(
+            `${label} scheduler baseline contract is unsupported: ${String(schedulerBaselineContract)}`,
+        );
+    }
+    if (
+        schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        allowPartial
+    ) {
+        errors.push(
+            `${label} legacy heartbeat scheduler evidence requires the complete canonical manifest`,
+        );
     }
     if (report.schemaVersion !== profileSchemaVersion) {
         errors.push(
@@ -1151,6 +1566,17 @@ function validateReport(report, label, { allowPartial = false } = {}) {
         if (harness.dirty !== false) {
             errors.push(`${label}.provenance.harness.dirty must be false`);
         }
+    }
+    if (
+        schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        isRecord(subject) &&
+        isRecord(harness) &&
+        subject.commit === harness.commit
+    ) {
+        errors.push(
+            `${label} legacy heartbeat scheduler subject must predate and differ from its profiler harness`,
+        );
     }
 
     for (const field of ['platform', 'arch', 'nodeVersion', 'browserVersion']) {
@@ -1339,16 +1765,49 @@ function validateReport(report, label, { allowPartial = false } = {}) {
             `${label} scenario ${key} memory`,
         );
         if (!allowPartial) {
-            validateCanonicalScenarioEvidence(errors, scenario, label, key);
+            validateCanonicalScenarioEvidence(errors, scenario, label, key, {
+                schedulerBaselineContract,
+            });
+            if (scenario.baseName?.startsWith('game-cross-tier-')) {
+                validateCrossTierCheckNameInventories(
+                    errors,
+                    scenario,
+                    `${label} scenario ${key}`,
+                );
+            }
         }
-        if (scenario.acceptance?.pass !== true) {
-            errors.push(`${label} scenario ${key} acceptance.pass is not true`);
+        const isLegacyCrossTierScenario =
+            schedulerBaselineContract ===
+                legacyHeartbeatSchedulerBaselineContract &&
+            scenario.baseName?.startsWith('game-cross-tier-');
+        if (isLegacyCrossTierScenario) {
+            const expectedFailureNames = legacyHeartbeatExpectedFailureNames(
+                scenario.sample,
+            );
+            validateLegacyHeartbeatCheckOutcome(
+                errors,
+                scenario.acceptance,
+                `${label} scenario ${key} acceptance`,
+                expectedFailureNames,
+            );
+            validateLegacyHeartbeatCheckOutcome(
+                errors,
+                scenario.budget,
+                `${label} scenario ${key} budget`,
+                expectedFailureNames,
+            );
+        } else {
+            if (scenario.acceptance?.pass !== true) {
+                errors.push(
+                    `${label} scenario ${key} acceptance.pass is not true`,
+                );
+            }
+            validatePassingChecks(
+                errors,
+                scenario.budget,
+                `${label} scenario ${key} budget`,
+            );
         }
-        validatePassingChecks(
-            errors,
-            scenario.budget,
-            `${label} scenario ${key} budget`,
-        );
         validatePassingChecks(
             errors,
             scenario.performanceBudget,
@@ -2670,15 +3129,32 @@ function compareReportPair(
     {
         allowPartial = false,
         allowSameSource = false,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
         baselinePath = null,
         candidatePath = null,
+        candidateSchedulerContract = canonicalSchedulerBaselineContract,
         confirmedMatrixMember = false,
+        permitLegacySameSourceRepeat = false,
         requireCandidateFrameContract = true,
     } = {},
 ) {
     const validationErrors = [
-        ...validateReport(baseline, 'baseline', { allowPartial }),
-        ...validateReport(candidate, 'candidate', { allowPartial }),
+        ...(baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        allowSameSource &&
+        !permitLegacySameSourceRepeat
+            ? [
+                  'legacy heartbeat scheduler baseline evidence cannot use same-source comparison mode',
+              ]
+            : []),
+        ...validateReport(baseline, 'baseline', {
+            allowPartial,
+            schedulerBaselineContract: baselineSchedulerContract,
+        }),
+        ...validateReport(candidate, 'candidate', {
+            allowPartial,
+            schedulerBaselineContract: candidateSchedulerContract,
+        }),
     ];
 
     if (validationErrors.length === 0) {
@@ -2810,12 +3286,14 @@ function compareReportPair(
             generatedAt: baseline?.generatedAt ?? null,
             harnessCommit: baseline?.provenance?.harness?.commit ?? null,
             path: baselinePath,
+            schedulerContract: baselineSchedulerContract,
             subjectCommit: baseline?.provenance?.subject?.commit ?? null,
         },
         candidate: {
             generatedAt: candidate?.generatedAt ?? null,
             harnessCommit: candidate?.provenance?.harness?.commit ?? null,
             path: candidatePath,
+            schedulerContract: candidateSchedulerContract,
             subjectCommit: candidate?.provenance?.subject?.commit ?? null,
         },
         comparable,
@@ -2855,9 +3333,24 @@ function compareReportPair(
     };
 }
 
-function compareReports(baseline, candidate, options = {}) {
+function compareReports(
+    baseline,
+    candidate,
+    {
+        allowPartial = false,
+        allowSameSource = false,
+        baselinePath = null,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
+        candidatePath = null,
+    } = {},
+) {
     return compareReportPair(baseline, candidate, {
-        ...options,
+        allowPartial,
+        allowSameSource,
+        baselinePath,
+        baselineSchedulerContract,
+        candidatePath,
+        candidateSchedulerContract: canonicalSchedulerBaselineContract,
         confirmedMatrixMember: false,
     });
 }
@@ -2870,11 +3363,16 @@ function invariantKey(result) {
     return `${result.scenario}::${result.phase}::${result.profileRun}::${result.field}`;
 }
 
-function reportCapture(report, path) {
+function reportCapture(
+    report,
+    path,
+    schedulerContract = canonicalSchedulerBaselineContract,
+) {
     return {
         generatedAt: report?.generatedAt ?? null,
         harnessCommit: report?.provenance?.harness?.commit ?? null,
         path,
+        schedulerContract,
         subjectCommit: report?.provenance?.subject?.commit ?? null,
     };
 }
@@ -2948,11 +3446,17 @@ function compareConfirmedReports(
         baselineConfirmation = null,
         baselineConfirmationPath = null,
         baselinePath = null,
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
         candidatePath = null,
         confirmationPath = null,
     } = {},
 ) {
-    const sharedOptions = { allowPartial, allowSameSource, baselinePath };
+    const sharedOptions = {
+        allowPartial,
+        allowSameSource,
+        baselinePath,
+        baselineSchedulerContract,
+    };
     const primary = compareReportPair(baseline, candidate, {
         ...sharedOptions,
         candidatePath,
@@ -2974,9 +3478,12 @@ function compareConfirmedReports(
         ? compareReportPair(baseline, baselineConfirmation, {
               allowPartial,
               allowSameSource: true,
+              baselineSchedulerContract,
               baselinePath,
               candidatePath: baselineConfirmationPath,
+              candidateSchedulerContract: baselineSchedulerContract,
               confirmedMatrixMember: true,
+              permitLegacySameSourceRepeat: true,
               requireCandidateFrameContract: false,
           })
         : null;
@@ -2984,6 +3491,7 @@ function compareConfirmedReports(
         ? compareReportPair(baselineConfirmation, candidate, {
               allowPartial,
               allowSameSource,
+              baselineSchedulerContract,
               baselinePath: baselineConfirmationPath,
               candidatePath,
               confirmedMatrixMember: true,
@@ -2993,6 +3501,7 @@ function compareConfirmedReports(
         ? compareReportPair(baselineConfirmation, confirmation, {
               allowPartial,
               allowSameSource,
+              baselineSchedulerContract,
               baselinePath: baselineConfirmationPath,
               candidatePath: confirmationPath,
               confirmedMatrixMember: true,
@@ -3014,6 +3523,15 @@ function compareConfirmedReports(
             (error) => `baseline confirmation / confirmation: ${error}`,
         ),
     ];
+    if (
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        (allowPartial || allowSameSource || !baselineConfirmation)
+    ) {
+        validationErrors.push(
+            'legacy heartbeat scheduler baseline evidence requires a non-diagnostic symmetric 2x2 comparison',
+        );
+    }
     if (!baselineConfirmation && !allowPartial && !allowSameSource) {
         validationErrors.push(
             'baseline confirmation is required for a non-diagnostic symmetric 2x2 comparison',
@@ -3073,11 +3591,16 @@ function compareConfirmedReports(
             baselineConfirmation: reportCapture(
                 baselineConfirmation,
                 baselineConfirmationPath,
+                baselineSchedulerContract,
             ),
             baselineConfirmationUsed: Boolean(baselineConfirmation),
             comparable: false,
             comparisons: [],
-            confirmation: reportCapture(confirmation, confirmationPath),
+            confirmation: reportCapture(
+                confirmation,
+                confirmationPath,
+                canonicalSchedulerBaselineContract,
+            ),
             confirmationUsed: true,
             exitCode: 2,
             invariants: [],
@@ -3279,10 +3802,15 @@ function compareConfirmedReports(
         baselineConfirmation: reportCapture(
             baselineConfirmation,
             baselineConfirmationPath,
+            baselineSchedulerContract,
         ),
         baselineConfirmationUsed: Boolean(baselineConfirmation),
         comparisons,
-        confirmation: reportCapture(confirmation, confirmationPath),
+        confirmation: reportCapture(
+            confirmation,
+            confirmationPath,
+            canonicalSchedulerBaselineContract,
+        ),
         confirmationUsed: true,
         exitCode: status === 'pass' ? 0 : 1,
         invariants,
@@ -3333,19 +3861,23 @@ function buildMarkdown(comparison) {
         `Diagnostic only: ${comparison.diagnostic ? `yes (${comparison.diagnosticReasons.join('; ')})` : 'no'}`,
         `Comparable: ${comparison.comparable ? 'yes' : 'no'}`,
         `Baseline subject: ${comparison.baseline.subjectCommit ?? 'unknown'}`,
+        `Baseline scheduler contract: ${comparison.baseline.schedulerContract ?? canonicalSchedulerBaselineContract}`,
         `Candidate subject: ${comparison.candidate.subjectCommit ?? 'unknown'}`,
+        `Candidate scheduler contract: ${comparison.candidate.schedulerContract ?? canonicalSchedulerBaselineContract}`,
         `Baseline harness: ${comparison.baseline.harnessCommit ?? 'unknown'}`,
         `Candidate harness: ${comparison.candidate.harnessCommit ?? 'unknown'}`,
     ];
     if (comparison.confirmationUsed) {
         lines.push(
             `Confirmation subject: ${comparison.confirmation.subjectCommit ?? 'unknown'}`,
+            `Confirmation scheduler contract: ${comparison.confirmation.schedulerContract ?? canonicalSchedulerBaselineContract}`,
             `Confirmation harness: ${comparison.confirmation.harnessCommit ?? 'unknown'}`,
         );
     }
     if (comparison.baselineConfirmationUsed) {
         lines.push(
             `Baseline confirmation subject: ${comparison.baselineConfirmation.subjectCommit ?? 'unknown'}`,
+            `Baseline confirmation scheduler contract: ${comparison.baselineConfirmation.schedulerContract ?? canonicalSchedulerBaselineContract}`,
             `Baseline confirmation harness: ${comparison.baselineConfirmation.harnessCommit ?? 'unknown'}`,
         );
     }
@@ -3615,6 +4147,7 @@ function parseArgs(args) {
         allowSameSource: false,
         baselineConfirmationPath: null,
         baselinePath: null,
+        baselineSchedulerContract: canonicalSchedulerBaselineContract,
         candidatePath: null,
         confirmationPath: null,
         help: false,
@@ -3640,6 +4173,8 @@ function parseArgs(args) {
             options.baselinePath = resolve(next());
         } else if (argument === '--baseline-confirmation') {
             options.baselineConfirmationPath = resolve(next());
+        } else if (argument === '--baseline-scheduler-contract') {
+            options.baselineSchedulerContract = next();
         } else if (argument === '--candidate') {
             options.candidatePath = resolve(next());
         } else if (argument === '--confirmation') {
@@ -3658,6 +4193,20 @@ function parseArgs(args) {
     options.candidatePath ??= positional[1] ? resolve(positional[1]) : null;
     if (positional.length > 2) {
         throw new Error('Expected at most two positional report paths');
+    }
+    if (!schedulerBaselineContracts.has(options.baselineSchedulerContract)) {
+        throw new Error(
+            `Unsupported baseline scheduler contract: ${options.baselineSchedulerContract}`,
+        );
+    }
+    if (
+        options.baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        (options.allowPartial || options.allowSameSource)
+    ) {
+        throw new Error(
+            'The legacy heartbeat scheduler baseline contract cannot be combined with --allow-partial or --allow-same-source',
+        );
     }
     if (!options.help && (!options.baselinePath || !options.candidatePath)) {
         throw new Error(
@@ -3693,6 +4242,8 @@ Options:
   --baseline <path>       Baseline schema-v6 profile report
   --baseline-confirmation <path>
                           Independent repeat of the exact baseline commit
+  --baseline-scheduler-contract <contract>
+                          canonical-v1 (default) or legacy-heartbeat-v1
   --candidate <path>      Candidate schema-v6 profile report
   --confirmation <path>   Independent repeat of the exact candidate commit
   --out-dir <path>        Comparison report directory
@@ -3781,6 +4332,7 @@ async function runCli(args = process.argv.slice(2)) {
 }
 
 export {
+    buildCrossTierCheckNameInventory,
     buildMarkdown,
     compareConfirmedReports,
     compareReports,

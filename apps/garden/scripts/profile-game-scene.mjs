@@ -1689,8 +1689,8 @@ const budgets = {
     gardenBuildingHeadlessAmbientDesktop: {
         // Headless browser rAF cadence is host/display dependent and is not
         // the demand renderer's frame interval. Ambient building profiles
-        // separately prove a 30 FPS runtime target with zero active leases,
-        // then compare the blank shell with a matched no-building control.
+        // separately prove a stable 30 FPS runtime owner set, then compare the
+        // blank shell with a matched no-building control.
         avatarCollisionStepP95Ms: 2,
         p95FrameMs: 33.3,
         maxFrameMs: 100,
