@@ -956,8 +956,8 @@ remain a separate rollout gate.
 - Add profiler counters and capture a no-building baseline plus active-editing
   profile.
 
-Current headless foundation evidence (2026-08-30) establishes contract bounds
-without claiming physical-device proof:
+Current headless foundation evidence (2026-08-30, with a 2026-09-01 avatar
+follow-up) establishes contract bounds without claiming physical-device proof:
 
 | Budget or invariant | Current version 1 value/evidence |
 | --- | --- |
@@ -968,6 +968,7 @@ without claiming physical-device proof:
 | Serialized document | 192 KiB hard decoder limit. The adversarial valid 100-cell/301-edge fixture serializes to 56,531 bytes. |
 | Worst-case compiler output | 12 render batches, 601 instances, 38 open portals, 263 blocked transitions, 190 merged wall boxes, 100 prop boxes, 100 ceiling proxies, and 220 spatial buckets. |
 | Headless compile baseline | 3.663 ms median across three warmed 1,000-compile runs (3.451-3.714 ms) on local Apple M4 Pro/24 GiB, Node 24; production-Chromium miss-only compiles were 3.7-4.3 ms. This is not a constrained-mobile CPU result. |
+| Avatar collision step | A clean comparable production-Chromium run set an initial 2 ms automated p95 gate. The furnished 100-cell solid-wall workload recorded 440 complete movement resolutions (33 during the held-key leg), 0.15 ms p95, 2.0 ms max, 304 collision primitives, and 220 buckets. The representative house doorway round trip recorded 499 resolutions (65 during the held-key legs), 0.15 ms p95, 0.2 ms max, and moved 1.34 m in third-person plus 1.23 m in first-person. Four-rotation semantic checks and owned/public WebGL traversal remain supporting correctness evidence rather than unprofiled timing claims. |
 | Production kit/network | `GardenStructureKitV1.glb` response body 364,684 bytes (41,117 encoded / 41,417 transferred by local `next start`), below the 600,000-byte gate. The validated generated kit contains 23 nodes, 56 primitives, 12 materials, and 6,064 source triangles. Worst-case normal/cutaway resolved 24/29 production draws with zero unresolved batches or fallback draws and zero textures. |
 | Constrained-mobile browser budget | At 390x844, browser DPR 3 capped to effective DPR 1, auto-constrained tier, 1024 px shadows, 5 s warmup/sample: closed-roof 100-cell p95/max 18.4/18.8 ms, cutaway 18.4/18.8 ms, and edit churn 17.3/18.6 ms; all passed the 33.3 ms mobile p95 gate with zero long tasks. |
 | Interior/editor budget | Closed-roof exterior submitted 0 props and suppressed 100; cutaway submitted all 100. Edit churn action p95/max was 15.6/17.0 ms and final Canvas pointer resolution max was 2.0 ms, below the 100/500/100 ms gates. |

@@ -602,6 +602,26 @@ reported zero production, fallback, and preview draws. The automated desktop
 row uses a 20 ms p95 gate because 60 Hz headless rAF samples commonly land just
 above 16.7 ms; the physical desktop target remains 16.7 ms.
 
+### 2026-09-01 avatar collision-step follow-up
+
+A clean, comparable production-build run of the two constrained-mobile avatar
+rows passed the initial 2 ms collision-step p95 gate. The profiler measures one
+complete production horizontal-movement resolution per sample; the fixed
+0.05 ms histogram bucket makes the reported p95 conservative to the bucket
+ceiling.
+
+| Workload | Total / held-key collision steps | Collision p95 / max | Collision primitives / buckets | Movement witness | Result |
+| --- | ---: | ---: | ---: | --- | --- |
+| Furnished 100-cell solid wall | 440 / 33 | 0.15 / 2.0 ms | 304 / 220 | Third-person push stopped after 0.14 m | pass |
+| House doorway round trip | 499 / 65 | 0.15 / 0.2 ms | 11 / 21 | 1.34 m third-person, then 1.23 m first-person | pass |
+
+The timed house row is one representative owned-garden orientation. Existing
+four-rotation semantic movement checks and the owned/public production-WebGL
+component flows remain correctness support, not additional performance rows.
+Renderer-free 2D likewise remains a no-WebGL correctness contract. Physical
+iPhone/Android collision timing, interaction, memory, thermal behavior, GPU
+resources, and the ten-minute soak are still required separately.
+
 Run the matrix with:
 
 ```bash
