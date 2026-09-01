@@ -1,4 +1,9 @@
-import { addAfterEffect, type RootState, useThree } from '@react-three/fiber';
+import {
+    addAfterEffect,
+    type RootState,
+    useFrame,
+    useThree,
+} from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
@@ -34,6 +39,7 @@ import {
 } from 'three';
 import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import { useSceneRenderRequest } from '../../scene/SceneTime';
+import { createHoverOutlineFrameGate } from './hoverOutlineFrameGate';
 import {
     type HoverOutlineNormalizedBounds,
     type HoverOutlineRegion,
@@ -41,6 +47,7 @@ import {
 } from './hoverOutlineRegion';
 
 const hoverOutlineLayer = 29;
+const hoverOutlineFramePriority = -1_000;
 const maxOutlineThickness = 12;
 const unreachableSquaredDistance = 255;
 
@@ -666,6 +673,7 @@ export function HoverOutlineEffect() {
         zeroSnapshot,
     );
     const hasActiveTargets = (registry?.getActiveTargets().length ?? 0) > 0;
+    const frameGate = useMemo(createHoverOutlineFrameGate, []);
     const passCountsRef = useRef({
         composite: 0,
         horizontal: 0,
@@ -676,6 +684,8 @@ export function HoverOutlineEffect() {
         window.location.pathname.startsWith('/debug/profile/game');
     const wasActiveRef = useRef(false);
 
+    useFrame(frameGate.markRenderedFrame, hoverOutlineFramePriority);
+
     useEffect(() => () => maskMaterial.dispose(), [maskMaterial]);
 
     useEffect(() => {
@@ -683,7 +693,13 @@ export function HoverOutlineEffect() {
             return;
         }
 
+        const frameConsumer = frameGate.registerConsumer();
+
         const renderOutline = () => {
+            if (!frameConsumer.consumeRenderedFrame()) {
+                return;
+            }
+
             const targets = registry.getActiveTargets();
             if (targets.length === 0) {
                 return;
@@ -910,10 +926,15 @@ export function HoverOutlineEffect() {
             }
         };
 
-        return addAfterEffect(renderOutline);
+        const removeAfterEffect = addAfterEffect(renderOutline);
+        return () => {
+            removeAfterEffect();
+            frameConsumer.release();
+        };
     }, [
         camera,
         drawingBufferSize,
+        frameGate,
         gl,
         hasActiveTargets,
         horizontalDistanceMaterial,
