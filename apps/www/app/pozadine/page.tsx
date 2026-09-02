@@ -20,7 +20,7 @@ export default function WallpapersPage() {
             <Stack spacing={6}>
                 <PageHeader
                     header="Pozadine iz tvog vrta"
-                    subHeader="Odaberi vrt, doba dana i veličinu pa preuzmi pozadinu za računalo, tablet ili mobitel. Za Mac možeš preuzeti i dinamički paket."
+                    subHeader="Odaberi vrt, doba dana i veličinu pa preuzmi pozadinu za računalo, tablet ili mobitel. Za Mac možeš preuzeti i gotovu dinamičku HEIC pozadinu."
                     padded
                 />
 

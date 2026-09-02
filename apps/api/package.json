@@ -39,6 +39,7 @@
         "@upstash/redis": "1.38.0",
         "@vercel/blob": "2.6.1",
         "@vercel/functions": "3.9.2",
+        "@vercel/sandbox": "3.2.1",
         "@valibot/to-json-schema": "1.7.1",
         "ai": "7.0.19",
         "date-fns": "4.4.0",
