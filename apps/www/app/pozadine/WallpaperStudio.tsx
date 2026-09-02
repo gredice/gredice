@@ -508,12 +508,24 @@ export function WallpaperStudio() {
             setError(captureErrorMessage(downloadError));
         } finally {
             if (cleanupRequest) {
-                await fetch('/api/gredice/api/wallpapers/macos-dynamic', {
-                    body: JSON.stringify(cleanupRequest),
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    method: 'DELETE',
-                }).catch(() => undefined);
+                const cleanupController = new AbortController();
+                const cleanupTimeout = window.setTimeout(
+                    () => cleanupController.abort(),
+                    3000,
+                );
+                try {
+                    await fetch('/api/gredice/api/wallpapers/macos-dynamic', {
+                        body: JSON.stringify(cleanupRequest),
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        method: 'DELETE',
+                        signal: cleanupController.signal,
+                    });
+                } catch {
+                    // Cleanup is best effort; the server cron removes leftovers.
+                } finally {
+                    window.clearTimeout(cleanupTimeout);
+                }
             }
             setActivity('idle');
         }
