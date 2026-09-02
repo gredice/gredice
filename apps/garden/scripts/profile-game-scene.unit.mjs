@@ -167,7 +167,7 @@ const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 2,
+    comparisonContractVersion: 3,
     dirty: false,
 };
 
@@ -323,7 +323,7 @@ test('report provenance rejects served-build, managed harness, and contract mism
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 3,
+                    comparisonContractVersion: 4,
                 },
             },
         ],
@@ -382,7 +382,7 @@ test('external report provenance still rejects served-build and contract mismatc
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 3,
+                    comparisonContractVersion: 4,
                 },
             },
         ],
@@ -2638,7 +2638,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
     };
     const cleanSubject = {
         commit: 'b'.repeat(40),
-        comparisonContractVersion: 2,
+        comparisonContractVersion: 3,
         dirty: false,
     };
     assert.equal(
@@ -2658,7 +2658,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
         {
             servedBuild: {
                 ...cleanSubject,
-                comparisonContractVersion: 3,
+                comparisonContractVersion: 4,
             },
         },
     ]) {
@@ -2720,6 +2720,14 @@ test('legacy operation visual profiling bypass is explicit', () => {
     assert.equal(
         parseArgs(['--allow-legacy-operation-visuals'])
             .allowLegacyOperationVisuals,
+        true,
+    );
+});
+
+test('legacy outline pipeline profiling is explicit', () => {
+    assert.equal(parseArgs([]).legacyOutlinePipeline, false);
+    assert.equal(
+        parseArgs(['--legacy-outline-pipeline']).legacyOutlinePipeline,
         true,
     );
 });
@@ -3573,11 +3581,20 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 20,
     };
+    const gameProfile = {
+        hoverOutlineCompositePassCount: 8,
+        hoverOutlineHorizontalPassCount: 2,
+        hoverOutlineMaskCacheBypassCount: 0,
+        hoverOutlineMaskCacheHitCount: 6,
+        hoverOutlineMaskCacheMissCount: 2,
+        hoverOutlineMaskPassCount: 2,
+        runtimeFrameLoop,
+    };
 
     try {
         setGlobal('document', { querySelector: () => null });
         setGlobal('requestAnimationFrame', () => 1);
-        setGlobal('__grediceGameProfile', { runtimeFrameLoop });
+        setGlobal('__grediceGameProfile', gameProfile);
 
         beginInteractiveProfileSample();
 
@@ -3603,6 +3620,11 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.suspendCount = 1;
         runtimeFrameLoop.awaitingFrameReceipt = false;
         runtimeFrameLoop.wakeupCount = 23;
+        gameProfile.hoverOutlineCompositePassCount = 18;
+        gameProfile.hoverOutlineHorizontalPassCount = 5;
+        gameProfile.hoverOutlineMaskCacheHitCount = 13;
+        gameProfile.hoverOutlineMaskCacheMissCount = 5;
+        gameProfile.hoverOutlineMaskPassCount = 5;
 
         const sampleAtEndpoint = await finishInteractiveProfileSample();
         const sample = mergeProfileSampleDrain(sampleAtEndpoint, {
@@ -3621,6 +3643,12 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             sample.runtimeFrameLoopAtStart.renderLeaseOwners,
             sample.runtimeFrameLoopAtEnd.renderLeaseOwners,
         );
+        assert.equal(sample.hoverOutlineCompositePassCountDelta, 10);
+        assert.equal(sample.hoverOutlineHorizontalPassCountDelta, 3);
+        assert.equal(sample.hoverOutlineMaskCacheBypassCountDelta, 0);
+        assert.equal(sample.hoverOutlineMaskCacheHitCountDelta, 7);
+        assert.equal(sample.hoverOutlineMaskCacheMissCountDelta, 3);
+        assert.equal(sample.hoverOutlineMaskPassCountDelta, 3);
         assert.deepEqual(sample.runtimeFrameLoopAtStart.fixedStepOwners, [
             'game-time',
         ]);
@@ -4234,6 +4262,14 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0,
             hoverOutlineActiveTargetCount: 2,
+            hoverOutlineCompositePassCount: 150,
+            hoverOutlineHorizontalPassCount: 50,
+            hoverOutlineMaskCacheBypassCount: 0,
+            hoverOutlineMaskCacheEligibleTargetCount: 2,
+            hoverOutlineMaskCacheHitCount: 100,
+            hoverOutlineMaskCacheMissCount: 50,
+            hoverOutlineMaskPassCount: 50,
+            hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
             hoverOutlineProfileCommandAction: 'show',
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
@@ -4260,6 +4296,18 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            hoverOutlineCompositePassCountDelta: 10,
+            hoverOutlineHorizontalPassCountDelta: 0,
+            hoverOutlineMaskCacheBypassCountDelta: 0,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 0,
+            hoverOutlineMaskPassCountDelta: 0,
+            hoverOutlineSemanticCompositePassCountDelta: 10,
+            hoverOutlineSemanticHorizontalPassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheBypassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 0,
+            hoverOutlineSemanticMaskPassCountDelta: 0,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
             renderedFps: 30,
@@ -4311,6 +4359,17 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         true,
     );
 
+    const legacyOutlineInput = structuredClone(input);
+    legacyOutlineInput.requested.legacyOutlinePipeline = true;
+    legacyOutlineInput.runtime.hoverOutlinePipeline =
+        'cropped-bounded-separable-r8';
+    legacyOutlineInput.runtime.hoverOutlineCompositePassCount = 50;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheBypassCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheEligibleTargetCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheHitCount;
+    delete legacyOutlineInput.runtime.hoverOutlineMaskCacheMissCount;
+    assert.equal(evaluateCrossTierAcceptance(legacyOutlineInput).pass, true);
+
     const expectFailedChecks = (mutate, expectedNames) => {
         const candidate = structuredClone(input);
         mutate(candidate);
@@ -4323,6 +4382,18 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             assert.equal(failedNames.has(name), true, `${name} must fail`);
         }
     };
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.hoverOutlineMaskCacheHitCountDelta = null;
+        },
+        ['crossTierOutlinePerformanceWindowHits'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.hoverOutlineSemanticCompositePassCountDelta = 9;
+        },
+        ['crossTierOutlineSemanticWindowCompositeConservation'],
+    );
     expectFailedChecks(
         (candidate) => {
             delete candidate.runtime.runtimeFrameLoop.targetFramesPerSecond;
@@ -4498,6 +4569,16 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
                 zoom: 100,
             },
             gameCameraSnapshotVersionDelta: 20,
+            hoverOutlineCompositePassCountDelta: 11,
+            hoverOutlineHorizontalPassCountDelta: 1,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 1,
+            hoverOutlineMaskPassCountDelta: 1,
+            hoverOutlineSemanticCompositePassCountDelta: 11,
+            hoverOutlineSemanticHorizontalPassCountDelta: 1,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 1,
+            hoverOutlineSemanticMaskPassCountDelta: 1,
         },
     };
     assert.equal(evaluateCrossTierAcceptance(cameraMotionInput).pass, true);
@@ -4582,6 +4663,14 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             generatedPlantVisibleInstanceCount: 537,
             groundDecorationDensity: 0.5,
             hoverOutlineActiveTargetCount: 2,
+            hoverOutlineCompositePassCount: 150,
+            hoverOutlineHorizontalPassCount: 50,
+            hoverOutlineMaskCacheBypassCount: 0,
+            hoverOutlineMaskCacheEligibleTargetCount: 2,
+            hoverOutlineMaskCacheHitCount: 100,
+            hoverOutlineMaskCacheMissCount: 50,
+            hoverOutlineMaskPassCount: 50,
+            hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
             hoverOutlineProfileCommandAction: 'show',
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
@@ -4607,6 +4696,18 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             performanceMeasurementMode: 'separate-observer-free-window-v1',
             generatedPlantVisibleFieldCountMin: 54,
             generatedPlantVisibleInstanceCountMin: 537,
+            hoverOutlineCompositePassCountDelta: 10,
+            hoverOutlineHorizontalPassCountDelta: 0,
+            hoverOutlineMaskCacheBypassCountDelta: 0,
+            hoverOutlineMaskCacheHitCountDelta: 10,
+            hoverOutlineMaskCacheMissCountDelta: 0,
+            hoverOutlineMaskPassCountDelta: 0,
+            hoverOutlineSemanticCompositePassCountDelta: 10,
+            hoverOutlineSemanticHorizontalPassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheBypassCountDelta: 0,
+            hoverOutlineSemanticMaskCacheHitCountDelta: 10,
+            hoverOutlineSemanticMaskCacheMissCountDelta: 0,
+            hoverOutlineSemanticMaskPassCountDelta: 0,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: true,
             renderedFps: 30,
@@ -9043,7 +9144,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineAllocatedPixelCount: 131_072,
         hoverOutlineAllocatedWidth: 512,
         hoverOutlineAllocationEstimatedBytes: 262_144,
-        hoverOutlineCompositePassCount: 2,
+        hoverOutlineCompositePassCount: 7,
         hoverOutlineCropClippedCount: 0,
         hoverOutlineCropPixelCount: 100_000,
         hoverOutlineDrawingBufferPixelCount: 3_686_400,
@@ -9051,8 +9152,12 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineHorizontalPassCount: 2,
         hoverOutlineKernelSampleCount: 23,
         hoverOutlineMaskPassCount: 2,
+        hoverOutlineMaskCacheBypassCount: 0,
+        hoverOutlineMaskCacheEligibleTargetCount: 2,
+        hoverOutlineMaskCacheHitCount: 5,
+        hoverOutlineMaskCacheMissCount: 2,
         hoverOutlineMaxKernelSampleCount: 51,
-        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8-content-cache',
         hoverOutlineProfileCommandAction: 'show',
         hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
         hoverOutlineProfileTargetRaisedBedId: 2,
@@ -9060,6 +9165,14 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         hoverOutlineRoiRatio: 0.04,
         hoverOutlineStyleGroupCount: 1,
         hoverOutlineThickness: 5,
+    };
+    const validOutlineSample = {
+        hoverOutlineCompositePassCountDelta: 5,
+        hoverOutlineHorizontalPassCountDelta: 0,
+        hoverOutlineMaskCacheBypassCountDelta: 0,
+        hoverOutlineMaskCacheHitCountDelta: 5,
+        hoverOutlineMaskCacheMissCountDelta: 0,
+        hoverOutlineMaskPassCountDelta: 0,
     };
     const createInput = ({
         environment,
@@ -9079,6 +9192,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         },
         runtime,
         sample: {
+            ...validOutlineSample,
             outlineProfileDispatched: true,
             outlineProfileTelemetryAvailable: false,
             ...sample,
@@ -9108,6 +9222,86 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
     );
     assert.equal(
         withTelemetry.checks
+            .filter((check) => check.name.startsWith('highTargetOutline'))
+            .every((check) => check.pass),
+        true,
+    );
+
+    for (const [field, invalidValue, checkName] of [
+        [
+            'hoverOutlineMaskCacheBypassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowBypasses',
+        ],
+        [
+            'hoverOutlineMaskCacheHitCountDelta',
+            0,
+            'highTargetOutlineSampleWindowHits',
+        ],
+        [
+            'hoverOutlineMaskPassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowMaskConservation',
+        ],
+        [
+            'hoverOutlineHorizontalPassCountDelta',
+            1,
+            'highTargetOutlineSampleWindowHorizontalAlignment',
+        ],
+        [
+            'hoverOutlineCompositePassCountDelta',
+            4,
+            'highTargetOutlineSampleWindowCompositeConservation',
+        ],
+    ]) {
+        const result = evaluateHighTargetAcceptance(
+            createInput({
+                runtime: validOutlineRuntime,
+                sample: {
+                    [field]: invalidValue,
+                    outlineProfileTelemetryAvailable: true,
+                },
+            }),
+        );
+        assert.equal(
+            result.checks.find((check) => check.name === checkName)?.pass,
+            false,
+            `${checkName} should reject ${field}=${invalidValue}`,
+        );
+    }
+
+    const motionWithoutMeasuredMiss = evaluateHighTargetAcceptance(
+        createInput({
+            requested: { motion: 'pan-zoom-rotate' },
+            runtime: validOutlineRuntime,
+            sample: { outlineProfileTelemetryAvailable: true },
+        }),
+    );
+    assert.equal(
+        motionWithoutMeasuredMiss.checks.find(
+            (check) => check.name === 'highTargetOutlineSampleWindowMisses',
+        )?.pass,
+        false,
+    );
+
+    const legacyOutlineRuntime = {
+        ...validOutlineRuntime,
+        hoverOutlineCompositePassCount: 2,
+        hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+    };
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheBypassCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheEligibleTargetCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheHitCount;
+    delete legacyOutlineRuntime.hoverOutlineMaskCacheMissCount;
+    const legacyOutline = evaluateHighTargetAcceptance(
+        createInput({
+            requested: { legacyOutlinePipeline: true },
+            runtime: legacyOutlineRuntime,
+            sample: { outlineProfileTelemetryAvailable: true },
+        }),
+    );
+    assert.equal(
+        legacyOutline.checks
             .filter((check) => check.name.startsWith('highTargetOutline'))
             .every((check) => check.pass),
         true,
@@ -9284,6 +9478,18 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         ],
         ['hoverOutlineMaskPassCount', 0, 'highTargetOutlineMaskPasses'],
         [
+            'hoverOutlineMaskCacheBypassCount',
+            1,
+            'highTargetOutlineCacheBypasses',
+        ],
+        [
+            'hoverOutlineMaskCacheEligibleTargetCount',
+            1,
+            'highTargetOutlineCacheEligibleTargets',
+        ],
+        ['hoverOutlineMaskCacheHitCount', 0, 'highTargetOutlineCacheHits'],
+        ['hoverOutlineMaskCacheMissCount', 0, 'highTargetOutlineCacheMisses'],
+        [
             'hoverOutlineHorizontalPassCount',
             1,
             'highTargetOutlineHorizontalPassAlignment',
@@ -9291,7 +9497,7 @@ test('outline acceptance gates deterministic dispatch and telemetry when availab
         [
             'hoverOutlineCompositePassCount',
             1,
-            'highTargetOutlineCompositePassAlignment',
+            'highTargetOutlineCacheConservation',
         ],
         [
             'hoverOutlineAllocationEstimatedBytes',

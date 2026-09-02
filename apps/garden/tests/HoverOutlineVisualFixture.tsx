@@ -7,17 +7,126 @@ import {
 } from '../../../packages/game/src/entities/helpers/HoverOutline';
 import { SceneTimeProvider } from '../../../packages/game/src/scene/SceneTime';
 
-function MarkFixtureReady({ onReady }: { onReady: () => void }) {
+function MarkFixtureReady({
+    frameCount = 3,
+    onReady,
+}: {
+    frameCount?: number;
+    onReady: () => void;
+}) {
     const renderedFrameCount = useRef(0);
 
     useFrame(() => {
         renderedFrameCount.current += 1;
-        if (renderedFrameCount.current === 3) {
+        if (renderedFrameCount.current === frameCount) {
             onReady();
         }
     });
 
     return null;
+}
+
+export function HoverOutlineCacheFixture() {
+    const [offset, setOffset] = useState(0);
+    const [ready, setReady] = useState(false);
+    const markReady = useCallback(() => setReady(true), []);
+    const detachOutlineTargetRef = useRef<(() => void) | null>(null);
+    const detachOutlineTarget = useCallback(
+        () => detachOutlineTargetRef.current?.(),
+        [],
+    );
+
+    return (
+        <div
+            data-render-ready={ready ? 'true' : 'false'}
+            data-testid="hover-outline-cache-fixture"
+        >
+            <button
+                data-testid="move-outline-target"
+                onClick={() => setOffset((value) => value + 0.25)}
+                type="button"
+            >
+                Move target
+            </button>
+            <button
+                data-testid="move-outline-target-offscreen"
+                onClick={() => setOffset(100)}
+                type="button"
+            >
+                Move target offscreen
+            </button>
+            <button
+                data-testid="restore-outline-target"
+                onClick={() => setOffset(0)}
+                type="button"
+            >
+                Restore target
+            </button>
+            <button
+                data-testid="detach-outline-target"
+                onClick={detachOutlineTarget}
+                type="button"
+            >
+                Detach target
+            </button>
+            <div style={{ height: 240, width: 360 }}>
+                <Canvas
+                    flat
+                    orthographic
+                    camera={{
+                        far: 100,
+                        near: 0.1,
+                        position: [0, 0, 10],
+                        zoom: 80,
+                    }}
+                    dpr={2}
+                    frameloop="always"
+                    gl={{
+                        alpha: false,
+                        antialias: false,
+                        preserveDrawingBuffer: true,
+                    }}
+                >
+                    <color attach="background" args={['#171b24']} />
+                    <SceneTimeProvider suspendWhenOffscreen={false}>
+                        <HoverOutlineProvider>
+                            <group
+                                ref={(targetRoot) => {
+                                    detachOutlineTargetRef.current = targetRoot
+                                        ? () =>
+                                              targetRoot
+                                                  .getObjectByName(
+                                                      'Interaction:HoverOutlineTarget',
+                                                  )
+                                                  ?.removeFromParent()
+                                        : null;
+                                }}
+                            >
+                                <HoverOutline
+                                    hovered
+                                    maskContentKey="static-box-v1"
+                                    thickness={5}
+                                >
+                                    <mesh position={[offset, 0, 0]}>
+                                        <planeGeometry args={[1.3, 1.05]} />
+                                        <meshBasicMaterial
+                                            color="#3f6585"
+                                            toneMapped={false}
+                                        />
+                                    </mesh>
+                                </HoverOutline>
+                            </group>
+                            <HoverOutlineEffect />
+                            <MarkFixtureReady
+                                frameCount={6}
+                                onReady={markReady}
+                            />
+                        </HoverOutlineProvider>
+                    </SceneTimeProvider>
+                </Canvas>
+            </div>
+        </div>
+    );
 }
 
 export function HoverOutlineVisualFixture() {

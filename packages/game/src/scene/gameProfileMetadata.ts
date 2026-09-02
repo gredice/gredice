@@ -404,6 +404,10 @@ export type GameProfileMetadata = {
     hoverOutlineHorizontalPassCount?: number;
     hoverOutlineKernelSampleCount?: number;
     hoverOutlineMaskPassCount?: number;
+    hoverOutlineMaskCacheBypassCount?: number;
+    hoverOutlineMaskCacheEligibleTargetCount?: number;
+    hoverOutlineMaskCacheHitCount?: number;
+    hoverOutlineMaskCacheMissCount?: number;
     hoverOutlineMaxKernelSampleCount?: number;
     hoverOutlinePipeline?: string;
     hoverOutlineProfileCommandAction?: 'hide' | 'show';

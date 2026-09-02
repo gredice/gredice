@@ -2,6 +2,7 @@ import { type RootState, useThree } from '@react-three/fiber';
 import {
     createContext,
     type PropsWithChildren,
+    useCallback,
     useContext,
     useEffect,
     useLayoutEffect,
@@ -36,13 +37,21 @@ import { updateGameProfileMetadata } from '../../scene/gameProfileMetadata';
 import {
     useSceneAfterRenderSubscription,
     useSceneRenderRequest,
+    useSceneResume,
 } from '../../scene/SceneTime';
+import {
+    captureHoverOutlineMaskCacheSnapshot,
+    type HoverOutlineMaskCacheSnapshot,
+    hoverOutlineMaskCacheSnapshotMatches,
+} from './hoverOutlineMaskCache';
 import {
     type HoverOutlineNormalizedBounds,
     type HoverOutlineRegion,
     resolveHoverOutlineRegion,
 } from './hoverOutlineRegion';
 
+// Reserved exclusively for transient mask rendering. Authored scene objects
+// must not enable this layer, or they would become part of the outline mask.
 const hoverOutlineLayer = 29;
 const maxOutlineThickness = 12;
 const unreachableSquaredDistance = 255;
@@ -50,10 +59,22 @@ const unreachableSquaredDistance = 255;
 type HoverOutlineTarget = {
     active: boolean;
     color: string;
+    contentKey: unknown;
     object: Object3D;
     opacity: number;
     priority: number;
     thickness: number;
+};
+
+type PreparedHoverOutlineGroup = {
+    firstTarget: HoverOutlineTarget;
+    region: HoverOutlineRegion;
+    targets: HoverOutlineTarget[];
+};
+
+type HoverOutlineMaskCacheEntry = {
+    group: PreparedHoverOutlineGroup;
+    snapshot: HoverOutlineMaskCacheSnapshot;
 };
 
 type HoverOutlineRegistry = {
@@ -598,6 +619,8 @@ export function HoverOutlineProvider({ children }: PropsWithChildren) {
 type HoverOutlineProps = PropsWithChildren<{
     color?: string;
     hovered?: boolean;
+    /** Opts rigid proxy geometry into mask reuse; change when its silhouette can change. */
+    maskContentKey?: unknown;
     opacity?: number;
     priority?: number;
     thickness?: number;
@@ -607,6 +630,7 @@ export function HoverOutline({
     children,
     color = 'white',
     hovered = false,
+    maskContentKey,
     opacity = 1,
     priority = 0,
     thickness = 5,
@@ -627,6 +651,7 @@ export function HoverOutline({
         registry.setTarget(id, {
             active: hovered,
             color,
+            contentKey: maskContentKey,
             object: ref.current,
             opacity,
             priority,
@@ -634,7 +659,16 @@ export function HoverOutline({
         });
 
         return () => registry.deleteTarget(id);
-    }, [clampedThickness, color, hovered, id, opacity, priority, registry]);
+    }, [
+        clampedThickness,
+        color,
+        hovered,
+        id,
+        maskContentKey,
+        opacity,
+        priority,
+        registry,
+    ]);
 
     return (
         <group ref={ref} name="Interaction:HoverOutlineTarget">
@@ -671,16 +705,40 @@ export function HoverOutlineEffect() {
     const hasActiveTargets = (registry?.getActiveTargets().length ?? 0) > 0;
     const subscribeAfterRender = useSceneAfterRenderSubscription();
     const passCountsRef = useRef({
+        cacheBypass: 0,
+        cacheHit: 0,
+        cacheMiss: 0,
         composite: 0,
         horizontal: 0,
         mask: 0,
     });
+    const maskCacheRef = useRef<HoverOutlineMaskCacheEntry | null>(null);
+    const invalidateMaskCache = useCallback(() => {
+        maskCacheRef.current = null;
+    }, []);
     const publishProfileMetadata =
         typeof window !== 'undefined' &&
         window.location.pathname.startsWith('/debug/profile/game');
     const wasActiveRef = useRef(false);
 
     useEffect(() => () => maskMaterial.dispose(), [maskMaterial]);
+
+    useEffect(() => {
+        const canvas = gl.domElement;
+        canvas.addEventListener('webglcontextlost', invalidateMaskCache);
+        canvas.addEventListener('webglcontextrestored', invalidateMaskCache);
+
+        return () => {
+            invalidateMaskCache();
+            canvas.removeEventListener('webglcontextlost', invalidateMaskCache);
+            canvas.removeEventListener(
+                'webglcontextrestored',
+                invalidateMaskCache,
+            );
+        };
+    }, [gl, invalidateMaskCache]);
+
+    useSceneResume(invalidateMaskCache);
 
     useEffect(() => {
         if (!registry || !hasActiveTargets) {
@@ -690,6 +748,18 @@ export function HoverOutlineEffect() {
         const renderOutline = () => {
             const targets = registry.getActiveTargets();
             if (targets.length === 0) {
+                maskCacheRef.current = null;
+                if (publishProfileMetadata) {
+                    updateGameProfileMetadata({
+                        hoverOutlineActiveTargetCount: 0,
+                        hoverOutlineCropClippedCount: 0,
+                        hoverOutlineCropPixelCount: 0,
+                        hoverOutlineMaskCacheEligibleTargetCount: 0,
+                        hoverOutlineRoiRatio: 0,
+                        hoverOutlineStyleGroupCount: 0,
+                        hoverOutlineThickness: 0,
+                    });
+                }
                 return;
             }
             gl.getDrawingBufferSize(drawingBufferSize);
@@ -721,41 +791,57 @@ export function HoverOutlineEffect() {
                 },
             );
 
-            const preparedGroups: {
-                firstTarget: HoverOutlineTarget;
-                region: HoverOutlineRegion;
-                targets: HoverOutlineTarget[];
-            }[] = [];
-            for (const targetGroup of targetGroups) {
-                const [firstTarget] = targetGroup;
-                if (!firstTarget) {
-                    continue;
-                }
-                const normalizedBounds = getOutlineNormalizedBounds({
+            const cacheEntry = maskCacheRef.current;
+            const cacheTargetGroup =
+                targetGroups.length === 1 ? targetGroups[0] : undefined;
+            let reusePreparedMask =
+                cacheEntry !== null &&
+                cacheTargetGroup !== undefined &&
+                hoverOutlineMaskCacheSnapshotMatches(cacheEntry.snapshot, {
                     camera,
-                    scratch: screenBoundsScratch,
-                    targets: targetGroup,
-                });
-                if (!normalizedBounds) {
-                    continue;
-                }
-                const region = resolveHoverOutlineRegion({
-                    bounds: normalizedBounds,
                     drawingBufferHeight: drawingBufferSize.y,
                     drawingBufferWidth: drawingBufferSize.x,
-                    thickness: firstTarget.thickness,
+                    registryVersion,
+                    scene,
+                    targets: cacheTargetGroup,
                 });
-                if (!region) {
-                    continue;
+            const preparedGroups: PreparedHoverOutlineGroup[] = [];
+            if (reusePreparedMask && cacheEntry) {
+                preparedGroups.push(cacheEntry.group);
+            } else {
+                maskCacheRef.current = null;
+                for (const targetGroup of targetGroups) {
+                    const [firstTarget] = targetGroup;
+                    if (!firstTarget) {
+                        continue;
+                    }
+                    const normalizedBounds = getOutlineNormalizedBounds({
+                        camera,
+                        scratch: screenBoundsScratch,
+                        targets: targetGroup,
+                    });
+                    if (!normalizedBounds) {
+                        continue;
+                    }
+                    const region = resolveHoverOutlineRegion({
+                        bounds: normalizedBounds,
+                        drawingBufferHeight: drawingBufferSize.y,
+                        drawingBufferWidth: drawingBufferSize.x,
+                        thickness: firstTarget.thickness,
+                    });
+                    if (!region) {
+                        continue;
+                    }
+                    preparedGroups.push({
+                        firstTarget,
+                        region,
+                        targets: targetGroup,
+                    });
                 }
-                preparedGroups.push({
-                    firstTarget,
-                    region,
-                    targets: targetGroup,
-                });
             }
 
             if (preparedGroups.length === 0) {
+                maskCacheRef.current = null;
                 if (publishProfileMetadata) {
                     updateGameProfileMetadata({
                         hoverOutlineActiveTargetCount: 0,
@@ -763,6 +849,7 @@ export function HoverOutlineEffect() {
                         hoverOutlineCropPixelCount: 0,
                         hoverOutlineDrawingBufferPixelCount:
                             drawingBufferSize.x * drawingBufferSize.y,
+                        hoverOutlineMaskCacheEligibleTargetCount: 0,
                         hoverOutlineRoiRatio: 0,
                         hoverOutlineStyleGroupCount: 0,
                         hoverOutlineThickness: 0,
@@ -790,8 +877,25 @@ export function HoverOutlineEffect() {
                     renderTarget.height !== allocationHeight
                 ) {
                     renderTarget.setSize(allocationWidth, allocationHeight);
+                    maskCacheRef.current = null;
+                    reusePreparedMask = false;
                 }
             }
+
+            const cacheMissGroup =
+                !reusePreparedMask && preparedGroups.length === 1
+                    ? preparedGroups[0]
+                    : undefined;
+            const cacheMissSnapshot = cacheMissGroup
+                ? captureHoverOutlineMaskCacheSnapshot({
+                      camera,
+                      drawingBufferHeight: drawingBufferSize.y,
+                      drawingBufferWidth: drawingBufferSize.x,
+                      registryVersion,
+                      scene,
+                      targets: cacheMissGroup.targets,
+                  })
+                : null;
 
             let cropClippedCount = 0;
             let cropPixelCount = 0;
@@ -805,34 +909,43 @@ export function HoverOutlineEffect() {
             } of preparedGroups) {
                 const radius = Math.ceil(firstTarget.thickness);
 
-                renderMask({
-                    camera,
-                    gl,
-                    maskMaterial,
-                    region,
-                    renderTarget: renderTargets.mask,
-                    scene,
-                    targets: targetGroup,
-                });
-                passCountsRef.current.mask += 1;
+                if (reusePreparedMask) {
+                    passCountsRef.current.cacheHit += 1;
+                } else {
+                    renderMask({
+                        camera,
+                        gl,
+                        maskMaterial,
+                        region,
+                        renderTarget: renderTargets.mask,
+                        scene,
+                        targets: targetGroup,
+                    });
+                    passCountsRef.current.mask += 1;
 
-                horizontalDistanceMaterial.uniforms.maskTexture.value =
-                    renderTargets.mask.texture;
-                horizontalDistanceMaterial.uniforms.cropSize.value.set(
-                    region.crop.width,
-                    region.crop.height,
-                );
-                horizontalDistanceMaterial.uniforms.radius.value = radius;
-                renderHorizontalDistance({
-                    camera: outlineCamera,
-                    gl,
-                    material: horizontalDistanceMaterial,
-                    mesh: outlineMesh,
-                    region,
-                    renderTarget: renderTargets.horizontalDistance,
-                    scene: outlineScene,
-                });
-                passCountsRef.current.horizontal += 1;
+                    horizontalDistanceMaterial.uniforms.maskTexture.value =
+                        renderTargets.mask.texture;
+                    horizontalDistanceMaterial.uniforms.cropSize.value.set(
+                        region.crop.width,
+                        region.crop.height,
+                    );
+                    horizontalDistanceMaterial.uniforms.radius.value = radius;
+                    renderHorizontalDistance({
+                        camera: outlineCamera,
+                        gl,
+                        material: horizontalDistanceMaterial,
+                        mesh: outlineMesh,
+                        region,
+                        renderTarget: renderTargets.horizontalDistance,
+                        scene: outlineScene,
+                    });
+                    passCountsRef.current.horizontal += 1;
+                    if (cacheMissSnapshot) {
+                        passCountsRef.current.cacheMiss += 1;
+                    } else {
+                        passCountsRef.current.cacheBypass += 1;
+                    }
+                }
 
                 outlineMaterial.uniforms.maskTexture.value =
                     renderTargets.mask.texture;
@@ -880,6 +993,16 @@ export function HoverOutlineEffect() {
                 renderedTargetCount += targetGroup.length;
             }
 
+            if (!reusePreparedMask) {
+                maskCacheRef.current =
+                    cacheMissGroup && cacheMissSnapshot
+                        ? {
+                              group: cacheMissGroup,
+                              snapshot: cacheMissSnapshot,
+                          }
+                        : null;
+            }
+
             const drawingBufferPixelCount =
                 drawingBufferSize.x * drawingBufferSize.y;
             const allocatedPixelCount = allocationWidth * allocationHeight;
@@ -902,9 +1025,18 @@ export function HoverOutlineEffect() {
                         passCountsRef.current.horizontal,
                     hoverOutlineKernelSampleCount: kernelSampleCount,
                     hoverOutlineMaskPassCount: passCountsRef.current.mask,
+                    hoverOutlineMaskCacheEligibleTargetCount:
+                        maskCacheRef.current?.snapshot.targets.length ?? 0,
+                    hoverOutlineMaskCacheBypassCount:
+                        passCountsRef.current.cacheBypass,
+                    hoverOutlineMaskCacheHitCount:
+                        passCountsRef.current.cacheHit,
+                    hoverOutlineMaskCacheMissCount:
+                        passCountsRef.current.cacheMiss,
                     hoverOutlineMaxKernelSampleCount:
                         maxOutlineThickness * 4 + 3,
-                    hoverOutlinePipeline: 'cropped-bounded-separable-r8',
+                    hoverOutlinePipeline:
+                        'cropped-bounded-separable-r8-content-cache',
                     hoverOutlineRenderTargetCount: 2,
                     hoverOutlineRoiRatio:
                         cropPixelCount / drawingBufferPixelCount,
@@ -914,19 +1046,25 @@ export function HoverOutlineEffect() {
             }
         };
 
-        return subscribeAfterRender(renderOutline);
+        const unsubscribe = subscribeAfterRender(renderOutline);
+        return () => {
+            invalidateMaskCache();
+            unsubscribe();
+        };
     }, [
         camera,
         drawingBufferSize,
         gl,
         hasActiveTargets,
         horizontalDistanceMaterial,
+        invalidateMaskCache,
         maskMaterial,
         outlineCamera,
         outlineMaterial,
         outlineMesh,
         outlineScene,
         publishProfileMetadata,
+        registryVersion,
         renderTargets,
         registry,
         scene,
@@ -939,11 +1077,15 @@ export function HoverOutlineEffect() {
         if (wasActiveRef.current || hasActiveTargets) {
             requestRender('hover-outline-targets');
         }
+        if (!hasActiveTargets) {
+            invalidateMaskCache();
+        }
         if (!hasActiveTargets && publishProfileMetadata) {
             updateGameProfileMetadata({
                 hoverOutlineActiveTargetCount: 0,
                 hoverOutlineCropClippedCount: 0,
                 hoverOutlineCropPixelCount: 0,
+                hoverOutlineMaskCacheEligibleTargetCount: 0,
                 hoverOutlineRoiRatio: 0,
                 hoverOutlineStyleGroupCount: 0,
                 hoverOutlineThickness: 0,
@@ -952,6 +1094,7 @@ export function HoverOutlineEffect() {
         wasActiveRef.current = hasActiveTargets;
     }, [
         hasActiveTargets,
+        invalidateMaskCache,
         publishProfileMetadata,
         registryVersion,
         requestRender,

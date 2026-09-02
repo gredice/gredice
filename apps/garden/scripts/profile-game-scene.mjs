@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
-const gameProfileComparisonContractVersion = 2;
+const gameProfileComparisonContractVersion = 3;
 const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
 const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
@@ -1835,6 +1835,8 @@ function parseArgs(argv) {
         lifecycleRendererStatsMode:
             process.env.GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE ??
             lifecycleRendererStatsCanonicalMode,
+        legacyOutlinePipeline:
+            process.env.GAME_PROFILE_LEGACY_OUTLINE_PIPELINE === '1',
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
@@ -1888,6 +1890,9 @@ function parseArgs(argv) {
             case '--lifecycle-renderer-stats-mode':
                 options.lifecycleRendererStatsMode = next;
                 index += 1;
+                break;
+            case '--legacy-outline-pipeline':
+                options.legacyOutlinePipeline = true;
                 break;
             case '--out-dir':
                 options.outDir = resolve(appRoot, next);
@@ -2215,6 +2220,7 @@ function printHelp(options) {
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
             `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
             `  --lifecycle-renderer-stats-mode <mode> ${lifecycleRendererStatsCanonicalMode} or baseline-only ${lifecycleRendererStatsLegacyMode}. Current: ${options.lifecycleRendererStatsMode}`,
+            '  --legacy-outline-pipeline Measure a clean external baseline without mask-cache telemetry.',
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
@@ -2231,6 +2237,7 @@ function printHelp(options) {
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_GRAPHICS_BACKEND,',
             '  GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE,',
+            '  GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -3054,7 +3061,29 @@ function beginInteractiveProfileSample() {
     const startedAt = performance.now();
     const runtimeFrameLoopTelemetry =
         globalThis.__grediceGameProfile?.runtimeFrameLoop ?? null;
+    const readProfileCounter = (field) => {
+        const value = globalThis.__grediceGameProfile?.[field];
+        return typeof value === 'number' ? value : null;
+    };
     const sample = {
+        hoverOutlineCompositePassCountAtStart: readProfileCounter(
+            'hoverOutlineCompositePassCount',
+        ),
+        hoverOutlineHorizontalPassCountAtStart: readProfileCounter(
+            'hoverOutlineHorizontalPassCount',
+        ),
+        hoverOutlineMaskCacheBypassCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheBypassCount',
+        ),
+        hoverOutlineMaskCacheHitCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheHitCount',
+        ),
+        hoverOutlineMaskCacheMissCountAtStart: readProfileCounter(
+            'hoverOutlineMaskCacheMissCount',
+        ),
+        hoverOutlineMaskPassCountAtStart: readProfileCounter(
+            'hoverOutlineMaskPassCount',
+        ),
         intervals: [],
         lastFrameAt: startedAt,
         runtimeFrameLoopAtStart:
@@ -3127,6 +3156,30 @@ async function finishInteractiveProfileSample() {
     const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
     const safeRafFrames = Math.max(1, rafFrames);
     const safeRenderedFrames = Math.max(1, renderedFrames);
+    const readProfileCounter = (field) => {
+        const value = globalThis.__grediceGameProfile?.[field];
+        return typeof value === 'number' ? value : null;
+    };
+    const counterDelta = (startValue, endValue) =>
+        startValue === null || endValue === null ? null : endValue - startValue;
+    const hoverOutlineCompositePassCountAtEnd = readProfileCounter(
+        'hoverOutlineCompositePassCount',
+    );
+    const hoverOutlineHorizontalPassCountAtEnd = readProfileCounter(
+        'hoverOutlineHorizontalPassCount',
+    );
+    const hoverOutlineMaskCacheBypassCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheBypassCount',
+    );
+    const hoverOutlineMaskCacheHitCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheHitCount',
+    );
+    const hoverOutlineMaskCacheMissCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskCacheMissCount',
+    );
+    const hoverOutlineMaskPassCountAtEnd = readProfileCounter(
+        'hoverOutlineMaskPassCount',
+    );
     const nonGpuSample = {
         averageFrameMs,
         canvas: canvas
@@ -3146,6 +3199,30 @@ async function finishInteractiveProfileSample() {
         elapsedMs: elapsedSeconds * 1000,
         fps: rafFrames / safeElapsedSeconds,
         frames: rafFrames,
+        hoverOutlineCompositePassCountDelta: counterDelta(
+            sample.hoverOutlineCompositePassCountAtStart,
+            hoverOutlineCompositePassCountAtEnd,
+        ),
+        hoverOutlineHorizontalPassCountDelta: counterDelta(
+            sample.hoverOutlineHorizontalPassCountAtStart,
+            hoverOutlineHorizontalPassCountAtEnd,
+        ),
+        hoverOutlineMaskCacheBypassCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheBypassCountAtStart,
+            hoverOutlineMaskCacheBypassCountAtEnd,
+        ),
+        hoverOutlineMaskCacheHitCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheHitCountAtStart,
+            hoverOutlineMaskCacheHitCountAtEnd,
+        ),
+        hoverOutlineMaskCacheMissCountDelta: counterDelta(
+            sample.hoverOutlineMaskCacheMissCountAtStart,
+            hoverOutlineMaskCacheMissCountAtEnd,
+        ),
+        hoverOutlineMaskPassCountDelta: counterDelta(
+            sample.hoverOutlineMaskPassCountAtStart,
+            hoverOutlineMaskPassCountAtEnd,
+        ),
         instancedDrawCalls,
         jsHeapMb: performance.memory
             ? performance.memory.usedJSHeapSize / 1024 / 1024
@@ -4869,6 +4946,7 @@ async function measureGardenSwitchScenario(
         deviceScaleFactor: scenario.dpr,
         hasTouch: scenario.isMobile,
         isMobile: scenario.isMobile,
+        legacyOutlinePipeline: options.legacyOutlinePipeline,
         viewport: scenario.viewport,
     });
     const page = await context.newPage();
@@ -9329,6 +9407,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const cloudAttenuationUpdateCountAtStart = readProfileNumber(
                 'cloudAttenuationUpdateCount',
             );
+            const hoverOutlineCompositePassCountAtStart = readProfileNumber(
+                'hoverOutlineCompositePassCount',
+            );
+            const hoverOutlineHorizontalPassCountAtStart = readProfileNumber(
+                'hoverOutlineHorizontalPassCount',
+            );
+            const hoverOutlineMaskCacheBypassCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheBypassCount',
+            );
+            const hoverOutlineMaskCacheHitCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheHitCount',
+            );
+            const hoverOutlineMaskCacheMissCountAtStart = readProfileNumber(
+                'hoverOutlineMaskCacheMissCount',
+            );
+            const hoverOutlineMaskPassCountAtStart = readProfileNumber(
+                'hoverOutlineMaskPassCount',
+            );
             const staticOpaqueSceneCacheBypassFrameCountAtStart =
                 readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
             const staticOpaqueSceneCacheCaptureCountAtStart = readProfileNumber(
@@ -9802,6 +9898,24 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             const cloudAttenuationUpdateCountAtEnd = readProfileNumber(
                 'cloudAttenuationUpdateCount',
             );
+            const hoverOutlineCompositePassCountAtEnd = readProfileNumber(
+                'hoverOutlineCompositePassCount',
+            );
+            const hoverOutlineHorizontalPassCountAtEnd = readProfileNumber(
+                'hoverOutlineHorizontalPassCount',
+            );
+            const hoverOutlineMaskCacheBypassCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheBypassCount',
+            );
+            const hoverOutlineMaskCacheHitCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheHitCount',
+            );
+            const hoverOutlineMaskCacheMissCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskCacheMissCount',
+            );
+            const hoverOutlineMaskPassCountAtEnd = readProfileNumber(
+                'hoverOutlineMaskPassCount',
+            );
             const staticOpaqueSceneCacheBypassFrameCountAtEnd =
                 readProfileNumber('staticOpaqueSceneCacheBypassFrameCount');
             const staticOpaqueSceneCacheCaptureCountAtEnd = readProfileNumber(
@@ -9995,6 +10109,30 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 gameCameraSnapshotAtStart,
                 gameCameraSnapshotVersionDelta,
                 gameCameraSnapshotVersionMax,
+                hoverOutlineCompositePassCountDelta: counterDelta(
+                    hoverOutlineCompositePassCountAtStart,
+                    hoverOutlineCompositePassCountAtEnd,
+                ),
+                hoverOutlineHorizontalPassCountDelta: counterDelta(
+                    hoverOutlineHorizontalPassCountAtStart,
+                    hoverOutlineHorizontalPassCountAtEnd,
+                ),
+                hoverOutlineMaskCacheBypassCountDelta: counterDelta(
+                    hoverOutlineMaskCacheBypassCountAtStart,
+                    hoverOutlineMaskCacheBypassCountAtEnd,
+                ),
+                hoverOutlineMaskCacheHitCountDelta: counterDelta(
+                    hoverOutlineMaskCacheHitCountAtStart,
+                    hoverOutlineMaskCacheHitCountAtEnd,
+                ),
+                hoverOutlineMaskCacheMissCountDelta: counterDelta(
+                    hoverOutlineMaskCacheMissCountAtStart,
+                    hoverOutlineMaskCacheMissCountAtEnd,
+                ),
+                hoverOutlineMaskPassCountDelta: counterDelta(
+                    hoverOutlineMaskPassCountAtStart,
+                    hoverOutlineMaskPassCountAtEnd,
+                ),
                 motionWarmupCameraSnapshotAtEnd,
                 motionWarmupCameraSnapshotAtStart,
                 motionWarmupCameraSnapshotVersionDelta:
@@ -10197,6 +10335,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         ? {
               ...semanticSample,
               ...observerFreePerformance.sample,
+              hoverOutlineSemanticCompositePassCountDelta:
+                  semanticSample.hoverOutlineCompositePassCountDelta,
+              hoverOutlineSemanticHorizontalPassCountDelta:
+                  semanticSample.hoverOutlineHorizontalPassCountDelta,
+              hoverOutlineSemanticMaskCacheBypassCountDelta:
+                  semanticSample.hoverOutlineMaskCacheBypassCountDelta,
+              hoverOutlineSemanticMaskCacheHitCountDelta:
+                  semanticSample.hoverOutlineMaskCacheHitCountDelta,
+              hoverOutlineSemanticMaskCacheMissCountDelta:
+                  semanticSample.hoverOutlineMaskCacheMissCountDelta,
+              hoverOutlineSemanticMaskPassCountDelta:
+                  semanticSample.hoverOutlineMaskPassCountDelta,
               performanceMeasurementMode: crossTierPerformanceMeasurementMode,
               runtimeFrameLoopActiveLeaseCountAtEnd:
                   semanticSample.runtimeFrameLoopActiveLeaseCountAtEnd,
@@ -10450,6 +10600,18 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ),
             hoverOutlineMaskPassCount: numberOrNull(
                 metadata.hoverOutlineMaskPassCount,
+            ),
+            hoverOutlineMaskCacheEligibleTargetCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheEligibleTargetCount,
+            ),
+            hoverOutlineMaskCacheBypassCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheBypassCount,
+            ),
+            hoverOutlineMaskCacheHitCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheHitCount,
+            ),
+            hoverOutlineMaskCacheMissCount: numberOrNull(
+                metadata.hoverOutlineMaskCacheMissCount,
             ),
             hoverOutlineMaxKernelSampleCount: numberOrNull(
                 metadata.hoverOutlineMaxKernelSampleCount,
@@ -11346,6 +11508,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         graphicsBackend: options.graphicsBackend,
         hud: profileMetadata?.hud ?? request.hud,
         isMobile: scenario.isMobile,
+        legacyOutlinePipeline: options.legacyOutlinePipeline,
         mode: profileMetadata?.mode ?? request.mode,
         motion:
             scenario.motion ??
@@ -13816,6 +13979,50 @@ function evaluateFaunaHeavyAcceptance({
     };
 }
 
+function outlineCacheWindowChecks({
+    exact,
+    fieldPrefix = '',
+    minimum,
+    namePrefix,
+    requireMiss,
+    sample,
+}) {
+    const read = (name) =>
+        sample?.[`hoverOutline${fieldPrefix}${name}CountDelta`];
+    const bypasses = read('MaskCacheBypass');
+    const composites = read('CompositePass');
+    const hits = read('MaskCacheHit');
+    const horizontal = read('HorizontalPass');
+    const masks = read('MaskPass');
+    const misses = read('MaskCacheMiss');
+    const maskConservation =
+        typeof misses === 'number' && typeof bypasses === 'number'
+            ? misses + bypasses
+            : null;
+    const compositeConservation =
+        typeof hits === 'number' &&
+        typeof misses === 'number' &&
+        typeof bypasses === 'number'
+            ? hits + misses + bypasses
+            : null;
+
+    return [
+        exact(`${namePrefix}Bypasses`, bypasses, 0),
+        minimum(`${namePrefix}Hits`, hits, 1),
+        minimum(`${namePrefix}Misses`, misses, requireMiss ? 1 : 0),
+        minimum(`${namePrefix}MaskPasses`, masks, 0),
+        minimum(`${namePrefix}HorizontalPasses`, horizontal, 0),
+        minimum(`${namePrefix}CompositePasses`, composites, 1),
+        exact(`${namePrefix}MaskConservation`, masks, maskConservation),
+        exact(`${namePrefix}HorizontalAlignment`, horizontal, masks),
+        exact(
+            `${namePrefix}CompositeConservation`,
+            composites,
+            compositeConservation,
+        ),
+    ];
+}
+
 function evaluateCrossTierAcceptance({
     apiErrors = [],
     consoleMessages = [],
@@ -13910,6 +14117,7 @@ function evaluateCrossTierAcceptance({
     const semanticLeaseTopologyAtStartKey = leaseTopologyKey(
         semanticLeaseTopologyAtStart,
     );
+    const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
         exact(
@@ -14197,6 +14405,87 @@ function evaluateCrossTierAcceptance({
             runtime?.hoverOutlineStyleGroupCount,
             1,
         ),
+        exact(
+            'crossTierOutlinePipeline',
+            runtime?.hoverOutlinePipeline,
+            legacyOutlinePipeline
+                ? 'cropped-bounded-separable-r8'
+                : 'cropped-bounded-separable-r8-content-cache',
+        ),
+        ...(legacyOutlinePipeline
+            ? [
+                  exact(
+                      'crossTierOutlineLegacyHorizontalPassAlignment',
+                      runtime?.hoverOutlineHorizontalPassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+                  exact(
+                      'crossTierOutlineLegacyCompositePassAlignment',
+                      runtime?.hoverOutlineCompositePassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+              ]
+            : [
+                  exact(
+                      'crossTierOutlineCacheEligibleTargets',
+                      runtime?.hoverOutlineMaskCacheEligibleTargetCount,
+                      2,
+                  ),
+                  exact(
+                      'crossTierOutlineCacheBypasses',
+                      runtime?.hoverOutlineMaskCacheBypassCount,
+                      0,
+                  ),
+                  minimum(
+                      'crossTierOutlineCacheHits',
+                      runtime?.hoverOutlineMaskCacheHitCount,
+                      1,
+                  ),
+                  minimum(
+                      'crossTierOutlineCacheMisses',
+                      runtime?.hoverOutlineMaskCacheMissCount,
+                      1,
+                  ),
+                  exact(
+                      'crossTierOutlineMaskMissAlignment',
+                      runtime?.hoverOutlineMaskPassCount,
+                      runtime?.hoverOutlineMaskCacheMissCount,
+                  ),
+                  exact(
+                      'crossTierOutlineHorizontalPassAlignment',
+                      runtime?.hoverOutlineHorizontalPassCount,
+                      runtime?.hoverOutlineMaskPassCount,
+                  ),
+                  exact(
+                      'crossTierOutlineCacheConservation',
+                      runtime?.hoverOutlineCompositePassCount,
+                      typeof runtime?.hoverOutlineMaskCacheHitCount ===
+                          'number' &&
+                          typeof runtime?.hoverOutlineMaskCacheMissCount ===
+                              'number' &&
+                          typeof runtime?.hoverOutlineMaskCacheBypassCount ===
+                              'number'
+                          ? runtime.hoverOutlineMaskCacheHitCount +
+                                runtime.hoverOutlineMaskCacheMissCount +
+                                runtime.hoverOutlineMaskCacheBypassCount
+                          : null,
+                  ),
+                  ...outlineCacheWindowChecks({
+                      exact,
+                      minimum,
+                      namePrefix: 'crossTierOutlinePerformanceWindow',
+                      requireMiss: requested.motion === 'bounded-zoom-rotate',
+                      sample,
+                  }),
+                  ...outlineCacheWindowChecks({
+                      exact,
+                      fieldPrefix: 'Semantic',
+                      minimum,
+                      namePrefix: 'crossTierOutlineSemanticWindow',
+                      requireMiss: requested.motion === 'bounded-zoom-rotate',
+                      sample,
+                  }),
+              ]),
         exact(
             'crossTierOutlineCommandAction',
             runtime?.hoverOutlineProfileCommandAction,
@@ -14868,6 +15157,7 @@ function evaluateHighTargetAcceptance({
         : null;
     const operationVisualsRequested = requested.operationVisuals === '1';
     const foliageBudgetRequested = requested.foliageBudget === '1';
+    const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
     const staticSceneCacheBenchmarkRequested =
         highTargetStaticSceneCacheComparisonPairs.has(requested.comparisonPair);
     const staticSceneCacheCloudyBenchmarkRequested =
@@ -15816,7 +16106,9 @@ function evaluateHighTargetAcceptance({
                 exact(
                     'highTargetOutlinePipeline',
                     runtime?.hoverOutlinePipeline,
-                    'cropped-bounded-separable-r8',
+                    legacyOutlinePipeline
+                        ? 'cropped-bounded-separable-r8'
+                        : 'cropped-bounded-separable-r8-content-cache',
                 ),
                 exact(
                     'highTargetOutlineFormat',
@@ -15879,16 +16171,74 @@ function evaluateHighTargetAcceptance({
                     runtime?.hoverOutlineMaskPassCount,
                     1,
                 ),
-                exact(
-                    'highTargetOutlineHorizontalPassAlignment',
-                    runtime?.hoverOutlineHorizontalPassCount,
-                    runtime?.hoverOutlineMaskPassCount,
-                ),
-                exact(
-                    'highTargetOutlineCompositePassAlignment',
-                    runtime?.hoverOutlineCompositePassCount,
-                    runtime?.hoverOutlineMaskPassCount,
-                ),
+                ...(legacyOutlinePipeline
+                    ? [
+                          exact(
+                              'highTargetOutlineLegacyHorizontalPassAlignment',
+                              runtime?.hoverOutlineHorizontalPassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                          exact(
+                              'highTargetOutlineLegacyCompositePassAlignment',
+                              runtime?.hoverOutlineCompositePassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                      ]
+                    : [
+                          exact(
+                              'highTargetOutlineCacheEligibleTargets',
+                              runtime?.hoverOutlineMaskCacheEligibleTargetCount,
+                              2,
+                          ),
+                          exact(
+                              'highTargetOutlineCacheBypasses',
+                              runtime?.hoverOutlineMaskCacheBypassCount,
+                              0,
+                          ),
+                          minimum(
+                              'highTargetOutlineCacheHits',
+                              runtime?.hoverOutlineMaskCacheHitCount,
+                              1,
+                          ),
+                          minimum(
+                              'highTargetOutlineCacheMisses',
+                              runtime?.hoverOutlineMaskCacheMissCount,
+                              1,
+                          ),
+                          exact(
+                              'highTargetOutlineMaskMissAlignment',
+                              runtime?.hoverOutlineMaskPassCount,
+                              runtime?.hoverOutlineMaskCacheMissCount,
+                          ),
+                          exact(
+                              'highTargetOutlineHorizontalPassAlignment',
+                              runtime?.hoverOutlineHorizontalPassCount,
+                              runtime?.hoverOutlineMaskPassCount,
+                          ),
+                          exact(
+                              'highTargetOutlineCacheConservation',
+                              runtime?.hoverOutlineCompositePassCount,
+                              typeof runtime?.hoverOutlineMaskCacheHitCount ===
+                                  'number' &&
+                                  typeof runtime?.hoverOutlineMaskCacheMissCount ===
+                                      'number' &&
+                                  typeof runtime?.hoverOutlineMaskCacheBypassCount ===
+                                      'number'
+                                  ? runtime.hoverOutlineMaskCacheHitCount +
+                                        runtime.hoverOutlineMaskCacheMissCount +
+                                        runtime.hoverOutlineMaskCacheBypassCount
+                                  : null,
+                          ),
+                          ...outlineCacheWindowChecks({
+                              exact,
+                              minimum,
+                              namePrefix: 'highTargetOutlineSampleWindow',
+                              requireMiss:
+                                  typeof requested.motion === 'string' &&
+                                  requested.motion !== 'none',
+                              sample,
+                          }),
+                      ]),
                 exact(
                     'highTargetOutlineAllocationBytes',
                     runtime?.hoverOutlineAllocationEstimatedBytes,
@@ -19585,6 +19935,7 @@ async function main() {
                 closeupRepeat: options.closeupRepeat,
                 closeupTimeoutMs: options.closeupTimeoutMs,
                 graphicsBackend: options.graphicsBackend,
+                legacyOutlinePipeline: options.legacyOutlinePipeline,
                 managedServer: options.startServer,
                 sampleMs: options.sampleMs,
                 scenarios: options.scenarios,
