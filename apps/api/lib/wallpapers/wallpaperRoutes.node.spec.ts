@@ -6,6 +6,14 @@ import {
     type WallpaperRouteDeps,
 } from '../../app/api/[...route]/wallpaperRoutes';
 import type { AuthVariables } from '../hono/authValidator';
+import { macOSDynamicWallpaperFramePathnames } from './macOSDynamicWallpaperBlobs';
+import {
+    decryptMacOSDynamicWallpaperBytes,
+    encryptMacOSDynamicWallpaperBytes,
+} from './macOSDynamicWallpaperEncryption';
+
+const conversionId = '11111111-1111-4111-8111-111111111111';
+const encryptionKey = 'ERERERERERERERERERERERERERERERERERERERERERE';
 
 function testAuth(): MiddlewareHandler<{ Variables: AuthVariables }> {
     return async (context, next) => {
@@ -40,151 +48,290 @@ function pngHeader(width = 3440, height = 1440) {
     return bytes;
 }
 
-function wallpaperForm({
-    includeNight = true,
-    width = 3440,
-}: {
-    includeNight?: boolean;
-    width?: number;
-} = {}) {
-    const form = new FormData();
-    form.set('branding', 'gredice');
-    form.set('gardenId', '42');
-    form.set('size', 'ultrawide');
-    form.set('template', 'standard');
-    for (const phase of ['morning', 'day', 'evening', 'night']) {
-        if (phase === 'night' && !includeNight) {
-            continue;
-        }
-        form.set(
-            phase,
-            new File([pngHeader(width)], `${phase}.png`, {
-                type: 'image/png',
-            }),
-        );
-    }
-    return form;
+function wallpaperRequest() {
+    return {
+        branding: 'gredice',
+        conversionId,
+        encryptionKey,
+        gardenId: 42,
+        size: 'ultrawide',
+        template: 'standard',
+    };
+}
+
+function encryptedPng(pathname: string, width = 3440, height = 1440) {
+    return encryptMacOSDynamicWallpaperBytes({
+        bytes: pngHeader(width, height),
+        encodedKey: encryptionKey,
+        pathname,
+    });
+}
+
+function requestInit(method: 'DELETE' | 'POST' = 'POST') {
+    return {
+        body: JSON.stringify(wallpaperRequest()),
+        headers: { 'Content-Type': 'application/json' },
+        method,
+    };
 }
 
 function deps(overrides: Partial<WallpaperRouteDeps> = {}): WallpaperRouteDeps {
     return {
         authValidator: () => testAuth(),
+        createUpload: async ({ authorize }) => {
+            await authorize({
+                conversionId,
+                gardenId: 42,
+                phase: 'day',
+            });
+            return { clientToken: 'token', type: 'blob.generate-client-token' };
+        },
+        deleteBlobs: async () => undefined,
         encodeMacOSDynamicWallpaper: async () =>
             new TextEncoder().encode('heic'),
         getGarden: async () => ({ accountId: 'account-1' }),
         rateLimitAllows: async () => true,
+        readBlob: async (pathname) => {
+            const bytes = encryptedPng(pathname);
+            return {
+                bytes,
+                contentType: 'application/octet-stream',
+                size: bytes.byteLength,
+            };
+        },
+        storeBlob: async ({ pathname }) => ({
+            downloadUrl:
+                'https://store.public.blob.vercel-storage.com/output.heic.bin',
+            pathname,
+        }),
+        uploadRateLimitAllows: async () => true,
         ...overrides,
     };
 }
 
-test('macOS wallpaper route authenticates before reading multipart input', async () => {
-    let gardenReads = 0;
+test('macOS wallpaper upload authenticates before issuing a Blob token', async () => {
+    let uploadCalls = 0;
     const app = createWallpaperRoutes(
         deps({
             authValidator: () => unauthorizedAuth(),
-            getGarden: async () => {
-                gardenReads += 1;
-                return null;
+            createUpload: async () => {
+                uploadCalls += 1;
+                return {};
             },
         }),
     );
 
-    const response = await app.request('/macos-dynamic', {
-        body: wallpaperForm(),
+    const response = await app.request('/macos-dynamic/uploads', {
+        body: '{}',
+        headers: { 'Content-Type': 'application/json' },
         method: 'POST',
     });
 
     assert.equal(response.status, 401);
-    assert.equal(gardenReads, 0);
+    assert.equal(uploadCalls, 0);
 });
 
-test('macOS wallpaper route returns a finished private HEIC download', async () => {
-    const capturedPhases: string[] = [];
+test('macOS wallpaper upload authorizes an owned garden and rate limits tokens', async () => {
+    const accounts: string[] = [];
     const app = createWallpaperRoutes(
         deps({
-            encodeMacOSDynamicWallpaper: async ({ frames }) => {
-                capturedPhases.push(...frames.keys());
-                return new TextEncoder().encode('heic');
+            uploadRateLimitAllows: async (accountId) => {
+                accounts.push(accountId);
+                return true;
             },
         }),
     );
 
-    const response = await app.request('/macos-dynamic', {
-        body: wallpaperForm(),
+    const response = await app.request('/macos-dynamic/uploads', {
+        body: '{}',
+        headers: { 'Content-Type': 'application/json' },
         method: 'POST',
     });
 
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get('content-type'), 'image/heic');
-    assert.equal(response.headers.get('cache-control'), 'private, no-store');
-    assert.equal(
-        response.headers.get('content-disposition'),
-        'attachment; filename="gredice-vrt-standard-ultrawide-potpis-mac-dinamicka.heic"',
+    assert.deepEqual(accounts, ['account-1']);
+});
+
+test('macOS wallpaper route returns an encrypted HEIC download and deletes inputs', async () => {
+    const capturedPhases: string[] = [];
+    const deleted: string[][] = [];
+    let storedBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
+    let storedPathname = '';
+    const app = createWallpaperRoutes(
+        deps({
+            deleteBlobs: async (pathnames) => {
+                deleted.push([...pathnames]);
+            },
+            encodeMacOSDynamicWallpaper: async ({ frames }) => {
+                capturedPhases.push(...frames.keys());
+                return new TextEncoder().encode('heic');
+            },
+            storeBlob: async ({ bytes, pathname }) => {
+                storedBytes = bytes;
+                storedPathname = pathname;
+                return {
+                    downloadUrl:
+                        'https://store.public.blob.vercel-storage.com/output.heic.bin',
+                    pathname,
+                };
+            },
+        }),
     );
+
+    const response = await app.request('/macos-dynamic', requestInit());
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
     assert.deepEqual(capturedPhases, ['day', 'evening', 'night', 'morning']);
-    assert.equal(await response.text(), 'heic');
+    assert.deepEqual(body, {
+        downloadUrl:
+            'https://store.public.blob.vercel-storage.com/output.heic.bin',
+        fileName: 'gredice-vrt-standard-ultrawide-potpis-mac-dinamicka.heic',
+        pathname: storedPathname,
+    });
+    assert.match(
+        storedPathname,
+        /wallpapers\/macos-dynamic\/output\/account-1\/11111111.*\.heic\.bin$/,
+    );
+    assert.equal(
+        new TextDecoder().decode(
+            decryptMacOSDynamicWallpaperBytes({
+                bytes: storedBytes,
+                encodedKey: encryptionKey,
+                pathname: storedPathname,
+            }),
+        ),
+        'heic',
+    );
+    assert.deepEqual(deleted, [
+        [...macOSDynamicWallpaperFramePathnames(wallpaperRequest()).values()],
+    ]);
 });
 
 test('macOS wallpaper route rejects missing frames and wrong dimensions', async () => {
     let conversions = 0;
-    const app = createWallpaperRoutes(
+    const paths = macOSDynamicWallpaperFramePathnames(wallpaperRequest());
+    const missing = createWallpaperRoutes(
         deps({
             encodeMacOSDynamicWallpaper: async () => {
                 conversions += 1;
                 return new Uint8Array();
             },
+            readBlob: async (pathname) => {
+                if (pathname === paths.get('night')) {
+                    return null;
+                }
+                const bytes = encryptedPng(pathname);
+                return {
+                    bytes,
+                    contentType: 'application/octet-stream',
+                    size: bytes.byteLength,
+                };
+            },
+        }),
+    );
+    const wrongDimensions = createWallpaperRoutes(
+        deps({
+            encodeMacOSDynamicWallpaper: async () => {
+                conversions += 1;
+                return new Uint8Array();
+            },
+            readBlob: async (pathname) => {
+                const bytes = encryptedPng(pathname, 1200);
+                return {
+                    bytes,
+                    contentType: 'application/octet-stream',
+                    size: bytes.byteLength,
+                };
+            },
         }),
     );
 
-    const missing = await app.request('/macos-dynamic', {
-        body: wallpaperForm({ includeNight: false }),
-        method: 'POST',
-    });
-    const wrongSize = await app.request('/macos-dynamic', {
-        body: wallpaperForm({ width: 1200 }),
-        method: 'POST',
-    });
+    const missingResponse = await missing.request(
+        '/macos-dynamic',
+        requestInit(),
+    );
+    const wrongSizeResponse = await wrongDimensions.request(
+        '/macos-dynamic',
+        requestInit(),
+    );
 
-    assert.equal(missing.status, 400);
-    assert.equal(wrongSize.status, 400);
+    assert.equal(missingResponse.status, 400);
+    assert.equal(wrongSizeResponse.status, 400);
     assert.equal(conversions, 0);
 });
 
 test('macOS wallpaper route hides cross-account gardens', async () => {
+    let blobReads = 0;
     const app = createWallpaperRoutes(
-        deps({ getGarden: async () => ({ accountId: 'account-2' }) }),
+        deps({
+            getGarden: async () => ({ accountId: 'account-2' }),
+            readBlob: async () => {
+                blobReads += 1;
+                return null;
+            },
+        }),
     );
 
-    const response = await app.request('/macos-dynamic', {
-        body: wallpaperForm(),
-        method: 'POST',
-    });
+    const response = await app.request('/macos-dynamic', requestInit());
 
     assert.equal(response.status, 404);
+    assert.equal(blobReads, 0);
 });
 
-test('macOS wallpaper route rate limits conversion and maps encoder failure', async (t) => {
+test('macOS wallpaper route rate limits conversion and cleans up encoder failure', async (t) => {
+    const limitedDeletes: string[][] = [];
     const limited = createWallpaperRoutes(
-        deps({ rateLimitAllows: async () => false }),
+        deps({
+            deleteBlobs: async (pathnames) => {
+                limitedDeletes.push([...pathnames]);
+            },
+            rateLimitAllows: async () => false,
+        }),
     );
-    const limitedResponse = await limited.request('/macos-dynamic', {
-        body: wallpaperForm(),
-        method: 'POST',
-    });
+    const limitedResponse = await limited.request(
+        '/macos-dynamic',
+        requestInit(),
+    );
     assert.equal(limitedResponse.status, 429);
     assert.equal(limitedResponse.headers.get('retry-after'), '600');
+    assert.equal(limitedDeletes.length, 1);
 
     t.mock.method(console, 'error', () => undefined);
+    const failedDeletes: string[][] = [];
     const failing = createWallpaperRoutes(
         deps({
+            deleteBlobs: async (pathnames) => {
+                failedDeletes.push([...pathnames]);
+            },
             encodeMacOSDynamicWallpaper: async () => {
                 throw new Error('sandbox failed');
             },
         }),
     );
-    const failedResponse = await failing.request('/macos-dynamic', {
-        body: wallpaperForm(),
-        method: 'POST',
-    });
+    const failedResponse = await failing.request(
+        '/macos-dynamic',
+        requestInit(),
+    );
     assert.equal(failedResponse.status, 503);
+    assert.equal(failedDeletes.length, 1);
+});
+
+test('macOS wallpaper cleanup deletes only the authenticated conversion paths', async () => {
+    const deleted: string[][] = [];
+    const app = createWallpaperRoutes(
+        deps({
+            deleteBlobs: async (pathnames) => {
+                deleted.push([...pathnames]);
+            },
+        }),
+    );
+
+    const response = await app.request('/macos-dynamic', requestInit('DELETE'));
+
+    assert.equal(response.status, 204);
+    assert.equal(deleted.length, 1);
+    assert.equal(deleted[0]?.length, 5);
+    assert.match(deleted[0]?.at(-1) ?? '', /output\/account-1/);
 });

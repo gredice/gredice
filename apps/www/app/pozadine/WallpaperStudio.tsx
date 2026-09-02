@@ -97,6 +97,40 @@ async function wallpaperDownloadError(response: Response) {
     return fallback;
 }
 
+function macOSDynamicWallpaperResponse(body: unknown) {
+    if (
+        typeof body !== 'object' ||
+        body === null ||
+        !('downloadUrl' in body) ||
+        typeof body.downloadUrl !== 'string' ||
+        !('fileName' in body) ||
+        typeof body.fileName !== 'string' ||
+        !('pathname' in body) ||
+        typeof body.pathname !== 'string' ||
+        !body.pathname.startsWith('wallpapers/macos-dynamic/output/') ||
+        !body.pathname.endsWith('.bin')
+    ) {
+        return null;
+    }
+
+    try {
+        const url = new URL(body.downloadUrl);
+        if (
+            url.protocol !== 'https:' ||
+            !url.hostname.endsWith('.blob.vercel-storage.com')
+        ) {
+            return null;
+        }
+    } catch {
+        return null;
+    }
+    return {
+        downloadUrl: body.downloadUrl,
+        fileName: body.fileName,
+        pathname: body.pathname,
+    };
+}
+
 export function WallpaperStudio() {
     const queryClient = useQueryClient();
     const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
@@ -346,37 +380,79 @@ export function WallpaperStudio() {
     async function handleMacOSDynamicDownload() {
         setActivity('macos');
         setError(null);
+        let cleanupRequest: Record<string, string | number> | null = null;
         try {
-            const { macOSDynamicWallpaperFileName } = await import(
-                './macOSDynamicWallpaper'
-            );
+            if (sizeKey === 'tablet' || sizeKey === 'mobile') {
+                throw new Error(
+                    'Mac dinamička pozadina dostupna je za računalne veličine.',
+                );
+            }
+
+            const [{ upload }, macOSDynamicWallpaper] = await Promise.all([
+                import('@vercel/blob/client'),
+                import('./macOSDynamicWallpaper'),
+            ]);
             const size = wallpaperSizes[sizeKey];
             if (selectedGardenId === null) {
                 throw new Error('Najprije odaberi vrt.');
             }
 
-            const formData = new FormData();
-            formData.set('branding', branding);
-            formData.set('gardenId', selectedGardenId.toString());
-            formData.set('size', sizeKey);
-            formData.set('template', wallpaperTemplate);
+            const conversionId = crypto.randomUUID();
+            const encryption =
+                await macOSDynamicWallpaper.createMacOSDynamicWallpaperEncryption();
+            cleanupRequest = {
+                branding,
+                conversionId,
+                encryptionKey: encryption.encodedKey,
+                gardenId: selectedGardenId,
+                size: sizeKey,
+                template: wallpaperTemplate,
+            };
 
             for (const wallpaperPhase of wallpaperPhases) {
-                formData.set(
-                    wallpaperPhase,
-                    await createWallpaper({
-                        ...size,
+                const frame = await createWallpaper({
+                    ...size,
+                    phase: wallpaperPhase,
+                });
+                const pathname =
+                    macOSDynamicWallpaper.macOSDynamicWallpaperInputPath({
+                        conversionId,
+                        gardenId: selectedGardenId,
+                        phase: wallpaperPhase,
+                    });
+                const encryptedFrame =
+                    await macOSDynamicWallpaper.encryptMacOSDynamicWallpaperBlob(
+                        {
+                            blob: frame,
+                            key: encryption.key,
+                            pathname,
+                        },
+                    );
+                const uploaded = await upload(pathname, encryptedFrame, {
+                    access: 'public',
+                    clientPayload: JSON.stringify({
+                        conversionId,
+                        gardenId: selectedGardenId,
                         phase: wallpaperPhase,
                     }),
-                    `${wallpaperPhase}.png`,
-                );
+                    contentType: 'application/octet-stream',
+                    handleUploadUrl:
+                        '/api/gredice/api/wallpapers/macos-dynamic/uploads',
+                    multipart: encryptedFrame.size > 5 * 1024 * 1024,
+                });
+                if (uploaded.pathname !== pathname) {
+                    throw new Error(
+                        'Prijenos slike za HEIC pozadinu nije potvrđen.',
+                    );
+                }
             }
 
             const response = await fetch(
                 '/api/gredice/api/wallpapers/macos-dynamic',
                 {
-                    body: formData,
+                    body: JSON.stringify(cleanupRequest),
                     credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
                     method: 'POST',
                 },
             );
@@ -388,23 +464,57 @@ export function WallpaperStudio() {
                 throw new Error(await wallpaperDownloadError(response));
             }
 
-            const heic = await response.blob();
-            if (heic.size === 0 || heic.type !== 'image/heic') {
+            const conversion = macOSDynamicWallpaperResponse(
+                await response.json(),
+            );
+            const expectedFileName =
+                macOSDynamicWallpaper.macOSDynamicWallpaperFileName({
+                    branding,
+                    size: sizeKey,
+                    template: wallpaperTemplate,
+                });
+            if (!conversion || conversion.fileName !== expectedFileName) {
                 throw new Error(
                     'Poslužitelj nije vratio valjanu HEIC pozadinu.',
                 );
             }
-            downloadBlob(
-                heic,
-                macOSDynamicWallpaperFileName({
-                    branding,
-                    size: sizeKey,
-                    template: wallpaperTemplate,
-                }),
-            );
+
+            const downloadResponse = await fetch(conversion.downloadUrl, {
+                cache: 'no-store',
+            });
+            if (!downloadResponse.ok) {
+                throw new Error(
+                    'Preuzimanje gotove HEIC pozadine nije uspjelo.',
+                );
+            }
+            const encryptedHeic = await downloadResponse.blob();
+            if (
+                encryptedHeic.size === 0 ||
+                encryptedHeic.type !== 'application/octet-stream'
+            ) {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
+            const heic =
+                await macOSDynamicWallpaper.decryptMacOSDynamicWallpaperBlob({
+                    blob: encryptedHeic,
+                    contentType: 'image/heic',
+                    key: encryption.key,
+                    pathname: conversion.pathname,
+                });
+            downloadBlob(heic, expectedFileName);
         } catch (downloadError) {
             setError(captureErrorMessage(downloadError));
         } finally {
+            if (cleanupRequest) {
+                await fetch('/api/gredice/api/wallpapers/macos-dynamic', {
+                    body: JSON.stringify(cleanupRequest),
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    method: 'DELETE',
+                }).catch(() => undefined);
+            }
             setActivity('idle');
         }
     }
