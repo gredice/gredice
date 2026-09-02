@@ -204,6 +204,16 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
                 return result.status;
             })
             .toBe('waiting');
+        const blockedResult = JSON.parse(
+            (await resultOutput.textContent()) ?? '{}',
+        );
+        expect(blockedResult).toMatchObject({
+            activeRootMounted: false,
+            activeRootSubmittedFrameCount: 0,
+            captureAfterRenderPassCount: 0,
+            captureFrameReceiptCount: 0,
+        });
+        await expect(page.locator('canvas')).toHaveCount(1);
     } finally {
         releaseBuildingAsset?.();
     }
@@ -267,6 +277,12 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
     expect(result.size).toBeLessThanOrEqual(2 * 1024 * 1024);
     expect(result.nonTransparentPixels).toBe(60 * 32);
     expect(result.uniqueColorCount).toBeGreaterThan(16);
+    expect(result.activeRootMounted).toBe(true);
+    expect(result.activeRootSubmittedFrameCount).toBeGreaterThan(5);
+    expect(result.captureAfterRenderPassCount).toBeGreaterThan(0);
+    expect(result.captureFrameReceiptCount).toBe(
+        result.captureAfterRenderPassCount,
+    );
     expect(buildingAssetRequests).toHaveLength(1);
     expect(await page.locator('canvas').count()).toBe(2);
     await expect(captureScene).toHaveAttribute(
@@ -284,4 +300,14 @@ test('captures the real offscreen 3D garden as one nonblank 1200x630 WebP', asyn
         (await resultOutput.textContent()) ?? '{}',
     );
     expect(settledResult.count).toBe(1);
+    expect(settledResult.activeRootSubmittedFrameCount).toBeGreaterThan(
+        result.activeRootSubmittedFrameCount + 5,
+    );
+    expect(settledResult.captureAfterRenderPassCount).toBe(
+        result.captureAfterRenderPassCount,
+    );
+    expect(settledResult.captureFrameReceiptCount).toBe(
+        result.captureFrameReceiptCount,
+    );
+    expect(browserErrors).toEqual([]);
 });

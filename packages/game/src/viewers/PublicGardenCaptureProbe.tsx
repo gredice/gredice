@@ -10,6 +10,7 @@ import {
     gardenPreviewRendererVersion,
     gardenPreviewWidth,
 } from '../gardenPreview';
+import { useScenePostRenderFlush } from '../scene/SceneTime';
 
 const minimumWarmupMs = 1500;
 const minimumStableMs = 500;
@@ -207,11 +208,13 @@ export function getNextCaptureStabilityFrameDelay(
 export function createCaptureRootAdvanceScheduler({
     advance,
     cancelFrame,
+    flushPostRender,
     isActive,
     requestFrame,
 }: {
     advance: RootState['advance'];
     cancelFrame: (handle: number) => void;
+    flushPostRender: (timestampMs: number) => boolean;
     isActive: () => boolean;
     requestFrame: (callback: FrameRequestCallback) => number;
 }) {
@@ -248,6 +251,11 @@ export function createCaptureRootAdvanceScheduler({
             const elapsedSeconds =
                 Math.max(0, timestampMs - firstTimestampMs) / 1_000;
             advance(elapsedSeconds, false);
+            if (!flushPostRender(timestampMs)) {
+                throw new Error(
+                    'Garden preview manual frame completed without root-local post-render work.',
+                );
+            }
         });
         pendingFrame = { generation: requestGeneration, handle };
         return true;
@@ -699,12 +707,14 @@ export function PublicGardenCaptureProbe({
     const onErrorRef = useRef(onError);
     const resolvedOutput = resolveCaptureOutput(output);
     const advance = useThree((state) => state.advance);
+    const flushPostRender = useScenePostRenderFlush();
     captureAdvanceEnabledRef.current = enabled && queriesIdle;
     const captureRootAdvanceScheduler = useMemo(
         () =>
             createCaptureRootAdvanceScheduler({
                 advance,
                 cancelFrame: (handle) => window.cancelAnimationFrame(handle),
+                flushPostRender,
                 isActive: () =>
                     mountedRef.current &&
                     captureAdvanceEnabledRef.current &&
@@ -712,7 +722,7 @@ export function PublicGardenCaptureProbe({
                 requestFrame: (callback) =>
                     window.requestAnimationFrame(callback),
             }),
-        [advance],
+        [advance, flushPostRender],
     );
 
     useEffect(() => {

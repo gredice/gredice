@@ -39,6 +39,10 @@ import {
     resolveSceneSpringContext,
 } from './r3fRootLifecycle';
 import { consumeSceneClockActivationGap } from './sceneClockActivation';
+import {
+    createScenePostRenderDispatcher,
+    type ScenePostRenderListener,
+} from './scenePostRenderDispatcher';
 import { registerGameSceneRuntimeActivity } from './sceneRuntimeActivity';
 
 export const sceneFrameRates = {
@@ -74,7 +78,14 @@ type SceneTimeContextValue = {
     subscribeRuntimeVisibility: (
         listener: (visible: boolean) => void,
     ) => () => void;
+    subscribeSceneAfterRender: (
+        listener: ScenePostRenderListener,
+    ) => () => void;
+    subscribeSceneFrameReceipt: (
+        listener: ScenePostRenderListener,
+    ) => () => void;
     subscribeSceneResume: (listener: () => void) => () => void;
+    flushScenePostRender: (timestampMs: number) => boolean;
     timeUniform: IUniform<number>;
 };
 
@@ -189,6 +200,7 @@ export function SceneTimeProvider({
     const [rawInvalidate] = useState(() => readRawR3FRootInvalidate(rootStore));
     const clock = useThree((state) => state.clock);
     const gl = useThree((state) => state.gl);
+    const visibilityReadyRef = useRef(false);
     const [scheduler] = useState(
         () =>
             new GameRuntimeScheduler({
@@ -218,10 +230,22 @@ export function SceneTimeProvider({
                     window.setTimeout(callback, delayMs),
             }),
     );
+    const [postRenderDispatcher] = useState(() =>
+        createScenePostRenderDispatcher({
+            recordFrameReceipt: (timestampMs) => {
+                if (!visibilityReadyRef.current) {
+                    return false;
+                }
+                scheduler.recordFrameCallback(timestampMs);
+                return true;
+            },
+        }),
+    );
     const lifecycleGenerationRef = useRef(0);
-    const renderedThisLoopRef = useRef(false);
-    const visibilityReadyRef = useRef(false);
-    const isFrameRendering = useCallback(() => renderedThisLoopRef.current, []);
+    const isFrameRendering = useCallback(
+        () => postRenderDispatcher.hasRenderedFramePending(),
+        [postRenderDispatcher],
+    );
     const subscribeRuntimeVisibilitySnapshot = useCallback(
         (listener: () => void) =>
             scheduler.subscribeVisibility(() => listener()),
@@ -253,19 +277,20 @@ export function SceneTimeProvider({
         ],
     );
 
-    useEffect(
-        () =>
-            addAfterEffect((timestamp) => {
-                if (!renderedThisLoopRef.current) {
-                    return;
-                }
-                renderedThisLoopRef.current = false;
-                if (visibilityReadyRef.current) {
-                    scheduler.recordFrameCallback(timestamp);
-                }
-            }),
-        [scheduler],
-    );
+    useEffect(() => {
+        postRenderDispatcher.clearRenderedFrame();
+        if (manualFrameloop) {
+            return () => postRenderDispatcher.clearRenderedFrame();
+        }
+
+        const removeAfterEffect = addAfterEffect((timestamp) => {
+            postRenderDispatcher.flushRenderedFrame(timestamp);
+        });
+        return () => {
+            removeAfterEffect();
+            postRenderDispatcher.clearRenderedFrame();
+        };
+    }, [manualFrameloop, postRenderDispatcher]);
 
     useEffect(() => {
         scheduler.setBaseFramesPerSecond(baseFramesPerSecond);
@@ -404,7 +429,7 @@ export function SceneTimeProvider({
 
     useFrame(({ clock: sceneClock }) => {
         timeUniform.value = fixedTime ?? sceneClock.elapsedTime;
-        renderedThisLoopRef.current = true;
+        postRenderDispatcher.markRenderedFrame();
     }, sceneTimeFramePriority);
 
     const contextValue = useMemo<SceneTimeContextValue>(
@@ -415,6 +440,7 @@ export function SceneTimeProvider({
                 scheduler.acquireFixedStepLease(owner, options),
             continuousRenderLeasesEnabled,
             fixedTimeSeconds: fixedTime,
+            flushScenePostRender: postRenderDispatcher.flushRenderedFrame,
             getRuntimeVisible: () => scheduler.getEffectiveVisibility(),
             requestRender: (reason, frames) =>
                 scheduler.requestRender(reason, frames),
@@ -424,11 +450,21 @@ export function SceneTimeProvider({
                 scheduler.scheduleDeadlineAfter(owner, delayMs, callback),
             subscribeSceneResume: (listener) =>
                 scheduler.subscribeResume(listener),
+            subscribeSceneAfterRender:
+                postRenderDispatcher.subscribeAfterRender,
+            subscribeSceneFrameReceipt:
+                postRenderDispatcher.subscribeFrameReceipt,
             subscribeRuntimeVisibility: (listener) =>
                 scheduler.subscribeVisibility(listener),
             timeUniform,
         }),
-        [continuousRenderLeasesEnabled, fixedTime, scheduler, timeUniform],
+        [
+            continuousRenderLeasesEnabled,
+            fixedTime,
+            postRenderDispatcher,
+            scheduler,
+            timeUniform,
+        ],
     );
 
     return (
@@ -546,6 +582,18 @@ export function useSceneDeadline({
 
 export function useSceneRenderRequest() {
     return useSceneTimeContext().requestRender;
+}
+
+export function useScenePostRenderFlush() {
+    return useSceneTimeContext().flushScenePostRender;
+}
+
+export function useSceneAfterRenderSubscription() {
+    return useSceneTimeContext().subscribeSceneAfterRender;
+}
+
+export function useSceneFrameReceiptSubscription() {
+    return useSceneTimeContext().subscribeSceneFrameReceipt;
 }
 
 export function useSceneResume(listener: () => void) {

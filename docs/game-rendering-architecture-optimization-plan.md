@@ -815,11 +815,11 @@ Progress:
   `88144` triangles/frame, `28 MB`; snow dense `126.6` draw calls/frame,
   `141251` triangles/frame, `37.8 MB`; plant-heavy `60.8` draw calls/frame,
   `84707` triangles/frame, `61 MB`.
-- Hover outline rendering moved off `useFrame`; it now subscribes to the
-  after-render pass only while outline targets are active. Because R3F
-  after-effects are module-global, each pass requires a one-shot token marked
-  by that Canvas root's own `useFrame` callback. Other roots cannot satisfy the
-  token, and StrictMode generations keep stale consumers from taking it.
+- Hover outline rendering moved off `useFrame`; it now subscribes to its
+  `SceneTimeProvider` post-render dispatcher only while outline targets are
+  active. The owning root marks one frame token, the dispatcher runs the
+  outline before recording that root's scheduler receipt, and tokenized
+  subscriptions keep StrictMode cleanup isolated.
 - Remaining callbacks are camera rig/render invalidation, active weather/cloud
   transitions, particle/animal simulations, and plant LOD/culling. Those are
   still tied to visible simulation, input, or render invalidation work rather
@@ -949,9 +949,11 @@ Progress:
   invalidates once and R3F aligns the draw to the browser's next animation
   frame. Earlier fixed-step and deadline targets preempt render work. Hidden,
   offscreen, context-lost, and idle scenes retain no scheduler callback.
-- R3F reports a root-scoped receipt from `addAfterEffect`, after WebGL
-  submission. The ordinary `useFrame` path therefore retains only shader-time
-  updates; scheduler reconciliation cannot shift renderer submission timing.
+- Each `SceneTimeProvider` owns one post-render dispatcher. Ordinary roots bridge
+  the module-global R3F `addAfterEffect` only after their own `useFrame` marked a
+  frame; root-local after-render work runs before the scheduler receipt. The
+  ordinary `useFrame` path therefore retains only shader-time updates and the
+  root token; scheduler reconciliation cannot shift renderer submission timing.
 - Demand roots with continuous leases capture the immutable raw R3F invalidator
   and replace the root-state function with a StrictMode-safe, root-isolated
   broker. Reconciler host updates persist as coalesced dirty requests: they ride
@@ -1035,15 +1037,20 @@ Progress:
   `frameloop="never"`. This is separate from `fixedTimeSeconds`: fixed time
   provides deterministic visual time, descendant springs resolve immediately,
   and the probe deduplicates bounded RAF work before calling only its root's
-  `advance(elapsedSeconds, false)`. The false global-effects flag prevents an
-  active spring in another Canvas from entering the capture sequence while the
-  existing asynchronous WebGL2 readback remains unchanged.
+  `advance(elapsedSeconds, false)`. After that call returns, the probe flushes
+  only the capture root's post-render dispatcher with the original RAF
+  millisecond timestamp. Manual roots install no global after-effect bridge, so
+  an active spring in another Canvas cannot enter the capture sequence or
+  receipt its work while the asynchronous WebGL2 readback remains unchanged.
 - Browser component witnesses exercise the two-root contract directly.
   `r3f-root-isolation.spec.tsx` keeps one demand/spring root active while a
   second offscreen root proves zero frames, submissions, spring changes, and
   hidden work before exact demand-mode resume.
-  `garden-preview-capture.spec.tsx` keeps an active demand/spring Canvas beside
-  the manual capture Canvas and still requires one nonblank bounded capture.
+  `garden-preview-capture.spec.tsx` starts with only the manual capture Canvas;
+  its first accepted root-local receipt mounts the demand/spring sibling, which
+  must submit repeatedly while later capture advances coexist. The witness then
+  requires one nonblank bounded capture and proves the capture receipt and
+  after-render counts stay frozen while only the sibling root continues.
 - Extended production profiling with deep-cloned start/end scheduler state and
   a pull-based telemetry view. A synchronous property-read or structured-clone
   burst shares one exact snapshot until its queued reset; runtime frames and

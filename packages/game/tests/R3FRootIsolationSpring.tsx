@@ -1,7 +1,10 @@
 import { animated, useSpring } from '@react-spring/three';
-import { addAfterEffect, useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
-import { useSceneTimeInvalidation } from '../src/scene/SceneTime';
+import { useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
+import {
+    useSceneAfterRenderSubscription,
+    useSceneTimeInvalidation,
+} from '../src/scene/SceneTime';
 
 export type R3FRootIsolationCounters = {
     frameloop: string;
@@ -16,8 +19,8 @@ export function R3FRootIsolationSpring({
     counters: R3FRootIsolationCounters;
     ownsCadence: boolean;
 }) {
-    const renderedThisLoopRef = useRef(false);
     const frameloop = useThree((state) => state.frameloop);
+    const subscribeAfterRender = useSceneAfterRenderSubscription();
     const { offset } = useSpring({
         config: { duration: 200 },
         from: { offset: -0.35 },
@@ -35,20 +38,12 @@ export function R3FRootIsolationSpring({
         60,
     );
 
-    useFrame(() => {
-        renderedThisLoopRef.current = true;
-    }, -900);
-
     useEffect(
         () =>
-            addAfterEffect(() => {
-                if (!renderedThisLoopRef.current) {
-                    return;
-                }
-                renderedThisLoopRef.current = false;
+            subscribeAfterRender(() => {
                 counters.submittedFrameCount += 1;
             }),
-        [counters],
+        [counters, subscribeAfterRender],
     );
 
     return (

@@ -5,6 +5,7 @@ import {
     HoverOutlineEffect,
     HoverOutlineProvider,
 } from '../../../packages/game/src/entities/helpers/HoverOutline';
+import { SceneTimeProvider } from '../../../packages/game/src/scene/SceneTime';
 
 function MarkFixtureReady({ onReady }: { onReady: () => void }) {
     const renderedFrameCount = useRef(0);
@@ -52,55 +53,57 @@ export function HoverOutlineVisualFixture() {
                 }}
             >
                 <color attach="background" args={['#171b24']} />
-                <HoverOutlineProvider>
-                    <HoverOutline
-                        color="#f8fafc"
-                        hovered
-                        opacity={1}
-                        priority={0}
-                        thickness={7}
-                    >
-                        <mesh position={[-0.65, 0, 0]}>
-                            <planeGeometry args={[1.3, 1.05]} />
-                            <meshBasicMaterial
-                                color="#3f6585"
-                                toneMapped={false}
-                            />
-                        </mesh>
-                    </HoverOutline>
-                    <HoverOutline
-                        color="#f8fafc"
-                        hovered
-                        opacity={1}
-                        priority={0}
-                        thickness={7}
-                    >
-                        <mesh position={[0.65, 0, 0]}>
-                            <planeGeometry args={[1.3, 1.05]} />
-                            <meshBasicMaterial
-                                color="#3f6585"
-                                toneMapped={false}
-                            />
-                        </mesh>
-                    </HoverOutline>
-                    <HoverOutline
-                        color="#f6c445"
-                        hovered
-                        opacity={0.55}
-                        priority={10}
-                        thickness={8}
-                    >
-                        <mesh position={[0, 0.52, 0.2]}>
-                            <planeGeometry args={[1.25, 0.72]} />
-                            <meshBasicMaterial
-                                color="#8c4a62"
-                                toneMapped={false}
-                            />
-                        </mesh>
-                    </HoverOutline>
-                    <HoverOutlineEffect />
-                    <MarkFixtureReady onReady={markReady} />
-                </HoverOutlineProvider>
+                <SceneTimeProvider suspendWhenOffscreen={false}>
+                    <HoverOutlineProvider>
+                        <HoverOutline
+                            color="#f8fafc"
+                            hovered
+                            opacity={1}
+                            priority={0}
+                            thickness={7}
+                        >
+                            <mesh position={[-0.65, 0, 0]}>
+                                <planeGeometry args={[1.3, 1.05]} />
+                                <meshBasicMaterial
+                                    color="#3f6585"
+                                    toneMapped={false}
+                                />
+                            </mesh>
+                        </HoverOutline>
+                        <HoverOutline
+                            color="#f8fafc"
+                            hovered
+                            opacity={1}
+                            priority={0}
+                            thickness={7}
+                        >
+                            <mesh position={[0.65, 0, 0]}>
+                                <planeGeometry args={[1.3, 1.05]} />
+                                <meshBasicMaterial
+                                    color="#3f6585"
+                                    toneMapped={false}
+                                />
+                            </mesh>
+                        </HoverOutline>
+                        <HoverOutline
+                            color="#f6c445"
+                            hovered
+                            opacity={0.55}
+                            priority={10}
+                            thickness={8}
+                        >
+                            <mesh position={[0, 0.52, 0.2]}>
+                                <planeGeometry args={[1.25, 0.72]} />
+                                <meshBasicMaterial
+                                    color="#8c4a62"
+                                    toneMapped={false}
+                                />
+                            </mesh>
+                        </HoverOutline>
+                        <HoverOutlineEffect />
+                        <MarkFixtureReady onReady={markReady} />
+                    </HoverOutlineProvider>
+                </SceneTimeProvider>
             </Canvas>
         </div>
     );

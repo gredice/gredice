@@ -1423,9 +1423,10 @@ earliest-due timeout queue as fixed steps and deadlines. When an absolute render
 target is due, the scheduler invalidates once and R3F aligns the actual draw to
 the browser's next animation frame. An earlier fixed step or deadline preempts
 the render timeout. Hidden, offscreen, context-lost, and idle scenes retain no
-scheduler callback. R3F acknowledges each rendered frame through a root-scoped
-`addAfterEffect` receipt after WebGL submission, keeping scheduler bookkeeping
-out of the pre-render `useFrame` path.
+scheduler callback. Each `SceneTimeProvider` owns one post-render dispatcher.
+Ordinary roots bridge the module-global R3F `addAfterEffect` only when their own
+`useFrame` marked a frame; root-local after-render work runs before the scheduler
+receipt. This keeps scheduler bookkeeping out of the pre-render `useFrame` path.
 
 For demand roots with continuous leases enabled, `SceneTimeProvider` captures
 the immutable raw R3F invalidator and installs one root-scoped invalidation
@@ -1457,30 +1458,38 @@ bypass the root function. Ordinary visibility-managed demand roots close that
 cross-root gap with a per-store shield: becoming inactive clears the root's
 pending frame count, switches only that root to `frameloop="never"`, clears the
 count again, and pauses descendant React Spring animations. Calls to the root's
-`setFrameloop` while hidden update the exact mode to restore instead of waking
-the root. Resume restores that requested mode without resetting the Three.js
-clock; final and StrictMode cleanup also restore the captured raw setter only
-when the lifecycle still owns it.
+`setFrameloop` update the exact mode to restore, including a visible transition
+to manual `never`; hidden requests do not wake the root. Resume restores that
+requested mode without resetting the Three.js clock; final and StrictMode
+cleanup also restore the captured raw setter only when the lifecycle still owns
+it.
 
 Manual roots opt out of the ordinary visibility shield. Public preview capture
 mounts its Canvas with `frameloop="never"`, makes descendant springs immediate,
 and schedules a bounded, deduplicated `requestAnimationFrame` train whose
 callbacks call that root's `advance(elapsedSeconds, false)`. Skipping global
 before/after effects keeps another Canvas's animation work out of the capture
-root while preserving the asynchronous WebGL2 readback sequence.
+root. After `advance` returns, the probe flushes only that root's post-render
+dispatcher using the original RAF millisecond timestamp, then preserves the
+asynchronous WebGL2 readback sequence. Manual roots install no global
+after-effect bridge, so a sibling frame cannot receipt capture work.
 
-R3F `addAfterEffect` callbacks are also module-global. The hover-outline pass
-therefore requires a one-shot token marked by its own root's `useFrame`
-callback before it can render; another root's frame has no token to consume.
-Consumer generations prevent stale StrictMode callbacks or cleanup from using a
-replacement registration's token.
+R3F `addAfterEffect` callbacks are module-global, so ordinary roots use exactly
+one global-to-local bridge. The hover-outline pass subscribes to the owning
+`SceneTimeProvider` dispatcher instead of registering another global callback.
+The dispatcher consumes one owning-root frame token exactly once and uses
+tokenized registrations so stale StrictMode cleanup cannot release a replacement
+listener.
 
 Browser component witnesses exercise both two-root boundaries. The
 `r3f-root-isolation` witness keeps one looping spring root active while an
 offscreen ordinary root proves zero frame receipts, WebGL submissions, spring
 changes, and hidden work before restoring its exact demand mode. The garden
-preview capture witness keeps an active demand/spring Canvas beside the manual
-capture Canvas and still requires one nonblank, bounded capture.
+preview capture witness begins with only the manual Canvas. Its first accepted
+root-local receipt mounts the demand/spring sibling, which must submit repeatedly
+while later capture advances coexist. After one nonblank bounded capture, the
+witness proves capture-root receipt and after-render counts remain unchanged
+while sibling frames continue.
 
 The bounded calibration RAF timestamps are observational telemetry only and
 never control target FPS, cadence phase, invalidation lead, or follow-up

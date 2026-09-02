@@ -44,12 +44,15 @@ describe('capture root advance scheduling', () => {
     it('coalesces initial readiness and hard-gate churn without synchronous recursion', () => {
         const queue = createFrameQueue();
         const advances: Array<readonly [number, boolean | undefined]> = [];
+        const events: string[] = [];
+        const postRenderFlushes: number[] = [];
         let active = true;
         let depth = 0;
         let maximumDepth = 0;
         let scheduler: ReturnType<typeof createCaptureRootAdvanceScheduler>;
         scheduler = createCaptureRootAdvanceScheduler({
             advance: (timestamp, runGlobalEffects) => {
+                events.push('advance');
                 depth += 1;
                 maximumDepth = Math.max(maximumDepth, depth);
                 advances.push([timestamp, runGlobalEffects]);
@@ -59,6 +62,11 @@ describe('capture root advance scheduling', () => {
                 depth -= 1;
             },
             cancelFrame: queue.cancelFrame,
+            flushPostRender: (timestampMs) => {
+                events.push('post-render');
+                postRenderFlushes.push(timestampMs);
+                return true;
+            },
             isActive: () => active,
             requestFrame: queue.requestFrame,
         });
@@ -68,12 +76,21 @@ describe('capture root advance scheduling', () => {
         assert.equal(queue.callbacks.size, 1);
         queue.runNext(1_000);
         assert.deepEqual(advances, [[0, false]]);
+        assert.deepEqual(postRenderFlushes, [1_000]);
+        assert.deepEqual(events, ['advance', 'post-render']);
         assert.equal(maximumDepth, 1);
         assert.equal(queue.callbacks.size, 1);
         queue.runNext(1_016);
         assert.deepEqual(advances, [
             [0, false],
             [0.016, false],
+        ]);
+        assert.deepEqual(postRenderFlushes, [1_000, 1_016]);
+        assert.deepEqual(events, [
+            'advance',
+            'post-render',
+            'advance',
+            'post-render',
         ]);
         active = false;
         assert.equal(scheduler.request(), false);
@@ -85,6 +102,7 @@ describe('capture root advance scheduling', () => {
         const scheduler = createCaptureRootAdvanceScheduler({
             advance: (timestamp) => advances.push(timestamp),
             cancelFrame: queue.cancelFrame,
+            flushPostRender: () => true,
             isActive: () => true,
             requestFrame: queue.requestFrame,
         });
@@ -101,9 +119,14 @@ describe('capture root advance scheduling', () => {
     it('cancels cleanup work and ignores a stale queued callback', () => {
         const queue = createFrameQueue();
         const advances: number[] = [];
+        const postRenderFlushes: number[] = [];
         const scheduler = createCaptureRootAdvanceScheduler({
             advance: (timestamp) => advances.push(timestamp),
             cancelFrame: queue.cancelFrame,
+            flushPostRender: (timestampMs) => {
+                postRenderFlushes.push(timestampMs);
+                return true;
+            },
             isActive: () => true,
             requestFrame: queue.requestFrame,
         });
@@ -116,9 +139,49 @@ describe('capture root advance scheduling', () => {
         assert.equal(scheduler.request(), true);
         staleCallback(500);
         assert.deepEqual(advances, []);
+        assert.deepEqual(postRenderFlushes, []);
         assert.equal(queue.callbacks.size, 1);
         queue.runNext(1_000);
         assert.deepEqual(advances, [0]);
+        assert.deepEqual(postRenderFlushes, [1_000]);
+    });
+
+    it('does not flush post-render work when manual advance throws', () => {
+        const queue = createFrameQueue();
+        const postRenderFlushes: number[] = [];
+        const scheduler = createCaptureRootAdvanceScheduler({
+            advance: () => {
+                throw new Error('manual render failed');
+            },
+            cancelFrame: queue.cancelFrame,
+            flushPostRender: (timestampMs) => {
+                postRenderFlushes.push(timestampMs);
+                return true;
+            },
+            isActive: () => true,
+            requestFrame: queue.requestFrame,
+        });
+
+        assert.equal(scheduler.request(), true);
+        assert.throws(() => queue.runNext(1_000), /manual render failed/);
+        assert.deepEqual(postRenderFlushes, []);
+    });
+
+    it('fails closed when a completed manual frame has no post-render token', () => {
+        const queue = createFrameQueue();
+        const scheduler = createCaptureRootAdvanceScheduler({
+            advance: () => undefined,
+            cancelFrame: queue.cancelFrame,
+            flushPostRender: () => false,
+            isActive: () => true,
+            requestFrame: queue.requestFrame,
+        });
+
+        assert.equal(scheduler.request(), true);
+        assert.throws(
+            () => queue.runNext(1_000),
+            /without root-local post-render work/,
+        );
     });
 });
 
