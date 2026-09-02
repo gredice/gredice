@@ -25,5 +25,5 @@ export function getGardenBuildingSystemAvailability(isSandbox: boolean) {
 
     return {
         enabled: systemEnabled && (isSandbox || commercialEnabled),
-    } as const;
+    };
 }

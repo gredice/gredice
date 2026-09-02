@@ -42,7 +42,7 @@ test('requires managed discovery and API authority while saved structures keep r
     );
     assert.match(
         entryGate,
-        /fixture: Boolean\(\s*gardenStructureDebugFixture \|\| gardenStructureProfileFixture/,
+        /fixture: Boolean\(\s*isLocalSandbox \|\|\s*gardenStructureDebugFixture \|\|\s*gardenStructureProfileFixture/,
     );
     assert.match(
         gameSceneSource,

@@ -445,7 +445,9 @@ export function GameScene({
     const gardenStructureVerticalSliceEnabled =
         resolveGardenStructureBuildModeEnabled({
             fixture: Boolean(
-                gardenStructureDebugFixture || gardenStructureProfileFixture,
+                isLocalSandbox ||
+                    gardenStructureDebugFixture ||
+                    gardenStructureProfileFixture,
             ),
             managedEnabled: gardenStructureManagedEnabled,
             serverEnabled: Boolean(garden?.gardenBuildingSystem?.enabled),
