@@ -308,15 +308,23 @@ may exceed the steady target. Scheduler callback conservation and wakeup
 accounting are fail-closed candidate invariants. Every handled wakeup must be
 classified exactly once as productive delivery of a deadline, fixed step, or
 owned invalidation; as a no-op timeout causally retained after its semantic
-target moved later; or as an unexpected no-work wakeup. Classification must
-sum exactly to handled wakeups, unexpected no-work wakeups must remain zero,
-and no scheduler frame wakeup may occur after display calibration. This admits
-causally necessary retained timers without a phase-specific allowance, while a
-perpetual RAF keepalive cannot improve a GPU signal by adding browser wakeups.
-This remains comparison contract v2, but the new candidate counters require a
-fresh final capture. Pre-counter candidate reports are invalid; omitted counters
-remain compatible only for the explicitly selected `legacy-heartbeat-v1`
-baseline contract.
+target moved later; as the single next-cadence reconciliation allowed while an
+owned invalidation generation still awaits its R3F receipt; or as an unexpected
+no-work wakeup. Classification must sum exactly to handled wakeups, unexpected
+no-work wakeups must remain zero, and no scheduler frame wakeup may occur after
+display calibration. Pending-receipt reconciliations may not exceed owned
+invalidations issued in the window plus one when `awaitingFrameReceipt` was true
+at its start. Both boundary values must be booleans. Canonical endpoints must
+also retain one stable completed display calibration, a positive calibrated
+display interval, and a pending timeout with a finite due time, so the
+post-calibration zero-RAF claim cannot pass across a reset or an idle boundary.
+This admits causally necessary retained and outstanding-receipt
+reconciliation without a phase-specific allowance, while a perpetual RAF
+keepalive cannot improve a GPU signal by adding browser wakeups. This remains
+comparison contract v2, but the new candidate counter and boundary state require
+a fresh final capture. Pre-counter canonical reports are invalid; omitted fields
+remain compatible only on the explicitly selected `legacy-heartbeat-v1`
+baseline side.
 
 Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
@@ -1533,9 +1541,13 @@ and wakeup counters cover both bounded calibration frames and scheduler
 timeouts, while R3F frame callbacks remain a separate receipt count.
 Display-interval telemetry remains observational and never steers scheduling.
 Handled wakeups are additionally partitioned into productive, causally retained
-timeout-reconciliation, and unexpected no-work counters. Their exact sum must
-equal `wakeupCount`. `postCalibrationFrameWakeupCount` separately exposes any
-scheduler RAF polling after the bounded calibration has completed.
+timeout-reconciliation, one bounded pending-frame-receipt reconciliation per
+still-outstanding owned-invalidation generation, and unexpected no-work
+counters. Their exact sum must equal `wakeupCount`. The boundary
+`awaitingFrameReceipt` state proves whether the first such reconciliation in a
+window belongs to an invalidation issued before that window.
+`postCalibrationFrameWakeupCount` separately exposes any scheduler RAF polling
+after the bounded calibration has completed.
 
 Cross-tier owner profiles integrate how long the scheduler actually advertises
 30 FPS ambient and 60 FPS interaction targets. The canonical cross-tier scalar

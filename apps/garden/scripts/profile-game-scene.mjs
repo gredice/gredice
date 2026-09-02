@@ -5082,6 +5082,7 @@ async function measureGardenSwitchScenario(
 }
 
 const runtimeFrameLoopBooleanFields = [
+    'awaitingFrameReceipt',
     'canvasVisible',
     'documentVisible',
     'effectiveVisible',
@@ -5119,6 +5120,7 @@ const fullRuntimeFrameLoopCounterFields = [
     'wakeupCount',
     'productiveWakeupCount',
     'retainedTimeoutReconciliationWakeupCount',
+    'pendingFrameReceiptReconciliationWakeupCount',
     'unexpectedNoWorkWakeupCount',
     'postCalibrationFrameWakeupCount',
     'invalidationCount',
@@ -5145,6 +5147,7 @@ const genericRuntimeFrameLoopCounterFields = [
     ...runtimeFrameLoopCounterFields,
     'productiveWakeupCount',
     'retainedTimeoutReconciliationWakeupCount',
+    'pendingFrameReceiptReconciliationWakeupCount',
     'unexpectedNoWorkWakeupCount',
     'postCalibrationFrameWakeupCount',
     'displayFrameCalibrationCount',

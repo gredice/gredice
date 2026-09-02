@@ -3544,6 +3544,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         });
     };
     const runtimeFrameLoop = {
+        awaitingFrameReceipt: true,
         cancelledCallbackCount: 1,
         deadlineOwners: ['spawn'],
         displayFrameCalibrationCount: 1,
@@ -3557,6 +3558,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         missedFrameReceiptCount: 0,
         nonessentialHiddenWorkCount: 0,
         ownedInvalidationCount: 30,
+        pendingFrameReceiptReconciliationWakeupCount: 1,
         postCalibrationFrameWakeupCount: 0,
         productiveWakeupCount: 19,
         r3fFrameCallbackCount: 40,
@@ -3591,6 +3593,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.invalidationFailureCount = 2;
         runtimeFrameLoop.missedFrameReceiptCount = 1;
         runtimeFrameLoop.ownedInvalidationCount = 34;
+        runtimeFrameLoop.pendingFrameReceiptReconciliationWakeupCount = 3;
         runtimeFrameLoop.productiveWakeupCount = 22;
         runtimeFrameLoop.r3fFrameCallbackCount = 46;
         runtimeFrameLoop.renderLeaseOwners.push('weather');
@@ -3598,6 +3601,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.resumeCount = 1;
         runtimeFrameLoop.scheduledCallbackCount = 15;
         runtimeFrameLoop.suspendCount = 1;
+        runtimeFrameLoop.awaitingFrameReceipt = false;
         runtimeFrameLoop.wakeupCount = 23;
 
         const sampleAtEndpoint = await finishInteractiveProfileSample();
@@ -3639,6 +3643,8 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             sample.runtimeFrameLoopAtEnd.displayFrameIntervalMs,
             1000 / 120,
         );
+        assert.equal(sample.runtimeFrameLoopAtStart.awaitingFrameReceipt, true);
+        assert.equal(sample.runtimeFrameLoopAtEnd.awaitingFrameReceipt, false);
         assert.deepEqual(sample.runtimeFrameLoopCounterDeltas, {
             cancelledCallbackCount: 1,
             displayFrameCalibrationCount: 1,
@@ -3650,6 +3656,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             missedFrameReceiptCount: 1,
             nonessentialHiddenWorkCount: 0,
             ownedInvalidationCount: 4,
+            pendingFrameReceiptReconciliationWakeupCount: 2,
             postCalibrationFrameWakeupCount: 0,
             productiveWakeupCount: 3,
             r3fFrameCallbackCount: 6,
@@ -3719,6 +3726,7 @@ test('interactive sampling preserves absent scheduler telemetry without changing
             missedFrameReceiptCount: null,
             nonessentialHiddenWorkCount: null,
             ownedInvalidationCount: null,
+            pendingFrameReceiptReconciliationWakeupCount: null,
             postCalibrationFrameWakeupCount: null,
             productiveWakeupCount: null,
             r3fFrameCallbackCount: null,
@@ -5581,6 +5589,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         activeFixedStepLeaseCount: 0,
         activeLeaseCount: 0,
         activeRenderLeaseCount: 0,
+        awaitingFrameReceipt: false,
         callbackPending: false,
         cancelledCallbackCount: 2,
         canvasVisible: true,
@@ -5605,6 +5614,7 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         ownedInvalidationCount: 8,
         pendingCallbackDueAt: null,
         pendingCallbackKind: 'none',
+        pendingFrameReceiptReconciliationWakeupCount: 0,
         postCalibrationFrameWakeupCount: 0,
         productiveWakeupCount: 10,
         r3fFrameCallbackCount: 6,
@@ -5983,6 +5993,7 @@ function createPassingLifecycleAcceptanceInput() {
     });
     const activeRuntimeFrameLoop = {
         activeLeaseCount: 0,
+        awaitingFrameReceipt: false,
         cancelledCallbackCount: 0,
         canvasVisible: true,
         documentVisible: true,

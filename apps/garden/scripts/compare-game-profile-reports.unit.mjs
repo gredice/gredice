@@ -313,13 +313,23 @@ function gardenSwitchScenario(profileRun) {
     const arrival = (arrivalIndex, profile, timing) => {
         const arrivalSample = sample({
             runtimeFrameLoopAtEnd: {
+                awaitingFrameReceipt: false,
                 callbackPending: true,
+                displayFrameCalibrationCount: 1,
+                displayFrameIntervalMs: 1000 / 60,
                 effectiveVisible: true,
+                pendingCallbackDueAt: 2_000,
+                pendingCallbackKind: 'timeout',
                 targetFramesPerSecond: 30,
             },
             runtimeFrameLoopAtStart: {
+                awaitingFrameReceipt: false,
                 callbackPending: true,
+                displayFrameCalibrationCount: 1,
+                displayFrameIntervalMs: 1000 / 60,
                 effectiveVisible: true,
+                pendingCallbackDueAt: 1_000,
+                pendingCallbackKind: 'timeout',
                 targetFramesPerSecond: 30,
             },
             runtimeFrameLoopCounterDeltas: {
@@ -329,6 +339,7 @@ function gardenSwitchScenario(profileRun) {
                 missedFrameReceiptCount: 0,
                 ownedInvalidationCount: 30,
                 postCalibrationFrameWakeupCount: 0,
+                pendingFrameReceiptReconciliationWakeupCount: 0,
                 productiveWakeupCount: 30,
                 r3fFrameCallbackCount: 30,
                 retainedTimeoutReconciliationWakeupCount: 0,
@@ -768,9 +779,14 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             for (const arrival of scenario.gardenSwitch.arrivals) {
                 const deltas = arrival.sample.runtimeFrameLoopCounterDeltas;
                 delete deltas.postCalibrationFrameWakeupCount;
+                delete deltas.pendingFrameReceiptReconciliationWakeupCount;
                 delete deltas.productiveWakeupCount;
                 delete deltas.retainedTimeoutReconciliationWakeupCount;
                 delete deltas.unexpectedNoWorkWakeupCount;
+                delete arrival.sample.runtimeFrameLoopAtStart
+                    .awaitingFrameReceipt;
+                delete arrival.sample.runtimeFrameLoopAtEnd
+                    .awaitingFrameReceipt;
             }
         }
         if (
@@ -2856,8 +2872,6 @@ test('garden-switch rendered FPS uses exact semantic target evidence instead of 
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
             arrival.sample.renderedFps = 45;
-            delete arrival.sample.runtimeFrameLoopAtStart;
-            delete arrival.sample.runtimeFrameLoopAtEnd;
         }
     }
     for (const scenario of candidate.scenarios) {
@@ -3232,16 +3246,71 @@ test('garden-switch full-length control gates total submitted work', () => {
 
 test('garden-switch scheduler efficiency rejects non-semantic wakeups', async (t) => {
     const cases = {
+        'callback is not pending': {
+            expected: /callbackPending must be true/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtEnd.callbackPending = false;
+            },
+        },
         'callback conservation mismatch': {
             expected: /callback conservation must equal/,
             mutate: (sampleValue) => {
                 sampleValue.runtimeFrameLoopCounterDeltas.scheduledCallbackCount += 1;
             },
         },
+        'incomplete display calibration': {
+            expected: /displayFrameCalibrationCount must be a positive integer/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtStart.displayFrameCalibrationCount = 0;
+            },
+        },
+        'inactive display calibration': {
+            expected: /displayFrameIntervalMs must be a positive finite number/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtStart.displayFrameIntervalMs =
+                    null;
+            },
+        },
+        'malformed end receipt boundary': {
+            expected:
+                /runtimeFrameLoopAtEnd.awaitingFrameReceipt must be a boolean/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtEnd.awaitingFrameReceipt = null;
+            },
+        },
         'missed frame receipt': {
             expected: /missedFrameReceiptCount must be 0/,
             mutate: (sampleValue) => {
                 sampleValue.runtimeFrameLoopCounterDeltas.missedFrameReceiptCount = 1;
+            },
+        },
+        'missing receipt probe counter': {
+            expected:
+                /pendingFrameReceiptReconciliationWakeupCount must be a non-negative integer/,
+            mutate: (sampleValue) => {
+                delete sampleValue.runtimeFrameLoopCounterDeltas
+                    .pendingFrameReceiptReconciliationWakeupCount;
+            },
+        },
+        'missing start receipt boundary': {
+            expected:
+                /runtimeFrameLoopAtStart.awaitingFrameReceipt must be a boolean/,
+            mutate: (sampleValue) => {
+                delete sampleValue.runtimeFrameLoopAtStart.awaitingFrameReceipt;
+            },
+        },
+        'non-timeout pending callback': {
+            expected: /pendingCallbackKind must be "timeout"/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtStart.pendingCallbackKind =
+                    'frame';
+            },
+        },
+        'timeout without a finite due time': {
+            expected:
+                /pendingCallbackDueAt must be a non-negative finite number/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtEnd.pendingCallbackDueAt = null;
             },
         },
         'perpetual RAF wakeups': {
@@ -3277,6 +3346,26 @@ test('garden-switch scheduler efficiency rejects non-semantic wakeups', async (t
                 sampleValue.runtimeFrameLoopCounterDeltas.r3fFrameCallbackCount -= 1;
             },
         },
+        'receipt probe ownership bound': {
+            expected:
+                /pendingFrameReceiptReconciliationWakeupCount must not exceed ownedInvalidationCount plus an awaiting receipt at sample start/,
+            mutate: (sampleValue) => {
+                const deltas = sampleValue.runtimeFrameLoopCounterDeltas;
+                deltas.pendingFrameReceiptReconciliationWakeupCount =
+                    deltas.ownedInvalidationCount + 1;
+                deltas.wakeupCount +=
+                    deltas.pendingFrameReceiptReconciliationWakeupCount;
+                deltas.scheduledCallbackCount +=
+                    deltas.pendingFrameReceiptReconciliationWakeupCount;
+            },
+        },
+        'unstable display calibration': {
+            expected:
+                /displayFrameCalibrationCount must remain stable across the sample window/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopAtEnd.displayFrameCalibrationCount = 2;
+            },
+        },
     };
 
     for (const [name, { expected, mutate }] of Object.entries(cases)) {
@@ -3304,6 +3393,42 @@ test('garden-switch scheduler efficiency accepts a causally retained no-op timeo
     const comparison = comparePartialReports(baseline, candidate);
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.exitCode, 0);
+});
+
+test('garden-switch scheduler efficiency accepts a bounded pending receipt probe', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    const sampleValue = candidate.scenarios[0].gardenSwitch.arrivals[0].sample;
+    const deltas = sampleValue.runtimeFrameLoopCounterDeltas;
+    sampleValue.runtimeFrameLoopAtStart.awaitingFrameReceipt = true;
+    deltas.ownedInvalidationCount = 0;
+    deltas.pendingFrameReceiptReconciliationWakeupCount = 1;
+    deltas.wakeupCount += 1;
+    deltas.scheduledCallbackCount += 1;
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
+});
+
+test('garden-switch canonical baseline requires the full scheduler evidence', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    const sampleValue = baseline.scenarios[0].gardenSwitch.arrivals[0].sample;
+    delete sampleValue.runtimeFrameLoopAtStart.awaitingFrameReceipt;
+    delete sampleValue.runtimeFrameLoopAtEnd.awaitingFrameReceipt;
+    delete sampleValue.runtimeFrameLoopCounterDeltas
+        .pendingFrameReceiptReconciliationWakeupCount;
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /baseline\.sample\.runtimeFrameLoopAtStart\.awaitingFrameReceipt must be a boolean/,
+    );
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /baseline\.sample\.runtimeFrameLoopCounterDeltas\.pendingFrameReceiptReconciliationWakeupCount must be a non-negative integer/,
+    );
 });
 
 test('garden-switch elapsed-window GPU evidence fails closed for incomplete or unordered timing', async (t) => {

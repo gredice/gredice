@@ -29,6 +29,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     activeFixedStepLeaseCount: number;
     activeLeaseCount: number;
     activeRenderLeaseCount: number;
+    awaitingFrameReceipt: boolean;
     callbackPending: boolean;
     cancelledCallbackCount: number;
     coalescedRenderRequestReasons: readonly string[];
@@ -57,6 +58,7 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     ownedInvalidationCount: number;
     pendingCallbackDueAt: number | null;
     pendingCallbackKind: GameRuntimeSchedulerPendingCallback;
+    pendingFrameReceiptReconciliationWakeupCount: number;
     postCalibrationFrameWakeupCount: number;
     productiveWakeupCount: number;
     renderLeaseOwners: readonly string[];
@@ -149,6 +151,7 @@ type DeadlineEntry = {
 
 type PendingCallback = {
     dueAt: number | null;
+    frameReceiptReconciliationGeneration: number | null;
     handle: SchedulerHandle;
     id: number;
     kind: Exclude<GameRuntimeSchedulerPendingCallback, 'none'>;
@@ -157,7 +160,13 @@ type PendingCallback = {
 
 type NextWakeup = {
     dueAt: number | null;
+    frameReceiptReconciliationGeneration: number | null;
     kind: Exclude<GameRuntimeSchedulerPendingCallback, 'none'>;
+};
+
+type RenderWakeup = {
+    dueAt: number;
+    frameReceiptReconciliationGeneration: number | null;
 };
 
 type MutableSchedulerCounters = {
@@ -177,6 +186,7 @@ type MutableSchedulerCounters = {
     maxDeliveredDeltaMs: number;
     missedFrameReceiptCount: number;
     nonessentialHiddenWorkCount: number;
+    pendingFrameReceiptReconciliationWakeupCount: number;
     postCalibrationFrameWakeupCount: number;
     productiveWakeupCount: number;
     resumeCount: number;
@@ -247,6 +257,7 @@ export class GameRuntimeScheduler {
         maxDeliveredDeltaMs: 0,
         missedFrameReceiptCount: 0,
         nonessentialHiddenWorkCount: 0,
+        pendingFrameReceiptReconciliationWakeupCount: 0,
         postCalibrationFrameWakeupCount: 0,
         productiveWakeupCount: 0,
         resumeCount: 0,
@@ -270,7 +281,9 @@ export class GameRuntimeScheduler {
     private frameIntervalCalibrationStartedAt: number | null = null;
     private frameIntervalCalibrated = false;
     private awaitingFrameReceipt = false;
+    private frameReceiptReconciliationGeneration = 0;
     private invalidationRetryNotBeforeAt: number | null = null;
+    private lastReconciledFrameReceiptGeneration = 0;
     private lastInvalidatedAt: number | null = null;
     private lastFrameReceiptAt: number | null = null;
     private nextRenderFrameTargetAt: number | null = null;
@@ -872,6 +885,7 @@ export class GameRuntimeScheduler {
             activeFixedStepLeaseCount: this.fixedStepLeases.size,
             activeLeaseCount: this.renderLeases.size,
             activeRenderLeaseCount: this.renderLeases.size,
+            awaitingFrameReceipt: this.awaitingFrameReceipt,
             callbackPending: this.pendingCallback !== null,
             coalescedRenderRequestReasons: uniqueSortedOwners(
                 this.coalescedRenderRequests.keys(),
@@ -914,6 +928,7 @@ export class GameRuntimeScheduler {
         this.renderLeases.clear();
         this.renderRequests.clear();
         this.sharedRenderLeases.clear();
+        this.awaitingFrameReceipt = false;
         this.lastFrameReceiptAt = null;
         this.previousFrameReceiptWasOwned = false;
         this.activationListeners.clear();
@@ -1156,7 +1171,7 @@ export class GameRuntimeScheduler {
         );
     }
 
-    private getNextRenderDueAt(now: number) {
+    private getNextRenderWakeup(now: number): RenderWakeup | null {
         const framesPerSecond = this.getRenderFramesPerSecond();
         if (framesPerSecond === 0) {
             return null;
@@ -1164,7 +1179,10 @@ export class GameRuntimeScheduler {
 
         const intervalMs = 1000 / framesPerSecond;
         if (this.invalidationRetryNotBeforeAt !== null) {
-            return this.invalidationRetryNotBeforeAt;
+            return {
+                dueAt: this.invalidationRetryNotBeforeAt,
+                frameReceiptReconciliationGeneration: null,
+            };
         }
         const lastInvalidatedAt = this.lastInvalidatedAt;
         if (this.isAwaitingFrame()) {
@@ -1172,17 +1190,35 @@ export class GameRuntimeScheduler {
                 (lastInvalidatedAt ?? now) + Math.max(intervalMs * 2, 100);
             if (
                 this.nextRenderFrameTargetAt !== null &&
-                this.nextRenderFrameTargetAt > now + schedulerToleranceMs
+                this.nextRenderFrameTargetAt > now + schedulerToleranceMs &&
+                this.nextRenderFrameTargetAt <= retryAt
             ) {
-                return Math.min(this.nextRenderFrameTargetAt, retryAt);
+                // Pre-arm the ordinary cadence so a timely R3F receipt can
+                // reuse this timer without a cancel/rearm pair. If the receipt
+                // is late, its generation permits exactly one causal no-work
+                // reconciliation before the bounded retry takes over.
+                return {
+                    dueAt: this.nextRenderFrameTargetAt,
+                    frameReceiptReconciliationGeneration:
+                        this.frameReceiptReconciliationGeneration,
+                };
             }
-            return retryAt;
+            return {
+                dueAt: retryAt,
+                frameReceiptReconciliationGeneration: null,
+            };
         }
         if (this.nextRenderFrameTargetAt === null) {
-            return now;
+            return {
+                dueAt: now,
+                frameReceiptReconciliationGeneration: null,
+            };
         }
 
-        return Math.max(now, this.nextRenderFrameTargetAt);
+        return {
+            dueAt: Math.max(now, this.nextRenderFrameTargetAt),
+            frameReceiptReconciliationGeneration: null,
+        };
     }
 
     private getNextFixedStepDueAt() {
@@ -1211,7 +1247,8 @@ export class GameRuntimeScheduler {
         if (this.disposed || !this.isEffectivelyVisible()) {
             return null;
         }
-        const renderDueAt = this.getNextRenderDueAt(now);
+        const renderWakeup = this.getNextRenderWakeup(now);
+        const renderDueAt = renderWakeup?.dueAt ?? null;
         const fixedStepDueAt = this.getNextFixedStepDueAt();
         const deadlineDueAt = this.getNextDeadlineDueAt();
         const nonRenderDueAt =
@@ -1228,23 +1265,24 @@ export class GameRuntimeScheduler {
         ) {
             return {
                 dueAt: Math.max(now, nonRenderDueAt),
+                frameReceiptReconciliationGeneration: null,
                 kind: 'timeout',
             };
         }
         if (renderDueAt !== null && !this.frameIntervalCalibrated) {
-            return { dueAt: null, kind: 'frame' };
+            return {
+                dueAt: null,
+                frameReceiptReconciliationGeneration: null,
+                kind: 'frame',
+            };
         }
 
-        const dueAt =
-            renderDueAt === null
-                ? nonRenderDueAt
-                : nonRenderDueAt === null
-                  ? renderDueAt
-                  : Math.min(renderDueAt, nonRenderDueAt);
-        return dueAt === null
+        return renderWakeup === null
             ? null
             : {
-                  dueAt: Math.max(now, dueAt),
+                  dueAt: Math.max(now, renderWakeup.dueAt),
+                  frameReceiptReconciliationGeneration:
+                      renderWakeup.frameReceiptReconciliationGeneration,
                   kind: 'timeout',
               };
     }
@@ -1282,9 +1320,15 @@ export class GameRuntimeScheduler {
             // An earlier timer can safely reconcile a semantic render target,
             // deadline, or fixed-step target that moved later without a
             // cancellation/rearm pair.
-            this.pendingCallback.retainedForReconciliation =
+            const retainedForReconciliation =
                 nextWakeup.dueAt >
                 this.pendingCallback.dueAt + schedulerToleranceMs;
+            this.pendingCallback.retainedForReconciliation =
+                retainedForReconciliation;
+            this.pendingCallback.frameReceiptReconciliationGeneration =
+                retainedForReconciliation
+                    ? null
+                    : nextWakeup.frameReceiptReconciliationGeneration;
             this.emitSnapshot();
             return;
         }
@@ -1302,6 +1346,7 @@ export class GameRuntimeScheduler {
             });
             this.pendingCallback = {
                 dueAt: null,
+                frameReceiptReconciliationGeneration: null,
                 handle,
                 id,
                 kind: 'frame',
@@ -1327,6 +1372,10 @@ export class GameRuntimeScheduler {
             // Keep the exact semantic target unless this is one intentional
             // maximum-delay segment; effect rounding must not redefine it.
             dueAt: callbackDueAt,
+            frameReceiptReconciliationGeneration:
+                callbackDueAt < dueAt
+                    ? null
+                    : nextWakeup.frameReceiptReconciliationGeneration,
             handle,
             id,
             kind: 'timeout',
@@ -1356,6 +1405,8 @@ export class GameRuntimeScheduler {
 
         const callbackKind = this.pendingCallback.kind;
         const callbackDueAt = this.pendingCallback.dueAt;
+        const frameReceiptReconciliationGeneration =
+            this.pendingCallback.frameReceiptReconciliationGeneration;
         const retainedForReconciliation =
             this.pendingCallback.retainedForReconciliation;
         const productiveWorkCountBefore =
@@ -1424,6 +1475,21 @@ export class GameRuntimeScheduler {
                 retainedForReconciliation
             ) {
                 this.counters.retainedTimeoutReconciliationWakeupCount += 1;
+            } else if (
+                callbackKind === 'timeout' &&
+                frameReceiptReconciliationGeneration !== null &&
+                this.awaitingFrameReceipt &&
+                frameReceiptReconciliationGeneration ===
+                    this.frameReceiptReconciliationGeneration &&
+                frameReceiptReconciliationGeneration !==
+                    this.lastReconciledFrameReceiptGeneration
+            ) {
+                // A tagged cadence probe belongs only to the exact receipt
+                // that was outstanding when it was armed. Remembering the
+                // generation keeps every later no-op fail-closed.
+                this.lastReconciledFrameReceiptGeneration =
+                    frameReceiptReconciliationGeneration;
+                this.counters.pendingFrameReceiptReconciliationWakeupCount += 1;
             } else {
                 this.counters.unexpectedNoWorkWakeupCount += 1;
             }
@@ -1505,7 +1571,7 @@ export class GameRuntimeScheduler {
     }
 
     private requestInvalidationIfDue(now: number) {
-        const renderDueAt = this.getNextRenderDueAt(now);
+        const renderDueAt = this.getNextRenderWakeup(now)?.dueAt ?? null;
         if (renderDueAt === null || renderDueAt > now + schedulerToleranceMs) {
             return;
         }
@@ -1534,6 +1600,7 @@ export class GameRuntimeScheduler {
             this.counters.invalidationFailureCount += 1;
             throw error;
         }
+        this.frameReceiptReconciliationGeneration += 1;
         this.awaitingFrameReceipt = true;
         this.invalidationRetryNotBeforeAt = null;
         this.lastInvalidatedAt = now;

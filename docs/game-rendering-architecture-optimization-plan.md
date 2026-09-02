@@ -1040,11 +1040,17 @@ Progress:
   classification, zero unexpected no-work wakeups, zero post-calibration
   scheduler RAF polling, per-render submissions, and fixed-control total
   submissions. Productive delivery, intentionally retained earlier timeouts
-  whose targets moved later, and unexpected no-work exhaustively partition
-  every handled wakeup without an empirical phase allowance. Complete elapsed
-  GPU occupancy remains visible per arrival and across the wall-time-weighted
-  seven-arrival workflow, but is diagnostic because headless ANGLE timer-query
-  batching and GPU power state can change it without changing useful work.
+  whose targets moved later, one next-cadence reconciliation per still-pending
+  owned-invalidation receipt generation, and unexpected no-work exhaustively
+  partition every handled wakeup without an empirical phase allowance. The
+  receipt-reconciliation count is bounded by invalidations issued in the window
+  plus a boolean start-boundary receipt, while stable completed calibration,
+  positive calibrated display intervals, and finite pending-timeout endpoints
+  make the zero post-calibration RAF claim fail closed. Complete elapsed GPU
+  occupancy remains visible per arrival and across
+  the wall-time-weighted seven-arrival workflow, but is diagnostic because
+  headless ANGLE timer-query batching and GPU power state can change it without
+  changing useful work.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
   clear High-quality mock scene. It keeps normal continuous-render leases and
   the root invalidation broker enabled, reports that policy as acceptance

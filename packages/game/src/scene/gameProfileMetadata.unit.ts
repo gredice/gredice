@@ -271,6 +271,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             activeFixedStepLeaseCount: 0,
             activeLeaseCount: 0,
             activeRenderLeaseCount: 0,
+            awaitingFrameReceipt: false,
             callbackPending: false,
             cancelledCallbackCount: 0,
             canvasVisible: false,
@@ -301,6 +302,7 @@ describe('createRuntimeFrameLoopProfileTelemetry', () => {
             ownedInvalidationCount: 0,
             pendingCallbackDueAt: null,
             pendingCallbackKind: 'none',
+            pendingFrameReceiptReconciliationWakeupCount: 0,
             postCalibrationFrameWakeupCount: 0,
             productiveWakeupCount: 0,
             renderLeaseOwners: [],
@@ -344,7 +346,9 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
     it('pulls one exact snapshot per synchronous read burst and leaves a writable final value', () => {
         const telemetry = createRuntimeFrameLoopProfileTelemetry();
         const cacheResets: (() => void)[] = [];
+        let awaitingFrameReceipt = true;
         let ownedInvalidationCount = 7;
+        let pendingFrameReceiptReconciliationWakeupCount = 2;
         let sceneTimeSeconds = 12;
         let snapshotReadCount = 0;
         const unbind = bindRuntimeFrameLoopProfileTelemetry(
@@ -353,7 +357,9 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
                 snapshotReadCount += 1;
                 return {
                     ...createRuntimeFrameLoopProfileTelemetry(),
+                    awaitingFrameReceipt,
                     ownedInvalidationCount,
+                    pendingFrameReceiptReconciliationWakeupCount,
                     sceneTimeSeconds,
                 };
             },
@@ -363,17 +369,25 @@ describe('bindRuntimeFrameLoopProfileTelemetry', () => {
         assert.equal(snapshotReadCount, 0);
         const first = structuredClone(telemetry);
         assert.equal(first.ownedInvalidationCount, 7);
+        assert.equal(first.awaitingFrameReceipt, true);
+        assert.equal(first.pendingFrameReceiptReconciliationWakeupCount, 2);
         assert.equal(first.sceneTimeSeconds, 12);
         assert.equal(snapshotReadCount, 1);
+        awaitingFrameReceipt = false;
         ownedInvalidationCount = 9;
+        pendingFrameReceiptReconciliationWakeupCount = 3;
         sceneTimeSeconds = 13;
+        assert.equal(telemetry.awaitingFrameReceipt, true);
         assert.equal(telemetry.ownedInvalidationCount, 7);
+        assert.equal(telemetry.pendingFrameReceiptReconciliationWakeupCount, 2);
         assert.equal(telemetry.sceneTimeSeconds, 12);
         assert.equal(snapshotReadCount, 1);
 
         cacheResets.shift()?.();
         const second = structuredClone(telemetry);
+        assert.equal(second.awaitingFrameReceipt, false);
         assert.equal(second.ownedInvalidationCount, 9);
+        assert.equal(second.pendingFrameReceiptReconciliationWakeupCount, 3);
         assert.equal(second.sceneTimeSeconds, 13);
         assert.equal(snapshotReadCount, 2);
 

@@ -2668,18 +2668,20 @@ function buildRatioDiagnosticComparison({ gatedBy, rows, ...metric }) {
     };
 }
 
-function validateGardenSwitchCandidateFrameContract(row, errors) {
-    const sample = row.candidate?.sample;
+function validateGardenSwitchFrameContract(row, reportKind, errors) {
+    const sample = row[reportKind]?.sample;
+    const boundarySnapshots = [];
     for (const boundary of [
         'runtimeFrameLoopAtStart',
         'runtimeFrameLoopAtEnd',
     ]) {
         const snapshot = sample?.[boundary];
-        const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample.${boundary}`;
+        const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample.${boundary}`;
         if (!isRecord(snapshot)) {
             errors.push(`${path} is missing`);
             continue;
         }
+        boundarySnapshots.push(snapshot);
         if (
             snapshot.targetFramesPerSecond !== gardenSwitchTargetFramesPerSecond
         ) {
@@ -2690,12 +2692,56 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         if (snapshot.effectiveVisible !== true) {
             errors.push(`${path}.effectiveVisible must be true`);
         }
-        if (typeof snapshot.callbackPending !== 'boolean') {
-            errors.push(`${path}.callbackPending must be a boolean`);
+        if (snapshot.callbackPending !== true) {
+            errors.push(`${path}.callbackPending must be true`);
+        }
+        if (snapshot.pendingCallbackKind !== 'timeout') {
+            errors.push(`${path}.pendingCallbackKind must be "timeout"`);
+        }
+        if (
+            !isFiniteNumber(snapshot.pendingCallbackDueAt) ||
+            snapshot.pendingCallbackDueAt < 0
+        ) {
+            errors.push(
+                `${path}.pendingCallbackDueAt must be a non-negative finite number`,
+            );
+        }
+        if (typeof snapshot.awaitingFrameReceipt !== 'boolean') {
+            errors.push(`${path}.awaitingFrameReceipt must be a boolean`);
+        }
+        if (
+            !isFiniteNumber(snapshot.displayFrameIntervalMs) ||
+            snapshot.displayFrameIntervalMs <= 0
+        ) {
+            errors.push(
+                `${path}.displayFrameIntervalMs must be a positive finite number`,
+            );
+        }
+        if (
+            !Number.isInteger(snapshot.displayFrameCalibrationCount) ||
+            snapshot.displayFrameCalibrationCount < 1
+        ) {
+            errors.push(
+                `${path}.displayFrameCalibrationCount must be a positive integer`,
+            );
         }
     }
+    if (
+        boundarySnapshots.length === 2 &&
+        boundarySnapshots.every(
+            (snapshot) =>
+                Number.isInteger(snapshot.displayFrameCalibrationCount) &&
+                snapshot.displayFrameCalibrationCount >= 1,
+        ) &&
+        boundarySnapshots[0].displayFrameCalibrationCount !==
+            boundarySnapshots[1].displayFrameCalibrationCount
+    ) {
+        errors.push(
+            `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample displayFrameCalibrationCount must remain stable across the sample window`,
+        );
+    }
 
-    const path = `${row.scenario} run ${row.profileRun} ${row.phase} candidate.sample`;
+    const path = `${row.scenario} run ${row.profileRun} ${row.phase} ${reportKind}.sample`;
     const renderedFrames = sample?.renderedFrames;
     const counterDeltas = sample?.runtimeFrameLoopCounterDeltas;
     if (!isRecord(counterDeltas)) {
@@ -2707,6 +2753,7 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         'wakeupCount',
         'productiveWakeupCount',
         'retainedTimeoutReconciliationWakeupCount',
+        'pendingFrameReceiptReconciliationWakeupCount',
         'unexpectedNoWorkWakeupCount',
         'postCalibrationFrameWakeupCount',
         'ownedInvalidationCount',
@@ -2757,12 +2804,30 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         const classifiedWakeupCount =
             counterDeltas.productiveWakeupCount +
             counterDeltas.retainedTimeoutReconciliationWakeupCount +
+            counterDeltas.pendingFrameReceiptReconciliationWakeupCount +
             counterDeltas.unexpectedNoWorkWakeupCount;
         if (counterDeltas.wakeupCount !== classifiedWakeupCount) {
             errors.push(
                 `${path}.runtimeFrameLoopCounterDeltas wakeup classification conservation must equal wakeupCount; received ${classifiedWakeupCount} classified wakeups for ${counterDeltas.wakeupCount} handled wakeups`,
             );
         }
+    }
+
+    const awaitingFrameReceiptAtStart =
+        sample?.runtimeFrameLoopAtStart?.awaitingFrameReceipt;
+    if (
+        Number.isInteger(
+            counterDeltas.pendingFrameReceiptReconciliationWakeupCount,
+        ) &&
+        Number.isInteger(counterDeltas.ownedInvalidationCount) &&
+        typeof awaitingFrameReceiptAtStart === 'boolean' &&
+        counterDeltas.pendingFrameReceiptReconciliationWakeupCount >
+            counterDeltas.ownedInvalidationCount +
+                Number(awaitingFrameReceiptAtStart)
+    ) {
+        errors.push(
+            `${path}.runtimeFrameLoopCounterDeltas.pendingFrameReceiptReconciliationWakeupCount must not exceed ownedInvalidationCount plus an awaiting receipt at sample start`,
+        );
     }
 
     for (const field of [
@@ -3007,6 +3072,7 @@ function addMetricRows({
 function comparePairedScenarios(
     pairs,
     {
+        baselineSchedulerContract = canonicalSchedulerBaselineContract,
         requireCandidateFrameContract = true,
         requireGardenSwitchWorkflowGpuTiming = false,
     } = {},
@@ -3245,7 +3311,21 @@ function comparePairedScenarios(
                     metric.id === 'frame.rendered_fps'
                 ) {
                     if (group.scenario === gardenSwitchScenarioBaseName) {
-                        validateGardenSwitchCandidateFrameContract(row, errors);
+                        if (
+                            baselineSchedulerContract ===
+                            canonicalSchedulerBaselineContract
+                        ) {
+                            validateGardenSwitchFrameContract(
+                                row,
+                                'baseline',
+                                errors,
+                            );
+                        }
+                        validateGardenSwitchFrameContract(
+                            row,
+                            'candidate',
+                            errors,
+                        );
                     } else if (crossTierBaseNamePattern.test(group.scenario)) {
                         validateCrossTierCandidateFrameContract(row, errors);
                     }
@@ -3688,6 +3768,7 @@ function compareReportPair(
     };
     if (validationErrors.length === 0) {
         comparisonData = comparePairedScenarios(pairs, {
+            baselineSchedulerContract,
             requireCandidateFrameContract,
             requireGardenSwitchWorkflowGpuTiming: confirmedMatrixMember,
         });
