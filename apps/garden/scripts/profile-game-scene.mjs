@@ -2639,8 +2639,7 @@ function installBrowserMetrics({
         displayCadenceControl !== null &&
         globalThis.__gameProfileDisplayCadenceControl === undefined
     ) {
-        const requestedFramesPerSecond =
-            displayCadenceControl?.framesPerSecond;
+        const requestedFramesPerSecond = displayCadenceControl?.framesPerSecond;
         const mode = displayCadenceControl?.mode;
         const validRequest =
             typeof requestedFramesPerSecond === 'number' &&
@@ -2694,9 +2693,8 @@ function installBrowserMetrics({
                 ) {
                     return;
                 }
-                scheduledNativeFrame = nativeRequestAnimationFrame(
-                    deliverNativeFrame,
-                );
+                scheduledNativeFrame =
+                    nativeRequestAnimationFrame(deliverNativeFrame);
             };
             const deliverNativeFrame = (timestamp) => {
                 scheduledNativeFrame = null;
@@ -2739,10 +2737,7 @@ function installBrowserMetrics({
                 }
                 do {
                     nextHandle = (nextHandle + 1) >>> 0;
-                } while (
-                    nextHandle === 0 ||
-                    pendingCallbacks.has(nextHandle)
-                );
+                } while (nextHandle === 0 || pendingCallbacks.has(nextHandle));
                 requestCount += 1;
                 pendingCallbacks.set(nextHandle, callback);
                 scheduleNativeFrame();
@@ -2794,8 +2789,7 @@ function installBrowserMetrics({
                 }),
             };
             globalThis.__gameProfileDisplayCadenceControl = controller;
-            globalThis.requestAnimationFrame =
-                controlledRequestAnimationFrame;
+            globalThis.requestAnimationFrame = controlledRequestAnimationFrame;
             globalThis.cancelAnimationFrame = controlledCancelAnimationFrame;
         }
     }
@@ -3275,8 +3269,7 @@ function beginInteractiveProfileSample() {
         intervals: [],
         lastFrameAt: startedAt,
         displayCadenceControlAtStart:
-            globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ??
-            null,
+            globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ?? null,
         runtimeFrameLoopAtStart:
             runtimeFrameLoopTelemetry &&
             typeof runtimeFrameLoopTelemetry === 'object'
@@ -3374,10 +3367,9 @@ async function finishInteractiveProfileSample() {
                   atStart: displayCadenceControlAtStart,
                   cancelRequestCountDelta:
                       displayCadenceCounterDelta('cancelRequestCount'),
-                  cancelledBeforeDeliveryCountDelta:
-                      displayCadenceCounterDelta(
-                          'cancelledBeforeDeliveryCount',
-                      ),
+                  cancelledBeforeDeliveryCountDelta: displayCadenceCounterDelta(
+                      'cancelledBeforeDeliveryCount',
+                  ),
                   deliveredCallbackCountDelta: displayCadenceCounterDelta(
                       'deliveredCallbackCount',
                   ),
@@ -3398,10 +3390,8 @@ async function finishInteractiveProfileSample() {
                           ? deliveredDisplayFrameCount / safeElapsedSeconds
                           : null,
                   requestedFramesPerSecond:
-                      displayCadenceControlAtEnd
-                          ?.requestedFramesPerSecond ??
-                      displayCadenceControlAtStart
-                          ?.requestedFramesPerSecond ??
+                      displayCadenceControlAtEnd?.requestedFramesPerSecond ??
+                      displayCadenceControlAtStart?.requestedFramesPerSecond ??
                       null,
               }
             : null;

@@ -2975,9 +2975,7 @@ test('profiler display cadence control owns app RAF while preserving native prof
         assert.equal(telemetry.nativeFrameCancellationCount, 1);
         assert.equal(telemetry.pendingCallbackCount, 0);
         assert.equal(telemetry.nativeFramePending, false);
-        assert.ok(
-            Math.abs(telemetry.observedFramesPerSecond - 29.94) < 0.01,
-        );
+        assert.ok(Math.abs(telemetry.observedFramesPerSecond - 29.94) < 0.01);
         assert.throws(
             () => globalThis.requestAnimationFrame(null),
             /callback must be a function/,
@@ -3770,14 +3768,8 @@ test('interactive sampling stays on native profiler RAF and reports controlled d
             sample.displayCadenceControl.mode,
             'profiler-owned-raf-v1',
         );
-        assert.equal(
-            sample.displayCadenceControl.requestedFramesPerSecond,
-            30,
-        );
-        assert.equal(
-            sample.displayCadenceControl.deliveredFrameCountDelta,
-            30,
-        );
+        assert.equal(sample.displayCadenceControl.requestedFramesPerSecond, 30);
+        assert.equal(sample.displayCadenceControl.deliveredFrameCountDelta, 30);
         assert.equal(
             sample.displayCadenceControl.deliveredCallbackCountDelta,
             60,
