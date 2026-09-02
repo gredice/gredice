@@ -78,6 +78,25 @@ function downloadBlob(blob: Blob, fileName: string) {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+async function wallpaperDownloadError(response: Response) {
+    const fallback =
+        'Dinamička HEIC pozadina nije se mogla izraditi. Pokušaj ponovno.';
+    try {
+        const body: unknown = await response.json();
+        if (
+            typeof body === 'object' &&
+            body !== null &&
+            'error' in body &&
+            typeof body.error === 'string'
+        ) {
+            return body.error;
+        }
+    } catch {
+        return fallback;
+    }
+    return fallback;
+}
+
 export function WallpaperStudio() {
     const queryClient = useQueryClient();
     const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
@@ -328,26 +347,55 @@ export function WallpaperStudio() {
         setActivity('macos');
         setError(null);
         try {
-            const {
-                createMacOSDynamicWallpaperBundle,
-                macOSDynamicWallpaperFileName,
-            } = await import('./macOSDynamicWallpaper');
+            const { macOSDynamicWallpaperFileName } = await import(
+                './macOSDynamicWallpaper'
+            );
             const size = wallpaperSizes[sizeKey];
-            const frames: Array<{ blob: Blob; phase: WallpaperPhase }> = [];
+            if (selectedGardenId === null) {
+                throw new Error('Najprije odaberi vrt.');
+            }
+
+            const formData = new FormData();
+            formData.set('branding', branding);
+            formData.set('gardenId', selectedGardenId.toString());
+            formData.set('size', sizeKey);
+            formData.set('template', wallpaperTemplate);
 
             for (const wallpaperPhase of wallpaperPhases) {
-                frames.push({
-                    blob: await createWallpaper({
+                formData.set(
+                    wallpaperPhase,
+                    await createWallpaper({
                         ...size,
                         phase: wallpaperPhase,
                     }),
-                    phase: wallpaperPhase,
-                });
+                    `${wallpaperPhase}.png`,
+                );
             }
 
-            const bundle = await createMacOSDynamicWallpaperBundle({ frames });
+            const response = await fetch(
+                '/api/gredice/api/wallpapers/macos-dynamic',
+                {
+                    body: formData,
+                    credentials: 'include',
+                    method: 'POST',
+                },
+            );
+            if (response.status === 401) {
+                queryClient.setQueryData(currentUserQueryKey, null);
+                throw new Error('Prijava je istekla. Prijavi se ponovno.');
+            }
+            if (!response.ok) {
+                throw new Error(await wallpaperDownloadError(response));
+            }
+
+            const heic = await response.blob();
+            if (heic.size === 0 || heic.type !== 'image/heic') {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
             downloadBlob(
-                bundle,
+                heic,
                 macOSDynamicWallpaperFileName({
                     branding,
                     size: sizeKey,
@@ -628,23 +676,25 @@ export function WallpaperStudio() {
                         </Alert>
                     ) : null}
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                        <Button
-                            aria-label="Preuzmi Mac dinamički paket"
-                            disabled={!gardenQuery.data || isBusy}
-                            loading={activity === 'macos'}
-                            onClick={handleMacOSDynamicDownload}
-                            startDecorator={
-                                <svg
-                                    aria-hidden="true"
-                                    className="size-4 fill-current"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                                </svg>
-                            }
-                        >
-                            Mac dinamički paket
-                        </Button>
+                        {sizeKey !== 'tablet' && sizeKey !== 'mobile' ? (
+                            <Button
+                                aria-label="Preuzmi gotovu Mac dinamičku HEIC pozadinu"
+                                disabled={!gardenQuery.data || isBusy}
+                                loading={activity === 'macos'}
+                                onClick={handleMacOSDynamicDownload}
+                                startDecorator={
+                                    <svg
+                                        aria-hidden="true"
+                                        className="size-4 fill-current"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                                    </svg>
+                                }
+                            >
+                                Preuzmi Mac HEIC
+                            </Button>
+                        ) : null}
                         <Button
                             aria-label={`Preuzmi ${selectedSize.shortLabel} za Windows, Linux ili Android`}
                             disabled={!gardenQuery.data || isBusy}
