@@ -3,6 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Environment } from '../../../packages/game/src/scene/Environment';
 import { Scene } from '../../../packages/game/src/scene/Scene';
+import {
+    sceneFrameRates,
+    useSceneTimeInvalidation,
+} from '../../../packages/game/src/scene/SceneTime';
 import { getSolarEclipseState } from '../../../packages/game/src/scene/solarEclipse';
 import {
     createGameState,
@@ -42,11 +46,18 @@ function readLightIntensity(
 
 function MarkFixtureReady({
     onReady,
+    ready,
 }: {
     onReady: (intensities: EnvironmentLightIntensities) => void;
+    ready: boolean;
 }) {
     const frameCount = useRef(0);
     const scene = useThree((state) => state.scene);
+    useSceneTimeInvalidation(
+        'test:solar-eclipse-warmup',
+        !ready,
+        sceneFrameRates.ambient,
+    );
 
     useFrame(() => {
         frameCount.current += 1;
@@ -188,7 +199,10 @@ export function SolarEclipseVisualFixture({
                         {foregroundOcclusionProbe ? (
                             <ForegroundOcclusionProbe />
                         ) : null}
-                        <MarkFixtureReady onReady={setLightIntensities} />
+                        <MarkFixtureReady
+                            onReady={setLightIntensities}
+                            ready={lightIntensities !== null}
+                        />
                     </Scene>
                 </GameStateContext.Provider>
             </QueryClientProvider>
