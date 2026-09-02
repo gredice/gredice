@@ -3,7 +3,6 @@ import { Chip } from '@gredice/ui/Chip';
 import { Container } from '@gredice/ui/Container';
 import { AI } from '@gredice/ui/icons';
 import { PageHeader } from '@gredice/ui/PageHeader';
-import { Logotype } from '@gredice/ui/PublicChrome';
 import { Stack } from '@gredice/ui/Stack';
 import { Typography } from '@gredice/ui/Typography';
 import type { Metadata } from 'next';
@@ -12,7 +11,7 @@ import { WallpaperStudio } from './WallpaperStudio';
 export const metadata: Metadata = {
     title: 'Pozadine iz tvog vrta',
     description:
-        'Besplatno izradi 4K ili ultrawide pozadinu iz svog Gredice vrta, s minimalnim ili standardnim prikazom i četiri doba dana.',
+        'Izradi pozadinu iz svog Gredice vrta za računalo, tablet ili mobitel, uz četiri doba dana i opcionalni Gredice logo.',
 };
 
 export default function WallpapersPage() {
@@ -21,13 +20,8 @@ export default function WallpapersPage() {
             <Stack spacing={6}>
                 <PageHeader
                     header="Pozadine iz tvog vrta"
-                    subHeader="Odaberi vrt, izgled i doba dana pa preuzmi čistu ili potpisanu PNG pozadinu za macOS, Windows ili Linux. Osnovni predlošci su besplatni."
+                    subHeader="Odaberi vrt, doba dana i veličinu pa preuzmi pozadinu za računalo, tablet ili mobitel. Za Mac možeš preuzeti i dinamički paket."
                     padded
-                    visual={
-                        <div className="flex size-full items-center justify-center bg-[linear-gradient(145deg,#f4f7ee,#dcebd2)] p-5">
-                            <Logotype className="w-full text-primary" />
-                        </div>
-                    }
                 />
 
                 <WallpaperStudio />
@@ -43,16 +37,15 @@ export default function WallpapersPage() {
                         <div className="min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
                                 <Typography level="body1" bold>
-                                    Autorske kolekcije više kvalitete
+                                    Nove kolekcije pozadina
                                 </Typography>
                                 <Chip size="sm" variant="outlined">
-                                    Kasnije
+                                    Uskoro
                                 </Chip>
                             </div>
                             <Typography level="body2" secondary>
-                                AI-generirane scene bit će zasebna plaćena
-                                opcija. AI neće dobiti sliku ni podatke tvog
-                                vrta; tvoj vrt i dalje renderira Gredice.
+                                Dodatni stilovi i ugođaji donijet će još više
+                                načina da svoj vrt preneseš na svaki zaslon.
                             </Typography>
                         </div>
                     </CardContent>

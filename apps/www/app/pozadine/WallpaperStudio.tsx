@@ -5,8 +5,14 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import { Chip } from '@gredice/ui/Chip';
-import { ArrowDownToLine, Info, Navigate, Warning } from '@gredice/ui/icons';
+import {
+    Apple,
+    Desktop,
+    Laptop,
+    Mobile,
+    Navigate,
+    Warning,
+} from '@gredice/ui/icons';
 import { Logotype } from '@gredice/ui/PublicChrome';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -36,8 +42,6 @@ import {
     wallpaperFileName,
     wallpaperPhaseLabels,
     wallpaperSizes,
-    wallpaperTemplateLabels,
-    wallpaperThemeLabels,
 } from './wallpaperComposer';
 
 type PendingCapture = {
@@ -47,15 +51,21 @@ type PendingCapture = {
 
 type WallpaperActivity = 'download' | 'idle' | 'macos' | 'preview';
 
-const wallpaperTemplates: WallpaperTemplate[] = ['minimal', 'standard'];
-const wallpaperThemes: WallpaperTheme[] = ['water', 'grass', 'sand', 'dirt'];
-const wallpaperPhases: WallpaperPhase[] = [
+const wallpaperTemplate: WallpaperTemplate = 'standard';
+const wallpaperTheme: WallpaperTheme = 'grass';
+const wallpaperPhases = [
     'morning',
     'day',
     'evening',
     'night',
-];
-const wallpaperSizeKeys: WallpaperSizeKey[] = ['uhd', 'ultrawide'];
+] satisfies WallpaperPhase[];
+const wallpaperSizeKeys = [
+    'uhd',
+    'fullHd',
+    'ultrawide',
+    'tablet',
+    'mobile',
+] satisfies WallpaperSizeKey[];
 
 function captureErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {
@@ -82,8 +92,6 @@ export function WallpaperStudio() {
     const [selectedGardenId, setSelectedGardenId] = useState<number | null>(
         null,
     );
-    const [template, setTemplate] = useState<WallpaperTemplate>('minimal');
-    const [theme, setTheme] = useState<WallpaperTheme>('grass');
     const [phase, setPhase] = useState<WallpaperPhase>('day');
     const [sizeKey, setSizeKey] = useState<WallpaperSizeKey>('ultrawide');
     const [branding, setBranding] = useState<WallpaperBranding>('gredice');
@@ -99,8 +107,6 @@ export function WallpaperStudio() {
         phase,
         selectedGardenId?.toString() ?? 'none',
         sizeKey,
-        template,
-        theme,
     ].join(':');
 
     const gardensQuery = useQuery({
@@ -211,8 +217,8 @@ export function WallpaperStudio() {
             captureSequenceRef.current += 1;
             const key = [
                 garden.id.toString(),
-                template,
-                theme,
+                wallpaperTemplate,
+                wallpaperTheme,
                 capturePhase,
                 width.toString(),
                 height.toString(),
@@ -226,12 +232,12 @@ export function WallpaperStudio() {
                     height,
                     key,
                     phase: capturePhase,
-                    transparent: template === 'minimal',
+                    transparent: false,
                     width,
                 });
             });
         },
-        [template, theme],
+        [],
     );
 
     const handleSceneCapture = useCallback((blob: Blob) => {
@@ -274,22 +280,15 @@ export function WallpaperStudio() {
                 height,
                 phase: wallpaperPhase,
                 scene,
-                template,
-                theme,
+                template: wallpaperTemplate,
+                theme: wallpaperTheme,
                 width,
             });
         },
-        [
-            branding,
-            gardenQuery.data,
-            phase,
-            requestSceneCapture,
-            template,
-            theme,
-        ],
+        [branding, gardenQuery.data, phase, requestSceneCapture],
     );
 
-    async function handlePreview() {
+    const handlePreview = useCallback(async () => {
         setActivity('preview');
         setError(null);
         try {
@@ -301,7 +300,14 @@ export function WallpaperStudio() {
         } finally {
             setActivity('idle');
         }
-    }
+    }, [createWallpaper, sizeKey]);
+
+    useEffect(() => {
+        if (!gardenQuery.data) {
+            return;
+        }
+        void handlePreview();
+    }, [gardenQuery.data, handlePreview]);
 
     async function handleDownload() {
         setActivity('download');
@@ -315,7 +321,7 @@ export function WallpaperStudio() {
                     branding,
                     phase,
                     size: sizeKey,
-                    template,
+                    template: wallpaperTemplate,
                 }),
             );
         } catch (downloadError) {
@@ -352,7 +358,7 @@ export function WallpaperStudio() {
                 macOSDynamicWallpaperFileName({
                     branding,
                     size: sizeKey,
-                    template,
+                    template: wallpaperTemplate,
                 }),
             );
         } catch (downloadError) {
@@ -375,12 +381,7 @@ export function WallpaperStudio() {
             <>
                 <Card className="border-tertiary border-b-4">
                     <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                            <CardTitle>Pozadina iz tvog vrta</CardTitle>
-                            <Chip color="success" variant="soft">
-                                Besplatno
-                            </Chip>
-                        </div>
+                        <CardTitle>Pozadina iz tvog vrta</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={4}>
@@ -462,12 +463,7 @@ export function WallpaperStudio() {
             <div className="grid gap-5 lg:grid-cols-[21rem_minmax(0,1fr)]">
                 <Card className="h-fit border-tertiary border-b-4">
                     <CardHeader>
-                        <div className="flex items-start justify-between gap-3">
-                            <CardTitle>Postavke</CardTitle>
-                            <Chip color="success" size="sm" variant="soft">
-                                Besplatno
-                            </Chip>
-                        </div>
+                        <CardTitle>Postavke</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Stack spacing={5}>
@@ -499,74 +495,6 @@ export function WallpaperStudio() {
                                     ))}
                                 </select>
                             </label>
-
-                            <div className="grid gap-2">
-                                <Typography level="body2" bold>
-                                    Predložak
-                                </Typography>
-                                <ButtonGroup
-                                    className="grid w-full grid-cols-2"
-                                    legend="Predložak pozadine"
-                                    size="md"
-                                >
-                                    {wallpaperTemplates.map((value) => (
-                                        <Button
-                                            aria-pressed={template === value}
-                                            className={buttonGroupItemClassName(
-                                                {
-                                                    className: 'w-full',
-                                                    size: 'md',
-                                                },
-                                            )}
-                                            disabled={isBusy}
-                                            key={value}
-                                            onClick={() => setTemplate(value)}
-                                            variant={
-                                                template === value
-                                                    ? 'soft'
-                                                    : 'plain'
-                                            }
-                                        >
-                                            {wallpaperTemplateLabels[value]}
-                                        </Button>
-                                    ))}
-                                </ButtonGroup>
-                            </div>
-
-                            {template === 'minimal' ? (
-                                <div className="grid gap-2">
-                                    <Typography level="body2" bold>
-                                        Rub vrta
-                                    </Typography>
-                                    <ButtonGroup
-                                        className="grid w-full grid-cols-4"
-                                        legend="Tonalna tema"
-                                        size="sm"
-                                    >
-                                        {wallpaperThemes.map((value) => (
-                                            <Button
-                                                aria-pressed={theme === value}
-                                                className={buttonGroupItemClassName(
-                                                    {
-                                                        className: 'w-full',
-                                                        size: 'sm',
-                                                    },
-                                                )}
-                                                disabled={isBusy}
-                                                key={value}
-                                                onClick={() => setTheme(value)}
-                                                variant={
-                                                    theme === value
-                                                        ? 'soft'
-                                                        : 'plain'
-                                                }
-                                            >
-                                                {wallpaperThemeLabels[value]}
-                                            </Button>
-                                        ))}
-                                    </ButtonGroup>
-                                </div>
-                            ) : null}
 
                             <div className="grid gap-2">
                                 <Typography level="body2" bold>
@@ -615,7 +543,8 @@ export function WallpaperStudio() {
                                             aria-pressed={sizeKey === value}
                                             className={buttonGroupItemClassName(
                                                 {
-                                                    className: 'w-full',
+                                                    className:
+                                                        'w-full last:col-span-2',
                                                     size: 'md',
                                                 },
                                             )}
@@ -640,8 +569,7 @@ export function WallpaperStudio() {
                             <Switch
                                 checked={branding === 'gredice'}
                                 disabled={isBusy}
-                                label="Gredice potpis"
-                                description="Veliki službeni logotip usklađen s kompozicijom."
+                                label="Gredice logo"
                                 onCheckedChange={(checked) =>
                                     setBranding(checked ? 'gredice' : 'clean')
                                 }
@@ -651,17 +579,24 @@ export function WallpaperStudio() {
                 </Card>
 
                 <Stack spacing={4}>
-                    <Card className="overflow-hidden p-0">
+                    <Card className="flex justify-center overflow-hidden bg-muted p-0">
                         <div
-                            className="relative flex w-full items-center justify-center overflow-hidden bg-muted"
+                            className="relative flex max-w-full items-center justify-center overflow-hidden bg-muted"
                             style={{
                                 aspectRatio: `${selectedSize.width} / ${selectedSize.height}`,
+                                width:
+                                    selectedSize.width < selectedSize.height
+                                        ? `${
+                                              (70 * selectedSize.width) /
+                                              selectedSize.height
+                                          }vh`
+                                        : '100%',
                             }}
                         >
                             {previewUrl ? (
                                 // biome-ignore lint/performance/noImgElement: Browser-generated Blob URLs cannot be optimized by next/image.
                                 <img
-                                    alt={`Pregled pozadine: ${wallpaperTemplateLabels[template]}, ${wallpaperPhaseLabels[phase]}`}
+                                    alt={`Pregled pozadine: U vrtu, ${wallpaperPhaseLabels[phase]}`}
                                     className="size-full object-contain"
                                     src={previewUrl}
                                 />
@@ -672,14 +607,21 @@ export function WallpaperStudio() {
                                         Učitavamo vrt…
                                     </Typography>
                                 </div>
+                            ) : activity === 'preview' ? (
+                                <div className="flex items-center gap-3 px-6 text-center">
+                                    <Spinner loadingLabel="Izrada pregleda" />
+                                    <Typography level="body2" secondary>
+                                        Izrađujemo pregled…
+                                    </Typography>
+                                </div>
                             ) : (
                                 <div className="grid max-w-sm gap-2 px-6 text-center">
                                     <Typography level="body1" bold>
-                                        Pregled je spreman za izradu
+                                        Pregled trenutačno nije dostupan
                                     </Typography>
                                     <Typography level="body2" secondary>
-                                        Izrada koristi isti renderer kao tvoj
-                                        vrt i može potrajati nekoliko sekundi.
+                                        Promijeni postavku kako bismo ga ponovno
+                                        pokušali izraditi.
                                     </Typography>
                                 </div>
                             )}
@@ -702,44 +644,33 @@ export function WallpaperStudio() {
                             {error}
                         </Alert>
                     ) : null}
-                    <Alert
-                        color="info"
-                        startDecorator={<Info className="size-4" />}
-                    >
-                        Pozadina se izrađuje samo u tvom pregledniku. Za
-                        Windows, macOS i Linux možeš preuzeti obični PNG. Mac
-                        dinamički paket uključuje jutro, dan, večer i noć te
-                        upute za izradu nativne HEIC pozadine na Macu.
-                    </Alert>
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
                         <Button
-                            disabled={!gardenQuery.data || isBusy}
-                            loading={activity === 'preview'}
-                            onClick={handlePreview}
-                            variant="outlined"
-                        >
-                            Izradi pregled
-                        </Button>
-                        <Button
+                            aria-label="Preuzmi Mac dinamički paket"
                             disabled={!gardenQuery.data || isBusy}
                             loading={activity === 'macos'}
                             onClick={handleMacOSDynamicDownload}
-                            startDecorator={
-                                <ArrowDownToLine className="size-4" />
-                            }
-                            variant="outlined"
+                            startDecorator={<Apple className="size-4" />}
                         >
                             Mac dinamički paket
                         </Button>
                         <Button
+                            aria-label={`Preuzmi ${selectedSize.shortLabel} za Windows, Linux ili Android`}
                             disabled={!gardenQuery.data || isBusy}
                             loading={activity === 'download'}
                             onClick={handleDownload}
                             startDecorator={
-                                <ArrowDownToLine className="size-4" />
+                                <span
+                                    aria-hidden="true"
+                                    className="flex items-end -space-x-1"
+                                >
+                                    <Laptop className="size-4" />
+                                    <Desktop className="size-4" />
+                                    <Mobile className="size-3.5" />
+                                </span>
                             }
                         >
-                            Preuzmi {selectedSize.shortLabel} PNG
+                            Preuzmi {selectedSize.shortLabel}
                         </Button>
                     </div>
                 </Stack>
