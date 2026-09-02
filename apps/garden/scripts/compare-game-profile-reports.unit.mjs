@@ -518,6 +518,12 @@ function regressionScenario(baseName, profileRun) {
     }
     scenario.baseName = baseName;
     scenario.name = `${baseName}-run-${profileRun}`;
+    if (
+        baseName.startsWith('game-cross-tier-') ||
+        baseName === 'game-fauna-heavy-day-interaction-desktop'
+    ) {
+        scenario.requested.continuousRenderLeases = '1';
+    }
     if (baseName.startsWith('game-cross-tier-')) {
         const policy = crossTierFixturePolicies.find(({ slug }) =>
             baseName.startsWith(`game-cross-tier-${slug}-`),
@@ -669,6 +675,12 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
         'crossTierRenderedFps',
     ]);
     for (const scenario of reportValue.scenarios) {
+        if (
+            scenario.baseName.startsWith('game-cross-tier-') ||
+            scenario.baseName === 'game-fauna-heavy-day-interaction-desktop'
+        ) {
+            delete scenario.requested.continuousRenderLeases;
+        }
         if (!scenario.baseName.startsWith('game-cross-tier-')) {
             continue;
         }
@@ -739,6 +751,140 @@ test('legacy heartbeat baseline contract preserves strict candidate evidence', (
         acceptedLegacyBaseline.candidate.schedulerContract,
         'canonical-v1',
     );
+});
+
+test('legacy continuous-render lease compatibility is limited to cross-tier and fauna requests', async (t) => {
+    await t.test(
+        'omitted and null legacy values match exact canonical one',
+        () => {
+            const pair = regressionReportPair();
+            applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+            for (const scenario of pair.baseline.scenarios) {
+                if (
+                    scenario.baseName.startsWith('game-cross-tier-') ||
+                    scenario.baseName ===
+                        'game-fauna-heavy-day-interaction-desktop'
+                ) {
+                    if (scenario.profileRun === 1) {
+                        scenario.requested.continuousRenderLeases = null;
+                    } else {
+                        delete scenario.requested.continuousRenderLeases;
+                    }
+                }
+            }
+
+            const comparison = compareReports(pair.baseline, pair.candidate, {
+                baselineSchedulerContract: 'legacy-heartbeat-v1',
+            });
+
+            assert.equal(comparison.status, 'needs-rerun');
+            assert.equal(comparison.comparable, true);
+            assert.deepEqual(comparison.validationErrors, []);
+        },
+    );
+
+    for (const { name, mutate, pattern, schedulerContract } of [
+        {
+            name: 'legacy cross-tier non-null drift',
+            mutate: ({ baseline }) => {
+                baseline.scenarios.find((scenario) =>
+                    scenario.baseName.startsWith('game-cross-tier-'),
+                ).requested.continuousRenderLeases = '1';
+            },
+            pattern:
+                /legacy heartbeat requested\.continuousRenderLeases must be omitted or null/,
+        },
+        {
+            name: 'legacy fauna non-null drift',
+            mutate: ({ baseline }) => {
+                baseline.scenarios.find(
+                    (scenario) =>
+                        scenario.baseName ===
+                        'game-fauna-heavy-day-interaction-desktop',
+                ).requested.continuousRenderLeases = '0';
+            },
+            pattern:
+                /legacy heartbeat requested\.continuousRenderLeases must be omitted or null/,
+        },
+        {
+            name: 'missing canonical candidate value',
+            mutate: ({ candidate }) => {
+                delete candidate.scenarios.find((scenario) =>
+                    scenario.baseName.startsWith('game-cross-tier-'),
+                ).requested.continuousRenderLeases;
+            },
+            pattern: /canonical requested\.continuousRenderLeases must be "1"/,
+        },
+        {
+            name: 'wrong canonical candidate value',
+            mutate: ({ candidate }) => {
+                candidate.scenarios.find(
+                    (scenario) =>
+                        scenario.baseName ===
+                        'game-fauna-heavy-day-interaction-desktop',
+                ).requested.continuousRenderLeases = '0';
+            },
+            pattern: /canonical requested\.continuousRenderLeases must be "1"/,
+        },
+        {
+            name: 'canonical baseline omission',
+            schedulerContract: 'canonical-v1',
+            mutate: ({ baseline }) => {
+                delete baseline.scenarios.find((scenario) =>
+                    scenario.baseName.startsWith('game-cross-tier-'),
+                ).requested.continuousRenderLeases;
+            },
+            pattern: /canonical requested\.continuousRenderLeases must be "1"/,
+        },
+        {
+            name: 'garden-switch mismatch',
+            mutate: ({ candidate }) => {
+                candidate.scenarios.find(
+                    (scenario) =>
+                        scenario.baseName ===
+                        'game-garden-switch-high-fauna-single-context-desktop',
+                ).requested.continuousRenderLeases = '1';
+            },
+            pattern: /scenario\.requested differs/,
+        },
+        {
+            name: 'lifecycle mismatch',
+            mutate: ({ candidate }) => {
+                candidate.scenarios.find(
+                    (scenario) =>
+                        scenario.baseName ===
+                        'game-high-target-runtime-lifecycle-desktop',
+                ).requested.continuousRenderLeases = '1';
+            },
+            pattern: /scenario\.requested differs/,
+        },
+        {
+            name: 'other cross-tier request mismatch',
+            mutate: ({ candidate }) => {
+                candidate.scenarios.find((scenario) =>
+                    scenario.baseName.startsWith('game-cross-tier-'),
+                ).requested.controls = '1';
+            },
+            pattern: /scenario\.requested differs/,
+        },
+    ]) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            if (schedulerContract !== 'canonical-v1') {
+                applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+            }
+            mutate(pair);
+
+            const comparison = compareReports(pair.baseline, pair.candidate, {
+                baselineSchedulerContract:
+                    schedulerContract ?? 'legacy-heartbeat-v1',
+            });
+
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(comparison.validationErrors.join('\n'), pattern);
+        });
+    }
 });
 
 test('legacy heartbeat baseline contract passes only as a strict symmetric matrix', () => {
@@ -1197,7 +1343,6 @@ test('valid schema-v6 reports compare raw runs and ignore scenario order', () =>
 
 test('schema-v6 request omissions equal only their semantic defaults', async (t) => {
     const defaults = {
-        continuousRenderLeases: '1',
         lifecycleLiveProfile: false,
         motionWarmupMs: 0,
         runtimeOwnersProfile: false,
@@ -1205,7 +1350,6 @@ test('schema-v6 request omissions equal only their semantic defaults', async (t)
         staticIdleProfile: false,
     };
     const nonDefaults = {
-        continuousRenderLeases: '0',
         lifecycleLiveProfile: true,
         motionWarmupMs: 1,
         runtimeOwnersProfile: true,

@@ -47,6 +47,13 @@ const regressionScenarioBaseNames = [
 const regressionScenarioRunKeys = regressionScenarioBaseNames.flatMap(
     (baseName) => [1, 2, 3].map((profileRun) => `${baseName}::${profileRun}`),
 );
+const legacyContinuousRenderLeaseCompatibilityScenarioBaseNames = new Set(
+    regressionScenarioBaseNames.filter(
+        (baseName) =>
+            baseName.startsWith('game-cross-tier-') ||
+            baseName === 'game-fauna-heavy-day-interaction-desktop',
+    ),
+);
 const gardenSwitchScenarioBaseName =
     'game-garden-switch-high-fauna-single-context-desktop';
 const gardenSwitchTargetFramesPerSecond = 30;
@@ -419,7 +426,6 @@ const requestedCompatibilityDefaultsBySchemaVersion = new Map([
     [
         6,
         {
-            continuousRenderLeases: '1',
             lifecycleLiveProfile: false,
             motionWarmupMs: 0,
             runtimeOwnersProfile: false,
@@ -1699,6 +1705,26 @@ function validateReport(
                     `${label} scenario ${key} must identify the lifecycle fixture`,
                 );
             }
+            if (
+                legacyContinuousRenderLeaseCompatibilityScenarioBaseNames.has(
+                    scenario.baseName,
+                )
+            ) {
+                if (
+                    schedulerBaselineContract ===
+                    legacyHeartbeatSchedulerBaselineContract
+                ) {
+                    if (requested.continuousRenderLeases != null) {
+                        errors.push(
+                            `${label} scenario ${key} legacy heartbeat requested.continuousRenderLeases must be omitted or null`,
+                        );
+                    }
+                } else if (requested.continuousRenderLeases !== '1') {
+                    errors.push(
+                        `${label} scenario ${key} canonical requested.continuousRenderLeases must be "1"`,
+                    );
+                }
+            }
         }
 
         const runtime = scenario.runtime;
@@ -2108,9 +2134,36 @@ function timingPhases(scenario) {
 function compareScenarioCompatibility(
     baseline,
     candidate,
-    { baselineSchemaVersion, candidateSchemaVersion },
+    {
+        baselineSchedulerContract,
+        baselineSchemaVersion,
+        candidateSchedulerContract,
+        candidateSchemaVersion,
+    },
 ) {
     const errors = [];
+    let baselineRequested = requestedCompatibilitySignature(
+        baseline.requested,
+        baselineSchemaVersion,
+    );
+    const candidateRequested = requestedCompatibilitySignature(
+        candidate.requested,
+        candidateSchemaVersion,
+    );
+    if (
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        candidateSchedulerContract === canonicalSchedulerBaselineContract &&
+        legacyContinuousRenderLeaseCompatibilityScenarioBaseNames.has(
+            baseline.baseName,
+        ) &&
+        isRecord(baselineRequested)
+    ) {
+        baselineRequested = {
+            ...baselineRequested,
+            continuousRenderLeases: '1',
+        };
+    }
     pushMismatch(errors, 'scenario.name', baseline.name, candidate.name);
     pushMismatch(errors, 'scenario.path', baseline.path, candidate.path);
     pushMismatch(
@@ -2122,14 +2175,8 @@ function compareScenarioCompatibility(
     pushMismatch(
         errors,
         'scenario.requested',
-        requestedCompatibilitySignature(
-            baseline.requested,
-            baselineSchemaVersion,
-        ),
-        requestedCompatibilitySignature(
-            candidate.requested,
-            candidateSchemaVersion,
-        ),
+        baselineRequested,
+        candidateRequested,
     );
     pushMismatch(
         errors,
@@ -3233,7 +3280,9 @@ function compareReportPair(
                         pair.baseline,
                         pair.candidate,
                         {
+                            baselineSchedulerContract,
                             baselineSchemaVersion: baseline.schemaVersion,
+                            candidateSchedulerContract,
                             candidateSchemaVersion: candidate.schemaVersion,
                         },
                     ).map((error) => `${pair.key}: ${error}`),
