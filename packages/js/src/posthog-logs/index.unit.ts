@@ -213,9 +213,74 @@ test('aborts a hanging OTLP request before the provider flush deadline', async (
         });
 
         provider.getLogger('test').emit({ body: 'test log' });
-        await provider.forceFlush();
+        await assert.rejects(() =>
+            exporter.forceFlushWithErrorPropagation(() =>
+                provider.forceFlush(),
+            ),
+        );
 
         assert.equal(requestWasAborted, true);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
+test('backs off after an OTLP export failure swallowed by the batch processor', async () => {
+    const originalFetch = globalThis.fetch;
+    let currentTime = 1_000;
+    let requestCount = 0;
+
+    globalThis.fetch = async () => {
+        requestCount += 1;
+        return new Response(null, { status: 400 });
+    };
+
+    try {
+        const exporter = new FetchOTLPLogExporter({
+            headers: {
+                Authorization: 'Bearer test',
+            },
+            timeoutMillis: 100,
+            url: 'https://eu.i.posthog.com/i/v1/logs',
+        });
+        const processor = new BatchLogRecordProcessor({
+            exporter,
+            exportTimeoutMillis: 200,
+            scheduledDelayMillis: 60_000,
+        });
+        const provider = new LoggerProvider({
+            forceFlushTimeoutMillis: 300,
+            processors: [processor],
+        });
+        const logger = provider.getLogger('test');
+        const reportedFailures: number[] = [];
+        const scheduleFlush = createPostHogLogFlushScheduler({
+            batchDelayMs: 1_000,
+            flush: () =>
+                exporter.forceFlushWithErrorPropagation(() =>
+                    provider.forceFlush(),
+                ),
+            initialFailureBackoffMs: 30_000,
+            maxFailureBackoffMs: 300_000,
+            now: () => currentTime,
+            onPersistentError: (_error, context) => {
+                reportedFailures.push(context.consecutiveFailures);
+            },
+            wait: async () => {},
+        });
+
+        logger.emit({ body: 'first log' });
+        await scheduleFlush();
+
+        logger.emit({ body: 'second log' });
+        await scheduleFlush();
+        assert.equal(requestCount, 1);
+
+        currentTime += 30_000;
+        await scheduleFlush();
+
+        assert.equal(requestCount, 2);
+        assert.deepEqual(reportedFailures, [2]);
     } finally {
         globalThis.fetch = originalFetch;
     }

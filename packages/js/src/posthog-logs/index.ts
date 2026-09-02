@@ -1,3 +1,4 @@
+import { type ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { OTLPExporterBase } from '@opentelemetry/otlp-exporter-base';
 import { createLegacyOtlpBrowserExportDelegate } from '@opentelemetry/otlp-exporter-base/browser-http';
 import { JsonLogsSerializer } from '@opentelemetry/otlp-transformer';
@@ -8,6 +9,7 @@ import type {
 
 export const POSTHOG_LOG_BATCH_DELAY_MS = 1_000;
 export const POSTHOG_LOG_EXPORT_TIMEOUT_MS = 5_000;
+export const POSTHOG_LOG_FALLBACK_DELAY_MS = 5 * 60_000;
 export const POSTHOG_LOG_PROCESSOR_TIMEOUT_MS = 6_000;
 export const POSTHOG_LOG_FLUSH_TIMEOUT_MS = 7_000;
 export const POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS = 30_000;
@@ -51,6 +53,8 @@ export class FetchOTLPLogExporter
     extends OTLPExporterBase<ReadableLogRecord[]>
     implements LogRecordExporter
 {
+    private pendingExportError: Error | null = null;
+
     constructor(options: FetchOTLPLogExporterOptions) {
         super(
             createLegacyOtlpBrowserExportDelegate(
@@ -60,6 +64,52 @@ export class FetchOTLPLogExporter
                 { 'Content-Type': 'application/json' },
             ),
         );
+    }
+
+    override export(
+        items: ReadableLogRecord[],
+        resultCallback: (result: ExportResult) => void,
+    ): void {
+        super.export(items, (result) => {
+            if (result.code === ExportResultCode.SUCCESS) {
+                resultCallback(result);
+                return;
+            }
+
+            this.pendingExportError =
+                result.error ?? new Error('PostHog OTLP log export failed');
+
+            // BatchLogRecordProcessor reports every failed result through the
+            // global error handler and then resolves forceFlush(). Record the
+            // error here and let the bounded scheduler report only persistent
+            // failures instead of amplifying one warning per export attempt.
+            resultCallback({ code: ExportResultCode.SUCCESS });
+        });
+    }
+
+    async forceFlushWithErrorPropagation(
+        forceFlush: () => Promise<void>,
+    ): Promise<void> {
+        let forceFlushError: unknown;
+        let forceFlushFailed = false;
+
+        try {
+            await forceFlush();
+        } catch (error) {
+            forceFlushError = error;
+            forceFlushFailed = true;
+        }
+
+        const exportError = this.pendingExportError;
+        this.pendingExportError = null;
+
+        if (forceFlushFailed) {
+            throw forceFlushError;
+        }
+
+        if (exportError) {
+            throw exportError;
+        }
     }
 }
 

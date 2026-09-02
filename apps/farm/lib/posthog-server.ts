@@ -4,6 +4,7 @@ import {
     FetchOTLPLogExporter,
     POSTHOG_LOG_BATCH_DELAY_MS,
     POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+    POSTHOG_LOG_FALLBACK_DELAY_MS,
     POSTHOG_LOG_FLUSH_TIMEOUT_MS,
     POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
     POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
@@ -56,21 +57,25 @@ const originalConsole = {
     warn: console.warn.bind(console),
 };
 
-const postHogLogsProcessor =
+const postHogLogsExporter =
     postHogApiKey && postHogLogsUrl
-        ? new BatchLogRecordProcessor({
-              exportTimeoutMillis: POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
-              exporter: new FetchOTLPLogExporter({
-                  headers: {
-                      Authorization: `Bearer ${postHogApiKey}`,
-                      'Content-Type': 'application/json',
-                  },
-                  timeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
-                  url: postHogLogsUrl,
-              }),
-              scheduledDelayMillis: POSTHOG_LOG_BATCH_DELAY_MS,
+        ? new FetchOTLPLogExporter({
+              headers: {
+                  Authorization: `Bearer ${postHogApiKey}`,
+                  'Content-Type': 'application/json',
+              },
+              timeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+              url: postHogLogsUrl,
           })
         : null;
+
+const postHogLogsProcessor = postHogLogsExporter
+    ? new BatchLogRecordProcessor({
+          exportTimeoutMillis: POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+          exporter: postHogLogsExporter,
+          scheduledDelayMillis: POSTHOG_LOG_FALLBACK_DELAY_MS,
+      })
+    : null;
 
 export const loggerProvider = new LoggerProvider({
     forceFlushTimeoutMillis: POSTHOG_LOG_FLUSH_TIMEOUT_MS,
@@ -124,7 +129,10 @@ function stringifyConsoleArgument(value: unknown): string {
 
 const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
     batchDelayMs: POSTHOG_LOG_BATCH_DELAY_MS,
-    flush: () => loggerProvider.forceFlush(),
+    flush: () =>
+        postHogLogsExporter?.forceFlushWithErrorPropagation(() =>
+            loggerProvider.forceFlush(),
+        ) ?? loggerProvider.forceFlush(),
     initialFailureBackoffMs: POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
     maxFailureBackoffMs: POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
     onPersistentError: (error, context) => {

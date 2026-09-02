@@ -41,11 +41,12 @@ high-signal records. The OTLP fetch transport aborts exports after five seconds
 so DNS, connection, and response stalls settle before the processor's
 six-second bound and the provider's seven-second deadline.
 
-Failed forced flushes use exponential backoff from 30 seconds to five minutes
-while the batch processor keeps its normal export schedule. A runtime warns
-only after a repeated failure and only once until a successful flush resets the
-failure streak. Error-hook and Proxy flushes use Vercel's post-response
-`waitUntil` lifecycle, so telemetry does not delay the response.
+Failed exports propagate through the forced-flush scheduler, which uses
+exponential backoff from 30 seconds to five minutes. The batch processor's own
+timer is a five-minute fallback, so it cannot bypass that backoff. A runtime
+warns only after a repeated failure and only once until a successful flush
+resets the failure streak. Error-hook and Proxy flushes use Vercel's
+post-response `waitUntil` lifecycle, so telemetry does not delay the response.
 
 ## Cron schedules
 
