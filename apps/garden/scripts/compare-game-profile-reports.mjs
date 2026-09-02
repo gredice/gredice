@@ -24,6 +24,10 @@ const crossTierRuntimeFrameLoopObservationMode =
     'separate-semantic-raf-window-v1';
 const canonicalSchedulerBaselineContract = 'canonical-v1';
 const legacyHeartbeatSchedulerBaselineContract = 'legacy-heartbeat-v1';
+const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
+const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
+const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
+const lifecycleLegacyRendererStatsSettleMs = 600;
 const schedulerBaselineContracts = new Set([
     canonicalSchedulerBaselineContract,
     legacyHeartbeatSchedulerBaselineContract,
@@ -986,6 +990,122 @@ function validateRendererResources(errors, resources, path) {
     }
 }
 
+function validateLifecycleRendererStatsMeasurement(
+    errors,
+    resources,
+    path,
+    expectedMode,
+) {
+    if (!isRecord(resources)) {
+        return;
+    }
+    for (const field of rendererResourceFields) {
+        validatePositiveNumber(errors, resources[field], `${path}.${field}`);
+    }
+    const measurement = resources.rendererStatsMeasurement;
+    const measurementPath = `${path}.rendererStatsMeasurement`;
+    if (!isRecord(measurement)) {
+        errors.push(`${measurementPath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        measurement.measurementMode,
+        expectedMode,
+        `${measurementPath}.measurementMode`,
+    );
+    validatePositiveNumber(
+        errors,
+        measurement.startedAt,
+        `${measurementPath}.startedAt`,
+    );
+    validatePositiveNumber(
+        errors,
+        measurement.completedAt,
+        `${measurementPath}.completedAt`,
+    );
+    if (
+        isFiniteNumber(measurement.startedAt) &&
+        isFiniteNumber(measurement.completedAt) &&
+        measurement.completedAt < measurement.startedAt
+    ) {
+        errors.push(
+            `${measurementPath}.completedAt must not precede startedAt`,
+        );
+    }
+    for (const field of [
+        'drawCallsDelta',
+        'renderedFramesDelta',
+        'submittedTrianglesDelta',
+    ]) {
+        validatePositiveNumber(
+            errors,
+            measurement[field],
+            `${measurementPath}.${field}`,
+        );
+    }
+
+    if (expectedMode === lifecycleRendererStatsLegacyMode) {
+        validateExactValue(
+            errors,
+            measurement.legacySettleMs,
+            lifecycleLegacyRendererStatsSettleMs,
+            `${measurementPath}.legacySettleMs`,
+        );
+        for (const field of [
+            'rendererStatsPublishedAt',
+            'rendererStatsReceiptCount',
+            'rendererStatsReceiptDelta',
+            'rendererStatsRenderFrame',
+            'r3fFrameCallbackCountDelta',
+            'runtimeMeasurementMode',
+        ]) {
+            if (!hasOwn(measurement, field) || measurement[field] !== null) {
+                errors.push(
+                    `${measurementPath}.${field} must be explicit null`,
+                );
+            }
+        }
+        return;
+    }
+
+    validateExactValue(
+        errors,
+        measurement.runtimeMeasurementMode,
+        rendererStatsRuntimeMeasurementMode,
+        `${measurementPath}.runtimeMeasurementMode`,
+    );
+    if (measurement.legacySettleMs !== null) {
+        errors.push(`${measurementPath}.legacySettleMs must be explicit null`);
+    }
+    validatePositiveNumber(
+        errors,
+        measurement.rendererStatsPublishedAt,
+        `${measurementPath}.rendererStatsPublishedAt`,
+    );
+    if (
+        isFiniteNumber(measurement.rendererStatsPublishedAt) &&
+        isFiniteNumber(measurement.startedAt) &&
+        measurement.rendererStatsPublishedAt <= measurement.startedAt
+    ) {
+        errors.push(
+            `${measurementPath}.rendererStatsPublishedAt must follow startedAt`,
+        );
+    }
+    for (const field of [
+        'rendererStatsReceiptCount',
+        'rendererStatsReceiptDelta',
+        'rendererStatsRenderFrame',
+        'r3fFrameCallbackCountDelta',
+    ]) {
+        if (!Number.isInteger(measurement[field]) || measurement[field] <= 0) {
+            errors.push(
+                `${measurementPath}.${field} must be a positive integer`,
+            );
+        }
+    }
+}
+
 function validateStructuralCounts(errors, fixture, path, prefix = '') {
     if (!isRecord(fixture)) {
         errors.push(`${path} is missing`);
@@ -1307,6 +1427,14 @@ function validateCanonicalScenarioEvidence(
         for (const [phaseName, fixture] of [
             ['cold', scenario.lifecycle?.cold?.fixture],
             [
+                'offscreen-resumed',
+                scenario.lifecycle?.offscreen?.resumedControl?.fixture,
+            ],
+            [
+                'hidden-resumed',
+                scenario.lifecycle?.hidden?.resumedControl?.fixture,
+            ],
+            [
                 'context-restored',
                 scenario.lifecycle?.context?.restoredControl?.fixture,
             ],
@@ -1331,6 +1459,15 @@ function validateCanonicalScenarioEvidence(
                 errors,
                 fixture.resources,
                 `${fixturePath}.resources`,
+            );
+            validateLifecycleRendererStatsMeasurement(
+                errors,
+                fixture.resources,
+                `${fixturePath}.resources`,
+                schedulerBaselineContract ===
+                    legacyHeartbeatSchedulerBaselineContract
+                    ? lifecycleRendererStatsLegacyMode
+                    : lifecycleRendererStatsCanonicalMode,
             );
         }
     }

@@ -47,9 +47,13 @@ import {
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
+    isLifecycleRendererStatsBarrierReady,
+    isLifecycleRendererStatsMeasurementValid,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     lifecycleOwnedSchedulingZeroObserved,
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
     lifecycleZeroWorkObserved,
     measureStaticSceneCacheImageParity,
     mergeGardenStructureAssetNetworkRuntime,
@@ -62,6 +66,7 @@ import {
     resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
+    resolveLifecycleRendererStatsCaptureMode,
     resolveScenarios,
     shouldFailProfileRun,
     shouldObserveRuntimeFrameLoopDuringRaf,
@@ -2465,6 +2470,210 @@ test('outline telemetry readiness requires the connected target and one style gr
         }),
         true,
     );
+});
+
+test('lifecycle renderer stats barrier requires a post-barrier root and submitted-render receipt', () => {
+    const start = {
+        capturedAt: 100,
+        drawCalls: 10,
+        renderedFrames: 2,
+        rendererStatsMeasurementMode: 'post-render-microtask-v1',
+        rendererStatsPublishedAt: 90,
+        rendererStatsReceiptCount: 3,
+        rendererStatsRenderFrame: 8,
+        r3fFrameCallbackCount: 4,
+        submittedTriangles: 20,
+    };
+    const ready = {
+        ...start,
+        capturedAt: 130,
+        drawCalls: 11,
+        renderedFrames: 3,
+        rendererStatsPublishedAt: 120,
+        rendererStatsReceiptCount: 4,
+        // A restored Three renderer may restart its local render-frame count.
+        rendererStatsRenderFrame: 1,
+        r3fFrameCallbackCount: 5,
+        submittedTriangles: 21,
+    };
+
+    assert.equal(
+        isLifecycleRendererStatsBarrierReady(
+            start,
+            ready,
+            lifecycleRendererStatsCanonicalMode,
+        ),
+        true,
+    );
+    for (const mutation of [
+        { drawCalls: 10 },
+        { renderedFrames: 2 },
+        { submittedTriangles: 20 },
+        { r3fFrameCallbackCount: 4 },
+        { rendererStatsReceiptCount: 3 },
+        { rendererStatsPublishedAt: 100 },
+        { rendererStatsMeasurementMode: null },
+        { rendererStatsRenderFrame: 0 },
+    ]) {
+        assert.equal(
+            isLifecycleRendererStatsBarrierReady(
+                start,
+                { ...ready, ...mutation },
+                lifecycleRendererStatsCanonicalMode,
+            ),
+            false,
+        );
+    }
+
+    const legacy = {
+        ...ready,
+        rendererStatsMeasurementMode: null,
+        rendererStatsPublishedAt: null,
+        rendererStatsReceiptCount: null,
+        rendererStatsRenderFrame: null,
+        r3fFrameCallbackCount: null,
+    };
+    assert.equal(
+        isLifecycleRendererStatsBarrierReady(
+            { ...start, r3fFrameCallbackCount: null },
+            legacy,
+            lifecycleRendererStatsLegacyMode,
+        ),
+        true,
+    );
+});
+
+test('lifecycle renderer stats resource measurements fail closed for canonical and legacy evidence', () => {
+    const resources = {
+        rendererGeometries: 193,
+        rendererShaders: 15,
+        rendererStatsMeasurement: {
+            completedAt: 130,
+            drawCallsDelta: 1,
+            legacySettleMs: null,
+            measurementMode: lifecycleRendererStatsCanonicalMode,
+            renderedFramesDelta: 1,
+            rendererStatsPublishedAt: 120,
+            rendererStatsReceiptCount: 4,
+            rendererStatsReceiptDelta: 1,
+            rendererStatsRenderFrame: 8,
+            r3fFrameCallbackCountDelta: 1,
+            runtimeMeasurementMode: 'post-render-microtask-v1',
+            startedAt: 100,
+            submittedTrianglesDelta: 2,
+        },
+        rendererTextures: 5,
+    };
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            resources,
+            lifecycleRendererStatsCanonicalMode,
+        ),
+        true,
+    );
+    for (const mutation of [
+        { rendererGeometries: 0 },
+        {
+            rendererStatsMeasurement: {
+                ...resources.rendererStatsMeasurement,
+                completedAt: 99,
+            },
+        },
+        {
+            rendererStatsMeasurement: {
+                ...resources.rendererStatsMeasurement,
+                rendererStatsReceiptDelta: 0,
+            },
+        },
+    ]) {
+        assert.equal(
+            isLifecycleRendererStatsMeasurementValid(
+                { ...resources, ...mutation },
+                lifecycleRendererStatsCanonicalMode,
+            ),
+            false,
+        );
+    }
+
+    const legacyResources = {
+        ...resources,
+        rendererStatsMeasurement: {
+            ...resources.rendererStatsMeasurement,
+            legacySettleMs: 600,
+            measurementMode: lifecycleRendererStatsLegacyMode,
+            rendererStatsPublishedAt: null,
+            rendererStatsReceiptCount: null,
+            rendererStatsReceiptDelta: null,
+            rendererStatsRenderFrame: null,
+            r3fFrameCallbackCountDelta: null,
+            runtimeMeasurementMode: null,
+        },
+    };
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            legacyResources,
+            lifecycleRendererStatsLegacyMode,
+        ),
+        true,
+    );
+    assert.equal(
+        isLifecycleRendererStatsMeasurementValid(
+            {
+                ...legacyResources,
+                rendererStatsMeasurement: {
+                    ...legacyResources.rendererStatsMeasurement,
+                    rendererStatsReceiptCount: 1,
+                },
+            },
+            lifecycleRendererStatsLegacyMode,
+        ),
+        false,
+    );
+});
+
+test('legacy lifecycle renderer stats mode is limited to an explicit clean external old subject', () => {
+    const cleanHarness = {
+        commit: 'a'.repeat(40),
+        dirty: false,
+    };
+    const cleanSubject = {
+        commit: 'b'.repeat(40),
+        comparisonContractVersion: 1,
+        dirty: false,
+    };
+    assert.equal(
+        resolveLifecycleRendererStatsCaptureMode({
+            harness: cleanHarness,
+            requestedMode: lifecycleRendererStatsLegacyMode,
+            servedBuild: cleanSubject,
+            serverMode: 'external',
+        }),
+        lifecycleRendererStatsLegacyMode,
+    );
+    for (const input of [
+        { serverMode: 'managed' },
+        { harness: { ...cleanHarness, dirty: true } },
+        { servedBuild: { ...cleanSubject, dirty: true } },
+        { servedBuild: { ...cleanSubject, commit: cleanHarness.commit } },
+        {
+            servedBuild: {
+                ...cleanSubject,
+                comparisonContractVersion: 2,
+            },
+        },
+    ]) {
+        assert.throws(
+            () =>
+                resolveLifecycleRendererStatsCaptureMode({
+                    harness: cleanHarness,
+                    requestedMode: lifecycleRendererStatsLegacyMode,
+                    servedBuild: cleanSubject,
+                    serverMode: 'external',
+                    ...input,
+                }),
+            /requires an explicit clean external subject/,
+        );
+    }
 });
 
 test('graphics backend auto-selects macOS Metal with an explicit portable override', () => {
@@ -5608,6 +5817,36 @@ test('lifecycle acceptance passes one complete contract and rejects focused evid
         ).pass,
         false,
     );
+
+    const staleColdReceipt = structuredClone(input);
+    staleColdReceipt.cold.fixture.resources.rendererStatsMeasurement.rendererStatsReceiptDelta = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            staleColdReceipt,
+            'lifecycleColdRendererStatsMeasurementValid',
+        ).pass,
+        false,
+    );
+
+    const zeroColdGeometry = structuredClone(input);
+    zeroColdGeometry.cold.fixture.resources.rendererGeometries = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            zeroColdGeometry,
+            'lifecycleColdRendererGeometries',
+        ).pass,
+        false,
+    );
+
+    const zeroRestoredTexture = structuredClone(input);
+    zeroRestoredTexture.context.restoredControl.fixture.resources.rendererTextures = 0;
+    assert.equal(
+        lifecycleAcceptanceCheck(
+            zeroRestoredTexture,
+            'lifecycleContextRestoredRendererTextures',
+        ).pass,
+        false,
+    );
 });
 
 function lifecycleAcceptanceCheck(input, name) {
@@ -5665,7 +5904,27 @@ function createPassingLifecycleAcceptanceInput() {
             stackCount: 270,
         },
         gardenId: 99_996,
-        resources: { staticOpaqueSceneCacheEnabled: false },
+        resources: {
+            rendererGeometries: 258,
+            rendererShaders: 24,
+            rendererStatsMeasurement: {
+                completedAt: 120,
+                drawCallsDelta: 10,
+                legacySettleMs: null,
+                measurementMode: lifecycleRendererStatsCanonicalMode,
+                renderedFramesDelta: 1,
+                rendererStatsPublishedAt: 110,
+                rendererStatsReceiptCount: 2,
+                rendererStatsReceiptDelta: 1,
+                rendererStatsRenderFrame: 1,
+                r3fFrameCallbackCountDelta: 1,
+                runtimeMeasurementMode: 'post-render-microtask-v1',
+                startedAt: 100,
+                submittedTrianglesDelta: 100,
+            },
+            rendererTextures: 7,
+            staticOpaqueSceneCacheEnabled: false,
+        },
     });
     const activeSample = () => ({
         drawCalls: 1_000,

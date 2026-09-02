@@ -110,6 +110,14 @@ const lifecycleExpectedGardenStackCount = 270;
 const lifecycleExpectedGardenBlockCount = 297;
 const lifecycleExpectedGardenRaisedBedCount = 3;
 const lifecycleContextEventTimeoutMs = 20_000;
+const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
+const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
+const lifecycleRendererStatsModes = new Set([
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
+]);
+const lifecycleLegacyRendererStatsSettleMs = 600;
+const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
 const lifecycleResumeTransitionWindowMs = 900;
 const lifecycleResumeSteadyWindowMs = 2_000;
 // Resume may drain already-requested R3F frames, but that semantic surplus
@@ -1824,6 +1832,9 @@ function parseArgs(argv) {
         ),
         failOnBudget: process.env.GAME_PROFILE_FAIL_ON_BUDGET === '1',
         graphicsBackend: process.env.GAME_PROFILE_GRAPHICS_BACKEND ?? 'auto',
+        lifecycleRendererStatsMode:
+            process.env.GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE ??
+            lifecycleRendererStatsCanonicalMode,
         outDir: process.env.GAME_PROFILE_OUT_DIR
             ? resolve(appRoot, process.env.GAME_PROFILE_OUT_DIR)
             : defaultOutDir,
@@ -1874,6 +1885,10 @@ function parseArgs(argv) {
             case '--help':
                 options.help = true;
                 break;
+            case '--lifecycle-renderer-stats-mode':
+                options.lifecycleRendererStatsMode = next;
+                index += 1;
+                break;
             case '--out-dir':
                 options.outDir = resolve(appRoot, next);
                 index += 1;
@@ -1920,6 +1935,11 @@ function parseArgs(argv) {
     if (!chromiumGraphicsBackends.includes(options.graphicsBackend)) {
         throw new Error(
             `Graphics backend must be one of: ${chromiumGraphicsBackends.join(', ')}.`,
+        );
+    }
+    if (!lifecycleRendererStatsModes.has(options.lifecycleRendererStatsMode)) {
+        throw new Error(
+            `Lifecycle renderer stats mode must be one of: ${[...lifecycleRendererStatsModes].join(', ')}.`,
         );
     }
     if (
@@ -2137,6 +2157,40 @@ function buildReportProvenance({ harness, runtime, scenarios, server }) {
     };
 }
 
+function resolveLifecycleRendererStatsCaptureMode({
+    harness,
+    requestedMode,
+    servedBuild,
+    serverMode,
+}) {
+    if (requestedMode === lifecycleRendererStatsCanonicalMode) {
+        return requestedMode;
+    }
+    if (requestedMode !== lifecycleRendererStatsLegacyMode) {
+        throw new Error(
+            `Unsupported lifecycle renderer stats mode: ${String(requestedMode)}.`,
+        );
+    }
+
+    const harnessCommit = normalizeSourceCommit(harness?.commit);
+    const subjectCommit = normalizeSourceCommit(servedBuild?.commit);
+    if (
+        serverMode !== 'external' ||
+        harness?.dirty !== false ||
+        servedBuild?.dirty !== false ||
+        servedBuild?.comparisonContractVersion !==
+            gameProfileComparisonContractVersion ||
+        harnessCommit === null ||
+        subjectCommit === null ||
+        harnessCommit === subjectCommit
+    ) {
+        throw new Error(
+            `${lifecycleRendererStatsLegacyMode} requires an explicit clean external subject that differs from the clean profiler harness and matches comparison contract ${gameProfileComparisonContractVersion}.`,
+        );
+    }
+    return requestedMode;
+}
+
 function shouldFailProfileRun({ failOnBudget, profileSummary, provenance }) {
     return (
         failOnBudget === true &&
@@ -2160,6 +2214,7 @@ function printHelp(options) {
             '  --start-server         Start pnpm start before profiling. Requires a built app.',
             '                         Uses the port from --base-url or GAME_PROFILE_BASE_URL.',
             `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
+            `  --lifecycle-renderer-stats-mode <mode> ${lifecycleRendererStatsCanonicalMode} or baseline-only ${lifecycleRendererStatsLegacyMode}. Current: ${options.lifecycleRendererStatsMode}`,
             '  --out-dir <path>       Report directory. Default: test-results/game-profile',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
@@ -2175,6 +2230,7 @@ function printHelp(options) {
             '  GAME_PROFILE_BASE_URL, GAME_PROFILE_BUILD=1,',
             '  GAME_PROFILE_CLOSEUP_REPEAT, GAME_PROFILE_CLOSEUP_TIMEOUT_MS,',
             '  GAME_PROFILE_GRAPHICS_BACKEND,',
+            '  GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE,',
             '  GAME_PROFILE_START_SERVER=1,',
             '  GAME_PROFILE_WARMUP_MS, GAME_PROFILE_SOAK_MS,',
             '  GAME_PROFILE_SAMPLE_MS, GAME_PROFILE_OUT_DIR,',
@@ -5669,7 +5725,292 @@ async function hideLifecycleOutline(page) {
     );
 }
 
+function lifecycleRendererStatsRawSubmissionAdvanced(start, current) {
+    return ['drawCalls', 'renderedFrames', 'submittedTriangles'].every(
+        (field) =>
+            typeof start?.[field] === 'number' &&
+            Number.isFinite(start[field]) &&
+            typeof current?.[field] === 'number' &&
+            Number.isFinite(current[field]) &&
+            current[field] > start[field],
+    );
+}
+
+function isLifecycleRendererStatsBarrierReady(start, current, mode) {
+    if (!lifecycleRendererStatsRawSubmissionAdvanced(start, current)) {
+        return false;
+    }
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        return (
+            current?.rendererStatsMeasurementMode === null &&
+            current.rendererStatsPublishedAt === null &&
+            current.rendererStatsReceiptCount === null &&
+            current.rendererStatsRenderFrame === null
+        );
+    }
+    if (mode !== lifecycleRendererStatsCanonicalMode) {
+        return false;
+    }
+
+    const startReceipt =
+        Number.isInteger(start?.rendererStatsReceiptCount) &&
+        start.rendererStatsReceiptCount >= 0
+            ? start.rendererStatsReceiptCount
+            : -1;
+    return (
+        current?.rendererStatsMeasurementMode ===
+            rendererStatsRuntimeMeasurementMode &&
+        Number.isInteger(current.rendererStatsReceiptCount) &&
+        current.rendererStatsReceiptCount > startReceipt &&
+        typeof current.rendererStatsPublishedAt === 'number' &&
+        Number.isFinite(current.rendererStatsPublishedAt) &&
+        current.rendererStatsPublishedAt > start.capturedAt &&
+        Number.isInteger(current.rendererStatsRenderFrame) &&
+        current.rendererStatsRenderFrame > 0 &&
+        Number.isInteger(start.r3fFrameCallbackCount) &&
+        start.r3fFrameCallbackCount >= 0 &&
+        Number.isInteger(current.r3fFrameCallbackCount) &&
+        current.r3fFrameCallbackCount > start.r3fFrameCallbackCount
+    );
+}
+
+async function readLifecycleRendererStatsBarrierState(page) {
+    return page.evaluate(() => {
+        const profile = globalThis.__grediceGameProfile;
+        const metrics = globalThis.__gameProfileMetrics;
+        const numberOrNull = (value) =>
+            typeof value === 'number' && Number.isFinite(value) ? value : null;
+        return {
+            capturedAt: performance.now(),
+            drawCalls: numberOrNull(metrics?.drawCalls),
+            renderedFrames: numberOrNull(metrics?.renderedFrames),
+            rendererStatsMeasurementMode:
+                typeof profile?.rendererStatsMeasurementMode === 'string'
+                    ? profile.rendererStatsMeasurementMode
+                    : null,
+            rendererStatsPublishedAt: numberOrNull(
+                profile?.rendererStatsPublishedAt,
+            ),
+            rendererStatsReceiptCount: numberOrNull(
+                profile?.rendererStatsReceiptCount,
+            ),
+            rendererStatsRenderFrame: numberOrNull(
+                profile?.rendererStatsRenderFrame,
+            ),
+            r3fFrameCallbackCount: numberOrNull(
+                profile?.runtimeFrameLoop?.r3fFrameCallbackCount,
+            ),
+            submittedTriangles: numberOrNull(metrics?.submittedTriangles),
+        };
+    });
+}
+
+function lifecycleRendererStatsBarrierWitness(start, current, mode) {
+    const delta = (field) =>
+        typeof start?.[field] === 'number' &&
+        typeof current?.[field] === 'number'
+            ? current[field] - start[field]
+            : null;
+    return {
+        completedAt: round(current.capturedAt),
+        drawCallsDelta: delta('drawCalls'),
+        legacySettleMs:
+            mode === lifecycleRendererStatsLegacyMode
+                ? lifecycleLegacyRendererStatsSettleMs
+                : null,
+        measurementMode: mode,
+        renderedFramesDelta: delta('renderedFrames'),
+        rendererStatsPublishedAt: current.rendererStatsPublishedAt,
+        rendererStatsReceiptCount: current.rendererStatsReceiptCount,
+        rendererStatsReceiptDelta:
+            typeof current.rendererStatsReceiptCount === 'number'
+                ? current.rendererStatsReceiptCount -
+                  (typeof start.rendererStatsReceiptCount === 'number'
+                      ? start.rendererStatsReceiptCount
+                      : 0)
+                : null,
+        rendererStatsRenderFrame: current.rendererStatsRenderFrame,
+        r3fFrameCallbackCountDelta: delta('r3fFrameCallbackCount'),
+        runtimeMeasurementMode: current.rendererStatsMeasurementMode,
+        startedAt: round(start.capturedAt),
+        submittedTrianglesDelta: delta('submittedTriangles'),
+    };
+}
+
+async function waitForLifecycleRendererStatsBarrier(page, mode) {
+    const start = await readLifecycleRendererStatsBarrierState(page);
+    if (
+        mode === lifecycleRendererStatsCanonicalMode &&
+        start.rendererStatsMeasurementMode !== null &&
+        start.rendererStatsMeasurementMode !==
+            rendererStatsRuntimeMeasurementMode
+    ) {
+        throw new Error(
+            `Lifecycle renderer stats runtime mode is ${String(start.rendererStatsMeasurementMode)}; expected ${rendererStatsRuntimeMeasurementMode}.`,
+        );
+    }
+    if (
+        mode === lifecycleRendererStatsLegacyMode &&
+        (start.rendererStatsMeasurementMode !== null ||
+            start.rendererStatsPublishedAt !== null ||
+            start.rendererStatsReceiptCount !== null ||
+            start.rendererStatsRenderFrame !== null)
+    ) {
+        throw new Error(
+            `${lifecycleRendererStatsLegacyMode} cannot be used when canonical renderer-stats receipt telemetry is present.`,
+        );
+    }
+
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        await page.waitForTimeout(lifecycleLegacyRendererStatsSettleMs);
+        const settled = await readLifecycleRendererStatsBarrierState(page);
+        if (!lifecycleRendererStatsRawSubmissionAdvanced(start, settled)) {
+            throw new Error(
+                'Legacy lifecycle renderer-stats settling observed no submitted render work.',
+            );
+        }
+        await page.waitForFunction(
+            (barrier) => {
+                const metrics = globalThis.__gameProfileMetrics;
+                const profile = globalThis.__grediceGameProfile;
+                return Boolean(
+                    profile?.rendererStatsMeasurementMode == null &&
+                        profile?.rendererStatsPublishedAt == null &&
+                        profile?.rendererStatsReceiptCount == null &&
+                        profile?.rendererStatsRenderFrame == null &&
+                        typeof metrics?.drawCalls === 'number' &&
+                        metrics.drawCalls > barrier.drawCalls &&
+                        typeof metrics.renderedFrames === 'number' &&
+                        metrics.renderedFrames > barrier.renderedFrames &&
+                        typeof metrics.submittedTriangles === 'number' &&
+                        metrics.submittedTriangles > barrier.submittedTriangles,
+                );
+            },
+            settled,
+            { timeout: 20_000 },
+        );
+    } else {
+        await page.waitForFunction(
+            ({ runtimeMode, start }) => {
+                const profile = globalThis.__grediceGameProfile;
+                const metrics = globalThis.__gameProfileMetrics;
+                const receiptAtStart =
+                    Number.isInteger(start.rendererStatsReceiptCount) &&
+                    start.rendererStatsReceiptCount >= 0
+                        ? start.rendererStatsReceiptCount
+                        : -1;
+                return Boolean(
+                    profile?.rendererStatsMeasurementMode === runtimeMode &&
+                        Number.isInteger(profile.rendererStatsReceiptCount) &&
+                        profile.rendererStatsReceiptCount > receiptAtStart &&
+                        typeof profile.rendererStatsPublishedAt === 'number' &&
+                        profile.rendererStatsPublishedAt > start.capturedAt &&
+                        Number.isInteger(profile.rendererStatsRenderFrame) &&
+                        profile.rendererStatsRenderFrame > 0 &&
+                        Number.isInteger(
+                            profile.runtimeFrameLoop?.r3fFrameCallbackCount,
+                        ) &&
+                        profile.runtimeFrameLoop.r3fFrameCallbackCount >
+                            start.r3fFrameCallbackCount &&
+                        typeof metrics?.drawCalls === 'number' &&
+                        metrics.drawCalls > start.drawCalls &&
+                        typeof metrics.renderedFrames === 'number' &&
+                        metrics.renderedFrames > start.renderedFrames &&
+                        typeof metrics.submittedTriangles === 'number' &&
+                        metrics.submittedTriangles > start.submittedTriangles,
+                );
+            },
+            { runtimeMode: rendererStatsRuntimeMeasurementMode, start },
+            { timeout: 20_000 },
+        );
+    }
+
+    const current = await readLifecycleRendererStatsBarrierState(page);
+    if (!isLifecycleRendererStatsBarrierReady(start, current, mode)) {
+        throw new Error(
+            `Lifecycle renderer stats ${mode} barrier did not produce a fresh submitted-render receipt.`,
+        );
+    }
+    return lifecycleRendererStatsBarrierWitness(start, current, mode);
+}
+
+function withLifecycleRendererStatsWitness(arrival, witness) {
+    return {
+        ...arrival,
+        resources: {
+            ...arrival.resources,
+            rendererStatsMeasurement: witness,
+        },
+    };
+}
+
+function isLifecycleRendererStatsMeasurementValid(resources, mode) {
+    const measurement = resources?.rendererStatsMeasurement;
+    const positiveResourceFields = [
+        'rendererGeometries',
+        'rendererShaders',
+        'rendererTextures',
+    ];
+    if (
+        !measurement ||
+        measurement.measurementMode !== mode ||
+        typeof measurement.startedAt !== 'number' ||
+        !Number.isFinite(measurement.startedAt) ||
+        measurement.startedAt <= 0 ||
+        typeof measurement.completedAt !== 'number' ||
+        !Number.isFinite(measurement.completedAt) ||
+        measurement.completedAt < measurement.startedAt ||
+        !positiveResourceFields.every(
+            (field) =>
+                typeof resources?.[field] === 'number' &&
+                Number.isFinite(resources[field]) &&
+                resources[field] > 0,
+        ) ||
+        ![
+            'drawCallsDelta',
+            'renderedFramesDelta',
+            'submittedTrianglesDelta',
+        ].every(
+            (field) =>
+                typeof measurement[field] === 'number' &&
+                Number.isFinite(measurement[field]) &&
+                measurement[field] > 0,
+        )
+    ) {
+        return false;
+    }
+    if (mode === lifecycleRendererStatsLegacyMode) {
+        return (
+            measurement.runtimeMeasurementMode === null &&
+            measurement.rendererStatsPublishedAt === null &&
+            measurement.rendererStatsReceiptCount === null &&
+            measurement.rendererStatsReceiptDelta === null &&
+            measurement.rendererStatsRenderFrame === null &&
+            measurement.r3fFrameCallbackCountDelta === null &&
+            measurement.legacySettleMs === lifecycleLegacyRendererStatsSettleMs
+        );
+    }
+    return (
+        mode === lifecycleRendererStatsCanonicalMode &&
+        measurement.runtimeMeasurementMode ===
+            rendererStatsRuntimeMeasurementMode &&
+        typeof measurement.rendererStatsPublishedAt === 'number' &&
+        Number.isFinite(measurement.rendererStatsPublishedAt) &&
+        measurement.rendererStatsPublishedAt > measurement.startedAt &&
+        Number.isInteger(measurement.rendererStatsReceiptCount) &&
+        measurement.rendererStatsReceiptCount > 0 &&
+        Number.isInteger(measurement.rendererStatsReceiptDelta) &&
+        measurement.rendererStatsReceiptDelta > 0 &&
+        Number.isInteger(measurement.rendererStatsRenderFrame) &&
+        measurement.rendererStatsRenderFrame > 0 &&
+        Number.isInteger(measurement.r3fFrameCallbackCountDelta) &&
+        measurement.r3fFrameCallbackCountDelta > 0 &&
+        measurement.legacySettleMs === null
+    );
+}
+
 async function captureLifecycleActiveControl({
+    lifecycleRendererStatsMode,
     page,
     persistentCanvas,
     persistentContext,
@@ -5677,13 +6018,17 @@ async function captureLifecycleActiveControl({
 }) {
     await waitForGardenSwitchFixture(page, 'high-target');
     await hideLifecycleOutline(page);
-    await page.evaluate(
-        () =>
-            new Promise((resolveFrame) =>
-                requestAnimationFrame(() =>
-                    requestAnimationFrame(resolveFrame),
-                ),
-            ),
+    const rendererStatsWitness = await waitForLifecycleRendererStatsBarrier(
+        page,
+        lifecycleRendererStatsMode,
+    );
+    const fixture = withLifecycleRendererStatsWitness(
+        await readGardenSwitchArrival(
+            page,
+            persistentCanvas,
+            persistentContext,
+        ),
+        rendererStatsWitness,
     );
     const before = await page.evaluate(() => ({
         drawCalls: globalThis.__gameProfileMetrics?.drawCalls ?? null,
@@ -5726,11 +6071,6 @@ async function captureLifecycleActiveControl({
                 : null,
         ]),
     );
-    const fixture = await readGardenSwitchArrival(
-        page,
-        persistentCanvas,
-        persistentContext,
-    );
     await mkdir(dirname(screenshotPath), { recursive: true });
     await page.locator('[data-scene-garden-id] canvas').screenshot({
         animations: 'disabled',
@@ -5759,6 +6099,7 @@ function evaluateLifecycleAcceptance({
     offscreen,
     pageErrors = [],
     requested,
+    rendererStatsMode = lifecycleRendererStatsCanonicalMode,
     resolved,
     restoredInteraction,
     restoredScreenshotWitness,
@@ -5844,6 +6185,23 @@ function evaluateLifecycleAcceptance({
         exact(`${prefix}ActiveTargetCount`, interaction?.activeTargetCount, 2),
         exact(`${prefix}StyleGroupCount`, interaction?.styleGroupCount, 1),
     ];
+    const rendererStatsChecks = (prefix, resources) => [
+        exact(
+            `${prefix}RendererStatsMeasurementValid`,
+            isLifecycleRendererStatsMeasurementValid(
+                resources,
+                rendererStatsMode,
+            ),
+            true,
+        ),
+        minimum(
+            `${prefix}RendererGeometries`,
+            resources?.rendererGeometries,
+            1,
+        ),
+        minimum(`${prefix}RendererShaders`, resources?.rendererShaders, 1),
+        minimum(`${prefix}RendererTextures`, resources?.rendererTextures, 1),
+    ];
     const activeControlChecks = (
         prefix,
         control,
@@ -5906,6 +6264,7 @@ function evaluateLifecycleAcceptance({
             control?.fixture?.fixture?.generatedPlantVisibleInstanceCount,
             highTargetExpectedGeneratedPlantInstanceCount,
         ),
+        ...rendererStatsChecks(prefix, control?.fixture?.resources),
         minimum(
             `${prefix}PostCommandRenderedFrames`,
             control?.postCommandRender?.renderedFrames,
@@ -6531,6 +6890,7 @@ function evaluateLifecycleAcceptance({
             cold?.fixture?.resources?.staticOpaqueSceneCacheEnabled,
             false,
         ),
+        ...rendererStatsChecks('lifecycleCold', cold?.fixture?.resources),
         exact(
             'lifecycleColdScreenshotValid',
             isProfileScreenshotWitnessValid(cold?.screenshotWitness),
@@ -7242,6 +7602,13 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             timeout: 60_000,
         });
         const servedBuildProvenance = await readServedBuildProvenance(page);
+        const lifecycleRendererStatsMode =
+            resolveLifecycleRendererStatsCaptureMode({
+                harness: options.harnessProvenance,
+                requestedMode: options.lifecycleRendererStatsMode,
+                servedBuild: servedBuildProvenance,
+                serverMode: options.startServer ? 'managed' : 'external',
+            });
         await page.waitForFunction(
             () => {
                 const canvas = document.querySelector(
@@ -7276,16 +7643,20 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             loopActive: true,
         });
         await installLifecycleIntersectionWitness(page);
+        const coldRendererStatsWitness =
+            await waitForLifecycleRendererStatsBarrier(
+                page,
+                lifecycleRendererStatsMode,
+            );
+        const coldFixture = withLifecycleRendererStatsWitness(
+            await readGardenSwitchArrival(page, sceneCanvas, sceneContext),
+            coldRendererStatsWitness,
+        );
         const interaction = await dispatchGardenSwitchInteraction(
             page,
             'high-target',
         );
         const interactionReadyMs = await page.evaluate(() => performance.now());
-        const coldFixture = await readGardenSwitchArrival(
-            page,
-            sceneCanvas,
-            sceneContext,
-        );
         const coldScreenshotPath = resolve(
             options.outDir,
             'screenshots',
@@ -7442,6 +7813,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
         const offscreenResumedIntersection =
             await readLifecycleIntersectionWitness(page);
         const offscreenResumedControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -7578,6 +7950,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             visibilityState: document.visibilityState,
         }));
         const hiddenResumedControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -7696,6 +8069,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             loopActive: true,
         });
         const restoredControl = await captureLifecycleActiveControl({
+            lifecycleRendererStatsMode,
             page,
             persistentCanvas: sceneCanvas,
             persistentContext: sceneContext,
@@ -7807,6 +8181,7 @@ async function measureLifecycleScenario(browser, baseUrl, scenario, options) {
             offscreen,
             pageErrors,
             requested,
+            rendererStatsMode: lifecycleRendererStatsMode,
             resolved,
             restoredInteraction: restoredControl.interaction,
             restoredScreenshotWitness: screenshotWitness,
@@ -19020,6 +19395,7 @@ async function main() {
         options.scenarios,
     );
     const harnessProvenance = await readHarnessProvenance();
+    options.harnessProvenance = harnessProvenance;
 
     if (options.startServer && (await isReachable(options.baseUrl))) {
         throw new Error(
@@ -19277,9 +19653,13 @@ export {
     isExpectedGardenBuildingProfileApiError,
     isExpectedGardenBuildingProfileConsoleError,
     isIgnoredLocalProfilerConsoleError,
+    isLifecycleRendererStatsBarrierReady,
+    isLifecycleRendererStatsMeasurementValid,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     lifecycleOwnedSchedulingZeroObserved,
+    lifecycleRendererStatsCanonicalMode,
+    lifecycleRendererStatsLegacyMode,
     lifecycleZeroWorkObserved,
     measureProfileScreenshotWitness,
     measureStaticSceneCacheImageParity,
@@ -19293,6 +19673,7 @@ export {
     resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
+    resolveLifecycleRendererStatsCaptureMode,
     resolveScenarios,
     shouldFailProfileRun,
     shouldObserveRuntimeFrameLoopDuringRaf,

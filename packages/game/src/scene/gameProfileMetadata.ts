@@ -600,6 +600,10 @@ export type GameProfileMetadata = {
     rendererPoints?: number;
     rendererRenderCalls?: number;
     rendererShaders?: number;
+    rendererStatsMeasurementMode?: string;
+    rendererStatsPublishedAt?: number;
+    rendererStatsReceiptCount?: number;
+    rendererStatsRenderFrame?: number;
     rendererTextures?: number;
     rendererTriangles?: number;
     runtimeFrameLoop?: RuntimeFrameLoopProfileTelemetry;

@@ -407,6 +407,28 @@ forced loss cannot invalidate profiler-owned query handles. These are local
 headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
+Lifecycle resource snapshots are phase-aligned rather than timing-based. The
+runtime publishes `gl.info` from a root-owned microtask after the R3F render and
+increments a monotonic renderer-stats receipt. Before reading the cold, resumed,
+or context-restored resource fixture, the harness records a barrier and requires
+a later root R3F callback, submitted rendered-frame/draw/triangle deltas, and a
+later renderer-stats receipt. It takes that resource snapshot while the outline
+is hidden, then activates the outline and independently preserves the existing
+post-command draw and screenshot witnesses. This prevents the final two-triangle
+outline composite, a pre-render `gl.info` sample, or the zeroed renderer info
+created during WebGL context restoration from standing in for the scene resource
+inventory.
+
+An old external subject without renderer-stats receipt telemetry may use only
+the explicit `legacy-pre-render-settled-v1` fallback. The harness accepts it only
+when both served subject and profiler harness are clean, their full commits
+differ, the served comparison contract matches, and the subject is externally
+hosted. That fallback waits beyond the legacy 500 ms reporter interval and still
+requires submitted work both during and after settling. Canonical subjects must
+use `post-render-receipt-v1`; the comparator binds the permitted lifecycle mode
+to the baseline scheduler contract and never permits the legacy mode for a
+candidate.
+
 Capture the complete regression bundle before and after a runtime change with
 the same machine, browser, measurement options, deterministic fixtures, and one
 exact clean profiler harness. The baseline-only `GAME_PROFILE_FAIL_ON_BUDGET=0`
@@ -484,6 +506,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
@@ -503,6 +526,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
@@ -520,6 +544,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=1 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
@@ -539,6 +564,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=1 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing

@@ -42,6 +42,7 @@ import {
     resolveGameQualityProfile,
 } from './gameQuality';
 import { subscribeToRendererContextLoss } from './RendererContextLossReporter';
+import { createRendererStatsPublisher } from './rendererStats';
 import {
     SceneTimeProvider,
     sceneFrameRates,
@@ -147,6 +148,24 @@ function restoreWireframeOverride(
 
 function RendererStatsReporter() {
     const lastUpdateRef = useRef(0);
+    const publisherRef = useRef<ReturnType<
+        typeof createRendererStatsPublisher
+    > | null>(null);
+
+    useEffect(() => {
+        const publisher = createRendererStatsPublisher({
+            publish: updateGameProfileMetadata,
+            readCurrentReceipt: () =>
+                readGameProfileMetadata()?.rendererStatsReceiptCount,
+        });
+        publisherRef.current = publisher;
+        return () => {
+            publisher.dispose();
+            if (publisherRef.current === publisher) {
+                publisherRef.current = null;
+            }
+        };
+    }, []);
 
     useFrame(({ gl }) => {
         const now = performance.now();
@@ -155,15 +174,7 @@ function RendererStatsReporter() {
         }
 
         lastUpdateRef.current = now;
-        updateGameProfileMetadata({
-            rendererGeometries: gl.info.memory.geometries,
-            rendererLines: gl.info.render.lines,
-            rendererPoints: gl.info.render.points,
-            rendererRenderCalls: gl.info.render.calls,
-            rendererShaders: gl.info.programs?.length,
-            rendererTextures: gl.info.memory.textures,
-            rendererTriangles: gl.info.render.triangles,
-        });
+        publisherRef.current?.schedule(gl);
     });
 
     return null;

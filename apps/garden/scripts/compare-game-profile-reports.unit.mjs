@@ -163,8 +163,28 @@ function lifecycleScenario(profileRun) {
     const phaseResources = {
         rendererGeometries: 200,
         rendererShaders: 24,
+        rendererStatsMeasurement: {
+            completedAt: 120,
+            drawCallsDelta: 10,
+            legacySettleMs: null,
+            measurementMode: 'post-render-receipt-v1',
+            renderedFramesDelta: 1,
+            rendererStatsPublishedAt: 110,
+            rendererStatsReceiptCount: 2,
+            rendererStatsReceiptDelta: 1,
+            rendererStatsRenderFrame: 1,
+            r3fFrameCallbackCountDelta: 1,
+            runtimeMeasurementMode: 'post-render-microtask-v1',
+            startedAt: 100,
+            submittedTrianglesDelta: 100,
+        },
         rendererTextures: 11,
     };
+    const phaseFixture = () => ({
+        fixture: structuredClone(fixture),
+        gardenId: scenario.runtime.profileGardenId,
+        resources: structuredClone(phaseResources),
+    });
     scenario.baseName = 'game-high-target-runtime-lifecycle-desktop';
     scenario.name = `${scenario.baseName}-run-${profileRun}`;
     scenario.requested = {
@@ -183,21 +203,13 @@ function lifecycleScenario(profileRun) {
             canvasSizedMs: 380,
             domContentLoadedMs: 20,
             firstSubmittedFrameMs: 490,
-            fixture: {
-                fixture: structuredClone(fixture),
-                gardenId: scenario.runtime.profileGardenId,
-                resources: structuredClone(phaseResources),
-            },
+            fixture: phaseFixture(),
             fixtureReadyMs: 580,
             interactionReadyMs: 870,
         },
         context: {
             restoredControl: {
-                fixture: {
-                    fixture: structuredClone(fixture),
-                    gardenId: scenario.runtime.profileGardenId,
-                    resources: structuredClone(phaseResources),
-                },
+                fixture: phaseFixture(),
             },
             restoredWindow: {
                 cdp: { jsHeapMb: 64, scriptDuration: 0.9 },
@@ -205,6 +217,9 @@ function lifecycleScenario(profileRun) {
             },
         },
         hidden: {
+            resumedControl: {
+                fixture: phaseFixture(),
+            },
             residualDeltas: {
                 cancelledCallbackCount: 0,
                 ownedInvalidationCount: 0,
@@ -216,6 +231,9 @@ function lifecycleScenario(profileRun) {
             runtimeSchedulerZeroObserved: true,
         },
         offscreen: {
+            resumedControl: {
+                fixture: phaseFixture(),
+            },
             residualDeltas: {
                 cancelledCallbackCount: 0,
                 ownedInvalidationCount: 0,
@@ -682,6 +700,31 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             delete scenario.requested.continuousRenderLeases;
         }
         if (!scenario.baseName.startsWith('game-cross-tier-')) {
+            if (
+                scenario.baseName ===
+                'game-high-target-runtime-lifecycle-desktop'
+            ) {
+                for (const resources of [
+                    scenario.lifecycle.cold.fixture.resources,
+                    scenario.lifecycle.offscreen.resumedControl.fixture
+                        .resources,
+                    scenario.lifecycle.hidden.resumedControl.fixture.resources,
+                    scenario.lifecycle.context.restoredControl.fixture
+                        .resources,
+                ]) {
+                    resources.rendererStatsMeasurement = {
+                        ...resources.rendererStatsMeasurement,
+                        legacySettleMs: 600,
+                        measurementMode: 'legacy-pre-render-settled-v1',
+                        rendererStatsPublishedAt: null,
+                        rendererStatsReceiptCount: null,
+                        rendererStatsReceiptDelta: null,
+                        rendererStatsRenderFrame: null,
+                        r3fFrameCallbackCountDelta: null,
+                        runtimeMeasurementMode: null,
+                    };
+                }
+            }
             continue;
         }
         scenario.runtime.runtimeFrameLoop.activeLeaseCount = 0;
@@ -1274,6 +1317,109 @@ test('canonical nested policy and fixture evidence fails closed', async (t) => {
             const comparison = compareReports(pair.baseline, pair.candidate);
             assert.equal(comparison.status, 'invalid');
             assert.equal(comparison.exitCode, 2);
+        });
+    }
+});
+
+test('lifecycle renderer resource receipts fail closed for canonical and legacy release evidence', async (t) => {
+    const lifecycleResources = (reportValue) =>
+        reportValue.scenarios
+            .filter(
+                (scenario) =>
+                    scenario.baseName ===
+                    'game-high-target-runtime-lifecycle-desktop',
+            )
+            .flatMap((scenario) => [
+                scenario.lifecycle.cold.fixture.resources,
+                scenario.lifecycle.offscreen.resumedControl.fixture.resources,
+                scenario.lifecycle.hidden.resumedControl.fixture.resources,
+                scenario.lifecycle.context.restoredControl.fixture.resources,
+            ]);
+    const cases = {
+        'symmetric receipt absence': {
+            expected: /rendererStatsMeasurement is missing/,
+            mutate: ({ baseline, candidate }) => {
+                for (const resources of [
+                    ...lifecycleResources(baseline),
+                    ...lifecycleResources(candidate),
+                ]) {
+                    delete resources.rendererStatsMeasurement;
+                }
+            },
+        },
+        'symmetric measurement mode drift': {
+            expected:
+                /rendererStatsMeasurement\.measurementMode must be "post-render-receipt-v1"/,
+            mutate: ({ baseline, candidate }) => {
+                for (const resources of [
+                    ...lifecycleResources(baseline),
+                    ...lifecycleResources(candidate),
+                ]) {
+                    resources.rendererStatsMeasurement.measurementMode =
+                        'pre-render-v0';
+                }
+            },
+        },
+        'symmetric offscreen receipt absence': {
+            expected:
+                /lifecycle\.offscreen-resumed\.fixture\.resources\.rendererStatsMeasurement is missing/,
+            mutate: ({ baseline, candidate }) => {
+                delete lifecycleResources(baseline)[1].rendererStatsMeasurement;
+                delete lifecycleResources(candidate)[1]
+                    .rendererStatsMeasurement;
+            },
+        },
+        'symmetric hidden measurement mode drift': {
+            expected:
+                /lifecycle\.hidden-resumed\.fixture\.resources\.rendererStatsMeasurement\.measurementMode must be "post-render-receipt-v1"/,
+            mutate: ({ baseline, candidate }) => {
+                lifecycleResources(
+                    baseline,
+                )[2].rendererStatsMeasurement.measurementMode = 'pre-render-v0';
+                lifecycleResources(
+                    candidate,
+                )[2].rendererStatsMeasurement.measurementMode = 'pre-render-v0';
+            },
+        },
+        'candidate stale receipt': {
+            expected:
+                /rendererStatsMeasurement\.rendererStatsReceiptDelta must be a positive integer/,
+            mutate: ({ candidate }) => {
+                lifecycleResources(
+                    candidate,
+                )[0].rendererStatsMeasurement.rendererStatsReceiptDelta = 0;
+            },
+        },
+        'candidate zero restored resources': {
+            expected: /rendererTextures must be a positive finite number/,
+            mutate: ({ candidate }) => {
+                lifecycleResources(candidate)[3].rendererTextures = 0;
+            },
+        },
+        'candidate missing receipt with legacy baseline': {
+            baselineContract: 'legacy-heartbeat-v1',
+            expected: /rendererStatsMeasurement is missing/,
+            mutate: ({ baseline, candidate }) => {
+                applyLegacyHeartbeatSchedulerEvidence(baseline);
+                delete lifecycleResources(candidate)[0]
+                    .rendererStatsMeasurement;
+            },
+        },
+    };
+
+    for (const [name, { baselineContract, expected, mutate }] of Object.entries(
+        cases,
+    )) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            mutate(pair);
+            const comparison = compareReports(pair.baseline, pair.candidate, {
+                baselineSchedulerContract: baselineContract,
+            });
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.equal(comparison.comparisons.length, 0);
+            assert.match(comparison.validationErrors.join('\n'), expected);
         });
     }
 });
