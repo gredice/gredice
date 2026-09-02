@@ -92,7 +92,7 @@ test('keeps the React-only garden entry free of 3D runtime imports', () => {
     assert.ok(visited.size > 10, 'expected to inspect the shared HUD graph');
 });
 
-test('keeps saved summaries flag-independent and exposes the flagged 3D build entry', () => {
+test('keeps saved summaries visible and requires both rollout gates for the 3D build entry', () => {
     const content = readFileSync(
         join(sourceRoot, 'GardenOverview2DContent.tsx'),
         'utf8',
@@ -104,12 +104,13 @@ test('keeps saved summaries flag-independent and exposes the flagged 3D build en
 
     assert.match(
         content,
-        /garden\.structures\.length > 0 \|\|\s*flags\.enableGardenBuildingSystemFlag/,
+        /serverEnabled: Boolean\(garden\.gardenBuildingSystem\?\.enabled\)/,
     );
     assert.match(
         content,
-        /buildEnabled=\{Boolean\(\s*flags\.enableGardenBuildingSystemFlag/,
+        /garden\.structures\.length > 0 \|\| gardenStructureBuildEnabled/,
     );
+    assert.match(content, /buildEnabled=\{gardenStructureBuildEnabled\}/);
     assert.doesNotMatch(
         content,
         /enableGardenBuildingSystemFlag\s*&&\s*garden\.structures/,

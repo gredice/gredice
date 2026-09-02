@@ -191,6 +191,8 @@ export function shareCurrentGardenData(
         previousGarden.isPublic !== nextGarden.isPublic ||
         previousGarden.backgroundPalette !== nextGarden.backgroundPalette ||
         previousGarden.farmId !== nextGarden.farmId ||
+        previousGarden.gardenBuildingSystem?.enabled !==
+            nextGarden.gardenBuildingSystem?.enabled ||
         previousGarden.previewSourceRevision !==
             nextGarden.previewSourceRevision
     ) {

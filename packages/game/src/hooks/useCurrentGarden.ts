@@ -74,10 +74,11 @@ export const currentGardenKeys = (
 type useCurrentGardenResponse = Omit<
     GardenResponse,
     | 'backgroundPalette'
-    | 'stacks'
     | 'farmId'
+    | 'gardenBuildingSystem'
     | 'latitude'
     | 'longitude'
+    | 'stacks'
     | 'createdAt'
     | 'updatedAt'
     | 'previewImage'
@@ -86,6 +87,7 @@ type useCurrentGardenResponse = Omit<
 > & {
     backgroundPalette: GameBackgroundPaletteKey;
     farmId?: number | null;
+    gardenBuildingSystem?: GardenResponse['gardenBuildingSystem'];
     previewImage?: GardenPreviewImage | null;
     previewImages?: GardenResponse['previewImages'];
     previewSourceRevision?: string | null;
@@ -1390,6 +1392,11 @@ export function useCurrentGarden(): UseQueryResult<useCurrentGardenResponse | nu
                 ),
                 homeCamera: garden.homeCamera ?? null,
                 farmId: garden.farmId,
+                // Older API deployments do not publish rollout authority.
+                // Keep those rolling combinations closed on the client.
+                gardenBuildingSystem: garden.gardenBuildingSystem ?? {
+                    enabled: false,
+                },
                 stacks,
                 // Tolerate a rolling deployment where an older API response
                 // predates the additive structures collection.
