@@ -78,6 +78,59 @@ function downloadBlob(blob: Blob, fileName: string) {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+async function wallpaperDownloadError(response: Response) {
+    const fallback =
+        'Dinamička HEIC pozadina nije se mogla izraditi. Pokušaj ponovno.';
+    try {
+        const body: unknown = await response.json();
+        if (
+            typeof body === 'object' &&
+            body !== null &&
+            'error' in body &&
+            typeof body.error === 'string'
+        ) {
+            return body.error;
+        }
+    } catch {
+        return fallback;
+    }
+    return fallback;
+}
+
+function macOSDynamicWallpaperResponse(body: unknown) {
+    if (
+        typeof body !== 'object' ||
+        body === null ||
+        !('downloadUrl' in body) ||
+        typeof body.downloadUrl !== 'string' ||
+        !('fileName' in body) ||
+        typeof body.fileName !== 'string' ||
+        !('pathname' in body) ||
+        typeof body.pathname !== 'string' ||
+        !body.pathname.startsWith('wallpapers/macos-dynamic/output/') ||
+        !body.pathname.endsWith('.bin')
+    ) {
+        return null;
+    }
+
+    try {
+        const url = new URL(body.downloadUrl);
+        if (
+            url.protocol !== 'https:' ||
+            !url.hostname.endsWith('.blob.vercel-storage.com')
+        ) {
+            return null;
+        }
+    } catch {
+        return null;
+    }
+    return {
+        downloadUrl: body.downloadUrl,
+        fileName: body.fileName,
+        pathname: body.pathname,
+    };
+}
+
 export function WallpaperStudio() {
     const queryClient = useQueryClient();
     const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser();
@@ -327,36 +380,153 @@ export function WallpaperStudio() {
     async function handleMacOSDynamicDownload() {
         setActivity('macos');
         setError(null);
+        let cleanupRequest: Record<string, string | number> | null = null;
         try {
-            const {
-                createMacOSDynamicWallpaperBundle,
-                macOSDynamicWallpaperFileName,
-            } = await import('./macOSDynamicWallpaper');
-            const size = wallpaperSizes[sizeKey];
-            const frames: Array<{ blob: Blob; phase: WallpaperPhase }> = [];
-
-            for (const wallpaperPhase of wallpaperPhases) {
-                frames.push({
-                    blob: await createWallpaper({
-                        ...size,
-                        phase: wallpaperPhase,
-                    }),
-                    phase: wallpaperPhase,
-                });
+            if (sizeKey === 'tablet' || sizeKey === 'mobile') {
+                throw new Error(
+                    'Mac dinamička pozadina dostupna je za računalne veličine.',
+                );
             }
 
-            const bundle = await createMacOSDynamicWallpaperBundle({ frames });
-            downloadBlob(
-                bundle,
-                macOSDynamicWallpaperFileName({
+            const [{ upload }, macOSDynamicWallpaper] = await Promise.all([
+                import('@vercel/blob/client'),
+                import('./macOSDynamicWallpaper'),
+            ]);
+            const size = wallpaperSizes[sizeKey];
+            if (selectedGardenId === null) {
+                throw new Error('Najprije odaberi vrt.');
+            }
+
+            const conversionId = crypto.randomUUID();
+            const encryption =
+                await macOSDynamicWallpaper.createMacOSDynamicWallpaperEncryption();
+            cleanupRequest = {
+                branding,
+                conversionId,
+                encryptionKey: encryption.encodedKey,
+                gardenId: selectedGardenId,
+                size: sizeKey,
+                template: wallpaperTemplate,
+            };
+
+            for (const wallpaperPhase of wallpaperPhases) {
+                const frame = await createWallpaper({
+                    ...size,
+                    phase: wallpaperPhase,
+                });
+                const pathname =
+                    macOSDynamicWallpaper.macOSDynamicWallpaperInputPath({
+                        conversionId,
+                        gardenId: selectedGardenId,
+                        phase: wallpaperPhase,
+                    });
+                const encryptedFrame =
+                    await macOSDynamicWallpaper.encryptMacOSDynamicWallpaperBlob(
+                        {
+                            blob: frame,
+                            key: encryption.key,
+                            pathname,
+                        },
+                    );
+                const uploaded = await upload(pathname, encryptedFrame, {
+                    access: 'public',
+                    clientPayload: JSON.stringify({
+                        conversionId,
+                        gardenId: selectedGardenId,
+                        phase: wallpaperPhase,
+                    }),
+                    contentType: 'application/octet-stream',
+                    handleUploadUrl:
+                        '/api/gredice/api/wallpapers/macos-dynamic/uploads',
+                    multipart: encryptedFrame.size > 5 * 1024 * 1024,
+                });
+                if (uploaded.pathname !== pathname) {
+                    throw new Error(
+                        'Prijenos slike za HEIC pozadinu nije potvrđen.',
+                    );
+                }
+            }
+
+            const response = await fetch(
+                '/api/gredice/api/wallpapers/macos-dynamic',
+                {
+                    body: JSON.stringify(cleanupRequest),
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                },
+            );
+            if (response.status === 401) {
+                queryClient.setQueryData(currentUserQueryKey, null);
+                throw new Error('Prijava je istekla. Prijavi se ponovno.');
+            }
+            if (!response.ok) {
+                throw new Error(await wallpaperDownloadError(response));
+            }
+
+            const conversion = macOSDynamicWallpaperResponse(
+                await response.json(),
+            );
+            const expectedFileName =
+                macOSDynamicWallpaper.macOSDynamicWallpaperFileName({
                     branding,
                     size: sizeKey,
                     template: wallpaperTemplate,
-                }),
-            );
+                });
+            if (!conversion || conversion.fileName !== expectedFileName) {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
+
+            const downloadResponse = await fetch(conversion.downloadUrl, {
+                cache: 'no-store',
+            });
+            if (!downloadResponse.ok) {
+                throw new Error(
+                    'Preuzimanje gotove HEIC pozadine nije uspjelo.',
+                );
+            }
+            const encryptedHeic = await downloadResponse.blob();
+            if (
+                encryptedHeic.size === 0 ||
+                encryptedHeic.type !== 'application/octet-stream'
+            ) {
+                throw new Error(
+                    'Poslužitelj nije vratio valjanu HEIC pozadinu.',
+                );
+            }
+            const heic =
+                await macOSDynamicWallpaper.decryptMacOSDynamicWallpaperBlob({
+                    blob: encryptedHeic,
+                    contentType: 'image/heic',
+                    key: encryption.key,
+                    pathname: conversion.pathname,
+                });
+            downloadBlob(heic, expectedFileName);
         } catch (downloadError) {
             setError(captureErrorMessage(downloadError));
         } finally {
+            if (cleanupRequest) {
+                const cleanupController = new AbortController();
+                const cleanupTimeout = window.setTimeout(
+                    () => cleanupController.abort(),
+                    3000,
+                );
+                try {
+                    await fetch('/api/gredice/api/wallpapers/macos-dynamic', {
+                        body: JSON.stringify(cleanupRequest),
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        method: 'DELETE',
+                        signal: cleanupController.signal,
+                    });
+                } catch {
+                    // Cleanup is best effort; the server cron removes leftovers.
+                } finally {
+                    window.clearTimeout(cleanupTimeout);
+                }
+            }
             setActivity('idle');
         }
     }
@@ -628,23 +798,25 @@ export function WallpaperStudio() {
                         </Alert>
                     ) : null}
                     <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-                        <Button
-                            aria-label="Preuzmi Mac dinamički paket"
-                            disabled={!gardenQuery.data || isBusy}
-                            loading={activity === 'macos'}
-                            onClick={handleMacOSDynamicDownload}
-                            startDecorator={
-                                <svg
-                                    aria-hidden="true"
-                                    className="size-4 fill-current"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                                </svg>
-                            }
-                        >
-                            Mac dinamički paket
-                        </Button>
+                        {sizeKey !== 'tablet' && sizeKey !== 'mobile' ? (
+                            <Button
+                                aria-label="Preuzmi gotovu Mac dinamičku HEIC pozadinu"
+                                disabled={!gardenQuery.data || isBusy}
+                                loading={activity === 'macos'}
+                                onClick={handleMacOSDynamicDownload}
+                                startDecorator={
+                                    <svg
+                                        aria-hidden="true"
+                                        className="size-4 fill-current"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                                    </svg>
+                                }
+                            >
+                                Preuzmi Mac HEIC
+                            </Button>
+                        ) : null}
                         <Button
                             aria-label={`Preuzmi ${selectedSize.shortLabel} za Windows, Linux ili Android`}
                             disabled={!gardenQuery.data || isBusy}

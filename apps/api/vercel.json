@@ -71,6 +71,10 @@
             "schedule": "*/5 * * * *"
         },
         {
+            "path": "/api/internal/cron/wallpaper-blobs",
+            "schedule": "17 * * * *"
+        },
+        {
             "path": "/api/internal/cron/outlet-lifecycle",
             "schedule": "*/5 * * * *"
         },
