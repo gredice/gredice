@@ -4886,6 +4886,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
                 staticOpaqueSceneCacheEnabled: false,
             },
             sample: {
+                elapsedMs: index === 0 ? 5_000 : 550,
                 maxFrameMs: 100,
             },
             screenshotPath: `/tmp/garden-switch-${index + 1}.png`,
@@ -4913,6 +4914,7 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
             dpr: 2,
             gardenSwitch: '1',
             quality: 'high',
+            sampleMs: 5_000,
             staticSceneCache: 'legacy',
         },
     };
@@ -4950,6 +4952,18 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
             arrivals: changed,
         }).pass;
     };
+    assert.equal(
+        rejectArrival(0, (arrival) => ({
+            sample: { ...arrival.sample, elapsedMs: 4_899 },
+        })),
+        false,
+    );
+    assert.equal(
+        rejectArrival(1, (arrival) => ({
+            sample: { ...arrival.sample, elapsedMs: 100 },
+        })),
+        true,
+    );
     assert.equal(
         rejectArrival(1, (arrival) => ({
             canvas: { ...arrival.canvas, sameContext: false },
@@ -5034,6 +5048,16 @@ test('garden-switch acceptance fails closed across fixtures, interaction, visual
         evaluateGardenSwitchAcceptance({
             ...input,
             apiRequests: [{ method: 'GET', url: '/api/gredice' }],
+        }).pass,
+        false,
+    );
+    assert.equal(
+        evaluateGardenSwitchAcceptance({
+            ...input,
+            requested: {
+                ...input.requested,
+                sampleMs: undefined,
+            },
         }).pass,
         false,
     );

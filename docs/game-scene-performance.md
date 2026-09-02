@@ -259,7 +259,11 @@ pnpm run profile:game:runtime-baselines
 Each of the three garden-switch runs owns one browser context and one WebGL
 Canvas, then records seven arrivals in the exact sequence `high-target →
 fauna-heavy → high-target → fauna-heavy → high-target → fauna-heavy →
-high-target`. The gate verifies the
+high-target`. After the global warm-up, arrival 1 is a full `sampleMs` initial
+control (5,000 ms in the canonical capture). Its acceptance fails closed when
+the observed window is shorter than `sampleMs - 100 ms`. Arrivals 2–7 preserve
+the transition, fixture-readiness, 500 ms visual-settle, interaction, and 550 ms
+post-interaction window. The gate verifies the
 actually displayed garden ID on the Scene root and in profiler telemetry, exact
 fixture cardinalities, High-target generated-plant counts, an exact raised-bed
 outline interaction on each High arrival, and an exact two-Cow `trot`
@@ -290,15 +294,15 @@ independent runs and all 21 arrivals visible so a passing median cannot hide one
 broken switch.
 
 Garden-switch GPU release comparison uses total elapsed timer-query work divided
-by total sampled wall time across the complete seven-arrival workflow. That
-whole-workflow occupancy remains a hard symmetric 2x2 gate, as do per-arrival
-occupancy windows from arrival 2 onward. Arrival 1 is a short initial window on
-a new WebGL context; its occupancy and GPU p95 remain explicit diagnostics gated
-by the full-workflow result, rather than allowing one cold-query/DVFS-sensitive
-sample to override the sustained workload. This does not discard the first
-query, widen the regression thresholds, or hide its raw values. Complete GPU
-timing for all seven arrivals is mandatory in confirmed release evidence; an
-unsupported or incomplete workflow is invalid rather than a passing skip.
+by total sampled wall time across the complete seven-arrival workflow. The
+aggregate is intentionally wall-time-weighted, so the full-length arrival 1
+control contributes its complete observed duration while the later transition
+windows contribute theirs. That whole-workflow occupancy and every per-arrival
+occupancy window remain hard symmetric 2x2 gates. Per-arrival GPU p95 remains an
+explicit diagnostic gated by the corresponding occupancy window; this does not
+discard a query, widen the regression thresholds, or hide raw values. Complete
+GPU timing for all seven arrivals is mandatory in confirmed release evidence;
+an unsupported or incomplete workflow is invalid rather than a passing skip.
 
 The lifecycle scenario is one deterministic High target repeated in three
 fresh browser contexts at `1280x720`, reported DPR 2, fixed midday time, and the
@@ -1514,10 +1518,11 @@ Required release evidence before merge:
   the same 39 canonical runs under `canonical-v1`. `comparison-final` is the
   fail-closed symmetric 2x2 result; “independent” means separate profiler
   executions and reports, not different harness commits.
-- Garden-switch comparison keeps the first short new-context GPU window visible
-  as a diagnostic and hard-gates aggregate elapsed GPU occupancy across all
-  seven arrivals, alongside the later per-arrival occupancy gates. It does not
-  discard or widen the first sample.
+- Garden-switch comparison uses a full-length initial control and hard-gates its
+  elapsed GPU occupancy, every later per-arrival occupancy window, and the
+  wall-time-weighted aggregate across all seven arrivals. Per-arrival GPU p95
+  stays visible as a diagnostic; no sample is discarded and no threshold is
+  widened.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab, and the bundle does not prove physical-device thermal,

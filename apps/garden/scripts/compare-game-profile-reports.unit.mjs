@@ -2607,11 +2607,7 @@ test('garden-switch GPU p95 is diagnostic while elapsed-window occupancy gates t
         assert.equal(result.regressionBreach, false);
         assert.equal(result.pass, true);
     }
-    assert.equal(gpuOccupancy[0].diagnosticOnly, true);
-    assert.equal(
-        gpuOccupancy[0].gatedBy,
-        'gpu.elapsed_workflow_occupancy_percent',
-    );
+    assert.notEqual(gpuOccupancy[0].diagnosticOnly, true);
     assert.equal(workflowOccupancy.baselineMedian, 45);
     assert.equal(workflowOccupancy.candidateMedian, 33);
     assert.equal(workflowOccupancy.pass, true);
@@ -2658,7 +2654,7 @@ test('garden-switch elapsed-workflow GPU occupancy rejects a true total GPU regr
     assert.equal(gpuOccupancy.pass, false);
 });
 
-test('garden-switch first short GPU window is diagnostic when whole-workflow occupancy is stable', () => {
+test('garden-switch full-length initial GPU occupancy is a hard gate', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const arrival of scenario.gardenSwitch.arrivals) {
@@ -2694,18 +2690,18 @@ test('garden-switch first short GPU window is diagnostic when whole-workflow occ
         (result) => result.id === 'gpu.elapsed_workflow_occupancy_percent',
     );
 
-    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
     assert.equal(initialOccupancy.medianRatio, 1.5);
-    assert.equal(initialOccupancy.diagnosticOnly, true);
-    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
-    assert.equal(initialOccupancy.regressionBreach, false);
-    assert.equal(initialOccupancy.pass, true);
+    assert.notEqual(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.regressionBreach, true);
+    assert.equal(initialOccupancy.pass, false);
     assert.equal(workflowOccupancy.baselineMedian, 40);
     assert.equal(workflowOccupancy.candidateMedian, 42.8571);
     assert.equal(workflowOccupancy.pass, true);
 });
 
-test('garden-switch workflow gate catches an initial-window-only total GPU regression', () => {
+test('garden-switch workflow gate aggregates a full-length initial GPU regression', () => {
     const { baseline, candidate } = reportPair(gardenSwitchScenario);
     for (const scenario of baseline.scenarios) {
         for (const [
@@ -2745,9 +2741,9 @@ test('garden-switch workflow gate catches an initial-window-only total GPU regre
     );
 
     assert.equal(comparison.status, 'regression');
-    assert.equal(initialOccupancy.diagnosticOnly, true);
-    assert.equal(initialOccupancy.pass, true);
-    assert.equal(initialOccupancy.baselineRelativeRegressionBreach, true);
+    assert.notEqual(initialOccupancy.diagnosticOnly, true);
+    assert.equal(initialOccupancy.pass, false);
+    assert.equal(initialOccupancy.regressionBreach, true);
     assert.equal(workflowOccupancy.baselineMedian, 35.7143);
     assert.equal(workflowOccupancy.candidateMedian, 47.1429);
     assert.equal(workflowOccupancy.medianRatio, 1.32);
@@ -2757,7 +2753,10 @@ test('garden-switch workflow gate catches an initial-window-only total GPU regre
         comparison.comparisons
             .filter((result) => result.regressionBreach)
             .map((result) => result.id),
-        ['gpu.elapsed_workflow_occupancy_percent'],
+        [
+            'gpu.elapsed_window_occupancy_percent',
+            'gpu.elapsed_workflow_occupancy_percent',
+        ],
     );
 });
 

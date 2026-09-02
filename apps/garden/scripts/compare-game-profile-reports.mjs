@@ -2420,29 +2420,6 @@ function buildGardenSwitchGpuP95Diagnostic({ rows, ...metric }) {
     };
 }
 
-function buildDiagnosticRatioComparison({ gatedBy, rows, ...metric }) {
-    const baselineRelative = buildRatioComparison({ ...metric, rows });
-    return {
-        ...baselineRelative,
-        baselineRelativeDiagnosticOnly: true,
-        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
-        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
-        diagnosticOnly: true,
-        gatedBy,
-        individual: baselineRelative.individual.map((run) => ({
-            ...run,
-            baselineRelativePass: run.pass,
-            baselineRelativeRatio: run.ratio,
-            baselineRelativeWorsening: run.worsening,
-            pass: true,
-        })),
-        medianPass: true,
-        pass: true,
-        regressionBreach: false,
-        screeningBreach: false,
-    };
-}
-
 function validateGardenSwitchCandidateFrameContract(row, errors) {
     for (const boundary of [
         'runtimeFrameLoopAtStart',
@@ -3027,31 +3004,17 @@ function comparePairedScenarios(
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...(group.scenario === gardenSwitchScenarioBaseName &&
-                group.phase.startsWith('arrival-1-')
-                    ? buildDiagnosticRatioComparison({
-                          direction: 'maximum',
-                          gatedBy: 'gpu.elapsed_workflow_occupancy_percent',
-                          id: 'gpu.elapsed_window_occupancy_percent',
-                          label: 'GPU elapsed-window occupancy',
-                          medianAbsoluteTolerance: 5,
-                          medianLimit: 1.15,
-                          rows: gpuOccupancyRows,
-                          runAbsoluteTolerance: 10,
-                          runLimit: 1.3,
-                          unit: '%',
-                      })
-                    : buildRatioComparison({
-                          direction: 'maximum',
-                          id: 'gpu.elapsed_window_occupancy_percent',
-                          label: 'GPU elapsed-window occupancy',
-                          medianAbsoluteTolerance: 5,
-                          medianLimit: 1.15,
-                          rows: gpuOccupancyRows,
-                          runAbsoluteTolerance: 10,
-                          runLimit: 1.3,
-                          unit: '%',
-                      })),
+                ...buildRatioComparison({
+                    direction: 'maximum',
+                    id: 'gpu.elapsed_window_occupancy_percent',
+                    label: 'GPU elapsed-window occupancy',
+                    medianAbsoluteTolerance: 5,
+                    medianLimit: 1.15,
+                    rows: gpuOccupancyRows,
+                    runAbsoluteTolerance: 10,
+                    runLimit: 1.3,
+                    unit: '%',
+                }),
             });
         }
 

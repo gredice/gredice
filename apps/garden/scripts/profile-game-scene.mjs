@@ -4928,6 +4928,7 @@ async function measureGardenSwitchScenario(
             operationVisuals: request.operationVisuals,
             outline: request.outline,
             quality: request.quality,
+            sampleMs: options.sampleMs,
             staticSceneCache: request.staticSceneCache,
             viewport: scenario.viewport,
         };
@@ -4945,7 +4946,7 @@ async function measureGardenSwitchScenario(
                 page,
                 profile,
             );
-            await page.waitForTimeout(550);
+            await page.waitForTimeout(index === 0 ? options.sampleMs : 550);
             const sample = await finishGardenSwitchSample({ cdp, page });
             const arrival = await readGardenSwitchArrival(
                 page,
@@ -12290,6 +12291,11 @@ function evaluateGardenSwitchAcceptance({
     pageErrors = [],
     requested,
 }) {
+    const fullControlSampleMinimumMs =
+        typeof requested?.sampleMs === 'number' &&
+        Number.isFinite(requested.sampleMs)
+            ? Math.max(0, requested.sampleMs - 100)
+            : 0;
     const exact = (name, actual, expected) => ({
         actual,
         comparison: 'equal',
@@ -12342,6 +12348,7 @@ function evaluateGardenSwitchAcceptance({
         exact('gardenSwitchOptIn', requested?.gardenSwitch, '1'),
         exact('gardenSwitchQualityRequest', requested?.quality, 'high'),
         exact('gardenSwitchReportedDpr', requested?.dpr, 2),
+        minimum('gardenSwitchRequestedSampleMs', requested?.sampleMs, 1),
         exact(
             'gardenSwitchStaticSceneCacheRequest',
             requested?.staticSceneCache,
@@ -12483,6 +12490,11 @@ function evaluateGardenSwitchAcceptance({
         if (index === 0) {
             checks.push(
                 exact(`${prefix}InitialArrival`, arrival.timing?.initial, true),
+                minimum(
+                    `${prefix}FullControlSampleDurationMs`,
+                    arrival.sample?.elapsedMs,
+                    fullControlSampleMinimumMs,
+                ),
             );
         } else {
             checks.push(
