@@ -248,6 +248,47 @@ function lifecycleScenario(profileRun) {
     return scenario;
 }
 
+function lifecycleResourceWitnesses(scenario) {
+    return [
+        scenario.lifecycle.cold.fixture.resources,
+        scenario.lifecycle.offscreen.resumedControl.fixture.resources,
+        scenario.lifecycle.hidden.resumedControl.fixture.resources,
+        scenario.lifecycle.context.restoredControl.fixture.resources,
+    ];
+}
+
+function setRendererResourceCounts(
+    resources,
+    [rendererGeometries, rendererShaders, rendererTextures],
+) {
+    Object.assign(resources, {
+        rendererGeometries,
+        rendererShaders,
+        rendererTextures,
+    });
+}
+
+function setLifecycleResourceCounts(scenario, { cold, mature, restored }) {
+    const [
+        coldResources,
+        offscreenResources,
+        hiddenResources,
+        restoredResources,
+    ] = lifecycleResourceWitnesses(scenario);
+    setRendererResourceCounts(coldResources, cold);
+    setRendererResourceCounts(offscreenResources, mature);
+    setRendererResourceCounts(hiddenResources, mature);
+    setRendererResourceCounts(restoredResources, restored);
+}
+
+function setReportLifecycleResourceCounts(reportValue, counts) {
+    for (const scenario of reportValue.scenarios.filter(
+        ({ requested }) => requested.lifecycleProfile === true,
+    )) {
+        setLifecycleResourceCounts(scenario, counts);
+    }
+}
+
 function gardenSwitchScenario(profileRun) {
     const scenario = normalScenario(profileRun);
     scenario.baseName = 'game-garden-switch-high-fauna-single-context-desktop';
@@ -704,14 +745,7 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
                 scenario.baseName ===
                 'game-high-target-runtime-lifecycle-desktop'
             ) {
-                for (const resources of [
-                    scenario.lifecycle.cold.fixture.resources,
-                    scenario.lifecycle.offscreen.resumedControl.fixture
-                        .resources,
-                    scenario.lifecycle.hidden.resumedControl.fixture.resources,
-                    scenario.lifecycle.context.restoredControl.fixture
-                        .resources,
-                ]) {
+                for (const resources of lifecycleResourceWitnesses(scenario)) {
                     resources.rendererStatsMeasurement = {
                         ...resources.rendererStatsMeasurement,
                         legacySettleMs: 600,
@@ -1394,6 +1428,13 @@ test('lifecycle renderer resource receipts fail closed for canonical and legacy 
             expected: /rendererTextures must be a positive finite number/,
             mutate: ({ candidate }) => {
                 lifecycleResources(candidate)[3].rendererTextures = 0;
+            },
+        },
+        'candidate mature resource witnesses disagree': {
+            expected:
+                /lifecycle mature rendererGeometries must be 201; received 200/,
+            mutate: ({ candidate }) => {
+                lifecycleResources(candidate)[1].rendererGeometries = 201;
             },
         },
         'candidate missing receipt with legacy baseline': {
@@ -2523,25 +2564,211 @@ test('lifecycle phases compare restored work and gate SceneTime-owned zero work'
     );
 });
 
-test('lifecycle active resources come from the cold fixture', () => {
+test('lifecycle progress resources are diagnostic while mature and peak resources are gated', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    setReportLifecycleResourceCounts(baseline, {
+        cold: [193, 15, 5],
+        mature: [277, 26, 7],
+        restored: [229, 19, 4],
+    });
+    setReportLifecycleResourceCounts(candidate, {
+        cold: [255, 21, 5],
+        mature: [277, 26, 7],
+        restored: [249, 21, 5],
+    });
+
+    const comparison = compareReports(baseline, candidate, {
+        baselineSchedulerContract: 'legacy-heartbeat-v1',
+    });
+    const coldGeometries = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.geometries' && result.phase === 'cold',
+    );
+    const restoredShaders = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.shaders' &&
+            result.phase === 'context-restored',
+    );
+    const peakGeometries = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.geometries' &&
+            result.phase === 'lifecycle-peak',
+    );
+    assert.equal(
+        comparison.status,
+        'needs-rerun',
+        comparison.validationErrors.join('\n'),
+    );
+    assert.equal(comparison.comparable, true);
+    assert.equal(coldGeometries.diagnosticOnly, true);
+    assert.equal(coldGeometries.baselineRelativeRegressionBreach, true);
+    assert.equal(coldGeometries.regressionBreach, false);
+    assert.equal(restoredShaders.diagnosticOnly, true);
+    assert.equal(restoredShaders.baselineRelativeRegressionBreach, true);
+    assert.equal(restoredShaders.regressionBreach, false);
+    assert.equal(peakGeometries.diagnosticOnly, undefined);
+    assert.equal(peakGeometries.baselineMedian, 277);
+    assert.equal(peakGeometries.candidateMedian, 277);
+    assert.equal(peakGeometries.pass, true);
+    assert.equal(comparison.exitCode, 1);
+    const markdown = buildMarkdown(comparison);
+    assert.match(
+        markdown,
+        /cold \| renderer geometries .* diagnostic only; gated by lifecycle mature and peak resource gates \| pass/,
+    );
+    assert.match(
+        markdown,
+        /lifecycle-peak \| renderer geometries .* median <= \+1 count; repeat required \| pass/,
+    );
+});
+
+test('confirmed lifecycle resources preserve diagnostics and the exact one-count allowance', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    setReportLifecycleResourceCounts(baseline, {
+        cold: [193, 15, 5],
+        mature: [277, 26, 7],
+        restored: [229, 19, 4],
+    });
+    setReportLifecycleResourceCounts(candidate, {
+        cold: [255, 21, 5],
+        mature: [278, 27, 8],
+        restored: [249, 21, 5],
+    });
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+
+    let comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        {
+            baselineConfirmation,
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+    assert.equal(
+        comparison.status,
+        'pass',
+        comparison.validationErrors.join('\n'),
+    );
+    for (const phase of [
+        'offscreen-resumed',
+        'hidden-resumed',
+        'lifecycle-peak',
+    ]) {
+        const geometries = comparison.comparisons.find(
+            (result) =>
+                result.id === 'resources.geometries' && result.phase === phase,
+        );
+        assert.equal(geometries.candidateMedian, 278);
+        assert.equal(geometries.regressionBreach, false);
+    }
+    assert.equal(
+        comparison.comparisons.find(
+            (result) =>
+                result.id === 'resources.geometries' && result.phase === 'cold',
+        ).diagnosticOnly,
+        true,
+    );
+
+    setReportLifecycleResourceCounts(candidate, {
+        cold: [255, 21, 5],
+        mature: [279, 27, 8],
+        restored: [249, 21, 5],
+    });
+    setReportLifecycleResourceCounts(confirmation, {
+        cold: [255, 21, 5],
+        mature: [279, 27, 8],
+        restored: [249, 21, 5],
+    });
+    comparison = compareConfirmedReports(baseline, candidate, confirmation, {
+        baselineConfirmation,
+        baselineSchedulerContract: 'legacy-heartbeat-v1',
+    });
+    assert.equal(comparison.status, 'regression');
+    for (const phase of [
+        'offscreen-resumed',
+        'hidden-resumed',
+        'lifecycle-peak',
+    ]) {
+        assert.equal(
+            comparison.comparisons.find(
+                (result) =>
+                    result.id === 'resources.geometries' &&
+                    result.phase === phase,
+            ).reproducedRegression,
+            true,
+        );
+    }
+});
+
+test('lifecycle mature resource growth remains a hard regression', () => {
+    const { baseline, candidate } = reportPair(lifecycleScenario);
+    for (const scenario of candidate.scenarios) {
+        scenario.lifecycle.offscreen.resumedControl.fixture.resources.rendererGeometries += 2;
+        scenario.lifecycle.hidden.resumedControl.fixture.resources.rendererGeometries += 2;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'regression');
+    for (const phase of [
+        'offscreen-resumed',
+        'hidden-resumed',
+        'lifecycle-peak',
+    ]) {
+        assert.equal(
+            comparison.comparisons.find(
+                (result) =>
+                    result.id === 'resources.geometries' &&
+                    result.phase === phase,
+            ).regressionBreach,
+            true,
+        );
+    }
+});
+
+test('reproduced lifecycle transient growth above the lifetime peak remains a hard regression', () => {
     const { baseline, candidate } = reportPair(lifecycleScenario);
     for (const scenario of candidate.scenarios) {
         scenario.lifecycle.cold.fixture.resources.rendererGeometries += 2;
     }
 
     const comparison = comparePartialReports(baseline, candidate);
-    const activeGeometries = comparison.comparisons.find(
+    const coldGeometries = comparison.comparisons.find(
         (result) =>
-            result.id === 'resources.geometries' && result.phase === 'active',
+            result.id === 'resources.geometries' && result.phase === 'cold',
     );
-    const restoredGeometries = comparison.comparisons.find(
+    const peakGeometries = comparison.comparisons.find(
         (result) =>
             result.id === 'resources.geometries' &&
-            result.phase === 'context-restored',
+            result.phase === 'lifecycle-peak',
     );
-    assert.equal(activeGeometries.pass, false);
-    assert.equal(restoredGeometries.pass, true);
-    assert.equal(comparison.exitCode, 1);
+    assert.equal(comparison.status, 'regression');
+    assert.equal(coldGeometries.diagnosticOnly, true);
+    assert.equal(coldGeometries.regressionBreach, false);
+    assert.equal(coldGeometries.baselineRelativeRegressionBreach, true);
+    assert.equal(peakGeometries.regressionBreach, true);
+});
+
+test('one lifecycle peak outlier remains a visible raw-rank diagnostic', () => {
+    const { baseline, candidate } = reportPair(lifecycleScenario);
+    candidate.scenarios[0].lifecycle.cold.fixture.resources.rendererGeometries += 2;
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const peakGeometries = comparison.comparisons.find(
+        (result) =>
+            result.id === 'resources.geometries' &&
+            result.phase === 'lifecycle-peak',
+    );
+    assert.equal(comparison.status, 'pass');
+    assert.equal(peakGeometries.rawRanksDiagnosticOnly, true);
+    assert.equal(
+        peakGeometries.individual.some((run) => run.pass === false),
+        true,
+    );
+    assert.equal(peakGeometries.regressionBreach, false);
 });
 
 test('lifecycle restored fixture drift is incompatible', () => {

@@ -1424,7 +1424,7 @@ function validateCanonicalScenarioEvidence(
             runtime.browserDpr,
             `${path} runtime.browserDpr`,
         );
-        for (const [phaseName, fixture] of [
+        const lifecycleResourceFixtures = [
             ['cold', scenario.lifecycle?.cold?.fixture],
             [
                 'offscreen-resumed',
@@ -1438,7 +1438,8 @@ function validateCanonicalScenarioEvidence(
                 'context-restored',
                 scenario.lifecycle?.context?.restoredControl?.fixture,
             ],
-        ]) {
+        ];
+        for (const [phaseName, fixture] of lifecycleResourceFixtures) {
             const fixturePath = `${path} lifecycle.${phaseName}.fixture`;
             if (!isRecord(fixture)) {
                 errors.push(`${fixturePath} is missing`);
@@ -1469,6 +1470,19 @@ function validateCanonicalScenarioEvidence(
                     ? lifecycleRendererStatsLegacyMode
                     : lifecycleRendererStatsCanonicalMode,
             );
+        }
+
+        const offscreenResources = lifecycleResourceFixtures[1][1]?.resources;
+        const hiddenResources = lifecycleResourceFixtures[2][1]?.resources;
+        if (isRecord(offscreenResources) && isRecord(hiddenResources)) {
+            for (const field of rendererResourceFields) {
+                validateExactValue(
+                    errors,
+                    hiddenResources[field],
+                    offscreenResources[field],
+                    `${path} lifecycle mature ${field}`,
+                );
+            }
         }
     }
 }
@@ -2191,15 +2205,11 @@ function samplePhases(scenario) {
             {
                 cdp: scenario.lifecycle?.active?.cdp ?? scenario.cdp,
                 name: 'active',
-                resources: scenario.lifecycle?.cold?.fixture?.resources,
                 sample: scenario.lifecycle?.active?.sample ?? scenario.sample,
             },
             {
                 cdp: scenario.lifecycle?.context?.restoredWindow?.cdp,
                 name: 'context-restored',
-                resources:
-                    scenario.lifecycle?.context?.restoredControl?.fixture
-                        ?.resources,
                 sample: scenario.lifecycle?.context?.restoredWindow?.sample,
             },
         ];
@@ -2220,6 +2230,68 @@ function samplePhases(scenario) {
             sample: scenario.sample,
         },
     ];
+}
+
+function lifecycleResourcePhases(scenario) {
+    const witnesses = [
+        {
+            diagnosticOnly: true,
+            name: 'cold',
+            resources: scenario.lifecycle?.cold?.fixture?.resources,
+        },
+        {
+            diagnosticOnly: false,
+            name: 'offscreen-resumed',
+            resources:
+                scenario.lifecycle?.offscreen?.resumedControl?.fixture
+                    ?.resources,
+        },
+        {
+            diagnosticOnly: false,
+            name: 'hidden-resumed',
+            resources:
+                scenario.lifecycle?.hidden?.resumedControl?.fixture?.resources,
+        },
+        {
+            diagnosticOnly: true,
+            name: 'context-restored',
+            resources:
+                scenario.lifecycle?.context?.restoredControl?.fixture
+                    ?.resources,
+        },
+    ];
+    const resources = Object.fromEntries(
+        rendererResourceFields.map((field) => {
+            const values = witnesses.map((witness) =>
+                isFiniteNumber(witness.resources?.[field])
+                    ? witness.resources[field]
+                    : null,
+            );
+            return [
+                field,
+                values.every(isFiniteNumber) ? Math.max(...values) : null,
+            ];
+        }),
+    );
+    return [
+        ...witnesses,
+        {
+            diagnosticOnly: false,
+            name: 'lifecycle-peak',
+            resources,
+        },
+    ];
+}
+
+function resourcePhases(scenario) {
+    if (scenario.requested?.lifecycleProfile === true) {
+        return lifecycleResourcePhases(scenario);
+    }
+    return samplePhases(scenario).map((phase) => ({
+        diagnosticOnly: false,
+        name: phase.name,
+        resources: phase.resources,
+    }));
 }
 
 function timingPhases(scenario) {
@@ -2717,6 +2789,26 @@ function buildAbsoluteComparison({
     };
 }
 
+function buildAbsoluteDiagnosticComparison({ gatedBy, ...metric }) {
+    const baselineRelative = buildAbsoluteComparison(metric);
+    return {
+        ...baselineRelative,
+        baselineRelativeDiagnosticOnly: true,
+        baselineRelativeRegressionBreach: baselineRelative.regressionBreach,
+        baselineRelativeScreeningBreach: baselineRelative.screeningBreach,
+        diagnosticOnly: true,
+        gatedBy,
+        individual: baselineRelative.individual.map((run) => ({
+            ...run,
+            baselineRelativePass: run.pass,
+            pass: true,
+        })),
+        pass: true,
+        regressionBreach: false,
+        screeningBreach: false,
+    };
+}
+
 function groupRows(rows) {
     const groups = new Map();
     for (const row of rows) {
@@ -2797,6 +2889,7 @@ function comparePairedScenarios(
     const invariants = [];
     const skipped = [];
     const gardenSwitchWorkflowRows = [];
+    const resourceRows = [];
     const retainedHeapRows = [];
     const sampleRows = [];
     const timingRows = [];
@@ -2854,6 +2947,34 @@ function comparePairedScenarios(
             sampleRows.push({
                 baseline: baselinePhase,
                 candidate: candidatePhase,
+                phase: baselinePhase.name,
+                profileRun,
+                scenario: baseName,
+            });
+        }
+
+        const baselineResourcePhases = resourcePhases(baseline);
+        const candidateResourcePhases = resourcePhases(candidate);
+        for (const [index, baselinePhase] of baselineResourcePhases.entries()) {
+            const candidatePhase = candidateResourcePhases[index];
+            if (!candidatePhase || candidatePhase.name !== baselinePhase.name) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} is missing from candidate evidence`,
+                );
+                continue;
+            }
+            if (
+                candidatePhase.diagnosticOnly !== baselinePhase.diagnosticOnly
+            ) {
+                errors.push(
+                    `${baseName} run ${profileRun} resource phase ${baselinePhase.name} diagnostic policy differs between reports`,
+                );
+                continue;
+            }
+            resourceRows.push({
+                baseline: baselinePhase,
+                candidate: candidatePhase,
+                diagnosticOnly: baselinePhase.diagnosticOnly,
                 phase: baselinePhase.name,
                 profileRun,
                 scenario: baseName,
@@ -3154,7 +3275,21 @@ function comparePairedScenarios(
                 }),
             });
         }
+    }
 
+    for (const group of groupRows(resourceRows)) {
+        const diagnosticOnly = group.rows.every(
+            (row) => row.diagnosticOnly === true,
+        );
+        if (
+            !diagnosticOnly &&
+            group.rows.some((row) => row.diagnosticOnly === true)
+        ) {
+            errors.push(
+                `${group.scenario} ${group.phase} resource diagnostic policy is inconsistent`,
+            );
+            continue;
+        }
         for (const metric of resourceMetricRegistry) {
             const rows = [];
             for (const row of group.rows) {
@@ -3173,7 +3308,14 @@ function comparePairedScenarios(
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
-                    ...buildAbsoluteComparison({ ...metric, rows }),
+                    ...(diagnosticOnly
+                        ? buildAbsoluteDiagnosticComparison({
+                              ...metric,
+                              gatedBy:
+                                  'lifecycle mature and peak resource gates',
+                              rows,
+                          })
+                        : buildAbsoluteComparison({ ...metric, rows })),
                 });
             }
         }

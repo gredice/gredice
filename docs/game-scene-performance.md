@@ -407,17 +407,32 @@ forced loss cannot invalidate profiler-owned query handles. These are local
 headless production-build lifecycle witnesses; they do not replace a real
 background-tab, device thermal, or deployed-runtime check.
 
-Lifecycle resource snapshots are phase-aligned rather than timing-based. The
-runtime publishes `gl.info` from a root-owned microtask after the R3F render and
-increments a monotonic renderer-stats receipt. Before reading the cold, resumed,
-or context-restored resource fixture, the harness records a barrier and requires
-a later root R3F callback, submitted rendered-frame/draw/triangle deltas, and a
-later renderer-stats receipt. It takes that resource snapshot while the outline
-is hidden, then activates the outline and independently preserves the existing
+Every lifecycle resource snapshot is phase-labelled and
+measurement-contract-validated. The canonical runtime publishes `gl.info` from
+a root-owned microtask after the R3F render and increments a monotonic
+renderer-stats receipt. Before reading the cold, resumed, or context-restored
+resource fixture, the harness records a barrier and requires a later root R3F
+callback, submitted rendered-frame/draw/triangle deltas, and a later
+renderer-stats receipt. It takes that resource snapshot while the outline is
+hidden, then activates the outline and independently preserves the existing
 post-command draw and screenshot witnesses. This prevents the final two-triangle
 outline composite, a pre-render `gl.info` sample, or the zeroed renderer info
 created during WebGL context restoration from standing in for the scene resource
 inventory.
+
+Cold and immediate context-restored counts are progress witnesses: Three.js
+creates geometry and shader resources while successive draws populate or rebuild
+the renderer. Their raw baseline-versus-candidate deltas stay visible as
+diagnostics, but are not treated as allocation growth merely because one receipt
+lands later on that compile curve. The offscreen-resumed and hidden-resumed
+controls are the mature resource witnesses. All three resource counts must match
+exactly between those two controls within every raw run or the report is invalid.
+The comparator hard-gates both mature controls and a per-run lifetime peak for
+each resource across cold, both resumed controls, and context restoration. The
+existing one-count allowance is unchanged. Consequently, steady growth, a
+restoration leak, or a reproduced median lifetime-peak increase beyond one count
+still fails; only a different position below the same proven mature peak is
+diagnostic.
 
 An old external subject without renderer-stats receipt telemetry may use only
 the explicit `legacy-pre-render-settled-v1` fallback. The harness accepts it only
@@ -661,7 +676,9 @@ compare batch medians, and duration medians use bounded millisecond floors, so
 one isolated browser task is visible in the raw ranks without being mislabeled
 as an application regression. Renderer resource medians have a one-count
 tolerance; larger growth must reproduce across the symmetric confirmation
-matrix.
+matrix. Lifecycle resources additionally require exact agreement between the
+two mature within-run witnesses and apply that same one-count limit to both
+mature phases and the four-witness lifetime peak.
 
 | Median metric | Relative allowance | Practical floor |
 | --- | ---: | ---: |
