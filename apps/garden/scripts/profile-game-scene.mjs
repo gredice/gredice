@@ -6170,13 +6170,33 @@ function evaluateLifecycleAcceptance({
         ),
     ];
     const runtimeContractChecks = (prefix, telemetry) => [
-        ...runtimeFrameLoopBooleanFields.map((field) =>
-            exact(
-                `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
-                typeof telemetry?.[field],
-                'boolean',
+        ...(rendererStatsMode === lifecycleRendererStatsLegacyMode
+            ? [
+                  exact(
+                      `${prefix}AwaitingFrameReceiptLegacyOmitted`,
+                      Boolean(
+                          telemetry &&
+                              Object.hasOwn(telemetry, 'awaitingFrameReceipt'),
+                      ),
+                      false,
+                  ),
+              ]
+            : [
+                  exact(
+                      `${prefix}AwaitingFrameReceiptType`,
+                      typeof telemetry?.awaitingFrameReceipt,
+                      'boolean',
+                  ),
+              ]),
+        ...runtimeFrameLoopBooleanFields
+            .filter((field) => field !== 'awaitingFrameReceipt')
+            .map((field) =>
+                exact(
+                    `${prefix}${field[0].toUpperCase()}${field.slice(1)}Type`,
+                    typeof telemetry?.[field],
+                    'boolean',
+                ),
             ),
-        ),
         ...runtimeFrameLoopNumberFields.map((field) =>
             finite(
                 `${prefix}${field[0].toUpperCase()}${field.slice(1)}`,
