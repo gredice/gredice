@@ -3557,6 +3557,8 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         missedFrameReceiptCount: 0,
         nonessentialHiddenWorkCount: 0,
         ownedInvalidationCount: 30,
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 19,
         r3fFrameCallbackCount: 40,
         renderLeaseOwners: ['camera'],
         renderLeaseSummaries: [
@@ -3565,6 +3567,8 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         resumeCount: 0,
         scheduledCallbackCount: 10,
         suspendCount: 0,
+        retainedTimeoutReconciliationWakeupCount: 1,
+        unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 20,
     };
 
@@ -3587,6 +3591,7 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
         runtimeFrameLoop.invalidationFailureCount = 2;
         runtimeFrameLoop.missedFrameReceiptCount = 1;
         runtimeFrameLoop.ownedInvalidationCount = 34;
+        runtimeFrameLoop.productiveWakeupCount = 22;
         runtimeFrameLoop.r3fFrameCallbackCount = 46;
         runtimeFrameLoop.renderLeaseOwners.push('weather');
         runtimeFrameLoop.renderLeaseSummaries[0].leaseCount = 2;
@@ -3645,10 +3650,14 @@ test('interactive sampling deep-clones scheduler owners and reports exact counte
             missedFrameReceiptCount: 1,
             nonessentialHiddenWorkCount: 0,
             ownedInvalidationCount: 4,
+            postCalibrationFrameWakeupCount: 0,
+            productiveWakeupCount: 3,
             r3fFrameCallbackCount: 6,
+            retainedTimeoutReconciliationWakeupCount: 0,
             resumeCount: 1,
             scheduledCallbackCount: 5,
             suspendCount: 1,
+            unexpectedNoWorkWakeupCount: 0,
             wakeupCount: 3,
         });
     } finally {
@@ -3710,10 +3719,14 @@ test('interactive sampling preserves absent scheduler telemetry without changing
             missedFrameReceiptCount: null,
             nonessentialHiddenWorkCount: null,
             ownedInvalidationCount: null,
+            postCalibrationFrameWakeupCount: null,
+            productiveWakeupCount: null,
             r3fFrameCallbackCount: null,
+            retainedTimeoutReconciliationWakeupCount: null,
             resumeCount: null,
             scheduledCallbackCount: null,
             suspendCount: null,
+            unexpectedNoWorkWakeupCount: null,
             wakeupCount: null,
         });
 
@@ -5592,6 +5605,8 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         ownedInvalidationCount: 8,
         pendingCallbackDueAt: null,
         pendingCallbackKind: 'none',
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 10,
         r3fFrameCallbackCount: 6,
         renderLeaseOwners: [],
         renderRequestReasons: [],
@@ -5599,6 +5614,8 @@ test('static-idle evidence and acceptance require a visible settled zero-work wi
         scheduledCallbackCount: 10,
         suspendCount: 0,
         targetFramesPerSecond: 0,
+        retainedTimeoutReconciliationWakeupCount: 0,
+        unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 10,
         ...overrides,
     });

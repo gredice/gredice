@@ -5117,6 +5117,10 @@ const legacySafeZeroRuntimeFrameLoopCounterFields = new Set([
 const fullRuntimeFrameLoopCounterFields = [
     'scheduledCallbackCount',
     'wakeupCount',
+    'productiveWakeupCount',
+    'retainedTimeoutReconciliationWakeupCount',
+    'unexpectedNoWorkWakeupCount',
+    'postCalibrationFrameWakeupCount',
     'invalidationCount',
     'ownedInvalidationCount',
     'cancelledCallbackCount',
@@ -5139,6 +5143,10 @@ const fullRuntimeFrameLoopCounterFields = [
 ];
 const genericRuntimeFrameLoopCounterFields = [
     ...runtimeFrameLoopCounterFields,
+    'productiveWakeupCount',
+    'retainedTimeoutReconciliationWakeupCount',
+    'unexpectedNoWorkWakeupCount',
+    'postCalibrationFrameWakeupCount',
     'displayFrameCalibrationCount',
     'fixedStepFailureCount',
     'r3fFrameCallbackCount',

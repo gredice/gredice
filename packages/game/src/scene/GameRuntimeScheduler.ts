@@ -57,6 +57,8 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     ownedInvalidationCount: number;
     pendingCallbackDueAt: number | null;
     pendingCallbackKind: GameRuntimeSchedulerPendingCallback;
+    postCalibrationFrameWakeupCount: number;
+    productiveWakeupCount: number;
     renderLeaseOwners: readonly string[];
     renderLeaseSummaries: readonly GameRuntimeRenderLeaseSummary[];
     renderRequestReasons: readonly string[];
@@ -65,6 +67,8 @@ export type GameRuntimeSchedulerSnapshot = GameRuntimeSchedulerVisibility & {
     r3fFrameCallbackCount: number;
     suspendCount: number;
     targetFramesPerSecond: number;
+    retainedTimeoutReconciliationWakeupCount: number;
+    unexpectedNoWorkWakeupCount: number;
     wakeupCount: number;
 };
 
@@ -148,6 +152,7 @@ type PendingCallback = {
     handle: SchedulerHandle;
     id: number;
     kind: Exclude<GameRuntimeSchedulerPendingCallback, 'none'>;
+    retainedForReconciliation: boolean;
 };
 
 type NextWakeup = {
@@ -172,10 +177,14 @@ type MutableSchedulerCounters = {
     maxDeliveredDeltaMs: number;
     missedFrameReceiptCount: number;
     nonessentialHiddenWorkCount: number;
+    postCalibrationFrameWakeupCount: number;
+    productiveWakeupCount: number;
     resumeCount: number;
     scheduledCallbackCount: number;
     r3fFrameCallbackCount: number;
     suspendCount: number;
+    retainedTimeoutReconciliationWakeupCount: number;
+    unexpectedNoWorkWakeupCount: number;
     wakeupCount: number;
 };
 
@@ -238,10 +247,14 @@ export class GameRuntimeScheduler {
         maxDeliveredDeltaMs: 0,
         missedFrameReceiptCount: 0,
         nonessentialHiddenWorkCount: 0,
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 0,
         resumeCount: 0,
         scheduledCallbackCount: 0,
         r3fFrameCallbackCount: 0,
         suspendCount: 0,
+        retainedTimeoutReconciliationWakeupCount: 0,
+        unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 0,
     };
     private deadlineSequence = 0;
@@ -1269,6 +1282,9 @@ export class GameRuntimeScheduler {
             // An earlier timer can safely reconcile a semantic render target,
             // deadline, or fixed-step target that moved later without a
             // cancellation/rearm pair.
+            this.pendingCallback.retainedForReconciliation =
+                nextWakeup.dueAt >
+                this.pendingCallback.dueAt + schedulerToleranceMs;
             this.emitSnapshot();
             return;
         }
@@ -1289,6 +1305,7 @@ export class GameRuntimeScheduler {
                 handle,
                 id,
                 kind: 'frame',
+                retainedForReconciliation: false,
             };
             this.counters.scheduledCallbackCount += 1;
             return;
@@ -1304,6 +1321,7 @@ export class GameRuntimeScheduler {
             handle,
             id,
             kind: 'timeout',
+            retainedForReconciliation: false,
         };
         this.counters.scheduledCallbackCount += 1;
     }
@@ -1328,10 +1346,24 @@ export class GameRuntimeScheduler {
         }
 
         const callbackKind = this.pendingCallback.kind;
+        const retainedForReconciliation =
+            this.pendingCallback.retainedForReconciliation;
+        const productiveWorkCountBefore =
+            this.counters.deadlineCount +
+            this.counters.fixedStepCount +
+            this.counters.invalidationCount;
         this.pendingCallback = null;
         this.counters.wakeupCount += 1;
+        if (callbackKind === 'frame' && this.frameIntervalCalibrated) {
+            this.counters.postCalibrationFrameWakeupCount += 1;
+        }
         if (!this.isEffectivelyVisible()) {
             this.recordNonessentialHiddenWork();
+            if (callbackKind === 'timeout' && retainedForReconciliation) {
+                this.counters.retainedTimeoutReconciliationWakeupCount += 1;
+            } else {
+                this.counters.unexpectedNoWorkWakeupCount += 1;
+            }
             this.emitSnapshot();
             return;
         }
@@ -1353,6 +1385,20 @@ export class GameRuntimeScheduler {
                 this.requestInvalidationIfDue(displayNow);
             }
         } finally {
+            const productiveWorkCountAfter =
+                this.counters.deadlineCount +
+                this.counters.fixedStepCount +
+                this.counters.invalidationCount;
+            if (productiveWorkCountAfter > productiveWorkCountBefore) {
+                this.counters.productiveWakeupCount += 1;
+            } else if (
+                callbackKind === 'timeout' &&
+                retainedForReconciliation
+            ) {
+                this.counters.retainedTimeoutReconciliationWakeupCount += 1;
+            } else {
+                this.counters.unexpectedNoWorkWakeupCount += 1;
+            }
             this.reconcileSchedule();
         }
     }

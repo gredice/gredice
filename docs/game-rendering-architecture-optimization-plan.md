@@ -1036,9 +1036,13 @@ Progress:
   stable visible leases, reconciled R3F receipts, and 28–32 rendered FPS in
   every raw run; held camera input retains its separate 60 FPS owner gate.
   Comparison contract v2 hard-gates garden-switch GPU p95, semantic target
-  delivery, scheduler callback conservation and wakeup efficiency, per-render
-  submissions, and fixed-control total submissions. Complete elapsed GPU
-  occupancy remains visible per arrival and across the wall-time-weighted
+  delivery, scheduler callback conservation, exact causal wakeup
+  classification, zero unexpected no-work wakeups, zero post-calibration
+  scheduler RAF polling, per-render submissions, and fixed-control total
+  submissions. Productive delivery, intentionally retained earlier timeouts
+  whose targets moved later, and unexpected no-work exhaustively partition
+  every handled wakeup without an empirical phase allowance. Complete elapsed
+  GPU occupancy remains visible per arrival and across the wall-time-weighted
   seven-arrival workflow, but is diagnostic because headless ANGLE timer-query
   batching and GPU power state can change it without changing useful work.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
@@ -1066,6 +1070,10 @@ Progress:
   contract v2. The local headless evidence, including timer-query occupancy,
   does not replace a physical-device thermal, power, touch, memory-pressure,
   real background-tab, deployed, or production-traffic check.
+  Because the causal counters are new candidate evidence, the final contract-v2
+  matrix must be freshly captured; pre-counter candidate reports are not release
+  evidence. `legacy-heartbeat-v1` baseline omissions remain valid only on the
+  explicitly selected legacy baseline side.
 
 ## Suggested implementation order
 

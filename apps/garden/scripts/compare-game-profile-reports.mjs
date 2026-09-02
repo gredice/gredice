@@ -66,10 +66,8 @@ const gardenSwitchMinimumRenderedFps =
     gardenSwitchTargetFramesPerSecond - gardenSwitchRenderedFpsTolerance;
 const gardenSwitchMaximumRenderedFps =
     gardenSwitchTargetFramesPerSecond + gardenSwitchRenderedFpsTolerance;
-const gardenSwitchInitialWakeupSurplus = 5;
-const gardenSwitchTransitionWakeupSurplus = 10;
 const gardenSwitchGpuOccupancyDiagnosticGate =
-    'GPU p95, semantic delivery, scheduler wakeup efficiency, and submitted render work';
+    'GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work';
 const crossTierTargetFramesPerSecond = 30;
 const crossTierRenderedFpsTolerance = 2;
 const crossTierMinimumRenderedFps =
@@ -2707,6 +2705,10 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
     const counterFields = [
         'scheduledCallbackCount',
         'wakeupCount',
+        'productiveWakeupCount',
+        'retainedTimeoutReconciliationWakeupCount',
+        'unexpectedNoWorkWakeupCount',
+        'postCalibrationFrameWakeupCount',
         'ownedInvalidationCount',
         'cancelledCallbackCount',
         'r3fFrameCallbackCount',
@@ -2752,19 +2754,13 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
             );
         }
 
-        const usefulWorkCount = Math.max(
-            renderedFrames,
-            counterDeltas.ownedInvalidationCount,
-        );
-        const maximumWakeupSurplus = row.phase.startsWith('arrival-1-')
-            ? gardenSwitchInitialWakeupSurplus
-            : gardenSwitchTransitionWakeupSurplus;
-        if (
-            counterDeltas.wakeupCount >
-            usefulWorkCount + maximumWakeupSurplus
-        ) {
+        const classifiedWakeupCount =
+            counterDeltas.productiveWakeupCount +
+            counterDeltas.retainedTimeoutReconciliationWakeupCount +
+            counterDeltas.unexpectedNoWorkWakeupCount;
+        if (counterDeltas.wakeupCount !== classifiedWakeupCount) {
             errors.push(
-                `${path}.runtimeFrameLoopCounterDeltas.wakeupCount must not exceed useful rendered or owned-invalidation work by more than ${maximumWakeupSurplus}; received ${counterDeltas.wakeupCount} wakeups for ${usefulWorkCount} useful events`,
+                `${path}.runtimeFrameLoopCounterDeltas wakeup classification conservation must equal wakeupCount; received ${classifiedWakeupCount} classified wakeups for ${counterDeltas.wakeupCount} handled wakeups`,
             );
         }
     }
@@ -2773,6 +2769,8 @@ function validateGardenSwitchCandidateFrameContract(row, errors) {
         'fixedStepFailureCount',
         'invalidationFailureCount',
         'missedFrameReceiptCount',
+        'postCalibrationFrameWakeupCount',
+        'unexpectedNoWorkWakeupCount',
     ]) {
         if (counterDeltas[field] !== 0) {
             errors.push(

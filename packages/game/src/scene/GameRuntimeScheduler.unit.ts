@@ -299,6 +299,17 @@ function assertNear(actual: number, expected: number) {
     );
 }
 
+function assertWakeupClassificationConserved(
+    snapshot: GameRuntimeSchedulerSnapshot,
+) {
+    assert.equal(
+        snapshot.wakeupCount,
+        snapshot.productiveWakeupCount +
+            snapshot.retainedTimeoutReconciliationWakeupCount +
+            snapshot.unexpectedNoWorkWakeupCount,
+    );
+}
+
 function createDeterministicCallbackDelays(
     count: number,
     maximumDelayMs: number,
@@ -432,6 +443,17 @@ describe('GameRuntimeScheduler idle and cadence', () => {
                 `${targetFramesPerSecond} FPS semantic work woke ${wakeupDelta} times on ${displayFramesPerSecond} Hz`,
             );
             assert.equal(wakeupDelta, invalidationDelta);
+            assert.equal(
+                end.postCalibrationFrameWakeupCount -
+                    start.postCalibrationFrameWakeupCount,
+                0,
+            );
+            assert.equal(
+                end.unexpectedNoWorkWakeupCount -
+                    start.unexpectedNoWorkWakeupCount,
+                0,
+            );
+            assertWakeupClassificationConserved(end);
             assert.equal(
                 queue.taskHistory.filter(
                     (task) => task.source === 'scheduler-frame',
@@ -1677,6 +1699,57 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(scheduler.getSnapshot().wakeupCount, wakeups);
     });
 
+    it('classifies an intentionally retained earlier timeout as causal reconciliation', () => {
+        const { queue, scheduler } = createScheduler();
+        const delivered: number[] = [];
+        scheduler.scheduleDeadline('moving-deadline', 100, () =>
+            assert.fail('replaced deadline ran'),
+        );
+        const retainedTask = queue.peekNextTask();
+        scheduler.scheduleDeadline('moving-deadline', 200, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+
+        assert.equal(queue.peekNextTask(), retainedTask);
+        queue.runUntil(100);
+        let snapshot = scheduler.getSnapshot();
+        assert.equal(snapshot.wakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 0);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 1);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+
+        queue.runUntil(200);
+        snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, [200]);
+        assert.equal(snapshot.wakeupCount, 2);
+        assert.equal(snapshot.productiveWakeupCount, 1);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 1);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+
+        scheduler.scheduleDeadline('restored-deadline', 300, () =>
+            assert.fail('first restored deadline ran'),
+        );
+        const restoredTask = queue.peekNextTask();
+        scheduler.scheduleDeadline('restored-deadline', 400, () =>
+            assert.fail('later restored deadline ran'),
+        );
+        scheduler.scheduleDeadline('restored-deadline', 300, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+        assert.equal(queue.peekNextTask(), restoredTask);
+
+        queue.runUntil(300);
+        snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, [200, 300]);
+        assert.equal(snapshot.wakeupCount, 3);
+        assert.equal(snapshot.productiveWakeupCount, 2);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 1);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
     it('never owns more than one callback and ignores a cancelled stale timer', () => {
         const { invalidations, queue, scheduler } = createScheduler();
         const release = scheduler.acquireRenderLease('plant', 20);
@@ -1740,6 +1813,8 @@ describe('GameRuntimeScheduler semantic work', () => {
         });
         assert.throws(() => queue.runNext(), /deadline failed/);
         assert.equal(queue.pendingTaskCount, 0);
+        assert.equal(scheduler.getSnapshot().productiveWakeupCount, 1);
+        assertWakeupClassificationConserved(scheduler.getSnapshot());
 
         const release = scheduler.acquireFixedStepLease('throws-fixed', {
             callback: () => {
@@ -1751,6 +1826,9 @@ describe('GameRuntimeScheduler semantic work', () => {
         assert.equal(queue.pendingTaskCount, 0);
         assert.equal(scheduler.getSnapshot().activeFixedStepLeaseCount, 0);
         assert.equal(scheduler.getSnapshot().fixedStepFailureCount, 1);
+        assert.equal(scheduler.getSnapshot().productiveWakeupCount, 2);
+        assert.equal(scheduler.getSnapshot().unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(scheduler.getSnapshot());
         release();
     });
 
@@ -1766,6 +1844,13 @@ describe('GameRuntimeScheduler semantic work', () => {
 
         assert.throws(() => queue.runNext(), /invalidation failed/);
         assert.equal(scheduler.getSnapshot().invalidationFailureCount, 1);
+        assert.equal(scheduler.getSnapshot().productiveWakeupCount, 0);
+        assert.equal(
+            scheduler.getSnapshot().retainedTimeoutReconciliationWakeupCount,
+            0,
+        );
+        assert.equal(scheduler.getSnapshot().unexpectedNoWorkWakeupCount, 1);
+        assertWakeupClassificationConserved(scheduler.getSnapshot());
         assert.equal(queue.pendingTaskCount, 1);
         assert.equal(scheduler.getSnapshot().pendingCallbackKind, 'frame');
         assert.equal(scheduler.getSnapshot().pendingCallbackDueAt, null);

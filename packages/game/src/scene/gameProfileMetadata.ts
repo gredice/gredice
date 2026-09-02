@@ -234,6 +234,8 @@ export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfil
         ownedInvalidationCount: 0,
         pendingCallbackDueAt: null,
         pendingCallbackKind: 'none',
+        postCalibrationFrameWakeupCount: 0,
+        productiveWakeupCount: 0,
         renderLeaseOwners: [],
         renderLeaseSummaries: [],
         renderRequestReasons: [],
@@ -244,6 +246,8 @@ export function createRuntimeFrameLoopProfileTelemetry(): RuntimeFrameLoopProfil
         scheduledCallbackCount: 0,
         suspendCount: 0,
         targetFramesPerSecond: 0,
+        retainedTimeoutReconciliationWakeupCount: 0,
+        unexpectedNoWorkWakeupCount: 0,
         wakeupCount: 0,
     };
 }

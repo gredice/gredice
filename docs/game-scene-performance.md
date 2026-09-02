@@ -302,10 +302,18 @@ submissions in the fixed-length arrival 1 control. The initial control must
 deliver 28–32 FPS around its observed 30 FPS semantic target; transition
 arrivals retain the 28 FPS floor because their bounded one-shot invalidations
 may exceed the steady target. Scheduler callback conservation and wakeup
-efficiency are fail-closed candidate invariants, so a perpetual RAF keepalive
-cannot improve a GPU signal by adding browser wakeups without useful render or
-owned-invalidation work. The full control permits at most five surplus wakeups;
-transition windows permit ten for their bounded one-shot scheduling work.
+accounting are fail-closed candidate invariants. Every handled wakeup must be
+classified exactly once as productive delivery of a deadline, fixed step, or
+owned invalidation; as a no-op timeout causally retained after its semantic
+target moved later; or as an unexpected no-work wakeup. Classification must
+sum exactly to handled wakeups, unexpected no-work wakeups must remain zero,
+and no scheduler frame wakeup may occur after display calibration. This admits
+causally necessary retained timers without a phase-specific allowance, while a
+perpetual RAF keepalive cannot improve a GPU signal by adding browser wakeups.
+This remains comparison contract v2, but the new candidate counters require a
+fresh final capture. Pre-counter candidate reports are invalid; omitted counters
+remain compatible only for the explicitly selected `legacy-heartbeat-v1`
+baseline contract.
 
 Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
@@ -714,7 +722,7 @@ arrival 1 control must keep every raw run within 28–32 FPS around an observed
 28 FPS. Baseline-relative FPS ratios stay in the report as diagnostics for
 those cases, so eliminating oversubmission is not misclassified as lost
 performance. Garden-switch GPU p95, per-render submissions, fixed-control total
-submissions, and scheduler wakeup efficiency are hard gates. Elapsed GPU
+submissions, and causal scheduler wakeup accounting are hard gates. Elapsed GPU
 occupancy remains a complete raw diagnostic rather than a proxy for power or
 thermal behavior.
 
@@ -1521,6 +1529,10 @@ with the earliest absolute due timestamp; `none` has neither. Scheduled-callback
 and wakeup counters cover both bounded calibration frames and scheduler
 timeouts, while R3F frame callbacks remain a separate receipt count.
 Display-interval telemetry remains observational and never steers scheduling.
+Handled wakeups are additionally partitioned into productive, causally retained
+timeout-reconciliation, and unexpected no-work counters. Their exact sum must
+equal `wakeupCount`. `postCalibrationFrameWakeupCount` separately exposes any
+scheduler RAF polling after the bounded calibration has completed.
 
 Cross-tier owner profiles integrate how long the scheduler actually advertises
 30 FPS ambient and 60 FPS interaction targets. The canonical cross-tier scalar
@@ -1577,8 +1589,10 @@ Required release evidence before merge:
   fail-closed symmetric 2x2 result; “independent” means separate profiler
   executions and reports, not different harness commits.
 - Garden-switch comparison uses a full-length initial control and hard-gates
-  GPU p95, semantic target delivery, scheduler callback conservation and wakeup
-  efficiency, per-render submissions, and fixed-control total submissions.
+  GPU p95, semantic target delivery, scheduler callback conservation and exact
+  causal wakeup classification, zero unexpected no-work wakeups, zero
+  post-calibration scheduler RAF polling, per-render submissions, and
+  fixed-control total submissions.
   Every per-arrival occupancy window and the wall-time-weighted aggregate stay
   visible as diagnostics; no sample is discarded and no threshold is widened.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the

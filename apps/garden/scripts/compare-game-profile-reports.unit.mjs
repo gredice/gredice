@@ -76,6 +76,7 @@ function setAvailableGpuSample(
     if (target.runtimeFrameLoopCounterDeltas) {
         const deltas = target.runtimeFrameLoopCounterDeltas;
         deltas.ownedInvalidationCount = renderedFrames;
+        deltas.productiveWakeupCount = renderedFrames;
         deltas.r3fFrameCallbackCount = renderedFrames;
         deltas.wakeupCount = renderedFrames;
         deltas.scheduledCallbackCount =
@@ -327,8 +328,12 @@ function gardenSwitchScenario(profileRun) {
                 invalidationFailureCount: 0,
                 missedFrameReceiptCount: 0,
                 ownedInvalidationCount: 30,
+                postCalibrationFrameWakeupCount: 0,
+                productiveWakeupCount: 30,
                 r3fFrameCallbackCount: 30,
+                retainedTimeoutReconciliationWakeupCount: 0,
                 scheduledCallbackCount: 31,
+                unexpectedNoWorkWakeupCount: 0,
                 wakeupCount: 30,
             },
         });
@@ -756,6 +761,18 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
         'crossTierRenderedFps',
     ]);
     for (const scenario of reportValue.scenarios) {
+        if (
+            scenario.baseName ===
+            'game-garden-switch-high-fauna-single-context-desktop'
+        ) {
+            for (const arrival of scenario.gardenSwitch.arrivals) {
+                const deltas = arrival.sample.runtimeFrameLoopCounterDeltas;
+                delete deltas.postCalibrationFrameWakeupCount;
+                delete deltas.productiveWakeupCount;
+                delete deltas.retainedTimeoutReconciliationWakeupCount;
+                delete deltas.unexpectedNoWorkWakeupCount;
+            }
+        }
         if (
             scenario.baseName.startsWith('game-cross-tier-') ||
             scenario.baseName === 'game-fauna-heavy-day-interaction-desktop'
@@ -3042,7 +3059,7 @@ test('garden-switch GPU p95 gates latency while elapsed occupancy stays diagnost
     assert.equal(workflowOccupancy.pass, true);
     assert.match(
         buildMarkdown(comparison),
-        /diagnostic only; gated by GPU p95, semantic delivery, scheduler wakeup efficiency, and submitted render work/,
+        /diagnostic only; gated by GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work/,
     );
 });
 
@@ -3228,12 +3245,30 @@ test('garden-switch scheduler efficiency rejects non-semantic wakeups', async (t
             },
         },
         'perpetual RAF wakeups': {
-            expected: /wakeupCount must not exceed useful rendered/,
+            expected: /postCalibrationFrameWakeupCount must be 0/,
             mutate: (sampleValue) => {
                 const deltas = sampleValue.runtimeFrameLoopCounterDeltas;
                 deltas.wakeupCount = 390;
+                deltas.productiveWakeupCount = 390;
+                deltas.postCalibrationFrameWakeupCount = 360;
                 deltas.scheduledCallbackCount =
                     deltas.wakeupCount + deltas.cancelledCallbackCount;
+            },
+        },
+        'unclassified wakeup': {
+            expected: /wakeup classification conservation must equal/,
+            mutate: (sampleValue) => {
+                sampleValue.runtimeFrameLoopCounterDeltas.wakeupCount += 1;
+                sampleValue.runtimeFrameLoopCounterDeltas.scheduledCallbackCount += 1;
+            },
+        },
+        'unexpected no-work wakeup': {
+            expected: /unexpectedNoWorkWakeupCount must be 0/,
+            mutate: (sampleValue) => {
+                const deltas = sampleValue.runtimeFrameLoopCounterDeltas;
+                deltas.wakeupCount += 1;
+                deltas.unexpectedNoWorkWakeupCount += 1;
+                deltas.scheduledCallbackCount += 1;
             },
         },
         'render receipt mismatch': {
@@ -3255,6 +3290,20 @@ test('garden-switch scheduler efficiency rejects non-semantic wakeups', async (t
             assert.match(comparison.validationErrors.join('\n'), expected);
         });
     }
+});
+
+test('garden-switch scheduler efficiency accepts a causally retained no-op timeout', () => {
+    const { baseline, candidate } = reportPair(gardenSwitchScenario);
+    const deltas =
+        candidate.scenarios[0].gardenSwitch.arrivals[0].sample
+            .runtimeFrameLoopCounterDeltas;
+    deltas.wakeupCount += 1;
+    deltas.retainedTimeoutReconciliationWakeupCount += 1;
+    deltas.scheduledCallbackCount += 1;
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'pass');
+    assert.equal(comparison.exitCode, 0);
 });
 
 test('garden-switch elapsed-window GPU evidence fails closed for incomplete or unordered timing', async (t) => {
