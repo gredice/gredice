@@ -19,6 +19,7 @@ type FakeTask = {
 };
 
 class FakeRuntimeQueue {
+    browserLongTimeoutDelays = false;
     currentTime = 0;
     maximumPendingTaskCount = 0;
     readonly scheduledKinds: FakeTask['kind'][] = [];
@@ -38,13 +39,17 @@ class FakeRuntimeQueue {
 
     readonly now = () => this.currentTime;
 
-    readonly setTimeout = (callback: () => void, delayMs: number) =>
-        this.schedule(
+    readonly setTimeout = (callback: () => void, delayMs: number) => {
+        const scheduledDelayMs = this.browserLongTimeoutDelays
+            ? Math.trunc(delayMs)
+            : delayMs;
+        return this.schedule(
             'timeout',
             'timeout',
             callback,
-            this.currentTime + delayMs,
+            this.currentTime + scheduledDelayMs,
         );
+    };
 
     readonly requestFrame = (callback: (timestamp?: number) => void) =>
         this.scheduleFrame(callback, true);
@@ -998,14 +1003,23 @@ describe('GameRuntimeScheduler idle and cadence', () => {
         const followUpAt = ownedReceiptAt + displayIntervalMs + 1;
         assert.ok(followUpAt < pendingSlotDueAt);
         recordExternalFrame(followUpAt);
+        const retainedCallbackAt = queue.peekNextTask()?.dueAt;
+        assert.ok(retainedCallbackAt !== undefined);
+        assert.ok(retainedCallbackAt >= pendingSlotDueAt);
+        assert.ok(retainedCallbackAt < pendingSlotDueAt + 1);
 
-        queue.runUntil(pendingSlotDueAt);
+        queue.runNext();
         const nextDueAt = scheduler.getSnapshot().pendingCallbackDueAt;
         assert.ok(nextDueAt !== null);
         assertNear(nextDueAt, pendingSlotDueAt + semanticIntervalMs);
-        queue.runUntil(nextDueAt - 1);
-        assert.equal(invalidations.length, invalidationCount);
+        const deliveryCallbackAt = queue.peekNextTask()?.dueAt;
+        assert.ok(deliveryCallbackAt !== undefined);
+        assert.ok(deliveryCallbackAt >= nextDueAt);
+        assert.ok(deliveryCallbackAt < nextDueAt + 1);
+
         queue.runUntil(nextDueAt);
+        assert.equal(invalidations.length, invalidationCount);
+        queue.runNext();
         assert.equal(invalidations.length, invalidationCount + 1);
         release();
     });
@@ -1034,7 +1048,8 @@ describe('GameRuntimeScheduler idle and cadence', () => {
             invalidationCount,
             'External receipts did not defer the next owned cadence slot',
         );
-        queue.runUntil(550);
+        const recoveryDeadline = 502 + 1000 / 30 + 1000 / 60;
+        queue.runUntil(recoveryDeadline);
         assert.ok(
             scheduler.getSnapshot().invalidationCount > invalidationCount,
             'Ambient rendering did not recover within one cadence plus one display frame',
@@ -1750,6 +1765,99 @@ describe('GameRuntimeScheduler semantic work', () => {
         assertWakeupClassificationConserved(snapshot);
     });
 
+    it('rounds a fractional timeout upward before browser long conversion', () => {
+        const queue = new FakeRuntimeQueue();
+        queue.browserLongTimeoutDelays = true;
+        const { scheduler } = createScheduler({ queue });
+        const delivered: number[] = [];
+
+        scheduler.scheduleDeadline('fractional-deadline', 100.75, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+
+        assert.equal(queue.peekNextTask()?.dueAt, 101);
+        assert.equal(scheduler.getSnapshot().pendingCallbackDueAt, 100.75);
+        queue.runUntil(101);
+
+        const snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, [101]);
+        assert.equal(snapshot.wakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 1);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 0);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
+    it('fails closed if a browser timeout fires before its semantic due time', () => {
+        const queue = new FakeRuntimeQueue();
+        queue.browserLongTimeoutDelays = true;
+        const { scheduler } = createScheduler({ queue });
+        const delivered: number[] = [];
+
+        scheduler.scheduleDeadline('early-deadline', 100.75, ({ nowMs }) =>
+            delivered.push(nowMs),
+        );
+        queue.runNext(100.5);
+
+        let snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, []);
+        assert.equal(snapshot.wakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 0);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 0);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assert.equal(snapshot.pendingCallbackDueAt, 100.75);
+        assertWakeupClassificationConserved(snapshot);
+
+        queue.runNext();
+        snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, [101.5]);
+        assert.equal(snapshot.wakeupCount, 2);
+        assert.equal(snapshot.productiveWakeupCount, 1);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 0);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 1);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
+    it('chunks a deadline beyond the maximum browser timeout', () => {
+        const maximumBrowserTimeoutMs = 2_147_483_647;
+        const queue = new FakeRuntimeQueue();
+        queue.browserLongTimeoutDelays = true;
+        const { scheduler } = createScheduler({ queue });
+        const delivered: number[] = [];
+        scheduler.scheduleDeadline(
+            'long-deadline',
+            maximumBrowserTimeoutMs + 1_000,
+            ({ nowMs }) => delivered.push(nowMs),
+        );
+
+        assert.equal(queue.peekNextTask()?.dueAt, maximumBrowserTimeoutMs);
+        assert.equal(
+            scheduler.getSnapshot().pendingCallbackDueAt,
+            maximumBrowserTimeoutMs,
+        );
+        queue.runNext();
+        let snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, []);
+        assert.equal(snapshot.wakeupCount, 1);
+        assert.equal(snapshot.productiveWakeupCount, 0);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 1);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assert.equal(
+            queue.peekNextTask()?.dueAt,
+            maximumBrowserTimeoutMs + 1_000,
+        );
+        assertWakeupClassificationConserved(snapshot);
+
+        queue.runNext();
+        snapshot = scheduler.getSnapshot();
+        assert.deepEqual(delivered, [maximumBrowserTimeoutMs + 1_000]);
+        assert.equal(snapshot.wakeupCount, 2);
+        assert.equal(snapshot.productiveWakeupCount, 1);
+        assert.equal(snapshot.retainedTimeoutReconciliationWakeupCount, 1);
+        assert.equal(snapshot.unexpectedNoWorkWakeupCount, 0);
+        assertWakeupClassificationConserved(snapshot);
+    });
+
     it('never owns more than one callback and ignores a cancelled stale timer', () => {
         const { invalidations, queue, scheduler } = createScheduler();
         const release = scheduler.acquireRenderLease('plant', 20);
@@ -1791,9 +1899,13 @@ describe('GameRuntimeScheduler semantic work', () => {
 
         assert.equal(deadlines.length, 1);
         assertNear(deadlines[0]?.scheduledForMs ?? 0, 25);
-        assertNear(deadlines[0]?.nowMs ?? 0, 25);
-        assertNear(deadlines[0]?.latenessMs ?? 0, 0);
-        assert.deepEqual(fixedSteps, [50]);
+        assert.ok((deadlines[0]?.nowMs ?? 0) >= 25);
+        assert.ok((deadlines[0]?.nowMs ?? Infinity) < 26);
+        assert.ok((deadlines[0]?.latenessMs ?? -1) >= 0);
+        assert.ok((deadlines[0]?.latenessMs ?? Infinity) < 1);
+        assert.equal(fixedSteps.length, 1);
+        assert.ok((fixedSteps[0] ?? 0) >= 50);
+        assert.ok((fixedSteps[0] ?? Infinity) < 51);
         assert.equal(
             queue.taskHistory.some((task) => task.source === 'timeout'),
             true,

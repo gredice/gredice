@@ -1312,16 +1312,25 @@ export class GameRuntimeScheduler {
         }
 
         const dueAt = nextWakeup.dueAt ?? now;
-        const delayMs = Math.min(maximumTimeoutMs, Math.max(0, dueAt - now));
+        const semanticDelayMs = Math.max(0, dueAt - now);
+        const boundedDelayMs = Math.min(maximumTimeoutMs, semanticDelayMs);
+        const callbackDueAt =
+            semanticDelayMs > maximumTimeoutMs ? now + maximumTimeoutMs : dueAt;
+        // Browser timers convert their delay to a Web IDL long. Round upward
+        // before that conversion so a fractional semantic target cannot wake
+        // early, reconcile no work, and immediately arm its remainder.
+        const requestedDelayMs = Math.ceil(boundedDelayMs);
         const handle = this.setTimeoutEffect(() => {
             this.handleScheduledCallback(id);
-        }, delayMs);
+        }, requestedDelayMs);
         this.pendingCallback = {
-            dueAt: now + delayMs,
+            // Keep the exact semantic target unless this is one intentional
+            // maximum-delay segment; effect rounding must not redefine it.
+            dueAt: callbackDueAt,
             handle,
             id,
             kind: 'timeout',
-            retainedForReconciliation: false,
+            retainedForReconciliation: callbackDueAt < dueAt,
         };
         this.counters.scheduledCallbackCount += 1;
     }
@@ -1346,12 +1355,18 @@ export class GameRuntimeScheduler {
         }
 
         const callbackKind = this.pendingCallback.kind;
+        const callbackDueAt = this.pendingCallback.dueAt;
         const retainedForReconciliation =
             this.pendingCallback.retainedForReconciliation;
         const productiveWorkCountBefore =
             this.counters.deadlineCount +
             this.counters.fixedStepCount +
             this.counters.invalidationCount;
+        const now = this.readNow();
+        const timeoutFiredBeforeDue =
+            callbackKind === 'timeout' &&
+            callbackDueAt !== null &&
+            now < callbackDueAt;
         this.pendingCallback = null;
         this.counters.wakeupCount += 1;
         if (callbackKind === 'frame' && this.frameIntervalCalibrated) {
@@ -1359,7 +1374,12 @@ export class GameRuntimeScheduler {
         }
         if (!this.isEffectivelyVisible()) {
             this.recordNonessentialHiddenWork();
-            if (callbackKind === 'timeout' && retainedForReconciliation) {
+            if (timeoutFiredBeforeDue) {
+                this.counters.unexpectedNoWorkWakeupCount += 1;
+            } else if (
+                callbackKind === 'timeout' &&
+                retainedForReconciliation
+            ) {
                 this.counters.retainedTimeoutReconciliationWakeupCount += 1;
             } else {
                 this.counters.unexpectedNoWorkWakeupCount += 1;
@@ -1368,7 +1388,15 @@ export class GameRuntimeScheduler {
             return;
         }
 
-        const now = this.readNow();
+        if (timeoutFiredBeforeDue) {
+            // Do not let the delivery tolerance turn an unexpectedly early
+            // browser callback into productive semantic work. The profiler's
+            // exact-zero unexpected-wakeup gate must expose this invariant.
+            this.counters.unexpectedNoWorkWakeupCount += 1;
+            this.reconcileSchedule();
+            return;
+        }
+
         const displayNow =
             callbackKind === 'frame' && Number.isFinite(displayTimestampMs)
                 ? Math.max(0, displayTimestampMs ?? now)
