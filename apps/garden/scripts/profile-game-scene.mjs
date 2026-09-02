@@ -2501,7 +2501,11 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
-function installLifecycleMilestoneTracker({ expectedDpr } = {}) {
+function installLifecycleMilestoneTracker({
+    expectedClientHeight,
+    expectedClientWidth,
+    expectedDpr,
+} = {}) {
     if (globalThis.__grediceLifecycleMilestones) {
         return;
     }
@@ -2547,10 +2551,16 @@ function installLifecycleMilestoneTracker({ expectedDpr } = {}) {
         const expectedHeight = Math.round(
             canvas.clientHeight * resolvedExpectedDpr,
         );
+        const clientSizeMatchesExpectedViewport =
+            (typeof expectedClientWidth !== 'number' ||
+                canvas.clientWidth === expectedClientWidth) &&
+            (typeof expectedClientHeight !== 'number' ||
+                canvas.clientHeight === expectedClientHeight);
         if (
             milestones.canvasSizedMs === null &&
             canvas.clientWidth > 0 &&
             canvas.clientHeight > 0 &&
+            clientSizeMatchesExpectedViewport &&
             canvas.width === expectedWidth &&
             canvas.height === expectedHeight
         ) {
@@ -9081,6 +9091,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     if (scenario.crossTierProfile === true) {
         const expectedDpr = Math.min(scenario.dpr, scenario.expectedDprCap);
         await page.addInitScript(installLifecycleMilestoneTracker, {
+            expectedClientHeight: scenario.viewport.height,
+            expectedClientWidth: scenario.viewport.width,
             expectedDpr,
         });
     }

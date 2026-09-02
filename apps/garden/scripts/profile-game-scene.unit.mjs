@@ -3496,13 +3496,17 @@ test('document-start cold milestones honor 1x, 1.5x, and 2x backing DPR', () => 
                 Reflect.deleteProperty(globalThis, key);
             }
             canvas = Object.assign(new ProfileCanvas(), {
-                clientHeight: 720,
-                clientWidth: 1_280,
-                height: 1,
-                width: 1,
+                clientHeight: 150,
+                clientWidth: 300,
+                height: Math.round(150 * expectedDpr),
+                width: Math.round(300 * expectedDpr),
             });
 
-            installLifecycleMilestoneTracker({ expectedDpr });
+            installLifecycleMilestoneTracker({
+                expectedClientHeight: 720,
+                expectedClientWidth: 1_280,
+                expectedDpr,
+            });
             assert.equal(
                 globalThis.__grediceLifecycleMilestones.expectedDpr,
                 expectedDpr,
@@ -3512,6 +3516,8 @@ test('document-start cold milestones honor 1x, 1.5x, and 2x backing DPR', () => 
                 null,
             );
 
+            canvas.clientHeight = 720;
+            canvas.clientWidth = 1_280;
             canvas.height = Math.round(canvas.clientHeight * expectedDpr);
             canvas.width = Math.round(canvas.clientWidth * expectedDpr);
             globalThis.__grediceLifecycleRecordCanvas();
