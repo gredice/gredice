@@ -157,6 +157,29 @@ describe('R3F root visibility lifecycle', () => {
         root.unsubscribeR3F();
     });
 
+    it('preserves a visible request for a manual frameloop across suspension', async () => {
+        const root = createTestRoot();
+        const lifecycle = installVisibility(root);
+
+        root.state.setFrameloop('never');
+        assert.equal(root.state.frameloop, 'never');
+        assert.equal(root.clock.elapsedTime, 0);
+        root.clock.elapsedTime = 42;
+
+        lifecycle.setVisible(false);
+        lifecycle.setVisible(true);
+        assert.equal(root.state.frameloop, 'never');
+        assert.equal(root.clock.elapsedTime, 42);
+
+        lifecycle.setVisible(false);
+        lifecycle.release();
+        await flushLifecycleCleanup();
+        assert.equal(root.state.frameloop, 'never');
+        assert.equal(root.clock.elapsedTime, 42);
+        assert.equal(root.state.setFrameloop, root.rawSetFrameloop);
+        root.unsubscribeR3F();
+    });
+
     it('retains suspension across StrictMode cleanup and replay', async () => {
         const root = createTestRoot();
         const owner = Symbol('strict-mode-root-lifecycle');

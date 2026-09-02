@@ -109,6 +109,7 @@ function createRootFrameloopVisibilityRegistration({
             suspendRootFrameloop(registration);
             return;
         }
+        registration.resumeFrameloop = frameloop;
         registration.rawSetFrameloop(frameloop);
     };
     return registration;
