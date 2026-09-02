@@ -38,10 +38,16 @@ test('isolates spring demand and submitted work between two Canvas roots', async
         .toBe('never');
 
     const suspendedStart = await readSnapshot();
-    // Software WebGL component tests can submit near 15 FPS under load. Keep
-    // the activity precondition intact while observing the hidden root across
-    // a longer, stricter no-work interval.
+    // Observe at least two seconds and more than twenty active frames. Slow
+    // software WebGL may extend the window, but every hidden counter must
+    // remain unchanged from the same original baseline throughout it.
     await page.waitForTimeout(2_000);
+    await expect
+        .poll(async () => (await readSnapshot()).active.r3fFrameCallbackCount, {
+            timeout: 5_000,
+            intervals: [100],
+        })
+        .toBeGreaterThan(suspendedStart.active.r3fFrameCallbackCount + 20);
     const suspendedEnd = await readSnapshot();
 
     expect(suspendedEnd.active.r3fFrameCallbackCount).toBeGreaterThan(
