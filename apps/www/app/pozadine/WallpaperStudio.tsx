@@ -53,19 +53,19 @@ type WallpaperActivity = 'download' | 'idle' | 'macos' | 'preview';
 
 const wallpaperTemplate: WallpaperTemplate = 'standard';
 const wallpaperTheme: WallpaperTheme = 'grass';
-const wallpaperPhases: WallpaperPhase[] = [
+const wallpaperPhases = [
     'morning',
     'day',
     'evening',
     'night',
-];
-const wallpaperSizeKeys: WallpaperSizeKey[] = [
+] satisfies WallpaperPhase[];
+const wallpaperSizeKeys = [
     'uhd',
     'fullHd',
     'ultrawide',
     'tablet',
     'mobile',
-];
+] satisfies WallpaperSizeKey[];
 
 function captureErrorMessage(error: unknown) {
     if (error instanceof Error && error.message) {

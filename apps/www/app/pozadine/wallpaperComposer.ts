@@ -46,6 +46,7 @@ export const wallpaperSizes = {
 >;
 
 export const wallpaperCaptureRenderScale = 1.5;
+const wallpaperCaptureMaxDimension = 4096;
 
 export function getWallpaperCaptureSize({
     height,
@@ -54,9 +55,14 @@ export function getWallpaperCaptureSize({
     height: number;
     width: number;
 }) {
+    const scale = Math.min(
+        wallpaperCaptureRenderScale,
+        wallpaperCaptureMaxDimension / height,
+        wallpaperCaptureMaxDimension / width,
+    );
     return {
-        height: Math.round(height * wallpaperCaptureRenderScale),
-        width: Math.round(width * wallpaperCaptureRenderScale),
+        height: Math.round(height * scale),
+        width: Math.round(width * scale),
     };
 }
 

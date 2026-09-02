@@ -66,12 +66,33 @@ describe('wallpaper sizes', () => {
         });
     });
 
-    it('supersamples the garden render before composing the final PNG', () => {
+    it('supersamples captures without exceeding common WebGL limits', () => {
+        assert.deepEqual(
+            getWallpaperCaptureSize({ height: 1080, width: 1920 }),
+            {
+                height: 1620,
+                width: 2880,
+            },
+        );
         assert.deepEqual(
             getWallpaperCaptureSize({ height: 2160, width: 3840 }),
             {
-                height: 3240,
-                width: 5760,
+                height: 2304,
+                width: 4096,
+            },
+        );
+        assert.deepEqual(
+            getWallpaperCaptureSize({ height: 2732, width: 2048 }),
+            {
+                height: 4096,
+                width: 3071,
+            },
+        );
+        assert.deepEqual(
+            getWallpaperCaptureSize({ height: 2796, width: 1290 }),
+            {
+                height: 4096,
+                width: 1890,
             },
         );
     });
