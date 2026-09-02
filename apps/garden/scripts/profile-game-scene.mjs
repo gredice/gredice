@@ -4,11 +4,12 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
-const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
+const defaultOutDir = resolve(appRoot, '.game-profile-results');
 const gameProfileComparisonContractVersion = 6;
 const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
@@ -1986,6 +1987,7 @@ function parseArgs(argv) {
         throw new Error('Warmup duration must be zero or a positive number.');
     }
 
+    options.outDir = assertSafeGameProfileOutputDirectory(options.outDir);
     return options;
 }
 
@@ -2238,7 +2240,7 @@ function printHelp(options) {
             `  --graphics-backend <backend> auto, default, or angle-metal (macOS only). Current: ${options.graphicsBackend}`,
             `  --lifecycle-renderer-stats-mode <mode> ${lifecycleRendererStatsCanonicalMode} or baseline-only ${lifecycleRendererStatsLegacyMode}. Current: ${options.lifecycleRendererStatsMode}`,
             '  --legacy-outline-pipeline Measure a clean external baseline without mask-cache telemetry.',
-            '  --out-dir <path>       Report directory. Default: test-results/game-profile',
+            '  --out-dir <path>       Report directory. Default: .game-profile-results',
             '  --warmup-ms <ms>       Warmup wait after canvas appears. Default: 5000',
             '  --soak-ms <ms>         Run the scene before sampling. Default: 0',
             '  --sample-ms <ms>       requestAnimationFrame sample window. Default: 5000',
@@ -21057,16 +21059,17 @@ function buildMarkdown(report) {
 }
 
 async function writeReports(report, outDir) {
+    const safeOutDir = assertSafeGameProfileOutputDirectory(outDir);
     const stamp = report.generatedAt.replaceAll(/[:.]/g, '-');
     const json = `${JSON.stringify(report, null, 2)}\n`;
     const markdown = buildMarkdown(report);
 
-    await mkdir(outDir, { recursive: true });
+    await mkdir(safeOutDir, { recursive: true });
     await Promise.all([
-        writeFile(resolve(outDir, `${stamp}.json`), json),
-        writeFile(resolve(outDir, `${stamp}.md`), markdown),
-        writeFile(resolve(outDir, 'latest.json'), json),
-        writeFile(resolve(outDir, 'latest.md'), markdown),
+        writeFile(resolve(safeOutDir, `${stamp}.json`), json),
+        writeFile(resolve(safeOutDir, `${stamp}.md`), markdown),
+        writeFile(resolve(safeOutDir, 'latest.json'), json),
+        writeFile(resolve(safeOutDir, 'latest.md'), markdown),
     ]);
 }
 
@@ -21380,6 +21383,7 @@ export {
     shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
+    writeReports,
 };
 
 const invokedModuleUrl = process.argv[1]

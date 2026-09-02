@@ -1,8 +1,17 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+    access,
+    mkdir,
+    mkdtemp,
+    readFile,
+    rm,
+    symlink,
+    writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
     buildCrossTierCheckNameInventory,
     buildMarkdown,
@@ -5643,6 +5652,170 @@ test('report writer emits stamped and latest JSON and Markdown files', async () 
         );
     } finally {
         await rm(directory, { force: true, recursive: true });
+    }
+});
+
+test('comparator defaults to durable comparisons and validates only the selected output', (t) => {
+    const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const previous = process.env.GAME_PROFILE_COMPARE_OUT_DIR;
+    delete process.env.GAME_PROFILE_COMPARE_OUT_DIR;
+    t.after(() => {
+        if (previous === undefined) {
+            delete process.env.GAME_PROFILE_COMPARE_OUT_DIR;
+        } else {
+            process.env.GAME_PROFILE_COMPARE_OUT_DIR = previous;
+        }
+    });
+    const args = ['--allow-partial', 'before.json', 'after.json'];
+    assert.equal(
+        parseArgs(args).outDir,
+        resolve(appRoot, '.game-profile-results/comparisons'),
+    );
+    process.env.GAME_PROFILE_COMPARE_OUT_DIR = resolve(appRoot, 'test-results');
+    assert.throws(
+        () => parseArgs(args),
+        /Unsafe game-profile output directory/,
+    );
+    assert.equal(
+        parseArgs([...args, '--out-dir', 'safe-custom-comparisons']).outDir,
+        resolve('safe-custom-comparisons'),
+    );
+    process.env.GAME_PROFILE_COMPARE_OUT_DIR = 'safe-env-comparisons';
+    assert.equal(parseArgs(args).outDir, resolve('safe-env-comparisons'));
+});
+
+test('comparator rejects normalized resettable outputs but accepts historical inputs', () => {
+    const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+    const baselinePath = resolve(
+        appRoot,
+        'test-results/game-profile/baseline.json',
+    );
+    const candidatePath = resolve(appRoot, 'playwright-report/candidate.json');
+    const args = ['--allow-partial', baselinePath, candidatePath];
+    for (const outDir of [
+        'test-results',
+        'test-results/nested',
+        'TEST-RESULTS/nested',
+        'playwright-report/nested',
+        'blob-report/nested',
+        'playwright/.cache/nested',
+        'Playwright/.CACHE/nested',
+        '.game-profile-results/../test-results/nested',
+        'playwright/safe/../.cache/nested',
+        '../www/test-results/nested',
+    ]) {
+        assert.throws(
+            () => parseArgs([...args, '--out-dir', resolve(appRoot, outDir)]),
+            /Unsafe game-profile output directory/,
+            outDir,
+        );
+    }
+    const parsed = parseArgs([
+        ...args,
+        '--out-dir',
+        resolve(appRoot, 'test-results-archive/comparison'),
+    ]);
+    assert.equal(parsed.baselinePath, baselinePath);
+    assert.equal(parsed.candidatePath, candidatePath);
+    assert.equal(
+        parsed.outDir,
+        resolve(appRoot, 'test-results-archive/comparison'),
+    );
+});
+
+test('comparator writer rejects resettable outputs before serialization or mkdir', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-compare-output-'));
+    try {
+        const outDir = resolve(directory, 'apps/garden/blob-report/comparison');
+        await assert.rejects(
+            writeComparisonReports(null, outDir),
+            /Unsafe game-profile output directory/,
+        );
+        await assert.rejects(access(resolve(directory, 'apps')), {
+            code: 'ENOENT',
+        });
+        assert.equal(
+            await runCli([
+                'does-not-exist-baseline.json',
+                'does-not-exist-candidate.json',
+                '--allow-partial',
+                '--out-dir',
+                outDir,
+            ]),
+            2,
+        );
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('comparator writer uses its validated normalized path for symlink traversal', async () => {
+    const directory = await mkdtemp(
+        resolve(tmpdir(), 'game-compare-normalized-'),
+    );
+    try {
+        const resettable = resolve(directory, 'apps/garden/test-results');
+        const linkTarget = resolve(resettable, 'existing');
+        const alias = resolve(directory, 'alias');
+        await mkdir(linkTarget, { recursive: true });
+        await symlink(linkTarget, alias, 'dir');
+        const { baseline, candidate } = reportPair();
+        const comparison = comparePartialReports(baseline, candidate);
+        const paths = await writeComparisonReports(
+            comparison,
+            `${alias}/../evidence`,
+        );
+        assert.equal(
+            JSON.parse(
+                await readFile(
+                    resolve(directory, 'evidence/latest.json'),
+                    'utf8',
+                ),
+            ).status,
+            'pass',
+        );
+        assert.match(paths.jsonPath, /evidence[/\\]latest\.json$/);
+        await assert.rejects(access(resolve(resettable, 'evidence')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('CLI reads historical Playwright-tree evidence without altering input reports', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-compare-history-'));
+    try {
+        const { baseline, candidate } = reportPair();
+        const appRoot = resolve(directory, 'apps/garden');
+        const historicalDir = resolve(appRoot, 'test-results/game-profile');
+        const baselinePath = resolve(historicalDir, 'baseline.json');
+        const candidatePath = resolve(historicalDir, 'candidate.json');
+        const baselineJson = JSON.stringify(baseline);
+        const candidateJson = JSON.stringify(candidate);
+        const outDir = resolve(appRoot, '.game-profile-results/comparisons');
+        await mkdir(historicalDir, { recursive: true });
+        await writeFile(baselinePath, baselineJson);
+        await writeFile(candidatePath, candidateJson);
+        assert.equal(
+            await runCli([
+                baselinePath,
+                candidatePath,
+                '--allow-partial',
+                '--out-dir',
+                outDir,
+            ]),
+            0,
+        );
+        assert.equal(await readFile(baselinePath, 'utf8'), baselineJson);
+        assert.equal(await readFile(candidatePath, 'utf8'), candidateJson);
+        assert.equal(
+            JSON.parse(await readFile(resolve(outDir, 'latest.json'), 'utf8'))
+                .status,
+            'pass',
+        );
+    } finally {
+        await rm(directory, { recursive: true, force: true });
     }
 });
 

@@ -9,6 +9,7 @@ import {
 } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 
 const displayCadenceControlComparisonContractVersion = 4;
 const cadenceAndLifetimeComparisonContractVersion = 5;
@@ -20,7 +21,7 @@ const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
     dirname(fileURLToPath(import.meta.url)),
     '..',
-    'test-results/game-profile/comparisons',
+    '.game-profile-results/comparisons',
 );
 const commitPattern = /^[0-9a-f]{40}$/;
 const retainedHeapMeasurementMode = 'post-scenario-forced-gc-v1';
@@ -6457,11 +6458,12 @@ async function writeComparisonReports(
     outDir,
     { inputPaths = [] } = {},
 ) {
+    const safeOutDir = assertSafeGameProfileOutputDirectory(outDir);
     const stamp = comparison.generatedAt.replaceAll(/[:.]/g, '-');
     const json = `${JSON.stringify(comparison, null, 2)}\n`;
     const markdown = buildMarkdown(comparison);
-    await mkdir(outDir, { recursive: true });
-    const canonicalOutDir = await realpath(outDir);
+    await mkdir(safeOutDir, { recursive: true });
+    const canonicalOutDir = await realpath(safeOutDir);
     const canonicalInputPaths = await Promise.all(
         inputPaths.map((inputPath) => realpath(inputPath)),
     );
@@ -6579,6 +6581,7 @@ function parseArgs(args) {
             'A non-diagnostic comparison requires both --baseline-confirmation and --confirmation for a symmetric 2x2 gate',
         );
     }
+    options.outDir = assertSafeGameProfileOutputDirectory(options.outDir);
     return options;
 }
 
@@ -6593,7 +6596,7 @@ Options:
                           canonical-v1 (default) or legacy-heartbeat-v1
   --candidate <path>      Candidate schema-v6 profile report
   --confirmation <path>   Independent repeat of the exact candidate commit
-  --out-dir <path>        Comparison report directory
+  --out-dir <path>        Comparison directory. Default: .game-profile-results/comparisons
   --allow-partial         Permit a noncanonical scenario manifest for diagnostics
   --allow-same-source     Permit same-commit diagnostic comparison
   --help                  Show this help

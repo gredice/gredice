@@ -62,9 +62,19 @@ Current GitHub delivery stack:
   profiler/fixture artifacts, so that capture is not release evidence.
 - Fixture-aware regression evidence issue
   [#4776](https://github.com/gredice/gredice/issues/4776) remains open under the
-  epic and blocks #4775. Contract v6 is implemented in the current stack, but
-  its fresh symmetric 2x2 capture is still pending. The blocking chain is
-  #4776 → #4775 → #4773 → #4717; this is not a merge or release claim.
+  epic and blocks #4775. The initial v6 matrix was rejected for one unexpected
+  scheduler wakeup during garden switching; a consumed-receipt-probe guard
+  fixes a deterministic reproduction without changing the zero-wakeup gate.
+- Evidence-retention issue [#4778](https://github.com/gredice/gredice/issues/4778)
+  blocks #4776. Playwright cleared the untracked scratch reports, so the
+  profiler/comparator now use `.game-profile-results` outside resettable test
+  output. A replacement symmetric 2x2 capture is in progress with the same
+  frozen v6 harness and corrected runtime. The blocking chain is
+  #4778 → #4776 → #4775 → #4773 → #4717.
+- Draft integration [PR #4777](https://github.com/gredice/gredice/pull/4777)
+  groups these dependent changes with #4766. Neither producer budget passes
+  nor lower-stack revisions establish release clearance; the complete
+  integrated tree must pass the strict comparator and CI before merge.
 
 ## Milestone 1: Camera ownership
 
@@ -1165,10 +1175,15 @@ Progress:
   diagnostic.
   Because contract v6 replaces those witnesses with semantic cold milestones
   and exposure-matched fresh resources, its symmetric 2x2 matrix must be
-  freshly captured at `4776-controlled-v6-final`; contract-v5 and earlier
+  freshly captured at `.game-profile-results/4778-release-v6`; contract-v5 and earlier
   reports are not release evidence for this stack.
   `legacy-heartbeat-v1` baseline omissions remain valid only on the explicitly
-  selected legacy baseline side. The fresh contract-v6 matrix is still pending.
+  selected legacy baseline side. The initial v6 candidate was rejected for one
+  unexpected garden-switch wakeup. The corrected runtime prevents repeated
+  cadence probes for one outstanding receipt generation without weakening the
+  bounded retry or exact-zero gate. Its replacement capture is still pending;
+  original scratch reports were cleared by Playwright and are not retained
+  release evidence. Issue #4778 separates profiler artifacts from that cleanup.
 
 ## Suggested implementation order
 

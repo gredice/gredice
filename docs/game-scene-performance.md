@@ -166,6 +166,21 @@ cd apps/garden
 pnpm run profile:game
 ```
 
+Profiler artifacts live in `apps/garden/.game-profile-results/`, outside
+Playwright's resettable output directories. The comparator defaults to its
+`comparisons/` subdirectory. Both CLIs reject output paths inside an app's
+`test-results`, `playwright-report`, `blob-report`, or `playwright/.cache` tree,
+including normalized traversal and symlink aliases. Safe custom output paths
+remain supported, and historical reports may still be read as comparison inputs.
+These artifacts are ignored by Git, so archive release evidence separately when
+removing a worktree. Never use Playwright scratch output as durable evidence.
+
+On 2026-09-02, a component-test run cleared the old
+`test-results/game-profile` tree, including the initial v6 matrix. The earlier
+readouts below are historical observations, not retained raw release evidence.
+Issue #4778 moves the output boundary and requires a replacement capture under
+`.game-profile-results/4778-release-v6` before release clearance.
+
 Run the dense production report when measuring larger scenes or validating one
 of the rendering architecture tasks:
 
@@ -433,7 +448,7 @@ GAME_PROFILE_SCENARIO_SET=static-idle \
 ```
 
 The required final local closure bundle must be captured under
-`test-results/game-profile/4717-final/acceptance`. It combines three repeated
+`.game-profile-results/4778-release-v6/acceptance`. It combines three repeated
 static-idle windows, three fresh-context `lifecycle-live` runs, and three runs
 for each Low, Medium, High, Automatic-standard, and Automatic-constrained owner
 policy. All 21 runs must pass from one clean production build before the issue
@@ -580,7 +595,7 @@ test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
 
 # The legacy scheduler is expected to fail only its superseded scheduler checks;
 # the symmetric comparator validates that exact failure set.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/baseline-1 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -601,7 +616,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean baseline subject with the same
 # exact clean harness; this must be a new profiler run, not a copied report.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/baseline-2 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/baseline-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -620,7 +635,7 @@ GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
 
-GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/candidate-1 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -641,7 +656,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean candidate subject with the same
 # exact clean harness.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/candidate-2 \
+GAME_PROFILE_OUT_DIR=.game-profile-results/4778-release-v6/candidate-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -666,12 +681,12 @@ Compare the four raw repeated-run reports with the checked-in relative policy:
 ```bash
 cd apps/garden
 pnpm run profile:game:compare \
-  --baseline test-results/game-profile/4776-controlled-v6-final/baseline-1/latest.json \
-  --baseline-confirmation test-results/game-profile/4776-controlled-v6-final/baseline-2/latest.json \
+  --baseline .game-profile-results/4778-release-v6/baseline-1/latest.json \
+  --baseline-confirmation .game-profile-results/4778-release-v6/baseline-2/latest.json \
   --baseline-scheduler-contract legacy-heartbeat-v1 \
-  --candidate test-results/game-profile/4776-controlled-v6-final/candidate-1/latest.json \
-  --confirmation test-results/game-profile/4776-controlled-v6-final/candidate-2/latest.json \
-  --out-dir test-results/game-profile/4776-controlled-v6-final/comparison
+  --candidate .game-profile-results/4778-release-v6/candidate-1/latest.json \
+  --confirmation .game-profile-results/4778-release-v6/candidate-2/latest.json \
+  --out-dir .game-profile-results/4778-release-v6/comparison
 ```
 
 The comparator validates and pairs raw scenarios by stable base name and repeat
@@ -925,7 +940,7 @@ pnpm run profile:game:start
 ```
 
 Reports are written to ignored files under
-`apps/garden/test-results/game-profile/`. The latest report is always available
+`apps/garden/.game-profile-results/`. The latest report is always available
 as both `latest.json` and `latest.md`; timestamped copies are kept beside them.
 The JSON is intended for CI/trend comparison, while the Markdown summary is meant
 for quick review in a PR. Reports also include whether the profiler ran a build
@@ -1288,8 +1303,8 @@ unavailable, so a missing GPU number is not mistaken for zero work.
 
 Normal, cold pending-near (when the transition remains pending long enough to
 capture), and detailed screenshots are written below
-`apps/garden/test-results/game-profile/screenshots/<scenario>/`. The JSON and
-Markdown reports remain under `apps/garden/test-results/game-profile/`; use the
+`apps/garden/.game-profile-results/screenshots/<scenario>/`. The JSON and
+Markdown reports remain under `apps/garden/.game-profile-results/`; use the
 raw JSON when comparing optimization implementations because it preserves all
 per-run cold/warm metadata.
 
@@ -1726,6 +1741,11 @@ still-outstanding owned-invalidation generation, and unexpected no-work
 counters. Their exact sum must equal `wakeupCount`. The boundary
 `awaitingFrameReceipt` state proves whether the first such reconciliation in a
 window belongs to an invalidation issued before that window.
+Once a generation's cadence probe has been consumed, changing the cadence or
+render-owner set cannot re-arm it. The original bounded missing-receipt retry
+remains scheduled, and a timely receipt resumes ordinary rendering. Regression
+coverage includes 60-to-30 FPS transitions and fourteen-to-seven owner changes
+with coalesced root requests; no unexpected-wakeup allowance is introduced.
 `postCalibrationFrameWakeupCount` separately exposes any scheduler RAF polling
 after the bounded calibration has completed.
 
@@ -1770,17 +1790,17 @@ and lifecycle assertions still observe a coherent state.
 
 Required release evidence before merge:
 
-- `4717-final/acceptance` is the 21-run static, live-lifecycle, and cross-policy
+- `4778-release-v6/acceptance` is the 21-run static, live-lifecycle, and cross-policy
   semantic-owner gate.
-- `4717-final/building-ambient` is the focused two-run control proving an
+- `4778-release-v6/building-ambient` is the focused two-run control proving an
   ordinary ambient structure fixture holds one stable 30 FPS owner set.
-- `4775-controlled-v5-final/baseline-1`, `baseline-2`, `candidate-1`, and
-  `candidate-2` remain diagnostic history. That clean matrix was structurally
+- The earlier `4775-controlled-v5-final` readout remains diagnostic history;
+  its raw scratch artifacts were removed by the test runner. That clean matrix was structurally
   valid; 312 of 314 comparisons and all 42 invariants passed, along with its
   meaningful work, GPU, and memory gates. Its host/double-RAF cold Canvas timing
   and dynamic-butterfly endpoint geometry mismatches are profiler/fixture
   artifacts, so the matrix is not release evidence.
-- `4776-controlled-v6-final/baseline-1`, `baseline-2`, `candidate-1`, and
+- `.game-profile-results/4778-release-v6/baseline-1`, `baseline-2`, `candidate-1`, and
   `candidate-2` must be independent captures collected by the same exact clean
   contract-v6 profiler harness. The origin/main pair uses the exact
   `legacy-heartbeat-v1` baseline contract; its superseded scheduler checks may
@@ -1788,8 +1808,16 @@ Required release evidence before merge:
   candidate subject and the same 39 canonical runs under `canonical-v1`.
   `comparison` is the required fail-closed symmetric 2x2 result; “independent”
   means separate profiler executions and reports, not different harness commits.
-  This contract-v6 matrix is pending fresh capture; contract-v5 and earlier
-  reports do not satisfy its release gate.
+  The first v6 candidate pair was rejected for one unexpected garden-switch
+  wakeup and its raw scratch artifacts were subsequently removed. The
+  replacement matrix uses frozen harness `f653a380ecb605654920ed24d86892225fdd10f2`,
+  clean baseline `8b10710a0958e14d15dcebf9a18969ba969039d9`, and corrected runtime
+  `aa48e2075ca65d083fd5a2fd083e3841e08732f9`. Capture and comparison remain pending;
+  earlier summaries cannot substitute for retained passing raw evidence.
+- A producer report's budget/comparability status is not release clearance.
+  Garden-switch producer acceptance covers the shared scenario contract; the
+  release comparator additionally checks canonical scheduler invariants while
+  allowing only explicitly selected legacy-baseline omissions.
 - Garden-switch comparison uses a full-length initial control and hard-gates
   GPU p95, semantic target delivery, scheduler callback conservation and exact
   causal wakeup classification, zero unexpected no-work wakeups, zero

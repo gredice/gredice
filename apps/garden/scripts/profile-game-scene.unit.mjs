@@ -1,5 +1,17 @@
 import assert from 'node:assert/strict';
+import {
+    access,
+    mkdir,
+    mkdtemp,
+    readFile,
+    rm,
+    symlink,
+} from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { assertSafeGameProfileOutputDirectory } from './game-profile-output.mjs';
 import {
     applyGardenBuildingMatchedBaselineComparison,
     beginGardenSwitchProfileSample,
@@ -81,7 +93,165 @@ import {
     shouldObserveRuntimeFrameLoopDuringRaf,
     shouldReadRuntimeOwnerLeaseRafSnapshot,
     summarizeGardenStructureAssetNetwork,
+    writeReports,
 } from './profile-game-scene.mjs';
+
+const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+test('profiler output defaults to durable evidence outside Playwright cleanup', (t) => {
+    const previous = process.env.GAME_PROFILE_OUT_DIR;
+    delete process.env.GAME_PROFILE_OUT_DIR;
+    t.after(() => {
+        if (previous === undefined) {
+            delete process.env.GAME_PROFILE_OUT_DIR;
+        } else {
+            process.env.GAME_PROFILE_OUT_DIR = previous;
+        }
+    });
+
+    assert.equal(
+        parseArgs([]).outDir,
+        resolve(appRoot, '.game-profile-results'),
+    );
+    process.env.GAME_PROFILE_OUT_DIR = 'test-results/game-profile';
+    assert.throws(() => parseArgs([]), /Unsafe game-profile output directory/);
+    assert.equal(
+        parseArgs(['--out-dir', 'safe-custom-evidence']).outDir,
+        resolve(appRoot, 'safe-custom-evidence'),
+    );
+    process.env.GAME_PROFILE_OUT_DIR = '.game-profile-results/custom';
+    assert.equal(
+        parseArgs([]).outDir,
+        resolve(appRoot, '.game-profile-results/custom'),
+    );
+});
+
+test('profiler rejects resettable app output trees after path normalization', () => {
+    for (const outDir of [
+        'test-results',
+        'test-results/game-profile',
+        'TEST-RESULTS/profile',
+        'playwright-report',
+        'playwright-report/profile',
+        'blob-report',
+        'blob-report/profile',
+        'playwright/.cache',
+        'playwright/.cache/profile',
+        'Playwright/.CACHE/profile',
+        resolve(appRoot, '../../APPS/garden/test-results/profile'),
+        '.game-profile-results/../test-results/profile',
+        'playwright/safe/../.cache/profile',
+        '../www/test-results/profile',
+    ]) {
+        for (const path of [outDir, resolve(appRoot, outDir)]) {
+            assert.throws(
+                () => parseArgs(['--out-dir', path]),
+                /Unsafe game-profile output directory/,
+                path,
+            );
+        }
+    }
+});
+
+test('profiler preserves safe custom output paths and similarly named siblings', () => {
+    for (const outDir of [
+        '.game-profile-results/custom',
+        'test-results-archive',
+        'playwright-report-archive',
+        'blob-report-archive',
+        'playwright/.cache-extra',
+        '../www/.game-profile-results',
+        'test-results/../.game-profile-results',
+        resolve(tmpdir(), 'test-results', 'game-profile'),
+    ]) {
+        assert.equal(
+            parseArgs(['--out-dir', outDir]).outDir,
+            resolve(appRoot, outDir),
+        );
+    }
+});
+
+test('output validation rejects symlink aliases before missing descendants are created', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-profile-output-'));
+    try {
+        const otherAppRoot = resolve(directory, 'other-checkout/apps/garden');
+        const resettable = resolve(otherAppRoot, 'test-results');
+        const alias = resolve(directory, 'evidence-alias');
+        const appAlias = resolve(directory, 'app-alias');
+        await mkdir(resettable, { recursive: true });
+        await symlink(resettable, alias, 'dir');
+        await symlink(otherAppRoot, appAlias, 'dir');
+        for (const outDir of [
+            resolve(alias, 'not-created/nested'),
+            resolve(appAlias, 'blob-report/not-created'),
+        ]) {
+            assert.throws(
+                () => parseArgs(['--out-dir', outDir]),
+                /Unsafe game-profile output directory/,
+            );
+            await assert.rejects(access(outDir), { code: 'ENOENT' });
+        }
+        const safeAlias = resolve(appAlias, '.game-profile-results/custom');
+        assert.equal(
+            assertSafeGameProfileOutputDirectory(safeAlias),
+            safeAlias,
+        );
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('profiler writer rejects unsafe output before serialization or filesystem writes', async () => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'game-profile-writer-'));
+    try {
+        const outDir = resolve(directory, 'apps/garden/test-results/profile');
+        await assert.rejects(
+            writeReports(null, outDir),
+            /Unsafe game-profile output directory/,
+        );
+        await assert.rejects(access(resolve(directory, 'apps')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
+test('profiler writer uses its validated normalized path for symlink traversal', async () => {
+    const directory = await mkdtemp(
+        resolve(tmpdir(), 'game-profile-normalized-'),
+    );
+    try {
+        const resettable = resolve(directory, 'apps/garden/test-results');
+        const linkTarget = resolve(resettable, 'existing');
+        const alias = resolve(directory, 'alias');
+        await mkdir(linkTarget, { recursive: true });
+        await symlink(linkTarget, alias, 'dir');
+        const report = {
+            generatedAt: '2026-09-02T00:00:00.000Z',
+            options: { scenarios: [] },
+            plantCloseupMedians: {},
+            scenarios: [],
+            schemaVersion: 6,
+            summary: { failedScenarios: 0 },
+        };
+        await writeReports(report, `${alias}/../evidence`);
+        assert.deepEqual(
+            JSON.parse(
+                await readFile(
+                    resolve(directory, 'evidence/latest.json'),
+                    'utf8',
+                ),
+            ),
+            report,
+        );
+        await assert.rejects(access(resolve(resettable, 'evidence')), {
+            code: 'ENOENT',
+        });
+    } finally {
+        await rm(directory, { recursive: true, force: true });
+    }
+});
 
 function crossTierLeaseTopology() {
     return {
