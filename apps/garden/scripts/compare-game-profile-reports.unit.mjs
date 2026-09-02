@@ -35,6 +35,7 @@ function crossTierLeaseTopology() {
 
 function sample(overrides = {}) {
     return {
+        displayCadenceControl: null,
         drawCalls: 6_000,
         drawCallsPerRenderedFrame: 200,
         gpu: {
@@ -52,6 +53,58 @@ function sample(overrides = {}) {
         renderedFps: 30,
         submittedTriangles: 900_000,
         trianglesPerRenderedFrame: 30_000,
+        ...overrides,
+    };
+}
+
+function displayCadenceControlSnapshot(overrides = {}) {
+    return {
+        cancelRequestCount: 100,
+        cancelledBeforeDeliveryCount: 50,
+        deliveredCallbackCount: 1_000,
+        deliveredFrameCount: 500,
+        installationError: null,
+        installed: true,
+        intervalMs: 33.33,
+        mode: 'profiler-owned-raf-v1',
+        nativeFrameCancellationCount: 10,
+        nativeFrameCount: 1_000,
+        nativeFramePending: true,
+        observedFramesPerSecond: 30,
+        pendingCallbackCount: 2,
+        requestCount: 1_052,
+        requestedFramesPerSecond: 30,
+        ...overrides,
+    };
+}
+
+function displayCadenceControlSample(overrides = {}) {
+    const atStart = displayCadenceControlSnapshot();
+    const atEnd = displayCadenceControlSnapshot({
+        cancelRequestCount: 110,
+        cancelledBeforeDeliveryCount: 55,
+        deliveredCallbackCount: 1_300,
+        deliveredFrameCount: 650,
+        nativeFrameCancellationCount: 12,
+        nativeFrameCount: 1_300,
+        nativeFramePending: false,
+        pendingCallbackCount: 1,
+        requestCount: 1_356,
+    });
+    return {
+        atEnd,
+        atStart,
+        cancelRequestCountDelta: 10,
+        cancelledBeforeDeliveryCountDelta: 5,
+        deliveredCallbackCountDelta: 300,
+        deliveredFrameCountDelta: 150,
+        elapsedMs: 5_000,
+        installedAtEnd: true,
+        installedAtStart: true,
+        mode: 'profiler-owned-raf-v1',
+        nativeFrameCountDelta: 300,
+        observedFramesPerSecond: 30,
+        requestedFramesPerSecond: 30,
         ...overrides,
     };
 }
@@ -141,6 +194,7 @@ function normalScenario(profileRun, overrides = {}) {
         requested: {
             controls: '0',
             details: '1',
+            displayCadenceControl: null,
             dpr: 2,
             gardenProfile: 'high-target',
             graphicsBackend: 'angle-metal',
@@ -441,7 +495,7 @@ function report({
     overrides = {},
 }) {
     return {
-        comparisonContractVersion: 3,
+        comparisonContractVersion: 4,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
@@ -479,7 +533,7 @@ function report({
             ...scenario,
             servedBuildProvenance: {
                 commit,
-                comparisonContractVersion: 3,
+                comparisonContractVersion: 4,
                 dirty: false,
             },
         })),
@@ -645,6 +699,10 @@ function regressionScenario(baseName, profileRun) {
             throw new Error(`Missing fixture policy for ${baseName}`);
         }
         scenario.requested.crossTierProfile = true;
+        scenario.requested.displayCadenceControl = {
+            framesPerSecond: 30,
+            mode: 'profiler-owned-raf-v1',
+        };
         scenario.requested.autoQualityDeviceClass =
             policy.autoQualityDeviceClass;
         scenario.requested.autoQualityMetrics = structuredClone(
@@ -683,6 +741,7 @@ function regressionScenario(baseName, profileRun) {
         };
         scenario.sample = {
             ...scenario.sample,
+            displayCadenceControl: displayCadenceControlSample(),
             elapsedMs: 5_000,
             frames: 300,
             gpu: {
@@ -848,11 +907,7 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
         }
         scenario.requested.legacyOutlinePipeline = true;
         scenario.runtime.runtimeFrameLoop.activeLeaseCount = 0;
-        scenario.sample.renderedFps = scenario.baseName.includes(
-            '-camera-motion-',
-        )
-            ? 37
-            : 30;
+        scenario.sample.renderedFps = 30;
         scenario.sample.runtimeFrameLoopActiveLeaseCountAtEnd = 0;
         scenario.sample.runtimeFrameLoopActiveLeaseCountMin = 0;
         scenario.sample.runtimeFrameLoopActiveLeaseCountAtStart = 0;
@@ -874,9 +929,6 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             legacyOutlinePipeline: true,
         });
         const expectedFailures = new Set(requiredFailures);
-        if (scenario.sample.renderedFps > 32) {
-            expectedFailures.add('crossTierRenderedFps');
-        }
         scenario.acceptance = {
             checks: checkNames.acceptance.map((name) => ({
                 name,
@@ -923,6 +975,27 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
     const legacy = buildCrossTierCheckNameInventory(baseName, {
         legacyOutlinePipeline: true,
     });
+    const expectedPrefix = [
+        'crossTierGardenProfile',
+        'crossTierDisplayCadenceControlMode',
+        'crossTierDisplayCadenceControlTargetFramesPerSecond',
+        'crossTierDisplayCadenceControlInstalledAtStart',
+        'crossTierDisplayCadenceControlInstalledAtEnd',
+        'crossTierDisplayCadenceControlObservedMode',
+        'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+        'crossTierDisplayCadenceControlObservedFramesPerSecond',
+        'crossTierQualityRequest',
+        'crossTierQualityTier',
+    ];
+
+    assert.deepEqual(
+        cached.acceptance.slice(0, expectedPrefix.length),
+        expectedPrefix,
+    );
+    assert.deepEqual(
+        legacy.acceptance.slice(0, expectedPrefix.length),
+        expectedPrefix,
+    );
 
     assert.equal(
         cached.acceptance.includes('crossTierOutlinePerformanceWindowHits'),
@@ -949,6 +1022,177 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
     assert.equal(
         legacy.acceptance.includes('crossTierOutlinePerformanceWindowHits'),
         false,
+    );
+});
+
+test('v4 cross-tier display cadence evidence fails closed on raw control drift', async (t) => {
+    const firstCrossTierScenario = (reportValue) =>
+        reportValue.scenarios.find((scenario) =>
+            scenario.baseName.startsWith('game-cross-tier-'),
+        );
+    const cases = {
+        'symmetric missing request': ({ baseline, candidate }) => {
+            delete firstCrossTierScenario(baseline).requested
+                .displayCadenceControl;
+            delete firstCrossTierScenario(candidate).requested
+                .displayCadenceControl;
+        },
+        'symmetric missing sample control': ({ baseline, candidate }) => {
+            delete firstCrossTierScenario(baseline).sample
+                .displayCadenceControl;
+            delete firstCrossTierScenario(candidate).sample
+                .displayCadenceControl;
+        },
+        'requested mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).requested.displayCadenceControl.mode = 'browser-native-raf';
+        },
+        'requested target drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).requested.displayCadenceControl.framesPerSecond = 60;
+        },
+        'summary installation drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.installedAtEnd = false;
+        },
+        'summary mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.mode = 'browser-native-raf';
+        },
+        'summary target drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.requestedFramesPerSecond = 60;
+        },
+        'missing raw start snapshot': ({ candidate }) => {
+            delete firstCrossTierScenario(candidate).sample
+                .displayCadenceControl.atStart;
+        },
+        'raw mode drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atStart.mode = 'browser-native-raf';
+        },
+        'raw target drift': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.requestedFramesPerSecond = 60;
+        },
+        'raw installation failure': ({ candidate }) => {
+            const snapshot =
+                firstCrossTierScenario(candidate).sample.displayCadenceControl
+                    .atStart;
+            snapshot.installed = false;
+            snapshot.installationError = 'installation failed';
+        },
+        'raw non-null installation error': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.installationError =
+                'installation failed';
+        },
+        'raw counter rollback': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.atEnd.deliveredFrameCount = 499;
+        },
+        'published delta mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.nativeFrameCountDelta = 299;
+        },
+        'missing positive delivery delta': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.deliveredFrameCountDelta = 0;
+        },
+        'missing positive native delta': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.nativeFrameCountDelta = 0;
+        },
+        'sample elapsed mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.elapsedMs = 4_999;
+        },
+        'derived observed rate mismatch': ({ candidate }) => {
+            firstCrossTierScenario(
+                candidate,
+            ).sample.displayCadenceControl.observedFramesPerSecond = 29;
+        },
+    };
+
+    for (const [name, mutate] of Object.entries(cases)) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            mutate(pair);
+
+            const comparison = compareReports(pair.baseline, pair.candidate);
+
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(
+                comparison.validationErrors.join('\n'),
+                /displayCadenceControl|cadence control/i,
+            );
+        });
+    }
+});
+
+test('v4 cross-tier cadence inventory is exact and controlled-rate bounds are inclusive', () => {
+    const missingInventoryPair = regressionReportPair();
+    const scenario = missingInventoryPair.candidate.scenarios.find((value) =>
+        value.baseName.startsWith('game-cross-tier-'),
+    );
+    for (const result of [scenario.acceptance, scenario.budget]) {
+        result.checks = result.checks.filter(
+            ({ name }) => name !== 'crossTierDisplayCadenceControlObservedMode',
+        );
+    }
+    const missingInventory = compareReports(
+        missingInventoryPair.baseline,
+        missingInventoryPair.candidate,
+    );
+    assert.equal(missingInventory.status, 'invalid');
+    assert.match(
+        missingInventory.validationErrors.join('\n'),
+        /check name inventory/,
+    );
+
+    for (const [observedFramesPerSecond, deliveredFrameCountDelta] of [
+        [28, 140],
+        [32, 160],
+    ]) {
+        const pair = regressionReportPair();
+        const control = pair.candidate.scenarios.find((value) =>
+            value.baseName.startsWith('game-cross-tier-'),
+        ).sample.displayCadenceControl;
+        control.observedFramesPerSecond = observedFramesPerSecond;
+        control.deliveredFrameCountDelta = deliveredFrameCountDelta;
+        control.atEnd.deliveredFrameCount =
+            control.atStart.deliveredFrameCount + deliveredFrameCountDelta;
+
+        assert.notEqual(
+            compareReports(pair.baseline, pair.candidate).status,
+            'invalid',
+        );
+    }
+
+    const roundedElapsedPair = regressionReportPair();
+    roundedElapsedPair.candidate.scenarios.find((value) =>
+        value.baseName.startsWith('game-cross-tier-'),
+    ).sample.displayCadenceControl.elapsedMs = 5_000.01;
+    assert.notEqual(
+        compareReports(
+            roundedElapsedPair.baseline,
+            roundedElapsedPair.candidate,
+        ).status,
+        'invalid',
     );
 });
 
@@ -1118,23 +1362,9 @@ test('legacy continuous-render lease compatibility is limited to cross-tier and 
     }
 });
 
-test('legacy heartbeat baseline contract passes only as a strict symmetric matrix', () => {
+test('v4 legacy heartbeat baseline compares controlled cross-tier GPU evidence directly', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
-    for (const scenario of baseline.scenarios.filter(
-        ({ baseName }) =>
-            baseName === 'game-cross-tier-high-camera-motion-desktop',
-    )) {
-        scenario.sample.gpu.elapsedP95Ms = 18;
-        scenario.sample.gpu.elapsedMaxMs = 18;
-    }
-    for (const scenario of candidate.scenarios.filter(
-        ({ baseName }) =>
-            baseName === 'game-cross-tier-high-camera-motion-desktop',
-    )) {
-        scenario.sample.gpu.elapsedP95Ms = 22;
-        scenario.sample.gpu.elapsedMaxMs = 22;
-    }
     const baselineConfirmation = independentBaselineRepeat(baseline);
     const confirmation = independentRepeat(candidate);
 
@@ -1151,9 +1381,9 @@ test('legacy heartbeat baseline contract passes only as a strict symmetric matri
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.exitCode, 0);
     assert.equal(comparison.diagnostic, false);
-    assert.equal(comparison.comparisonContractVersion, 3);
+    assert.equal(comparison.comparisonContractVersion, 4);
     assert.equal(comparison.schemaVersion, 3);
-    assert.equal(comparison.summary.cadenceConfoundedComparisons, 5);
+    assert.equal(comparison.summary.cadenceConfoundedComparisons, 0);
     assert.equal(
         comparison.baselineConfirmation.schedulerContract,
         'legacy-heartbeat-v1',
@@ -1162,52 +1392,48 @@ test('legacy heartbeat baseline contract passes only as a strict symmetric matri
         buildMarkdown(comparison),
         /Baseline scheduler contract: legacy-heartbeat-v1/,
     );
-    const highCameraGpu = comparison.comparisons.find(
+    const crossTierGpu = comparison.comparisons.filter(
         ({ id, scenario }) =>
-            id === 'gpu.p95_ms' &&
-            scenario === 'game-cross-tier-high-camera-motion-desktop',
+            id === 'gpu.p95_ms' && scenario.startsWith('game-cross-tier-'),
     );
-    assert.equal(highCameraGpu.gateBasis, 'cadence-confounded');
-    assert.equal(highCameraGpu.decisionStatus, 'not-comparable');
+    assert.equal(crossTierGpu.length, 10);
     assert.equal(
-        highCameraGpu.controlScenario,
-        'game-cross-tier-high-steady-desktop',
-    );
-    assert.equal(highCameraGpu.baselineRelativeRegressionBreach, true);
-    assert.equal(highCameraGpu.rawThresholdObservation.regressionBreach, true);
-    assert.equal(highCameraGpu.regressionBreach, false);
-    assert.equal(highCameraGpu.pass, true);
-    assert.equal(
-        highCameraGpu.replications.every(
-            ({ decisionStatus, gateBasis, observedRegressionBreach }) =>
-                decisionStatus === 'not-comparable' &&
-                gateBasis === 'cadence-confounded' &&
-                observedRegressionBreach === true,
+        crossTierGpu.every(
+            ({ controlScenario, decisionStatus, gateBasis, replications }) =>
+                controlScenario === null &&
+                decisionStatus === 'comparable' &&
+                gateBasis === 'matched-cadence' &&
+                replications.every(
+                    (replication) =>
+                        replication.decisionStatus === 'comparable' &&
+                        replication.gateBasis === 'matched-cadence',
+                ),
         ),
         true,
     );
-    assert.match(
-        buildMarkdown(comparison),
-        /not comparable \(cadence-confounded\)/,
-    );
-    assert.match(
+    assert.doesNotMatch(
         buildMarkdown(comparison),
         /## Cadence-confounded GPU diagnostics/,
     );
 });
 
-test('cadence-confounded camera GPU evidence requires a matched same-tier steady control', () => {
+test('v4 rejects raw legacy motion outside the controlled cadence range', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     setLegacyCrossTierRenderedFps(
         baseline,
-        'game-cross-tier-high-steady-desktop',
-        32,
+        'game-cross-tier-high-camera-motion-desktop',
+        37,
     );
-    for (const scenario of candidate.scenarios.filter(
-        ({ baseName }) => baseName === 'game-cross-tier-high-steady-desktop',
+    for (const scenario of baseline.scenarios.filter(
+        ({ baseName }) =>
+            baseName === 'game-cross-tier-high-camera-motion-desktop',
     )) {
-        scenario.sample.renderedFps = 29;
+        for (const result of [scenario.acceptance, scenario.budget]) {
+            result.checks.find(
+                ({ name }) => name === 'crossTierRenderedFps',
+            ).pass = true;
+        }
     }
     const baselineConfirmation = independentBaselineRepeat(baseline);
     const confirmation = independentRepeat(candidate);
@@ -1226,16 +1452,23 @@ test('cadence-confounded camera GPU evidence requires a matched same-tier steady
     assert.equal(comparison.exitCode, 2);
     assert.match(
         comparison.validationErrors.join('\n'),
-        /mapped steady control for game-cross-tier-high-camera-motion-desktop requires every baseline and candidate raw sample at 28-32 FPS and a bundle-median delta no greater than 2 FPS/,
+        /game-cross-tier-high-camera-motion-desktop GPU p95 comparison cadence requires every baseline and candidate raw sample at 28-32 FPS and a bundle-median delta no greater than 2 FPS/,
+    );
+    assert.equal(comparison.summary.cadenceConfoundedComparisons, 0);
+    assert.equal(
+        comparison.comparisons.some(
+            ({ gateBasis }) => gateBasis === 'cadence-confounded',
+        ),
+        false,
     );
 });
 
-test('cadence-confounded camera GPU evidence requires strict steady-control timing', () => {
+test('v4 direct cross-tier GPU evidence retains strict timing validation', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     baseline.scenarios.find(
         ({ baseName, profileRun }) =>
-            baseName === 'game-cross-tier-high-steady-desktop' &&
+            baseName === 'game-cross-tier-high-camera-motion-desktop' &&
             profileRun === 1,
     ).sample.gpu.sampleCount -= 1;
     const baselineConfirmation = independentBaselineRepeat(baseline);
@@ -1255,19 +1488,29 @@ test('cadence-confounded camera GPU evidence requires strict steady-control timi
     assert.equal(comparison.exitCode, 2);
     assert.match(
         comparison.validationErrors.join('\n'),
-        /requires complete strict GPU timing in mapped steady control game-cross-tier-high-steady-desktop run 1|GPU timing marked valid requires/,
+        /GPU timing marked valid requires/,
     );
 });
 
-test('cadence-confounded classification must hold across all four bundle pairings', () => {
+test('v4 controlled cadence must hold across all four bundle pairings', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     const baselineConfirmation = independentBaselineRepeat(baseline);
     setLegacyCrossTierRenderedFps(
         baselineConfirmation,
         'game-cross-tier-high-camera-motion-desktop',
-        30,
+        33,
     );
+    for (const scenario of baselineConfirmation.scenarios.filter(
+        ({ baseName }) =>
+            baseName === 'game-cross-tier-high-camera-motion-desktop',
+    )) {
+        for (const result of [scenario.acceptance, scenario.budget]) {
+            result.checks.find(
+                ({ name }) => name === 'crossTierRenderedFps',
+            ).pass = true;
+        }
+    }
     const confirmation = independentRepeat(candidate);
 
     const comparison = compareConfirmedReports(
@@ -1284,7 +1527,7 @@ test('cadence-confounded classification must hold across all four bundle pairing
     assert.equal(comparison.exitCode, 2);
     assert.match(
         comparison.validationErrors.join('\n'),
-        /cadence-confounded GPU p95 classification must hold in every symmetric comparison pairing/,
+        /game-cross-tier-high-camera-motion-desktop GPU p95 comparison cadence requires every baseline and candidate raw sample at 28-32 FPS and a bundle-median delta no greater than 2 FPS/,
     );
 });
 
@@ -3928,12 +4171,12 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
             candidate.scenarios[0].servedBuildProvenance.dirty = true;
         },
         'mismatched scenario contract': ({ candidate }) => {
-            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 2;
+            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 3;
         },
-        'contract-v2 producer': ({ candidate }) => {
-            candidate.comparisonContractVersion = 2;
+        'contract-v3 producer': ({ candidate }) => {
+            candidate.comparisonContractVersion = 3;
             for (const scenario of candidate.scenarios) {
-                scenario.servedBuildProvenance.comparisonContractVersion = 2;
+                scenario.servedBuildProvenance.comparisonContractVersion = 3;
             }
         },
         'producer marked incomparable': ({ candidate }) => {

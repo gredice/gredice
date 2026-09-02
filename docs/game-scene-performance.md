@@ -321,10 +321,11 @@ post-calibration zero-RAF claim cannot pass across a reset or an idle boundary.
 This admits causally necessary retained and outstanding-receipt
 reconciliation without a phase-specific allowance, while a perpetual RAF
 keepalive cannot improve a GPU signal by adding browser wakeups. This remains
-comparison contract v3, and the new candidate counter and boundary state require
-a fresh final capture. Earlier canonical reports are invalid; omitted fields
-remain compatible only on the explicitly selected `legacy-heartbeat-v1`
-baseline side.
+part of comparison contract v4, and the candidate counter, boundary state, and
+controlled-display-cadence evidence require a fresh final capture. Earlier
+canonical reports are invalid; omitted scheduler fields remain compatible only
+on the explicitly selected `legacy-heartbeat-v1` baseline side.
+Controlled-display-cadence fields are required for both subjects.
 
 Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
@@ -509,7 +510,7 @@ topology signature and allowlists only the resulting scheduler checks, while the
 candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
-state `false`; the current comparison contract is `3`. The current harness also
+state `false`; the current comparison contract is `4`. The current harness also
 requires `legacyOutlinePipeline=true` only for the untouched legacy scheduler
 baseline; every canonical candidate and confirmation must record `false`. Run
 only one subject server and capture at a time so the other server cannot perturb
@@ -521,7 +522,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=3 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=4 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
 
@@ -531,7 +532,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=3 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=4 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
 ```
@@ -677,28 +678,28 @@ or every report is also invalid.
 Candidate reports cannot select this contract through either the CLI or public
 comparison API.
 
-Cross-tier GPU p95 is decisive only under comparable render cadence. The direct
-gate keeps its existing 15% relative boundary, 3 ms practical floor, 40% raw
-rank boundary, and 6 ms raw-rank floor when every raw baseline and candidate
-sample delivers 28–32 FPS and the two bundle medians differ by at most 2 FPS.
-Any other canonical-to-canonical cadence mismatch makes the evidence invalid.
+Cross-tier GPU p95 is decisive only under comparable render cadence. Comparison
+contract v4 installs `profiler-owned-raf-v1` before application code for every
+cross-tier steady and camera-motion run. It batches application/runtime RAF
+callbacks onto a requested 30 Hz clock while the profiler's frame sampler and
+GPU-query drain retain the captured native browser RAF. The report records the
+exact requested control, its start/end counter snapshots, delivered frame and
+callback deltas, native-frame delta, cancellations, and the observed delivery
+rate. Both subjects must report the same control, and every raw window must
+observe 28–32 controlled frames per second; a missing, malformed, inactive, or
+out-of-range control makes the matrix invalid. This document-start override is
+limited to the deterministic profiler page and does not change production
+runtime cadence.
 
-One narrow legacy exception records the known scheduler transition without
-pretending that per-query durations were measured at the same GPU operating
-point. A `legacy-heartbeat-v1` camera-motion GPU row is classified
-`gateBasis=cadence-confounded` and `decisionStatus=not-comparable` only when its
-legacy bundle median exceeds 32 FPS, every canonical camera-motion raw sample
-is within 28–32 FPS, and both legacy bundle medians exceed both canonical
-bundle medians across the complete symmetric matrix. Its raw GPU p95 ratio,
-threshold breach, mean query duration, and elapsed-window occupancy remain in
-JSON and Markdown as diagnostics, but they cannot pass or fail the release.
-The comparator maps each `*-camera-motion-*` scenario to the same-tier
-`*-steady-*` scenario. Every raw steady sample must be within 28–32 FPS, each
-of the four steady bundle pairings must have a median cadence delta no greater
-than 2 FPS, strict GPU timing must be complete in every run, and that steady GPU
-p95 row remains the decisive gate. A missing control, malformed query shape,
-cadence mismatch, or mixed confounded/direct classification across the four
-pairings makes the entire comparison invalid.
+With that explicit control, both steady and camera-motion GPU rows use the
+existing direct 15% relative boundary, 3 ms practical floor, 40% raw-rank
+boundary, and 6 ms raw-rank floor. Bundle-median delivered cadence must still
+differ by no more than 2 FPS. Historical contract-v3 artifacts may contain the
+legacy cadence-confound classification; the contract-v4 comparator never
+applies it, so it cannot downgrade a control failure or turn a v4 GPU row into
+a non-decisional result. The first contract-v3 four-report attempt remains
+diagnostic and invalid because several legacy steady runs exceeded 32 FPS. It
+must not be reused as release evidence.
 
 Strict GPU timing means `gpu.sampleCount` exactly equals
 `sample.renderedFrames`; the sample window and both counts are positive; timing
@@ -765,18 +766,17 @@ mature phases and the four-witness lifetime peak.
 | Long-task maximum / total duration | 20% | 10 / 20 ms |
 
 Rendered FPS uses the generic relative gate except where a scenario declares a
-semantic scheduler target. Cross-tier candidates and the fixed garden-switch
+semantic scheduler target. Both cross-tier subjects and the fixed garden-switch
 arrival 1 control must keep every raw run within 28–32 FPS around an observed
 30 FPS target; later garden-switch transition arrivals must deliver at least
 28 FPS. Baseline-relative FPS ratios stay in the report as diagnostics for
 those cases, so eliminating oversubmission is not misclassified as lost
-performance. Cross-tier GPU p95 additionally requires the matched-cadence
-contract above; legacy camera-motion rows that meet the exact oversubmission
-signature remain explicitly non-decisional and defer to their mapped steady
-control. Garden-switch GPU p95, per-render submissions, fixed-control total
-submissions, and causal scheduler wakeup accounting are hard gates. Elapsed GPU
-occupancy remains a complete raw diagnostic rather than a proxy for power or
-thermal behavior.
+performance. Cross-tier GPU p95 additionally requires the explicit
+profiler-owned cadence contract above; every steady and camera-motion row is
+decisional under contract v4. Garden-switch GPU p95, per-render submissions,
+fixed-control total submissions, and causal scheduler wakeup accounting are
+hard gates. Elapsed GPU occupancy remains a complete raw diagnostic rather than
+a proxy for power or thermal behavior.
 
 “Practical floor” is not an extra allowance added to the percentage. A signal
 is meaningful when its worsening reaches the floor while also crossing the
@@ -1711,10 +1711,11 @@ Required release evidence before merge:
   fixed-control total submissions.
   Every per-arrival occupancy window and the wall-time-weighted aggregate stay
   visible as diagnostics; no sample is discarded and no threshold is widened.
-- Cross-tier camera-motion GPU p95 is compared directly only at matched cadence.
-  The known legacy-heartbeat oversubmission pattern is marked
-  cadence-confounded and non-decisional in all four pairings; its same-tier
-  steady scenario must provide the matched-cadence decisive GPU control.
+- Cross-tier steady and camera-motion GPU p95 are compared directly only under
+  the contract-v4 profiler-owned 30 Hz application/runtime RAF. Every raw
+  sample must prove that control independently while profiler timing remains on
+  native browser RAF. Contract-v3 cadence-confounded artifacts are historical
+  diagnostics and cannot satisfy this release gate.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab. Timer-query occupancy is not a physical power or thermal

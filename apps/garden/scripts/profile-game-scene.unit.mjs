@@ -167,7 +167,7 @@ const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 3,
+    comparisonContractVersion: 4,
     dirty: false,
 };
 
@@ -323,7 +323,7 @@ test('report provenance rejects served-build, managed harness, and contract mism
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 4,
+                    comparisonContractVersion: 5,
                 },
             },
         ],
@@ -382,7 +382,7 @@ test('external report provenance still rejects served-build and contract mismatc
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 4,
+                    comparisonContractVersion: 5,
                 },
             },
         ],
@@ -1788,6 +1788,10 @@ test('cross-tier scenario set replays one High-target garden across every tier a
             assert.equal(scenario.autoQualityDeviceClass ?? null, device);
             assert.equal(scenario.budget, 'gameHighTarget');
             assert.equal(scenario.crossTierProfile, true);
+            assert.deepEqual(scenario.displayCadenceControl, {
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+            });
             assert.equal(scenario.dpr, 2);
             assert.equal(scenario.expectedDprCap, dprCap);
             assert.equal(scenario.expectedGroundDecorationDensity, density);
@@ -2638,7 +2642,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
     };
     const cleanSubject = {
         commit: 'b'.repeat(40),
-        comparisonContractVersion: 3,
+        comparisonContractVersion: 4,
         dirty: false,
     };
     assert.equal(
@@ -2658,7 +2662,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
         {
             servedBuild: {
                 ...cleanSubject,
-                comparisonContractVersion: 4,
+                comparisonContractVersion: 5,
             },
         },
     ]) {
@@ -2825,6 +2829,169 @@ test('injected GPU timing yields to an existing elapsed-time query', () => {
         installBrowserMetrics.toString(),
         /getQuery\([\s\S]*TIME_ELAPSED_EXT[\s\S]*CURRENT_QUERY/,
     );
+});
+
+test('profiler display cadence control owns app RAF while preserving native profiler RAF and cancellation', () => {
+    const keys = [
+        'cancelAnimationFrame',
+        'requestAnimationFrame',
+        '__gameProfileCancelNativeAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileMetrics',
+        '__gameProfileRequestNativeAnimationFrame',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    const nativeCallbacks = new Map();
+    const cancelledNativeHandles = [];
+    let nextNativeHandle = 100;
+    const nativeRequestAnimationFrame = (callback) => {
+        nextNativeHandle += 1;
+        nativeCallbacks.set(nextNativeHandle, callback);
+        return nextNativeHandle;
+    };
+    const nativeCancelAnimationFrame = (handle) => {
+        cancelledNativeHandles.push(handle);
+        nativeCallbacks.delete(handle);
+    };
+    const deliverNextNativeFrame = (timestamp) => {
+        const entry = nativeCallbacks.entries().next().value;
+        assert.ok(entry, `expected a native RAF callback at ${timestamp}`);
+        const [handle, callback] = entry;
+        nativeCallbacks.delete(handle);
+        callback(timestamp);
+    };
+
+    try {
+        setGlobal('requestAnimationFrame', nativeRequestAnimationFrame);
+        setGlobal('cancelAnimationFrame', nativeCancelAnimationFrame);
+        setGlobal('__gameProfileMetrics', {});
+
+        installBrowserMetrics({
+            displayCadenceControl: {
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+            },
+            externalGpuTimer: false,
+        });
+
+        assert.notEqual(
+            globalThis.requestAnimationFrame,
+            nativeRequestAnimationFrame,
+        );
+        assert.notEqual(
+            globalThis.__gameProfileRequestNativeAnimationFrame,
+            globalThis.requestAnimationFrame,
+        );
+        let nativeProfilerTimestamp = null;
+        globalThis.__gameProfileRequestNativeAnimationFrame((timestamp) => {
+            nativeProfilerTimestamp = timestamp;
+        });
+        deliverNextNativeFrame(-10);
+        assert.equal(nativeProfilerTimestamp, -10);
+        assert.equal(
+            globalThis.__gameProfileDisplayCadenceControl.snapshot()
+                .nativeFrameCount,
+            0,
+        );
+
+        const deliveries = [];
+        let nestedHandle = null;
+        const firstHandle = globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['first', timestamp]);
+            nestedHandle = globalThis.requestAnimationFrame(
+                (nestedTimestamp) => {
+                    deliveries.push(['nested', nestedTimestamp]);
+                },
+            );
+        });
+        const cancelledHandle = globalThis.requestAnimationFrame(
+            (timestamp) => {
+                deliveries.push(['cancelled', timestamp]);
+            },
+        );
+        const batchedHandle = globalThis.requestAnimationFrame((timestamp) => {
+            deliveries.push(['batched', timestamp]);
+        });
+        assert.notEqual(firstHandle, cancelledHandle);
+        assert.notEqual(cancelledHandle, batchedHandle);
+        assert.equal(nativeCallbacks.size, 1);
+        globalThis.cancelAnimationFrame(String(cancelledHandle));
+
+        deliverNextNativeFrame(0);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(typeof nestedHandle, 'number');
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(16.7);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+        ]);
+        assert.equal(nativeCallbacks.size, 1);
+
+        deliverNextNativeFrame(33.4);
+        assert.deepEqual(deliveries, [
+            ['first', 0],
+            ['batched', 0],
+            ['nested', 33.4],
+        ]);
+        assert.equal(nativeCallbacks.size, 0);
+
+        globalThis.cancelAnimationFrame(999_999);
+        const cancelledAloneHandle = globalThis.requestAnimationFrame(() => {
+            deliveries.push(['cancelled-alone', 100]);
+        });
+        assert.equal(nativeCallbacks.size, 1);
+        globalThis.cancelAnimationFrame(cancelledAloneHandle);
+        assert.equal(nativeCallbacks.size, 0);
+        assert.equal(cancelledNativeHandles.length, 1);
+
+        const telemetry =
+            globalThis.__gameProfileDisplayCadenceControl.snapshot();
+        assert.equal(telemetry.installed, true);
+        assert.equal(telemetry.mode, 'profiler-owned-raf-v1');
+        assert.equal(telemetry.requestedFramesPerSecond, 30);
+        assert.equal(telemetry.requestCount, 5);
+        assert.equal(telemetry.cancelRequestCount, 3);
+        assert.equal(telemetry.cancelledBeforeDeliveryCount, 2);
+        assert.equal(telemetry.deliveredCallbackCount, 3);
+        assert.equal(telemetry.deliveredFrameCount, 2);
+        assert.equal(telemetry.nativeFrameCount, 3);
+        assert.equal(telemetry.nativeFrameCancellationCount, 1);
+        assert.equal(telemetry.pendingCallbackCount, 0);
+        assert.equal(telemetry.nativeFramePending, false);
+        assert.ok(
+            Math.abs(telemetry.observedFramesPerSecond - 29.94) < 0.01,
+        );
+        assert.throws(
+            () => globalThis.requestAnimationFrame(null),
+            /callback must be a function/,
+        );
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('profile context tracking starts before Canvas discovery without handling loss itself', async () => {
@@ -3518,6 +3685,108 @@ test('interactive sampling stops at the endpoint and drains bounded long tasks l
         assert.deepEqual(events, ['stop-gpu', 'finish-gpu', 'read-long-tasks']);
         assert.equal(longTaskRange?.start, startedAt);
         assert.equal(longTaskRange?.end, sampleAtEndpoint.sampleWindow.endedAt);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
+});
+
+test('interactive sampling stays on native profiler RAF and reports controlled delivery telemetry', async () => {
+    const keys = [
+        'document',
+        'requestAnimationFrame',
+        '__gameProfileDisplayCadenceControl',
+        '__gameProfileInteractiveSample',
+        '__gameProfileLongTasks',
+        '__gameProfileMetrics',
+        '__gameProfileRequestNativeAnimationFrame',
+        '__grediceGameProfile',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    let controlledRequestCount = 0;
+    let deliveredFrameCount = 100;
+    const nativeCallbacks = [];
+
+    try {
+        setGlobal('document', { querySelector: () => null });
+        setGlobal('requestAnimationFrame', () => {
+            controlledRequestCount += 1;
+            return 99;
+        });
+        setGlobal('__gameProfileRequestNativeAnimationFrame', (callback) => {
+            nativeCallbacks.push(callback);
+            return nativeCallbacks.length;
+        });
+        setGlobal('__gameProfileDisplayCadenceControl', {
+            snapshot: () => ({
+                cancelRequestCount: 2,
+                cancelledBeforeDeliveryCount: 1,
+                deliveredCallbackCount: deliveredFrameCount * 2,
+                deliveredFrameCount,
+                installed: true,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCount: deliveredFrameCount * 3,
+                requestedFramesPerSecond: 30,
+            }),
+        });
+        setGlobal('__gameProfileMetrics', {
+            drawCalls: 0,
+            instancedDrawCalls: 0,
+            renderedFrames: 0,
+            submittedTriangles: 0,
+        });
+        setGlobal('__grediceGameProfile', {});
+
+        beginInteractiveProfileSample();
+        assert.equal(controlledRequestCount, 0);
+        assert.equal(nativeCallbacks.length, 1);
+        globalThis.__gameProfileInteractiveSample.startedAt =
+            performance.now() - 1_000;
+        deliveredFrameCount = 130;
+
+        const sample = await finishInteractiveProfileSample();
+        assert.equal(controlledRequestCount, 0);
+        assert.equal(sample.displayCadenceControl.installedAtStart, true);
+        assert.equal(sample.displayCadenceControl.installedAtEnd, true);
+        assert.equal(
+            sample.displayCadenceControl.mode,
+            'profiler-owned-raf-v1',
+        );
+        assert.equal(
+            sample.displayCadenceControl.requestedFramesPerSecond,
+            30,
+        );
+        assert.equal(
+            sample.displayCadenceControl.deliveredFrameCountDelta,
+            30,
+        );
+        assert.equal(
+            sample.displayCadenceControl.deliveredCallbackCountDelta,
+            60,
+        );
+        assert.equal(sample.displayCadenceControl.nativeFrameCountDelta, 90);
+        assert.ok(
+            sample.displayCadenceControl.observedFramesPerSecond >= 29.5 &&
+                sample.displayCadenceControl.observedFramesPerSecond <= 30.5,
+        );
     } finally {
         for (const key of keys) {
             const descriptor = descriptors.get(key);
@@ -4239,6 +4508,10 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         pageErrors: [],
         requested: {
             crossTierProfile: true,
+            displayCadenceControl: {
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+            },
             expectedDprCap: 1,
             expectedGroundDecorationDensity: 0,
             expectedQualityTier: 'low',
@@ -4291,6 +4564,16 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
                 width: 1280,
             },
             drawCalls: 100,
+            displayCadenceControl: {
+                deliveredCallbackCountDelta: 300,
+                deliveredFrameCountDelta: 150,
+                installedAtEnd: true,
+                installedAtStart: true,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCountDelta: 300,
+                observedFramesPerSecond: 30,
+                requestedFramesPerSecond: 30,
+            },
             elapsedMs: 5_000,
             frames: 300,
             performanceMeasurementMode: 'separate-observer-free-window-v1',
@@ -4500,6 +4783,40 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
         },
         ['crossTierRenderedFramesMatchR3fFrameCallbackDelta'],
     );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.sample.displayCadenceControl = null;
+        },
+        [
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+        ],
+    );
+    for (const observedFramesPerSecond of [27.99, 32.01]) {
+        expectFailedChecks(
+            (candidate) => {
+                candidate.sample.displayCadenceControl.observedFramesPerSecond =
+                    observedFramesPerSecond;
+            },
+            ['crossTierDisplayCadenceControlObservedFramesPerSecond'],
+        );
+    }
+    for (const observedFramesPerSecond of [28, 32]) {
+        assert.equal(
+            evaluateCrossTierAcceptance({
+                ...input,
+                sample: {
+                    ...input.sample,
+                    displayCadenceControl: {
+                        ...input.sample.displayCadenceControl,
+                        observedFramesPerSecond,
+                    },
+                },
+            }).pass,
+            true,
+        );
+    }
     for (const renderedFps of [27.99, 32.01]) {
         expectFailedChecks(
             (candidate) => {
@@ -4633,6 +4950,10 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 narrowViewport: false,
             },
             crossTierProfile: true,
+            displayCadenceControl: {
+                framesPerSecond: 30,
+                mode: 'profiler-owned-raf-v1',
+            },
             dpr: 2,
             expectedAutoQualityMetrics: {
                 coarsePointer: false,
@@ -4691,6 +5012,16 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 width: 1_920,
             },
             drawCalls: 100,
+            displayCadenceControl: {
+                deliveredCallbackCountDelta: 300,
+                deliveredFrameCountDelta: 150,
+                installedAtEnd: true,
+                installedAtStart: true,
+                mode: 'profiler-owned-raf-v1',
+                nativeFrameCountDelta: 300,
+                observedFramesPerSecond: 30,
+                requestedFramesPerSecond: 30,
+            },
             elapsedMs: 5_000,
             frames: 300,
             performanceMeasurementMode: 'separate-observer-free-window-v1',

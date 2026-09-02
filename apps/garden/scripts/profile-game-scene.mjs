@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
-const gameProfileComparisonContractVersion = 3;
+const gameProfileComparisonContractVersion = 4;
 const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
 const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
@@ -154,6 +154,8 @@ const runtimeOwnerMinimumDeliveryExposureMs = 500;
 const runtimeOwnerMinimumDeliveryRatio = 0.85;
 const runtimeOwnerMaximumDeliveryRatio = 1.15;
 const crossTierAmbientTargetFramesPerSecond = 30;
+const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
+const crossTierDisplayCadenceControlFramesPerSecond = 30;
 const crossTierMinimumRenderedFramesPerSecond = 28;
 const crossTierMaximumRenderedFramesPerSecond = 32;
 
@@ -613,6 +615,10 @@ const crossTierScenarios = crossTierProfileMatrix.flatMap((profile) =>
         isMobile: false,
         budget: 'gameHighTarget',
         crossTierProfile: true,
+        displayCadenceControl: {
+            framesPerSecond: crossTierDisplayCadenceControlFramesPerSecond,
+            mode: crossTierDisplayCadenceControlMode,
+        },
         expectedDprCap: profile.dprCap,
         expectedGroundDecorationDensity: profile.groundDecorationDensity,
         expectedQualityTier: profile.tier,
@@ -2614,7 +2620,186 @@ function installProfileContextTracker() {
 
 const installGardenSwitchContextTracker = installProfileContextTracker;
 
-function installBrowserMetrics({ externalGpuTimer = true } = {}) {
+function installBrowserMetrics({
+    displayCadenceControl = null,
+    externalGpuTimer = true,
+} = {}) {
+    const nativeRequestAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
+    const nativeCancelAnimationFrame =
+        globalThis.__gameProfileCancelNativeAnimationFrame ??
+        globalThis.cancelAnimationFrame.bind(globalThis);
+    globalThis.__gameProfileRequestNativeAnimationFrame ??=
+        nativeRequestAnimationFrame;
+    globalThis.__gameProfileCancelNativeAnimationFrame ??=
+        nativeCancelAnimationFrame;
+
+    if (
+        displayCadenceControl !== null &&
+        globalThis.__gameProfileDisplayCadenceControl === undefined
+    ) {
+        const requestedFramesPerSecond =
+            displayCadenceControl?.framesPerSecond;
+        const mode = displayCadenceControl?.mode;
+        const validRequest =
+            typeof requestedFramesPerSecond === 'number' &&
+            Number.isFinite(requestedFramesPerSecond) &&
+            requestedFramesPerSecond > 0 &&
+            mode === 'profiler-owned-raf-v1';
+
+        if (!validRequest) {
+            globalThis.__gameProfileDisplayCadenceControl = {
+                snapshot: () => ({
+                    installed: false,
+                    installationError:
+                        'Invalid profiler display-cadence control request',
+                    mode: typeof mode === 'string' ? mode : null,
+                    requestedFramesPerSecond:
+                        typeof requestedFramesPerSecond === 'number'
+                            ? requestedFramesPerSecond
+                            : null,
+                }),
+            };
+        } else {
+            const intervalMs = 1_000 / requestedFramesPerSecond;
+            const dueToleranceMs = Math.min(1, intervalMs * 0.05);
+            const pendingCallbacks = new Map();
+            let cancelRequestCount = 0;
+            let cancelledBeforeDeliveryCount = 0;
+            let deliveredCallbackCount = 0;
+            let deliveredFrameCount = 0;
+            let firstDeliveredAt = null;
+            let lastDeliveredAt = null;
+            let nativeFrameCancellationCount = 0;
+            let nativeFrameCount = 0;
+            let nextDeliveryAt = null;
+            let nextHandle = 0;
+            let requestCount = 0;
+            let scheduledNativeFrame = null;
+
+            const reportCallbackError = (error) => {
+                if (typeof globalThis.reportError === 'function') {
+                    globalThis.reportError(error);
+                    return;
+                }
+                setTimeout(() => {
+                    throw error;
+                }, 0);
+            };
+            const scheduleNativeFrame = () => {
+                if (
+                    scheduledNativeFrame !== null ||
+                    pendingCallbacks.size === 0
+                ) {
+                    return;
+                }
+                scheduledNativeFrame = nativeRequestAnimationFrame(
+                    deliverNativeFrame,
+                );
+            };
+            const deliverNativeFrame = (timestamp) => {
+                scheduledNativeFrame = null;
+                nativeFrameCount += 1;
+                if (pendingCallbacks.size === 0) {
+                    return;
+                }
+                if (
+                    nextDeliveryAt !== null &&
+                    timestamp + dueToleranceMs < nextDeliveryAt
+                ) {
+                    scheduleNativeFrame();
+                    return;
+                }
+
+                nextDeliveryAt ??= timestamp;
+                while (nextDeliveryAt <= timestamp + dueToleranceMs) {
+                    nextDeliveryAt += intervalMs;
+                }
+                const callbacks = [...pendingCallbacks.values()];
+                pendingCallbacks.clear();
+                deliveredFrameCount += 1;
+                deliveredCallbackCount += callbacks.length;
+                firstDeliveredAt ??= timestamp;
+                lastDeliveredAt = timestamp;
+                for (const callback of callbacks) {
+                    try {
+                        callback(timestamp);
+                    } catch (error) {
+                        reportCallbackError(error);
+                    }
+                }
+                scheduleNativeFrame();
+            };
+            const controlledRequestAnimationFrame = (callback) => {
+                if (typeof callback !== 'function') {
+                    throw new TypeError(
+                        'requestAnimationFrame callback must be a function',
+                    );
+                }
+                do {
+                    nextHandle = (nextHandle + 1) >>> 0;
+                } while (
+                    nextHandle === 0 ||
+                    pendingCallbacks.has(nextHandle)
+                );
+                requestCount += 1;
+                pendingCallbacks.set(nextHandle, callback);
+                scheduleNativeFrame();
+                return nextHandle;
+            };
+            const controlledCancelAnimationFrame = (handle) => {
+                cancelRequestCount += 1;
+                const normalizedHandle = Number(handle) >>> 0;
+                if (!pendingCallbacks.delete(normalizedHandle)) {
+                    return;
+                }
+                cancelledBeforeDeliveryCount += 1;
+                if (
+                    pendingCallbacks.size === 0 &&
+                    scheduledNativeFrame !== null
+                ) {
+                    nativeCancelAnimationFrame(scheduledNativeFrame);
+                    scheduledNativeFrame = null;
+                    nativeFrameCancellationCount += 1;
+                }
+            };
+
+            const controller = {
+                snapshot: () => ({
+                    cancelRequestCount,
+                    cancelledBeforeDeliveryCount,
+                    deliveredCallbackCount,
+                    deliveredFrameCount,
+                    firstDeliveredAt,
+                    installed: true,
+                    installationError: null,
+                    intervalMs,
+                    lastDeliveredAt,
+                    mode,
+                    nativeFrameCancellationCount,
+                    nativeFrameCount,
+                    nativeFramePending: scheduledNativeFrame !== null,
+                    observedFramesPerSecond:
+                        deliveredFrameCount > 1 &&
+                        firstDeliveredAt !== null &&
+                        lastDeliveredAt !== null &&
+                        lastDeliveredAt > firstDeliveredAt
+                            ? ((deliveredFrameCount - 1) * 1_000) /
+                              (lastDeliveredAt - firstDeliveredAt)
+                            : null,
+                    pendingCallbackCount: pendingCallbacks.size,
+                    requestCount,
+                    requestedFramesPerSecond,
+                }),
+            };
+            globalThis.__gameProfileDisplayCadenceControl = controller;
+            globalThis.requestAnimationFrame =
+                controlledRequestAnimationFrame;
+            globalThis.cancelAnimationFrame = controlledCancelAnimationFrame;
+        }
+    }
+
     if (globalThis.__gameProfileMetrics) {
         return;
     }
@@ -2769,7 +2954,7 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
                     break;
                 }
                 await new Promise((resolveFrame) =>
-                    requestAnimationFrame(resolveFrame),
+                    nativeRequestAnimationFrame(resolveFrame),
                 );
             }
             pollGpuQueries();
@@ -2842,9 +3027,9 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
     const trackRafTick = () => {
         rafTick += 1;
         pollGpuQueries();
-        requestAnimationFrame(trackRafTick);
+        nativeRequestAnimationFrame(trackRafTick);
     };
-    requestAnimationFrame(trackRafTick);
+    nativeRequestAnimationFrame(trackRafTick);
 
     const recordLongTasks = (entries) => {
         for (const entry of entries) {
@@ -3047,6 +3232,9 @@ function installBrowserMetrics({ externalGpuTimer = true } = {}) {
 }
 
 function beginInteractiveProfileSample() {
+    const requestProfileAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
     const metrics = globalThis.__gameProfileMetrics;
     if (metrics) {
         metrics.drawCalls = 0;
@@ -3086,6 +3274,9 @@ function beginInteractiveProfileSample() {
         ),
         intervals: [],
         lastFrameAt: startedAt,
+        displayCadenceControlAtStart:
+            globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ??
+            null,
         runtimeFrameLoopAtStart:
             runtimeFrameLoopTelemetry &&
             typeof runtimeFrameLoopTelemetry === 'object'
@@ -3101,16 +3292,21 @@ function beginInteractiveProfileSample() {
         }
         sample.intervals.push(timestamp - sample.lastFrameAt);
         sample.lastFrameAt = timestamp;
-        requestAnimationFrame(step);
+        requestProfileAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    requestProfileAnimationFrame(step);
 }
 
 async function primeGardenSwitchProfileSample() {
     if (!globalThis.__gameProfileInteractiveSample?.running) {
         throw new Error('No active garden-switch profile sample to prime.');
     }
-    await new Promise((resolveFrame) => requestAnimationFrame(resolveFrame));
+    const requestProfileAnimationFrame =
+        globalThis.__gameProfileRequestNativeAnimationFrame ??
+        globalThis.requestAnimationFrame.bind(globalThis);
+    await new Promise((resolveFrame) =>
+        requestProfileAnimationFrame(resolveFrame),
+    );
 }
 
 async function beginGardenSwitchProfileSample(page) {
@@ -3156,6 +3352,59 @@ async function finishInteractiveProfileSample() {
     const safeElapsedSeconds = Math.max(Number.EPSILON, elapsedSeconds);
     const safeRafFrames = Math.max(1, rafFrames);
     const safeRenderedFrames = Math.max(1, renderedFrames);
+    const displayCadenceControlAtEnd =
+        globalThis.__gameProfileDisplayCadenceControl?.snapshot?.() ?? null;
+    const displayCadenceControlAtStart =
+        sample.displayCadenceControlAtStart ?? null;
+    const displayCadenceCounterDelta = (field) => {
+        const startValue = displayCadenceControlAtStart?.[field];
+        const endValue = displayCadenceControlAtEnd?.[field];
+        return typeof startValue === 'number' && typeof endValue === 'number'
+            ? endValue - startValue
+            : null;
+    };
+    const deliveredDisplayFrameCount = displayCadenceCounterDelta(
+        'deliveredFrameCount',
+    );
+    const displayCadenceControl =
+        displayCadenceControlAtStart !== null ||
+        displayCadenceControlAtEnd !== null
+            ? {
+                  atEnd: displayCadenceControlAtEnd,
+                  atStart: displayCadenceControlAtStart,
+                  cancelRequestCountDelta:
+                      displayCadenceCounterDelta('cancelRequestCount'),
+                  cancelledBeforeDeliveryCountDelta:
+                      displayCadenceCounterDelta(
+                          'cancelledBeforeDeliveryCount',
+                      ),
+                  deliveredCallbackCountDelta: displayCadenceCounterDelta(
+                      'deliveredCallbackCount',
+                  ),
+                  deliveredFrameCountDelta: deliveredDisplayFrameCount,
+                  elapsedMs: elapsedSeconds * 1_000,
+                  installedAtEnd:
+                      displayCadenceControlAtEnd?.installed === true,
+                  installedAtStart:
+                      displayCadenceControlAtStart?.installed === true,
+                  mode:
+                      displayCadenceControlAtEnd?.mode ??
+                      displayCadenceControlAtStart?.mode ??
+                      null,
+                  nativeFrameCountDelta:
+                      displayCadenceCounterDelta('nativeFrameCount'),
+                  observedFramesPerSecond:
+                      typeof deliveredDisplayFrameCount === 'number'
+                          ? deliveredDisplayFrameCount / safeElapsedSeconds
+                          : null,
+                  requestedFramesPerSecond:
+                      displayCadenceControlAtEnd
+                          ?.requestedFramesPerSecond ??
+                      displayCadenceControlAtStart
+                          ?.requestedFramesPerSecond ??
+                      null,
+              }
+            : null;
     const readProfileCounter = (field) => {
         const value = globalThis.__grediceGameProfile?.[field];
         return typeof value === 'number' ? value : null;
@@ -3196,6 +3445,7 @@ async function finishInteractiveProfileSample() {
         drawCallsPerRenderedFrame:
             renderedFrames > 0 ? drawCalls / safeRenderedFrames : 0,
         drawCallsPerSecond: drawCalls / safeElapsedSeconds,
+        displayCadenceControl,
         elapsedMs: elapsedSeconds * 1000,
         fps: rafFrames / safeElapsedSeconds,
         frames: rafFrames,
@@ -8399,6 +8649,7 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         );
     }
     await page.addInitScript(installBrowserMetrics, {
+        displayCadenceControl: scenario.displayCadenceControl ?? null,
         externalGpuTimer: scenario.externalGpuTimer !== false,
     });
 
@@ -8951,6 +9202,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             }
             globalThis.__gameProfileLongTasks = [];
             globalThis.__gameProfileGpuTimer?.reset();
+            const requestProfileAnimationFrame =
+                globalThis.__gameProfileRequestNativeAnimationFrame ??
+                globalThis.requestAnimationFrame.bind(globalThis);
 
             const intervals = [];
             const start = performance.now();
@@ -9716,9 +9970,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                         resolveSample();
                         return;
                     }
-                    requestAnimationFrame(step);
+                    requestProfileAnimationFrame(step);
                 };
-                requestAnimationFrame(step);
+                requestProfileAnimationFrame(step);
             });
             const profileRecoveryPromise = adaptiveHighProfileControlRecovery
                 ? (async () => {
@@ -11480,6 +11734,9 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         buildingFixture:
             profileMetadata?.buildingFixture ?? request.buildingFixture,
         crossTierProfile: scenario.crossTierProfile === true,
+        displayCadenceControl: scenario.displayCadenceControl
+            ? { ...scenario.displayCadenceControl }
+            : null,
         details: profileMetadata?.details ?? request.details,
         debugHud: profileMetadata?.debugHud ?? request.debugHud,
         dpr: scenario.dpr,
@@ -11658,6 +11915,42 @@ function roundSample(sample) {
         drawCallsPerRafFrame: round(sample.drawCallsPerRafFrame, 1),
         drawCallsPerRenderedFrame: round(sample.drawCallsPerRenderedFrame, 1),
         drawCallsPerSecond: round(sample.drawCallsPerSecond, 1),
+        displayCadenceControl: sample.displayCadenceControl
+            ? {
+                  ...sample.displayCadenceControl,
+                  atEnd: sample.displayCadenceControl.atEnd
+                      ? {
+                            ...sample.displayCadenceControl.atEnd,
+                            intervalMs: round(
+                                sample.displayCadenceControl.atEnd.intervalMs,
+                            ),
+                            observedFramesPerSecond: round(
+                                sample.displayCadenceControl.atEnd
+                                    .observedFramesPerSecond,
+                                2,
+                            ),
+                        }
+                      : null,
+                  atStart: sample.displayCadenceControl.atStart
+                      ? {
+                            ...sample.displayCadenceControl.atStart,
+                            intervalMs: round(
+                                sample.displayCadenceControl.atStart.intervalMs,
+                            ),
+                            observedFramesPerSecond: round(
+                                sample.displayCadenceControl.atStart
+                                    .observedFramesPerSecond,
+                                2,
+                            ),
+                        }
+                      : null,
+                  elapsedMs: round(sample.displayCadenceControl.elapsedMs),
+                  observedFramesPerSecond: round(
+                      sample.displayCadenceControl.observedFramesPerSecond,
+                      2,
+                  ),
+              }
+            : sample.displayCadenceControl,
         effectiveDprAtEnd: round(sample.effectiveDprAtEnd, 3),
         effectiveDprMin: round(sample.effectiveDprMin, 3),
         elapsedMs: round(sample.elapsedMs),
@@ -14120,6 +14413,42 @@ function evaluateCrossTierAcceptance({
     const legacyOutlinePipeline = requested.legacyOutlinePipeline === true;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
+        exact(
+            'crossTierDisplayCadenceControlMode',
+            requested.displayCadenceControl?.mode,
+            crossTierDisplayCadenceControlMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlTargetFramesPerSecond',
+            requested.displayCadenceControl?.framesPerSecond,
+            crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlInstalledAtStart',
+            sample?.displayCadenceControl?.installedAtStart,
+            true,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlInstalledAtEnd',
+            sample?.displayCadenceControl?.installedAtEnd,
+            true,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedMode',
+            sample?.displayCadenceControl?.mode,
+            crossTierDisplayCadenceControlMode,
+        ),
+        exact(
+            'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+            sample?.displayCadenceControl?.requestedFramesPerSecond,
+            crossTierDisplayCadenceControlFramesPerSecond,
+        ),
+        range(
+            'crossTierDisplayCadenceControlObservedFramesPerSecond',
+            sample?.displayCadenceControl?.observedFramesPerSecond,
+            crossTierMinimumRenderedFramesPerSecond,
+            crossTierMaximumRenderedFramesPerSecond,
+        ),
         exact(
             'crossTierQualityRequest',
             requested.quality,

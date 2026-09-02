@@ -10,7 +10,9 @@ import {
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const comparisonContractVersion = 3;
+const displayCadenceControlComparisonContractVersion = 4;
+const comparisonContractVersion =
+    displayCadenceControlComparisonContractVersion;
 const comparisonReportSchemaVersion = 3;
 const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
@@ -86,6 +88,23 @@ const gardenSwitchMaximumRenderedFps =
 const gardenSwitchGpuOccupancyDiagnosticGate =
     'GPU p95, semantic delivery, causal scheduler wakeup accounting, and submitted render work';
 const crossTierTargetFramesPerSecond = 30;
+const crossTierDisplayCadenceControlMode = 'profiler-owned-raf-v1';
+const crossTierDisplayCadenceCounterFields = [
+    'cancelRequestCount',
+    'cancelledBeforeDeliveryCount',
+    'deliveredCallbackCount',
+    'deliveredFrameCount',
+    'nativeFrameCancellationCount',
+    'nativeFrameCount',
+    'requestCount',
+];
+const crossTierDisplayCadenceDeltaFields = [
+    ['cancelRequestCountDelta', 'cancelRequestCount'],
+    ['cancelledBeforeDeliveryCountDelta', 'cancelledBeforeDeliveryCount'],
+    ['deliveredCallbackCountDelta', 'deliveredCallbackCount'],
+    ['deliveredFrameCountDelta', 'deliveredFrameCount'],
+    ['nativeFrameCountDelta', 'nativeFrameCount'],
+];
 const crossTierRenderedFpsTolerance = 2;
 const crossTierMinimumRenderedFps =
     crossTierTargetFramesPerSecond - crossTierRenderedFpsTolerance;
@@ -103,6 +122,13 @@ const legacyHeartbeatRequiredFailureNames = [
 ];
 const crossTierAcceptanceCheckPrefix = [
     'crossTierGardenProfile',
+    'crossTierDisplayCadenceControlMode',
+    'crossTierDisplayCadenceControlTargetFramesPerSecond',
+    'crossTierDisplayCadenceControlInstalledAtStart',
+    'crossTierDisplayCadenceControlInstalledAtEnd',
+    'crossTierDisplayCadenceControlObservedMode',
+    'crossTierDisplayCadenceControlObservedTargetFramesPerSecond',
+    'crossTierDisplayCadenceControlObservedFramesPerSecond',
     'crossTierQualityRequest',
     'crossTierQualityTier',
 ];
@@ -622,6 +648,272 @@ function validateRetainedHeapEvidence(errors, memory, path) {
     );
 }
 
+function validateCrossTierDisplayCadenceControlSnapshot(errors, value, path) {
+    if (!isRecord(value)) {
+        errors.push(`${path} is missing`);
+        return null;
+    }
+    validateExactValue(errors, value.installed, true, `${path}.installed`);
+    validateExactValue(
+        errors,
+        value.installationError,
+        null,
+        `${path}.installationError`,
+    );
+    validateExactValue(
+        errors,
+        value.mode,
+        crossTierDisplayCadenceControlMode,
+        `${path}.mode`,
+    );
+    validateExactValue(
+        errors,
+        value.requestedFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${path}.requestedFramesPerSecond`,
+    );
+    validatePositiveNumber(errors, value.intervalMs, `${path}.intervalMs`);
+    if (
+        isFiniteNumber(value.intervalMs) &&
+        Math.abs(value.intervalMs - 1_000 / crossTierTargetFramesPerSecond) >
+            0.01
+    ) {
+        errors.push(
+            `${path}.intervalMs must match the ${crossTierTargetFramesPerSecond} FPS target`,
+        );
+    }
+    for (const field of crossTierDisplayCadenceCounterFields) {
+        if (!Number.isInteger(value[field]) || value[field] < 0) {
+            errors.push(`${path}.${field} must be a non-negative integer`);
+        }
+    }
+    if (
+        !Number.isInteger(value.pendingCallbackCount) ||
+        value.pendingCallbackCount < 0
+    ) {
+        errors.push(
+            `${path}.pendingCallbackCount must be a non-negative integer`,
+        );
+    }
+    if (typeof value.nativeFramePending !== 'boolean') {
+        errors.push(`${path}.nativeFramePending must be a boolean`);
+    }
+    if (
+        Number.isInteger(value.requestCount) &&
+        Number.isInteger(value.deliveredCallbackCount) &&
+        Number.isInteger(value.cancelledBeforeDeliveryCount) &&
+        Number.isInteger(value.pendingCallbackCount) &&
+        value.requestCount !==
+            value.deliveredCallbackCount +
+                value.cancelledBeforeDeliveryCount +
+                value.pendingCallbackCount
+    ) {
+        errors.push(
+            `${path} requestCount must equal deliveredCallbackCount + cancelledBeforeDeliveryCount + pendingCallbackCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.cancelRequestCount) &&
+        Number.isInteger(value.cancelledBeforeDeliveryCount) &&
+        value.cancelRequestCount < value.cancelledBeforeDeliveryCount
+    ) {
+        errors.push(
+            `${path}.cancelRequestCount must not be less than cancelledBeforeDeliveryCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.deliveredCallbackCount) &&
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.deliveredCallbackCount < value.deliveredFrameCount
+    ) {
+        errors.push(
+            `${path}.deliveredCallbackCount must not be less than deliveredFrameCount`,
+        );
+    }
+    if (
+        Number.isInteger(value.nativeFrameCount) &&
+        Number.isInteger(value.deliveredFrameCount) &&
+        value.nativeFrameCount < value.deliveredFrameCount
+    ) {
+        errors.push(
+            `${path}.nativeFrameCount must not be less than deliveredFrameCount`,
+        );
+    }
+    return value;
+}
+
+function validateCrossTierDisplayCadenceControlEvidence(
+    errors,
+    scenario,
+    path,
+) {
+    const requestedControl = scenario.requested?.displayCadenceControl;
+    validateExactValue(
+        errors,
+        requestedControl,
+        {
+            framesPerSecond: crossTierTargetFramesPerSecond,
+            mode: crossTierDisplayCadenceControlMode,
+        },
+        `${path}.requested.displayCadenceControl`,
+    );
+
+    const sample = scenario.sample;
+    const samplePath = `${path}.sample`;
+    if (!isRecord(sample)) {
+        errors.push(`${samplePath} is missing`);
+        return;
+    }
+    if (!Number.isInteger(sample.frames) || sample.frames <= 0) {
+        errors.push(`${samplePath}.frames must be a positive integer`);
+    }
+
+    const control = sample.displayCadenceControl;
+    const controlPath = `${samplePath}.displayCadenceControl`;
+    if (!isRecord(control)) {
+        errors.push(`${controlPath} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        control.installedAtStart,
+        true,
+        `${controlPath}.installedAtStart`,
+    );
+    validateExactValue(
+        errors,
+        control.installedAtEnd,
+        true,
+        `${controlPath}.installedAtEnd`,
+    );
+    validateExactValue(
+        errors,
+        control.mode,
+        crossTierDisplayCadenceControlMode,
+        `${controlPath}.mode`,
+    );
+    validateExactValue(
+        errors,
+        control.requestedFramesPerSecond,
+        crossTierTargetFramesPerSecond,
+        `${controlPath}.requestedFramesPerSecond`,
+    );
+
+    const atStart = validateCrossTierDisplayCadenceControlSnapshot(
+        errors,
+        control.atStart,
+        `${controlPath}.atStart`,
+    );
+    const atEnd = validateCrossTierDisplayCadenceControlSnapshot(
+        errors,
+        control.atEnd,
+        `${controlPath}.atEnd`,
+    );
+    if (atStart && atEnd) {
+        for (const field of crossTierDisplayCadenceCounterFields) {
+            if (
+                Number.isInteger(atStart[field]) &&
+                Number.isInteger(atEnd[field]) &&
+                atEnd[field] < atStart[field]
+            ) {
+                errors.push(
+                    `${controlPath}.${field} must not decrease from atStart to atEnd`,
+                );
+            }
+        }
+    }
+
+    const positiveDeltaFields = new Set([
+        'deliveredCallbackCountDelta',
+        'deliveredFrameCountDelta',
+        'nativeFrameCountDelta',
+    ]);
+    for (const [
+        deltaField,
+        snapshotField,
+    ] of crossTierDisplayCadenceDeltaFields) {
+        const delta = control[deltaField];
+        if (
+            !Number.isInteger(delta) ||
+            delta < 0 ||
+            (positiveDeltaFields.has(deltaField) && delta === 0)
+        ) {
+            errors.push(
+                `${controlPath}.${deltaField} must be a ${positiveDeltaFields.has(deltaField) ? 'positive' : 'non-negative'} integer`,
+            );
+        }
+        if (
+            atStart &&
+            atEnd &&
+            Number.isInteger(atStart[snapshotField]) &&
+            Number.isInteger(atEnd[snapshotField]) &&
+            delta !== atEnd[snapshotField] - atStart[snapshotField]
+        ) {
+            errors.push(
+                `${controlPath}.${deltaField} must equal atEnd.${snapshotField} - atStart.${snapshotField}`,
+            );
+        }
+    }
+    if (
+        Number.isInteger(control.deliveredCallbackCountDelta) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.deliveredCallbackCountDelta < control.deliveredFrameCountDelta
+    ) {
+        errors.push(
+            `${controlPath}.deliveredCallbackCountDelta must not be less than deliveredFrameCountDelta`,
+        );
+    }
+    if (
+        Number.isInteger(control.nativeFrameCountDelta) &&
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.nativeFrameCountDelta < control.deliveredFrameCountDelta
+    ) {
+        errors.push(
+            `${controlPath}.nativeFrameCountDelta must not be less than deliveredFrameCountDelta`,
+        );
+    }
+
+    validatePositiveNumber(
+        errors,
+        control.elapsedMs,
+        `${controlPath}.elapsedMs`,
+    );
+    if (
+        isFiniteNumber(control.elapsedMs) &&
+        isFiniteNumber(sample.elapsedMs) &&
+        Math.abs(control.elapsedMs - sample.elapsedMs) > 0.02
+    ) {
+        errors.push(
+            `${controlPath}.elapsedMs must match sample.elapsedMs within profiler rounding tolerance`,
+        );
+    }
+    const observedFramesPerSecond = control.observedFramesPerSecond;
+    if (
+        !isFiniteNumber(observedFramesPerSecond) ||
+        observedFramesPerSecond < crossTierMinimumRenderedFps ||
+        observedFramesPerSecond > crossTierMaximumRenderedFps
+    ) {
+        errors.push(
+            `${controlPath}.observedFramesPerSecond must be within ${crossTierMinimumRenderedFps}-${crossTierMaximumRenderedFps} FPS`,
+        );
+    }
+    if (
+        Number.isInteger(control.deliveredFrameCountDelta) &&
+        control.deliveredFrameCountDelta > 0 &&
+        isFiniteNumber(control.elapsedMs) &&
+        control.elapsedMs > 0 &&
+        isFiniteNumber(observedFramesPerSecond)
+    ) {
+        const derivedFramesPerSecond =
+            (control.deliveredFrameCountDelta * 1_000) / control.elapsedMs;
+        if (Math.abs(derivedFramesPerSecond - observedFramesPerSecond) > 0.05) {
+            errors.push(
+                `${controlPath}.observedFramesPerSecond must match deliveredFrameCountDelta / elapsedMs`,
+            );
+        }
+    }
+}
+
 function readCrossTierLeaseTopology(value) {
     if (
         !isRecord(value) ||
@@ -922,9 +1214,14 @@ function validateLegacyHeartbeatCrossTierEvidence(errors, scenario, path) {
     }
 }
 
-function legacyHeartbeatExpectedFailureNames(sample) {
+function legacyHeartbeatExpectedFailureNames(
+    sample,
+    inputComparisonContractVersion,
+) {
     const expected = [...legacyHeartbeatRequiredFailureNames];
     if (
+        inputComparisonContractVersion <
+            displayCadenceControlComparisonContractVersion &&
         isFiniteNumber(sample?.renderedFps) &&
         sample.renderedFps > crossTierMaximumRenderedFps
     ) {
@@ -1358,6 +1655,7 @@ function validateCanonicalScenarioEvidence(
     }
 
     if (scenario.baseName.startsWith('game-cross-tier-')) {
+        validateCrossTierDisplayCadenceControlEvidence(errors, scenario, path);
         if (
             schedulerBaselineContract ===
             legacyHeartbeatSchedulerBaselineContract
@@ -2112,6 +2410,7 @@ function validateReport(
         if (isLegacyCrossTierScenario) {
             const expectedFailureNames = legacyHeartbeatExpectedFailureNames(
                 scenario.sample,
+                report.comparisonContractVersion,
             );
             validateLegacyHeartbeatCheckOutcome(
                 errors,
@@ -3227,6 +3526,7 @@ function crossTierGpuCadencePolicy({
     errors,
     group,
     groupsByScenario,
+    inputComparisonContractVersion,
 }) {
     const cadence = crossTierCadenceState(group.rows);
     const isCameraMotion = group.scenario.includes('-camera-motion-');
@@ -3245,7 +3545,11 @@ function crossTierGpuCadencePolicy({
             value >= crossTierMinimumRenderedFps &&
             value <= crossTierMaximumRenderedFps,
     );
+    // Contract v4 makes the profiler-owned 30 FPS control mandatory. Preserve
+    // the raw-motion diagnostic only for already-produced pre-v4 history.
     const intentionalLegacyCameraConfound =
+        inputComparisonContractVersion <
+            displayCadenceControlComparisonContractVersion &&
         isCameraMotion &&
         baselineSchedulerContract ===
             legacyHeartbeatSchedulerBaselineContract &&
@@ -3361,6 +3665,7 @@ function comparePairedScenarios(
     pairs,
     {
         baselineSchedulerContract = canonicalSchedulerBaselineContract,
+        inputComparisonContractVersion = comparisonContractVersion,
         requireCandidateFrameContract = true,
         requireGardenSwitchWorkflowGpuTiming = false,
     } = {},
@@ -3699,6 +4004,7 @@ function comparePairedScenarios(
                       errors,
                       group,
                       groupsByScenario: sampleGroupsByScenario,
+                      inputComparisonContractVersion,
                   })
                 : null;
         const gpuRows = [];
@@ -4136,6 +4442,7 @@ function compareReportPair(
     if (validationErrors.length === 0) {
         comparisonData = comparePairedScenarios(pairs, {
             baselineSchedulerContract,
+            inputComparisonContractVersion: baseline.comparisonContractVersion,
             requireCandidateFrameContract,
             requireGardenSwitchWorkflowGpuTiming: confirmedMatrixMember,
         });
