@@ -441,7 +441,7 @@ function report({
     overrides = {},
 }) {
     return {
-        comparisonContractVersion: 2,
+        comparisonContractVersion: 3,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
@@ -449,6 +449,7 @@ function report({
             closeupRepeat: null,
             closeupTimeoutMs: 30_000,
             graphicsBackend: 'angle-metal',
+            legacyOutlinePipeline: false,
             managedServer: false,
             sampleMs: 5_000,
             scenarioSet: 'high-target',
@@ -478,7 +479,7 @@ function report({
             ...scenario,
             servedBuildProvenance: {
                 commit,
-                comparisonContractVersion: 2,
+                comparisonContractVersion: 3,
                 dirty: false,
             },
         })),
@@ -682,7 +683,19 @@ function regressionScenario(baseName, profileRun) {
         };
         scenario.sample = {
             ...scenario.sample,
+            elapsedMs: 5_000,
             frames: 300,
+            gpu: {
+                complete: true,
+                disjoint: false,
+                elapsedMaxMs: 18,
+                elapsedP95Ms: 15,
+                elapsedTotalMs: 1_500,
+                reason: null,
+                sampleCount: 150,
+                supported: true,
+                valid: true,
+            },
             performanceMeasurementMode: 'separate-observer-free-window-v1',
             renderedFrames: 150,
             runtimeFrameLoopActiveLeaseCountAtEnd: 10,
@@ -784,8 +797,8 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
         'crossTierSemanticStartLeaseTopologyCount',
         'crossTierSemanticEndLeaseTopologyCount',
         'crossTierRenderedFramesMatchR3fFrameCallbackDelta',
-        'crossTierRenderedFps',
     ]);
+    reportValue.options.legacyOutlinePipeline = true;
     for (const scenario of reportValue.scenarios) {
         if (
             scenario.baseName ===
@@ -833,8 +846,13 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             }
             continue;
         }
+        scenario.requested.legacyOutlinePipeline = true;
         scenario.runtime.runtimeFrameLoop.activeLeaseCount = 0;
-        scenario.sample.renderedFps = 37;
+        scenario.sample.renderedFps = scenario.baseName.includes(
+            '-camera-motion-',
+        )
+            ? 37
+            : 30;
         scenario.sample.runtimeFrameLoopActiveLeaseCountAtEnd = 0;
         scenario.sample.runtimeFrameLoopActiveLeaseCountMin = 0;
         scenario.sample.runtimeFrameLoopActiveLeaseCountAtStart = 0;
@@ -852,23 +870,87 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             null;
         scenario.sample.runtimeFrameLoopSemanticLeaseTopologyAtEnd = null;
         scenario.sample.runtimeFrameLoopSemanticLeaseTopologyAtStart = null;
+        const checkNames = buildCrossTierCheckNameInventory(scenario.baseName, {
+            legacyOutlinePipeline: true,
+        });
+        const expectedFailures = new Set(requiredFailures);
+        if (scenario.sample.renderedFps > 32) {
+            expectedFailures.add('crossTierRenderedFps');
+        }
         scenario.acceptance = {
-            checks: scenario.acceptance.checks.map((check) => ({
-                ...check,
-                pass: !requiredFailures.has(check.name),
+            checks: checkNames.acceptance.map((name) => ({
+                name,
+                pass: !expectedFailures.has(name),
             })),
             pass: false,
         };
+        scenario.performanceBudget = {
+            checks: checkNames.performance.map((name) => ({
+                name,
+                pass: true,
+            })),
+            pass: true,
+        };
         scenario.budget = {
-            checks: scenario.budget.checks.map((check) => ({
-                ...check,
-                pass: !requiredFailures.has(check.name),
+            checks: checkNames.budget.map((name) => ({
+                name,
+                pass: !expectedFailures.has(name),
             })),
             pass: false,
         };
     }
     return reportValue;
 }
+
+function setLegacyCrossTierRenderedFps(reportValue, baseName, renderedFps) {
+    for (const scenario of reportValue.scenarios.filter(
+        (value) => value.baseName === baseName,
+    )) {
+        scenario.sample.renderedFps = renderedFps;
+        const renderedFpsPass = renderedFps <= 32;
+        for (const result of [scenario.acceptance, scenario.budget]) {
+            const check = result.checks.find(
+                ({ name }) => name === 'crossTierRenderedFps',
+            );
+            check.pass = renderedFpsPass;
+        }
+    }
+}
+
+test('cross-tier acceptance inventories distinguish cached and legacy outline evidence', () => {
+    const baseName = 'game-cross-tier-high-steady-desktop';
+    const cached = buildCrossTierCheckNameInventory(baseName);
+    const legacy = buildCrossTierCheckNameInventory(baseName, {
+        legacyOutlinePipeline: true,
+    });
+
+    assert.equal(
+        cached.acceptance.includes('crossTierOutlinePerformanceWindowHits'),
+        true,
+    );
+    assert.equal(
+        cached.acceptance.includes(
+            'crossTierOutlineSemanticWindowCompositeConservation',
+        ),
+        true,
+    );
+    assert.equal(
+        cached.acceptance.includes(
+            'crossTierOutlineLegacyHorizontalPassAlignment',
+        ),
+        false,
+    );
+    assert.equal(
+        legacy.acceptance.includes(
+            'crossTierOutlineLegacyHorizontalPassAlignment',
+        ),
+        true,
+    );
+    assert.equal(
+        legacy.acceptance.includes('crossTierOutlinePerformanceWindowHits'),
+        false,
+    );
+});
 
 test('legacy heartbeat baseline contract preserves strict candidate evidence', () => {
     const pair = regressionReportPair();
@@ -1039,6 +1121,20 @@ test('legacy continuous-render lease compatibility is limited to cross-tier and 
 test('legacy heartbeat baseline contract passes only as a strict symmetric matrix', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
+    for (const scenario of baseline.scenarios.filter(
+        ({ baseName }) =>
+            baseName === 'game-cross-tier-high-camera-motion-desktop',
+    )) {
+        scenario.sample.gpu.elapsedP95Ms = 18;
+        scenario.sample.gpu.elapsedMaxMs = 18;
+    }
+    for (const scenario of candidate.scenarios.filter(
+        ({ baseName }) =>
+            baseName === 'game-cross-tier-high-camera-motion-desktop',
+    )) {
+        scenario.sample.gpu.elapsedP95Ms = 22;
+        scenario.sample.gpu.elapsedMaxMs = 22;
+    }
     const baselineConfirmation = independentBaselineRepeat(baseline);
     const confirmation = independentRepeat(candidate);
 
@@ -1055,6 +1151,9 @@ test('legacy heartbeat baseline contract passes only as a strict symmetric matri
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.exitCode, 0);
     assert.equal(comparison.diagnostic, false);
+    assert.equal(comparison.comparisonContractVersion, 3);
+    assert.equal(comparison.schemaVersion, 3);
+    assert.equal(comparison.summary.cadenceConfoundedComparisons, 5);
     assert.equal(
         comparison.baselineConfirmation.schedulerContract,
         'legacy-heartbeat-v1',
@@ -1063,6 +1162,173 @@ test('legacy heartbeat baseline contract passes only as a strict symmetric matri
         buildMarkdown(comparison),
         /Baseline scheduler contract: legacy-heartbeat-v1/,
     );
+    const highCameraGpu = comparison.comparisons.find(
+        ({ id, scenario }) =>
+            id === 'gpu.p95_ms' &&
+            scenario === 'game-cross-tier-high-camera-motion-desktop',
+    );
+    assert.equal(highCameraGpu.gateBasis, 'cadence-confounded');
+    assert.equal(highCameraGpu.decisionStatus, 'not-comparable');
+    assert.equal(
+        highCameraGpu.controlScenario,
+        'game-cross-tier-high-steady-desktop',
+    );
+    assert.equal(highCameraGpu.baselineRelativeRegressionBreach, true);
+    assert.equal(highCameraGpu.rawThresholdObservation.regressionBreach, true);
+    assert.equal(highCameraGpu.regressionBreach, false);
+    assert.equal(highCameraGpu.pass, true);
+    assert.equal(
+        highCameraGpu.replications.every(
+            ({ decisionStatus, gateBasis, observedRegressionBreach }) =>
+                decisionStatus === 'not-comparable' &&
+                gateBasis === 'cadence-confounded' &&
+                observedRegressionBreach === true,
+        ),
+        true,
+    );
+    assert.match(
+        buildMarkdown(comparison),
+        /not comparable \(cadence-confounded\)/,
+    );
+    assert.match(
+        buildMarkdown(comparison),
+        /## Cadence-confounded GPU diagnostics/,
+    );
+});
+
+test('cadence-confounded camera GPU evidence requires a matched same-tier steady control', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    setLegacyCrossTierRenderedFps(
+        baseline,
+        'game-cross-tier-high-steady-desktop',
+        32,
+    );
+    for (const scenario of candidate.scenarios.filter(
+        ({ baseName }) => baseName === 'game-cross-tier-high-steady-desktop',
+    )) {
+        scenario.sample.renderedFps = 29;
+    }
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        {
+            baselineConfirmation,
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /mapped steady control for game-cross-tier-high-camera-motion-desktop requires every baseline and candidate raw sample at 28-32 FPS and a bundle-median delta no greater than 2 FPS/,
+    );
+});
+
+test('cadence-confounded camera GPU evidence requires strict steady-control timing', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    baseline.scenarios.find(
+        ({ baseName, profileRun }) =>
+            baseName === 'game-cross-tier-high-steady-desktop' &&
+            profileRun === 1,
+    ).sample.gpu.sampleCount -= 1;
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    const confirmation = independentRepeat(candidate);
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        {
+            baselineConfirmation,
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /requires complete strict GPU timing in mapped steady control game-cross-tier-high-steady-desktop run 1|GPU timing marked valid requires/,
+    );
+});
+
+test('cadence-confounded classification must hold across all four bundle pairings', () => {
+    const { baseline, candidate } = regressionReportPair();
+    applyLegacyHeartbeatSchedulerEvidence(baseline);
+    const baselineConfirmation = independentBaselineRepeat(baseline);
+    setLegacyCrossTierRenderedFps(
+        baselineConfirmation,
+        'game-cross-tier-high-camera-motion-desktop',
+        30,
+    );
+    const confirmation = independentRepeat(candidate);
+
+    const comparison = compareConfirmedReports(
+        baseline,
+        candidate,
+        confirmation,
+        {
+            baselineConfirmation,
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        },
+    );
+
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /cadence-confounded GPU p95 classification must hold in every symmetric comparison pairing/,
+    );
+});
+
+test('legacy outline-pipeline compatibility is baseline-only and explicit', async (t) => {
+    for (const [name, mutate, options] of [
+        [
+            'canonical candidate true',
+            ({ candidate }) => {
+                candidate.options.legacyOutlinePipeline = true;
+            },
+            {},
+        ],
+        [
+            'canonical candidate missing',
+            ({ candidate }) => {
+                delete candidate.options.legacyOutlinePipeline;
+            },
+            {},
+        ],
+        [
+            'legacy baseline false',
+            (pair) => {
+                applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+                pair.baseline.options.legacyOutlinePipeline = false;
+            },
+            { baselineSchedulerContract: 'legacy-heartbeat-v1' },
+        ],
+    ]) {
+        await t.test(name, () => {
+            const pair = regressionReportPair();
+            mutate(pair);
+            const comparison = compareReports(
+                pair.baseline,
+                pair.candidate,
+                options,
+            );
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.match(
+                comparison.validationErrors.join('\n'),
+                /legacyOutlinePipeline/,
+            );
+        });
+    }
 });
 
 test('legacy heartbeat baseline contract rejects drift and cannot relax candidates', async (t) => {
@@ -1834,14 +2100,12 @@ test('same-commit browser noise stays inside the frozen practical floors', () =>
         scenario.memory.retainedJsHeapMb = values.heap;
         scenario.cdp.scriptDuration = values.script;
         scenario.runtime.rendererGeometries = values.geometry;
-        scenario.sample.gpu = {
-            complete: true,
-            disjoint: false,
+        setAvailableGpuSample(scenario.sample, {
+            elapsedMs: 1_000,
             elapsedP95Ms: values.gpu,
-            sampleCount: 50,
-            supported: true,
-            valid: true,
-        };
+            elapsedTotalMs: values.gpu * 50,
+            renderedFrames: 50,
+        });
         scenario.sample.longTaskCount = values.longTask === 0 ? 0 : 1;
         scenario.sample.longTaskMaxMs = values.longTask;
         scenario.sample.longTaskTotalMs = values.longTask;
@@ -1853,14 +2117,12 @@ test('same-commit browser noise stays inside the frozen practical floors', () =>
         scenario.memory.retainedJsHeapMb = values.heap;
         scenario.cdp.scriptDuration = values.script;
         scenario.runtime.rendererGeometries = values.geometry;
-        scenario.sample.gpu = {
-            complete: true,
-            disjoint: false,
+        setAvailableGpuSample(scenario.sample, {
+            elapsedMs: 1_000,
             elapsedP95Ms: values.gpu,
-            sampleCount: 50,
-            supported: true,
-            valid: true,
-        };
+            elapsedTotalMs: values.gpu * 50,
+            renderedFrames: 50,
+        });
         scenario.sample.longTaskCount = values.longTask === 0 ? 0 : 1;
         scenario.sample.longTaskMaxMs = values.longTask;
         scenario.sample.longTaskTotalMs = values.longTask;
@@ -2101,25 +2363,21 @@ test('a meaningful regression fails and remains failed when reproduced', async (
         },
         'GPU duration': ({ baseline, candidate, confirmation }) => {
             for (const scenario of baseline.scenarios) {
-                scenario.sample.gpu = {
-                    complete: true,
-                    disjoint: false,
+                setAvailableGpuSample(scenario.sample, {
+                    elapsedMs: 1_000,
                     elapsedP95Ms: 4,
-                    sampleCount: 50,
-                    supported: true,
-                    valid: true,
-                };
+                    elapsedTotalMs: 200,
+                    renderedFrames: 50,
+                });
             }
             for (const report of [candidate, confirmation]) {
                 for (const scenario of report.scenarios) {
-                    scenario.sample.gpu = {
-                        complete: true,
-                        disjoint: false,
+                    setAvailableGpuSample(scenario.sample, {
+                        elapsedMs: 1_000,
                         elapsedP95Ms: 10,
-                        sampleCount: 50,
-                        supported: true,
-                        valid: true,
-                    };
+                        elapsedTotalMs: 500,
+                        renderedFrames: 50,
+                    });
                 }
             }
         },
@@ -2258,18 +2516,18 @@ test('minimum metrics reject a rendered-FPS decline in the correct direction', (
     assert.equal(renderedFps.pass, false);
 });
 
-test('cross-tier rendered FPS gates the declared 30 FPS target instead of baseline oversubmission', () => {
+test('cross-tier rendered FPS gates the declared 30 FPS target under matched cadence', () => {
     const scenarioFactory = (profileRun) =>
         regressionScenario(
             'game-cross-tier-high-camera-motion-desktop',
             profileRun,
         );
     const { baseline, candidate } = reportPair(scenarioFactory);
-    for (const scenario of baseline.scenarios) {
-        scenario.sample.renderedFps = 45;
+    for (const [index, scenario] of baseline.scenarios.entries()) {
+        scenario.sample.renderedFps = [29, 30, 31][index];
     }
     for (const [index, scenario] of candidate.scenarios.entries()) {
-        scenario.sample.renderedFps = [28, 30, 32][index];
+        scenario.sample.renderedFps = [29, 30, 31][index];
     }
 
     const comparison = comparePartialReports(baseline, candidate);
@@ -2283,7 +2541,7 @@ test('cross-tier rendered FPS gates the declared 30 FPS target instead of baseli
     assert.equal(renderedFps.minimumRenderedFps, 28);
     assert.equal(renderedFps.maximumRenderedFps, 32);
     assert.equal(renderedFps.baselineRelativeDiagnosticOnly, true);
-    assert.equal(renderedFps.baselineRelativeScreeningBreach, true);
+    assert.equal(renderedFps.baselineRelativeScreeningBreach, false);
     assert.equal(renderedFps.screeningBreach, false);
     assert.equal(renderedFps.regressionBreach, false);
     assert.equal(
@@ -2292,7 +2550,7 @@ test('cross-tier rendered FPS gates the declared 30 FPS target instead of baseli
                 run.pass === true &&
                 run.candidateFloorPass === true &&
                 run.candidateCeilingPass === true &&
-                run.baselineRelativePass === false,
+                run.baselineRelativePass === true,
         ),
         true,
     );
@@ -2302,7 +2560,38 @@ test('cross-tier rendered FPS gates the declared 30 FPS target instead of baseli
     );
 });
 
-test('cross-tier semantic rendered-FPS gate rejects underdelivery and oversubmission', async (t) => {
+test('matched-cadence cross-tier GPU p95 keeps the existing decisive threshold', () => {
+    const scenarioFactory = (profileRun) =>
+        regressionScenario(
+            'game-cross-tier-high-camera-motion-desktop',
+            profileRun,
+        );
+    const { baseline, candidate } = reportPair(scenarioFactory);
+    for (const scenario of baseline.scenarios) {
+        scenario.sample.gpu.elapsedP95Ms = 15;
+        scenario.sample.gpu.elapsedMaxMs = 15;
+    }
+    for (const scenario of candidate.scenarios) {
+        scenario.sample.gpu.elapsedP95Ms = 19;
+        scenario.sample.gpu.elapsedMaxMs = 19;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const gpu = comparison.comparisons.find(
+        (result) => result.id === 'gpu.p95_ms',
+    );
+
+    assert.equal(comparison.status, 'regression');
+    assert.equal(comparison.exitCode, 1);
+    assert.equal(gpu.gateBasis, 'matched-cadence');
+    assert.equal(gpu.decisionStatus, 'comparable');
+    assert.equal(gpu.medianLimit, 1.15);
+    assert.equal(gpu.medianAbsoluteTolerance, 3);
+    assert.equal(gpu.regressionBreach, true);
+    assert.notEqual(gpu.diagnosticOnly, true);
+});
+
+test('cross-tier GPU evidence fails closed when semantic cadence underdelivers or oversubmits', async (t) => {
     for (const [name, renderedFps] of [
         ['underdelivery', 27.9],
         ['oversubmission', 32.1],
@@ -2322,14 +2611,18 @@ test('cross-tier semantic rendered-FPS gate rejects underdelivery and oversubmis
             const result = comparison.comparisons.find(
                 (item) => item.id === 'frame.rendered_fps',
             );
-            assert.equal(comparison.status, 'regression');
-            assert.equal(comparison.exitCode, 1);
-            assert.equal(result.pass, false);
+            assert.equal(comparison.status, 'invalid');
+            assert.equal(comparison.exitCode, 2);
+            assert.equal(result, undefined);
+            assert.match(
+                comparison.validationErrors.join('\n'),
+                /GPU p95 comparison cadence requires/,
+            );
         });
     }
 });
 
-test('confirmed target-aware FPS fails when either candidate capture violates an every-run bound', () => {
+test('confirmed cross-tier evidence is invalid when one capture violates matched cadence', () => {
     const scenarioFactory = (profileRun) =>
         regressionScenario(
             'game-cross-tier-high-camera-motion-desktop',
@@ -2346,20 +2639,11 @@ test('confirmed target-aware FPS fails when either candidate capture violates an
         confirmation,
         { baselineConfirmation },
     );
-    const renderedFps = comparison.comparisons.find(
-        (result) => result.id === 'frame.rendered_fps',
-    );
-
-    assert.equal(comparison.status, 'regression');
-    assert.equal(comparison.exitCode, 1);
-    assert.equal(renderedFps.everyRawRunGate, true);
-    assert.equal(renderedFps.reproducedRegression, true);
-    assert.equal(renderedFps.regressionBreach, true);
-    assert.deepEqual(
-        renderedFps.replications.map((replication) =>
-            replication.available ? replication.regressionBreach : null,
-        ),
-        [true, false, true, false],
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /GPU p95 comparison cadence requires/,
     );
 });
 
@@ -3513,7 +3797,7 @@ test('garden-switch elapsed-window GPU evidence fails closed for incomplete or u
             assert.equal(comparison.exitCode, 2);
             assert.match(
                 comparison.validationErrors.join('\n'),
-                /GPU elapsed-window evidence requires/,
+                /GPU timing marked valid requires|GPU elapsed-window evidence requires/,
             );
         });
     }
@@ -3644,7 +3928,13 @@ test('provenance rejects malformed, dirty, mismatched, and same-source reports',
             candidate.scenarios[0].servedBuildProvenance.dirty = true;
         },
         'mismatched scenario contract': ({ candidate }) => {
-            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 3;
+            candidate.scenarios[0].servedBuildProvenance.comparisonContractVersion = 2;
+        },
+        'contract-v2 producer': ({ candidate }) => {
+            candidate.comparisonContractVersion = 2;
+            for (const scenario of candidate.scenarios) {
+                scenario.servedBuildProvenance.comparisonContractVersion = 2;
+            }
         },
         'producer marked incomparable': ({ candidate }) => {
             candidate.provenance.comparable = false;
@@ -3770,14 +4060,12 @@ test('GPU timing is skipped symmetrically and asymmetry is invalid', () => {
         3,
     );
 
-    candidate.scenarios[0].sample.gpu = {
-        complete: true,
-        disjoint: false,
+    setAvailableGpuSample(candidate.scenarios[0].sample, {
+        elapsedMs: 1_000,
         elapsedP95Ms: 4,
-        sampleCount: 1,
-        supported: true,
-        valid: true,
-    };
+        elapsedTotalMs: 4,
+        renderedFrames: 1,
+    });
     comparison = comparePartialReports(baseline, candidate);
     assert.equal(comparison.status, 'invalid');
     assert.equal(comparison.exitCode, 2);
@@ -3808,7 +4096,10 @@ test('GPU timing is skipped symmetrically and asymmetry is invalid', () => {
     );
     comparison = comparePartialReports(malformed.baseline, malformed.candidate);
     assert.equal(comparison.exitCode, 2);
-    assert.match(comparison.validationErrors.join('\n'), /must be complete/);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /GPU timing marked valid requires/,
+    );
 
     for (const gpu of [
         {
@@ -3838,7 +4129,7 @@ test('GPU timing is skipped symmetrically and asymmetry is invalid', () => {
         assert.equal(comparison.exitCode, 2);
         assert.match(
             comparison.validationErrors.join('\n'),
-            /non-disjoint, sampled/,
+            /complete, valid, non-disjoint queries/,
         );
     }
 });
@@ -3846,24 +4137,20 @@ test('GPU timing is skipped symmetrically and asymmetry is invalid', () => {
 test('available GPU p95 uses a practical median noise floor', () => {
     const { baseline, candidate } = reportPair();
     for (const scenario of baseline.scenarios) {
-        scenario.sample.gpu = {
-            complete: true,
-            disjoint: false,
+        setAvailableGpuSample(scenario.sample, {
+            elapsedMs: 1_000,
             elapsedP95Ms: 4,
-            sampleCount: 1,
-            supported: true,
-            valid: true,
-        };
+            elapsedTotalMs: 4,
+            renderedFrames: 1,
+        });
     }
     for (const scenario of candidate.scenarios) {
-        scenario.sample.gpu = {
-            complete: true,
-            disjoint: false,
+        setAvailableGpuSample(scenario.sample, {
+            elapsedMs: 1_000,
             elapsedP95Ms: 11,
-            sampleCount: 1,
-            supported: true,
-            valid: true,
-        };
+            elapsedTotalMs: 11,
+            renderedFrames: 1,
+        });
     }
     const comparison = comparePartialReports(baseline, candidate);
     const gpu = comparison.comparisons.find(
@@ -3985,7 +4272,7 @@ test('report writer emits stamped and latest JSON and Markdown files', async () 
         const comparison = comparePartialReports(baseline, candidate);
         const paths = await writeComparisonReports(comparison, directory);
         const written = JSON.parse(await readFile(paths.jsonPath, 'utf8'));
-        assert.equal(written.schemaVersion, 2);
+        assert.equal(written.schemaVersion, 3);
         assert.equal(written.status, 'pass');
         assert.match(
             await readFile(paths.markdownPath, 'utf8'),

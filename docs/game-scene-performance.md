@@ -321,8 +321,8 @@ post-calibration zero-RAF claim cannot pass across a reset or an idle boundary.
 This admits causally necessary retained and outstanding-receipt
 reconciliation without a phase-specific allowance, while a perpetual RAF
 keepalive cannot improve a GPU signal by adding browser wakeups. This remains
-comparison contract v2, but the new candidate counter and boundary state require
-a fresh final capture. Pre-counter canonical reports are invalid; omitted fields
+comparison contract v3, and the new candidate counter and boundary state require
+a fresh final capture. Earlier canonical reports are invalid; omitted fields
 remain compatible only on the explicitly selected `legacy-heartbeat-v1`
 baseline side.
 
@@ -330,8 +330,10 @@ Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
 not a release gate: on headless Chromium with ANGLE Metal, timer-query flushes,
 command-buffer batching, and GPU power-state behavior can make lower-wakeup
-semantic scheduling report higher occupancy without changing submitted work or
-GPU p95. No query is discarded and no threshold is widened. Complete,
+semantic scheduling report higher occupancy or a higher per-query GPU p95 when
+actual render cadence differs. Cross-tier camera-motion comparison therefore
+uses the cadence-safe control described below. No query is discarded and no
+threshold is widened. Complete,
 non-disjoint, internally ordered GPU timing for all seven arrivals remains
 mandatory in confirmed release evidence; unsupported, incomplete, mismatched,
 or invalid timing makes the comparison invalid rather than a passing skip.
@@ -507,8 +509,11 @@ topology signature and allowlists only the resulting scheduler checks, while the
 candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
-state `false`; the current comparison contract is `2`. Run only one subject
-server and capture at a time so the other server cannot perturb the sample:
+state `false`; the current comparison contract is `3`. The current harness also
+requires `legacyOutlinePipeline=true` only for the untouched legacy scheduler
+baseline; every canonical candidate and confirmation must record `false`. Run
+only one subject server and capture at a time so the other server cannot perturb
+the sample:
 
 ```bash
 # Baseline subject worktree, terminal 1
@@ -516,7 +521,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=2 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=3 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
 
@@ -526,7 +531,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=2 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=3 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
 ```
@@ -553,6 +558,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1 \
 GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
@@ -573,6 +579,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=1 \
 GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=legacy-pre-render-settled-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
@@ -591,6 +598,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=0 \
 GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=1 \
 GAME_PROFILE_SCREENSHOTS=1 \
@@ -611,6 +619,7 @@ GAME_PROFILE_WARMUP_MS=5000 \
 GAME_PROFILE_SAMPLE_MS=5000 \
 GAME_PROFILE_SOAK_MS=0 \
 GAME_PROFILE_GRAPHICS_BACKEND=auto \
+GAME_PROFILE_LEGACY_OUTLINE_PIPELINE=0 \
 GAME_PROFILE_LIFECYCLE_RENDERER_STATS_MODE=post-render-receipt-v1 \
 GAME_PROFILE_FAIL_ON_BUDGET=1 \
 GAME_PROFILE_SCREENSHOTS=1 \
@@ -667,6 +676,35 @@ inventories are fixed by the comparator, so deleting a passing witness from one
 or every report is also invalid.
 Candidate reports cannot select this contract through either the CLI or public
 comparison API.
+
+Cross-tier GPU p95 is decisive only under comparable render cadence. The direct
+gate keeps its existing 15% relative boundary, 3 ms practical floor, 40% raw
+rank boundary, and 6 ms raw-rank floor when every raw baseline and candidate
+sample delivers 28–32 FPS and the two bundle medians differ by at most 2 FPS.
+Any other canonical-to-canonical cadence mismatch makes the evidence invalid.
+
+One narrow legacy exception records the known scheduler transition without
+pretending that per-query durations were measured at the same GPU operating
+point. A `legacy-heartbeat-v1` camera-motion GPU row is classified
+`gateBasis=cadence-confounded` and `decisionStatus=not-comparable` only when its
+legacy bundle median exceeds 32 FPS, every canonical camera-motion raw sample
+is within 28–32 FPS, and both legacy bundle medians exceed both canonical
+bundle medians across the complete symmetric matrix. Its raw GPU p95 ratio,
+threshold breach, mean query duration, and elapsed-window occupancy remain in
+JSON and Markdown as diagnostics, but they cannot pass or fail the release.
+The comparator maps each `*-camera-motion-*` scenario to the same-tier
+`*-steady-*` scenario. Every raw steady sample must be within 28–32 FPS, each
+of the four steady bundle pairings must have a median cadence delta no greater
+than 2 FPS, strict GPU timing must be complete in every run, and that steady GPU
+p95 row remains the decisive gate. A missing control, malformed query shape,
+cadence mismatch, or mixed confounded/direct classification across the four
+pairings makes the entire comparison invalid.
+
+Strict GPU timing means `gpu.sampleCount` exactly equals
+`sample.renderedFrames`; the sample window and both counts are positive; timing
+is supported, valid, complete, and non-disjoint; `reason` is null; and positive
+elapsed values are ordered as p95 <= maximum <= total. This shape applies to
+every available GPU measurement, not only the cadence control.
 
 Each repeat must preserve its subject commit, harness commit, fixtures, options,
 runtime, and environment while using a different report path and valid capture
@@ -732,7 +770,10 @@ arrival 1 control must keep every raw run within 28–32 FPS around an observed
 30 FPS target; later garden-switch transition arrivals must deliver at least
 28 FPS. Baseline-relative FPS ratios stay in the report as diagnostics for
 those cases, so eliminating oversubmission is not misclassified as lost
-performance. Garden-switch GPU p95, per-render submissions, fixed-control total
+performance. Cross-tier GPU p95 additionally requires the matched-cadence
+contract above; legacy camera-motion rows that meet the exact oversubmission
+signature remain explicitly non-decisional and defer to their mapped steady
+control. Garden-switch GPU p95, per-render submissions, fixed-control total
 submissions, and causal scheduler wakeup accounting are hard gates. Elapsed GPU
 occupancy remains a complete raw diagnostic rather than a proxy for power or
 thermal behavior.
@@ -752,9 +793,10 @@ become comparable merely by agreeing on the same incorrect tier policy.
 Exit `0` means compatible evidence and all confirmed relative gates passed.
 Exit `1` means either `needs-rerun` or a regression, and exit `2` means the
 reports are invalid or incomparable. The generated comparison report uses
-schema version 2 and distinguishes screening signals from reproduced
-regressions. The gate fails closed for dirty or unknown subjects, dirty or
-unknown harnesses, different harness commits anywhere in the four-report
+schema version 3 and distinguishes decisive gates, cadence-confounded
+non-comparisons, screening signals, and reproduced regressions. The gate fails
+closed for dirty or unknown subjects, dirty or unknown harnesses, different
+harness commits anywhere in the four-report
 matrix, same-subject baseline/candidate pairs, stale or mismatched served-build
 markers, changed fixtures/options/runtime, missing runs, and one-sided required
 measurements. The default gate requires the complete
@@ -1481,6 +1523,31 @@ The dispatcher consumes one owning-root frame token exactly once and uses
 tokenized registrations so stale StrictMode cleanup cannot release a replacement
 listener.
 
+The hover-outline pipeline also reuses its mask and horizontal-distance targets
+when one style group contains explicitly keyed, rigid proxy geometry. Callers
+opt in with `maskContentKey`; unkeyed targets, mixed style groups, detached or
+hidden objects, array cameras, material arrays, lines, points, sprites, LOD,
+skinned, morphed, instanced, batched, callback-driven, or otherwise unsupported
+geometry keep the uncached path. A hit still composites the outline every frame,
+so color, opacity, and the current framebuffer remain correct while the two
+silhouette-dependent passes are skipped.
+
+The root-local cache invalidates when the camera or projection changes, the
+drawing buffer or render-target allocation changes, target registration,
+identity, parentage, visibility, transform, topology, draw range, geometry,
+position/index attribute identity or version changes, the content key changes,
+the scene resumes, WebGL context is lost or restored, the target becomes
+inactive or detached, or the effect unmounts. Profiling exposes cumulative
+eligible-target, hit, miss, bypass, mask, horizontal, and composite counters.
+Cross-tier and High outline samples additionally record start/end deltas: bypass
+must remain zero for the keyed fixture, steady work must contain a hit, camera
+motion must contain a miss, and every accepted window must conserve
+`mask = miss + bypass`, `horizontal = mask`, and
+`composite = hit + miss + bypass`. Untouched scheduler baselines select
+`legacyOutlinePipeline=true`; canonical subjects must prove the cached contract.
+These deterministic browser checks measure pass reuse and submitted work, not
+physical-device frame rate, memory pressure, power, or thermal behavior.
+
 Browser component witnesses exercise both two-root boundaries. The
 `r3f-root-isolation` witness keeps one looping spring root active while an
 offscreen ordinary root proves zero frame receipts, WebGL submissions, spring
@@ -1644,6 +1711,10 @@ Required release evidence before merge:
   fixed-control total submissions.
   Every per-arrival occupancy window and the wall-time-weighted aggregate stay
   visible as diagnostics; no sample is discarded and no threshold is widened.
+- Cross-tier camera-motion GPU p95 is compared directly only at matched cadence.
+  The known legacy-heartbeat oversubmission pattern is marked
+  cadence-confounded and non-decisional in all four pairings; its same-tier
+  steady scenario must provide the matched-cadence decisive GPU control.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab. Timer-query occupancy is not a physical power or thermal

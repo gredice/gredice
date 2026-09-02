@@ -10,7 +10,8 @@ import {
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const comparisonContractVersion = 2;
+const comparisonContractVersion = 3;
+const comparisonReportSchemaVersion = 3;
 const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
     dirname(fileURLToPath(import.meta.url)),
@@ -90,6 +91,9 @@ const crossTierMinimumRenderedFps =
     crossTierTargetFramesPerSecond - crossTierRenderedFpsTolerance;
 const crossTierMaximumRenderedFps =
     crossTierTargetFramesPerSecond + crossTierRenderedFpsTolerance;
+const crossTierMatchedCadenceMedianToleranceFps = 2;
+const crossTierCadenceConfoundedGpuGate =
+    'mapped same-tier steady GPU p95 under matched 28-32 FPS cadence';
 const legacyHeartbeatRequiredFailureNames = [
     'crossTierSampleStartActiveLeaseCount',
     'crossTierSemanticLeaseTopologyAvailable',
@@ -156,7 +160,7 @@ const crossTierCameraMotionAcceptanceChecks = [
     'crossTierCameraMotionObserved',
     'crossTierCameraSnapshotVersionDelta',
 ];
-const crossTierAcceptanceCheckSuffix = [
+const crossTierAcceptanceChecksBeforeOutlinePipeline = [
     'crossTierStaticSceneCacheRequest',
     'crossTierStaticSceneCacheEnabled',
     'crossTierOutlineFlag',
@@ -166,6 +170,41 @@ const crossTierAcceptanceCheckSuffix = [
     'crossTierOutlineTelemetryAvailable',
     'crossTierOutlineActiveTargets',
     'crossTierOutlineStyleGroups',
+];
+const crossTierLegacyOutlineAcceptanceChecks = [
+    'crossTierOutlinePipeline',
+    'crossTierOutlineLegacyHorizontalPassAlignment',
+    'crossTierOutlineLegacyCompositePassAlignment',
+];
+const crossTierCachedOutlineAcceptanceChecks = [
+    'crossTierOutlinePipeline',
+    'crossTierOutlineCacheEligibleTargets',
+    'crossTierOutlineCacheBypasses',
+    'crossTierOutlineCacheHits',
+    'crossTierOutlineCacheMisses',
+    'crossTierOutlineMaskMissAlignment',
+    'crossTierOutlineHorizontalPassAlignment',
+    'crossTierOutlineCacheConservation',
+    'crossTierOutlinePerformanceWindowBypasses',
+    'crossTierOutlinePerformanceWindowHits',
+    'crossTierOutlinePerformanceWindowMisses',
+    'crossTierOutlinePerformanceWindowMaskPasses',
+    'crossTierOutlinePerformanceWindowHorizontalPasses',
+    'crossTierOutlinePerformanceWindowCompositePasses',
+    'crossTierOutlinePerformanceWindowMaskConservation',
+    'crossTierOutlinePerformanceWindowHorizontalAlignment',
+    'crossTierOutlinePerformanceWindowCompositeConservation',
+    'crossTierOutlineSemanticWindowBypasses',
+    'crossTierOutlineSemanticWindowHits',
+    'crossTierOutlineSemanticWindowMisses',
+    'crossTierOutlineSemanticWindowMaskPasses',
+    'crossTierOutlineSemanticWindowHorizontalPasses',
+    'crossTierOutlineSemanticWindowCompositePasses',
+    'crossTierOutlineSemanticWindowMaskConservation',
+    'crossTierOutlineSemanticWindowHorizontalAlignment',
+    'crossTierOutlineSemanticWindowCompositeConservation',
+];
+const crossTierAcceptanceCheckSuffix = [
     'crossTierOutlineCommandAction',
     'crossTierOutlineTargetBlockId',
     'crossTierScreenshotWitnessValid',
@@ -444,6 +483,7 @@ const reportOptionFields = [
     'closeupRepeat',
     'closeupTimeoutMs',
     'graphicsBackend',
+    'legacyOutlinePipeline',
     'managedServer',
     'sampleMs',
     'scenarioSet',
@@ -471,6 +511,7 @@ const requestedCompatibilityDefaultsBySchemaVersion = new Map([
     [
         6,
         {
+            legacyOutlinePipeline: false,
             lifecycleLiveProfile: false,
             motionWarmupMs: 0,
             runtimeOwnersProfile: false,
@@ -892,7 +933,10 @@ function legacyHeartbeatExpectedFailureNames(sample) {
     return expected.sort();
 }
 
-function buildCrossTierCheckNameInventory(baseName) {
+function buildCrossTierCheckNameInventory(
+    baseName,
+    { legacyOutlinePipeline = false } = {},
+) {
     const acceptance = [
         ...crossTierAcceptanceCheckPrefix,
         ...(baseName.includes('-auto-') ? crossTierAutoAcceptanceChecks : []),
@@ -900,6 +944,10 @@ function buildCrossTierCheckNameInventory(baseName) {
         ...(baseName.includes('-camera-motion-')
             ? crossTierCameraMotionAcceptanceChecks
             : []),
+        ...crossTierAcceptanceChecksBeforeOutlinePipeline,
+        ...(legacyOutlinePipeline
+            ? crossTierLegacyOutlineAcceptanceChecks
+            : crossTierCachedOutlineAcceptanceChecks),
         ...crossTierAcceptanceCheckSuffix,
     ];
     const performance = [...crossTierPerformanceCheckNames];
@@ -936,8 +984,15 @@ function validateCheckNameInventory(errors, value, path, expectedNames) {
     );
 }
 
-function validateCrossTierCheckNameInventories(errors, scenario, path) {
-    const expected = buildCrossTierCheckNameInventory(scenario.baseName);
+function validateCrossTierCheckNameInventories(
+    errors,
+    scenario,
+    path,
+    { legacyOutlinePipeline },
+) {
+    const expected = buildCrossTierCheckNameInventory(scenario.baseName, {
+        legacyOutlinePipeline,
+    });
     validateCheckNameInventory(
         errors,
         scenario.acceptance,
@@ -1695,12 +1750,23 @@ function validateReport(
         for (const field of [
             'allowLegacyOperationVisuals',
             'build',
+            'legacyOutlinePipeline',
             'managedServer',
             'screenshots',
         ]) {
             if (typeof options[field] !== 'boolean') {
                 errors.push(`${label}.options.${field} must be a boolean`);
             }
+        }
+        if (
+            typeof options.legacyOutlinePipeline === 'boolean' &&
+            options.legacyOutlinePipeline !==
+                (schedulerBaselineContract ===
+                    legacyHeartbeatSchedulerBaselineContract)
+        ) {
+            errors.push(
+                `${label}.options.legacyOutlinePipeline must be ${schedulerBaselineContract === legacyHeartbeatSchedulerBaselineContract} for scheduler contract ${schedulerBaselineContract}`,
+            );
         }
         if (
             options.closeupRepeat !== null &&
@@ -2032,6 +2098,10 @@ function validateReport(
                     errors,
                     scenario,
                     `${label} scenario ${key}`,
+                    {
+                        legacyOutlinePipeline:
+                            options?.legacyOutlinePipeline === true,
+                    },
                 );
             }
         }
@@ -2203,17 +2273,37 @@ function scenarioFixtureSignature(scenario) {
 
 function gpuState(sample) {
     const gpu = sample?.gpu;
+    const elapsedMs = sample?.elapsedMs;
+    const elapsedMaxMs = gpu?.elapsedMaxMs;
+    const elapsedP95Ms = gpu?.elapsedP95Ms;
+    const elapsedTotalMs = gpu?.elapsedTotalMs;
+    const renderedFrames = sample?.renderedFrames;
+    const sampleCount = gpu?.sampleCount;
     const available =
         gpu?.supported === true &&
         gpu?.valid === true &&
         gpu?.complete === true &&
         gpu?.disjoint === false &&
-        Number.isInteger(gpu?.sampleCount) &&
-        gpu.sampleCount > 0 &&
-        isFiniteNumber(gpu.elapsedP95Ms) &&
-        gpu.elapsedP95Ms > 0;
+        gpu.reason === null &&
+        Number.isInteger(renderedFrames) &&
+        renderedFrames > 0 &&
+        Number.isInteger(sampleCount) &&
+        sampleCount === renderedFrames &&
+        isFiniteNumber(elapsedMs) &&
+        elapsedMs > 0 &&
+        isFiniteNumber(elapsedP95Ms) &&
+        elapsedP95Ms > 0 &&
+        isFiniteNumber(elapsedMaxMs) &&
+        elapsedMaxMs >= elapsedP95Ms &&
+        isFiniteNumber(elapsedTotalMs) &&
+        elapsedTotalMs >= elapsedMaxMs;
     if (available) {
-        return { available: true, value: gpu.elapsedP95Ms };
+        return {
+            available: true,
+            elapsedMeanMs: elapsedTotalMs / sampleCount,
+            elapsedOccupancyPercent: (elapsedTotalMs / elapsedMs) * 100,
+            value: elapsedP95Ms,
+        };
     }
     return {
         available: false,
@@ -2227,32 +2317,10 @@ function gpuState(sample) {
 }
 
 function gpuElapsedWindowOccupancyState(sample) {
-    const elapsedMs = sample?.elapsedMs;
-    const gpu = sample?.gpu;
-    const elapsedMaxMs = gpu?.elapsedMaxMs;
-    const elapsedP95Ms = gpu?.elapsedP95Ms;
-    const elapsedTotalMs = gpu?.elapsedTotalMs;
-    const renderedFrames = sample?.renderedFrames;
-    const sampleCount = gpu?.sampleCount;
-    const valid =
-        gpuState(sample).available === true &&
-        isFiniteNumber(elapsedMs) &&
-        elapsedMs > 0 &&
-        isFiniteNumber(elapsedP95Ms) &&
-        elapsedP95Ms > 0 &&
-        isFiniteNumber(elapsedMaxMs) &&
-        elapsedMaxMs > 0 &&
-        elapsedP95Ms <= elapsedMaxMs &&
-        isFiniteNumber(elapsedTotalMs) &&
-        elapsedTotalMs > 0 &&
-        elapsedMaxMs <= elapsedTotalMs &&
-        gpu.reason === null &&
-        Number.isInteger(renderedFrames) &&
-        renderedFrames > 0 &&
-        sampleCount === renderedFrames;
+    const state = gpuState(sample);
     return {
-        valid,
-        value: valid ? (elapsedTotalMs / elapsedMs) * 100 : null,
+        valid: state.available === true,
+        value: state.available === true ? state.elapsedOccupancyPercent : null,
     };
 }
 
@@ -2452,10 +2520,21 @@ function compareScenarioCompatibility(
         candidate.requested,
         candidateSchemaVersion,
     );
-    if (
+    const comparesLegacyBaselineToCanonicalCandidate =
         baselineSchedulerContract ===
             legacyHeartbeatSchedulerBaselineContract &&
-        candidateSchedulerContract === canonicalSchedulerBaselineContract &&
+        candidateSchedulerContract === canonicalSchedulerBaselineContract;
+    if (
+        comparesLegacyBaselineToCanonicalCandidate &&
+        isRecord(baselineRequested)
+    ) {
+        baselineRequested = {
+            ...baselineRequested,
+            legacyOutlinePipeline: false,
+        };
+    }
+    if (
+        comparesLegacyBaselineToCanonicalCandidate &&
         legacyContinuousRenderLeaseCompatibilityScenarioBaseNames.has(
             baseline.baseName,
         ) &&
@@ -2722,6 +2801,23 @@ function buildRatioDiagnosticComparison({ gatedBy, rows, ...metric }) {
         pass: true,
         regressionBreach: false,
         screeningBreach: false,
+    };
+}
+
+function buildCadenceConfoundedGpuComparison({ gatedBy, ...metric }) {
+    const diagnostic = buildRatioDiagnosticComparison({
+        ...metric,
+        gatedBy,
+    });
+    return {
+        ...diagnostic,
+        rawThresholdObservation: {
+            medianAbsolutePass: diagnostic.medianAbsolutePass,
+            medianPass: diagnostic.baselineRelativeRegressionBreach !== true,
+            medianRelativePass: diagnostic.medianRelativePass,
+            regressionBreach: diagnostic.baselineRelativeRegressionBreach,
+            screeningBreach: diagnostic.baselineRelativeScreeningBreach,
+        },
     };
 }
 
@@ -3077,6 +3173,141 @@ function groupRows(rows) {
     );
 }
 
+function crossTierSteadyScenarioBaseName(baseName) {
+    return baseName.replace('-camera-motion-', '-steady-');
+}
+
+function crossTierCadenceState(rows) {
+    const baselineValues = rows.map((row) => row.baseline.sample?.renderedFps);
+    const candidateValues = rows.map(
+        (row) => row.candidate?.sample?.renderedFps,
+    );
+    const valuesAreFinite = [...baselineValues, ...candidateValues].every(
+        isFiniteNumber,
+    );
+    const baselineMedian = valuesAreFinite ? median(baselineValues) : null;
+    const candidateMedian = valuesAreFinite ? median(candidateValues) : null;
+    const everyRawSampleInTargetRange = valuesAreFinite
+        ? [...baselineValues, ...candidateValues].every(
+              (value) =>
+                  value >= crossTierMinimumRenderedFps &&
+                  value <= crossTierMaximumRenderedFps,
+          )
+        : false;
+    const medianDeltaFps = valuesAreFinite
+        ? Math.abs(candidateMedian - baselineMedian)
+        : null;
+    return {
+        baselineMedian: isFiniteNumber(baselineMedian)
+            ? round(baselineMedian)
+            : null,
+        baselineValues,
+        candidateMedian: isFiniteNumber(candidateMedian)
+            ? round(candidateMedian)
+            : null,
+        candidateValues,
+        everyRawSampleInTargetRange,
+        matched:
+            everyRawSampleInTargetRange &&
+            medianDeltaFps <= crossTierMatchedCadenceMedianToleranceFps,
+        medianDeltaFps: isFiniteNumber(medianDeltaFps)
+            ? round(medianDeltaFps)
+            : null,
+    };
+}
+
+function pushCrossTierCadenceError(errors, scenario, state, purpose) {
+    errors.push(
+        `${scenario} ${purpose} requires every baseline and candidate raw sample at ${crossTierMinimumRenderedFps}-${crossTierMaximumRenderedFps} FPS and a bundle-median delta no greater than ${crossTierMatchedCadenceMedianToleranceFps} FPS; received baseline=${canonicalJson(state.baselineValues)}, candidate=${canonicalJson(state.candidateValues)}, medianDelta=${canonicalJson(state.medianDeltaFps)}`,
+    );
+}
+
+function crossTierGpuCadencePolicy({
+    baselineSchedulerContract,
+    errors,
+    group,
+    groupsByScenario,
+}) {
+    const cadence = crossTierCadenceState(group.rows);
+    const isCameraMotion = group.scenario.includes('-camera-motion-');
+    if (cadence.matched) {
+        return {
+            cadence,
+            controlScenario: null,
+            decisionStatus: 'comparable',
+            gateBasis: 'matched-cadence',
+        };
+    }
+
+    const candidateMotionInTargetRange = cadence.candidateValues.every(
+        (value) =>
+            isFiniteNumber(value) &&
+            value >= crossTierMinimumRenderedFps &&
+            value <= crossTierMaximumRenderedFps,
+    );
+    const intentionalLegacyCameraConfound =
+        isCameraMotion &&
+        baselineSchedulerContract ===
+            legacyHeartbeatSchedulerBaselineContract &&
+        isFiniteNumber(cadence.baselineMedian) &&
+        cadence.baselineMedian > crossTierMaximumRenderedFps &&
+        candidateMotionInTargetRange &&
+        cadence.baselineMedian > cadence.candidateMedian;
+    if (!intentionalLegacyCameraConfound) {
+        pushCrossTierCadenceError(
+            errors,
+            group.scenario,
+            cadence,
+            'GPU p95 comparison cadence',
+        );
+        return {
+            cadence,
+            controlScenario: null,
+            decisionStatus: 'invalid',
+            gateBasis: 'cadence-mismatch',
+        };
+    }
+
+    const controlScenario = crossTierSteadyScenarioBaseName(group.scenario);
+    const control = groupsByScenario.get(controlScenario);
+    if (!control) {
+        errors.push(
+            `${group.scenario} cadence-confounded GPU p95 evidence requires mapped same-tier steady control ${controlScenario}`,
+        );
+        return {
+            cadence,
+            controlScenario,
+            decisionStatus: 'invalid',
+            gateBasis: 'cadence-confounded',
+        };
+    }
+    const controlCadence = crossTierCadenceState(control.rows);
+    if (!controlCadence.matched) {
+        pushCrossTierCadenceError(
+            errors,
+            controlScenario,
+            controlCadence,
+            `mapped steady control for ${group.scenario}`,
+        );
+    }
+    for (const row of control.rows) {
+        const baselineGpu = gpuState(row.baseline.sample);
+        const candidateGpu = gpuState(row.candidate?.sample);
+        if (!baselineGpu.available || !candidateGpu.available) {
+            errors.push(
+                `${group.scenario} cadence-confounded GPU p95 evidence requires complete strict GPU timing in mapped steady control ${controlScenario} run ${row.profileRun}`,
+            );
+        }
+    }
+    return {
+        cadence,
+        controlCadence,
+        controlScenario,
+        decisionStatus: 'not-comparable',
+        gateBasis: 'cadence-confounded',
+    };
+}
+
 function addMetricRows({
     candidateValue,
     baselineValue,
@@ -3290,7 +3521,11 @@ function comparePairedScenarios(
         }
     }
 
-    for (const group of groupRows(sampleRows)) {
+    const sampleGroups = groupRows(sampleRows);
+    const sampleGroupsByScenario = new Map(
+        sampleGroups.map((group) => [group.scenario, group]),
+    );
+    for (const group of sampleGroups) {
         for (const metric of [
             {
                 field: 'longTaskCount',
@@ -3456,6 +3691,16 @@ function comparePairedScenarios(
             }
         }
 
+        const crossTierGpuCadence =
+            requireCandidateFrameContract &&
+            crossTierBaseNamePattern.test(group.scenario)
+                ? crossTierGpuCadencePolicy({
+                      baselineSchedulerContract,
+                      errors,
+                      group,
+                      groupsByScenario: sampleGroupsByScenario,
+                  })
+                : null;
         const gpuRows = [];
         const gpuOccupancyRows = [];
         for (const row of group.rows) {
@@ -3466,7 +3711,7 @@ function comparePairedScenarios(
                 candidateGpu.invalidAvailableValue
             ) {
                 errors.push(
-                    `${row.scenario} ${row.phase} GPU timing must be complete, non-disjoint, sampled, and positive when marked valid`,
+                    `${row.scenario} ${row.phase} GPU timing marked valid requires a positive sample window and rendered-frame count; complete, valid, non-disjoint queries; a null reason; positive ordered p95, maximum, and total elapsed time; and gpu.sampleCount equal to sample.renderedFrames`,
                 );
             } else if (baselineGpu.available !== candidateGpu.available) {
                 errors.push(
@@ -3481,6 +3726,10 @@ function comparePairedScenarios(
                     errors.push(
                         `${row.scenario} ${row.phase} GPU timing unavailable for different reasons: baseline=${baselineGpu.reason}, candidate=${candidateGpu.reason}`,
                     );
+                } else if (crossTierGpuCadence) {
+                    errors.push(
+                        `${row.scenario} run ${row.profileRun} ${row.phase} GPU timing is required for cadence-safe cross-tier comparison`,
+                    );
                 } else {
                     skipped.push({
                         metric: 'gpu.p95_ms',
@@ -3492,7 +3741,13 @@ function comparePairedScenarios(
             } else {
                 gpuRows.push({
                     baseline: baselineGpu.value,
+                    baselineElapsedMeanMs: baselineGpu.elapsedMeanMs,
+                    baselineElapsedOccupancyPercent:
+                        baselineGpu.elapsedOccupancyPercent,
                     candidate: candidateGpu.value,
+                    candidateElapsedMeanMs: candidateGpu.elapsedMeanMs,
+                    candidateElapsedOccupancyPercent:
+                        candidateGpu.elapsedOccupancyPercent,
                     phase: row.phase,
                     profileRun: row.profileRun,
                     scenario: row.scenario,
@@ -3524,20 +3779,65 @@ function comparePairedScenarios(
             }
         }
         if (gpuRows.length > 0) {
+            const metric = {
+                direction: 'maximum',
+                id: 'gpu.p95_ms',
+                label: 'GPU p95 duration',
+                medianAbsoluteTolerance: 3,
+                medianLimit: 1.15,
+                rows: gpuRows,
+                runAbsoluteTolerance: 6,
+                runLimit: 1.4,
+                unit: 'ms',
+            };
+            const timingDiagnostics = {
+                baselineElapsedMeanMedianMs: round(
+                    median(gpuRows.map((row) => row.baselineElapsedMeanMs)),
+                ),
+                baselineElapsedOccupancyMedianPercent: round(
+                    median(
+                        gpuRows.map(
+                            (row) => row.baselineElapsedOccupancyPercent,
+                        ),
+                    ),
+                ),
+                candidateElapsedMeanMedianMs: round(
+                    median(gpuRows.map((row) => row.candidateElapsedMeanMs)),
+                ),
+                candidateElapsedOccupancyMedianPercent: round(
+                    median(
+                        gpuRows.map(
+                            (row) => row.candidateElapsedOccupancyPercent,
+                        ),
+                    ),
+                ),
+            };
+            const cadenceConfounded =
+                crossTierGpuCadence?.gateBasis === 'cadence-confounded' &&
+                crossTierGpuCadence.decisionStatus === 'not-comparable';
             comparisons.push({
                 phase: group.phase,
                 scenario: group.scenario,
-                ...buildRatioComparison({
-                    direction: 'maximum',
-                    id: 'gpu.p95_ms',
-                    label: 'GPU p95 duration',
-                    medianAbsoluteTolerance: 3,
-                    medianLimit: 1.15,
-                    rows: gpuRows,
-                    runAbsoluteTolerance: 6,
-                    runLimit: 1.4,
-                    unit: 'ms',
-                }),
+                ...(cadenceConfounded
+                    ? buildCadenceConfoundedGpuComparison({
+                          ...metric,
+                          gatedBy: `${crossTierCadenceConfoundedGpuGate}: ${crossTierGpuCadence.controlScenario}`,
+                      })
+                    : buildRatioComparison(metric)),
+                ...(crossTierGpuCadence
+                    ? {
+                          cadence: crossTierGpuCadence.cadence,
+                          cadenceControl:
+                              crossTierGpuCadence.controlCadence ?? null,
+                          controlScenario: crossTierGpuCadence.controlScenario,
+                          decisionStatus: crossTierGpuCadence.decisionStatus,
+                          gateBasis: crossTierGpuCadence.gateBasis,
+                      }
+                    : {
+                          decisionStatus: 'comparable',
+                          gateBasis: 'direct',
+                      }),
+                gpuTimingDiagnostics: timingDiagnostics,
             });
         }
         if (gpuOccupancyRows.length > 0) {
@@ -3767,8 +4067,18 @@ function compareReportPair(
         pushMismatch(
             validationErrors,
             'profile options',
-            pick(baseline.options, reportOptionFields),
-            pick(candidate.options, reportOptionFields),
+            pick(
+                baseline.options,
+                reportOptionFields.filter(
+                    (field) => field !== 'legacyOutlinePipeline',
+                ),
+            ),
+            pick(
+                candidate.options,
+                reportOptionFields.filter(
+                    (field) => field !== 'legacyOutlinePipeline',
+                ),
+            ),
         );
     }
 
@@ -3884,10 +4194,16 @@ function compareReportPair(
         exitCode,
         generatedAt: new Date().toISOString(),
         invariants: comparable ? comparisonData.invariants : [],
-        schemaVersion: 2,
+        schemaVersion: comparisonReportSchemaVersion,
         skipped: comparable ? comparisonData.skipped : [],
         status,
         summary: {
+            cadenceConfoundedComparisons: comparable
+                ? comparisonData.comparisons.filter(
+                      (comparison) =>
+                          comparison.gateBasis === 'cadence-confounded',
+                  ).length
+                : 0,
             failedComparisons: comparable ? failedComparisons.length : 0,
             failedInvariants: comparable ? failedInvariants.length : 0,
             passedComparisons: comparable
@@ -4008,6 +4324,70 @@ function validateIndependentCapture(
     }
     if (sourcePath && repeatedPath && sourcePath === repeatedPath) {
         errors.push(`${label} report path must differ from its source path`);
+    }
+    return errors;
+}
+
+function validateCadenceDecisionMatrix(comparisonPairs) {
+    const errors = [];
+    const resultsByKey = new Map();
+    for (const { comparison, label } of comparisonPairs) {
+        for (const result of comparison.comparisons) {
+            if (
+                result.id !== 'gpu.p95_ms' ||
+                !result.scenario.includes('-camera-motion-') ||
+                !crossTierBaseNamePattern.test(result.scenario)
+            ) {
+                continue;
+            }
+            const values = resultsByKey.get(metricKey(result)) ?? [];
+            values.push({ label, result });
+            resultsByKey.set(metricKey(result), values);
+        }
+    }
+    for (const [key, values] of resultsByKey) {
+        const hasCadenceConfound = values.some(
+            ({ result }) => result.gateBasis === 'cadence-confounded',
+        );
+        if (!hasCadenceConfound) {
+            continue;
+        }
+        if (
+            values.length !== comparisonPairs.length ||
+            values.some(
+                ({ result }) =>
+                    result.gateBasis !== 'cadence-confounded' ||
+                    result.decisionStatus !== 'not-comparable',
+            )
+        ) {
+            errors.push(
+                `${key} cadence-confounded GPU p95 classification must hold in every symmetric comparison pairing`,
+            );
+            continue;
+        }
+        const baselineMedians = values.map(
+            ({ result }) => result.cadence?.baselineMedian,
+        );
+        const candidateMedians = values.map(
+            ({ result }) => result.cadence?.candidateMedian,
+        );
+        if (
+            baselineMedians.some(
+                (value) =>
+                    !isFiniteNumber(value) ||
+                    value <= crossTierMaximumRenderedFps,
+            ) ||
+            candidateMedians.some((value) => !isFiniteNumber(value)) ||
+            baselineMedians.some((baselineMedian) =>
+                candidateMedians.some(
+                    (candidateMedian) => baselineMedian <= candidateMedian,
+                ),
+            )
+        ) {
+            errors.push(
+                `${key} cadence-confounded GPU p95 classification requires both legacy baseline medians above ${crossTierMaximumRenderedFps} FPS and above both canonical candidate medians`,
+            );
+        }
     }
     return errors;
 }
@@ -4161,49 +4541,6 @@ function compareConfirmedReports(
             }),
         );
     }
-    if (validationErrors.length > 0) {
-        return {
-            ...primary,
-            baselineConfirmation: reportCapture(
-                baselineConfirmation,
-                baselineConfirmationPath,
-                baselineSchedulerContract,
-            ),
-            baselineConfirmationUsed: Boolean(baselineConfirmation),
-            comparable: false,
-            comparisons: [],
-            confirmation: reportCapture(
-                confirmation,
-                confirmationPath,
-                canonicalSchedulerBaselineContract,
-            ),
-            confirmationUsed: true,
-            exitCode: 2,
-            invariants: [],
-            schemaVersion: 2,
-            skipped: [],
-            status: 'invalid',
-            summary: {
-                failedComparisons: 0,
-                failedInvariants: 0,
-                passedComparisons: 0,
-                passedInvariants: 0,
-                comparisonPairCount: baselineConfirmation ? 4 : 2,
-                primaryScreeningComparisons: 0,
-                confirmationScreeningComparisons: 0,
-                replicationScreeningComparisons: [],
-                reproducedRegressions: 0,
-                scenarioRunCount: 0,
-                screeningComparisons: 0,
-                skippedMetrics: 0,
-                totalComparisons: 0,
-                totalInvariants: 0,
-                unresolvedReplications: 0,
-            },
-            validationErrors,
-        };
-    }
-
     const comparisonPairs = [
         {
             comparison: primary,
@@ -4226,6 +4563,55 @@ function compareConfirmedReports(
               ]
             : []),
     ];
+    if (validationErrors.length === 0) {
+        validationErrors.push(
+            ...validateCadenceDecisionMatrix(comparisonPairs),
+        );
+    }
+    if (validationErrors.length > 0) {
+        return {
+            ...primary,
+            baselineConfirmation: reportCapture(
+                baselineConfirmation,
+                baselineConfirmationPath,
+                baselineSchedulerContract,
+            ),
+            baselineConfirmationUsed: Boolean(baselineConfirmation),
+            comparable: false,
+            comparisons: [],
+            confirmation: reportCapture(
+                confirmation,
+                confirmationPath,
+                canonicalSchedulerBaselineContract,
+            ),
+            confirmationUsed: true,
+            exitCode: 2,
+            invariants: [],
+            schemaVersion: comparisonReportSchemaVersion,
+            skipped: [],
+            status: 'invalid',
+            summary: {
+                cadenceConfoundedComparisons: 0,
+                failedComparisons: 0,
+                failedInvariants: 0,
+                passedComparisons: 0,
+                passedInvariants: 0,
+                comparisonPairCount: baselineConfirmation ? 4 : 2,
+                primaryScreeningComparisons: 0,
+                confirmationScreeningComparisons: 0,
+                replicationScreeningComparisons: [],
+                reproducedRegressions: 0,
+                scenarioRunCount: 0,
+                screeningComparisons: 0,
+                skippedMetrics: 0,
+                totalComparisons: 0,
+                totalInvariants: 0,
+                unresolvedReplications: 0,
+            },
+            validationErrors,
+        };
+    }
+
     const comparisonMaps = comparisonPairs.map(({ comparison, label }) => ({
         label,
         results: new Map(
@@ -4251,11 +4637,19 @@ function compareConfirmedReports(
                       available: true,
                       baselineMedian: result.baselineMedian,
                       candidateMedian: result.candidateMedian,
+                      decisionStatus: result.decisionStatus,
+                      gateBasis: result.gateBasis,
                       individual: result.individual,
                       label,
                       medianDelta: result.medianDelta,
                       medianRatio: result.medianRatio,
                       medianWorsening: result.medianWorsening,
+                      observedRegressionBreach:
+                          result.baselineRelativeRegressionBreach ??
+                          result.regressionBreach,
+                      observedScreeningBreach:
+                          result.baselineRelativeScreeningBreach ??
+                          result.screeningBreach,
                       regressionBreach: result.regressionBreach,
                       screeningBreach: result.screeningBreach,
                   }
@@ -4390,10 +4784,13 @@ function compareConfirmedReports(
         confirmationUsed: true,
         exitCode: status === 'pass' ? 0 : 1,
         invariants,
-        schemaVersion: 2,
+        schemaVersion: comparisonReportSchemaVersion,
         skipped,
         status,
         summary: {
+            cadenceConfoundedComparisons: comparisons.filter(
+                (result) => result.gateBasis === 'cadence-confounded',
+            ).length,
             failedComparisons: failedComparisons.length,
             failedInvariants: failedInvariants.length,
             passedComparisons: comparisons.filter((result) => result.pass)
@@ -4434,6 +4831,8 @@ function buildMarkdown(comparison) {
         '',
         `Generated: ${comparison.generatedAt}`,
         `Status: **${comparison.status}**`,
+        `Comparison schema: ${comparison.schemaVersion}`,
+        `Comparison contract: ${comparison.comparisonContractVersion}`,
         `Diagnostic only: ${comparison.diagnostic ? `yes (${comparison.diagnosticReasons.join('; ')})` : 'no'}`,
         `Comparable: ${comparison.comparable ? 'yes' : 'no'}`,
         `Baseline subject: ${comparison.baseline.subjectCommit ?? 'unknown'}`,
@@ -4461,7 +4860,7 @@ function buildMarkdown(comparison) {
         '',
         '## Summary',
         '',
-        `Scenario runs: ${comparison.summary.scenarioRunCount}; comparison pairs: ${comparison.summary.comparisonPairCount ?? 1}; comparisons: ${comparison.summary.passedComparisons}/${comparison.summary.totalComparisons} passed; screening signals: ${comparison.summary.screeningComparisons}; reproduced regressions: ${comparison.summary.reproducedRegressions ?? comparison.summary.failedComparisons}; unresolved replications: ${comparison.summary.unresolvedReplications ?? 0}; invariants: ${comparison.summary.passedInvariants}/${comparison.summary.totalInvariants} passed; skipped metrics: ${comparison.summary.skippedMetrics}.`,
+        `Scenario runs: ${comparison.summary.scenarioRunCount}; comparison pairs: ${comparison.summary.comparisonPairCount ?? 1}; comparisons: ${comparison.summary.passedComparisons}/${comparison.summary.totalComparisons} passed; cadence-confounded GPU diagnostics: ${comparison.summary.cadenceConfoundedComparisons ?? 0}; screening signals: ${comparison.summary.screeningComparisons}; reproduced regressions: ${comparison.summary.reproducedRegressions ?? comparison.summary.failedComparisons}; unresolved replications: ${comparison.summary.unresolvedReplications ?? 0}; invariants: ${comparison.summary.passedInvariants}/${comparison.summary.totalInvariants} passed; skipped metrics: ${comparison.summary.skippedMetrics}.`,
     );
 
     if (comparison.validationErrors.length > 0) {
@@ -4499,24 +4898,30 @@ function buildMarkdown(comparison) {
                     ? `${display(result.confirmation.medianRatio)}x`
                     : `${display(result.confirmation.medianDelta)} ${result.unit}`
                 : null;
-            const gate = result.targetAwareRenderedFps
-                ? result.maximumRenderedFps === null
-                    ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
-                    : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
-                : result.diagnosticOnly
-                  ? `diagnostic only; gated by ${result.gatedBy}`
-                  : result.kind === 'ratio'
-                    ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                    : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
-            const resultLabel = result.regressionBreach
-                ? 'fail'
-                : result.replicationIncomplete
-                  ? 'needs rerun'
-                  : result.screeningBreach
-                    ? comparison.confirmationUsed
-                        ? 'pass (not reproduced)'
-                        : 'needs rerun'
-                    : 'pass';
+            const gate =
+                result.gateBasis === 'cadence-confounded'
+                    ? `not comparable: cadence-confounded; raw ${result.medianLimit}x / ${result.medianAbsoluteTolerance} ${result.unit} observation retained; gated by ${result.gatedBy}`
+                    : result.targetAwareRenderedFps
+                      ? result.maximumRenderedFps === null
+                          ? `candidate >= ${result.minimumRenderedFps} ${result.unit} (target ${result.targetFramesPerSecond} ${result.unit}, ${result.targetToleranceFramesPerSecond} ${result.unit} tolerance); baseline-relative ratio diagnostic only`
+                          : `candidate ${result.minimumRenderedFps}-${result.maximumRenderedFps} ${result.unit} around declared ${result.targetFramesPerSecond} ${result.unit} target; every raw run; baseline-relative ratio diagnostic only`
+                      : result.diagnosticOnly
+                        ? `diagnostic only; gated by ${result.gatedBy}`
+                        : result.kind === 'ratio'
+                          ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
+                          : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
+            const resultLabel =
+                result.decisionStatus === 'not-comparable'
+                    ? 'not comparable (cadence-confounded)'
+                    : result.regressionBreach
+                      ? 'fail'
+                      : result.replicationIncomplete
+                        ? 'needs rerun'
+                        : result.screeningBreach
+                          ? comparison.confirmationUsed
+                              ? 'pass (not reproduced)'
+                              : 'needs rerun'
+                          : 'pass';
             if (comparison.baselineConfirmationUsed) {
                 lines.push(
                     `| ${result.scenario} | ${result.phase} | ${result.label} | ${display(result.baselineMedian)} | ${display(result.baselineConfirmationMedian)} | ${display(result.candidateMedian)} | ${display(result.confirmation?.candidateMedian)} | ${gate} | ${resultLabel} |`,
@@ -4530,6 +4935,29 @@ function buildMarkdown(comparison) {
                     `| ${result.scenario} | ${result.phase} | ${result.label} | ${display(result.baselineMedian)} | ${display(result.candidateMedian)} | ${delta} | ${gate} | ${resultLabel} |`,
                 );
             }
+        }
+    }
+
+    const cadenceConfoundedGpu = comparison.comparisons.filter(
+        (result) =>
+            result.id === 'gpu.p95_ms' &&
+            result.gateBasis === 'cadence-confounded',
+    );
+    if (cadenceConfoundedGpu.length > 0) {
+        lines.push(
+            '',
+            '## Cadence-confounded GPU diagnostics',
+            '',
+            'These camera-motion GPU p95 observations are retained but do not decide the result. The mapped same-tier steady row remains the decisive GPU gate.',
+            '',
+            '| Scenario | Legacy motion median FPS | Canonical motion median FPS | Raw GPU p95 ratio | Raw threshold observation | Mapped steady control | GPU mean median (baseline / candidate) | GPU occupancy median (baseline / candidate) |',
+            '| --- | ---: | ---: | ---: | --- | --- | ---: | ---: |',
+        );
+        for (const result of cadenceConfoundedGpu) {
+            const diagnostics = result.gpuTimingDiagnostics ?? {};
+            lines.push(
+                `| ${result.scenario} | ${display(result.cadence?.baselineMedian)} | ${display(result.cadence?.candidateMedian)} | ${display(result.medianRatio)}x | ${result.rawThresholdObservation?.regressionBreach ? 'breach' : result.rawThresholdObservation?.screeningBreach ? 'screen' : 'within threshold'} | ${result.controlScenario ?? 'missing'} | ${display(diagnostics.baselineElapsedMeanMedianMs)} / ${display(diagnostics.candidateElapsedMeanMedianMs)} ms | ${display(diagnostics.baselineElapsedOccupancyMedianPercent)} / ${display(diagnostics.candidateElapsedOccupancyMedianPercent)} % |`,
+            );
         }
     }
 
