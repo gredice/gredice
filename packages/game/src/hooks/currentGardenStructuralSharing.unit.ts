@@ -201,6 +201,20 @@ describe('shareCurrentGardenData', () => {
         );
     });
 
+    it('does not retain stale garden building authority', () => {
+        const previousGarden = createGarden({
+            gardenBuildingSystem: { enabled: true },
+        });
+        const nextGarden = createGarden({
+            gardenBuildingSystem: { enabled: false },
+        });
+
+        assert.equal(
+            shareCurrentGardenData(previousGarden, nextGarden),
+            nextGarden,
+        );
+    });
+
     it('keeps preview metadata updates without discarding the garden change', () => {
         const previousGarden = createGarden({
             previewImage: null,

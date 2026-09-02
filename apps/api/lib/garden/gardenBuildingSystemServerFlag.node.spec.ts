@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
     gardenBuildingSystemCommercialFlagName,
     gardenBuildingSystemServerFlagName,
+    getGardenBuildingSystemAvailability,
     isGardenBuildingSystemCommercialEnabled,
     isGardenBuildingSystemServerEnabled,
     parseGardenBuildingSystemServerFlag,
@@ -88,5 +89,37 @@ test('garden building commercial gate is independently default-off and exact', (
     });
     withCommercialFlag('true', () => {
         assert.equal(isGardenBuildingSystemCommercialEnabled(), true);
+    });
+});
+
+test('garden building availability requires API authority for the selected garden', () => {
+    withServerFlag(undefined, () => {
+        withCommercialFlag(undefined, () => {
+            assert.deepEqual(getGardenBuildingSystemAvailability(false), {
+                enabled: false,
+            });
+            assert.deepEqual(getGardenBuildingSystemAvailability(true), {
+                enabled: false,
+            });
+        });
+    });
+
+    withServerFlag('true', () => {
+        withCommercialFlag(undefined, () => {
+            assert.deepEqual(getGardenBuildingSystemAvailability(false), {
+                enabled: false,
+            });
+            assert.deepEqual(getGardenBuildingSystemAvailability(true), {
+                enabled: true,
+            });
+        });
+        withCommercialFlag('true', () => {
+            assert.deepEqual(getGardenBuildingSystemAvailability(false), {
+                enabled: true,
+            });
+            assert.deepEqual(getGardenBuildingSystemAvailability(true), {
+                enabled: true,
+            });
+        });
     });
 });

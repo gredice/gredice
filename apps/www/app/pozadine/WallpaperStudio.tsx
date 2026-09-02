@@ -5,14 +5,7 @@ import { Alert } from '@gredice/ui/Alert';
 import { Button } from '@gredice/ui/Button';
 import { ButtonGroup, buttonGroupItemClassName } from '@gredice/ui/ButtonGroup';
 import { Card, CardContent, CardHeader, CardTitle } from '@gredice/ui/Card';
-import {
-    Apple,
-    Desktop,
-    Laptop,
-    Mobile,
-    Navigate,
-    Warning,
-} from '@gredice/ui/icons';
+import { Desktop, Laptop, Mobile, Navigate, Warning } from '@gredice/ui/icons';
 import { Logotype } from '@gredice/ui/PublicChrome';
 import { Spinner } from '@gredice/ui/Spinner';
 import { Stack } from '@gredice/ui/Stack';
@@ -529,42 +522,32 @@ export function WallpaperStudio() {
                                 </ButtonGroup>
                             </div>
 
-                            <div className="grid gap-2">
-                                <Typography level="body2" bold>
-                                    Veličina
-                                </Typography>
-                                <ButtonGroup
-                                    className="grid w-full grid-cols-2"
-                                    legend="Veličina pozadine"
-                                    size="md"
+                            <label className="grid gap-2 text-sm font-medium">
+                                Veličina
+                                <select
+                                    aria-label="Veličina pozadine"
+                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                                    disabled={isBusy}
+                                    onChange={(event) => {
+                                        const selectedSizeKey =
+                                            wallpaperSizeKeys.find(
+                                                (value) =>
+                                                    value ===
+                                                    event.currentTarget.value,
+                                            );
+                                        if (selectedSizeKey) {
+                                            setSizeKey(selectedSizeKey);
+                                        }
+                                    }}
+                                    value={sizeKey}
                                 >
                                     {wallpaperSizeKeys.map((value) => (
-                                        <Button
-                                            aria-pressed={sizeKey === value}
-                                            className={buttonGroupItemClassName(
-                                                {
-                                                    className:
-                                                        'w-full last:col-span-2',
-                                                    size: 'md',
-                                                },
-                                            )}
-                                            disabled={isBusy}
-                                            key={value}
-                                            onClick={() => setSizeKey(value)}
-                                            variant={
-                                                sizeKey === value
-                                                    ? 'soft'
-                                                    : 'plain'
-                                            }
-                                        >
-                                            {wallpaperSizes[value].shortLabel}
-                                        </Button>
+                                        <option key={value} value={value}>
+                                            {wallpaperSizes[value].label}
+                                        </option>
                                     ))}
-                                </ButtonGroup>
-                                <Typography level="body3" secondary>
-                                    {selectedSize.label}
-                                </Typography>
-                            </div>
+                                </select>
+                            </label>
 
                             <Switch
                                 checked={branding === 'gredice'}
@@ -650,7 +633,15 @@ export function WallpaperStudio() {
                             disabled={!gardenQuery.data || isBusy}
                             loading={activity === 'macos'}
                             onClick={handleMacOSDynamicDownload}
-                            startDecorator={<Apple className="size-4" />}
+                            startDecorator={
+                                <svg
+                                    aria-hidden="true"
+                                    className="size-4 fill-current"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                                </svg>
+                            }
                         >
                             Mac dinamički paket
                         </Button>

@@ -127,6 +127,7 @@ import {
 import { GardenStructurePlanCache } from './structures/gardenStructurePlanCache';
 import { resolveGardenStructurePlanWithCache } from './structures/gardenStructurePlanResolution';
 import type { GardenStructureProfileFixtureDescriptor } from './structures/gardenStructureProfileFixtureDescriptor';
+import { resolveGardenStructureBuildModeEnabled } from './structures/gardenStructureRollout';
 import {
     createGardenStructureSceneBaseHeightResolver,
     createGardenStructureSceneBuildPreviewCompileInput,
@@ -437,9 +438,24 @@ export function GameScene({
     );
     const weatherDisabled = noWeather || weatherVisualizationDisabled;
     const gardenAvatarEnabled = Boolean(flags?.enableGardenAvatarFlag);
-    const gardenStructureVerticalSliceEnabled = Boolean(
+    const gardenStructureManagedEnabled = Boolean(
         flags?.enableGardenBuildingSystemFlag,
     );
+    const { data: blockData } = useBlockData();
+    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
+    const { displayedGarden: transitionedGardenData, sceneVisible } =
+        useGardenSceneTransition(gardenData);
+    const garden = useSceneCurrentGarden(transitionedGardenData);
+    const gardenStructureVerticalSliceEnabled =
+        resolveGardenStructureBuildModeEnabled({
+            fixture: Boolean(
+                isLocalSandbox ||
+                    gardenStructureDebugFixture ||
+                    gardenStructureProfileFixture,
+            ),
+            managedEnabled: gardenStructureManagedEnabled,
+            serverEnabled: Boolean(garden?.gardenBuildingSystem?.enabled),
+        });
     const gardenStructureAvatarInteriorsEnabled =
         gardenAvatarEnabled && gardenStructureVerticalSliceEnabled;
     const structureBuildActive = Boolean(
@@ -454,11 +470,6 @@ export function GameScene({
         structureBuildTool === 'hand' ||
         structureBuildTool === 'select' ||
         structureBuildSession?.editor.workflow.kind === 'placing-template';
-    const { data: blockData } = useBlockData();
-    const { data: gardenData, isLoading: gardenLoading } = useCurrentGarden();
-    const { displayedGarden: transitionedGardenData, sceneVisible } =
-        useGardenSceneTransition(gardenData);
-    const garden = useSceneCurrentGarden(transitionedGardenData);
     const editedStructureId =
         structureBuildActive && structureBuildSession
             ? structureBuildSession.editor.origin.kind === 'saved-structure'
