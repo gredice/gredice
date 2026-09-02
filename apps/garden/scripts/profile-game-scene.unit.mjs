@@ -26,6 +26,8 @@ import {
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
     collectScenarioMemoryEvidence,
+    crossTierColdMilestoneMeasurementMode,
+    crossTierResourceSnapshotMeasurementMode,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
@@ -37,6 +39,7 @@ import {
     evaluateRuntimeOwnersAcceptance,
     evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
+    finishCrossTierColdMilestoneTracking,
     finishInteractiveProfileSample,
     fullRuntimeFrameLoopCounterFields,
     gameCameraSnapshotMaximumDelta,
@@ -50,6 +53,7 @@ import {
     isIgnoredLocalProfilerConsoleError,
     isLifecycleRendererStatsBarrierReady,
     isLifecycleRendererStatsMeasurementValid,
+    isNonNegativeIntegerRecord,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     lifecycleOwnedSchedulingZeroObserved,
@@ -61,9 +65,13 @@ import {
     mergeProfileSampleDrain,
     normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
+    numberRecordsEqual,
     parseArgs,
     parseComparisonContractVersion,
+    populationExposureCovers,
+    populationExposureSignature,
     primeGardenSwitchProfileSample,
+    readCrossTierResourceSnapshotState,
     resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,
@@ -168,7 +176,7 @@ const provenanceCommitA = 'a'.repeat(40);
 const provenanceCommitB = 'b'.repeat(40);
 const cleanServedBuildMarker = {
     commit: provenanceCommitA,
-    comparisonContractVersion: 5,
+    comparisonContractVersion: 6,
     dirty: false,
 };
 
@@ -324,7 +332,7 @@ test('report provenance rejects served-build, managed harness, and contract mism
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 6,
+                    comparisonContractVersion: 7,
                 },
             },
         ],
@@ -383,7 +391,7 @@ test('external report provenance still rejects served-build and contract mismatc
             {
                 servedBuildProvenance: {
                     ...cleanServedBuildMarker,
-                    comparisonContractVersion: 6,
+                    comparisonContractVersion: 7,
                 },
             },
         ],
@@ -2645,7 +2653,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
     };
     const cleanSubject = {
         commit: 'b'.repeat(40),
-        comparisonContractVersion: 5,
+        comparisonContractVersion: 6,
         dirty: false,
     };
     assert.equal(
@@ -2665,7 +2673,7 @@ test('legacy lifecycle renderer stats mode is limited to an explicit clean exter
         {
             servedBuild: {
                 ...cleanSubject,
-                comparisonContractVersion: 6,
+                comparisonContractVersion: 7,
             },
         },
     ]) {
@@ -3320,9 +3328,230 @@ test('lifecycle cold milestones are captured at document start and first submitt
     );
     assert.match(milestoneSource, /new MutationObserver/);
     assert.match(milestoneSource, /new ResizeObserver/);
+    assert.match(milestoneSource, /expectedDpr/);
     assert.match(milestoneSource, /canvasAttachedMs \?\?=/);
     assert.match(milestoneSource, /canvasSizedMs/);
+    assert.match(milestoneSource, /mutationObserver\.disconnect\(\)/);
     assert.match(browserMetricSource, /firstSubmittedFrameMs/);
+    assert.match(browserMetricSource, /actorGroundingShadowSpeciesCountMax/);
+    assert.match(
+        browserMetricSource,
+        /recordActorGroundingShadowSpeciesExposure/,
+    );
+});
+
+test('population exposure helpers canonicalize and fail closed on invalid census data', () => {
+    const endpoint = { bird: 2, butterfly: 3 };
+    const exposure = { butterfly: 4, bird: 2 };
+
+    assert.equal(isNonNegativeIntegerRecord(endpoint), true);
+    assert.equal(isNonNegativeIntegerRecord({}), true);
+    assert.equal(isNonNegativeIntegerRecord({ '': 1 }), false);
+    assert.equal(isNonNegativeIntegerRecord({ butterfly: 3.5 }), false);
+    assert.equal(numberRecordsEqual(endpoint, { butterfly: 3, bird: 2 }), true);
+    assert.equal(numberRecordsEqual(endpoint, exposure), false);
+    assert.equal(populationExposureCovers(exposure, endpoint), true);
+    assert.equal(
+        populationExposureCovers({ bird: 2, butterfly: 2 }, endpoint),
+        false,
+    );
+    assert.equal(
+        populationExposureSignature(exposure),
+        '{"bird":2,"butterfly":4}',
+    );
+    assert.equal(populationExposureSignature(null), null);
+});
+
+test('cross-tier resource snapshot state rejects malformed raw population telemetry', async () => {
+    const hadProfile = Object.hasOwn(globalThis, '__grediceGameProfile');
+    const hadMetrics = Object.hasOwn(globalThis, '__gameProfileMetrics');
+    const previousProfile = globalThis.__grediceGameProfile;
+    const previousMetrics = globalThis.__gameProfileMetrics;
+    const page = { evaluate: async (callback) => callback() };
+
+    try {
+        globalThis.__grediceGameProfile = {
+            actorGroundingShadowSpeciesCounts: {
+                bird: 2,
+                butterfly: 3.5,
+            },
+            rendererGeometries: 255,
+            rendererShaders: 24,
+            rendererTextures: 8,
+        };
+        globalThis.__gameProfileMetrics = {
+            actorGroundingShadowSpeciesCountMax: { bird: 2, butterfly: 4 },
+        };
+
+        const malformedCount = await readCrossTierResourceSnapshotState(page);
+        assert.equal(malformedCount.population, null);
+
+        globalThis.__grediceGameProfile.actorGroundingShadowSpeciesCounts = {
+            '': 1,
+            bird: 2,
+        };
+        const emptySpecies = await readCrossTierResourceSnapshotState(page);
+        assert.equal(emptySpecies.population, null);
+
+        globalThis.__grediceGameProfile.actorGroundingShadowSpeciesCounts = {
+            bird: 2,
+            butterfly: 3,
+        };
+        const valid = await readCrossTierResourceSnapshotState(page);
+        assert.deepEqual(valid.population, { bird: 2, butterfly: 3 });
+    } finally {
+        if (hadProfile) {
+            globalThis.__grediceGameProfile = previousProfile;
+        } else {
+            delete globalThis.__grediceGameProfile;
+        }
+        if (hadMetrics) {
+            globalThis.__gameProfileMetrics = previousMetrics;
+        } else {
+            delete globalThis.__gameProfileMetrics;
+        }
+    }
+});
+
+test('document-start cold milestones honor 1x, 1.5x, and 2x backing DPR', () => {
+    const keys = [
+        'HTMLCanvasElement',
+        'MutationObserver',
+        'ResizeObserver',
+        '__grediceLifecycleFirstCanvas',
+        '__grediceLifecycleMilestones',
+        '__grediceLifecycleRecordCanvas',
+        '__grediceLifecycleStopMilestoneTracker',
+        'devicePixelRatio',
+        'document',
+        'performance',
+    ];
+    const descriptors = new Map(
+        keys.map((key) => [
+            key,
+            Object.getOwnPropertyDescriptor(globalThis, key),
+        ]),
+    );
+    const setGlobal = (key, value) => {
+        Object.defineProperty(globalThis, key, {
+            configurable: true,
+            value,
+            writable: true,
+        });
+    };
+    let clock = 10;
+    let canvas;
+    let mutationObserverDisconnectCount = 0;
+    let resizeObserverDisconnectCount = 0;
+
+    class ProfileCanvas {}
+    class ProfileMutationObserver {
+        disconnect() {
+            mutationObserverDisconnectCount += 1;
+        }
+
+        observe() {}
+    }
+    class ProfileResizeObserver {
+        disconnect() {
+            resizeObserverDisconnectCount += 1;
+        }
+
+        observe() {}
+    }
+
+    try {
+        setGlobal('HTMLCanvasElement', ProfileCanvas);
+        setGlobal('MutationObserver', ProfileMutationObserver);
+        setGlobal('ResizeObserver', ProfileResizeObserver);
+        setGlobal('devicePixelRatio', 2);
+        setGlobal('document', {
+            addEventListener() {},
+            querySelector(selector) {
+                assert.equal(selector, '[data-scene-garden-id] canvas');
+                return canvas;
+            },
+            readyState: 'complete',
+        });
+        setGlobal('performance', {
+            getEntriesByType(type) {
+                return type === 'navigation'
+                    ? [{ domContentLoadedEventEnd: 5 }]
+                    : [];
+            },
+            now() {
+                clock += 1;
+                return clock;
+            },
+        });
+
+        for (const [expectedDpr, hostCanvasReadyDiagnosticMs] of [
+            [1, 381],
+            [1.5, 565],
+            [2, 587],
+        ]) {
+            for (const key of keys.filter((key) =>
+                key.startsWith('__grediceLifecycle'),
+            )) {
+                Reflect.deleteProperty(globalThis, key);
+            }
+            canvas = Object.assign(new ProfileCanvas(), {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 1,
+                width: 1,
+            });
+
+            installLifecycleMilestoneTracker({ expectedDpr });
+            assert.equal(
+                globalThis.__grediceLifecycleMilestones.expectedDpr,
+                expectedDpr,
+            );
+            assert.equal(
+                globalThis.__grediceLifecycleMilestones.canvasSizedMs,
+                null,
+            );
+
+            canvas.height = Math.round(canvas.clientHeight * expectedDpr);
+            canvas.width = Math.round(canvas.clientWidth * expectedDpr);
+            globalThis.__grediceLifecycleRecordCanvas();
+            globalThis.__grediceLifecycleMilestones.firstSubmittedFrameMs =
+                performance.now();
+            const cold = finishCrossTierColdMilestoneTracking({
+                hostCanvasReadyDiagnosticMs,
+                measurementMode: crossTierColdMilestoneMeasurementMode,
+            });
+
+            assert.equal(cold.canvasAttachmentCount, 1);
+            assert.equal(cold.canvasSize.height, canvas.height);
+            assert.equal(cold.canvasSize.width, canvas.width);
+            assert.equal(cold.expectedDpr, expectedDpr);
+            assert.equal(cold.firstCanvasPersistent, true);
+            assert.equal(
+                cold.hostCanvasReadyDiagnosticMs,
+                hostCanvasReadyDiagnosticMs,
+            );
+            assert.equal(
+                cold.measurementMode,
+                crossTierColdMilestoneMeasurementMode,
+            );
+            assert.equal(cold.mutationObserverStopped, true);
+            assert.ok(cold.observationStoppedMs >= cold.fixtureReadyMs);
+            assert.equal(cold.trackerInstalled, true);
+        }
+
+        assert.equal(mutationObserverDisconnectCount, 3);
+        assert.equal(resizeObserverDisconnectCount, 3);
+    } finally {
+        for (const key of keys) {
+            const descriptor = descriptors.get(key);
+            if (descriptor) {
+                Object.defineProperty(globalThis, key, descriptor);
+            } else {
+                Reflect.deleteProperty(globalThis, key);
+            }
+        }
+    }
 });
 
 test('runtime GPU-source scenario disables only the external profiler timer', () => {
@@ -4867,6 +5096,61 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
     const input = {
         apiErrors: [],
         consoleMessages: [],
+        crossTierCold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 310,
+            canvasSize: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 720,
+                width: 1_280,
+            },
+            canvasSizedMs: 383,
+            domContentLoadedMs: 16,
+            expectedDpr: 1,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 488,
+            fixtureReadyMs: 580,
+            hostCanvasReadyDiagnosticMs: 386,
+            installedMs: 0,
+            measurementMode: crossTierColdMilestoneMeasurementMode,
+            mutationObserverStopped: true,
+            observationStoppedMs: 581,
+            trackerInstalled: true,
+        },
+        crossTierResourceSnapshot: {
+            attemptCount: 1,
+            capturedAt: 700,
+            measurementMode: crossTierResourceSnapshotMeasurementMode,
+            populationAtEnd: {},
+            populationAtStart: {},
+            populationExposure: {},
+            populationExposureAtEnd: {},
+            populationExposureAtStart: {},
+            populationExposureAvailable: false,
+            populationExposureSignature: '{}',
+            rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+            resources: {
+                rendererGeometries: 250,
+                rendererShaders: 22,
+                rendererStatsMeasurement: {
+                    completedAt: 650,
+                    drawCallsDelta: 10,
+                    legacySettleMs: null,
+                    measurementMode: lifecycleRendererStatsCanonicalMode,
+                    renderedFramesDelta: 1,
+                    rendererStatsPublishedAt: 640,
+                    rendererStatsReceiptCount: 2,
+                    rendererStatsReceiptDelta: 1,
+                    rendererStatsRenderFrame: 2,
+                    r3fFrameCallbackCountDelta: 1,
+                    runtimeMeasurementMode: 'post-render-microtask-v1',
+                    startedAt: 600,
+                    submittedTrianglesDelta: 100,
+                },
+                rendererTextures: 8,
+            },
+        },
         pageErrors: [],
         requested: {
             crossTierProfile: true,
@@ -4891,6 +5175,7 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             viewport: { height: 720, width: 1280 },
         },
         runtime: {
+            actorGroundingShadowSpeciesCounts: {},
             dprCap: 1,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFieldCount: 54,
@@ -4911,6 +5196,9 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'low',
+            rendererGeometries: 250,
+            rendererShaders: 22,
+            rendererTextures: 8,
             runtimeFrameLoop: {
                 activeLeaseCount: 10,
                 targetFramesPerSecond: 30,
@@ -5065,6 +5353,81 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
             assert.equal(failedNames.has(name), true, `${name} must fail`);
         }
     };
+    for (const hostCanvasReadyDiagnosticMs of [381, 394, 565, 587]) {
+        const candidate = structuredClone(input);
+        candidate.crossTierCold.hostCanvasReadyDiagnosticMs =
+            hostCanvasReadyDiagnosticMs;
+        assert.equal(
+            evaluateCrossTierAcceptance(candidate).pass,
+            true,
+            `host canvas boundary ${hostCanvasReadyDiagnosticMs} ms must remain diagnostic`,
+        );
+    }
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold = null;
+        },
+        [
+            'crossTierColdMeasurementMode',
+            'crossTierColdTrackerInstalled',
+            'crossTierColdCanvasSizedMs',
+            'crossTierColdMilestoneOrder',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.firstSubmittedFrameMs = 382;
+        },
+        ['crossTierColdMilestoneOrder'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.installedMs = 17;
+        },
+        ['crossTierColdInstalledBeforeDomContentLoaded'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierCold.mutationObserverStopped = false;
+        },
+        ['crossTierColdMutationObserverStopped'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot = null;
+        },
+        [
+            'crossTierResourceSnapshotMeasurementMode',
+            'crossTierResourcePopulationStable',
+            'crossTierResourceRendererStatsMeasurementValid',
+        ],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.populationExposureAtStart = {
+                butterfly: 3,
+            };
+        },
+        ['crossTierResourcePopulationExposureStable'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.resources.rendererStatsMeasurement.rendererStatsReceiptDelta = 0;
+        },
+        ['crossTierResourceRendererStatsMeasurementValid'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.populationExposureAvailable = true;
+        },
+        ['crossTierResourcePopulationExposureAvailable'],
+    );
+    expectFailedChecks(
+        (candidate) => {
+            candidate.crossTierResourceSnapshot.resources.rendererGeometries = 251;
+        },
+        ['crossTierResourceSnapshotMatchesRuntime:rendererGeometries'],
+    );
     expectFailedChecks(
         (candidate) => {
             candidate.sample.hoverOutlineMaskCacheHitCountDelta = null;
@@ -5433,9 +5796,74 @@ test('cross-tier acceptance verifies resolved quality and capped backing buffer'
 });
 
 test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
+    const population = {
+        bee: 1,
+        bird: 2,
+        butterfly: 3,
+        cat: 1,
+        dog: 1,
+        ladybug: 5,
+        squirrel: 1,
+    };
     const input = {
         apiErrors: [],
         consoleMessages: [],
+        crossTierCold: {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 310,
+            canvasSize: {
+                clientHeight: 720,
+                clientWidth: 1_280,
+                height: 1_080,
+                width: 1_920,
+            },
+            canvasSizedMs: 383,
+            domContentLoadedMs: 16,
+            expectedDpr: 1.5,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 488,
+            fixtureReadyMs: 580,
+            hostCanvasReadyDiagnosticMs: 565,
+            installedMs: 0,
+            measurementMode: crossTierColdMilestoneMeasurementMode,
+            mutationObserverStopped: true,
+            observationStoppedMs: 581,
+            trackerInstalled: true,
+        },
+        crossTierResourceSnapshot: {
+            attemptCount: 1,
+            capturedAt: 700,
+            measurementMode: crossTierResourceSnapshotMeasurementMode,
+            populationAtEnd: structuredClone(population),
+            populationAtStart: structuredClone(population),
+            populationExposure: structuredClone(population),
+            populationExposureAtEnd: structuredClone(population),
+            populationExposureAtStart: structuredClone(population),
+            populationExposureAvailable: true,
+            populationExposureSignature:
+                populationExposureSignature(population),
+            rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+            resources: {
+                rendererGeometries: 255,
+                rendererShaders: 24,
+                rendererStatsMeasurement: {
+                    completedAt: 650,
+                    drawCallsDelta: 10,
+                    legacySettleMs: null,
+                    measurementMode: lifecycleRendererStatsCanonicalMode,
+                    renderedFramesDelta: 1,
+                    rendererStatsPublishedAt: 640,
+                    rendererStatsReceiptCount: 2,
+                    rendererStatsReceiptDelta: 1,
+                    rendererStatsRenderFrame: 2,
+                    r3fFrameCallbackCountDelta: 1,
+                    runtimeMeasurementMode: 'post-render-microtask-v1',
+                    startedAt: 600,
+                    submittedTrianglesDelta: 100,
+                },
+                rendererTextures: 8,
+            },
+        },
         pageErrors: [],
         requested: {
             autoQualityDeviceClass: 'standard',
@@ -5475,6 +5903,7 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             viewport: { height: 720, width: 1280 },
         },
         runtime: {
+            actorGroundingShadowSpeciesCounts: structuredClone(population),
             dprCap: 1.5,
             generatedPlantExpectedInstanceCount: 537,
             generatedPlantFieldCount: 54,
@@ -5495,6 +5924,9 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
             hoverOutlineProfileTargetBlockId: 'profile-raised-bed:2:0',
             hoverOutlineStyleGroupCount: 1,
             qualityTier: 'medium',
+            rendererGeometries: 255,
+            rendererShaders: 24,
+            rendererTextures: 8,
             runtimeFrameLoop: {
                 activeLeaseCount: 10,
                 targetFramesPerSecond: 30,
@@ -5609,6 +6041,33 @@ test('cross-tier acceptance verifies synthetic Automatic device inputs', () => {
                 },
             },
         }).pass,
+        false,
+    );
+    const mismatchedRuntimePopulation = structuredClone(input);
+    mismatchedRuntimePopulation.runtime.actorGroundingShadowSpeciesCounts = {
+        ...population,
+        butterfly: 2,
+    };
+    assert.equal(
+        evaluateCrossTierAcceptance(mismatchedRuntimePopulation).checks.find(
+            (check) =>
+                check.name ===
+                'crossTierResourceSnapshotPopulationMatchesRuntime',
+        )?.pass,
+        false,
+    );
+
+    const malformedRuntimePopulation = structuredClone(input);
+    malformedRuntimePopulation.runtime.actorGroundingShadowSpeciesCounts = {
+        ...population,
+        '': 1,
+    };
+    assert.equal(
+        evaluateCrossTierAcceptance(malformedRuntimePopulation).checks.find(
+            (check) =>
+                check.name ===
+                'crossTierResourceSnapshotPopulationMatchesRuntime',
+        )?.pass,
         false,
     );
 });
@@ -11647,13 +12106,43 @@ test('cross-tier medians retain tier identity and render in a separate report se
         const baseName = 'game-cross-tier-low-steady-desktop';
         return {
             ...run,
+            apiErrors: [],
             baseName,
+            budget: { ...run.budget, checks: [] },
+            consoleMessages: [],
             name: `${baseName}-run-${index + 1}`,
             requested: {
                 ...run.requested,
                 crossTierProfile: true,
                 quality: 'low',
             },
+            crossTierCold: {
+                canvasAttachedMs: 310,
+                canvasSize: {
+                    clientHeight: 720,
+                    clientWidth: 1_280,
+                    height: 720,
+                    width: 1_280,
+                },
+                canvasSizedMs: 383,
+                domContentLoadedMs: 16,
+                expectedDpr: 1,
+                firstSubmittedFrameMs: 488,
+                fixtureReadyMs: 580,
+                hostCanvasReadyDiagnosticMs: 572,
+            },
+            crossTierResourceSnapshot: {
+                attemptCount: 1,
+                populationAtEnd: {},
+                populationExposureSignature: '{}',
+                rendererStatsMode: lifecycleRendererStatsCanonicalMode,
+                resources: {
+                    rendererGeometries: 250,
+                    rendererShaders: 22,
+                    rendererTextures: 8,
+                },
+            },
+            pageErrors: [],
             runtime: { qualityTier: 'low' },
             sample: {
                 ...run.sample,
@@ -11705,7 +12194,7 @@ test('cross-tier medians retain tier identity and render in a separate report se
             warmupMs: 0,
         },
         plantCloseupMedians: {},
-        scenarios: [],
+        scenarios: crossTierRuns,
         schemaVersion: 2,
         sourceCommit: null,
         staticSceneCacheComparisons: {},
@@ -11718,6 +12207,7 @@ test('cross-tier medians retain tier identity and render in a separate report se
         return markdown.slice(start, end === -1 ? undefined : end);
     };
     const highTargetSection = section('High-target repeated-run summary');
+    const witnessSection = section('Cross-tier cold and resource witnesses');
     const crossTierSection = section('Cross-tier repeated-run summary');
 
     assert.match(highTargetSection, /game-high-target-clear-idle-desktop/);
@@ -11733,6 +12223,14 @@ test('cross-tier medians retain tier identity and render in a separate report se
     assert.doesNotMatch(
         crossTierSection,
         /game-high-target-clear-idle-desktop/,
+    );
+    assert.match(
+        witnessSection,
+        /Host double-RAF readiness remains diagnostic/,
+    );
+    assert.match(
+        witnessSection,
+        /16\/310\/383\/488\/580 ms.*572 ms.*1 \/ 1280x720 CSS \/ 1280x720 backing.*\{\} \/ \{\}.*250 \/ 22 \/ 8.*post-render-receipt-v1 \/ 1/,
     );
 
     crossTier.acceptancePass = false;

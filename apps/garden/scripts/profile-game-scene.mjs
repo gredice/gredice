@@ -9,10 +9,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(__dirname, '..');
 const defaultBaseUrl = 'http://localhost:3001';
 const defaultOutDir = resolve(appRoot, 'test-results/game-profile');
-const gameProfileComparisonContractVersion = 5;
+const gameProfileComparisonContractVersion = 6;
 const scenarioMemoryMeasurementMode = 'post-scenario-forced-gc-v1';
 const crossTierPerformanceMeasurementMode = 'separate-observer-free-window-v1';
 const crossTierRuntimeObservationMode = 'separate-semantic-raf-window-v1';
+const crossTierColdMilestoneMeasurementMode =
+    'document-start-dpr-aware-canvas-and-fixture-v1';
+const crossTierResourceSnapshotMeasurementMode =
+    'population-exposure-post-render-resource-snapshot-v1';
 const fullSourceCommitPattern = /^[0-9a-f]{40}$/i;
 const gameProfileWeatherTransitionEventName =
     'gredice:game-profile-weather-transition';
@@ -2497,19 +2501,28 @@ function installNavigatorMetrics({ deviceMemory, hardwareConcurrency }) {
     });
 }
 
-function installLifecycleMilestoneTracker() {
+function installLifecycleMilestoneTracker({ expectedDpr } = {}) {
     if (globalThis.__grediceLifecycleMilestones) {
         return;
     }
 
+    const resolvedExpectedDpr =
+        typeof expectedDpr === 'number' &&
+        Number.isFinite(expectedDpr) &&
+        expectedDpr > 0
+            ? expectedDpr
+            : globalThis.devicePixelRatio;
     const milestones = {
         canvasAttachmentCount: 0,
         canvasAttachedMs: null,
         canvasSizedMs: null,
         canvasSize: null,
         domContentLoadedMs: null,
+        expectedDpr: resolvedExpectedDpr,
         firstSubmittedFrameMs: null,
         installedMs: performance.now(),
+        mutationObserverStopped: false,
+        observationStoppedMs: null,
     };
     globalThis.__grediceLifecycleMilestones = milestones;
     let observedCanvas = null;
@@ -2529,10 +2542,10 @@ function installLifecycleMilestoneTracker() {
             resizeObserver.observe(canvas);
         }
         const expectedWidth = Math.round(
-            canvas.clientWidth * globalThis.devicePixelRatio,
+            canvas.clientWidth * resolvedExpectedDpr,
         );
         const expectedHeight = Math.round(
-            canvas.clientHeight * globalThis.devicePixelRatio,
+            canvas.clientHeight * resolvedExpectedDpr,
         );
         if (
             milestones.canvasSizedMs === null &&
@@ -2558,6 +2571,12 @@ function installLifecycleMilestoneTracker() {
         childList: true,
         subtree: true,
     });
+    globalThis.__grediceLifecycleStopMilestoneTracker = () => {
+        mutationObserver.disconnect();
+        resizeObserver?.disconnect();
+        milestones.mutationObserverStopped = true;
+        milestones.observationStoppedMs ??= performance.now();
+    };
     recordCanvas();
     const recordDomContentLoaded = () => {
         const navigation = performance.getEntriesByType('navigation')[0];
@@ -2573,6 +2592,43 @@ function installLifecycleMilestoneTracker() {
     } else {
         recordDomContentLoaded();
     }
+}
+
+function finishCrossTierColdMilestoneTracking({
+    hostCanvasReadyDiagnosticMs,
+    measurementMode = 'document-start-dpr-aware-canvas-and-fixture-v1',
+}) {
+    const milestones = globalThis.__grediceLifecycleMilestones ?? null;
+    const fixtureReadyMs = performance.now();
+    globalThis.__grediceLifecycleStopMilestoneTracker?.();
+    const currentCanvas = document.querySelector(
+        '[data-scene-garden-id] canvas',
+    );
+
+    return {
+        canvasAttachmentCount: milestones?.canvasAttachmentCount ?? null,
+        canvasAttachedMs: milestones?.canvasAttachedMs ?? null,
+        canvasSize: milestones?.canvasSize
+            ? { ...milestones.canvasSize }
+            : null,
+        canvasSizedMs: milestones?.canvasSizedMs ?? null,
+        domContentLoadedMs:
+            performance.getEntriesByType('navigation')[0]
+                ?.domContentLoadedEventEnd ??
+            milestones?.domContentLoadedMs ??
+            null,
+        expectedDpr: milestones?.expectedDpr ?? null,
+        firstCanvasPersistent:
+            globalThis.__grediceLifecycleFirstCanvas === currentCanvas,
+        firstSubmittedFrameMs: milestones?.firstSubmittedFrameMs ?? null,
+        fixtureReadyMs,
+        hostCanvasReadyDiagnosticMs,
+        installedMs: milestones?.installedMs ?? null,
+        measurementMode,
+        mutationObserverStopped: milestones?.mutationObserverStopped === true,
+        observationStoppedMs: milestones?.observationStoppedMs ?? null,
+        trackerInstalled: milestones !== null,
+    };
 }
 
 function installProfileContextTracker() {
@@ -2952,6 +3008,7 @@ function installBrowserMetrics({
     }
 
     globalThis.__gameProfileMetrics = {
+        actorGroundingShadowSpeciesCountMax: {},
         drawCalls: 0,
         instancedDrawCalls: 0,
         lastRenderedRafTick: -1,
@@ -3173,8 +3230,28 @@ function installBrowserMetrics({
     if (externalGpuTimer) {
         globalThis.__gameProfileGpuTimer = externalGpuTimerController;
     }
+    const recordActorGroundingShadowSpeciesExposure = () => {
+        const counts =
+            globalThis.__grediceGameProfile?.actorGroundingShadowSpeciesCounts;
+        if (!counts || typeof counts !== 'object' || Array.isArray(counts)) {
+            return;
+        }
+        const exposure =
+            globalThis.__gameProfileMetrics.actorGroundingShadowSpeciesCountMax;
+        for (const [species, count] of Object.entries(counts)) {
+            if (
+                typeof count !== 'number' ||
+                !Number.isInteger(count) ||
+                count < 0
+            ) {
+                continue;
+            }
+            exposure[species] = Math.max(exposure[species] ?? 0, count);
+        }
+    };
     const trackRafTick = () => {
         rafTick += 1;
+        recordActorGroundingShadowSpeciesExposure();
         pollGpuQueries();
         nativeRequestAnimationFrame(trackRafTick);
     };
@@ -6483,6 +6560,149 @@ async function waitForLifecycleRendererStatsBarrier(page, mode) {
     return lifecycleRendererStatsBarrierWitness(start, current, mode);
 }
 
+function isNonNegativeIntegerRecord(value) {
+    return (
+        value !== null &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        Object.entries(value).every(
+            ([key, entry]) =>
+                key.length > 0 && Number.isInteger(entry) && entry >= 0,
+        )
+    );
+}
+
+function numberRecordsEqual(left, right) {
+    if (
+        !isNonNegativeIntegerRecord(left) ||
+        !isNonNegativeIntegerRecord(right)
+    ) {
+        return false;
+    }
+    const keys = [
+        ...new Set([...Object.keys(left), ...Object.keys(right)]),
+    ].sort();
+    return keys.every((key) => left[key] === right[key]);
+}
+
+function populationExposureCovers(exposure, population) {
+    return (
+        isNonNegativeIntegerRecord(exposure) &&
+        isNonNegativeIntegerRecord(population) &&
+        Object.entries(population).every(
+            ([species, count]) =>
+                Number.isInteger(exposure[species]) &&
+                exposure[species] >= count,
+        )
+    );
+}
+
+function populationExposureSignature(exposure) {
+    if (!isNonNegativeIntegerRecord(exposure)) {
+        return null;
+    }
+    return JSON.stringify(
+        Object.fromEntries(
+            Object.entries(exposure).sort(([left], [right]) =>
+                left.localeCompare(right),
+            ),
+        ),
+    );
+}
+
+async function readCrossTierResourceSnapshotState(page) {
+    return page.evaluate(() => {
+        const profile = globalThis.__grediceGameProfile;
+        const metrics = globalThis.__gameProfileMetrics;
+        const numberOrNull = (value) =>
+            typeof value === 'number' && Number.isFinite(value) ? value : null;
+        const integerRecord = (value) => {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) {
+                return null;
+            }
+            const entries = Object.entries(value);
+            if (
+                entries.some(
+                    ([species, count]) =>
+                        species.length === 0 ||
+                        !Number.isInteger(count) ||
+                        count < 0,
+                )
+            ) {
+                return null;
+            }
+            return Object.fromEntries(
+                entries.sort(([left], [right]) => left.localeCompare(right)),
+            );
+        };
+        return {
+            capturedAt: performance.now(),
+            population: integerRecord(
+                profile?.actorGroundingShadowSpeciesCounts,
+            ),
+            populationExposure: integerRecord(
+                metrics?.actorGroundingShadowSpeciesCountMax,
+            ),
+            resources: {
+                rendererGeometries: numberOrNull(profile?.rendererGeometries),
+                rendererShaders:
+                    numberOrNull(profile?.rendererShaders) ??
+                    numberOrNull(metrics?.rendererShaders),
+                rendererTextures:
+                    numberOrNull(profile?.rendererTextures) ??
+                    numberOrNull(metrics?.rendererTextures),
+            },
+        };
+    });
+}
+
+async function captureCrossTierResourceSnapshot(page, rendererStatsMode) {
+    const maximumAttempts = 3;
+    let lastStart = null;
+    let lastEnd = null;
+    for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        const start = await readCrossTierResourceSnapshotState(page);
+        const rendererStatsMeasurement =
+            await waitForLifecycleRendererStatsBarrier(page, rendererStatsMode);
+        const end = await readCrossTierResourceSnapshotState(page);
+        lastStart = start;
+        lastEnd = end;
+        if (
+            numberRecordsEqual(start.population, end.population) &&
+            numberRecordsEqual(
+                start.populationExposure,
+                end.populationExposure,
+            ) &&
+            populationExposureCovers(end.populationExposure, end.population)
+        ) {
+            return {
+                attemptCount: attempt,
+                capturedAt: round(end.capturedAt),
+                measurementMode: crossTierResourceSnapshotMeasurementMode,
+                populationAtEnd: end.population,
+                populationAtStart: start.population,
+                populationExposure: end.populationExposure,
+                populationExposureAtEnd: end.populationExposure,
+                populationExposureAtStart: start.populationExposure,
+                populationExposureAvailable:
+                    Object.keys(end.populationExposure).length > 0,
+                populationExposureSignature: populationExposureSignature(
+                    end.populationExposure,
+                ),
+                rendererStatsMode,
+                resources: {
+                    ...end.resources,
+                    rendererStatsMeasurement,
+                },
+            };
+        }
+    }
+
+    throw new Error(
+        `Cross-tier renderer resources did not reach a stable population exposure across ${maximumAttempts} fresh render observations: ${JSON.stringify({ lastEnd, lastStart })}`,
+    );
+}
+
 function withLifecycleRendererStatsWitness(arrival, witness) {
     return {
         ...arrival,
@@ -8858,6 +9078,12 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             scenario.navigatorMetrics,
         );
     }
+    if (scenario.crossTierProfile === true) {
+        const expectedDpr = Math.min(scenario.dpr, scenario.expectedDprCap);
+        await page.addInitScript(installLifecycleMilestoneTracker, {
+            expectedDpr,
+        });
+    }
     await page.addInitScript(installBrowserMetrics, {
         displayCadenceControl: scenario.displayCadenceControl ?? null,
         externalGpuTimer: scenario.externalGpuTimer !== false,
@@ -8925,6 +9151,15 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         timeout: 60000,
     });
     const servedBuildProvenance = await readServedBuildProvenance(page);
+    const crossTierRendererStatsMode =
+        scenario.crossTierProfile === true
+            ? resolveLifecycleRendererStatsCaptureMode({
+                  harness: options.harnessProvenance,
+                  requestedMode: options.lifecycleRendererStatsMode,
+                  servedBuild: servedBuildProvenance,
+                  serverMode: options.startServer ? 'managed' : 'external',
+              })
+            : null;
     await page.waitForFunction(
         () => {
             const canvas = document.querySelector('canvas');
@@ -8940,8 +9175,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
                 ),
             ),
     );
-    const canvasReadyMs = Date.now() - navigationStart;
+    const hostCanvasReadyDiagnosticMs = Date.now() - navigationStart;
     const request = getScenarioRequest(scenario.path);
+    if (scenario.crossTierProfile === true) {
+        await page.waitForFunction(
+            () =>
+                typeof globalThis.__grediceLifecycleMilestones
+                    ?.firstSubmittedFrameMs === 'number',
+            undefined,
+            { timeout: 60_000 },
+        );
+    }
     if (request.gardenProfile === 'high-target') {
         await page.waitForFunction(
             ({
@@ -8995,6 +9239,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             { timeout: 60000 },
         );
     }
+    const crossTierCold =
+        scenario.crossTierProfile === true
+            ? await page.evaluate(finishCrossTierColdMilestoneTracking, {
+                  hostCanvasReadyDiagnosticMs,
+                  measurementMode: crossTierColdMilestoneMeasurementMode,
+              })
+            : null;
+    const canvasReadyMs =
+        scenario.crossTierProfile === true
+            ? (crossTierCold?.canvasSizedMs ?? null)
+            : hostCanvasReadyDiagnosticMs;
     if (scenario.faunaProfile === true) {
         await page.waitForFunction(
             ({
@@ -10845,6 +11100,14 @@ async function measureScenario(browser, baseUrl, scenario, options) {
     const scenarioCdp =
         observerFreePerformance?.cdp ?? diffCdpMetrics(before, after);
 
+    const crossTierResourceSnapshot =
+        scenario.crossTierProfile === true
+            ? await captureCrossTierResourceSnapshot(
+                  page,
+                  crossTierRendererStatsMode,
+              )
+            : null;
+
     const instrumentedRendererResources = {
         rendererShaders: sample.rendererShaders,
         rendererTextures: sample.rendererTextures,
@@ -11894,6 +12157,17 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         responses: gardenStructureAssetResponses,
         runtime,
     });
+    if (crossTierResourceSnapshot && runtime) {
+        runtime = {
+            ...runtime,
+            rendererGeometries:
+                crossTierResourceSnapshot.resources.rendererGeometries,
+            rendererShaders:
+                crossTierResourceSnapshot.resources.rendererShaders,
+            rendererTextures:
+                crossTierResourceSnapshot.resources.rendererTextures,
+        };
+    }
 
     const screenshotPath =
         options.screenshots ||
@@ -12029,6 +12303,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         apiErrors,
         apiRequests,
         consoleMessages,
+        crossTierCold,
+        crossTierResourceSnapshot,
         environment,
         pageErrors,
         requested,
@@ -12065,6 +12341,8 @@ async function measureScenario(browser, baseUrl, scenario, options) {
         budgetName: scenario.budget,
         consoleMessages: consoleMessages.slice(0, 8),
         cdp: scenarioCdp,
+        crossTierCold,
+        crossTierResourceSnapshot,
         domContentLoadedMs,
         environment,
         canvasReadyMs,
@@ -14583,6 +14861,8 @@ function outlineCacheWindowChecks({
 function evaluateCrossTierAcceptance({
     apiErrors = [],
     consoleMessages = [],
+    crossTierCold,
+    crossTierResourceSnapshot,
     pageErrors = [],
     requested,
     runtime,
@@ -14707,8 +14987,259 @@ function evaluateCrossTierAcceptance({
                       displayCadenceExpectedPhaseAdvanceMs,
               )
             : null;
+    const expectedColdDpr =
+        typeof requested.dpr === 'number' &&
+        Number.isFinite(requested.dpr) &&
+        typeof requested.expectedDprCap === 'number' &&
+        Number.isFinite(requested.expectedDprCap)
+            ? Math.min(requested.dpr, requested.expectedDprCap)
+            : null;
+    const orderedColdMilestones = [
+        crossTierCold?.installedMs,
+        crossTierCold?.canvasAttachedMs,
+        crossTierCold?.canvasSizedMs,
+        crossTierCold?.firstSubmittedFrameMs,
+        crossTierCold?.fixtureReadyMs,
+        crossTierCold?.observationStoppedMs,
+    ];
+    const crossTierColdMilestonesOrdered =
+        orderedColdMilestones.every(
+            (value) => typeof value === 'number' && Number.isFinite(value),
+        ) &&
+        orderedColdMilestones.every(
+            (value, index) =>
+                index === 0 || value >= orderedColdMilestones[index - 1],
+        );
+    const crossTierColdInstalledBeforeDomContentLoaded =
+        typeof crossTierCold?.installedMs === 'number' &&
+        Number.isFinite(crossTierCold.installedMs) &&
+        typeof crossTierCold?.domContentLoadedMs === 'number' &&
+        Number.isFinite(crossTierCold.domContentLoadedMs) &&
+        crossTierCold.installedMs <= crossTierCold.domContentLoadedMs;
+    const populationAtStart =
+        crossTierResourceSnapshot?.populationAtStart ?? null;
+    const populationAtEnd = crossTierResourceSnapshot?.populationAtEnd ?? null;
+    const populationExposureAtStart =
+        crossTierResourceSnapshot?.populationExposureAtStart ?? null;
+    const populationExposureAtEnd =
+        crossTierResourceSnapshot?.populationExposureAtEnd ?? null;
+    const populationExposure =
+        crossTierResourceSnapshot?.populationExposure ?? null;
+    const expectedPopulationExposureAvailable =
+        requested.expectedShadows === true;
+    const populationExposureHasEntries =
+        isNonNegativeIntegerRecord(populationExposure) &&
+        Object.keys(populationExposure).length > 0;
+    const resourceSnapshotCapturedAfterReceipt =
+        typeof crossTierResourceSnapshot?.capturedAt === 'number' &&
+        Number.isFinite(crossTierResourceSnapshot.capturedAt) &&
+        typeof crossTierResourceSnapshot?.resources?.rendererStatsMeasurement
+            ?.completedAt === 'number' &&
+        Number.isFinite(
+            crossTierResourceSnapshot.resources.rendererStatsMeasurement
+                .completedAt,
+        ) &&
+        crossTierResourceSnapshot.capturedAt >=
+            crossTierResourceSnapshot.resources.rendererStatsMeasurement
+                .completedAt;
     const checks = [
         exact('crossTierGardenProfile', requested.gardenProfile, 'high-target'),
+        exact(
+            'crossTierColdMeasurementMode',
+            crossTierCold?.measurementMode,
+            crossTierColdMilestoneMeasurementMode,
+        ),
+        exact(
+            'crossTierColdTrackerInstalled',
+            crossTierCold?.trackerInstalled,
+            true,
+        ),
+        exact(
+            'crossTierColdMutationObserverStopped',
+            crossTierCold?.mutationObserverStopped,
+            true,
+        ),
+        exact(
+            'crossTierColdExpectedDpr',
+            crossTierCold?.expectedDpr,
+            expectedColdDpr,
+        ),
+        exact(
+            'crossTierColdCanvasAttachmentCount',
+            crossTierCold?.canvasAttachmentCount,
+            1,
+        ),
+        exact(
+            'crossTierColdFirstCanvasPersistent',
+            crossTierCold?.firstCanvasPersistent,
+            true,
+        ),
+        minimum(
+            'crossTierColdTrackerInstalledMs',
+            crossTierCold?.installedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdDomContentLoadedMs',
+            crossTierCold?.domContentLoadedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdCanvasAttachedMs',
+            crossTierCold?.canvasAttachedMs,
+            0,
+        ),
+        minimum('crossTierColdCanvasSizedMs', crossTierCold?.canvasSizedMs, 0),
+        minimum(
+            'crossTierColdFirstSubmittedFrameMs',
+            crossTierCold?.firstSubmittedFrameMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdFixtureReadyMs',
+            crossTierCold?.fixtureReadyMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdObservationStoppedMs',
+            crossTierCold?.observationStoppedMs,
+            0,
+        ),
+        minimum(
+            'crossTierColdHostCanvasReadyDiagnosticMs',
+            crossTierCold?.hostCanvasReadyDiagnosticMs,
+            0,
+        ),
+        exact(
+            'crossTierColdMilestoneOrder',
+            crossTierColdMilestonesOrdered,
+            true,
+        ),
+        exact(
+            'crossTierColdInstalledBeforeDomContentLoaded',
+            crossTierColdInstalledBeforeDomContentLoaded,
+            true,
+        ),
+        exact(
+            'crossTierColdCanvasClientWidth',
+            crossTierCold?.canvasSize?.clientWidth,
+            requested.viewport?.width,
+        ),
+        exact(
+            'crossTierColdCanvasClientHeight',
+            crossTierCold?.canvasSize?.clientHeight,
+            requested.viewport?.height,
+        ),
+        canvasMatchesDpr(
+            'crossTierColdCanvasWidth',
+            crossTierCold?.canvasSize?.width,
+            crossTierCold?.canvasSize?.clientWidth,
+            expectedColdDpr,
+        ),
+        canvasMatchesDpr(
+            'crossTierColdCanvasHeight',
+            crossTierCold?.canvasSize?.height,
+            crossTierCold?.canvasSize?.clientHeight,
+            expectedColdDpr,
+        ),
+        exact(
+            'crossTierResourceSnapshotMeasurementMode',
+            crossTierResourceSnapshot?.measurementMode,
+            crossTierResourceSnapshotMeasurementMode,
+        ),
+        range(
+            'crossTierResourceSnapshotAttemptCount',
+            crossTierResourceSnapshot?.attemptCount,
+            1,
+            3,
+        ),
+        minimum(
+            'crossTierResourceSnapshotCapturedAt',
+            crossTierResourceSnapshot?.capturedAt,
+            0,
+        ),
+        exact(
+            'crossTierResourceSnapshotCapturedAfterReceipt',
+            resourceSnapshotCapturedAfterReceipt,
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationStable',
+            numberRecordsEqual(populationAtStart, populationAtEnd),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureStable',
+            numberRecordsEqual(
+                populationExposureAtStart,
+                populationExposureAtEnd,
+            ),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureMatchesSnapshot',
+            numberRecordsEqual(populationExposureAtEnd, populationExposure),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureCoversEndpoint',
+            populationExposureCovers(populationExposure, populationAtEnd),
+            true,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureAvailable',
+            crossTierResourceSnapshot?.populationExposureAvailable,
+            expectedPopulationExposureAvailable,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureEntryState',
+            populationExposureHasEntries,
+            expectedPopulationExposureAvailable,
+        ),
+        exact(
+            'crossTierResourcePopulationExposureSignature',
+            crossTierResourceSnapshot?.populationExposureSignature,
+            populationExposureSignature(populationExposure),
+        ),
+        exact(
+            'crossTierResourceRendererStatsMode',
+            lifecycleRendererStatsModes.has(
+                crossTierResourceSnapshot?.rendererStatsMode,
+            ),
+            true,
+        ),
+        exact(
+            'crossTierResourceRendererStatsMeasurementValid',
+            isLifecycleRendererStatsMeasurementValid(
+                crossTierResourceSnapshot?.resources,
+                crossTierResourceSnapshot?.rendererStatsMode,
+            ),
+            true,
+        ),
+        ...['rendererGeometries', 'rendererShaders', 'rendererTextures'].map(
+            (field) =>
+                minimum(
+                    `crossTierResourceSnapshot:${field}`,
+                    crossTierResourceSnapshot?.resources?.[field],
+                    1,
+                ),
+        ),
+        ...['rendererGeometries', 'rendererShaders', 'rendererTextures'].map(
+            (field) =>
+                exact(
+                    `crossTierResourceSnapshotMatchesRuntime:${field}`,
+                    crossTierResourceSnapshot?.resources?.[field],
+                    runtime?.[field],
+                ),
+        ),
+        exact(
+            'crossTierResourceSnapshotPopulationMatchesRuntime',
+            numberRecordsEqual(
+                populationAtEnd,
+                runtime?.actorGroundingShadowSpeciesCounts ?? {},
+            ),
+            true,
+        ),
         exact(
             'crossTierDisplayCadenceControlMode',
             requested.displayCadenceControl?.mode,
@@ -15713,6 +16244,8 @@ function evaluateHighTargetAcceptance({
     apiErrors = [],
     apiRequests = [],
     consoleMessages = [],
+    crossTierCold,
+    crossTierResourceSnapshot,
     environment,
     pageErrors,
     requested,
@@ -15763,6 +16296,8 @@ function evaluateHighTargetAcceptance({
         return evaluateCrossTierAcceptance({
             apiErrors,
             consoleMessages,
+            crossTierCold,
+            crossTierResourceSnapshot,
             pageErrors,
             requested,
             runtime,
@@ -19696,6 +20231,38 @@ function buildMarkdown(report) {
         }
     }
 
+    const crossTierProfiles = report.scenarios.filter(
+        (scenario) => scenario.requested?.crossTierProfile === true,
+    );
+    if (crossTierProfiles.length > 0) {
+        lines.push(
+            '',
+            '## Cross-tier cold and resource witnesses',
+            '',
+            'The document-start milestones are the comparable cold evidence. Host double-RAF readiness remains diagnostic only. Resource counts come from a fresh post-render receipt after a stable endpoint population and cumulative exposure observation.',
+            '',
+            '| Scenario / run | Cold DCL/attach/size/first frame/fixture | Host double-RAF diagnostic | DPR expected / canvas | Population endpoint / cumulative exposure | Geometries / shaders / textures | Renderer receipt / attempts | Result |',
+            '| --- | ---: | ---: | --- | --- | ---: | --- | --- |',
+        );
+        for (const scenario of crossTierProfiles) {
+            const cold = scenario.crossTierCold;
+            const snapshot = scenario.crossTierResourceSnapshot;
+            const resources = snapshot?.resources;
+            const canvas = cold?.canvasSize;
+            const canvasDimensions = canvas
+                ? `${canvas.clientWidth ?? 'n/a'}x${canvas.clientHeight ?? 'n/a'} CSS / ${canvas.width ?? 'n/a'}x${canvas.height ?? 'n/a'} backing`
+                : 'n/a';
+            const endpointPopulation = JSON.stringify(
+                snapshot?.populationAtEnd ?? {},
+            );
+            const populationExposure =
+                snapshot?.populationExposureSignature ?? 'n/a';
+            lines.push(
+                `| ${scenario.name} / ${scenario.profileRun ?? 1} | ${cold?.domContentLoadedMs ?? 'n/a'}/${cold?.canvasAttachedMs ?? 'n/a'}/${cold?.canvasSizedMs ?? 'n/a'}/${cold?.firstSubmittedFrameMs ?? 'n/a'}/${cold?.fixtureReadyMs ?? 'n/a'} ms | ${cold?.hostCanvasReadyDiagnosticMs ?? 'n/a'} ms | ${cold?.expectedDpr ?? 'n/a'} / ${canvasDimensions} | ${endpointPopulation} / ${populationExposure} | ${resources?.rendererGeometries ?? 'n/a'} / ${resources?.rendererShaders ?? 'n/a'} / ${resources?.rendererTextures ?? 'n/a'} | ${snapshot?.rendererStatsMode ?? 'n/a'} / ${snapshot?.attemptCount ?? 'n/a'} | ${scenario.budget.pass ? 'pass' : 'fail'} |`,
+            );
+        }
+    }
+
     const buildingProfiles = report.scenarios.filter(
         (scenario) => scenario.requested?.buildingProfile,
     );
@@ -20714,6 +21281,8 @@ export {
     buildStaticSceneCacheVisualComparisons,
     buildWeatherSurfaceComparisons,
     collectScenarioMemoryEvidence,
+    crossTierColdMilestoneMeasurementMode,
+    crossTierResourceSnapshotMeasurementMode,
     drainProfileSample,
     evaluateBudget,
     evaluateCrossTierAcceptance,
@@ -20725,6 +21294,7 @@ export {
     evaluateRuntimeOwnersAcceptance,
     evaluateStaticIdleAcceptance,
     finalizeProfileSampleAtEndpoint,
+    finishCrossTierColdMilestoneTracking,
     finishInteractiveProfileSample,
     fullRuntimeFrameLoopCounterFields,
     gameCameraSnapshotMaximumDelta,
@@ -20738,6 +21308,7 @@ export {
     isIgnoredLocalProfilerConsoleError,
     isLifecycleRendererStatsBarrierReady,
     isLifecycleRendererStatsMeasurementValid,
+    isNonNegativeIntegerRecord,
     isOutlineProfileTelemetryReady,
     isProfileScreenshotWitnessValid,
     lifecycleOwnedSchedulingZeroObserved,
@@ -20750,9 +21321,13 @@ export {
     mergeProfileSampleDrain,
     normalizeRenderLeaseSummaryRates,
     normalizeRenderWork,
+    numberRecordsEqual,
     parseArgs,
     parseComparisonContractVersion,
+    populationExposureCovers,
+    populationExposureSignature,
     primeGardenSwitchProfileSample,
+    readCrossTierResourceSnapshotState,
     resolveBoundedCameraMotionCycle,
     resolveChromiumGraphicsArgs,
     resolveChromiumGraphicsBackend,

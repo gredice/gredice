@@ -55,9 +55,16 @@ Current GitHub delivery stack:
   evidence.
 - Cadence- and lifetime-aware regression gate issue
   [#4775](https://github.com/gredice/gredice/issues/4775) remains open under the
-  epic and blocks #4773. Contract v5 is implemented in the current stack, but
-  its fresh symmetric 2x2 capture has not yet been completed, so this is not a
-  merge or release claim.
+  epic and blocks #4773. Its contract-v5 clean symmetric 2x2 capture was
+  structurally valid; 312 of 314 comparisons and all 42 invariants passed, along
+  with all meaningful work, GPU, and memory gates. Host/double-RAF cold Canvas
+  timing and a dynamic-butterfly geometry endpoint mismatch remained
+  profiler/fixture artifacts, so that capture is not release evidence.
+- Fixture-aware regression evidence issue
+  [#4776](https://github.com/gredice/gredice/issues/4776) remains open under the
+  epic and blocks #4775. Contract v6 is implemented in the current stack, but
+  its fresh symmetric 2x2 capture is still pending. The blocking chain is
+  #4776 → #4775 → #4773 → #4717; this is not a merge or release claim.
 
 ## Milestone 1: Camera ownership
 
@@ -1116,6 +1123,16 @@ Progress:
   for geometry and page-lifetime WebGL successful-create high-water marks for
   programs and textures. This keeps shader reorder below the same proven peak
   diagnostic while retaining hard coverage for mature growth and leaks.
+- Contract v6 makes cross-tier cold and resource evidence fixture-aware. Its
+  document-start tracker compares DPR-correct Canvas attachment and sizing,
+  `DOMContentLoaded`, first submitted frame, and fixture-ready milestones; the
+  old host/double-RAF duration is diagnostic only. Each cross-tier run also
+  requires a stable endpoint actor census, cumulative grounding-shadow
+  population exposure, and a fresh renderer-resource snapshot. Geometry is
+  re-paired only within matching exposure strata and keeps the one-count
+  allowance; shaders and textures retain every fresh snapshot. Low may prove an
+  explicit empty exposure, while a shadowed run without exposure or a matrix
+  with no shared geometry stratum is invalid.
 - Added a dedicated `static-idle` harness scenario for a visible, fixed-midday,
   clear High-quality mock scene. It keeps normal continuous-render leases and
   the root invalidation broker enabled, reports that policy as acceptance
@@ -1138,14 +1155,20 @@ Progress:
   submitted shared compilation. The closure matrix pairs two clean
   `origin/main` captures with two clean candidate captures across 39 canonical
   cross-tier, fauna, garden-switch, and lifecycle runs under comparison
-  contract v5. The local headless evidence, including timer-query occupancy,
+  contract v6. The local headless evidence, including timer-query occupancy,
   does not replace a physical-device thermal, power, touch, memory-pressure,
   real background-tab, deployed, or production-traffic check.
-  Because contract v5 adds lifecycle cadence boundaries and switch lifetime
-  resource witnesses, its symmetric 2x2 matrix must be freshly captured;
-  contract-v4 and earlier reports are not release evidence for this stack.
+  The contract-v5 clean 2x2 matrix was structurally valid; 312 of 314
+  comparisons and all 42 invariants passed, along with all meaningful work, GPU,
+  and memory gates. Its host/double-RAF cold timing and dynamic-butterfly
+  geometry endpoint mismatches were profiler/fixture artifacts, so it remains
+  diagnostic.
+  Because contract v6 replaces those witnesses with semantic cold milestones
+  and exposure-matched fresh resources, its symmetric 2x2 matrix must be
+  freshly captured at `4776-controlled-v6-final`; contract-v5 and earlier
+  reports are not release evidence for this stack.
   `legacy-heartbeat-v1` baseline omissions remain valid only on the explicitly
-  selected legacy baseline side. The fresh contract-v5 matrix is still pending.
+  selected legacy baseline side. The fresh contract-v6 matrix is still pending.
 
 ## Suggested implementation order
 

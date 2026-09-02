@@ -12,7 +12,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const displayCadenceControlComparisonContractVersion = 4;
 const cadenceAndLifetimeComparisonContractVersion = 5;
-const comparisonContractVersion = cadenceAndLifetimeComparisonContractVersion;
+const populationExposureComparisonContractVersion =
+    cadenceAndLifetimeComparisonContractVersion + 1;
+const comparisonContractVersion = populationExposureComparisonContractVersion;
 const comparisonReportSchemaVersion = 3;
 const profileSchemaVersion = 6;
 const defaultOutDir = resolve(
@@ -30,6 +32,10 @@ const legacyHeartbeatSchedulerBaselineContract = 'legacy-heartbeat-v1';
 const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
 const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
 const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
+const crossTierColdMilestoneMeasurementMode =
+    'document-start-dpr-aware-canvas-and-fixture-v1';
+const crossTierResourceSnapshotMeasurementMode =
+    'population-exposure-post-render-resource-snapshot-v1';
 const lifecycleLegacyRendererStatsSettleMs = 600;
 const lifecycleRuntimeFrameLoopBooleanFields = [
     'canvasVisible',
@@ -1737,6 +1743,299 @@ function validateLifecycleRendererStatsMeasurement(
     }
 }
 
+function validatePopulationRecord(
+    errors,
+    population,
+    path,
+    { allowEmpty = false } = {},
+) {
+    if (!isRecord(population)) {
+        errors.push(`${path} must be a record`);
+        return false;
+    }
+    if (!allowEmpty && Object.keys(population).length === 0) {
+        errors.push(`${path} must be a non-empty record`);
+        return false;
+    }
+    let valid = true;
+    for (const [species, count] of Object.entries(population)) {
+        if (
+            !isNonEmptyString(species) ||
+            !Number.isInteger(count) ||
+            count < 0
+        ) {
+            errors.push(
+                `${path}.${species || '<empty>'} must be a non-negative integer`,
+            );
+            valid = false;
+        }
+    }
+    return valid;
+}
+
+function validateCrossTierResourceSnapshot(
+    errors,
+    snapshot,
+    path,
+    schedulerBaselineContract,
+    { allowEmptyPopulation = false } = {},
+) {
+    if (!isRecord(snapshot)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        snapshot.measurementMode,
+        crossTierResourceSnapshotMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    if (
+        !Number.isInteger(snapshot.attemptCount) ||
+        snapshot.attemptCount < 1 ||
+        snapshot.attemptCount > 3
+    ) {
+        errors.push(`${path}.attemptCount must be an integer from 1 to 3`);
+    }
+    validatePositiveNumber(errors, snapshot.capturedAt, `${path}.capturedAt`);
+    const startValid = validatePopulationRecord(
+        errors,
+        snapshot.populationAtStart,
+        `${path}.populationAtStart`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const endValid = validatePopulationRecord(
+        errors,
+        snapshot.populationAtEnd,
+        `${path}.populationAtEnd`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposure,
+        `${path}.populationExposure`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureAtStartValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposureAtStart,
+        `${path}.populationExposureAtStart`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    const exposureAtEndValid = validatePopulationRecord(
+        errors,
+        snapshot.populationExposureAtEnd,
+        `${path}.populationExposureAtEnd`,
+        { allowEmpty: allowEmptyPopulation },
+    );
+    if (
+        startValid &&
+        endValid &&
+        canonicalJson(snapshot.populationAtStart) !==
+            canonicalJson(snapshot.populationAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationAtStart must equal populationAtEnd elementwise`,
+        );
+    }
+    if (
+        exposureAtStartValid &&
+        exposureAtEndValid &&
+        canonicalJson(snapshot.populationExposureAtStart) !==
+            canonicalJson(snapshot.populationExposureAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationExposureAtStart must equal populationExposureAtEnd elementwise`,
+        );
+    }
+    if (
+        exposureValid &&
+        exposureAtEndValid &&
+        canonicalJson(snapshot.populationExposure) !==
+            canonicalJson(snapshot.populationExposureAtEnd)
+    ) {
+        errors.push(
+            `${path}.populationExposure must equal populationExposureAtEnd elementwise`,
+        );
+    }
+    if (exposureValid) {
+        const exposureAvailable =
+            Object.keys(snapshot.populationExposure).length > 0;
+        if (typeof snapshot.populationExposureAvailable !== 'boolean') {
+            errors.push(
+                `${path}.populationExposureAvailable must be a boolean`,
+            );
+        } else if (snapshot.populationExposureAvailable !== exposureAvailable) {
+            errors.push(
+                `${path}.populationExposureAvailable must match whether populationExposure is non-empty`,
+            );
+        }
+    }
+    if (endValid && exposureValid) {
+        for (const [species, endpointCount] of Object.entries(
+            snapshot.populationAtEnd,
+        )) {
+            const exposureCount = snapshot.populationExposure[species];
+            if (
+                !Number.isInteger(exposureCount) ||
+                exposureCount < endpointCount
+            ) {
+                errors.push(
+                    `${path}.populationExposure.${species} must be at least the endpoint population ${endpointCount}`,
+                );
+            }
+        }
+    }
+    const expectedPopulationExposureAvailable = !allowEmptyPopulation;
+    validateExactValue(
+        errors,
+        snapshot.populationExposureAvailable,
+        expectedPopulationExposureAvailable,
+        `${path}.populationExposureAvailable`,
+    );
+    if (exposureValid) {
+        validateExactValue(
+            errors,
+            snapshot.populationExposureSignature,
+            canonicalJson(snapshot.populationExposure),
+            `${path}.populationExposureSignature`,
+        );
+    }
+    const expectedRendererStatsMode =
+        schedulerBaselineContract === legacyHeartbeatSchedulerBaselineContract
+            ? lifecycleRendererStatsLegacyMode
+            : lifecycleRendererStatsCanonicalMode;
+    validateExactValue(
+        errors,
+        snapshot.rendererStatsMode,
+        expectedRendererStatsMode,
+        `${path}.rendererStatsMode`,
+    );
+    validateLifecycleRendererStatsMeasurement(
+        errors,
+        snapshot.resources,
+        `${path}.resources`,
+        expectedRendererStatsMode,
+    );
+    if (
+        isFiniteNumber(snapshot.capturedAt) &&
+        isFiniteNumber(
+            snapshot.resources?.rendererStatsMeasurement?.completedAt,
+        ) &&
+        snapshot.capturedAt <
+            snapshot.resources.rendererStatsMeasurement.completedAt
+    ) {
+        errors.push(
+            `${path}.capturedAt must not precede the renderer-stats receipt`,
+        );
+    }
+}
+
+function validateCrossTierColdMilestones(errors, scenario, path) {
+    const cold = scenario.crossTierCold;
+    if (!isRecord(cold)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+    validateExactValue(
+        errors,
+        cold.measurementMode,
+        crossTierColdMilestoneMeasurementMode,
+        `${path}.measurementMode`,
+    );
+    for (const [field, expected] of [
+        ['trackerInstalled', true],
+        ['mutationObserverStopped', true],
+        ['firstCanvasPersistent', true],
+        ['canvasAttachmentCount', 1],
+    ]) {
+        validateExactValue(errors, cold[field], expected, `${path}.${field}`);
+    }
+    for (const field of [
+        'installedMs',
+        'domContentLoadedMs',
+        'canvasAttachedMs',
+        'canvasSizedMs',
+        'firstSubmittedFrameMs',
+        'fixtureReadyMs',
+        'observationStoppedMs',
+        'hostCanvasReadyDiagnosticMs',
+    ]) {
+        validateNonNegativeNumber(errors, cold[field], `${path}.${field}`);
+    }
+    const expectedDpr = Math.min(
+        scenario.requested?.dpr,
+        scenario.requested?.expectedDprCap,
+    );
+    validateExactValue(
+        errors,
+        cold.expectedDpr,
+        expectedDpr,
+        `${path}.expectedDpr`,
+    );
+    const canvas = cold.canvasSize;
+    if (!isRecord(canvas)) {
+        errors.push(`${path}.canvasSize is missing`);
+    } else {
+        validateExactValue(
+            errors,
+            canvas.clientWidth,
+            scenario.requested?.viewport?.width,
+            `${path}.canvasSize.clientWidth`,
+        );
+        validateExactValue(
+            errors,
+            canvas.clientHeight,
+            scenario.requested?.viewport?.height,
+            `${path}.canvasSize.clientHeight`,
+        );
+        validateExactValue(
+            errors,
+            canvas.width,
+            Math.round(canvas.clientWidth * expectedDpr),
+            `${path}.canvasSize.width`,
+        );
+        validateExactValue(
+            errors,
+            canvas.height,
+            Math.round(canvas.clientHeight * expectedDpr),
+            `${path}.canvasSize.height`,
+        );
+    }
+    const orderedFields = [
+        'installedMs',
+        'canvasAttachedMs',
+        'canvasSizedMs',
+        'firstSubmittedFrameMs',
+        'fixtureReadyMs',
+        'observationStoppedMs',
+    ];
+    for (let index = 1; index < orderedFields.length; index += 1) {
+        const previousField = orderedFields[index - 1];
+        const field = orderedFields[index];
+        if (
+            isFiniteNumber(cold[previousField]) &&
+            isFiniteNumber(cold[field]) &&
+            cold[field] < cold[previousField]
+        ) {
+            errors.push(`${path}.${field} must not precede ${previousField}`);
+        }
+    }
+    if (
+        isFiniteNumber(cold.installedMs) &&
+        isFiniteNumber(cold.domContentLoadedMs) &&
+        cold.domContentLoadedMs < cold.installedMs
+    ) {
+        errors.push(`${path}.domContentLoadedMs must not precede installedMs`);
+    }
+    validateExactValue(
+        errors,
+        scenario.canvasReadyMs,
+        cold.canvasSizedMs,
+        `${path}.canvasSizedMs/top-level canvasReadyMs`,
+    );
+}
+
 function validateLifecycleRuntimeFrameLoop(
     errors,
     runtimeFrameLoop,
@@ -2680,6 +2979,22 @@ function validateReport(
                 }
             }
         }
+        if (scenario.baseName?.startsWith('game-cross-tier-')) {
+            validateCrossTierColdMilestones(
+                errors,
+                scenario,
+                `${label} scenario ${key} crossTierCold`,
+            );
+            validateCrossTierResourceSnapshot(
+                errors,
+                scenario.crossTierResourceSnapshot,
+                `${label} scenario ${key} crossTierResourceSnapshot`,
+                schedulerBaselineContract,
+                {
+                    allowEmptyPopulation: requested?.expectedShadows === false,
+                },
+            );
+        }
         validateRetainedHeapEvidence(
             errors,
             scenario.memory,
@@ -3068,6 +3383,18 @@ function resourcePhases(scenario) {
     if (scenario.requested?.gardenSwitchProfile === true) {
         return gardenSwitchResourcePhases(scenario);
     }
+    if (scenario.baseName?.startsWith('game-cross-tier-')) {
+        return [
+            {
+                diagnosticOnly: false,
+                gatedBy: null,
+                name: 'sample',
+                populationExposure:
+                    scenario.crossTierResourceSnapshot?.populationExposure,
+                resources: scenario.crossTierResourceSnapshot?.resources,
+            },
+        ];
+    }
     return samplePhases(scenario).map((phase) => ({
         diagnosticOnly: false,
         gatedBy: null,
@@ -3089,6 +3416,23 @@ function timingPhases(scenario) {
                         cold?.firstSubmittedFrameMs,
                     'cold.fixture_ready_ms': cold?.fixtureReadyMs,
                     'cold.interaction_ready_ms': cold?.interactionReadyMs,
+                },
+                name: 'cold',
+            },
+        ];
+    }
+
+    if (scenario.requested?.crossTierProfile === true) {
+        const cold = scenario.crossTierCold;
+        return [
+            {
+                metrics: {
+                    'cold.canvas_attached_ms': cold?.canvasAttachedMs,
+                    'cold.canvas_sized_ms': cold?.canvasSizedMs,
+                    'cold.dom_content_loaded_ms': cold?.domContentLoadedMs,
+                    'cold.first_submitted_frame_ms':
+                        cold?.firstSubmittedFrameMs,
+                    'cold.fixture_ready_ms': cold?.fixtureReadyMs,
                 },
                 name: 'cold',
             },
@@ -3265,6 +3609,98 @@ function rankIndependentRuns(rows) {
         candidateProfileRun: candidate[index].profileRun,
         sampleRank: index + 1,
     }));
+}
+
+function rankPopulationExposureMatchedRuns(rows) {
+    const baselineBySignature = new Map();
+    const candidateBySignature = new Map();
+    const addSample = (buckets, populationExposure, profileRun, value) => {
+        const signature = canonicalJson(populationExposure);
+        const bucket = buckets.get(signature) ?? {
+            populationExposure: canonicalize(populationExposure),
+            samples: [],
+            signature,
+        };
+        bucket.samples.push({ profileRun, value });
+        buckets.set(signature, bucket);
+    };
+    for (const row of rows) {
+        addSample(
+            baselineBySignature,
+            row.baselinePopulationExposure,
+            row.profileRun,
+            row.baseline,
+        );
+        addSample(
+            candidateBySignature,
+            row.candidatePopulationExposure,
+            row.profileRun,
+            row.candidate,
+        );
+    }
+
+    const signatures = [
+        ...new Set([
+            ...baselineBySignature.keys(),
+            ...candidateBySignature.keys(),
+        ]),
+    ].sort();
+    const individual = [];
+    const signatureMatches = signatures.map((signature) => {
+        const baselineBucket = baselineBySignature.get(signature);
+        const candidateBucket = candidateBySignature.get(signature);
+        const baselineSamples = [...(baselineBucket?.samples ?? [])].sort(
+            (left, right) =>
+                left.value - right.value || left.profileRun - right.profileRun,
+        );
+        const candidateSamples = [...(candidateBucket?.samples ?? [])].sort(
+            (left, right) =>
+                left.value - right.value || left.profileRun - right.profileRun,
+        );
+        const matchedSampleCount = Math.min(
+            baselineSamples.length,
+            candidateSamples.length,
+        );
+        const populationExposure =
+            baselineBucket?.populationExposure ??
+            candidateBucket?.populationExposure ??
+            null;
+        for (let index = 0; index < matchedSampleCount; index += 1) {
+            const baseline = baselineSamples[index];
+            const candidate = candidateSamples[index];
+            individual.push({
+                baseline: baseline.value,
+                baselineProfileRun: baseline.profileRun,
+                candidate: candidate.value,
+                candidateProfileRun: candidate.profileRun,
+                populationExposure,
+                populationExposureSampleRank: index + 1,
+                populationExposureSignature: signature,
+                sampleRank: individual.length + 1,
+            });
+        }
+        return {
+            baselineSampleCount: baselineSamples.length,
+            candidateSampleCount: candidateSamples.length,
+            matchedSampleCount,
+            populationExposure,
+            signature,
+        };
+    });
+
+    return {
+        individual,
+        matching: {
+            matchedSampleCount: individual.length,
+            matchedSignatureCount: signatureMatches.filter(
+                ({ matchedSampleCount }) => matchedSampleCount > 0,
+            ).length,
+            mode: 'canonical-full-population-exposure-v1',
+            signatures: signatureMatches,
+            unmatchedBaselineSampleCount: rows.length - individual.length,
+            unmatchedCandidateSampleCount: rows.length - individual.length,
+        },
+    };
 }
 
 function buildRatioComparison({
@@ -3838,6 +4274,50 @@ function buildAbsoluteComparison({
     };
 }
 
+function buildPopulationExposureMatchedAbsoluteComparison({
+    id,
+    label,
+    maximumIncrease,
+    rows,
+    unit = 'count',
+}) {
+    const { individual: ranked, matching } =
+        rankPopulationExposureMatchedRuns(rows);
+    if (ranked.length === 0) {
+        return { comparison: null, matching };
+    }
+    const individual = ranked.map((row) => {
+        const delta = row.candidate - row.baseline;
+        return {
+            ...row,
+            delta: round(delta),
+            pass: delta <= maximumIncrease,
+        };
+    });
+    const baselineMedian = median(individual.map((row) => row.baseline));
+    const candidateMedian = median(individual.map((row) => row.candidate));
+    const medianDelta = candidateMedian - baselineMedian;
+    return {
+        comparison: {
+            baselineMedian: round(baselineMedian),
+            candidateMedian: round(candidateMedian),
+            id,
+            individual,
+            kind: 'absolute',
+            label,
+            maximumIncrease,
+            medianDelta: round(medianDelta),
+            pass: medianDelta <= maximumIncrease,
+            populationExposureMatching: matching,
+            rawRanksDiagnosticOnly: true,
+            regressionBreach: medianDelta > maximumIncrease,
+            screeningBreach: medianDelta > maximumIncrease,
+            unit,
+        },
+        matching,
+    };
+}
+
 function buildAbsoluteDiagnosticComparison({ gatedBy, ...metric }) {
     const baselineRelative = buildAbsoluteComparison(metric);
     return {
@@ -4059,7 +4539,17 @@ function addMetricRows({
     }
     rows.push({
         baseline: baselineValue,
+        ...(row.baselinePopulationExposure
+            ? {
+                  baselinePopulationExposure: row.baselinePopulationExposure,
+              }
+            : {}),
         candidate: candidateValue,
+        ...(row.candidatePopulationExposure
+            ? {
+                  candidatePopulationExposure: row.candidatePopulationExposure,
+              }
+            : {}),
         phase: row.phase,
         profileRun: row.profileRun,
         scenario: row.scenario,
@@ -4170,7 +4660,11 @@ function comparePairedScenarios(
             }
             resourceRows.push({
                 baseline: baselinePhase,
+                baselinePopulationExposure:
+                    baselinePhase.populationExposure ?? null,
                 candidate: candidatePhase,
+                candidatePopulationExposure:
+                    candidatePhase.populationExposure ?? null,
                 diagnosticOnly: baselinePhase.diagnosticOnly,
                 gatedBy: baselinePhase.gatedBy ?? null,
                 phase: baselinePhase.name,
@@ -4624,6 +5118,50 @@ function comparePairedScenarios(
                 });
             }
             if (rows.length > 0) {
+                const populationExposureMatchedGeometry =
+                    inputComparisonContractVersion >=
+                        populationExposureComparisonContractVersion &&
+                    metric.id === 'resources.geometries' &&
+                    crossTierBaseNamePattern.test(group.scenario);
+                if (populationExposureMatchedGeometry) {
+                    const { comparison, matching } =
+                        buildPopulationExposureMatchedAbsoluteComparison({
+                            ...metric,
+                            rows,
+                        });
+                    if (!comparison) {
+                        errors.push(
+                            `${group.scenario} ${group.phase} resources.geometries requires at least one matched population-exposure sample; baseline signatures=${canonicalJson(
+                                matching.signatures
+                                    .filter(
+                                        ({ baselineSampleCount }) =>
+                                            baselineSampleCount > 0,
+                                    )
+                                    .map(
+                                        ({ populationExposure }) =>
+                                            populationExposure,
+                                    ),
+                            )}, candidate signatures=${canonicalJson(
+                                matching.signatures
+                                    .filter(
+                                        ({ candidateSampleCount }) =>
+                                            candidateSampleCount > 0,
+                                    )
+                                    .map(
+                                        ({ populationExposure }) =>
+                                            populationExposure,
+                                    ),
+                            )}`,
+                        );
+                        continue;
+                    }
+                    comparisons.push({
+                        phase: group.phase,
+                        scenario: group.scenario,
+                        ...comparison,
+                    });
+                    continue;
+                }
                 comparisons.push({
                     phase: group.phase,
                     scenario: group.scenario,
@@ -5386,6 +5924,8 @@ function compareConfirmedReports(
                       observedScreeningBreach:
                           result.baselineRelativeScreeningBreach ??
                           result.screeningBreach,
+                      populationExposureMatching:
+                          result.populationExposureMatching ?? null,
                       regressionBreach: result.regressionBreach,
                       screeningBreach: result.screeningBreach,
                   }
@@ -5634,6 +6174,9 @@ function buildMarkdown(comparison) {
                     ? `${display(result.confirmation.medianRatio)}x`
                     : `${display(result.confirmation.medianDelta)} ${result.unit}`
                 : null;
+            const populationExposureGate = result.populationExposureMatching
+                ? `; population exposure matched ${result.populationExposureMatching.matchedSampleCount} samples across ${result.populationExposureMatching.matchedSignatureCount} signatures`
+                : '';
             const gate =
                 result.gateBasis === 'cadence-confounded'
                     ? `not comparable: cadence-confounded; raw ${result.medianLimit}x / ${result.medianAbsoluteTolerance} ${result.unit} observation retained; gated by ${result.gatedBy}`
@@ -5647,7 +6190,7 @@ function buildMarkdown(comparison) {
                           ? `diagnostic only; gated by ${result.gatedBy}`
                           : result.kind === 'ratio'
                             ? `${result.direction === 'minimum' ? '>=' : '<='} ${result.medianLimit}x screen; ${result.medianAbsoluteTolerance} ${result.unit} practical floor; repeat required`
-                            : `median <= +${result.maximumIncrease} ${result.unit}; repeat required`;
+                            : `median <= +${result.maximumIncrease} ${result.unit}; repeat required${populationExposureGate}`;
             const resultLabel =
                 result.decisionStatus === 'not-comparable'
                     ? 'not comparable (cadence-confounded)'

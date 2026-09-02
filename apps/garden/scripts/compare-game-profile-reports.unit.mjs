@@ -192,6 +192,86 @@ function runtime(overrides = {}) {
     };
 }
 
+function rendererStatsMeasurement(mode = 'post-render-receipt-v1') {
+    if (mode === 'legacy-pre-render-settled-v1') {
+        return {
+            completedAt: 700,
+            drawCallsDelta: 10,
+            legacySettleMs: 600,
+            measurementMode: mode,
+            renderedFramesDelta: 1,
+            rendererStatsPublishedAt: null,
+            rendererStatsReceiptCount: null,
+            rendererStatsReceiptDelta: null,
+            rendererStatsRenderFrame: null,
+            r3fFrameCallbackCountDelta: null,
+            runtimeMeasurementMode: null,
+            startedAt: 100,
+            submittedTrianglesDelta: 100,
+        };
+    }
+    return {
+        completedAt: 120,
+        drawCallsDelta: 10,
+        legacySettleMs: null,
+        measurementMode: mode,
+        renderedFramesDelta: 1,
+        rendererStatsPublishedAt: 110,
+        rendererStatsReceiptCount: 2,
+        rendererStatsReceiptDelta: 1,
+        rendererStatsRenderFrame: 1,
+        r3fFrameCallbackCountDelta: 1,
+        runtimeMeasurementMode: 'post-render-microtask-v1',
+        startedAt: 100,
+        submittedTrianglesDelta: 100,
+    };
+}
+
+function crossTierResourceSnapshot(
+    resources,
+    {
+        populationAtEnd = {
+            bee: 1,
+            bird: 2,
+            butterfly: 3,
+            cat: 1,
+            dog: 1,
+            ladybug: 5,
+            squirrel: 1,
+        },
+        populationAtStart = populationAtEnd,
+        populationExposure = populationAtEnd,
+    } = {},
+) {
+    const canonicalPopulationExposure = Object.fromEntries(
+        Object.entries(populationExposure).sort(([left], [right]) =>
+            left.localeCompare(right),
+        ),
+    );
+    return {
+        attemptCount: 1,
+        capturedAt: 700,
+        measurementMode: 'population-exposure-post-render-resource-snapshot-v1',
+        populationAtEnd: structuredClone(populationAtEnd),
+        populationAtStart: structuredClone(populationAtStart),
+        populationExposure: structuredClone(canonicalPopulationExposure),
+        populationExposureAvailable:
+            Object.keys(canonicalPopulationExposure).length > 0,
+        populationExposureAtEnd: structuredClone(canonicalPopulationExposure),
+        populationExposureAtStart: structuredClone(canonicalPopulationExposure),
+        populationExposureSignature: JSON.stringify(
+            canonicalPopulationExposure,
+        ),
+        rendererStatsMode: 'post-render-receipt-v1',
+        resources: {
+            rendererGeometries: resources.rendererGeometries,
+            rendererShaders: resources.rendererShaders,
+            rendererStatsMeasurement: rendererStatsMeasurement(),
+            rendererTextures: resources.rendererTextures,
+        },
+    };
+}
+
 function normalScenario(profileRun, overrides = {}) {
     const baseName = 'game-high-target-clear-idle-desktop';
     return {
@@ -552,7 +632,7 @@ function report({
     overrides = {},
 }) {
     return {
-        comparisonContractVersion: 5,
+        comparisonContractVersion: 6,
         generatedAt: '2026-08-30T00:00:00.000Z',
         options: {
             allowLegacyOperationVisuals: false,
@@ -590,7 +670,7 @@ function report({
             ...scenario,
             servedBuildProvenance: {
                 commit,
-                comparisonContractVersion: 5,
+                comparisonContractVersion: 6,
                 dirty: false,
             },
         })),
@@ -798,6 +878,44 @@ function regressionScenario(baseName, profileRun) {
             activeLeaseCount: 10,
             targetFramesPerSecond: 30,
         };
+        const expectedDpr = Math.min(scenario.requested.dpr, policy.dprCap);
+        scenario.canvasReadyMs = 380;
+        scenario.crossTierCold = {
+            canvasAttachmentCount: 1,
+            canvasAttachedMs: 310,
+            canvasSize: {
+                clientHeight: scenario.requested.viewport.height,
+                clientWidth: scenario.requested.viewport.width,
+                height: Math.round(
+                    scenario.requested.viewport.height * expectedDpr,
+                ),
+                width: Math.round(
+                    scenario.requested.viewport.width * expectedDpr,
+                ),
+            },
+            canvasSizedMs: scenario.canvasReadyMs,
+            domContentLoadedMs: 18,
+            expectedDpr,
+            firstCanvasPersistent: true,
+            firstSubmittedFrameMs: 490,
+            fixtureReadyMs: 580,
+            hostCanvasReadyDiagnosticMs: 565,
+            installedMs: 0,
+            measurementMode: 'document-start-dpr-aware-canvas-and-fixture-v1',
+            mutationObserverStopped: true,
+            observationStoppedMs: 581,
+            trackerInstalled: true,
+        };
+        scenario.crossTierResourceSnapshot = crossTierResourceSnapshot(
+            scenario.runtime,
+            policy.shadows
+                ? undefined
+                : {
+                      populationAtEnd: {},
+                      populationAtStart: {},
+                      populationExposure: {},
+                  },
+        );
         scenario.sample = {
             ...scenario.sample,
             displayCadenceControl: displayCadenceControlSample(),
@@ -908,6 +1026,40 @@ function regressionReportPair() {
     };
 }
 
+function butterflyPopulation(butterfly) {
+    return {
+        bee: 1,
+        bird: 2,
+        butterfly,
+        cat: 1,
+        dog: 1,
+        ladybug: 5,
+        squirrel: 1,
+    };
+}
+
+function setCrossTierResourceEvidence(
+    scenario,
+    { endpointButterflies, exposureButterflies, geometries },
+) {
+    const endpoint = butterflyPopulation(endpointButterflies);
+    scenario.crossTierResourceSnapshot.populationAtStart =
+        structuredClone(endpoint);
+    scenario.crossTierResourceSnapshot.populationAtEnd =
+        structuredClone(endpoint);
+    scenario.crossTierResourceSnapshot.populationExposure =
+        butterflyPopulation(exposureButterflies);
+    scenario.crossTierResourceSnapshot.populationExposureAtStart =
+        butterflyPopulation(exposureButterflies);
+    scenario.crossTierResourceSnapshot.populationExposureAtEnd =
+        butterflyPopulation(exposureButterflies);
+    scenario.crossTierResourceSnapshot.populationExposureAvailable = true;
+    scenario.crossTierResourceSnapshot.populationExposureSignature =
+        JSON.stringify(butterflyPopulation(exposureButterflies));
+    scenario.crossTierResourceSnapshot.resources.rendererGeometries =
+        geometries;
+}
+
 function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
     const requiredFailures = new Set([
         'crossTierSampleStartActiveLeaseCount',
@@ -940,6 +1092,12 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
             scenario.baseName === 'game-fauna-heavy-day-interaction-desktop'
         ) {
             delete scenario.requested.continuousRenderLeases;
+        }
+        if (scenario.baseName.startsWith('game-cross-tier-')) {
+            scenario.crossTierResourceSnapshot.rendererStatsMode =
+                'legacy-pre-render-settled-v1';
+            scenario.crossTierResourceSnapshot.resources.rendererStatsMeasurement =
+                rendererStatsMeasurement('legacy-pre-render-settled-v1');
         }
         if (!scenario.baseName.startsWith('game-cross-tier-')) {
             if (
@@ -1094,7 +1252,7 @@ test('cross-tier acceptance inventories distinguish cached and legacy outline ev
     );
 });
 
-test('v5 cross-tier display cadence evidence fails closed on raw control drift', async (t) => {
+test('v6 cross-tier display cadence evidence fails closed on raw control drift', async (t) => {
     const firstCrossTierScenario = (reportValue) =>
         reportValue.scenarios.find((scenario) =>
             scenario.baseName.startsWith('game-cross-tier-'),
@@ -1316,7 +1474,7 @@ test('v5 cross-tier display cadence evidence fails closed on raw control drift',
     }
 });
 
-test('v5 cross-tier cadence inventory is exact and controlled-rate bounds are inclusive', () => {
+test('v6 cross-tier cadence inventory is exact and controlled-rate bounds are inclusive', () => {
     const missingInventoryPair = regressionReportPair();
     const scenario = missingInventoryPair.candidate.scenarios.find((value) =>
         value.baseName.startsWith('game-cross-tier-'),
@@ -1542,7 +1700,7 @@ test('legacy continuous-render lease compatibility is limited to cross-tier and 
     }
 });
 
-test('v5 legacy heartbeat baseline compares controlled cross-tier GPU evidence directly', () => {
+test('v6 legacy heartbeat baseline compares controlled cross-tier GPU evidence directly', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     const baselineConfirmation = independentBaselineRepeat(baseline);
@@ -1561,7 +1719,7 @@ test('v5 legacy heartbeat baseline compares controlled cross-tier GPU evidence d
     assert.equal(comparison.status, 'pass');
     assert.equal(comparison.exitCode, 0);
     assert.equal(comparison.diagnostic, false);
-    assert.equal(comparison.comparisonContractVersion, 5);
+    assert.equal(comparison.comparisonContractVersion, 6);
     assert.equal(comparison.schemaVersion, 3);
     assert.equal(comparison.summary.cadenceConfoundedComparisons, 0);
     assert.equal(
@@ -1597,7 +1755,7 @@ test('v5 legacy heartbeat baseline compares controlled cross-tier GPU evidence d
     );
 });
 
-test('v5 rejects raw legacy motion outside the controlled cadence range', () => {
+test('v6 rejects raw legacy motion outside the controlled cadence range', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     setLegacyCrossTierRenderedFps(
@@ -1643,7 +1801,7 @@ test('v5 rejects raw legacy motion outside the controlled cadence range', () => 
     );
 });
 
-test('v5 direct cross-tier GPU evidence retains strict timing validation', () => {
+test('v6 direct cross-tier GPU evidence retains strict timing validation', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     baseline.scenarios.find(
@@ -1672,7 +1830,7 @@ test('v5 direct cross-tier GPU evidence retains strict timing validation', () =>
     );
 });
 
-test('v5 controlled cadence must hold across all four bundle pairings', () => {
+test('v6 controlled cadence must hold across all four bundle pairings', () => {
     const { baseline, candidate } = regressionReportPair();
     applyLegacyHeartbeatSchedulerEvidence(baseline);
     const baselineConfirmation = independentBaselineRepeat(baseline);
@@ -3320,6 +3478,397 @@ test('resource gates allow one transient count but fail sustained growth', () =>
         ).pass,
         false,
     );
+});
+
+test('cross-tier geometry matches the 275/277 butterfly matrix by population exposure', () => {
+    const baseName = 'game-cross-tier-auto-standard-camera-motion-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    const baselineEvidence = [
+        { endpointButterflies: 3, exposureButterflies: 3, geometries: 275 },
+        { endpointButterflies: 3, exposureButterflies: 3, geometries: 275 },
+        { endpointButterflies: 3, exposureButterflies: 4, geometries: 277 },
+    ];
+    const candidateEvidence = [
+        { endpointButterflies: 3, exposureButterflies: 4, geometries: 277 },
+        { endpointButterflies: 3, exposureButterflies: 4, geometries: 277 },
+        { endpointButterflies: 3, exposureButterflies: 3, geometries: 275 },
+    ];
+    for (const [index, scenario] of baseline.scenarios.entries()) {
+        setCrossTierResourceEvidence(scenario, baselineEvidence[index]);
+    }
+    for (const [index, scenario] of candidate.scenarios.entries()) {
+        setCrossTierResourceEvidence(scenario, candidateEvidence[index]);
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'pass');
+    const geometries = comparison.comparisons.find(
+        (result) => result.id === 'resources.geometries',
+    );
+    assert.equal(geometries.baselineMedian, 276);
+    assert.equal(geometries.candidateMedian, 276);
+    assert.equal(geometries.medianDelta, 0);
+    assert.deepEqual(
+        geometries.individual.map(
+            ({ baseline, candidate: candidateValue, populationExposure }) => [
+                baseline,
+                candidateValue,
+                populationExposure.butterfly,
+            ],
+        ),
+        [
+            [275, 275, 3],
+            [277, 277, 4],
+        ],
+    );
+    assert.deepEqual(
+        {
+            matchedSampleCount:
+                geometries.populationExposureMatching.matchedSampleCount,
+            matchedSignatureCount:
+                geometries.populationExposureMatching.matchedSignatureCount,
+            unmatchedBaselineSampleCount:
+                geometries.populationExposureMatching
+                    .unmatchedBaselineSampleCount,
+            unmatchedCandidateSampleCount:
+                geometries.populationExposureMatching
+                    .unmatchedCandidateSampleCount,
+        },
+        {
+            matchedSampleCount: 2,
+            matchedSignatureCount: 2,
+            unmatchedBaselineSampleCount: 1,
+            unmatchedCandidateSampleCount: 1,
+        },
+    );
+    assert.match(
+        buildMarkdown(comparison),
+        /population exposure matched 2 samples across 2 signatures/,
+    );
+});
+
+test('cross-tier cold comparison uses document-start milestones and ignores host RAF bimodality', () => {
+    const baseName = 'game-cross-tier-auto-constrained-camera-motion-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    for (const scenario of baseline.scenarios) {
+        scenario.crossTierCold.hostCanvasReadyDiagnosticMs = 386;
+    }
+    for (const scenario of candidate.scenarios) {
+        scenario.crossTierCold.hostCanvasReadyDiagnosticMs = 572;
+    }
+
+    let comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'pass');
+    const timingIds = comparison.comparisons
+        .filter((result) => result.phase === 'cold')
+        .map((result) => result.id);
+    assert.equal(timingIds.includes('cold.canvas_ready_ms'), false);
+    assert.equal(timingIds.includes('cold.canvas_sized_ms'), true);
+    assert.equal(timingIds.includes('cold.first_submitted_frame_ms'), true);
+    assert.equal(timingIds.includes('cold.fixture_ready_ms'), true);
+
+    for (const scenario of candidate.scenarios) {
+        scenario.canvasReadyMs = 600;
+        scenario.crossTierCold.canvasSizedMs = 600;
+        scenario.crossTierCold.firstSubmittedFrameMs = 620;
+        scenario.crossTierCold.fixtureReadyMs = 700;
+        scenario.crossTierCold.observationStoppedMs = 701;
+    }
+    comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'regression');
+    assert.equal(
+        comparison.comparisons.find(
+            (result) => result.id === 'cold.canvas_sized_ms',
+        ).regressionBreach,
+        true,
+    );
+
+    candidate.scenarios[0].canvasReadyMs = 601;
+    comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /canvasSizedMs\/top-level canvasReadyMs/,
+    );
+});
+
+test('cross-tier cold milestone evidence fails closed when missing or incoherent', async (t) => {
+    const baseName = 'game-cross-tier-medium-steady-desktop';
+    for (const { expected, mutate } of [
+        {
+            expected: /crossTierCold is missing/,
+            mutate: (_cold, scenario) => {
+                delete scenario.crossTierCold;
+            },
+        },
+        {
+            expected: /crossTierCold\.measurementMode must be/,
+            mutate: (cold) => {
+                cold.measurementMode = 'host-double-raf-v0';
+            },
+        },
+        {
+            expected: /crossTierCold\.expectedDpr must be 1\.5/,
+            mutate: (cold) => {
+                cold.expectedDpr = 2;
+            },
+        },
+        {
+            expected: /firstSubmittedFrameMs must not precede canvasSizedMs/,
+            mutate: (cold) => {
+                cold.firstSubmittedFrameMs = cold.canvasSizedMs - 1;
+            },
+        },
+    ]) {
+        await t.test(expected.source, () => {
+            const { baseline, candidate } = reportPair((profileRun) =>
+                regressionScenario(baseName, profileRun),
+            );
+            const scenario = candidate.scenarios[0];
+            mutate(scenario.crossTierCold, scenario);
+            const comparison = comparePartialReports(baseline, candidate);
+            assert.equal(comparison.status, 'invalid');
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+});
+
+test('cross-tier geometry retains the hard +1 gate within one population exposure', () => {
+    const baseName = 'game-cross-tier-auto-standard-camera-motion-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    for (const scenario of baseline.scenarios) {
+        setCrossTierResourceEvidence(scenario, {
+            endpointButterflies: 3,
+            exposureButterflies: 3,
+            geometries: 275,
+        });
+    }
+    for (const scenario of candidate.scenarios) {
+        setCrossTierResourceEvidence(scenario, {
+            endpointButterflies: 3,
+            exposureButterflies: 3,
+            geometries: 277,
+        });
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const geometries = comparison.comparisons.find(
+        (result) => result.id === 'resources.geometries',
+    );
+    assert.equal(comparison.status, 'regression');
+    assert.equal(geometries.maximumIncrease, 1);
+    assert.equal(geometries.medianDelta, 2);
+    assert.equal(geometries.regressionBreach, true);
+});
+
+test('cross-tier Low accepts an explicit empty exposure stratum and keeps geometry hard-gated', () => {
+    const baseName = 'game-cross-tier-low-steady-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    for (const scenario of [...baseline.scenarios, ...candidate.scenarios]) {
+        const snapshot = scenario.crossTierResourceSnapshot;
+        snapshot.populationAtStart = {};
+        snapshot.populationAtEnd = {};
+        snapshot.populationExposureAtStart = {};
+        snapshot.populationExposureAtEnd = {};
+        snapshot.populationExposure = {};
+        snapshot.populationExposureAvailable = false;
+        snapshot.populationExposureSignature = '{}';
+    }
+    for (const scenario of baseline.scenarios) {
+        scenario.crossTierResourceSnapshot.resources.rendererGeometries = 250;
+    }
+    for (const scenario of candidate.scenarios) {
+        scenario.crossTierResourceSnapshot.resources.rendererGeometries = 252;
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    const geometries = comparison.comparisons.find(
+        (result) => result.id === 'resources.geometries',
+    );
+    assert.equal(comparison.status, 'regression');
+    assert.equal(geometries.populationExposureMatching.matchedSampleCount, 3);
+    assert.deepEqual(geometries.individual[0].populationExposure, {});
+    assert.equal(geometries.medianDelta, 2);
+});
+
+test('cross-tier shaders and textures gate every fresh snapshot without exposure re-pairing', () => {
+    const baseName = 'game-cross-tier-medium-steady-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    for (const [index, scenario] of candidate.scenarios.entries()) {
+        scenario.crossTierResourceSnapshot.resources.rendererShaders += 2;
+        scenario.crossTierResourceSnapshot.resources.rendererTextures += 2;
+        setCrossTierResourceEvidence(scenario, {
+            endpointButterflies: index === 0 ? 3 : 4,
+            exposureButterflies: index === 0 ? 3 : 4,
+            geometries: 200,
+        });
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'regression');
+    for (const id of ['resources.shaders', 'resources.textures']) {
+        const result = comparison.comparisons.find(
+            (comparisonResult) => comparisonResult.id === id,
+        );
+        assert.equal(result.individual.length, 3);
+        assert.equal(result.medianDelta, 2);
+        assert.equal(result.regressionBreach, true);
+        assert.equal(result.populationExposureMatching, undefined);
+    }
+});
+
+test('cross-tier geometry fails closed without a shared population exposure', () => {
+    const baseName = 'game-cross-tier-auto-standard-camera-motion-desktop';
+    const { baseline, candidate } = reportPair((profileRun) =>
+        regressionScenario(baseName, profileRun),
+    );
+    for (const scenario of baseline.scenarios) {
+        setCrossTierResourceEvidence(scenario, {
+            endpointButterflies: 3,
+            exposureButterflies: 3,
+            geometries: 275,
+        });
+    }
+    for (const scenario of candidate.scenarios) {
+        setCrossTierResourceEvidence(scenario, {
+            endpointButterflies: 4,
+            exposureButterflies: 4,
+            geometries: 277,
+        });
+    }
+
+    const comparison = comparePartialReports(baseline, candidate);
+    assert.equal(comparison.status, 'invalid');
+    assert.equal(comparison.exitCode, 2);
+    assert.match(
+        comparison.validationErrors.join('\n'),
+        /requires at least one matched population-exposure sample/,
+    );
+});
+
+test('cross-tier resource snapshots reject stale or malformed evidence', async (t) => {
+    const baseName = 'game-cross-tier-auto-standard-camera-motion-desktop';
+    for (const { expected, mutate } of [
+        {
+            expected: /crossTierResourceSnapshot is missing/,
+            mutate: (_snapshot, scenario) => {
+                delete scenario.crossTierResourceSnapshot;
+            },
+        },
+        {
+            expected: /crossTierResourceSnapshot\.measurementMode must be/,
+            mutate: (snapshot) => {
+                snapshot.measurementMode = 'pre-render-v0';
+            },
+        },
+        {
+            expected: /populationAtStart must be a non-empty record/,
+            mutate: (snapshot) => {
+                snapshot.populationAtStart = {};
+            },
+        },
+        {
+            expected:
+                /populationExposure\.butterfly must be a non-negative integer/,
+            mutate: (snapshot) => {
+                snapshot.populationExposure.butterfly = 3.5;
+            },
+        },
+        {
+            expected:
+                /populationAtStart must equal populationAtEnd elementwise/,
+            mutate: (snapshot) => {
+                snapshot.populationAtStart.butterfly = 2;
+            },
+        },
+        {
+            expected:
+                /populationExposureAtStart must equal populationExposureAtEnd elementwise/,
+            mutate: (snapshot) => {
+                snapshot.populationExposureAtStart.butterfly = 2;
+            },
+        },
+        {
+            expected:
+                /populationExposure must equal populationExposureAtEnd elementwise/,
+            mutate: (snapshot) => {
+                snapshot.populationExposure.butterfly = 4;
+            },
+        },
+        {
+            expected: /populationExposureAvailable must be a boolean/,
+            mutate: (snapshot) => {
+                delete snapshot.populationExposureAvailable;
+            },
+        },
+        {
+            expected: /populationExposureSignature must be/,
+            mutate: (snapshot) => {
+                snapshot.populationExposureSignature = '{"butterfly":4}';
+            },
+        },
+        {
+            expected:
+                /populationExposure\.butterfly must be at least the endpoint population 3/,
+            mutate: (snapshot) => {
+                snapshot.populationExposure.butterfly = 2;
+            },
+        },
+        {
+            expected:
+                /resources\.rendererGeometries must be a positive finite number/,
+            mutate: (snapshot) => {
+                snapshot.resources.rendererGeometries = 0;
+            },
+        },
+        {
+            expected:
+                /rendererStatsMeasurement\.measurementMode must be "post-render-receipt-v1"/,
+            mutate: (snapshot) => {
+                snapshot.resources.rendererStatsMeasurement =
+                    rendererStatsMeasurement('legacy-pre-render-settled-v1');
+            },
+        },
+    ]) {
+        await t.test(expected.source, () => {
+            const { baseline, candidate } = reportPair((profileRun) =>
+                regressionScenario(baseName, profileRun),
+            );
+            const scenario = candidate.scenarios[0];
+            mutate(scenario.crossTierResourceSnapshot, scenario);
+            const comparison = comparePartialReports(baseline, candidate);
+            assert.equal(comparison.status, 'invalid');
+            assert.match(comparison.validationErrors.join('\n'), expected);
+        });
+    }
+
+    await t.test('legacy heartbeat requires a legacy receipt witness', () => {
+        const pair = regressionReportPair();
+        applyLegacyHeartbeatSchedulerEvidence(pair.baseline);
+        const scenario = pair.baseline.scenarios.find(
+            ({ baseName: scenarioBaseName }) => scenarioBaseName === baseName,
+        );
+        scenario.crossTierResourceSnapshot.resources.rendererStatsMeasurement =
+            rendererStatsMeasurement();
+        const comparison = compareReports(pair.baseline, pair.candidate, {
+            baselineSchedulerContract: 'legacy-heartbeat-v1',
+        });
+        assert.equal(comparison.status, 'invalid');
+        assert.match(
+            comparison.validationErrors.join('\n'),
+            /rendererStatsMeasurement\.measurementMode must be "legacy-pre-render-settled-v1"/,
+        );
+    });
 });
 
 test('lifecycle phases compare restored work and gate SceneTime-owned zero work', () => {

@@ -339,11 +339,16 @@ reconciliation without a phase-specific allowance, while a perpetual RAF
 keepalive cannot improve a GPU signal by adding browser wakeups. These scheduler
 invariants and controlled-display-cadence requirements entered comparison
 contract v4. Contract v5 retains them and adds the cadence- and lifetime-aware
-rules described in this section. The candidate counter, boundary state,
-controlled-display-cadence evidence, and v5 resource witnesses require a fresh
-final capture. Earlier canonical reports are invalid; omitted scheduler fields
-remain compatible only on the explicitly selected `legacy-heartbeat-v1`
-baseline side. Controlled-display-cadence fields are required for both subjects.
+rules described in this section. Its clean symmetric 2x2 capture was
+structurally valid; 312 of 314 comparisons and all 42 invariants passed, along
+with all meaningful work, GPU, and memory gates. It did not become release
+evidence because two remaining failures measured profiler/fixture behavior: a
+host/double-RAF cold Canvas timing bimodality and a dynamic-butterfly geometry
+endpoint mismatch. Contract v6 therefore retains the v5 cadence and lifetime
+rules while making cross-tier cold and resource evidence fixture-aware. Earlier
+canonical reports are invalid; omitted scheduler fields remain compatible only
+on the explicitly selected `legacy-heartbeat-v1` baseline side.
+Controlled-display-cadence fields are required for both subjects.
 
 Elapsed timer-query work divided by sampled wall time remains visible for every
 arrival and as a wall-time-weighted seven-arrival aggregate. It is diagnostic,
@@ -498,12 +503,13 @@ itself. Canonical-to-canonical lifecycle comparisons keep the existing relative
 gates; they do not switch to this target-aware legacy-migration rule.
 
 An old external subject without renderer-stats receipt telemetry may use only
-the explicit `legacy-pre-render-settled-v1` fallback. The harness accepts it only
-when both served subject and profiler harness are clean, their full commits
-differ, the served comparison contract matches, and the subject is externally
-hosted. That fallback waits beyond the legacy 500 ms reporter interval and still
-requires submitted work both during and after settling. Canonical subjects must
-use `post-render-receipt-v1`; the comparator binds the permitted lifecycle mode
+the explicit `legacy-pre-render-settled-v1` fallback for lifecycle and
+cross-tier resource snapshots. The harness accepts it only when both served
+subject and profiler harness are clean, their full commits differ, the served
+comparison contract matches, and the subject is externally hosted. That
+fallback waits beyond the legacy 500 ms reporter interval and still requires
+submitted work both during and after settling. Canonical subjects must use
+`post-render-receipt-v1`; the comparator binds the permitted renderer-stats mode
 to the baseline scheduler contract and never permits the legacy mode for a
 candidate.
 
@@ -538,7 +544,7 @@ topology signature and allowlists only the resulting scheduler checks, while the
 candidate and its confirmation remain on `canonical-v1`.
 Build and start the baseline and candidate subjects as external servers from
 separate clean worktrees. Confirm cleanliness before marking the embedded dirty
-state `false`; the current comparison contract is `5`. The current harness also
+state `false`; the current comparison contract is `6`. The current harness also
 requires `legacyOutlinePipeline=true` only for the untouched legacy scheduler
 baseline; every canonical candidate and confirmation must record `false`. Run
 only one subject server and capture at a time so the other server cannot perturb
@@ -550,7 +556,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=5 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=6 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3101 pnpm --filter garden start
 
@@ -560,7 +566,7 @@ profile_subject_commit=$(git rev-parse HEAD) &&
 test -z "$(git status --porcelain --untracked-files=normal)" &&
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_COMMIT="$profile_subject_commit" \
 NEXT_PUBLIC_GAME_PROFILE_SOURCE_DIRTY=false \
-NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=5 \
+NEXT_PUBLIC_GAME_PROFILE_COMPARISON_CONTRACT_VERSION=6 \
   pnpm --filter garden build &&
 GREDICE_GARDEN_START_PORT=3102 pnpm --filter garden start
 ```
@@ -574,7 +580,7 @@ test -z "$(git status --porcelain --untracked-files=normal)" || exit 1
 
 # The legacy scheduler is expected to fail only its superseded scheduler checks;
 # the symmetric comparator validates that exact failure set.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/baseline-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -595,7 +601,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean baseline subject with the same
 # exact clean harness; this must be a new profiler run, not a copied report.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/baseline-confirmation \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/baseline-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3101 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -614,7 +620,7 @@ GAME_PROFILE_FAIL_ON_BUDGET=0 \
 GAME_PROFILE_SCREENSHOTS=1 \
   pnpm run profile:game:existing
 
-GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/candidate-1 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -635,7 +641,7 @@ GAME_PROFILE_SCREENSHOTS=1 \
 
 # Independent second capture of the same clean candidate subject with the same
 # exact clean harness.
-GAME_PROFILE_OUT_DIR=test-results/game-profile/candidate-confirmation \
+GAME_PROFILE_OUT_DIR=test-results/game-profile/4776-controlled-v6-final/candidate-2 \
 GAME_PROFILE_BASE_URL=http://localhost:3102 \
 GAME_PROFILE_ALLOW_LEGACY_OPERATION_VISUALS=0 \
 GAME_PROFILE_BUILD=0 \
@@ -660,12 +666,12 @@ Compare the four raw repeated-run reports with the checked-in relative policy:
 ```bash
 cd apps/garden
 pnpm run profile:game:compare \
-  --baseline test-results/game-profile/baseline/latest.json \
-  --baseline-confirmation test-results/game-profile/baseline-confirmation/latest.json \
+  --baseline test-results/game-profile/4776-controlled-v6-final/baseline-1/latest.json \
+  --baseline-confirmation test-results/game-profile/4776-controlled-v6-final/baseline-2/latest.json \
   --baseline-scheduler-contract legacy-heartbeat-v1 \
-  --candidate test-results/game-profile/candidate/latest.json \
-  --confirmation test-results/game-profile/candidate-confirmation/latest.json \
-  --out-dir test-results/game-profile/comparisons/baseline-to-candidate
+  --candidate test-results/game-profile/4776-controlled-v6-final/candidate-1/latest.json \
+  --confirmation test-results/game-profile/4776-controlled-v6-final/candidate-2/latest.json \
+  --out-dir test-results/game-profile/4776-controlled-v6-final/comparison
 ```
 
 The comparator validates and pairs raw scenarios by stable base name and repeat
@@ -708,8 +714,9 @@ comparison API.
 
 Cross-tier GPU p95 is decisive only under comparable render cadence. Comparison
 contract v4 introduced `profiler-owned-raf-v1` before application code for every
-cross-tier steady and camera-motion run. Contract v5 retains that control. It
-batches application/runtime RAF callbacks onto a requested 30 Hz clock while
+cross-tier steady and camera-motion run. Contracts v5 and v6 retain that
+control. It batches application/runtime RAF callbacks onto a requested 30 Hz
+clock while
 the profiler's frame sampler and GPU-query drain retain the captured native
 browser RAF. Callbacks receive the
 scheduled 30 Hz phase timestamp rather than host-rAF jitter; a late host frame
@@ -733,14 +740,38 @@ second; a missing, malformed, inactive, or out-of-range control makes the matrix
 invalid. This document-start override is limited to the deterministic profiler
 page and does not change production runtime cadence.
 
+Contract v6 measures cross-tier cold startup with the separate
+`document-start-dpr-aware-canvas-and-fixture-v1` witness. A tracker installed at
+document start records `DOMContentLoaded`, Canvas attachment, the first backing
+store whose dimensions match the requested viewport and capped device-pixel
+ratio, the first submitted WebGL frame, and fixture readiness. Every report must
+preserve that milestone order and exact CSS/backing-store dimensions. The old
+host-side double-RAF Canvas-ready duration is retained as
+`hostCanvasReadyDiagnosticMs` only; it is not a cold-start comparison input and
+cannot turn host scheduling bimodality into an application regression.
+
+Contract v6 also gives every cross-tier scenario a
+`population-exposure-post-render-resource-snapshot-v1` witness. The profiler
+requires the endpoint actor grounding-shadow census and its cumulative
+per-species population exposure to stay stable around a fresh renderer-resource
+read, and the cumulative exposure must cover the endpoint population. Canonical
+subjects prove freshness with the post-render receipt; the explicitly selected
+legacy baseline may use only its validated settled fallback. Geometry is
+re-paired across independent repeats only within an identical canonical
+population-exposure stratum, retaining the existing one-count allowance.
+Shaders and textures continue to use every validated fresh snapshot rather than
+being filtered by population stratum. Low quality may prove an explicitly empty
+exposure; a shadowed policy with missing exposure, or a comparison with no
+shared geometry stratum, is invalid instead of passing open.
+
 With that explicit control, both steady and camera-motion GPU rows use the
 existing direct 15% relative boundary, 3 ms practical floor, 40% raw-rank
 boundary, and 6 ms raw-rank floor. Bundle-median delivered cadence must still
 differ by no more than 2 FPS. Historical contract-v3 artifacts may contain the
 legacy cadence-confound classification; contract v4 removed it and contract v5
-retains that decision, so it cannot downgrade a control failure or turn a
-controlled GPU row into a non-decisional result. The first contract-v3
-four-report attempt remains
+retained that decision. Contract v6 keeps it, so it cannot downgrade a control
+failure or turn a controlled GPU row into a non-decisional result. The first
+contract-v3 four-report attempt remains
 diagnostic and invalid because several legacy steady runs exceeded 32 FPS. It
 must not be reused as release evidence.
 
@@ -812,7 +843,7 @@ Rendered FPS uses the generic relative gate except where a scenario declares a
 semantic scheduler target. Both cross-tier subjects and the fixed garden-switch
 arrival 1 control must keep every raw run within 28–32 FPS around an observed
 30 FPS target; later garden-switch transition arrivals must deliver at least
-28 FPS. For a contract-v5 legacy-heartbeat-to-canonical lifecycle comparison,
+28 FPS. For a contract-v6 legacy-heartbeat-to-canonical lifecycle comparison,
 every raw candidate active and context-restored phase must also stay within
 28–32 rendered FPS and at or below 33.3 ms p95 frame duration around its declared
 30 FPS target. Baseline-relative FPS and p95 ratios stay in the report as
@@ -821,7 +852,7 @@ misclassified as lost performance. Canonical-to-canonical lifecycle rows retain
 the generic relative policy. Cross-tier GPU p95 additionally requires the
 explicit profiler-owned cadence contract above; every steady and camera-motion
 row became decisional under contract v4 and remains decisional under contract
-v5. Garden-switch GPU p95, mature and lifetime resource phases, per-render
+v6. Garden-switch GPU p95, mature and lifetime resource phases, per-render
 submissions, fixed-control total submissions, and causal scheduler wakeup
 accounting are hard gates. Elapsed GPU occupancy remains a complete raw
 diagnostic rather than a proxy for power or thermal behavior.
@@ -1744,15 +1775,21 @@ Required release evidence before merge:
 - `4717-final/building-ambient` is the focused two-run control proving an
   ordinary ambient structure fixture holds one stable 30 FPS owner set.
 - `4775-controlled-v5-final/baseline-1`, `baseline-2`, `candidate-1`, and
+  `candidate-2` remain diagnostic history. That clean matrix was structurally
+  valid; 312 of 314 comparisons and all 42 invariants passed, along with its
+  meaningful work, GPU, and memory gates. Its host/double-RAF cold Canvas timing
+  and dynamic-butterfly endpoint geometry mismatches are profiler/fixture
+  artifacts, so the matrix is not release evidence.
+- `4776-controlled-v6-final/baseline-1`, `baseline-2`, `candidate-1`, and
   `candidate-2` must be independent captures collected by the same exact clean
-  contract-v5 profiler harness. The origin/main pair uses the exact
+  contract-v6 profiler harness. The origin/main pair uses the exact
   `legacy-heartbeat-v1` baseline contract; its superseded scheduler checks may
   fail only as described above. The candidate pair captures the same clean
   candidate subject and the same 39 canonical runs under `canonical-v1`.
-  `comparison-final` is the required fail-closed symmetric 2x2 result;
-  “independent” means separate profiler executions and reports, not different
-  harness commits. This matrix is pending fresh capture; contract-v4 reports do
-  not satisfy the contract-v5 release gate.
+  `comparison` is the required fail-closed symmetric 2x2 result; “independent”
+  means separate profiler executions and reports, not different harness commits.
+  This contract-v6 matrix is pending fresh capture; contract-v5 and earlier
+  reports do not satisfy its release gate.
 - Garden-switch comparison uses a full-length initial control and hard-gates
   GPU p95, semantic target delivery, scheduler callback conservation and exact
   causal wakeup classification, zero unexpected no-work wakeups, zero
@@ -1767,10 +1804,16 @@ Required release evidence before merge:
   diagnostic; canonical-to-canonical lifecycle comparison remains relative.
 - Cross-tier steady and camera-motion GPU p95 are compared directly only under
   the profiler-owned 30 Hz application/runtime RAF introduced by contract v4
-  and retained by contract v5. Every raw sample must prove that control
+  and retained by contract v6. Every raw sample must prove that control
   independently while profiler timing remains on native browser RAF.
   Contract-v3 cadence-confounded artifacts are historical diagnostics and
   cannot satisfy this release gate.
+- Cross-tier cold milestones must use the document-start, DPR-aware witness;
+  host/double-RAF timing remains diagnostic only. Every fresh resource snapshot
+  must prove a stable endpoint census and cumulative grounding-shadow exposure.
+  Geometry may pair only within shared exposure strata with the unchanged
+  one-count allowance; shaders and textures retain all fresh snapshots. Low may
+  declare an explicit empty exposure, while no shared stratum is invalid.
 - These local ARM64 macOS headless-Chromium/ANGLE-Metal artifacts cover the
   deterministic harness only. Synthetic `document.hidden` is not a real
   background tab. Timer-query occupancy is not a physical power or thermal
