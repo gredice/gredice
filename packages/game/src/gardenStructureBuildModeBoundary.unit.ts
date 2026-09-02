@@ -27,17 +27,22 @@ function sourceBetween(source: string, start: string, end: string) {
     return source.slice(startIndex, endIndex);
 }
 
-test('uses only the managed building flag for build-mode discovery while saved structures keep rendering', () => {
+test('requires managed discovery and API authority while saved structures keep rendering', () => {
     const entryGate = sourceBetween(
         gameSceneSource,
-        'const gardenStructureVerticalSliceEnabled',
-        'const structureBuildActive',
+        'const gardenStructureManagedEnabled',
+        'const gardenStructureAvatarInteriorsEnabled',
     );
 
     assert.match(entryGate, /flags\?\.enableGardenBuildingSystemFlag/);
-    assert.doesNotMatch(
+    assert.match(entryGate, /resolveGardenStructureBuildModeEnabled/);
+    assert.match(
         entryGate,
-        /gardenStructureDebugFixture|isLocalSandbox/,
+        /serverEnabled: Boolean\(garden\?\.gardenBuildingSystem\?\.enabled\)/,
+    );
+    assert.match(
+        entryGate,
+        /fixture: Boolean\(\s*isLocalSandbox \|\|\s*gardenStructureDebugFixture \|\|\s*gardenStructureProfileFixture/,
     );
     assert.match(
         gameSceneSource,

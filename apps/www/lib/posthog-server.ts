@@ -1,12 +1,21 @@
 import { shouldForwardPostHogConsoleMethod } from '@gredice/js/observability';
+import {
+    createPostHogLogFlushScheduler,
+    FetchOTLPLogExporter,
+    POSTHOG_LOG_BATCH_DELAY_MS,
+    POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+    POSTHOG_LOG_FALLBACK_DELAY_MS,
+    POSTHOG_LOG_FLUSH_TIMEOUT_MS,
+    POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
+    POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
+    POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+} from '@gredice/js/posthog-logs';
 import { type Logger, logs, SeverityNumber } from '@opentelemetry/api-logs';
-import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
     BatchLogRecordProcessor,
     LoggerProvider,
 } from '@opentelemetry/sdk-logs';
-import { createPostHogLogFlushScheduler } from './posthog-log-flush';
 
 type PostHogCaptureClient = {
     capture: (payload: {
@@ -17,11 +26,6 @@ type PostHogCaptureClient = {
 };
 
 export const POSTHOG_SERVICE_NAME = 'gredice-www';
-
-const POSTHOG_LOG_BATCH_DELAY_MS = 1_000;
-const POSTHOG_LOG_EXPORT_TIMEOUT_MS = 5_000;
-const POSTHOG_LOG_FLUSH_TIMEOUT_MS = 7_000;
-const POSTHOG_LOG_FLUSH_FAILURE_COOLDOWN_MS = 30_000;
 
 const postHogConsoleForwardingKey = Symbol.for(
     `${POSTHOG_SERVICE_NAME}.console-forwarding`,
@@ -53,21 +57,25 @@ const originalConsole = {
     warn: console.warn.bind(console),
 };
 
-const postHogLogsProcessor =
+const postHogLogsExporter =
     postHogApiKey && postHogLogsUrl
-        ? new BatchLogRecordProcessor({
-              exportTimeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
-              exporter: new OTLPLogExporter({
-                  headers: {
-                      Authorization: `Bearer ${postHogApiKey}`,
-                      'Content-Type': 'application/json',
-                  },
-                  timeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
-                  url: postHogLogsUrl,
-              }),
-              scheduledDelayMillis: POSTHOG_LOG_BATCH_DELAY_MS,
+        ? new FetchOTLPLogExporter({
+              headers: {
+                  Authorization: `Bearer ${postHogApiKey}`,
+                  'Content-Type': 'application/json',
+              },
+              timeoutMillis: POSTHOG_LOG_EXPORT_TIMEOUT_MS,
+              url: postHogLogsUrl,
           })
         : null;
+
+const postHogLogsProcessor = postHogLogsExporter
+    ? new BatchLogRecordProcessor({
+          exportTimeoutMillis: POSTHOG_LOG_PROCESSOR_TIMEOUT_MS,
+          exporter: postHogLogsExporter,
+          scheduledDelayMillis: POSTHOG_LOG_FALLBACK_DELAY_MS,
+      })
+    : null;
 
 export const loggerProvider = new LoggerProvider({
     forceFlushTimeoutMillis: POSTHOG_LOG_FLUSH_TIMEOUT_MS,
@@ -121,10 +129,17 @@ function stringifyConsoleArgument(value: unknown): string {
 
 const schedulePostHogLogFlush = createPostHogLogFlushScheduler({
     batchDelayMs: POSTHOG_LOG_BATCH_DELAY_MS,
-    failureCooldownMs: POSTHOG_LOG_FLUSH_FAILURE_COOLDOWN_MS,
-    flush: () => loggerProvider.forceFlush(),
-    onError: (error) => {
-        originalConsole.warn('PostHog log flush failed', { error });
+    flush: () =>
+        postHogLogsExporter?.forceFlushWithErrorPropagation(() =>
+            loggerProvider.forceFlush(),
+        ) ?? loggerProvider.forceFlush(),
+    initialFailureBackoffMs: POSTHOG_LOG_INITIAL_FAILURE_BACKOFF_MS,
+    maxFailureBackoffMs: POSTHOG_LOG_MAX_FAILURE_BACKOFF_MS,
+    onPersistentError: (error, context) => {
+        originalConsole.warn('PostHog log flush repeatedly failed', {
+            ...context,
+            error,
+        });
     },
 });
 
