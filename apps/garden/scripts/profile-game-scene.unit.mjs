@@ -3367,7 +3367,9 @@ test('cross-tier resource snapshot state rejects malformed raw population teleme
     const hadMetrics = Object.hasOwn(globalThis, '__gameProfileMetrics');
     const previousProfile = globalThis.__grediceGameProfile;
     const previousMetrics = globalThis.__gameProfileMetrics;
-    const page = { evaluate: async (callback) => callback() };
+    const page = {
+        evaluate: async (callback, argument) => callback(argument),
+    };
 
     try {
         globalThis.__grediceGameProfile = {
@@ -3399,6 +3401,15 @@ test('cross-tier resource snapshot state rejects malformed raw population teleme
         };
         const valid = await readCrossTierResourceSnapshotState(page);
         assert.deepEqual(valid.population, { bird: 2, butterfly: 3 });
+
+        delete globalThis.__grediceGameProfile
+            .actorGroundingShadowSpeciesCounts;
+        const missing = await readCrossTierResourceSnapshotState(page);
+        assert.equal(missing.population, null);
+        const allowedEmpty = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation: true,
+        });
+        assert.deepEqual(allowedEmpty.population, {});
     } finally {
         if (hadProfile) {
             globalThis.__grediceGameProfile = previousProfile;

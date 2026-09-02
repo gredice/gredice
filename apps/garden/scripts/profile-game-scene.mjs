@@ -6620,61 +6620,88 @@ function populationExposureSignature(exposure) {
     );
 }
 
-async function readCrossTierResourceSnapshotState(page) {
-    return page.evaluate(() => {
-        const profile = globalThis.__grediceGameProfile;
-        const metrics = globalThis.__gameProfileMetrics;
-        const numberOrNull = (value) =>
-            typeof value === 'number' && Number.isFinite(value) ? value : null;
-        const integerRecord = (value) => {
-            if (!value || typeof value !== 'object' || Array.isArray(value)) {
-                return null;
-            }
-            const entries = Object.entries(value);
-            if (
-                entries.some(
-                    ([species, count]) =>
-                        species.length === 0 ||
-                        !Number.isInteger(count) ||
-                        count < 0,
-                )
-            ) {
-                return null;
-            }
-            return Object.fromEntries(
-                entries.sort(([left], [right]) => left.localeCompare(right)),
-            );
-        };
-        return {
-            capturedAt: performance.now(),
-            population: integerRecord(
-                profile?.actorGroundingShadowSpeciesCounts,
-            ),
-            populationExposure: integerRecord(
-                metrics?.actorGroundingShadowSpeciesCountMax,
-            ),
-            resources: {
-                rendererGeometries: numberOrNull(profile?.rendererGeometries),
-                rendererShaders:
-                    numberOrNull(profile?.rendererShaders) ??
-                    numberOrNull(metrics?.rendererShaders),
-                rendererTextures:
-                    numberOrNull(profile?.rendererTextures) ??
-                    numberOrNull(metrics?.rendererTextures),
-            },
-        };
-    });
+async function readCrossTierResourceSnapshotState(
+    page,
+    { allowMissingPopulation = false } = {},
+) {
+    return page.evaluate(
+        ({ allowMissingPopulation: allowMissing }) => {
+            const profile = globalThis.__grediceGameProfile;
+            const metrics = globalThis.__gameProfileMetrics;
+            const numberOrNull = (value) =>
+                typeof value === 'number' && Number.isFinite(value)
+                    ? value
+                    : null;
+            const integerRecord = (value) => {
+                if ((value === null || value === undefined) && allowMissing) {
+                    return {};
+                }
+                if (
+                    !value ||
+                    typeof value !== 'object' ||
+                    Array.isArray(value)
+                ) {
+                    return null;
+                }
+                const entries = Object.entries(value);
+                if (
+                    entries.some(
+                        ([species, count]) =>
+                            species.length === 0 ||
+                            !Number.isInteger(count) ||
+                            count < 0,
+                    )
+                ) {
+                    return null;
+                }
+                return Object.fromEntries(
+                    entries.sort(([left], [right]) =>
+                        left.localeCompare(right),
+                    ),
+                );
+            };
+            return {
+                capturedAt: performance.now(),
+                population: integerRecord(
+                    profile?.actorGroundingShadowSpeciesCounts,
+                ),
+                populationExposure: integerRecord(
+                    metrics?.actorGroundingShadowSpeciesCountMax,
+                ),
+                resources: {
+                    rendererGeometries: numberOrNull(
+                        profile?.rendererGeometries,
+                    ),
+                    rendererShaders:
+                        numberOrNull(profile?.rendererShaders) ??
+                        numberOrNull(metrics?.rendererShaders),
+                    rendererTextures:
+                        numberOrNull(profile?.rendererTextures) ??
+                        numberOrNull(metrics?.rendererTextures),
+                },
+            };
+        },
+        { allowMissingPopulation },
+    );
 }
 
-async function captureCrossTierResourceSnapshot(page, rendererStatsMode) {
+async function captureCrossTierResourceSnapshot(
+    page,
+    rendererStatsMode,
+    { allowMissingPopulation = false } = {},
+) {
     const maximumAttempts = 3;
     let lastStart = null;
     let lastEnd = null;
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
-        const start = await readCrossTierResourceSnapshotState(page);
+        const start = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation,
+        });
         const rendererStatsMeasurement =
             await waitForLifecycleRendererStatsBarrier(page, rendererStatsMode);
-        const end = await readCrossTierResourceSnapshotState(page);
+        const end = await readCrossTierResourceSnapshotState(page, {
+            allowMissingPopulation,
+        });
         lastStart = start;
         lastEnd = end;
         if (
@@ -11117,6 +11144,10 @@ async function measureScenario(browser, baseUrl, scenario, options) {
             ? await captureCrossTierResourceSnapshot(
                   page,
                   crossTierRendererStatsMode,
+                  {
+                      allowMissingPopulation:
+                          scenario.expectedShadows === false,
+                  },
               )
             : null;
 
