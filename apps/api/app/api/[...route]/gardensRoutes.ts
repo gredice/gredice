@@ -120,6 +120,7 @@ import {
     gardenBlockPurchaseParamSchema,
 } from '../../../lib/garden/gardenBlockPurchaseSchemas';
 import { storeGardenBlockInGardenBoxForAccount } from '../../../lib/garden/gardenBoxBlockStorageService';
+import { getGardenBuildingSystemAvailability } from '../../../lib/garden/gardenBuildingSystemServerFlag';
 import {
     deleteRealGardenForAccount,
     parseGardenDeletionId,
@@ -2131,6 +2132,11 @@ const app = new Hono<{ Variables: AuthVariables }>()
 
             return context.json({
                 ...source.details,
+                // The managed Garden flag controls discovery, but mutation
+                // authority remains fail-closed in this API deployment.
+                gardenBuildingSystem: getGardenBuildingSystemAvailability(
+                    source.garden.isSandbox,
+                ),
                 previewSourceRevision: source.sourceRevision,
             });
         },

@@ -18,3 +18,12 @@ export function isGardenBuildingSystemCommercialEnabled() {
         process.env[gardenBuildingSystemCommercialFlagName],
     );
 }
+
+export function getGardenBuildingSystemAvailability(isSandbox: boolean) {
+    const systemEnabled = isGardenBuildingSystemServerEnabled();
+    const commercialEnabled = isGardenBuildingSystemCommercialEnabled();
+
+    return {
+        enabled: systemEnabled && (isSandbox || commercialEnabled),
+    } as const;
+}

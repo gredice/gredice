@@ -15,6 +15,7 @@ import {
 import {
     classifyGardenStructureMutationHttpOutcome,
     type GardenStructureMutationOutcome,
+    getGardenStructureRolloutGateErrorMessage,
 } from './gardenStructureMutationOutcome';
 import { currentAccountKeys } from './useCurrentAccount';
 import { type CurrentGarden, currentGardenKeys } from './useCurrentGarden';
@@ -156,17 +157,18 @@ async function responseFailure(
             ? value.code
             : `HTTP_${response.status.toString()}`;
     const message =
-        isRecord(value) &&
+        getGardenStructureRolloutGateErrorMessage(code) ??
+        (isRecord(value) &&
         typeof value.error === 'string' &&
         value.error.length <= 512
             ? value.error
             : operation === 'demolish'
               ? 'Građevinu trenutačno nije moguće srušiti.'
-              : 'Građevinu trenutačno nije moguće spremiti.';
+              : 'Građevinu trenutačno nije moguće spremiti.');
     return new GardenStructureMutationClientError(
         message,
         code,
-        classifyGardenStructureMutationHttpOutcome(response.status),
+        classifyGardenStructureMutationHttpOutcome(response.status, code),
         currentRevision,
     );
 }
