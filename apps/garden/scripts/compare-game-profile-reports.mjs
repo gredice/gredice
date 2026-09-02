@@ -28,6 +28,22 @@ const lifecycleRendererStatsCanonicalMode = 'post-render-receipt-v1';
 const lifecycleRendererStatsLegacyMode = 'legacy-pre-render-settled-v1';
 const rendererStatsRuntimeMeasurementMode = 'post-render-microtask-v1';
 const lifecycleLegacyRendererStatsSettleMs = 600;
+const lifecycleRuntimeFrameLoopBooleanFields = [
+    'canvasVisible',
+    'documentVisible',
+    'effectiveVisible',
+    'loopActive',
+];
+const lifecycleRuntimeFrameLoopNumberFields = [
+    'activeLeaseCount',
+    'targetFramesPerSecond',
+    'scheduledCallbackCount',
+    'wakeupCount',
+    'ownedInvalidationCount',
+    'cancelledCallbackCount',
+    'suspendCount',
+    'resumeCount',
+];
 const schedulerBaselineContracts = new Set([
     canonicalSchedulerBaselineContract,
     legacyHeartbeatSchedulerBaselineContract,
@@ -1131,6 +1147,39 @@ function validateLifecycleRendererStatsMeasurement(
     }
 }
 
+function validateLifecycleRuntimeFrameLoop(
+    errors,
+    runtimeFrameLoop,
+    path,
+    expectedRendererStatsMode,
+) {
+    if (!isRecord(runtimeFrameLoop)) {
+        errors.push(`${path} is missing`);
+        return;
+    }
+
+    if (expectedRendererStatsMode === lifecycleRendererStatsLegacyMode) {
+        if (hasOwn(runtimeFrameLoop, 'awaitingFrameReceipt')) {
+            errors.push(
+                `${path}.awaitingFrameReceipt must be absent for the legacy contract`,
+            );
+        }
+    } else if (typeof runtimeFrameLoop.awaitingFrameReceipt !== 'boolean') {
+        errors.push(`${path}.awaitingFrameReceipt must be a boolean`);
+    }
+
+    for (const field of lifecycleRuntimeFrameLoopBooleanFields) {
+        if (typeof runtimeFrameLoop[field] !== 'boolean') {
+            errors.push(`${path}.${field} must be a boolean`);
+        }
+    }
+    for (const field of lifecycleRuntimeFrameLoopNumberFields) {
+        if (!isFiniteNumber(runtimeFrameLoop[field])) {
+            errors.push(`${path}.${field} must be a finite number`);
+        }
+    }
+}
+
 function validateStructuralCounts(errors, fixture, path, prefix = '') {
     if (!isRecord(fixture)) {
         errors.push(`${path} is missing`);
@@ -1444,10 +1493,21 @@ function validateCanonicalScenarioEvidence(
     }
 
     if (scenario.baseName === 'game-high-target-runtime-lifecycle-desktop') {
+        const lifecycleRendererStatsMode =
+            schedulerBaselineContract ===
+            legacyHeartbeatSchedulerBaselineContract
+                ? lifecycleRendererStatsLegacyMode
+                : lifecycleRendererStatsCanonicalMode;
         validatePositiveNumber(
             errors,
             runtime.browserDpr,
             `${path} runtime.browserDpr`,
+        );
+        validateLifecycleRuntimeFrameLoop(
+            errors,
+            scenario.lifecycle?.active?.runtimeFrameLoop,
+            `${path} lifecycle.active.runtimeFrameLoop`,
+            lifecycleRendererStatsMode,
         );
         const lifecycleResourceFixtures = [
             ['cold', scenario.lifecycle?.cold?.fixture],
@@ -1490,10 +1550,7 @@ function validateCanonicalScenarioEvidence(
                 errors,
                 fixture.resources,
                 `${fixturePath}.resources`,
-                schedulerBaselineContract ===
-                    legacyHeartbeatSchedulerBaselineContract
-                    ? lifecycleRendererStatsLegacyMode
-                    : lifecycleRendererStatsCanonicalMode,
+                lifecycleRendererStatsMode,
             );
         }
 

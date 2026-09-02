@@ -5879,11 +5879,36 @@ test('lifecycle acceptance passes one complete contract and rejects focused evid
 test('legacy lifecycle acceptance explicitly requires pre-receipt telemetry while canonical mode fails closed', () => {
     const input = createPassingLifecycleAcceptanceInput();
     delete input.active.runtimeFrameLoop.awaitingFrameReceipt;
+    for (const resources of [
+        input.cold.fixture.resources,
+        input.offscreen.resumedControl.fixture.resources,
+        input.hidden.resumedControl.fixture.resources,
+        input.context.restoredControl.fixture.resources,
+    ]) {
+        Object.assign(resources.rendererStatsMeasurement, {
+            legacySettleMs: 600,
+            measurementMode: lifecycleRendererStatsLegacyMode,
+            rendererStatsPublishedAt: null,
+            rendererStatsReceiptCount: null,
+            rendererStatsReceiptDelta: null,
+            rendererStatsRenderFrame: null,
+            r3fFrameCallbackCountDelta: null,
+            runtimeMeasurementMode: null,
+        });
+    }
 
     const legacy = evaluateLifecycleAcceptance({
         ...input,
         rendererStatsMode: lifecycleRendererStatsLegacyMode,
     });
+    assert.equal(
+        legacy.pass,
+        true,
+        legacy.checks
+            .filter((check) => !check.pass)
+            .map((check) => check.name)
+            .join(', '),
+    );
     assert.equal(
         legacy.checks.find(
             (check) =>
@@ -5899,7 +5924,9 @@ test('legacy lifecycle acceptance explicitly requires pre-receipt telemetry whil
         false,
     );
 
-    const canonical = evaluateLifecycleAcceptance(input);
+    const canonicalInput = createPassingLifecycleAcceptanceInput();
+    delete canonicalInput.active.runtimeFrameLoop.awaitingFrameReceipt;
+    const canonical = evaluateLifecycleAcceptance(canonicalInput);
     assert.equal(
         canonical.checks.find(
             (check) => check.name === 'lifecycleActiveAwaitingFrameReceiptType',

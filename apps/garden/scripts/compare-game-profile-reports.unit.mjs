@@ -207,6 +207,21 @@ function lifecycleScenario(profileRun) {
     scenario.lifecycle = {
         active: {
             cdp: { jsHeapMb: 64, scriptDuration: 0.8 },
+            runtimeFrameLoop: {
+                activeLeaseCount: 0,
+                awaitingFrameReceipt: false,
+                cancelledCallbackCount: 0,
+                canvasVisible: true,
+                documentVisible: true,
+                effectiveVisible: true,
+                loopActive: true,
+                ownedInvalidationCount: 10,
+                resumeCount: 0,
+                scheduledCallbackCount: 20,
+                suspendCount: 0,
+                targetFramesPerSecond: 30,
+                wakeupCount: 19,
+            },
             sample: sample(),
         },
         cold: {
@@ -813,6 +828,8 @@ function applyLegacyHeartbeatSchedulerEvidence(reportValue) {
                         runtimeMeasurementMode: null,
                     };
                 }
+                delete scenario.lifecycle.active.runtimeFrameLoop
+                    .awaitingFrameReceipt;
             }
             continue;
         }
@@ -1105,6 +1122,27 @@ test('legacy heartbeat baseline contract rejects drift and cannot relax candidat
         },
         'candidate uses legacy evidence': ({ candidate }) => {
             applyLegacyHeartbeatSchedulerEvidence(candidate);
+        },
+        'legacy lifecycle exposes canonical receipt telemetry': ({
+            baseline,
+        }) => {
+            const lifecycle = baseline.scenarios.find(
+                (scenario) =>
+                    scenario.baseName ===
+                    'game-high-target-runtime-lifecycle-desktop',
+            );
+            lifecycle.lifecycle.active.runtimeFrameLoop.awaitingFrameReceipt = false;
+        },
+        'candidate lifecycle omits canonical receipt telemetry': ({
+            candidate,
+        }) => {
+            const lifecycle = candidate.scenarios.find(
+                (scenario) =>
+                    scenario.baseName ===
+                    'game-high-target-runtime-lifecycle-desktop',
+            );
+            delete lifecycle.lifecycle.active.runtimeFrameLoop
+                .awaitingFrameReceipt;
         },
     };
 
